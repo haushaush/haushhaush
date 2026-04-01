@@ -1,4 +1,4 @@
-import { Home, Users, FolderOpen, BarChart3, Euro, UserCircle, ClipboardList, LogOut } from 'lucide-react';
+import { Home, Users, FolderOpen, BarChart3, Euro, UserCircle, ClipboardList, Palette, LogOut } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,7 @@ const navItems = [
   { title: 'Finanzen', url: '/finanzen', icon: Euro },
   { title: 'Mitarbeiter', url: '/mitarbeiter', icon: UserCircle },
   { title: 'Aufgaben', url: '/aufgaben', icon: ClipboardList },
+  { title: 'Creatives', url: '/creatives', icon: Palette },
 ];
 
 export function AppSidebar() {

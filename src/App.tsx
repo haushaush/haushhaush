@@ -14,6 +14,9 @@ import KPI from "./pages/KPI.tsx";
 import Finanzen from "./pages/Finanzen.tsx";
 import Mitarbeiter from "./pages/Mitarbeiter.tsx";
 import Aufgaben from "./pages/Aufgaben.tsx";
+import Creatives from "./pages/Creatives.tsx";
+import CreativeDetail from "./pages/CreativeDetail.tsx";
+import CreativeReview from "./pages/CreativeReview.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -35,6 +38,9 @@ const App = () => (
             <Route path="/finanzen" element={<DashboardLayout><Finanzen /></DashboardLayout>} />
             <Route path="/mitarbeiter" element={<DashboardLayout><Mitarbeiter /></DashboardLayout>} />
             <Route path="/aufgaben" element={<DashboardLayout><Aufgaben /></DashboardLayout>} />
+            <Route path="/creatives" element={<DashboardLayout><Creatives /></DashboardLayout>} />
+            <Route path="/creatives/:id" element={<DashboardLayout><CreativeDetail /></DashboardLayout>} />
+            <Route path="/review/:token" element={<CreativeReview />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
