@@ -180,13 +180,14 @@ export default function Kunden() {
             <Table>
               <caption className="sr-only">Kundenliste mit Deals aus Close CRM</caption>
               <TableHeader>
-                <TableRow>
+                 <TableRow>
                   <TableHead scope="col">Kunde</TableHead>
                   <TableHead scope="col">Art</TableHead>
                   <TableHead scope="col">Wert</TableHead>
                   <TableHead scope="col" className="hidden md:table-cell">Laufzeit</TableHead>
                   <TableHead scope="col">Status</TableHead>
                   <TableHead scope="col">Ampel</TableHead>
+                  <TableHead scope="col" className="hidden sm:table-cell">Leistungen</TableHead>
                   <TableHead scope="col" className="hidden lg:table-cell">Zugewiesen</TableHead>
                   <TableHead scope="col" className="hidden md:table-cell">Aktionen</TableHead>
                 </TableRow>
