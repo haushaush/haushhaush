@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +20,7 @@ type ClientRef = { id: string; name: string };
 export default function Projekte() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<ClientRef[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { isAdminOrManager } = useAuth();
   const { toast } = useToast();
@@ -31,6 +33,7 @@ export default function Projekte() {
     ]);
     if (p.data) setProjects(p.data);
     if (c.data) setClients(c.data);
+    setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -46,17 +49,26 @@ export default function Projekte() {
 
   const clientName = (id: string) => clients.find(c => c.id === id)?.name || '–';
 
+  if (loading) {
+    return (
+      <div className="space-y-6" role="status" aria-busy="true" aria-label="Projekte werden geladen">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-heading font-bold">Projekte</h1>
           <p className="text-muted-foreground text-sm">{projects.length} Projekte</p>
         </div>
         {isAdminOrManager && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Neues Projekt</Button></DialogTrigger>
-            <DialogContent>
+            <DialogTrigger asChild><Button className="min-h-[44px]"><Plus className="h-4 w-4 mr-2" aria-hidden="true" />Neues Projekt</Button></DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-h-none">
               <DialogHeader><DialogTitle>Neues Projekt anlegen</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div><Label>Kunde *</Label>
@@ -65,10 +77,10 @@ export default function Projekte() {
                     <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div><Label>Projektname *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} required /></div>
-                <div><Label>Projekttyp</Label><Input value={form.projekttyp} onChange={e => setForm({...form, projekttyp: e.target.value})} /></div>
-                <div><Label>Ads Budget (€)</Label><Input type="number" value={form.ads_budget} onChange={e => setForm({...form, ads_budget: +e.target.value})} /></div>
-                <Button type="submit" className="w-full" disabled={!form.client_id || !form.name}>Projekt anlegen</Button>
+                <div><Label htmlFor="proj-name">Projektname *</Label><Input id="proj-name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required /></div>
+                <div><Label htmlFor="proj-typ">Projekttyp</Label><Input id="proj-typ" value={form.projekttyp} onChange={e => setForm({...form, projekttyp: e.target.value})} /></div>
+                <div><Label htmlFor="proj-budget">Ads Budget (€)</Label><Input id="proj-budget" type="number" value={form.ads_budget} onChange={e => setForm({...form, ads_budget: +e.target.value})} /></div>
+                <Button type="submit" className="w-full min-h-[44px]" disabled={!form.client_id || !form.name}>Projekt anlegen</Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -76,32 +88,35 @@ export default function Projekte() {
       </div>
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Projekt</TableHead>
-                <TableHead>Kunde</TableHead>
-                <TableHead>Typ</TableHead>
-                <TableHead>Budget</TableHead>
-                <TableHead>Saldo</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {projects.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Keine Projekte</TableCell></TableRow>
-              ) : projects.map(p => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{clientName(p.client_id)}</TableCell>
-                  <TableCell className="text-muted-foreground">{p.projekttyp || '–'}</TableCell>
-                  <TableCell>€{Number(p.ads_budget || 0).toLocaleString('de-DE')}</TableCell>
-                  <TableCell>€{Number(p.gesamt_saldo || 0).toLocaleString('de-DE')}</TableCell>
-                  <TableCell><Badge variant="outline">{p.status}</Badge></TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <caption className="sr-only">Projektliste mit Budget und Status</caption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead scope="col">Projekt</TableHead>
+                  <TableHead scope="col">Kunde</TableHead>
+                  <TableHead scope="col" className="hidden sm:table-cell">Typ</TableHead>
+                  <TableHead scope="col">Budget</TableHead>
+                  <TableHead scope="col" className="hidden md:table-cell">Saldo</TableHead>
+                  <TableHead scope="col">Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {projects.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Keine Projekte</TableCell></TableRow>
+                ) : projects.map(p => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{clientName(p.client_id)}</TableCell>
+                    <TableCell className="text-muted-foreground hidden sm:table-cell">{p.projekttyp || '–'}</TableCell>
+                    <TableCell>€{Number(p.ads_budget || 0).toLocaleString('de-DE')}</TableCell>
+                    <TableCell className="hidden md:table-cell">€{Number(p.gesamt_saldo || 0).toLocaleString('de-DE')}</TableCell>
+                    <TableCell><Badge variant="outline">{p.status}</Badge></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
