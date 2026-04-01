@@ -85,9 +85,9 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const { signOut, user } = useAuth();
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
-    // Auto-open group containing current route
     const result = { ...saved };
     navItems.forEach(item => {
       if (item.children) {
@@ -99,6 +99,13 @@ export function AppSidebar() {
   });
 
   useEffect(() => { saveSidebarState(openGroups); }, [openGroups]);
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    localStorage.setItem('theme', next);
+    document.documentElement.classList.toggle('dark', next === 'dark');
+  };
 
   const toggleGroup = (title: string) => {
     setOpenGroups(prev => ({ ...prev, [title]: !prev[title] }));
