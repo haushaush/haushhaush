@@ -1,60 +1,166 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+
+function RocketTrendSVG() {
+  return (
+    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" className="mx-auto animated-trend" aria-hidden="true">
+      <style>{`
+        @media (prefers-reduced-motion: no-preference) {
+          .trend-line { stroke-dasharray: 200; stroke-dashoffset: 200; animation: drawLine 1.2s ease-out forwards; }
+          .rocket { animation: floatUp 2s ease-in-out infinite; }
+          @keyframes drawLine { to { stroke-dashoffset: 0; } }
+          @keyframes floatUp { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        }
+      `}</style>
+      <path
+        className="trend-line"
+        d="M10 65 Q25 60 35 50 T60 35 T85 20 T108 10"
+        stroke="hsl(var(--primary))"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <g className="rocket" style={{ transformOrigin: '108px 10px' }}>
+        <circle cx="108" cy="10" r="3" fill="hsl(var(--primary))" />
+        <path d="M104 7 L108 3 L112 7" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </g>
+    </svg>
+  );
+}
 
 export default function Auth() {
   const { user, loading } = useAuth();
-  const { toast } = useToast();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingMsg, setPendingMsg] = useState('');
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="text-primary animate-pulse font-heading text-2xl">Laden...</div></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="text-primary animate-pulse text-2xl font-semibold">Laden...</div></div>;
   if (user) return <Navigate to="/" replace />;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setPendingMsg('');
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
     if (error) {
-      toast({ title: 'Login fehlgeschlagen', description: error.message, variant: 'destructive' });
+      toast.error('Login fehlgeschlagen', { description: error.message });
+      setIsLoading(false);
+      return;
     }
+
+    // Check if user has a pending employee request
+    if (data.user) {
+      const { data: req } = await supabase
+        .from('employee_requests')
+        .select('status')
+        .eq('user_id', data.user.id)
+        .maybeSingle();
+
+      if (req && req.status === 'Ausstehend') {
+        await supabase.auth.signOut();
+        setPendingMsg('Dein Konto wartet auf Freischaltung durch einen Admin.');
+        setIsLoading(false);
+        return;
+      }
+      if (req && req.status === 'Abgelehnt') {
+        await supabase.auth.signOut();
+        setPendingMsg('Deine Anfrage wurde leider abgelehnt. Kontaktiere einen Admin.');
+        setIsLoading(false);
+        return;
+      }
+    }
+
     setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'hsl(var(--background))' }}>
+      <div className="w-full max-w-[400px]">
+        {/* Hero */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-heading font-bold text-primary mb-2">Agency Dashboard</h1>
-          <p className="text-muted-foreground text-sm">Haush Haush Digital · Viral Connect</p>
+          <RocketTrendSVG />
+          <h1 className="text-[32px] font-bold text-foreground mt-4" style={{ letterSpacing: '-0.03em' }}>
+            Agency Hub
+          </h1>
+          <p className="text-[15px] text-muted-foreground mt-1.5">Haush Haush x Viral Connect</p>
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl text-center">Anmelden</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">E-Mail</Label>
-                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@agentur.de" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Passwort</Label>
-                <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Wird angemeldet...' : 'Anmelden'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+
+        {/* Pending banner */}
+        {pendingMsg && (
+          <div className="mb-4 rounded-xl px-4 py-3 text-sm font-medium border border-warning/30" style={{ backgroundColor: 'rgba(255,159,10,0.12)', color: 'hsl(var(--foreground))' }}>
+            {pendingMsg}
+          </div>
+        )}
+
+        {/* Auth Card */}
+        <div className="rounded-2xl border border-border p-8 shadow-[0_4px_24px_rgba(0,0,0,0.06)]" style={{ backgroundColor: 'hsl(var(--card))' }}>
+          <h2 className="text-xl font-semibold text-foreground mb-6">Anmelden</h2>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm text-foreground">E-Mail</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="name@haushhaush.de"
+                required
+                className="h-12 rounded-[10px] text-[15px] bg-muted/50 border-border focus:border-primary focus:ring-primary/15"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm text-foreground">Passwort</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                className="h-12 rounded-[10px] text-[15px] bg-muted/50 border-border focus:border-primary focus:ring-primary/15"
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full h-12 rounded-[10px] text-[15px] font-semibold transition-transform active:scale-[0.99]"
+              disabled={isLoading}
+            >
+              {isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Wird angemeldet...</> : 'Anmelden'}
+            </Button>
+          </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+            <div className="relative flex justify-center"><span className="bg-card px-3 text-xs text-muted-foreground">oder</span></div>
+          </div>
+
+          <Button
+            variant="outline"
+            className="w-full h-12 rounded-[10px] text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+            onClick={() => navigate('/registrierung')}
+          >
+            Als Mitarbeiter bewerben →
+          </Button>
+
+          <p className="text-center mt-4">
+            <button className="text-xs text-muted-foreground hover:text-primary transition-colors" onClick={() => toast.info('Kontaktiere einen Admin für Passwort-Reset.')}>
+              Passwort vergessen?
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );
