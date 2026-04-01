@@ -17,7 +17,10 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ clients: 0, activeClients: 0, projects: 0, revenue: 0, openInvoices: 0 });
   const [ampelData, setAmpelData] = useState<{ name: string; value: number }[]>([]);
   const [revenueData, setRevenueData] = useState<{ month: string; einnahmen: number; ausgaben: number }[]>([]);
+  const [creativePipeline, setCreativePipeline] = useState<{ status: string; count: number }[]>([]);
+  const [creativeAlerts, setCreativeAlerts] = useState<{ overdue: number; waitingFeedback: number; recentApproved: number }>({ overdue: 0, waitingFeedback: 0, recentApproved: 0 });
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
