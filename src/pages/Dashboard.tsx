@@ -467,7 +467,7 @@ export default function Dashboard() {
             <BarChart data={revenueChart} barCategoryGap="20%">
               <XAxis dataKey="name" axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
               <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={35} />
-              <Tooltip
+              <RechartsTooltip
                 formatter={(value: number, name: string) => [`€${value.toLocaleString('de-DE')}`, name === 'bezahlt' ? 'Bezahlt' : 'Offen']}
                 contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
               />
