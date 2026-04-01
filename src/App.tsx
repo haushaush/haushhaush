@@ -41,6 +41,7 @@ const App = () => (
             <Route path="/aufgaben" element={<DashboardLayout><Aufgaben /></DashboardLayout>} />
             <Route path="/creatives" element={<DashboardLayout><Creatives /></DashboardLayout>} />
             <Route path="/creatives/:id" element={<DashboardLayout><CreativeDetail /></DashboardLayout>} />
+            <Route path="/dateien" element={<DashboardLayout><Dateien /></DashboardLayout>} />
             <Route path="/review/:token" element={<CreativeReview />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
