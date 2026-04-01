@@ -70,19 +70,75 @@ export default function Dashboard() {
   const team = useTeam();
   const tasks = useTasks(10);
   const [salesPeriod, setSalesPeriod] = useState<'week' | 'month'>('week');
-  const salesPerf = useSalesPerformance(salesPeriod);
+  const salesPerfMonth = useSalesPerformance('month');
+  const effizienz = useEffizienzScore();
 
   const loading = deals.loading || revenue.loading || invoices.loading || team.loading || tasks.loading;
 
   const alerts = useAlerts(deals.data, invoices.data, salesPerf.data, team.data, tasks.data);
 
-  // KPI computations
-  const mrr = revenue.data.mrr;
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const monthName = now.toLocaleDateString('de-DE', { month: 'long' });
+
+  // CARD 1: Umsatz aktueller Monat
+  // TODO: replace with Buchhaltung API or DATEV export
+  const umsatzThisMonth = useMemo(() => invoices.data
+    .filter(i => i.status === 'Bezahlt' && new Date(i.created_at).getMonth() === currentMonth && new Date(i.created_at).getFullYear() === currentYear)
+    .reduce((s, i) => s + Number(i.brutto || 0), 0), [invoices.data, currentMonth, currentYear]);
+  const umsatzLastMonth = useMemo(() => {
+    const lm = currentMonth === 0 ? 11 : currentMonth - 1;
+    const ly = currentMonth === 0 ? currentYear - 1 : currentYear;
+    return invoices.data
+      .filter(i => i.status === 'Bezahlt' && new Date(i.created_at).getMonth() === lm && new Date(i.created_at).getFullYear() === ly)
+      .reduce((s, i) => s + Number(i.brutto || 0), 0);
+  }, [invoices.data, currentMonth, currentYear]);
+  const umsatzTrend = umsatzLastMonth > 0 ? ((umsatzThisMonth - umsatzLastMonth) / umsatzLastMonth * 100) : null;
+
+  // CARD 2: Cash Collect
+  // TODO: connect to Stripe/bank feed for actual cash received
+  const cashCollect = useMemo(() => invoices.data
+    .filter(i => ['Versendet', 'Überfällig'].includes(i.status || '') && i.faelligkeitsdatum && new Date(i.faelligkeitsdatum).getMonth() === currentMonth && new Date(i.faelligkeitsdatum).getFullYear() === currentYear)
+    , [invoices.data, currentMonth, currentYear]);
+  const cashCollectTotal = useMemo(() => cashCollect.reduce((s, i) => s + Number(i.brutto || 0), 0), [cashCollect]);
+  const cashCollectOverdue = useMemo(() => cashCollect.filter(i => i.status === 'Überfällig').length, [cashCollect]);
+
+  // CARD 3: Kunden
+  // TODO: sync live from Close CRM API
   const activeClients = useMemo(() => deals.data.filter(d => d.status === 'Aktiv').length, [deals.data]);
-  const totalDeals = deals.data.length;
-  const openInvoices = useMemo(() => invoices.data.filter(i => i.status === 'Versendet' || i.status === 'Überfällig'), [invoices.data]);
+  const neukunden = useMemo(() => deals.data.filter(d => d.deal_type === 'Neukunde' && new Date(d.created_at).getMonth() === currentMonth && new Date(d.created_at).getFullYear() === currentYear).length, [deals.data, currentMonth, currentYear]);
+  const upsells = useMemo(() => deals.data.filter(d => d.deal_type === 'Upsell' && new Date(d.created_at).getMonth() === currentMonth && new Date(d.created_at).getFullYear() === currentYear).length, [deals.data, currentMonth, currentYear]);
+
+  // CARD 4: Top Vertriebler
+  // TODO: pull from Close CRM activities API
+  const topSeller = useMemo(() => {
+    const map = new Map<string, { revenue: number; closes: number }>();
+    (salesPerfMonth.data || []).forEach(r => {
+      const ex = map.get(r.setter_id) || { revenue: 0, closes: 0 };
+      ex.revenue += Number(r.revenue_generated || 0);
+      ex.closes += (r.closes || 0);
+      map.set(r.setter_id, ex);
+    });
+    let best: { id: string; name: string; initials: string; revenue: number; closes: number } | null = null;
+    map.forEach((v, id) => {
+      if (!best || v.revenue > best.revenue) {
+        const t = team.data.find(t => t.id === id);
+        const name = t?.name || 'Unbekannt';
+        best = { id, name, initials: name.split(' ').map((n: string) => n[0]).join('').slice(0, 2), ...v };
+      }
+    });
+    return best;
+  }, [salesPerfMonth.data, team.data]);
+
+  // CARD 5: Offene Rechnungen
+  const openInvoices = useMemo(() => invoices.data.filter(i => ['Versendet', 'Entwurf', 'Überfällig'].includes(i.status || '')), [invoices.data]);
   const openInvoicesTotal = useMemo(() => openInvoices.reduce((s, i) => s + Number(i.brutto || 0), 0), [openInvoices]);
-  const overdueCount = useMemo(() => invoices.data.filter(i => i.status === 'Überfällig').length, [invoices.data]);
+  const sentInvoices = useMemo(() => invoices.data.filter(i => i.status === 'Versendet'), [invoices.data]);
+  const sentTotal = useMemo(() => sentInvoices.reduce((s, i) => s + Number(i.brutto || 0), 0), [sentInvoices]);
+  const overdueInvoices = useMemo(() => invoices.data.filter(i => i.status === 'Überfällig'), [invoices.data]);
+  const overdueTotal = useMemo(() => overdueInvoices.reduce((s, i) => s + Number(i.brutto || 0), 0), [overdueInvoices]);
+  const allPaid = openInvoices.length === 0;
 
   const weekStart = useMemo(() => {
     const d = new Date();
