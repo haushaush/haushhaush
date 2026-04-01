@@ -89,7 +89,6 @@ export function AppSidebar() {
   const { signOut, user, isAdminOrManager } = useAuth();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [pendingCount, setPendingCount] = useState(0);
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
     const result = { ...saved };
