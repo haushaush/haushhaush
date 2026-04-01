@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronLeft, ChevronDown, Mail, Phone, Globe, Plus, CalendarPlus, AlertTriangle } from 'lucide-react';
+import { DriveBrowser } from '@/components/DriveBrowser';
+import { ChevronLeft, ChevronDown, Mail, Phone, Globe, Plus, CalendarPlus, AlertTriangle, BarChart3, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -61,10 +62,10 @@ export default function KundenDetail() {
   }, [id]);
 
   const getName = (tid: string | null) => team.find(t => t.id === tid)?.name || '–';
-
   const totalEinnahmen = finance.filter(f => f.typ === 'Einnahme').reduce((s, f) => s + Number(f.betrag), 0);
   const totalAusgaben = finance.filter(f => f.typ === 'Ausgabe').reduce((s, f) => s + Number(f.betrag), 0);
   const totalSpend = adData.reduce((s, r) => s + Number(r.spend || 0), 0);
+  const totalLeads = adData.reduce((s, r) => s + (r.leads || 0), 0);
 
   const addUpdate = () => {
     if (!newUpdate.trim()) return;
@@ -84,11 +85,7 @@ export default function KundenDetail() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-32" />
-        <Skeleton className="h-64" />
-      </div>
+      <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-32" /><Skeleton className="h-64" /></div>
     );
   }
 
@@ -103,18 +100,18 @@ export default function KundenDetail() {
 
   return (
     <div className="space-y-6">
-      {/* Back + Header */}
       <Button variant="ghost" size="sm" onClick={() => navigate('/kunden')} className="gap-1 text-muted-foreground">
         <ChevronLeft className="h-4 w-4" /> Zurück zu Kunden
       </Button>
 
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="space-y-2">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl font-heading font-bold">{client.name}</h1>
             <Badge variant="secondary" className={STATUS_STYLES[client.kundenstatus]}>{client.kundenstatus}</Badge>
-            <span className="flex items-center gap-1.5">
-              <span className={`h-2.5 w-2.5 rounded-full ${AMPEL_DOT[client.ampelstatus]}`} />
+            <span className="flex items-center gap-1.5" aria-label={`Ampelstatus: ${client.ampelstatus}`}>
+              <span className={`h-2.5 w-2.5 rounded-full ${AMPEL_DOT[client.ampelstatus]}`} aria-hidden="true" />
               <span className="text-xs text-muted-foreground">{client.ampelstatus}</span>
             </span>
           </div>
@@ -126,13 +123,13 @@ export default function KundenDetail() {
         </div>
         {isAdminOrManager && (
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={handleCreateTask}><Plus className="h-4 w-4 mr-1" />Aufgabe erstellen</Button>
-            <Button size="sm" variant="outline" onClick={() => toast({ title: 'Meeting geloggt', description: new Date().toLocaleString('de-DE') })}><CalendarPlus className="h-4 w-4 mr-1" />Meeting loggen</Button>
+            <Button size="sm" variant="outline" onClick={handleCreateTask} className="min-h-[44px]"><Plus className="h-4 w-4 mr-1" />Aufgabe</Button>
+            <Button size="sm" variant="outline" onClick={() => toast({ title: 'Meeting geloggt', description: new Date().toLocaleString('de-DE') })} className="min-h-[44px]"><CalendarPlus className="h-4 w-4 mr-1" />Meeting</Button>
           </div>
         )}
       </div>
 
-      {/* Quick info cards */}
+      {/* Quick stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold">€{Number(client.clv || 0).toLocaleString('de-DE')}</p><p className="text-xs text-muted-foreground">CLV</p></CardContent></Card>
         <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold">{projects.length}</p><p className="text-xs text-muted-foreground">Projekte</p></CardContent></Card>
@@ -140,17 +137,34 @@ export default function KundenDetail() {
         <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold">€{totalEinnahmen.toLocaleString('de-DE')}</p><p className="text-xs text-muted-foreground">Einnahmen</p></CardContent></Card>
       </div>
 
-      {/* Tabs */}
+      {/* 7 Tabs */}
       <Tabs defaultValue="uebersicht">
-        <TabsList>
-          <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
-          <TabsTrigger value="aufgaben">Aufgaben ({tasks.length})</TabsTrigger>
-          <TabsTrigger value="projekte">Projekte ({projects.length})</TabsTrigger>
-          <TabsTrigger value="finanzen">Finanzen ({finance.length})</TabsTrigger>
+        <TabsList className="flex flex-wrap h-auto gap-1">
+          <TabsTrigger value="uebersicht" className="min-h-[44px]">Übersicht</TabsTrigger>
+          <TabsTrigger value="projekte" className="min-h-[44px]">Projekte ({projects.length})</TabsTrigger>
+          <TabsTrigger value="aufgaben" className="min-h-[44px]">Aufgaben ({tasks.length})</TabsTrigger>
+          <TabsTrigger value="meetings" className="min-h-[44px]">Meetings</TabsTrigger>
+          <TabsTrigger value="dateien" className="min-h-[44px]">Dateien</TabsTrigger>
+          <TabsTrigger value="finanzen" className="min-h-[44px]">Finanzen ({finance.length})</TabsTrigger>
+          <TabsTrigger value="metaads" className="min-h-[44px]">Meta Ads</TabsTrigger>
         </TabsList>
 
-        {/* Tab: Übersicht */}
+        {/* TAB 1: ÜBERSICHT */}
         <TabsContent value="uebersicht" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Kundeninfo</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-y-2 text-sm">
+                <span className="text-muted-foreground">Branche</span><span>{client.branche || '–'}</span>
+                <span className="text-muted-foreground">Projekttyp</span><span>{client.projekttyp || '–'}</span>
+                <span className="text-muted-foreground">Startdatum</span><span>{client.startdatum || '–'}</span>
+                <span className="text-muted-foreground">Enddatum</span><span>{client.enddatum || '–'}</span>
+                <span className="text-muted-foreground">Laufzeit</span><span>{client.laufzeit || '–'}</span>
+                <span className="text-muted-foreground">Zahlstatus</span><span>{client.zahlstatus || '–'}</span>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader><CardTitle className="text-base">Roadmap</CardTitle></CardHeader>
             <CardContent>
@@ -174,80 +188,39 @@ export default function KundenDetail() {
                 <CardContent>
                   <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
                     <p>Meta Business Manager: {client.website ? '✓' : '–'}</p>
-                    <p>Google Ads: –</p>
-                    <p>CRM-Zugang: –</p>
-                    <p>Analytics: –</p>
+                    <p>Google Ads: –</p><p>CRM-Zugang: –</p><p>Analytics: –</p>
                   </div>
                 </CardContent>
               </CollapsibleContent>
             </Card>
           </Collapsible>
 
-          <Collapsible>
-            <Card>
-              <CollapsibleTrigger className="w-full">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-base">Dokumente</CardTitle>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">Noch keine Dokumente hinterlegt.</p>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-
-          {/* Kundeninfo */}
+          {/* Wichtige Updates */}
           <Card>
-            <CardHeader><CardTitle className="text-base">Kundeninfo</CardTitle></CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-y-2 text-sm">
-                <span className="text-muted-foreground">Branche</span><span>{client.branche || '–'}</span>
-                <span className="text-muted-foreground">Projekttyp</span><span>{client.projekttyp || '–'}</span>
-                <span className="text-muted-foreground">Startdatum</span><span>{client.startdatum || '–'}</span>
-                <span className="text-muted-foreground">Enddatum</span><span>{client.enddatum || '–'}</span>
-                <span className="text-muted-foreground">Laufzeit</span><span>{client.laufzeit || '–'}</span>
-                <span className="text-muted-foreground">Zahlstatus</span><span>{client.zahlstatus || '–'}</span>
+            <CardHeader><CardTitle className="text-base">Wichtige Updates</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input placeholder="Update hinzufügen..." value={newUpdate} onChange={e => setNewUpdate(e.target.value)} onKeyDown={e => e.key === 'Enter' && addUpdate()} />
+                <Button size="sm" onClick={addUpdate} className="min-h-[44px]">Hinzufügen</Button>
               </div>
+              {updates.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Updates.</p>}
+              {updates.map((u, i) => (
+                <div key={i} className="border border-border rounded-md p-3">
+                  <p className="text-sm">{u.text}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{u.ts}</p>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Tab: Aufgaben */}
-        <TabsContent value="aufgaben" className="mt-4">
-          <Card><CardContent className="p-0">
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Aufgabe</TableHead><TableHead>Status</TableHead><TableHead>Zugewiesen</TableHead>
-                <TableHead>Fällig</TableHead><TableHead>Geplant (h)</TableHead><TableHead>Ist (h)</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {tasks.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Keine Aufgaben</TableCell></TableRow>
-                ) : tasks.map(t => {
-                  const overdue = t.status !== 'Erledigt' && t.due_date && new Date(t.due_date) < new Date();
-                  return (
-                    <TableRow key={t.id}>
-                      <TableCell className="font-medium">{t.title}</TableCell>
-                      <TableCell><Badge variant="secondary" className="text-xs">{t.status}</Badge></TableCell>
-                      <TableCell className="text-muted-foreground">{getName(t.assignee_id)}</TableCell>
-                      <TableCell className={overdue ? 'text-destructive font-medium' : 'text-muted-foreground'}>
-                        {t.due_date || '–'}{overdue && <AlertTriangle className="inline h-3 w-3 ml-1" />}
-                      </TableCell>
-                      <TableCell>{t.geplante_zeit || 0}</TableCell>
-                      <TableCell>{t.ist_zeit || 0}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent></Card>
-        </TabsContent>
-
-        {/* Tab: Projekte */}
+        {/* TAB 2: PROJEKTE */}
         <TabsContent value="projekte" className="mt-4 space-y-4">
+          {isAdminOrManager && (
+            <Button variant="outline" className="min-h-[44px]" onClick={() => toast({ title: 'Neues Projekt', description: 'Formular wird geöffnet' })}>
+              <Plus className="h-4 w-4 mr-1" />Neues Projekt
+            </Button>
+          )}
           {projects.length === 0 ? (
             <Card><CardContent className="py-8 text-center text-muted-foreground">Keine Projekte</CardContent></Card>
           ) : projects.map(p => (
@@ -263,7 +236,7 @@ export default function KundenDetail() {
                 <Separator className="my-3" />
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div><span className="text-muted-foreground">Ads Budget</span><p className="font-medium">€{Number(p.ads_budget || 0).toLocaleString('de-DE')}</p></div>
-                  <div><span className="text-muted-foreground">Spend</span><p className="font-medium">€{totalSpend.toLocaleString('de-DE')}</p></div>
+                  <div><span className="text-muted-foreground">Laufzeit</span><p className="font-medium">{p.startdatum || '–'}</p></div>
                   <div><span className="text-muted-foreground">Saldo</span><p className="font-medium">€{Number(p.gesamt_saldo || 0).toLocaleString('de-DE')}</p></div>
                 </div>
               </CardContent>
@@ -271,18 +244,77 @@ export default function KundenDetail() {
           ))}
         </TabsContent>
 
-        {/* Tab: Finanzen */}
+        {/* TAB 3: AUFGABEN */}
+        <TabsContent value="aufgaben" className="mt-4">
+          {isAdminOrManager && (
+            <Button variant="outline" className="min-h-[44px] mb-4" onClick={handleCreateTask}>
+              <Plus className="h-4 w-4 mr-1" />Neue Aufgabe
+            </Button>
+          )}
+          <Card><CardContent className="p-0"><div className="overflow-x-auto">
+            <Table>
+              <caption className="sr-only">Aufgaben für {client.name}</caption>
+              <TableHeader><TableRow>
+                <TableHead scope="col">Aufgabe</TableHead><TableHead scope="col">Status</TableHead><TableHead scope="col">Zugewiesen</TableHead>
+                <TableHead scope="col">Geplant</TableHead><TableHead scope="col">Fällig</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {tasks.length === 0 ? (
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Keine Aufgaben</TableCell></TableRow>
+                ) : tasks.map(t => {
+                  const overdue = t.status !== 'Erledigt' && t.due_date && new Date(t.due_date) < new Date();
+                  return (
+                    <TableRow key={t.id}>
+                      <TableCell className="font-medium">{t.title}</TableCell>
+                      <TableCell><Badge variant="secondary" className="text-xs">{t.status}</Badge></TableCell>
+                      <TableCell className="text-muted-foreground">{getName(t.assignee_id)}</TableCell>
+                      <TableCell className="text-muted-foreground">{Number(t.geplante_zeit || 0).toFixed(1)}h</TableCell>
+                      <TableCell className={overdue ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                        {t.due_date || '–'}{overdue && <AlertTriangle className="inline h-3 w-3 ml-1" />}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div></CardContent></Card>
+        </TabsContent>
+
+        {/* TAB 4: MEETINGS */}
+        <TabsContent value="meetings" className="mt-4">
+          <Card><CardContent className="py-12 text-center text-muted-foreground">
+            <CalendarPlus className="h-12 w-12 mx-auto mb-3 opacity-30" aria-hidden="true" />
+            <p className="font-medium">Meeting-Protokolle</p>
+            <p className="text-sm mt-1">Hier werden Meetings mit Datum, Thema und Notizen geloggt.</p>
+            <Button variant="outline" className="mt-4 min-h-[44px]" onClick={() => toast({ title: 'Meeting geloggt' })}>
+              <Plus className="h-4 w-4 mr-1" />Meeting loggen
+            </Button>
+          </CardContent></Card>
+        </TabsContent>
+
+        {/* TAB 5: DATEIEN */}
+        <TabsContent value="dateien" className="mt-4">
+          <DriveBrowser
+            folderId={id}
+            showUpload={true}
+            showPin={true}
+            folderChips={['Ad Creatives', 'Berichte', 'Verträge', 'Sonstiges']}
+          />
+        </TabsContent>
+
+        {/* TAB 6: FINANZEN */}
         <TabsContent value="finanzen" className="mt-4 space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <Card><CardContent className="p-4 text-center"><p className="text-lg font-heading font-bold text-success">€{totalEinnahmen.toLocaleString('de-DE')}</p><p className="text-xs text-muted-foreground">Einnahmen</p></CardContent></Card>
             <Card><CardContent className="p-4 text-center"><p className="text-lg font-heading font-bold text-destructive">€{totalAusgaben.toLocaleString('de-DE')}</p><p className="text-xs text-muted-foreground">Ausgaben</p></CardContent></Card>
             <Card><CardContent className="p-4 text-center"><p className="text-lg font-heading font-bold">€{(totalEinnahmen - totalAusgaben).toLocaleString('de-DE')}</p><p className="text-xs text-muted-foreground">Saldo</p></CardContent></Card>
           </div>
-          <Card><CardContent className="p-0">
+          <Card><CardContent className="p-0"><div className="overflow-x-auto">
             <Table>
+              <caption className="sr-only">Finanzeinträge für {client.name}</caption>
               <TableHeader><TableRow>
-                <TableHead>Datum</TableHead><TableHead>Typ</TableHead><TableHead>Betrag</TableHead>
-                <TableHead>Rechnung</TableHead><TableHead>Zahlstatus</TableHead>
+                <TableHead scope="col">Datum</TableHead><TableHead scope="col">Typ</TableHead><TableHead scope="col">Betrag</TableHead>
+                <TableHead scope="col">Rechnung</TableHead><TableHead scope="col">Status</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {finance.length === 0 ? (
@@ -298,27 +330,53 @@ export default function KundenDetail() {
                 ))}
               </TableBody>
             </Table>
-          </CardContent></Card>
+          </div></CardContent></Card>
+        </TabsContent>
+
+        {/* TAB 7: META ADS */}
+        <TabsContent value="metaads" className="mt-4 space-y-4">
+          {adData.length === 0 ? (
+            <Card><CardContent className="py-12 text-center text-muted-foreground">
+              <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-30" aria-hidden="true" />
+              <p className="font-medium">Meta Ads Performance</p>
+              <p className="text-sm mt-1">Keine Ad-Daten für diesen Kunden. Ad Account ID kann in den Einstellungen verbunden werden.</p>
+            </CardContent></Card>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Card><CardContent className="p-4 text-center"><p className="text-lg font-heading font-bold">€{totalSpend.toLocaleString('de-DE')}</p><p className="text-xs text-muted-foreground">Spend</p></CardContent></Card>
+                <Card><CardContent className="p-4 text-center"><p className="text-lg font-heading font-bold">{totalLeads}</p><p className="text-xs text-muted-foreground">Leads</p></CardContent></Card>
+                <Card><CardContent className="p-4 text-center"><p className="text-lg font-heading font-bold">€{totalLeads > 0 ? (totalSpend / totalLeads).toFixed(2) : '0'}</p><p className="text-xs text-muted-foreground">CPL</p></CardContent></Card>
+                <Card><CardContent className="p-4 text-center">
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => window.open('https://business.facebook.com', '_blank')}>
+                    <ExternalLink className="h-3 w-3 mr-1" />Ads Manager
+                  </Button>
+                </CardContent></Card>
+              </div>
+              <Card><CardContent className="p-0"><div className="overflow-x-auto">
+                <Table>
+                  <caption className="sr-only">Ad Performance für {client.name}</caption>
+                  <TableHeader><TableRow>
+                    <TableHead scope="col">Datum</TableHead><TableHead scope="col">Spend</TableHead><TableHead scope="col">Leads</TableHead>
+                    <TableHead scope="col">CPL</TableHead><TableHead scope="col">Termine</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {adData.slice(0, 20).map(r => (
+                      <TableRow key={r.id}>
+                        <TableCell className="text-muted-foreground">{r.datum}</TableCell>
+                        <TableCell>€{Number(r.spend || 0).toLocaleString('de-DE')}</TableCell>
+                        <TableCell>{r.leads}</TableCell>
+                        <TableCell>€{Number(r.cpl || 0).toFixed(2)}</TableCell>
+                        <TableCell>{r.appointments}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div></CardContent></Card>
+            </>
+          )}
         </TabsContent>
       </Tabs>
-
-      {/* Wichtige Updates */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Wichtige Updates</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex gap-2">
-            <Input placeholder="Update hinzufügen..." value={newUpdate} onChange={e => setNewUpdate(e.target.value)} onKeyDown={e => e.key === 'Enter' && addUpdate()} />
-            <Button size="sm" onClick={addUpdate}>Hinzufügen</Button>
-          </div>
-          {updates.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Updates.</p>}
-          {updates.map((u, i) => (
-            <div key={i} className="border border-border rounded-md p-3">
-              <p className="text-sm">{u.text}</p>
-              <p className="text-xs text-muted-foreground mt-1">{u.ts}</p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
     </div>
   );
 }
