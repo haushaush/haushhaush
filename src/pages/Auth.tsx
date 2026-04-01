@@ -64,8 +64,10 @@ export default function Auth() {
       <div className="w-full max-w-[400px]">
         {/* Hero */}
         <div className="text-center mb-8">
-          <RocketTrendSVG />
-          <h1 className="text-[32px] font-bold text-foreground mt-4" style={{ letterSpacing: '-0.03em' }}>
+          {logoUrl && (
+            <img src={logoUrl} alt="Agency Hub Logo" className="mx-auto mb-4" style={{ maxWidth: '140px', height: 'auto' }} />
+          )}
+          <h1 className="text-[32px] font-bold text-foreground" style={{ letterSpacing: '-0.03em' }}>
             Agency Hub
           </h1>
           <p className="text-[15px] text-muted-foreground mt-1.5">Haush Haush x Viral Connect</p>
