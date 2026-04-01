@@ -16,6 +16,7 @@ const navItems = [
   { title: 'Finanzen', url: '/finanzen', icon: Euro },
   { title: 'Mitarbeiter', url: '/mitarbeiter', icon: UserCircle },
   { title: 'Aufgaben', url: '/aufgaben', icon: ClipboardList },
+  { title: 'Creatives', url: '/creatives', icon: Palette },
 ];
 
 export function AppSidebar() {

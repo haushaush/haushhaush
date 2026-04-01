@@ -38,6 +38,9 @@ const App = () => (
             <Route path="/finanzen" element={<DashboardLayout><Finanzen /></DashboardLayout>} />
             <Route path="/mitarbeiter" element={<DashboardLayout><Mitarbeiter /></DashboardLayout>} />
             <Route path="/aufgaben" element={<DashboardLayout><Aufgaben /></DashboardLayout>} />
+            <Route path="/creatives" element={<DashboardLayout><Creatives /></DashboardLayout>} />
+            <Route path="/creatives/:id" element={<DashboardLayout><CreativeDetail /></DashboardLayout>} />
+            <Route path="/review/:token" element={<CreativeReview />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
