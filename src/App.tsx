@@ -14,6 +14,9 @@ import KPI from "./pages/KPI.tsx";
 import Finanzen from "./pages/Finanzen.tsx";
 import Mitarbeiter from "./pages/Mitarbeiter.tsx";
 import Aufgaben from "./pages/Aufgaben.tsx";
+import Creatives from "./pages/Creatives.tsx";
+import CreativeDetail from "./pages/CreativeDetail.tsx";
+import CreativeReview from "./pages/CreativeReview.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
