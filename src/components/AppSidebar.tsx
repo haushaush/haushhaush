@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight, Sun, Moon } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Sidebar, SidebarContent, SidebarFooter, useSidebar,
 } from '@/components/ui/sidebar';
@@ -85,8 +86,9 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
-  const { signOut, user } = useAuth();
+  const { signOut, user, isAdminOrManager } = useAuth();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const [pendingCount, setPendingCount] = useState(0);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
     const result = { ...saved };
@@ -100,6 +102,18 @@ export function AppSidebar() {
   });
 
   useEffect(() => { saveSidebarState(openGroups); }, [openGroups]);
+
+  // Fetch pending employee requests count
+  useEffect(() => {
+    if (!isAdminOrManager) return;
+    const fetch = async () => {
+      const { count } = await supabase.from('employee_requests').select('*', { count: 'exact', head: true }).eq('status', 'Ausstehend');
+      setPendingCount(count || 0);
+    };
+    fetch();
+    const interval = setInterval(fetch, 60000);
+    return () => clearInterval(interval);
+  }, [isAdminOrManager]);
 
   const toggleTheme = () => {
     const next = theme === 'light' ? 'dark' : 'light';
@@ -200,6 +214,9 @@ export function AppSidebar() {
         )}>
           <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
           {!collapsed && <span>Einstellungen</span>}
+          {!collapsed && pendingCount > 0 && (
+            <span className="ml-auto inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5">{pendingCount}</span>
+          )}
         </NavLink>
         {!collapsed && user && (
           <p className="text-xs text-muted-foreground truncate px-3">{user.email}</p>

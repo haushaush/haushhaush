@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import Auth from "./pages/Auth.tsx";
+import Registrierung from "./pages/Registrierung.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Kunden from "./pages/Kunden.tsx";
 import KundenDetail from "./pages/KundenDetail.tsx";
@@ -37,6 +38,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/registrierung" element={<Registrierung />} />
             <Route path="/" element={<DL><Dashboard /></DL>} />
             <Route path="/kunden" element={<DL><Kunden /></DL>} />
             <Route path="/kunden/pipeline" element={<DL><KundenPipeline /></DL>} />
