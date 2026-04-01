@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
 type Project = Database['public']['Tables']['projects']['Row'];
-type Client = Database['public']['Tables']['clients']['Row'];
+type ClientRef = { id: string; name: string };
 
 export default function Projekte() {
   const [projects, setProjects] = useState<Project[]>([]);
