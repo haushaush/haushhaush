@@ -25,7 +25,7 @@ export function AppSidebar() {
   const { signOut, user } = useAuth();
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="hidden md:flex">
       <SidebarContent>
         <div className="p-4 border-b border-sidebar-border">
           {!collapsed && (
@@ -34,27 +34,32 @@ export function AppSidebar() {
               <p className="text-xs text-sidebar-foreground/60">Haush Haush · Viral Connect</p>
             </div>
           )}
-          {collapsed && <span className="text-primary font-heading font-bold text-lg">A</span>}
+          {collapsed && <span className="text-primary font-heading font-bold text-lg" aria-label="Agency Dashboard">A</span>}
         </div>
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map(item => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === '/'}
-                      className="hover:bg-sidebar-accent/50 transition-colors"
-                      activeClassName="bg-sidebar-accent text-primary font-medium"
-                    >
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems.map(item => {
+                const active = item.url === '/' ? location.pathname === '/' : location.pathname.startsWith(item.url);
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end={item.url === '/'}
+                        className="hover:bg-sidebar-accent/50 transition-colors min-h-[44px] flex items-center"
+                        activeClassName="bg-sidebar-accent text-primary font-medium"
+                        aria-current={active ? 'page' : undefined}
+                        aria-label={item.title}
+                      >
+                        <item.icon className="mr-2 h-4 w-4" aria-hidden="true" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -63,8 +68,14 @@ export function AppSidebar() {
         {!collapsed && user && (
           <p className="text-xs text-sidebar-foreground/60 mb-2 truncate">{user.email}</p>
         )}
-        <Button variant="ghost" size="sm" onClick={signOut} className="w-full justify-start text-sidebar-foreground/60 hover:text-destructive">
-          <LogOut className="h-4 w-4 mr-2" />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={signOut}
+          className="w-full justify-start text-sidebar-foreground/60 hover:text-destructive min-h-[44px]"
+          aria-label="Abmelden"
+        >
+          <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
           {!collapsed && 'Abmelden'}
         </Button>
       </SidebarFooter>
