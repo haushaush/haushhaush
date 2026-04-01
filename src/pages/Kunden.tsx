@@ -15,11 +15,25 @@ import { Plus, Search, RefreshCw, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const AMPEL_DOT: Record<string, string> = { 'Grün': 'bg-success', 'Gelb': 'bg-warning', 'Rot': 'bg-destructive' };
+const AMPEL_LABEL: Record<string, string> = { 'Grün': 'A', 'Gelb': 'B', 'Rot': 'C' };
 const STATUS_STYLES: Record<string, string> = {
   'Aktiv': 'bg-success/20 text-success', 'Pausiert': 'bg-warning/20 text-warning',
   'Churned': 'bg-destructive/20 text-destructive',
 };
-const ART_OPTIONS = ['PKV', 'BU', 'Beihilfe', 'Sterbegeld', 'Tierkranken', 'Erbschaftssteuer', 'Sonstiges'];
+const ART_STYLES: Record<string, string> = {
+  'Beihilfe - PKV': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  'PKV': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  'BU': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  'Sterbegeld': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  'Tierkrankenversicherung': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  'Erbschaftssteuer': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+  'Dienstleister': 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+};
+const LEISTUNG_SHORT: Record<string, string> = {
+  'Meta Werbeanzeigen': 'Meta Ads', 'Ads Landing Page - Onepage': 'OnePage',
+  'CRM Setup & Anbindung': 'CRM', 'Vorqualifizierung': 'Vorquali', 'Superchat': 'Superchat',
+};
+const ART_OPTIONS = ['PKV', 'BU', 'Beihilfe - PKV', 'Sterbegeld', 'Tierkrankenversicherung', 'Erbschaftssteuer', 'Dienstleister', 'Sonstiges'];
 
 export default function Kunden() {
   const [deals, setDeals] = useState<any[]>([]);
