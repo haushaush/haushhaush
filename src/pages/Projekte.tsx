@@ -18,7 +18,7 @@ type ClientRef = { id: string; name: string };
 
 export default function Projekte() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<ClientRef[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { isAdminOrManager } = useAuth();
   const { toast } = useToast();
