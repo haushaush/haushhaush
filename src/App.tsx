@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,15 +9,13 @@ import Auth from "./pages/Auth.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Kunden from "./pages/Kunden.tsx";
 import KundenDetail from "./pages/KundenDetail.tsx";
-import Projekte from "./pages/Projekte.tsx";
-import KPI from "./pages/KPI.tsx";
+import Performance from "./pages/Performance.tsx";
 import Finanzen from "./pages/Finanzen.tsx";
-import Mitarbeiter from "./pages/Mitarbeiter.tsx";
-import Aufgaben from "./pages/Aufgaben.tsx";
+import TeamPage from "./pages/Team.tsx";
+import Einstellungen from "./pages/Einstellungen.tsx";
 import Creatives from "./pages/Creatives.tsx";
 import CreativeDetail from "./pages/CreativeDetail.tsx";
 import CreativeReview from "./pages/CreativeReview.tsx";
-import Dateien from "./pages/Dateien.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -34,15 +32,21 @@ const App = () => (
             <Route path="/" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
             <Route path="/kunden" element={<DashboardLayout><Kunden /></DashboardLayout>} />
             <Route path="/kunden/:id" element={<DashboardLayout><KundenDetail /></DashboardLayout>} />
-            <Route path="/projekte" element={<DashboardLayout><Projekte /></DashboardLayout>} />
-            <Route path="/kpi" element={<DashboardLayout><KPI /></DashboardLayout>} />
+            <Route path="/performance" element={<DashboardLayout><Performance /></DashboardLayout>} />
             <Route path="/finanzen" element={<DashboardLayout><Finanzen /></DashboardLayout>} />
-            <Route path="/mitarbeiter" element={<DashboardLayout><Mitarbeiter /></DashboardLayout>} />
-            <Route path="/aufgaben" element={<DashboardLayout><Aufgaben /></DashboardLayout>} />
+            <Route path="/team" element={<DashboardLayout><TeamPage /></DashboardLayout>} />
+            <Route path="/einstellungen" element={<DashboardLayout><Einstellungen /></DashboardLayout>} />
             <Route path="/creatives" element={<DashboardLayout><Creatives /></DashboardLayout>} />
             <Route path="/creatives/:id" element={<DashboardLayout><CreativeDetail /></DashboardLayout>} />
-            <Route path="/dateien" element={<DashboardLayout><Dateien /></DashboardLayout>} />
             <Route path="/review/:token" element={<CreativeReview />} />
+
+            {/* Redirects for old routes */}
+            <Route path="/projekte" element={<Navigate to="/kunden" replace />} />
+            <Route path="/kpi" element={<Navigate to="/performance" replace />} />
+            <Route path="/mitarbeiter" element={<Navigate to="/team" replace />} />
+            <Route path="/aufgaben" element={<Navigate to="/kunden" replace />} />
+            <Route path="/dateien" element={<Navigate to="/kunden" replace />} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
