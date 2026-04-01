@@ -115,6 +115,207 @@ export type Database = {
         }
         Relationships: []
       }
+      creative_approvals: {
+        Row: {
+          approval_type: Database["public"]["Enums"]["creative_approval_type"]
+          approved_at: string
+          approved_by: string
+          asset_id: string
+          id: string
+          project_id: string
+          signature_url: string | null
+        }
+        Insert: {
+          approval_type?: Database["public"]["Enums"]["creative_approval_type"]
+          approved_at?: string
+          approved_by: string
+          asset_id: string
+          id?: string
+          project_id: string
+          signature_url?: string | null
+        }
+        Update: {
+          approval_type?: Database["public"]["Enums"]["creative_approval_type"]
+          approved_at?: string
+          approved_by?: string
+          asset_id?: string
+          id?: string
+          project_id?: string
+          signature_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_approvals_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_approvals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "creative_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_assets: {
+        Row: {
+          drive_file_id: string | null
+          drive_preview_url: string | null
+          file_name: string
+          file_type: Database["public"]["Enums"]["creative_file_type"]
+          id: string
+          is_active: boolean
+          project_id: string
+          status: Database["public"]["Enums"]["creative_asset_status"]
+          uploaded_at: string
+          uploaded_by: string | null
+          version_nr: number
+        }
+        Insert: {
+          drive_file_id?: string | null
+          drive_preview_url?: string | null
+          file_name: string
+          file_type?: Database["public"]["Enums"]["creative_file_type"]
+          id?: string
+          is_active?: boolean
+          project_id: string
+          status?: Database["public"]["Enums"]["creative_asset_status"]
+          uploaded_at?: string
+          uploaded_by?: string | null
+          version_nr?: number
+        }
+        Update: {
+          drive_file_id?: string | null
+          drive_preview_url?: string | null
+          file_name?: string
+          file_type?: Database["public"]["Enums"]["creative_file_type"]
+          id?: string
+          is_active?: boolean
+          project_id?: string
+          status?: Database["public"]["Enums"]["creative_asset_status"]
+          uploaded_at?: string
+          uploaded_by?: string | null
+          version_nr?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_assets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "creative_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_feedback: {
+        Row: {
+          asset_id: string
+          author_name: string
+          author_type: Database["public"]["Enums"]["creative_author_type"]
+          comment: string
+          id: string
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          timestamp: string
+        }
+        Insert: {
+          asset_id: string
+          author_name: string
+          author_type?: Database["public"]["Enums"]["creative_author_type"]
+          comment: string
+          id?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          timestamp?: string
+        }
+        Update: {
+          asset_id?: string
+          author_name?: string
+          author_type?: Database["public"]["Enums"]["creative_author_type"]
+          comment?: string
+          id?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_feedback_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "creative_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_projects: {
+        Row: {
+          assigned_designer: string | null
+          briefing_content: string | null
+          client_id: string
+          created_at: string
+          deliverables: Json | null
+          drive_folder_url: string | null
+          due_date: string | null
+          id: string
+          meta_adset_id: string | null
+          name: string
+          notes: string | null
+          review_token: string | null
+          status: Database["public"]["Enums"]["creative_project_status"]
+          updated_at: string
+          vertical: Database["public"]["Enums"]["creative_vertical"]
+        }
+        Insert: {
+          assigned_designer?: string | null
+          briefing_content?: string | null
+          client_id: string
+          created_at?: string
+          deliverables?: Json | null
+          drive_folder_url?: string | null
+          due_date?: string | null
+          id?: string
+          meta_adset_id?: string | null
+          name: string
+          notes?: string | null
+          review_token?: string | null
+          status?: Database["public"]["Enums"]["creative_project_status"]
+          updated_at?: string
+          vertical?: Database["public"]["Enums"]["creative_vertical"]
+        }
+        Update: {
+          assigned_designer?: string | null
+          briefing_content?: string | null
+          client_id?: string
+          created_at?: string
+          deliverables?: Json | null
+          drive_folder_url?: string | null
+          due_date?: string | null
+          id?: string
+          meta_adset_id?: string | null
+          name?: string
+          notes?: string | null
+          review_token?: string | null
+          status?: Database["public"]["Enums"]["creative_project_status"]
+          updated_at?: string
+          vertical?: Database["public"]["Enums"]["creative_vertical"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance: {
         Row: {
           betrag: number
@@ -429,6 +630,31 @@ export type Database = {
     Enums: {
       ampelstatus: "Grün" | "Gelb" | "Rot" | "CC"
       app_role: "admin" | "account-manager" | "setter"
+      creative_approval_type: "Intern" | "Kunde"
+      creative_asset_status:
+        | "Draft"
+        | "Interner Review"
+        | "Feedback erhalten"
+        | "Überarbeitung"
+        | "Freigegeben"
+        | "Abgelehnt"
+      creative_author_type: "Intern" | "Kunde"
+      creative_file_type: "image" | "video" | "carousel"
+      creative_project_status:
+        | "Briefing"
+        | "In Produktion"
+        | "Interner Review"
+        | "Kunde Review"
+        | "Änderungen nötig"
+        | "Freigegeben"
+        | "Live"
+        | "Archiviert"
+      creative_vertical:
+        | "PKV"
+        | "BU"
+        | "Rechtsschutz"
+        | "Altersvorsorge"
+        | "Sonstiges"
       finanz_typ: "Einnahme" | "Ausgabe"
       kundenstatus: "In Betreuung" | "Pausiert" | "Churned" | "Lead"
       team_rolle: "Admin" | "Account-Manager" | "Setter" | "Closer"
@@ -561,6 +787,34 @@ export const Constants = {
     Enums: {
       ampelstatus: ["Grün", "Gelb", "Rot", "CC"],
       app_role: ["admin", "account-manager", "setter"],
+      creative_approval_type: ["Intern", "Kunde"],
+      creative_asset_status: [
+        "Draft",
+        "Interner Review",
+        "Feedback erhalten",
+        "Überarbeitung",
+        "Freigegeben",
+        "Abgelehnt",
+      ],
+      creative_author_type: ["Intern", "Kunde"],
+      creative_file_type: ["image", "video", "carousel"],
+      creative_project_status: [
+        "Briefing",
+        "In Produktion",
+        "Interner Review",
+        "Kunde Review",
+        "Änderungen nötig",
+        "Freigegeben",
+        "Live",
+        "Archiviert",
+      ],
+      creative_vertical: [
+        "PKV",
+        "BU",
+        "Rechtsschutz",
+        "Altersvorsorge",
+        "Sonstiges",
+      ],
       finanz_typ: ["Einnahme", "Ausgabe"],
       kundenstatus: ["In Betreuung", "Pausiert", "Churned", "Lead"],
       team_rolle: ["Admin", "Account-Manager", "Setter", "Closer"],
