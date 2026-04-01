@@ -48,6 +48,20 @@ export default function Dashboard() {
         else monthMap[m].ausgaben += Number(f.betrag);
       });
       setRevenueData(Object.entries(monthMap).sort().slice(-6).map(([month, d]) => ({ month, ...d })));
+
+      // Creative pipeline
+      const creatives = (creativeRes.data || []) as any[];
+      const statusCounts: Record<string, number> = {};
+      creatives.forEach((c: any) => { statusCounts[c.status] = (statusCounts[c.status] || 0) + 1; });
+      setCreativePipeline(Object.entries(statusCounts).map(([status, count]) => ({ status, count })));
+      const now = Date.now();
+      const twoDaysAgo = now - 48 * 60 * 60 * 1000;
+      setCreativeAlerts({
+        overdue: creatives.filter((c: any) => c.due_date && new Date(c.due_date).getTime() < now && !['Archiviert', 'Live'].includes(c.status)).length,
+        waitingFeedback: creatives.filter((c: any) => c.status === 'Kunde Review' && new Date(c.updated_at).getTime() < twoDaysAgo).length,
+        recentApproved: creatives.filter((c: any) => c.status === 'Freigegeben').length,
+      });
+
       setLoading(false);
     };
     fetchData();
