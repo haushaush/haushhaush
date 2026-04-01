@@ -70,6 +70,7 @@ export default function Dashboard() {
   const team = useTeam();
   const tasks = useTasks(10);
   const [salesPeriod, setSalesPeriod] = useState<'week' | 'month'>('week');
+  const salesPerf = useSalesPerformance(salesPeriod);
   const salesPerfMonth = useSalesPerformance('month');
   const effizienz = useEffizienzScore();
 
