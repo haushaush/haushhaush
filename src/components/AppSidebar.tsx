@@ -214,6 +214,9 @@ export function AppSidebar() {
         )}>
           <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
           {!collapsed && <span>Einstellungen</span>}
+          {!collapsed && pendingCount > 0 && (
+            <span className="ml-auto inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5">{pendingCount}</span>
+          )}
         </NavLink>
         {!collapsed && user && (
           <p className="text-xs text-muted-foreground truncate px-3">{user.email}</p>
