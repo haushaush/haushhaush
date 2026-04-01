@@ -8,33 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-function RocketTrendSVG() {
-  return (
-    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" className="mx-auto animated-trend" aria-hidden="true">
-      <style>{`
-        @media (prefers-reduced-motion: no-preference) {
-          .trend-line { stroke-dasharray: 200; stroke-dashoffset: 200; animation: drawLine 1.2s ease-out forwards; }
-          .rocket { animation: floatUp 2s ease-in-out infinite; }
-          @keyframes drawLine { to { stroke-dashoffset: 0; } }
-          @keyframes floatUp { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-        }
-      `}</style>
-      <path
-        className="trend-line"
-        d="M10 65 Q25 60 35 50 T60 35 T85 20 T108 10"
-        stroke="hsl(var(--primary))"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <g className="rocket" style={{ transformOrigin: '108px 10px' }}>
-        <circle cx="108" cy="10" r="3" fill="hsl(var(--primary))" />
-        <path d="M104 7 L108 3 L112 7" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      </g>
-    </svg>
-  );
-}
+const logoUrl = import.meta.env.VITE_LOGO_URL || null;
 
 export default function Auth() {
   const { user, loading } = useAuth();
