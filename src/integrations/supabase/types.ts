@@ -596,6 +596,81 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_requests: {
+        Row: {
+          abteilung: string | null
+          admin_notiz: string | null
+          adresse: string | null
+          created_at: string
+          email: string
+          geburtsdatum: string | null
+          iban: string | null
+          id: string
+          nachname: string
+          notfall_name: string | null
+          notfall_telefon: string | null
+          position: string | null
+          profilbild_url: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          startdatum: string | null
+          status: string
+          telefon: string | null
+          ueber_mich: string | null
+          user_id: string | null
+          vertragsart: string | null
+          vorname: string
+        }
+        Insert: {
+          abteilung?: string | null
+          admin_notiz?: string | null
+          adresse?: string | null
+          created_at?: string
+          email: string
+          geburtsdatum?: string | null
+          iban?: string | null
+          id?: string
+          nachname: string
+          notfall_name?: string | null
+          notfall_telefon?: string | null
+          position?: string | null
+          profilbild_url?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          startdatum?: string | null
+          status?: string
+          telefon?: string | null
+          ueber_mich?: string | null
+          user_id?: string | null
+          vertragsart?: string | null
+          vorname: string
+        }
+        Update: {
+          abteilung?: string | null
+          admin_notiz?: string | null
+          adresse?: string | null
+          created_at?: string
+          email?: string
+          geburtsdatum?: string | null
+          iban?: string | null
+          id?: string
+          nachname?: string
+          notfall_name?: string | null
+          notfall_telefon?: string | null
+          position?: string | null
+          profilbild_url?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          startdatum?: string | null
+          status?: string
+          telefon?: string | null
+          ueber_mich?: string | null
+          user_id?: string | null
+          vertragsart?: string | null
+          vorname?: string
+        }
+        Relationships: []
+      }
       employment_contracts: {
         Row: {
           arbeitsstunden_pro_woche: number | null
