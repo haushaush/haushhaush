@@ -8,6 +8,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import Auth from "./pages/Auth.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Kunden from "./pages/Kunden.tsx";
+import KundenDetail from "./pages/KundenDetail.tsx";
 import Projekte from "./pages/Projekte.tsx";
 import KPI from "./pages/KPI.tsx";
 import Finanzen from "./pages/Finanzen.tsx";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
             <Route path="/kunden" element={<DashboardLayout><Kunden /></DashboardLayout>} />
+            <Route path="/kunden/:id" element={<DashboardLayout><KundenDetail /></DashboardLayout>} />
             <Route path="/projekte" element={<DashboardLayout><Projekte /></DashboardLayout>} />
             <Route path="/kpi" element={<DashboardLayout><KPI /></DashboardLayout>} />
             <Route path="/finanzen" element={<DashboardLayout><Finanzen /></DashboardLayout>} />
