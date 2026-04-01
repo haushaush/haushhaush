@@ -127,6 +127,40 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Creative Pipeline Widget */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Palette className="h-5 w-5 text-primary" aria-hidden="true" /> Creative Pipeline
+          </CardTitle>
+          <button onClick={() => navigate('/creatives')} className="text-xs text-primary hover:underline min-h-[44px] flex items-center">
+            Alle anzeigen →
+          </button>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3 mb-4">
+            {creativePipeline.map(s => (
+              <div key={s.status} className="flex items-center gap-2 text-sm">
+                <Badge variant="secondary" className="text-xs">{s.count}</Badge>
+                <span className="text-muted-foreground">{s.status}</span>
+              </div>
+            ))}
+            {creativePipeline.length === 0 && <p className="text-muted-foreground text-sm">Keine Creative Projekte</p>}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {creativeAlerts.overdue > 0 && (
+              <Badge variant="destructive">{creativeAlerts.overdue} überfällig</Badge>
+            )}
+            {creativeAlerts.waitingFeedback > 0 && (
+              <Badge className="bg-amber-500/20 text-amber-300">{creativeAlerts.waitingFeedback} wartet auf Feedback &gt;48h</Badge>
+            )}
+            {creativeAlerts.recentApproved > 0 && (
+              <Badge className="bg-emerald-500/20 text-emerald-300">{creativeAlerts.recentApproved} freigegeben</Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
