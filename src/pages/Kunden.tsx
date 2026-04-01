@@ -194,19 +194,26 @@ export default function Kunden() {
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Keine Deals gefunden</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Keine Deals gefunden</TableCell></TableRow>
                 ) : filtered.map(d => (
                   <TableRow key={d.id} className="cursor-pointer hover:bg-primary/5 min-h-[44px]" onClick={() => navigate(`/kunden/${d.id}`)} tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate(`/kunden/${d.id}`)} role="link" aria-label={`Deal ${d.client_name} öffnen`}>
                     <TableCell className="font-medium">{d.client_name}</TableCell>
-                    <TableCell><Badge variant="outline" className="text-xs">{d.art}</Badge></TableCell>
+                    <TableCell><Badge variant="secondary" className={`text-[10px] border-0 ${ART_STYLES[d.art] || 'bg-muted text-muted-foreground'}`}>{d.art}</Badge></TableCell>
                     <TableCell className="font-medium">€{Number(d.wert_eur || 0).toLocaleString('de-DE')}</TableCell>
-                    <TableCell className="text-muted-foreground hidden md:table-cell">{d.laufzeit_monate ? `${d.laufzeit_monate}M` : '–'}</TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">{d.laufzeit_monate ? `${d.laufzeit_monate} M` : '–'}</TableCell>
                     <TableCell><Badge variant="secondary" className={`text-xs ${STATUS_STYLES[d.status] || ''}`}>{d.status}</Badge></TableCell>
                     <TableCell>
-                      <span className="flex items-center gap-2" aria-label={`Ampelstatus: ${d.ampelstatus}`}>
+                      <span className="flex items-center gap-1.5" aria-label={`Ampelstatus: ${d.ampelstatus}`}>
                         <span className={`h-2.5 w-2.5 rounded-full ${AMPEL_DOT[d.ampelstatus] || 'bg-muted'}`} aria-hidden="true" />
-                        <span className="text-xs text-muted-foreground">{d.ampelstatus}</span>
+                        <span className="text-xs font-medium text-muted-foreground">{AMPEL_LABEL[d.ampelstatus] || d.ampelstatus}</span>
                       </span>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <div className="flex gap-1 flex-wrap">
+                        {Array.isArray(d.leistungen) && d.leistungen.map((l: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0">{LEISTUNG_SHORT[l] || l}</Badge>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground hidden lg:table-cell">{getName(d.assigned_to)}</TableCell>
                     <TableCell className="hidden md:table-cell">
