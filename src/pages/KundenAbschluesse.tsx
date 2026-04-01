@@ -9,6 +9,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RefreshCw, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+const ART_STYLES: Record<string, string> = {
+  'Beihilfe - PKV': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  'PKV': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  'BU': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  'Sterbegeld': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  'Tierkrankenversicherung': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  'Erbschaftssteuer': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+  'Dienstleister': 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+};
+const LEISTUNG_SHORT: Record<string, string> = {
+  'Meta Werbeanzeigen': 'Meta Ads', 'Ads Landing Page - Onepage': 'OnePage',
+  'CRM Setup & Anbindung': 'CRM', 'Vorqualifizierung': 'Vorquali', 'Superchat': 'Superchat',
+};
+
 export default function KundenAbschluesse() {
   const [deals, setDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,16 +73,18 @@ export default function KundenAbschluesse() {
             <TableHead>Wert</TableHead><TableHead>Laufzeit</TableHead><TableHead className="hidden sm:table-cell">Leistungen</TableHead><TableHead>Link</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {filtered.map(d => (
+            {filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Keine Deals gefunden</TableCell></TableRow>
+            ) : filtered.map(d => (
               <TableRow key={d.id}>
                 <TableCell className="text-muted-foreground text-xs">{new Date(d.created_at).toLocaleDateString('de-DE')}</TableCell>
                 <TableCell className="font-medium">{d.client_name}</TableCell>
-                <TableCell><Badge variant="outline" className="text-[10px]">{d.art}</Badge></TableCell>
-                <TableCell><Badge variant={d.deal_type === 'Neukunde' ? 'default' : 'secondary'} className="text-[10px]">{d.deal_type}</Badge></TableCell>
+                <TableCell><Badge variant="secondary" className={`text-[10px] border-0 ${ART_STYLES[d.art] || 'bg-muted text-muted-foreground'}`}>{d.art}</Badge></TableCell>
+                <TableCell><Badge variant={d.deal_type === 'Neukunde' ? 'default' : 'secondary'} className={`text-[10px] ${d.deal_type === 'Neukunde' ? 'bg-success/20 text-success border-0' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-0'}`}>{d.deal_type}</Badge></TableCell>
                 <TableCell className="font-medium">€{Number(d.wert_eur || 0).toLocaleString('de-DE')}</TableCell>
-                <TableCell className="text-muted-foreground">{d.laufzeit_monate ? `${d.laufzeit_monate}M` : '–'}</TableCell>
+                <TableCell className="text-muted-foreground">{d.laufzeit_monate ? `${d.laufzeit_monate} M` : '–'}</TableCell>
                 <TableCell className="hidden sm:table-cell">
-                  <div className="flex gap-1 flex-wrap">{Array.isArray(d.leistungen) && d.leistungen.map((l: string, i: number) => <Badge key={i} variant="outline" className="text-[9px]">{l}</Badge>)}</div>
+                  <div className="flex gap-1 flex-wrap">{Array.isArray(d.leistungen) && d.leistungen.map((l: string, i: number) => <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0">{LEISTUNG_SHORT[l] || l}</Badge>)}</div>
                 </TableCell>
                 <TableCell>{d.close_opportunity_url && <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => window.open(d.close_opportunity_url, '_blank')}><ExternalLink className="h-3 w-3" /></Button>}</TableCell>
               </TableRow>

@@ -15,11 +15,25 @@ import { Plus, Search, RefreshCw, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const AMPEL_DOT: Record<string, string> = { 'Grün': 'bg-success', 'Gelb': 'bg-warning', 'Rot': 'bg-destructive' };
+const AMPEL_LABEL: Record<string, string> = { 'Grün': 'A', 'Gelb': 'B', 'Rot': 'C' };
 const STATUS_STYLES: Record<string, string> = {
   'Aktiv': 'bg-success/20 text-success', 'Pausiert': 'bg-warning/20 text-warning',
   'Churned': 'bg-destructive/20 text-destructive',
 };
-const ART_OPTIONS = ['PKV', 'BU', 'Beihilfe', 'Sterbegeld', 'Tierkranken', 'Erbschaftssteuer', 'Sonstiges'];
+const ART_STYLES: Record<string, string> = {
+  'Beihilfe - PKV': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  'PKV': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  'BU': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  'Sterbegeld': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  'Tierkrankenversicherung': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  'Erbschaftssteuer': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+  'Dienstleister': 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+};
+const LEISTUNG_SHORT: Record<string, string> = {
+  'Meta Werbeanzeigen': 'Meta Ads', 'Ads Landing Page - Onepage': 'OnePage',
+  'CRM Setup & Anbindung': 'CRM', 'Vorqualifizierung': 'Vorquali', 'Superchat': 'Superchat',
+};
+const ART_OPTIONS = ['PKV', 'BU', 'Beihilfe - PKV', 'Sterbegeld', 'Tierkrankenversicherung', 'Erbschaftssteuer', 'Dienstleister', 'Sonstiges'];
 
 export default function Kunden() {
   const [deals, setDeals] = useState<any[]>([]);
@@ -166,32 +180,40 @@ export default function Kunden() {
             <Table>
               <caption className="sr-only">Kundenliste mit Deals aus Close CRM</caption>
               <TableHeader>
-                <TableRow>
+                 <TableRow>
                   <TableHead scope="col">Kunde</TableHead>
                   <TableHead scope="col">Art</TableHead>
                   <TableHead scope="col">Wert</TableHead>
                   <TableHead scope="col" className="hidden md:table-cell">Laufzeit</TableHead>
                   <TableHead scope="col">Status</TableHead>
                   <TableHead scope="col">Ampel</TableHead>
+                  <TableHead scope="col" className="hidden sm:table-cell">Leistungen</TableHead>
                   <TableHead scope="col" className="hidden lg:table-cell">Zugewiesen</TableHead>
                   <TableHead scope="col" className="hidden md:table-cell">Aktionen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Keine Deals gefunden</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Keine Deals gefunden</TableCell></TableRow>
                 ) : filtered.map(d => (
                   <TableRow key={d.id} className="cursor-pointer hover:bg-primary/5 min-h-[44px]" onClick={() => navigate(`/kunden/${d.id}`)} tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate(`/kunden/${d.id}`)} role="link" aria-label={`Deal ${d.client_name} öffnen`}>
                     <TableCell className="font-medium">{d.client_name}</TableCell>
-                    <TableCell><Badge variant="outline" className="text-xs">{d.art}</Badge></TableCell>
+                    <TableCell><Badge variant="secondary" className={`text-[10px] border-0 ${ART_STYLES[d.art] || 'bg-muted text-muted-foreground'}`}>{d.art}</Badge></TableCell>
                     <TableCell className="font-medium">€{Number(d.wert_eur || 0).toLocaleString('de-DE')}</TableCell>
-                    <TableCell className="text-muted-foreground hidden md:table-cell">{d.laufzeit_monate ? `${d.laufzeit_monate}M` : '–'}</TableCell>
+                    <TableCell className="text-muted-foreground hidden md:table-cell">{d.laufzeit_monate ? `${d.laufzeit_monate} M` : '–'}</TableCell>
                     <TableCell><Badge variant="secondary" className={`text-xs ${STATUS_STYLES[d.status] || ''}`}>{d.status}</Badge></TableCell>
                     <TableCell>
-                      <span className="flex items-center gap-2" aria-label={`Ampelstatus: ${d.ampelstatus}`}>
+                      <span className="flex items-center gap-1.5" aria-label={`Ampelstatus: ${d.ampelstatus}`}>
                         <span className={`h-2.5 w-2.5 rounded-full ${AMPEL_DOT[d.ampelstatus] || 'bg-muted'}`} aria-hidden="true" />
-                        <span className="text-xs text-muted-foreground">{d.ampelstatus}</span>
+                        <span className="text-xs font-medium text-muted-foreground">{AMPEL_LABEL[d.ampelstatus] || d.ampelstatus}</span>
                       </span>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <div className="flex gap-1 flex-wrap">
+                        {Array.isArray(d.leistungen) && d.leistungen.map((l: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0">{LEISTUNG_SHORT[l] || l}</Badge>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground hidden lg:table-cell">{getName(d.assigned_to)}</TableCell>
                     <TableCell className="hidden md:table-cell">

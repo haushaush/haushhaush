@@ -58,6 +58,42 @@ export type Database = {
           },
         ]
       }
+      ad_performance_kunden: {
+        Row: {
+          appointments: number | null
+          client_id: string
+          cost_per_appointment: number | null
+          cpl: number | null
+          created_at: string
+          datum: string
+          id: string
+          leads: number | null
+          spend: number | null
+        }
+        Insert: {
+          appointments?: number | null
+          client_id: string
+          cost_per_appointment?: number | null
+          cpl?: number | null
+          created_at?: string
+          datum?: string
+          id?: string
+          leads?: number | null
+          spend?: number | null
+        }
+        Update: {
+          appointments?: number | null
+          client_id?: string
+          cost_per_appointment?: number | null
+          cpl?: number | null
+          created_at?: string
+          datum?: string
+          id?: string
+          leads?: number | null
+          spend?: number | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           id: string
