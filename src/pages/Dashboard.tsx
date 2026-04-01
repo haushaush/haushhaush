@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDeals, useRevenue, useInvoices, useSalesPerformance, useTasks, useTeam, useAlerts } from '@/hooks/useDataSources';
+import { useDeals, useRevenue, useInvoices, useSalesPerformance, useTasks, useTeam, useAlerts, useEffizienzScore } from '@/hooks/useDataSources';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Euro, Users, Clock, TrendingUp, BarChart3, Target, FolderOpen, CreditCard, UserCircle, ListTodo, AlertTriangle, ArrowRight, ChevronRight, Phone, CalendarCheck, Trophy, Banknote } from 'lucide-react';
+import { Euro, Users, Clock, TrendingUp, BarChart3, Target, FolderOpen, CreditCard, UserCircle, ListTodo, AlertTriangle, ArrowRight, ChevronRight, Phone, CalendarCheck, Trophy, Banknote, Wallet, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const LEISTUNG_SHORT: Record<string, string> = {
   'Meta Werbeanzeigen': 'Meta Ads',
@@ -70,18 +71,75 @@ export default function Dashboard() {
   const tasks = useTasks(10);
   const [salesPeriod, setSalesPeriod] = useState<'week' | 'month'>('week');
   const salesPerf = useSalesPerformance(salesPeriod);
+  const salesPerfMonth = useSalesPerformance('month');
+  const effizienz = useEffizienzScore();
 
   const loading = deals.loading || revenue.loading || invoices.loading || team.loading || tasks.loading;
 
   const alerts = useAlerts(deals.data, invoices.data, salesPerf.data, team.data, tasks.data);
 
-  // KPI computations
-  const mrr = revenue.data.mrr;
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const monthName = now.toLocaleDateString('de-DE', { month: 'long' });
+
+  // CARD 1: Umsatz aktueller Monat
+  // TODO: replace with Buchhaltung API or DATEV export
+  const umsatzThisMonth = useMemo(() => invoices.data
+    .filter(i => i.status === 'Bezahlt' && new Date(i.created_at).getMonth() === currentMonth && new Date(i.created_at).getFullYear() === currentYear)
+    .reduce((s, i) => s + Number(i.brutto || 0), 0), [invoices.data, currentMonth, currentYear]);
+  const umsatzLastMonth = useMemo(() => {
+    const lm = currentMonth === 0 ? 11 : currentMonth - 1;
+    const ly = currentMonth === 0 ? currentYear - 1 : currentYear;
+    return invoices.data
+      .filter(i => i.status === 'Bezahlt' && new Date(i.created_at).getMonth() === lm && new Date(i.created_at).getFullYear() === ly)
+      .reduce((s, i) => s + Number(i.brutto || 0), 0);
+  }, [invoices.data, currentMonth, currentYear]);
+  const umsatzTrend = umsatzLastMonth > 0 ? ((umsatzThisMonth - umsatzLastMonth) / umsatzLastMonth * 100) : null;
+
+  // CARD 2: Cash Collect
+  // TODO: connect to Stripe/bank feed for actual cash received
+  const cashCollect = useMemo(() => invoices.data
+    .filter(i => ['Versendet', 'Überfällig'].includes(i.status || '') && i.faelligkeitsdatum && new Date(i.faelligkeitsdatum).getMonth() === currentMonth && new Date(i.faelligkeitsdatum).getFullYear() === currentYear)
+    , [invoices.data, currentMonth, currentYear]);
+  const cashCollectTotal = useMemo(() => cashCollect.reduce((s, i) => s + Number(i.brutto || 0), 0), [cashCollect]);
+  const cashCollectOverdue = useMemo(() => cashCollect.filter(i => i.status === 'Überfällig').length, [cashCollect]);
+
+  // CARD 3: Kunden
+  // TODO: sync live from Close CRM API
   const activeClients = useMemo(() => deals.data.filter(d => d.status === 'Aktiv').length, [deals.data]);
-  const totalDeals = deals.data.length;
-  const openInvoices = useMemo(() => invoices.data.filter(i => i.status === 'Versendet' || i.status === 'Überfällig'), [invoices.data]);
+  const neukunden = useMemo(() => deals.data.filter(d => d.deal_type === 'Neukunde' && new Date(d.created_at).getMonth() === currentMonth && new Date(d.created_at).getFullYear() === currentYear).length, [deals.data, currentMonth, currentYear]);
+  const upsells = useMemo(() => deals.data.filter(d => d.deal_type === 'Upsell' && new Date(d.created_at).getMonth() === currentMonth && new Date(d.created_at).getFullYear() === currentYear).length, [deals.data, currentMonth, currentYear]);
+
+  // CARD 4: Top Vertriebler
+  // TODO: pull from Close CRM activities API
+  const topSeller = useMemo(() => {
+    const map = new Map<string, { revenue: number; closes: number }>();
+    (salesPerfMonth.data || []).forEach(r => {
+      const ex = map.get(r.setter_id) || { revenue: 0, closes: 0 };
+      ex.revenue += Number(r.revenue_generated || 0);
+      ex.closes += (r.closes || 0);
+      map.set(r.setter_id, ex);
+    });
+    let best: { id: string; name: string; initials: string; revenue: number; closes: number } | null = null;
+    map.forEach((v, id) => {
+      if (!best || v.revenue > best.revenue) {
+        const t = team.data.find(t => t.id === id);
+        const name = t?.name || 'Unbekannt';
+        best = { id, name, initials: name.split(' ').map((n: string) => n[0]).join('').slice(0, 2), ...v };
+      }
+    });
+    return best;
+  }, [salesPerfMonth.data, team.data]);
+
+  // CARD 5: Offene Rechnungen
+  const openInvoices = useMemo(() => invoices.data.filter(i => ['Versendet', 'Entwurf', 'Überfällig'].includes(i.status || '')), [invoices.data]);
   const openInvoicesTotal = useMemo(() => openInvoices.reduce((s, i) => s + Number(i.brutto || 0), 0), [openInvoices]);
-  const overdueCount = useMemo(() => invoices.data.filter(i => i.status === 'Überfällig').length, [invoices.data]);
+  const sentInvoices = useMemo(() => invoices.data.filter(i => i.status === 'Versendet'), [invoices.data]);
+  const sentTotal = useMemo(() => sentInvoices.reduce((s, i) => s + Number(i.brutto || 0), 0), [sentInvoices]);
+  const overdueInvoices = useMemo(() => invoices.data.filter(i => i.status === 'Überfällig'), [invoices.data]);
+  const overdueTotal = useMemo(() => overdueInvoices.reduce((s, i) => s + Number(i.brutto || 0), 0), [overdueInvoices]);
+  const allPaid = openInvoices.length === 0;
 
   const weekStart = useMemo(() => {
     const d = new Date();
@@ -148,7 +206,7 @@ export default function Dashboard() {
           <div><Skeleton className="h-8 w-64 mb-2" /><Skeleton className="h-4 w-40" /></div>
           <Skeleton className="h-14 w-28" />
         </div>
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">{[1,2,3,4].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}</div>
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}</div>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Skeleton className="h-80 rounded-xl" />
@@ -173,60 +231,130 @@ export default function Dashboard() {
         <div className="hidden sm:block"><TrendIllustration /></div>
       </div>
 
-      {/* 2. KPI Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      {/* 2. KPI Cards — 6 cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        {/* CARD 1: Umsatz */}
         <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/finanzen')}>
           <CardContent className="p-4 sm:p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">MRR</p>
-                <p className="text-xl sm:text-2xl font-bold text-foreground">€{mrr.toLocaleString('de-DE')}</p>
-                <p className="text-xs text-muted-foreground">Monatlich wiederkehrend</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Euro className="h-5 w-5 text-primary" /></div>
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">UMSATZ</p>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><TrendingUp className="h-4 w-4 text-primary" /></div>
             </div>
+            <p className="text-lg sm:text-xl font-bold text-foreground">{umsatzThisMonth.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Bezahlt im {monthName} {currentYear}</p>
+            {umsatzTrend !== null ? (
+              <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium mt-1.5 px-1.5 py-0.5 rounded-full ${umsatzTrend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'}`}>
+                {umsatzTrend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                {umsatzTrend >= 0 ? '+' : ''}{umsatzTrend.toFixed(1)}%
+              </span>
+            ) : <span className="text-[10px] text-muted-foreground mt-1.5 inline-block">–</span>}
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/kunden')}>
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Aktive Kunden</p>
-                <p className="text-xl sm:text-2xl font-bold text-foreground">{activeClients}</p>
-                <p className="text-xs text-muted-foreground">{totalDeals} Deals gesamt</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Users className="h-5 w-5 text-primary" /></div>
-            </div>
-          </CardContent>
-        </Card>
-
+        {/* CARD 2: Cash Collect */}
         <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/finanzen/rechnungen')}>
           <CardContent className="p-4 sm:p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Offene Rechnungen</p>
-                <p className="text-xl sm:text-2xl font-bold text-foreground">€{openInvoicesTotal.toLocaleString('de-DE')}</p>
-                <p className="text-xs text-muted-foreground">{openInvoices.length} Rechnungen offen</p>
-                {overdueCount > 0 && <Badge variant="destructive" className="text-[10px] mt-1">{overdueCount} überfällig</Badge>}
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Clock className="h-5 w-5 text-primary" /></div>
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">CASH COLLECT</p>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Wallet className="h-4 w-4 text-primary" /></div>
             </div>
+            <p className="text-lg sm:text-xl font-bold text-foreground">{cashCollectTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{cashCollect.length} Rechnungen fällig</p>
+            {cashCollectOverdue > 0 && <Badge variant="destructive" className="text-[10px] mt-1.5">⚠ {cashCollectOverdue} überfällig</Badge>}
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/kunden/abschluesse')}>
+        {/* CARD 3: Kunden */}
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/kunden')}>
           <CardContent className="p-4 sm:p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Abschlüsse (Woche)</p>
-                <p className="text-xl sm:text-2xl font-bold text-foreground">{weekDeals.length}</p>
-                <p className="text-xs text-muted-foreground">€{weekVolume.toLocaleString('de-DE')} Volumen</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><TrendingUp className="h-5 w-5 text-primary" /></div>
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">KUNDEN GESAMT</p>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Users className="h-4 w-4 text-primary" /></div>
             </div>
+            <p className="text-lg sm:text-xl font-bold text-foreground">{activeClients}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{neukunden} Neukunden diesen Monat</p>
+            <p className="text-[11px] text-muted-foreground">{upsells} Upsells</p>
           </CardContent>
         </Card>
+
+        {/* CARD 4: Top Vertriebler */}
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/sales/kpis')}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">TOP VERTRIEBLER</p>
+              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:bg-amber-500/20 transition-colors"><Trophy className="h-4 w-4 text-amber-500" /></div>
+            </div>
+            {topSeller ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">{topSeller.initials}</div>
+                  <p className="text-sm font-semibold text-foreground truncate">{topSeller.name}</p>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">{topSeller.revenue.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} · {topSeller.closes} Abschlüsse</p>
+              </>
+            ) : <p className="text-sm text-muted-foreground">Noch keine Daten</p>}
+          </CardContent>
+        </Card>
+
+        {/* CARD 5: Offene Rechnungen */}
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/finanzen/rechnungen')}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">OFFENE RECHNUNGEN</p>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Clock className="h-4 w-4 text-primary" /></div>
+            </div>
+            {allPaid ? (
+              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Alle Rechnungen bezahlt 🎉</p>
+            ) : (
+              <>
+                <p className="text-lg sm:text-xl font-bold text-foreground">{openInvoicesTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Gesamt ausstehend</p>
+                <div className="mt-1.5 space-y-0.5">
+                  {sentInvoices.length > 0 && <p className="text-[11px] text-muted-foreground">{sentInvoices.length} Versendet · {sentTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
+                  {overdueInvoices.length > 0 && <p className="text-[11px] text-destructive font-medium">{overdueInvoices.length} Überfällig · {overdueTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* CARD 6: Effizienz Score */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/projekte')}>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">EFFIZIENZ</p>
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Zap className="h-4 w-4 text-primary" /></div>
+                  </div>
+                  {effizienz.loading ? (
+                    <Skeleton className="h-12 w-full rounded" />
+                  ) : (
+                    <>
+                      <div className="flex items-end gap-1">
+                        <span className={`text-lg sm:text-xl font-bold ${effizienz.score >= 80 ? 'text-primary' : effizienz.score >= 60 ? 'text-amber-500' : 'text-destructive'}`}>{effizienz.score}</span>
+                        <span className="text-sm text-muted-foreground mb-0.5">/100</span>
+                      </div>
+                      {/* Mini gauge arc */}
+                      <svg width="48" height="28" viewBox="0 0 48 28" className="mt-1" aria-hidden="true">
+                        <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke="hsl(var(--border))" strokeWidth="3" strokeLinecap="round" />
+                        <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke={effizienz.score >= 80 ? 'hsl(var(--primary))' : effizienz.score >= 60 ? '#FF9F0A' : '#FF3B30'} strokeWidth="3" strokeLinecap="round"
+                          strokeDasharray={`${(effizienz.score / 100) * 62.8} 62.8`} />
+                      </svg>
+                      <p className="text-[10px] text-muted-foreground mt-1">Deadlines {effizienz.scoreA}% · Tickets {effizienz.scoreB}% · Laufzeit {effizienz.scoreC}%</p>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[240px] text-xs">
+              <p>Deadlines: {effizienz.scoreA}% der Projekte pünktlich</p>
+              <p>Ø Ticket-Bearbeitungszeit: {effizienz.avgDaysOpen.toFixed(1)} Tage</p>
+              <p>Laufzeiteinhaltung: {effizienz.scoreC}% Kunden pünktlich</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* 3. Quick Navigation */}
@@ -466,7 +594,7 @@ export default function Dashboard() {
             <BarChart data={revenueChart} barCategoryGap="20%">
               <XAxis dataKey="name" axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
               <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={35} />
-              <Tooltip
+              <RechartsTooltip
                 formatter={(value: number, name: string) => [`€${value.toLocaleString('de-DE')}`, name === 'bezahlt' ? 'Bezahlt' : 'Offen']}
                 contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
               />
