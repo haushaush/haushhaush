@@ -1,4 +1,4 @@
-import { Home, Users, FolderOpen, BarChart3, Euro, UserCircle, ClipboardList, Palette, HardDrive, LogOut } from 'lucide-react';
+import { Home, Users, BarChart3, Euro, UserCircle, Settings, LogOut } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,17 +7,14 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter, useSidebar,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 
 const navItems = [
-  { title: 'Dashboard', url: '/', icon: Home },
+  { title: 'Übersicht', url: '/', icon: Home },
   { title: 'Kunden', url: '/kunden', icon: Users },
-  { title: 'Creatives', url: '/creatives', icon: Palette },
-  { title: 'Dateien', url: '/dateien', icon: HardDrive },
-  { title: 'Projekte', url: '/projekte', icon: FolderOpen },
-  { title: 'KPI', url: '/kpi', icon: BarChart3 },
+  { title: 'Performance', url: '/performance', icon: BarChart3 },
   { title: 'Finanzen', url: '/finanzen', icon: Euro },
-  { title: 'Mitarbeiter', url: '/mitarbeiter', icon: UserCircle },
-  { title: 'Aufgaben', url: '/aufgaben', icon: ClipboardList },
+  { title: 'Team', url: '/team', icon: UserCircle },
 ];
 
 export function AppSidebar() {
@@ -62,6 +59,28 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <Separator className="mx-3" />
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink
+                    to="/einstellungen"
+                    className="hover:bg-sidebar-accent/50 transition-colors min-h-[44px] flex items-center"
+                    activeClassName="bg-sidebar-accent text-primary font-medium"
+                    aria-label="Einstellungen"
+                  >
+                    <Settings className="mr-2 h-4 w-4" aria-hidden="true" />
+                    {!collapsed && <span>Einstellungen</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

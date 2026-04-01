@@ -1,12 +1,12 @@
-import { Home, Users, BarChart3, HardDrive, ClipboardList } from 'lucide-react';
+import { Home, Users, BarChart3, Euro, UserCircle } from 'lucide-react';
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
 
 const tabs = [
-  { title: 'Home', url: '/', icon: Home },
+  { title: 'Übersicht', url: '/', icon: Home },
   { title: 'Kunden', url: '/kunden', icon: Users },
-  { title: 'Dateien', url: '/dateien', icon: HardDrive },
-  { title: 'KPI', url: '/kpi', icon: BarChart3 },
-  { title: 'Aufgaben', url: '/aufgaben', icon: ClipboardList },
+  { title: 'Performance', url: '/performance', icon: BarChart3 },
+  { title: 'Finanzen', url: '/finanzen', icon: Euro },
+  { title: 'Team', url: '/team', icon: UserCircle },
 ];
 
 export function MobileTabBar() {
