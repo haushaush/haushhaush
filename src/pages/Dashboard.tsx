@@ -231,60 +231,130 @@ export default function Dashboard() {
         <div className="hidden sm:block"><TrendIllustration /></div>
       </div>
 
-      {/* 2. KPI Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      {/* 2. KPI Cards — 6 cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        {/* CARD 1: Umsatz */}
         <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/finanzen')}>
           <CardContent className="p-4 sm:p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">MRR</p>
-                <p className="text-xl sm:text-2xl font-bold text-foreground">€{mrr.toLocaleString('de-DE')}</p>
-                <p className="text-xs text-muted-foreground">Monatlich wiederkehrend</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Euro className="h-5 w-5 text-primary" /></div>
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">UMSATZ</p>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><TrendingUp className="h-4 w-4 text-primary" /></div>
             </div>
+            <p className="text-lg sm:text-xl font-bold text-foreground">{umsatzThisMonth.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Bezahlt im {monthName} {currentYear}</p>
+            {umsatzTrend !== null ? (
+              <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium mt-1.5 px-1.5 py-0.5 rounded-full ${umsatzTrend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'}`}>
+                {umsatzTrend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                {umsatzTrend >= 0 ? '+' : ''}{umsatzTrend.toFixed(1)}%
+              </span>
+            ) : <span className="text-[10px] text-muted-foreground mt-1.5 inline-block">–</span>}
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/kunden')}>
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Aktive Kunden</p>
-                <p className="text-xl sm:text-2xl font-bold text-foreground">{activeClients}</p>
-                <p className="text-xs text-muted-foreground">{totalDeals} Deals gesamt</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Users className="h-5 w-5 text-primary" /></div>
-            </div>
-          </CardContent>
-        </Card>
-
+        {/* CARD 2: Cash Collect */}
         <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/finanzen/rechnungen')}>
           <CardContent className="p-4 sm:p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Offene Rechnungen</p>
-                <p className="text-xl sm:text-2xl font-bold text-foreground">€{openInvoicesTotal.toLocaleString('de-DE')}</p>
-                <p className="text-xs text-muted-foreground">{openInvoices.length} Rechnungen offen</p>
-                {overdueCount > 0 && <Badge variant="destructive" className="text-[10px] mt-1">{overdueCount} überfällig</Badge>}
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Clock className="h-5 w-5 text-primary" /></div>
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">CASH COLLECT</p>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Wallet className="h-4 w-4 text-primary" /></div>
             </div>
+            <p className="text-lg sm:text-xl font-bold text-foreground">{cashCollectTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{cashCollect.length} Rechnungen fällig</p>
+            {cashCollectOverdue > 0 && <Badge variant="destructive" className="text-[10px] mt-1.5">⚠ {cashCollectOverdue} überfällig</Badge>}
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/kunden/abschluesse')}>
+        {/* CARD 3: Kunden */}
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/kunden')}>
           <CardContent className="p-4 sm:p-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 min-w-0">
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Abschlüsse (Woche)</p>
-                <p className="text-xl sm:text-2xl font-bold text-foreground">{weekDeals.length}</p>
-                <p className="text-xs text-muted-foreground">€{weekVolume.toLocaleString('de-DE')} Volumen</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><TrendingUp className="h-5 w-5 text-primary" /></div>
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">KUNDEN GESAMT</p>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Users className="h-4 w-4 text-primary" /></div>
             </div>
+            <p className="text-lg sm:text-xl font-bold text-foreground">{activeClients}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{neukunden} Neukunden diesen Monat</p>
+            <p className="text-[11px] text-muted-foreground">{upsells} Upsells</p>
           </CardContent>
         </Card>
+
+        {/* CARD 4: Top Vertriebler */}
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/sales/kpis')}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">TOP VERTRIEBLER</p>
+              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:bg-amber-500/20 transition-colors"><Trophy className="h-4 w-4 text-amber-500" /></div>
+            </div>
+            {topSeller ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">{topSeller.initials}</div>
+                  <p className="text-sm font-semibold text-foreground truncate">{topSeller.name}</p>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">{topSeller.revenue.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} · {topSeller.closes} Abschlüsse</p>
+              </>
+            ) : <p className="text-sm text-muted-foreground">Noch keine Daten</p>}
+          </CardContent>
+        </Card>
+
+        {/* CARD 5: Offene Rechnungen */}
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/finanzen/rechnungen')}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">OFFENE RECHNUNGEN</p>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Clock className="h-4 w-4 text-primary" /></div>
+            </div>
+            {allPaid ? (
+              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Alle Rechnungen bezahlt 🎉</p>
+            ) : (
+              <>
+                <p className="text-lg sm:text-xl font-bold text-foreground">{openInvoicesTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Gesamt ausstehend</p>
+                <div className="mt-1.5 space-y-0.5">
+                  {sentInvoices.length > 0 && <p className="text-[11px] text-muted-foreground">{sentInvoices.length} Versendet · {sentTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
+                  {overdueInvoices.length > 0 && <p className="text-[11px] text-destructive font-medium">{overdueInvoices.length} Überfällig · {overdueTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* CARD 6: Effizienz Score */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/projekte')}>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">EFFIZIENZ</p>
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Zap className="h-4 w-4 text-primary" /></div>
+                  </div>
+                  {effizienz.loading ? (
+                    <Skeleton className="h-12 w-full rounded" />
+                  ) : (
+                    <>
+                      <div className="flex items-end gap-1">
+                        <span className={`text-lg sm:text-xl font-bold ${effizienz.score >= 80 ? 'text-primary' : effizienz.score >= 60 ? 'text-amber-500' : 'text-destructive'}`}>{effizienz.score}</span>
+                        <span className="text-sm text-muted-foreground mb-0.5">/100</span>
+                      </div>
+                      {/* Mini gauge arc */}
+                      <svg width="48" height="28" viewBox="0 0 48 28" className="mt-1" aria-hidden="true">
+                        <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke="hsl(var(--border))" strokeWidth="3" strokeLinecap="round" />
+                        <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke={effizienz.score >= 80 ? 'hsl(var(--primary))' : effizienz.score >= 60 ? '#FF9F0A' : '#FF3B30'} strokeWidth="3" strokeLinecap="round"
+                          strokeDasharray={`${(effizienz.score / 100) * 62.8} 62.8`} />
+                      </svg>
+                      <p className="text-[10px] text-muted-foreground mt-1">Deadlines {effizienz.scoreA}% · Tickets {effizienz.scoreB}% · Laufzeit {effizienz.scoreC}%</p>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[240px] text-xs">
+              <p>Deadlines: {effizienz.scoreA}% der Projekte pünktlich</p>
+              <p>Ø Ticket-Bearbeitungszeit: {effizienz.avgDaysOpen.toFixed(1)} Tage</p>
+              <p>Laufzeiteinhaltung: {effizienz.scoreC}% Kunden pünktlich</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* 3. Quick Navigation */}
