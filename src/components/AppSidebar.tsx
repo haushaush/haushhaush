@@ -30,7 +30,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div>
               <h2 className="font-heading text-lg font-bold text-primary">Agency</h2>
-              <p className="text-xs text-sidebar-foreground/60">Haush Haush · Viral Connect</p>
+              <p className="text-xs text-sidebar-foreground/60">Viral Connect · Haush Haush</p>
             </div>
           )}
           {collapsed && <span className="text-primary font-heading font-bold text-lg" aria-label="Agency Dashboard">A</span>}

@@ -154,6 +154,7 @@ export default function Performance() {
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="sales" className="min-h-[44px]">Sales KPIs</TabsTrigger>
           <TabsTrigger value="ads" className="min-h-[44px]">Ad Performance</TabsTrigger>
+          <TabsTrigger value="metakai" className="min-h-[44px]">Meta KAI</TabsTrigger>
           <TabsTrigger value="vorquali" className="min-h-[44px]">Vorquali</TabsTrigger>
           <TabsTrigger value="fulfillment" className="min-h-[44px]">Fulfillment</TabsTrigger>
         </TabsList>
@@ -327,7 +328,19 @@ export default function Performance() {
           </div></CardContent></Card>
         </TabsContent>
 
-        {/* ═══ TAB 3: VORQUALI ═══ */}
+        {/* ═══ TAB 3: META KAI ═══ */}
+        <TabsContent value="metakai" className="space-y-4 mt-4">
+          <h2 className="text-lg font-heading font-semibold flex items-center gap-2">
+            <Target className="h-5 w-5 text-primary" aria-hidden="true" /> Meta KAI – KI-Analyse
+          </h2>
+          <Card><CardContent className="py-12 text-center text-muted-foreground">
+            <p className="font-medium">KI-gestützte Kampagnenanalyse</p>
+            <p className="text-sm mt-2">Verbinde Meta Ad Accounts in den Kundendetails, um hier KI-Empfehlungen pro Account zu erhalten.</p>
+            <p className="text-xs mt-2">Analysiert Kampagnendaten und gibt Optimierungsempfehlungen für die deutsche Versicherungsbranche.</p>
+          </CardContent></Card>
+        </TabsContent>
+
+        {/* ═══ TAB 4: VORQUALI ═══ */}
         <TabsContent value="vorquali" className="space-y-4 mt-4">
           <h2 className="text-lg font-heading font-semibold flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" aria-hidden="true" /> Vorqualifikation

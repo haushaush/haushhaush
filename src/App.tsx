@@ -41,11 +41,13 @@ const App = () => (
             <Route path="/review/:token" element={<CreativeReview />} />
 
             {/* Redirects for old routes */}
-            <Route path="/projekte" element={<Navigate to="/kunden" replace />} />
+            <Route path="/projekte" element={<Navigate to="/kunden?tab=projekte" replace />} />
             <Route path="/kpi" element={<Navigate to="/performance" replace />} />
+            <Route path="/faktura" element={<Navigate to="/finanzen?tab=rechnungen" replace />} />
             <Route path="/mitarbeiter" element={<Navigate to="/team" replace />} />
-            <Route path="/aufgaben" element={<Navigate to="/kunden" replace />} />
             <Route path="/dateien" element={<Navigate to="/kunden" replace />} />
+            <Route path="/learning" element={<Navigate to="/team?tab=akademie" replace />} />
+            <Route path="/aufgaben" element={<Navigate to="/kunden" replace />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
