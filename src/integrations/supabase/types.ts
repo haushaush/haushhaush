@@ -58,6 +58,68 @@ export type Database = {
           },
         ]
       }
+      app_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          value: Json | null
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Relationships: []
+      }
+      call_coaching: {
+        Row: {
+          coach_name: string | null
+          created_at: string
+          datum: string
+          id: string
+          notes: string | null
+          pdf_url: string | null
+          score: number | null
+          team_member_id: string
+        }
+        Insert: {
+          coach_name?: string | null
+          created_at?: string
+          datum?: string
+          id?: string
+          notes?: string | null
+          pdf_url?: string | null
+          score?: number | null
+          team_member_id: string
+        }
+        Update: {
+          coach_name?: string | null
+          created_at?: string
+          datum?: string
+          id?: string
+          notes?: string | null
+          pdf_url?: string | null
+          score?: number | null
+          team_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_coaching_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           ampelstatus: Database["public"]["Enums"]["ampelstatus"]
@@ -114,6 +176,83 @@ export type Database = {
           zahlstatus?: string | null
         }
         Relationships: []
+      }
+      close_deals: {
+        Row: {
+          ampelstatus: string | null
+          art: string | null
+          assigned_to: string | null
+          client_name: string
+          close_lead_id: string | null
+          close_opportunity_url: string | null
+          created_at: string
+          deal_type: string | null
+          health_score: number | null
+          id: string
+          laufzeit_monate: number | null
+          leistungen: Json | null
+          meta_ad_account_id: string | null
+          notes: Json | null
+          onepage_url: string | null
+          start_datum: string | null
+          status: string | null
+          updated_at: string
+          wert_eur: number | null
+          zahlstatus: string | null
+        }
+        Insert: {
+          ampelstatus?: string | null
+          art?: string | null
+          assigned_to?: string | null
+          client_name: string
+          close_lead_id?: string | null
+          close_opportunity_url?: string | null
+          created_at?: string
+          deal_type?: string | null
+          health_score?: number | null
+          id?: string
+          laufzeit_monate?: number | null
+          leistungen?: Json | null
+          meta_ad_account_id?: string | null
+          notes?: Json | null
+          onepage_url?: string | null
+          start_datum?: string | null
+          status?: string | null
+          updated_at?: string
+          wert_eur?: number | null
+          zahlstatus?: string | null
+        }
+        Update: {
+          ampelstatus?: string | null
+          art?: string | null
+          assigned_to?: string | null
+          client_name?: string
+          close_lead_id?: string | null
+          close_opportunity_url?: string | null
+          created_at?: string
+          deal_type?: string | null
+          health_score?: number | null
+          id?: string
+          laufzeit_monate?: number | null
+          leistungen?: Json | null
+          meta_ad_account_id?: string | null
+          notes?: Json | null
+          onepage_url?: string | null
+          start_datum?: string | null
+          status?: string | null
+          updated_at?: string
+          wert_eur?: number | null
+          zahlstatus?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "close_deals_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "team"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       creative_approvals: {
         Row: {
@@ -465,6 +604,71 @@ export type Database = {
           },
         ]
       }
+      invoices: {
+        Row: {
+          billing_entity: string | null
+          brutto: number | null
+          client_name: string | null
+          close_deal_id: string | null
+          created_at: string
+          faelligkeitsdatum: string | null
+          id: string
+          invoice_nr: string
+          leistungsdatum: string | null
+          line_items: Json | null
+          mwst_betrag: number | null
+          mwst_rate: number | null
+          netto: number | null
+          pdf_url: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_entity?: string | null
+          brutto?: number | null
+          client_name?: string | null
+          close_deal_id?: string | null
+          created_at?: string
+          faelligkeitsdatum?: string | null
+          id?: string
+          invoice_nr: string
+          leistungsdatum?: string | null
+          line_items?: Json | null
+          mwst_betrag?: number | null
+          mwst_rate?: number | null
+          netto?: number | null
+          pdf_url?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_entity?: string | null
+          brutto?: number | null
+          client_name?: string | null
+          close_deal_id?: string | null
+          created_at?: string
+          faelligkeitsdatum?: string | null
+          id?: string
+          invoice_nr?: string
+          leistungsdatum?: string | null
+          line_items?: Json | null
+          mwst_betrag?: number | null
+          mwst_rate?: number | null
+          netto?: number | null
+          pdf_url?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_close_deal_id_fkey"
+            columns: ["close_deal_id"]
+            isOneToOne: false
+            referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           ads_budget: number | null
@@ -511,6 +715,47 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_revenues: {
+        Row: {
+          client_name: string
+          close_deal_id: string | null
+          created_at: string
+          end_date: string | null
+          id: string
+          is_active: boolean | null
+          monthly_amount: number | null
+          start_date: string | null
+        }
+        Insert: {
+          client_name: string
+          close_deal_id?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          monthly_amount?: number | null
+          start_date?: string | null
+        }
+        Update: {
+          client_name?: string
+          close_deal_id?: string | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          monthly_amount?: number | null
+          start_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_revenues_close_deal_id_fkey"
+            columns: ["close_deal_id"]
+            isOneToOne: false
+            referencedRelation: "close_deals"
             referencedColumns: ["id"]
           },
         ]
@@ -632,6 +877,7 @@ export type Database = {
       team: {
         Row: {
           created_at: string
+          department: string | null
           email: string
           id: string
           name: string
@@ -641,6 +887,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          department?: string | null
           email: string
           id?: string
           name: string
@@ -650,6 +897,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          department?: string | null
           email?: string
           id?: string
           name?: string
@@ -676,6 +924,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vertriebsakademie_progress: {
+        Row: {
+          chapter: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          lesson: string | null
+          status: string | null
+          team_member_id: string
+        }
+        Insert: {
+          chapter: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lesson?: string | null
+          status?: string | null
+          team_member_id: string
+        }
+        Update: {
+          chapter?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lesson?: string | null
+          status?: string | null
+          team_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vertriebsakademie_progress_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vorquali_kpi: {
         Row: {
@@ -714,6 +1000,50 @@ export type Database = {
             columns: ["setter_id"]
             isOneToOne: false
             referencedRelation: "team"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wiki_pages: {
+        Row: {
+          content: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          parent_id: string | null
+          section: string | null
+          sort_order: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          parent_id?: string | null
+          section?: string | null
+          sort_order?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          parent_id?: string | null
+          section?: string | null
+          sort_order?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wiki_pages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "wiki_pages"
             referencedColumns: ["id"]
           },
         ]
