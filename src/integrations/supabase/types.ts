@@ -560,6 +560,68 @@ export type Database = {
         }
         Relationships: []
       }
+      employment_contracts: {
+        Row: {
+          arbeitsstunden_pro_woche: number | null
+          created_at: string
+          drive_vertrag_url: string | null
+          enddatum: string | null
+          gehalt_brutto: number | null
+          gehalt_netto: number | null
+          id: string
+          kuendigungsfrist: string | null
+          member_id: string
+          notizen: string | null
+          probezeit_bis: string | null
+          startdatum: string | null
+          status: string | null
+          urlaubstage: number | null
+          vertragsart: string
+        }
+        Insert: {
+          arbeitsstunden_pro_woche?: number | null
+          created_at?: string
+          drive_vertrag_url?: string | null
+          enddatum?: string | null
+          gehalt_brutto?: number | null
+          gehalt_netto?: number | null
+          id?: string
+          kuendigungsfrist?: string | null
+          member_id: string
+          notizen?: string | null
+          probezeit_bis?: string | null
+          startdatum?: string | null
+          status?: string | null
+          urlaubstage?: number | null
+          vertragsart?: string
+        }
+        Update: {
+          arbeitsstunden_pro_woche?: number | null
+          created_at?: string
+          drive_vertrag_url?: string | null
+          enddatum?: string | null
+          gehalt_brutto?: number | null
+          gehalt_netto?: number | null
+          id?: string
+          kuendigungsfrist?: string | null
+          member_id?: string
+          notizen?: string | null
+          probezeit_bis?: string | null
+          startdatum?: string | null
+          status?: string | null
+          urlaubstage?: number | null
+          vertragsart?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employment_contracts_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance: {
         Row: {
           betrag: number
@@ -669,6 +731,48 @@ export type Database = {
           },
         ]
       }
+      probewoche_candidates: {
+        Row: {
+          bewertung: number | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notizen: string | null
+          position: string | null
+          probewoche_end: string | null
+          probewoche_start: string | null
+          slack_account: string | null
+          status: string | null
+        }
+        Insert: {
+          bewertung?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notizen?: string | null
+          position?: string | null
+          probewoche_end?: string | null
+          probewoche_start?: string | null
+          slack_account?: string | null
+          status?: string | null
+        }
+        Update: {
+          bewertung?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notizen?: string | null
+          position?: string | null
+          probewoche_end?: string | null
+          probewoche_start?: string | null
+          slack_account?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           ads_budget: number | null
@@ -756,6 +860,50 @@ export type Database = {
             columns: ["close_deal_id"]
             isOneToOne: false
             referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salary_payments: {
+        Row: {
+          betrag_brutto: number | null
+          betrag_netto: number | null
+          created_at: string
+          id: string
+          member_id: string
+          monat: string
+          notizen: string | null
+          status: string | null
+          ueberwiesen_am: string | null
+        }
+        Insert: {
+          betrag_brutto?: number | null
+          betrag_netto?: number | null
+          created_at?: string
+          id?: string
+          member_id: string
+          monat: string
+          notizen?: string | null
+          status?: string | null
+          ueberwiesen_am?: string | null
+        }
+        Update: {
+          betrag_brutto?: number | null
+          betrag_netto?: number | null
+          created_at?: string
+          id?: string
+          member_id?: string
+          monat?: string
+          notizen?: string | null
+          status?: string | null
+          ueberwiesen_am?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_payments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team"
             referencedColumns: ["id"]
           },
         ]
@@ -906,6 +1054,60 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      time_off_requests: {
+        Row: {
+          anmerkung: string | null
+          bis: string
+          created_at: string
+          entschieden_von: string | null
+          id: string
+          member_id: string
+          status: string | null
+          tage: number | null
+          typ: string
+          von: string
+        }
+        Insert: {
+          anmerkung?: string | null
+          bis: string
+          created_at?: string
+          entschieden_von?: string | null
+          id?: string
+          member_id: string
+          status?: string | null
+          tage?: number | null
+          typ?: string
+          von: string
+        }
+        Update: {
+          anmerkung?: string | null
+          bis?: string
+          created_at?: string
+          entschieden_von?: string | null
+          id?: string
+          member_id?: string
+          status?: string | null
+          tage?: number | null
+          typ?: string
+          von?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_off_requests_entschieden_von_fkey"
+            columns: ["entschieden_von"]
+            isOneToOne: false
+            referencedRelation: "team"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_off_requests_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
