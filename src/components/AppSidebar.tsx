@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight, Sun, Moon } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -85,9 +86,9 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const { signOut, user } = useAuth();
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
-    // Auto-open group containing current route
     const result = { ...saved };
     navItems.forEach(item => {
       if (item.children) {
@@ -99,6 +100,13 @@ export function AppSidebar() {
   });
 
   useEffect(() => { saveSidebarState(openGroups); }, [openGroups]);
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    localStorage.setItem('theme', next);
+    document.documentElement.classList.toggle('dark', next === 'dark');
+  };
 
   const toggleGroup = (title: string) => {
     setOpenGroups(prev => ({ ...prev, [title]: !prev[title] }));
@@ -196,12 +204,28 @@ export function AppSidebar() {
         {!collapsed && user && (
           <p className="text-xs text-muted-foreground truncate px-3">{user.email}</p>
         )}
-        <Button variant="ghost" size="sm" onClick={signOut}
-          className="w-full justify-start text-muted-foreground hover:text-destructive min-h-[40px] px-3"
-          aria-label="Abmelden">
-          <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
-          {!collapsed && 'Abmelden'}
-        </Button>
+        <div className="flex items-center gap-2 px-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleTheme}
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 transition-colors"
+                aria-label={theme === 'light' ? 'Dark Mode aktivieren' : 'Light Mode aktivieren'}
+              >
+                {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+            </TooltipContent>
+          </Tooltip>
+          <Button variant="ghost" size="sm" onClick={signOut}
+            className="flex-1 justify-start text-muted-foreground hover:text-destructive min-h-[40px] px-3"
+            aria-label="Abmelden">
+            <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
+            {!collapsed && 'Abmelden'}
+          </Button>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
