@@ -9,7 +9,13 @@ import Auth from "./pages/Auth.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Kunden from "./pages/Kunden.tsx";
 import KundenDetail from "./pages/KundenDetail.tsx";
-import Performance from "./pages/Performance.tsx";
+import KundenPipeline from "./pages/KundenPipeline.tsx";
+import KundenAbschluesse from "./pages/KundenAbschluesse.tsx";
+import KundenLaufzeiten from "./pages/KundenLaufzeiten.tsx";
+import Projekte from "./pages/Projekte.tsx";
+import ProjekteAufgaben from "./pages/ProjekteAufgaben.tsx";
+import Sales from "./pages/Sales.tsx";
+import Fulfillment from "./pages/Fulfillment.tsx";
 import Finanzen from "./pages/Finanzen.tsx";
 import TeamPage from "./pages/Team.tsx";
 import Einstellungen from "./pages/Einstellungen.tsx";
@@ -20,6 +26,8 @@ import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
 
+const DL = ({ children }: { children: React.ReactNode }) => <DashboardLayout>{children}</DashboardLayout>;
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -29,25 +37,37 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
-            <Route path="/kunden" element={<DashboardLayout><Kunden /></DashboardLayout>} />
-            <Route path="/kunden/:id" element={<DashboardLayout><KundenDetail /></DashboardLayout>} />
-            <Route path="/performance" element={<DashboardLayout><Performance /></DashboardLayout>} />
-            <Route path="/finanzen" element={<DashboardLayout><Finanzen /></DashboardLayout>} />
-            <Route path="/team" element={<DashboardLayout><TeamPage /></DashboardLayout>} />
-            <Route path="/einstellungen" element={<DashboardLayout><Einstellungen /></DashboardLayout>} />
-            <Route path="/creatives" element={<DashboardLayout><Creatives /></DashboardLayout>} />
-            <Route path="/creatives/:id" element={<DashboardLayout><CreativeDetail /></DashboardLayout>} />
+            <Route path="/" element={<DL><Dashboard /></DL>} />
+            <Route path="/kunden" element={<DL><Kunden /></DL>} />
+            <Route path="/kunden/pipeline" element={<DL><KundenPipeline /></DL>} />
+            <Route path="/kunden/abschluesse" element={<DL><KundenAbschluesse /></DL>} />
+            <Route path="/kunden/laufzeiten" element={<DL><KundenLaufzeiten /></DL>} />
+            <Route path="/kunden/:id" element={<DL><KundenDetail /></DL>} />
+            <Route path="/projekte" element={<DL><Projekte /></DL>} />
+            <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
+            <Route path="/sales" element={<Navigate to="/sales/kpis" replace />} />
+            <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
+            <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
+            <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />
+            <Route path="/finanzen" element={<DL><Finanzen /></DL>} />
+            <Route path="/finanzen/:tab" element={<DL><Finanzen /></DL>} />
+            <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
+            <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
+            <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
+            <Route path="/creatives" element={<DL><Creatives /></DL>} />
+            <Route path="/creatives/:id" element={<DL><CreativeDetail /></DL>} />
             <Route path="/review/:token" element={<CreativeReview />} />
 
-            {/* Redirects for old routes */}
-            <Route path="/projekte" element={<Navigate to="/kunden?tab=projekte" replace />} />
-            <Route path="/kpi" element={<Navigate to="/performance" replace />} />
-            <Route path="/faktura" element={<Navigate to="/finanzen?tab=rechnungen" replace />} />
-            <Route path="/mitarbeiter" element={<Navigate to="/team" replace />} />
+            {/* Redirects */}
+            <Route path="/performance" element={<Navigate to="/sales/kpis" replace />} />
+            <Route path="/team" element={<Navigate to="/hr/mitarbeiter" replace />} />
+            <Route path="/projekte" element={<Navigate to="/projekte" replace />} />
+            <Route path="/kpi" element={<Navigate to="/sales/kpis" replace />} />
+            <Route path="/faktura" element={<Navigate to="/finanzen/rechnungen" replace />} />
+            <Route path="/mitarbeiter" element={<Navigate to="/hr/mitarbeiter" replace />} />
             <Route path="/dateien" element={<Navigate to="/kunden" replace />} />
-            <Route path="/learning" element={<Navigate to="/team?tab=akademie" replace />} />
-            <Route path="/aufgaben" element={<Navigate to="/kunden" replace />} />
+            <Route path="/learning" element={<Navigate to="/hr/akademie" replace />} />
+            <Route path="/aufgaben" element={<Navigate to="/projekte/aufgaben" replace />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,52 +6,51 @@
 
 @layer base {
   :root {
-    --background: 216 39% 7%;
-    --foreground: 210 40% 92%;
+    --background: 240 5% 96%;
+    --foreground: 0 0% 11%;
 
-    --card: 216 35% 11%;
-    --card-foreground: 210 40% 92%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 11%;
 
-    --popover: 216 35% 11%;
-    --popover-foreground: 210 40% 92%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 11%;
 
-    --primary: 43 56% 52%;
-    --primary-foreground: 216 39% 7%;
+    --primary: 174 90% 31%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 216 30% 16%;
-    --secondary-foreground: 210 40% 92%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 0 0% 11%;
 
-    --muted: 216 25% 14%;
-    --muted-foreground: 215 20% 55%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
 
-    --accent: 43 56% 52%;
-    --accent-foreground: 216 39% 7%;
+    --accent: 174 90% 31%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 4 90% 58%;
+    --destructive-foreground: 0 0% 100%;
 
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    --warning: 36 100% 50%;
     --warning-foreground: 0 0% 0%;
 
-    --border: 216 25% 18%;
-    --input: 216 25% 18%;
-    --ring: 43 56% 52%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 174 90% 31%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 216 39% 5%;
-    --sidebar-foreground: 210 40% 75%;
-    --sidebar-primary: 43 56% 52%;
-    --sidebar-primary-foreground: 216 39% 7%;
-    --sidebar-accent: 216 30% 12%;
-    --sidebar-accent-foreground: 210 40% 92%;
-    --sidebar-border: 216 25% 14%;
-    --sidebar-ring: 43 56% 52%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 4% 46%;
+    --sidebar-primary: 174 90% 31%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 174 40% 95%;
+    --sidebar-accent-foreground: 174 90% 31%;
+    --sidebar-border: 240 6% 90%;
+    --sidebar-ring: 174 90% 31%;
 
-    --font-heading: 'Playfair Display', serif;
     --font-body: 'Inter', sans-serif;
   }
 }
@@ -67,6 +66,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-heading);
+    font-family: var(--font-body);
+    letter-spacing: -0.01em;
   }
 }

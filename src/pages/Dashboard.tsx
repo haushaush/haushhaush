@@ -4,8 +4,7 @@ import { StatCard } from '@/components/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, Euro, AlertCircle, Phone, AlertTriangle, TrendingUp, Clock, CheckCircle } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Users, Euro, AlertCircle, TrendingUp, AlertTriangle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const AMPEL_DOT: Record<string, string> = { 'Grün': 'bg-success', 'Gelb': 'bg-warning', 'Rot': 'bg-destructive' };
@@ -49,9 +48,7 @@ export default function Dashboard() {
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
     return deals.filter(d => d.created_at >= weekAgo);
   }, [deals]);
-  const weekCalls = useMemo(() => salesData.reduce((s, r) => s + (r.calls_made || 0), 0), [salesData]);
 
-  // Alerts
   const rotClients = useMemo(() => deals.filter(d => d.ampelstatus === 'Rot' && d.status === 'Aktiv'), [deals]);
   const overdueInvoices = useMemo(() => invoices.filter(i => {
     if (i.status !== 'Versendet' || !i.faelligkeitsdatum) return false;
@@ -64,32 +61,27 @@ export default function Dashboard() {
     return (end.getTime() - Date.now()) / 86400000 < 14 && end.getTime() > Date.now();
   }), [deals]);
 
-  // Setter KPIs
+  // All setters with data
   const setterKPIs = useMemo(() => {
-    const map = new Map<string, { calls: number; appts: number; showUps: number; revenue: number }>();
-    salesData.forEach(r => {
-      const prev = map.get(r.setter_id) || { calls: 0, appts: 0, showUps: 0, revenue: 0 };
-      map.set(r.setter_id, {
-        calls: prev.calls + (r.calls_made || 0), appts: prev.appts + (r.appointments_set || 0),
-        showUps: prev.showUps + (r.show_ups || 0), revenue: prev.revenue + Number(r.revenue_generated || 0),
-      });
-    });
-    return Array.from(map.entries())
-      .map(([id, d]) => ({ id, name: team.find(t => t.id === id)?.name || '–', ...d }))
-      .sort((a, b) => b.revenue - a.revenue);
+    const setters = team.filter(t => ['Setter', 'Closer'].includes(t.rolle));
+    return setters.map(setter => {
+      const data = salesData.filter(r => r.setter_id === setter.id);
+      const calls = data.reduce((s, r) => s + (r.calls_made || 0), 0);
+      const appts = data.reduce((s, r) => s + (r.appointments_set || 0), 0);
+      const showUps = data.reduce((s, r) => s + (r.show_ups || 0), 0);
+      const revenue = data.reduce((s, r) => s + Number(r.revenue_generated || 0), 0);
+      return { id: setter.id, name: setter.name, calls, appts, showUps, revenue };
+    }).sort((a, b) => b.revenue - a.revenue);
   }, [salesData, team]);
 
-  const lowShowUpSetters = useMemo(() =>
-    setterKPIs.filter(s => s.appts > 0 && (s.showUps / s.appts) < 0.6), [setterKPIs]);
-
+  const lowShowUpSetters = useMemo(() => setterKPIs.filter(s => s.appts > 0 && (s.showUps / s.appts) < 0.6), [setterKPIs]);
   const hasAlerts = rotClients.length > 0 || overdueInvoices.length > 0 || lowShowUpSetters.length > 0 || expiringDeals.length > 0;
 
   if (loading) {
     return (
-      <div className="space-y-6" role="status" aria-busy="true" aria-label="Dashboard wird geladen">
+      <div className="space-y-6" role="status" aria-busy="true">
         <Skeleton className="h-8 w-48" />
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">{[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}</div>
-        <Skeleton className="h-64" />
       </div>
     );
   }
@@ -97,53 +89,43 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-heading font-bold">Übersicht</h1>
+        <h1 className="text-2xl font-semibold">Übersicht</h1>
         <p className="text-muted-foreground text-sm">Viral Connect · Haush Haush Digital</p>
       </div>
 
-      {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard title="MRR" value={`€${mrr.toLocaleString('de-DE')}`} icon={Euro} />
         <StatCard title="Aktive Kunden" value={activeClients} icon={Users} subtitle={`${deals.length} Deals gesamt`} />
         <StatCard title="Offene Rechnungen" value={`€${openInvoicesTotal.toLocaleString('de-DE')}`} icon={AlertCircle} />
-        <StatCard title="Abschlüsse (Woche)" value={weekDeals.length} icon={TrendingUp} subtitle={`${weekCalls} Calls`} />
+        <StatCard title="Abschlüsse (Woche)" value={weekDeals.length} icon={TrendingUp} subtitle={`${weekDeals.length} Deals diese Woche`} />
       </div>
 
-      {/* Alerts */}
       {hasAlerts && (
         <section className="space-y-3" aria-label="Wichtige Warnungen">
-          <h2 className="text-sm font-medium uppercase tracking-wider text-destructive flex items-center gap-2">
+          <p className="text-xs font-medium uppercase tracking-widest text-destructive flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" aria-hidden="true" /> Handlungsbedarf
-          </h2>
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" role="alert">
             {rotClients.map(c => (
               <Card key={c.id} className="border-destructive/40 bg-destructive/5 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate(`/kunden/${c.id}`)}>
                 <CardContent className="p-4 flex items-center gap-3">
-                  <span className="h-3 w-3 rounded-full bg-destructive flex-shrink-0" aria-hidden="true" />
+                  <span className="h-3 w-3 rounded-full bg-destructive shrink-0" aria-hidden="true" />
                   <div><p className="text-sm font-medium">{c.client_name}</p><p className="text-xs text-muted-foreground">Ampelstatus: Rot</p></div>
                 </CardContent>
               </Card>
             ))}
             {overdueInvoices.map(i => (
-              <Card key={i.id} className="border-destructive/40 bg-destructive/5 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate('/finanzen?tab=rechnungen')}>
+              <Card key={i.id} className="border-destructive/40 bg-destructive/5 cursor-pointer hover:bg-destructive/10 transition-colors" onClick={() => navigate('/finanzen/rechnungen')}>
                 <CardContent className="p-4 flex items-center gap-3">
-                  <Euro className="h-4 w-4 text-destructive flex-shrink-0" aria-hidden="true" />
+                  <Euro className="h-4 w-4 text-destructive shrink-0" aria-hidden="true" />
                   <div><p className="text-sm font-medium">€{Number(i.brutto).toLocaleString('de-DE')} überfällig</p><p className="text-xs text-muted-foreground">Rechnung {i.invoice_nr}</p></div>
-                </CardContent>
-              </Card>
-            ))}
-            {lowShowUpSetters.map(s => (
-              <Card key={s.id} className="border-warning/40 bg-warning/5">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" aria-hidden="true" />
-                  <div><p className="text-sm font-medium">{s.name}: Show-up {s.appts > 0 ? ((s.showUps / s.appts) * 100).toFixed(0) : 0}%</p><p className="text-xs text-muted-foreground">unter 60% Schwelle</p></div>
                 </CardContent>
               </Card>
             ))}
             {expiringDeals.map(d => (
               <Card key={d.id} className="border-warning/40 bg-warning/5 cursor-pointer hover:bg-warning/10 transition-colors" onClick={() => navigate(`/kunden/${d.id}`)}>
                 <CardContent className="p-4 flex items-center gap-3">
-                  <Clock className="h-4 w-4 text-warning flex-shrink-0" aria-hidden="true" />
+                  <Clock className="h-4 w-4 text-warning shrink-0" aria-hidden="true" />
                   <div><p className="text-sm font-medium">{d.client_name}</p><p className="text-xs text-muted-foreground">Laufzeit endet in &lt;14 Tagen</p></div>
                 </CardContent>
               </Card>
@@ -152,60 +134,47 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* 3-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Letzte Abschlüsse */}
-        <Card className="cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all" onClick={() => navigate('/kunden')}>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/kunden/abschluesse')}>
           <CardHeader><CardTitle className="text-base">Letzte Abschlüsse</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {deals.slice(0, 10).map(d => (
+            {deals.slice(0, 8).map(d => (
               <div key={d.id} className="flex items-start justify-between gap-2 text-sm">
                 <div className="min-w-0">
                   <p className="font-medium truncate">{d.client_name}</p>
                   <div className="flex gap-1 mt-0.5 flex-wrap">
                     <Badge variant="secondary" className="text-[10px]">{d.art}</Badge>
-                    <Badge variant="secondary" className="text-[10px]">{d.deal_type}</Badge>
-                    {Array.isArray(d.leistungen) && d.leistungen.slice(0, 2).map((l: string, i: number) => (
-                      <Badge key={i} variant="outline" className="text-[10px]">{l}</Badge>
-                    ))}
+                    <Badge variant="outline" className="text-[10px]">{d.deal_type}</Badge>
                   </div>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="font-medium text-primary">€{Number(d.wert_eur || 0).toLocaleString('de-DE')}</p>
-                  <p className="text-[10px] text-muted-foreground">{d.laufzeit_monate}M</p>
-                </div>
+                <span className="text-right shrink-0 font-medium text-primary">€{Number(d.wert_eur || 0).toLocaleString('de-DE')}</span>
               </div>
             ))}
             {deals.length === 0 && <p className="text-sm text-muted-foreground">Keine Deals vorhanden</p>}
           </CardContent>
         </Card>
 
-        {/* Middle: Offene Aufgaben */}
         <Card>
           <CardHeader><CardTitle className="text-base">Offene Aufgaben</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {tasks.filter(t => t.status !== 'Erledigt' && t.due_date && new Date(t.due_date) <= new Date()).slice(0, 8).map(t => {
-              const overdue = new Date(t.due_date) < new Date();
-              return (
-                <div key={t.id} className="flex items-center justify-between text-sm">
-                  <span className="truncate flex-1">{t.title}</span>
-                  <span className={`text-xs ${overdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>{t.due_date}</span>
-                </div>
-              );
-            })}
+            {tasks.filter(t => t.status !== 'Erledigt').slice(0, 8).map(t => (
+              <div key={t.id} className="flex items-center justify-between text-sm">
+                <span className="truncate flex-1">{t.title}</span>
+                <span className={`text-xs ${t.due_date && new Date(t.due_date) < new Date() ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>{t.due_date || '–'}</span>
+              </div>
+            ))}
             {tasks.filter(t => t.status !== 'Erledigt').length === 0 && <p className="text-sm text-muted-foreground">Keine offenen Aufgaben</p>}
           </CardContent>
         </Card>
 
-        {/* Right: Team Quick View */}
-        <Card className="cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all" onClick={() => navigate('/performance')}>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/sales/kpis')}>
           <CardHeader><CardTitle className="text-base">Setter KPIs (Woche)</CardTitle></CardHeader>
           <CardContent>
             {setterKPIs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Keine Daten diese Woche</p>
+              <p className="text-sm text-muted-foreground">Keine Setter im Team</p>
             ) : (
               <div className="space-y-3">
-                {setterKPIs.slice(0, 5).map((s, i) => (
+                {setterKPIs.map((s, i) => (
                   <div key={s.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-primary w-4">{i + 1}</span>
