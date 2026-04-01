@@ -17,6 +17,7 @@ import Aufgaben from "./pages/Aufgaben.tsx";
 import Creatives from "./pages/Creatives.tsx";
 import CreativeDetail from "./pages/CreativeDetail.tsx";
 import CreativeReview from "./pages/CreativeReview.tsx";
+import Dateien from "./pages/Dateien.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
