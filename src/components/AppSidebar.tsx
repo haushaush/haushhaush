@@ -1,4 +1,4 @@
-import { Home, Users, FolderOpen, BarChart3, Euro, UserCircle, ClipboardList, Palette, LogOut } from 'lucide-react';
+import { Home, Users, FolderOpen, BarChart3, Euro, UserCircle, ClipboardList, Palette, HardDrive, LogOut } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,12 +11,13 @@ import { Button } from '@/components/ui/button';
 const navItems = [
   { title: 'Dashboard', url: '/', icon: Home },
   { title: 'Kunden', url: '/kunden', icon: Users },
+  { title: 'Creatives', url: '/creatives', icon: Palette },
+  { title: 'Dateien', url: '/dateien', icon: HardDrive },
   { title: 'Projekte', url: '/projekte', icon: FolderOpen },
   { title: 'KPI', url: '/kpi', icon: BarChart3 },
   { title: 'Finanzen', url: '/finanzen', icon: Euro },
   { title: 'Mitarbeiter', url: '/mitarbeiter', icon: UserCircle },
   { title: 'Aufgaben', url: '/aufgaben', icon: ClipboardList },
-  { title: 'Creatives', url: '/creatives', icon: Palette },
 ];
 
 export function AppSidebar() {

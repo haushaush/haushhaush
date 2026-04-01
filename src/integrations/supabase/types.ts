@@ -316,6 +316,111 @@ export type Database = {
           },
         ]
       }
+      drive_connection: {
+        Row: {
+          access_token: string | null
+          connected_at: string | null
+          expires_at: string | null
+          google_email: string | null
+          id: string
+          refresh_token: string | null
+          root_folder_id: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          connected_at?: string | null
+          expires_at?: string | null
+          google_email?: string | null
+          id?: string
+          refresh_token?: string | null
+          root_folder_id?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          connected_at?: string | null
+          expires_at?: string | null
+          google_email?: string | null
+          id?: string
+          refresh_token?: string | null
+          root_folder_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      drive_folder_mappings: {
+        Row: {
+          created_at: string | null
+          drive_folder_id: string
+          drive_folder_name: string | null
+          drive_folder_url: string | null
+          entity_id: string | null
+          entity_type: string
+          folder_section: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          drive_folder_id: string
+          drive_folder_name?: string | null
+          drive_folder_url?: string | null
+          entity_id?: string | null
+          entity_type: string
+          folder_section?: string | null
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          drive_folder_id?: string
+          drive_folder_name?: string | null
+          drive_folder_url?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          folder_section?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      drive_pinned_files: {
+        Row: {
+          drive_file_id: string
+          drive_url: string | null
+          entity_id: string | null
+          entity_type: string | null
+          file_name: string | null
+          id: string
+          mime_type: string | null
+          pinned_at: string | null
+          pinned_by: string
+          thumbnail_url: string | null
+        }
+        Insert: {
+          drive_file_id: string
+          drive_url?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          file_name?: string | null
+          id?: string
+          mime_type?: string | null
+          pinned_at?: string | null
+          pinned_by: string
+          thumbnail_url?: string | null
+        }
+        Update: {
+          drive_file_id?: string
+          drive_url?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          file_name?: string | null
+          id?: string
+          mime_type?: string | null
+          pinned_at?: string | null
+          pinned_by?: string
+          thumbnail_url?: string | null
+        }
+        Relationships: []
+      }
       finance: {
         Row: {
           betrag: number
