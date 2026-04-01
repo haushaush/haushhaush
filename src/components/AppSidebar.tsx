@@ -86,7 +86,9 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
-  const { signOut, user } = useAuth();
+  const { signOut, user, isAdminOrManager } = useAuth();
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const [pendingCount, setPendingCount] = useState(0);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
