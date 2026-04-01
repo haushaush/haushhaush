@@ -24,10 +24,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [clientsRes, projectsRes, financeRes] = await Promise.all([
+      const [clientsRes, projectsRes, financeRes, creativeRes] = await Promise.all([
         supabase.from('clients').select('*'),
         supabase.from('projects').select('*'),
         supabase.from('finance').select('*'),
+        supabase.from('creative_projects').select('*'),
       ]);
       const clients = clientsRes.data || [];
       const projects = projectsRes.data || [];
