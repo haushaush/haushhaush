@@ -1,4 +1,4 @@
-import { Home, Users, FolderOpen, BarChart3, Euro, UserCircle, ClipboardList, Palette, LogOut } from 'lucide-react';
+import { Home, Users, FolderOpen, BarChart3, Euro, UserCircle, ClipboardList, Palette, HardDrive, LogOut } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
