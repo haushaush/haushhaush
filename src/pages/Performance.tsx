@@ -154,6 +154,7 @@ export default function Performance() {
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="sales" className="min-h-[44px]">Sales KPIs</TabsTrigger>
           <TabsTrigger value="ads" className="min-h-[44px]">Ad Performance</TabsTrigger>
+          <TabsTrigger value="metakai" className="min-h-[44px]">Meta KAI</TabsTrigger>
           <TabsTrigger value="vorquali" className="min-h-[44px]">Vorquali</TabsTrigger>
           <TabsTrigger value="fulfillment" className="min-h-[44px]">Fulfillment</TabsTrigger>
         </TabsList>
