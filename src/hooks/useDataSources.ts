@@ -158,6 +158,97 @@ export function useTeam(): DataResult<any[]> {
   return { data, loading, error, refetch };
 }
 
+// === PROJECTS ===
+export function useProjects(): DataResult<any[]> {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const { data: d, error: e } = await supabase.from('projects').select('*');
+    setData(d || []);
+    setError(e?.message || null);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { refetch(); }, [refetch]);
+  useAutoRefresh(refetch);
+  return { data, loading, error, refetch };
+}
+
+// === EFFIZIENZ SCORE ===
+// TODO: enhance with n8n webhook data when fulfillment tracking is live
+export interface EffizienzResult {
+  score: number;
+  scoreA: number;
+  scoreB: number;
+  scoreC: number;
+  avgDaysOpen: number;
+  loading: boolean;
+}
+
+export function useEffizienzScore(): EffizienzResult {
+  const [result, setResult] = useState<EffizienzResult>({ score: 0, scoreA: 100, scoreB: 100, scoreC: 100, avgDaysOpen: 0, loading: true });
+
+  const compute = useCallback(async () => {
+    try {
+      const [projectsRes, tasksRes, dealsRes] = await Promise.all([
+        supabase.from('projects').select('*'),
+        supabase.from('tasks').select('*').eq('status', 'Abgeschlossen'),
+        supabase.from('close_deals').select('*').not('start_datum', 'is', null),
+      ]);
+
+      const projects = projectsRes.data || [];
+      const closedTasks = tasksRes.data || [];
+      const deals = dealsRes.data || [];
+
+      // Sub-metric A: Deadline compliance (40%)
+      const withDue = projects.filter(p => p.enddatum);
+      let scoreA = 100;
+      if (withDue.length > 0) {
+        const onTime = withDue.filter(p => p.status === 'Abgeschlossen' && p.updated_at && p.updated_at <= p.enddatum + 'T23:59:59').length;
+        // If none completed yet, use ratio of not-overdue
+        const notOverdue = withDue.filter(p => p.status !== 'Abgeschlossen' ? new Date(p.enddatum) >= new Date() : true).length;
+        scoreA = Math.round((notOverdue / withDue.length) * 100);
+      }
+
+      // Sub-metric B: Avg ticket processing time (40%)
+      let scoreB = 100;
+      let avgDaysOpen = 0;
+      if (closedTasks.length > 0) {
+        const totalDays = closedTasks.reduce((sum, t) => {
+          const created = new Date(t.created_at).getTime();
+          const updated = new Date(t.updated_at).getTime();
+          return sum + (updated - created) / 86400000;
+        }, 0);
+        avgDaysOpen = totalDays / closedTasks.length;
+        scoreB = Math.max(0, Math.round(100 - ((avgDaysOpen - 3) / 11 * 100)));
+      }
+
+      // Sub-metric C: Laufzeit compliance (20%)
+      let scoreC = 100;
+      if (deals.length > 0) {
+        const onTime = deals.filter(d => {
+          const created = new Date(d.created_at);
+          const start = new Date(d.start_datum);
+          const diff = Math.abs((start.getTime() - created.getTime()) / 86400000);
+          return diff <= 7;
+        }).length;
+        scoreC = Math.round((onTime / deals.length) * 100);
+      }
+
+      const score = Math.round(scoreA * 0.4 + scoreB * 0.4 + scoreC * 0.2);
+      setResult({ score, scoreA, scoreB, scoreC, avgDaysOpen, loading: false });
+    } catch {
+      setResult(prev => ({ ...prev, loading: false }));
+    }
+  }, []);
+
+  useEffect(() => { compute(); }, [compute]);
+  return result;
+}
+
 // === ALERTS (aggregated) ===
 export interface Alert {
   severity: 'red' | 'yellow' | 'blue';
