@@ -103,6 +103,18 @@ export function AppSidebar() {
 
   useEffect(() => { saveSidebarState(openGroups); }, [openGroups]);
 
+  // Fetch pending employee requests count
+  useEffect(() => {
+    if (!isAdminOrManager) return;
+    const fetch = async () => {
+      const { count } = await supabase.from('employee_requests').select('*', { count: 'exact', head: true }).eq('status', 'Ausstehend');
+      setPendingCount(count || 0);
+    };
+    fetch();
+    const interval = setInterval(fetch, 60000);
+    return () => clearInterval(interval);
+  }, [isAdminOrManager]);
+
   const toggleTheme = () => {
     const next = theme === 'light' ? 'dark' : 'light';
     setTheme(next);
