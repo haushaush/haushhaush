@@ -8,6 +8,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import Auth from "./pages/Auth.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Kunden from "./pages/Kunden.tsx";
+import KundenDetail from "./pages/KundenDetail.tsx";
 import Projekte from "./pages/Projekte.tsx";
 import KPI from "./pages/KPI.tsx";
 import Finanzen from "./pages/Finanzen.tsx";
