@@ -29,6 +29,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<DashboardLayout><Dashboard /></DashboardLayout>} />
             <Route path="/kunden" element={<DashboardLayout><Kunden /></DashboardLayout>} />
+            <Route path="/kunden/:id" element={<DashboardLayout><KundenDetail /></DashboardLayout>} />
             <Route path="/projekte" element={<DashboardLayout><Projekte /></DashboardLayout>} />
             <Route path="/kpi" element={<DashboardLayout><KPI /></DashboardLayout>} />
             <Route path="/finanzen" element={<DashboardLayout><Finanzen /></DashboardLayout>} />
