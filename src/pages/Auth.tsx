@@ -126,7 +126,7 @@ export default function Auth() {
             className="w-full h-12 rounded-[10px] text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
             onClick={() => navigate('/registrierung')}
           >
-            Als Mitarbeiter bewerben →
+            Als Mitarbeiter registrieren →
           </Button>
 
           <p className="text-center mt-4">
