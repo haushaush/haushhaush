@@ -564,7 +564,7 @@ export default function Dashboard() {
                           <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{s.calls} Calls</span>
                           <span className="text-[11px] text-muted-foreground flex items-center gap-1"><CalendarCheck className="h-3 w-3" />{s.tq}% TQ</span>
                           <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Trophy className="h-3 w-3" />{s.closes} Abschl.</span>
-                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Banknote className="h-3 w-3" />€{s.revenue.toLocaleString('de-DE')}</span>
+                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Banknote className="h-3 w-3" />{formatValue(s.revenue, 'currency', true)}</span>
                         </div>
                       </div>
                       <p className="text-sm font-semibold text-primary shrink-0">€{s.revenue.toLocaleString('de-DE')}</p>
