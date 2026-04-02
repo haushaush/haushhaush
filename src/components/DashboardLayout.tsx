@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { MobileTabBar } from '@/components/MobileTabBar';
+import { NotificationBell } from '@/components/NotificationBell';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
