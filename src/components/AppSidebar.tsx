@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight, Sun, Moon } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight, Sun, Moon, Bell } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +7,6 @@ import {
   Sidebar, SidebarContent, SidebarFooter, useSidebar,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -89,6 +88,7 @@ export function AppSidebar() {
   const { signOut, user, isAdminOrManager } = useAuth();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [pendingCount, setPendingCount] = useState(0);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
     const result = { ...saved };
@@ -115,6 +115,35 @@ export function AppSidebar() {
     return () => clearInterval(interval);
   }, [isAdminOrManager]);
 
+  // Fetch unread notification count
+  useEffect(() => {
+    if (!user) return;
+    const fetchCount = async () => {
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('read', false)
+        .eq('archived', false);
+      setUnreadNotifs(count || 0);
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000);
+
+    // Realtime updates
+    const channel = supabase
+      .channel('sidebar-notif-count')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => {
+        fetchCount();
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const toggleTheme = () => {
     const next = theme === 'light' ? 'dark' : 'light';
     setTheme(next);
@@ -135,6 +164,8 @@ export function AppSidebar() {
     if (!item.children) return isActive(item.url);
     return item.children.some(c => isActive(c.url)) || location.pathname.startsWith(item.url + '/');
   };
+
+  const nachrichtenActive = location.pathname === '/nachrichten';
 
   return (
     <Sidebar collapsible="icon" className="hidden md:flex border-r border-border">
@@ -208,6 +239,24 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border p-3 space-y-2">
+        {/* Nachrichten */}
+        <NavLink to="/nachrichten" className={cn(
+          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[40px] relative',
+          nachrichtenActive ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60',
+          unreadNotifs > 0 && !nachrichtenActive && 'border border-destructive/40 bg-destructive/5'
+        )}>
+          <div className="relative shrink-0">
+            <Bell className="h-4 w-4" aria-hidden="true" />
+            {unreadNotifs > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center h-[16px] min-w-[16px] px-0.5 text-[9px] font-bold rounded-full bg-destructive text-destructive-foreground">
+                {unreadNotifs > 99 ? '99+' : unreadNotifs}
+              </span>
+            )}
+          </div>
+          {!collapsed && <span>Nachrichten</span>}
+        </NavLink>
+
+        {/* Einstellungen */}
         <NavLink to="/einstellungen" className={cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[40px]',
           location.pathname === '/einstellungen' ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
