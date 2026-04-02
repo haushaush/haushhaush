@@ -23,6 +23,7 @@ import Einstellungen from "./pages/Einstellungen.tsx";
 import Creatives from "./pages/Creatives.tsx";
 import CreativeDetail from "./pages/CreativeDetail.tsx";
 import CreativeReview from "./pages/CreativeReview.tsx";
+import Nachrichten from "./pages/Nachrichten.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
