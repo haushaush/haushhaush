@@ -394,24 +394,24 @@ export default function Dashboard() {
       {/* 4. Alerts — wrapped container */}
       {alerts.length > 0 && (
         <div className="bg-card border border-border rounded-[14px] p-5 px-6">
-          <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-3 flex items-center gap-2">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.06em] mb-3 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" /> Handlungsbedarf
           </p>
           <div className="space-y-2">
             {alerts.map((a, i) => (
               <div
                 key={i}
-                className={`flex items-center justify-between rounded-lg px-4 py-3 text-sm cursor-pointer transition-colors border-l-[3px] hover:bg-accent ${
+                className={`alert-holo ${
                   a.severity === 'red'
-                    ? 'border-l-destructive'
+                    ? 'alert-holo-red'
                     : a.severity === 'yellow'
-                    ? 'border-l-warning'
-                    : 'border-l-primary'
+                    ? 'alert-holo-orange'
+                    : 'alert-holo-teal'
                 }`}
                 onClick={() => navigate(a.link)}
               >
                 <span className="text-foreground">{a.message}</span>
-                <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0 ml-3">
+                <span className="text-[13px] text-muted-foreground flex items-center gap-1 shrink-0 ml-3 hover:text-primary transition-colors">
                   Ansehen <ArrowRight className="h-3 w-3" />
                 </span>
               </div>
