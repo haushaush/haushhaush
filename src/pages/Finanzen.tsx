@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { QontoBuchhaltung } from '@/components/finanzen/QontoBuchhaltung';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -209,6 +210,9 @@ export default function Finanzen() {
           </Card>
 
           <Button variant="outline" onClick={() => toast({ title: 'DATEV Export', description: 'CSV wird generiert...' })}>DATEV Export (CSV)</Button>
+
+          {/* Qonto Section */}
+          <QontoBuchhaltung />
         </TabsContent>
 
         <TabsContent value="laufzeiten" className="space-y-4 mt-4">
