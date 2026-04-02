@@ -27,6 +27,7 @@ import Creatives from "./pages/Creatives.tsx";
 import CreativeDetail from "./pages/CreativeDetail.tsx";
 import CreativeReview from "./pages/CreativeReview.tsx";
 import Nachrichten from "./pages/Nachrichten.tsx";
+import ApiDocs from "./pages/ApiDocs.tsx";
 import ErrorPage from "./pages/ErrorPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
