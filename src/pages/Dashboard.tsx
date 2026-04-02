@@ -383,7 +383,7 @@ export default function Dashboard() {
       </div>
 
       {/* 3. Quick Navigation */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
         {NAV_TILES.map(tile => (
           <Card
             key={tile.href}
