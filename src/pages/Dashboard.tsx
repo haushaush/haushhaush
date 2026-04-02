@@ -374,17 +374,17 @@ export default function Dashboard() {
       </div>
 
       {/* 3. Quick Navigation */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {NAV_TILES.map(tile => (
           <Card
             key={tile.href}
-            className="cursor-pointer hover:border-primary transition-all group rounded-xl"
+            className="cursor-pointer hover:border-primary transition-all group rounded-xl overflow-hidden min-w-0"
             onClick={() => navigate(tile.href)}
           >
             <CardContent className="px-4 py-5 flex flex-col items-center text-center gap-2">
-              <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
-              <p className="text-sm font-medium text-foreground leading-tight">{tile.label}</p>
-              <p className="text-xs text-muted-foreground hidden sm:block">{tile.sub}</p>
+              <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+              <p className="text-[14px] font-medium text-foreground leading-tight truncate w-full">{tile.label}</p>
+              <p className="text-xs text-muted-foreground hidden sm:block truncate w-full">{tile.sub}</p>
             </CardContent>
           </Card>
         ))}
