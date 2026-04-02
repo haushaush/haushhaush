@@ -24,8 +24,8 @@
     --muted: 240 5% 96%;
     --muted-foreground: 240 4% 46%;
 
-    --accent: 174 90% 31%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 174 40% 95%;
+    --accent-foreground: 174 90% 31%;
 
     --destructive: 4 90% 58%;
     --destructive-foreground: 0 0% 100%;
@@ -63,6 +63,17 @@
     --space-8: 32px;
     --space-10: 40px;
     --space-12: 48px;
+
+    /* Semantic colors */
+    --color-teal: 174 90% 31%;
+    --color-teal-hover: 174 100% 24%;
+    --color-red: 4 100% 59%;
+    --color-red-hover: 4 100% 42%;
+    --color-orange: 36 100% 52%;
+    --color-orange-hover: 36 100% 44%;
+    --color-green: 142 71% 45%;
+    --color-green-hover: 142 71% 33%;
+    --color-blue: 211 100% 50%;
   }
 
   .dark {
@@ -84,8 +95,8 @@
     --muted: 0 0% 17%;
     --muted-foreground: 240 2% 54%;
 
-    --accent: 174 90% 31%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 174 50% 14%;
+    --accent-foreground: 174 90% 31%;
 
     --destructive: 4 90% 58%;
     --destructive-foreground: 0 0% 100%;
@@ -108,6 +119,17 @@
     --sidebar-accent-foreground: 174 90% 31%;
     --sidebar-border: 0 0% 17%;
     --sidebar-ring: 174 90% 31%;
+
+    /* Semantic colors dark */
+    --color-teal: 174 90% 39%;
+    --color-teal-hover: 174 90% 45%;
+    --color-red: 4 100% 62%;
+    --color-red-hover: 4 100% 55%;
+    --color-orange: 36 100% 52%;
+    --color-orange-hover: 36 100% 60%;
+    --color-green: 142 71% 50%;
+    --color-green-hover: 142 71% 58%;
+    --color-blue: 211 100% 55%;
   }
 }
 
@@ -155,9 +177,7 @@
     font-size: 10px;
     font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    letter-spacing: 0.08em;
     white-space: nowrap;
     max-width: 100%;
   }
@@ -176,12 +196,72 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Cards: consistent overflow protection */
-  .rounded-lg[class*="border"][class*="bg-card"],
-  .rounded-xl[class*="border"],
-  [class*="rounded-[14px]"] {
-    overflow: hidden;
-    min-width: 0;
+  /* Holo alert rows */
+  .alert-holo {
+    @apply flex items-center justify-between rounded-lg px-4 py-3 text-sm cursor-pointer border-l-[3px] transition-all duration-150;
+  }
+  .alert-holo-red {
+    border-left-color: hsl(var(--color-red));
+    background: hsl(var(--color-red) / 0.08);
+  }
+  .alert-holo-red:hover {
+    background: hsl(var(--color-red) / 0.14);
+  }
+  .alert-holo-orange {
+    border-left-color: hsl(var(--color-orange));
+    background: hsl(var(--color-orange) / 0.08);
+  }
+  .alert-holo-orange:hover {
+    background: hsl(var(--color-orange) / 0.14);
+  }
+  .alert-holo-teal {
+    border-left-color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.08);
+  }
+  .alert-holo-teal:hover {
+    background: hsl(var(--primary) / 0.14);
+  }
+
+  /* Status badges */
+  .badge-success {
+    background: hsl(var(--color-green) / 0.12);
+    color: hsl(142 71% 25%);
+  }
+  .dark .badge-success {
+    background: hsl(var(--color-green) / 0.18);
+    color: hsl(142 60% 70%);
+  }
+  .badge-warning {
+    background: hsl(var(--color-orange) / 0.12);
+    color: hsl(36 80% 30%);
+  }
+  .dark .badge-warning {
+    background: hsl(var(--color-orange) / 0.18);
+    color: hsl(36 80% 70%);
+  }
+  .badge-danger {
+    background: hsl(var(--color-red) / 0.12);
+    color: hsl(4 80% 30%);
+  }
+  .dark .badge-danger {
+    background: hsl(var(--color-red) / 0.18);
+    color: hsl(4 80% 70%);
+  }
+  .badge-info {
+    background: hsl(var(--color-blue) / 0.12);
+    color: hsl(211 80% 30%);
+  }
+  .dark .badge-info {
+    background: hsl(var(--color-blue) / 0.18);
+    color: hsl(211 80% 70%);
+  }
+  .badge-teal {
+    background: hsl(var(--primary) / 0.12);
+    color: hsl(174 80% 22%);
+  }
+  .dark .badge-teal {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(174 70% 60%);
   }
 }
 
@@ -197,6 +277,26 @@
 
 [data-sidebar="sidebar"][data-state="collapsed"] .sidebar-nav-item span:not([class*="absolute"]):not([class*="h-["]) {
   display: none;
+}
+
+/* Input focus states */
+@layer components {
+  input:focus, select:focus, textarea:focus, [role="combobox"]:focus {
+    border-color: hsl(var(--primary)) !important;
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12) !important;
+    outline: none !important;
+  }
+}
+
+/* Interactive card hover */
+@layer components {
+  .card-interactive {
+    @apply transition-all duration-150;
+  }
+  .card-interactive:hover {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 2px 12px hsl(var(--primary) / 0.10);
+  }
 }
 
 @keyframes bounce-once {
