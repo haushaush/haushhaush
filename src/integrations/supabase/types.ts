@@ -1193,6 +1193,60 @@ export type Database = {
           },
         ]
       }
+      qonto_transactions: {
+        Row: {
+          amount_cents: number | null
+          amount_currency: string | null
+          attachment_ids: Json | null
+          category: string | null
+          counterparty_name: string | null
+          created_at: string | null
+          direction: string | null
+          emitted_at: string | null
+          id: string
+          label: string | null
+          qonto_id: string
+          raw: Json | null
+          reference: string | null
+          settled_at: string | null
+          status: string | null
+        }
+        Insert: {
+          amount_cents?: number | null
+          amount_currency?: string | null
+          attachment_ids?: Json | null
+          category?: string | null
+          counterparty_name?: string | null
+          created_at?: string | null
+          direction?: string | null
+          emitted_at?: string | null
+          id?: string
+          label?: string | null
+          qonto_id: string
+          raw?: Json | null
+          reference?: string | null
+          settled_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          amount_cents?: number | null
+          amount_currency?: string | null
+          attachment_ids?: Json | null
+          category?: string | null
+          counterparty_name?: string | null
+          created_at?: string | null
+          direction?: string | null
+          emitted_at?: string | null
+          id?: string
+          label?: string | null
+          qonto_id?: string
+          raw?: Json | null
+          reference?: string | null
+          settled_at?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       recurring_revenues: {
         Row: {
           client_name: string
