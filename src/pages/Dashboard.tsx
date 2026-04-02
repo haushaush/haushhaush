@@ -276,7 +276,7 @@ export default function Dashboard() {
               <p className="kpi-label text-muted-foreground">CASH COLLECT</p>
               <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Wallet className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
             </div>
-            <p className="kpi-value text-foreground">{cashCollectTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+            <p className="kpi-value text-foreground">{formatValue(cashCollectTotal, 'currency', true)}</p>
             <p className="kpi-sub text-muted-foreground mt-0.5">{cashCollect.length} Rechnungen fällig</p>
             {cashCollectOverdue > 0 && <Badge variant="destructive" className="text-[10px] mt-2">⚠ {cashCollectOverdue} überfällig</Badge>}
           </CardContent>
