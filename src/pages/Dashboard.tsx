@@ -87,8 +87,16 @@ export default function Dashboard() {
   const salesPerf = useSalesPerformance(salesPeriod);
   const salesPerfMonth = useSalesPerformance('month');
   const effizienz = useEffizienzScore();
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
 
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
+  const isMobile = windowWidth < 640;
+  const fmtCurrency = (v: number) => formatValue(v, 'currency', isMobile);
 
   const loading = deals.loading || revenue.loading || invoices.loading || team.loading || tasks.loading;
 
