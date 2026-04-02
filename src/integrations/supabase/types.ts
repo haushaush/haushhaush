@@ -884,6 +884,8 @@ export type Database = {
       notifications: {
         Row: {
           action_url: string | null
+          archived: boolean | null
+          archived_at: string | null
           body: string | null
           channel: string
           created_at: string | null
@@ -893,13 +895,19 @@ export type Database = {
           metadata: Json | null
           preview: string | null
           read: boolean | null
+          reply_to_id: string | null
+          sender_avatar: string | null
+          sender_name: string | null
           source_avatar_url: string | null
           source_name: string | null
+          tag: string | null
           title: string
           user_id: string
         }
         Insert: {
           action_url?: string | null
+          archived?: boolean | null
+          archived_at?: string | null
           body?: string | null
           channel: string
           created_at?: string | null
@@ -909,13 +917,19 @@ export type Database = {
           metadata?: Json | null
           preview?: string | null
           read?: boolean | null
+          reply_to_id?: string | null
+          sender_avatar?: string | null
+          sender_name?: string | null
           source_avatar_url?: string | null
           source_name?: string | null
+          tag?: string | null
           title: string
           user_id: string
         }
         Update: {
           action_url?: string | null
+          archived?: boolean | null
+          archived_at?: string | null
           body?: string | null
           channel?: string
           created_at?: string | null
@@ -925,12 +939,24 @@ export type Database = {
           metadata?: Json | null
           preview?: string | null
           read?: boolean | null
+          reply_to_id?: string | null
+          sender_avatar?: string | null
+          sender_name?: string | null
           source_avatar_url?: string | null
           source_name?: string | null
+          tag?: string | null
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       probewoche_candidates: {
         Row: {
