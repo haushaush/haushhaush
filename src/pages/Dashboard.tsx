@@ -2,15 +2,19 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDeals, useRevenue, useInvoices, useSalesPerformance, useTasks, useTeam, useAlerts, useEffizienzScore } from '@/hooks/useDataSources';
+import { useNotifications } from '@/hooks/useNotifications';
+import { NotificationDrawer } from '@/components/NotificationDrawer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Euro, Users, Clock, TrendingUp, BarChart3, Target, FolderOpen, CreditCard, UserCircle, ListTodo, AlertTriangle, ArrowRight, ChevronRight, Phone, CalendarCheck, Trophy, Banknote, Wallet, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Euro, Users, Clock, TrendingUp, BarChart3, Target, FolderOpen, CreditCard, UserCircle, ListTodo, AlertTriangle, ArrowRight, ChevronRight, Phone, CalendarCheck, Trophy, Banknote, Wallet, Zap, ArrowUpRight, ArrowDownRight, Bell, Mail, Hash, CheckSquare, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { NotificationChannel } from '@/hooks/useNotifications';
 
 const LEISTUNG_SHORT: Record<string, string> = {
   'Meta Werbeanzeigen': 'Meta Ads',
@@ -28,7 +32,12 @@ function formatDateLong() {
   return new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function getFirstName(user: any) {
+function getFirstName(user: any, teamData?: any[]) {
+  // Try team table first
+  if (teamData && user?.email) {
+    const member = teamData.find((m: any) => m.email === user.email);
+    if (member?.name) return member.name.split(' ')[0];
+  }
   const meta = user?.user_metadata;
   if (meta?.full_name) return meta.full_name.split(' ')[0];
   if (meta?.name) return meta.name.split(' ')[0];
@@ -37,19 +46,73 @@ function getFirstName(user: any) {
   return part.charAt(0).toUpperCase() + part.slice(1);
 }
 
-// --- Inline SVG illustration ---
-function TrendIllustration() {
-  return (
-    <svg width="120" height="60" viewBox="0 0 120 60" fill="none" className="opacity-80" aria-hidden="true">
-      <path d="M5 50 Q20 45 30 35 T55 20 T80 15 T105 5" stroke="currentColor" strokeWidth="2.5" fill="none" className="text-primary" />
-      <circle cx="105" cy="5" r="4" className="fill-primary" />
-      <path d="M100 2 L105 5 L100 8" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary" />
-      <path d="M5 50 Q20 45 30 35 T55 20 T80 15 T105 5 L105 60 L5 60 Z" className="fill-primary/5" />
-    </svg>
-  );
+function getInitials(user: any, teamData?: any[]) {
+  if (teamData && user?.email) {
+    const member = teamData.find((m: any) => m.email === user.email);
+    if (member?.name) {
+      const parts = member.name.split(' ');
+      return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
+    }
+  }
+  const meta = user?.user_metadata;
+  const name = meta?.full_name || meta?.name || user?.email?.split('@')[0] || 'U';
+  const parts = name.split(' ');
+  return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
 }
 
-// --- Navigation tiles ---
+function getAvatarUrl(user: any) {
+  return user?.user_metadata?.avatar_url || null;
+}
+
+function timeAgo(dateStr: string): string {
+  const now = new Date();
+  const d = new Date(dateStr);
+  const diffMs = now.getTime() - d.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'Gerade eben';
+  if (mins < 60) return `vor ${mins} Min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `vor ${hours} Std`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Gestern';
+  if (days < 7) return `vor ${days} Tagen`;
+  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+}
+
+function getChannelIcon(channel: string) {
+  switch (channel) {
+    case 'intern': return <Bell className="h-2.5 w-2.5 text-white" />;
+    case 'email': return <Mail className="h-2.5 w-2.5 text-white" />;
+    case 'slack': return <Hash className="h-2.5 w-2.5 text-white" />;
+    case 'aufgabe': return <CheckSquare className="h-2.5 w-2.5 text-white" />;
+    case 'system': return <Info className="h-2.5 w-2.5 text-white" />;
+    default: return <Bell className="h-2.5 w-2.5 text-white" />;
+  }
+}
+
+function getChannelBg(channel: string) {
+  switch (channel) {
+    case 'intern': return 'bg-primary';
+    case 'email': return 'bg-blue-500';
+    case 'slack': return 'bg-purple-500';
+    case 'aufgabe': return 'bg-orange-500';
+    case 'system': return 'bg-muted-foreground';
+    default: return 'bg-muted-foreground';
+  }
+}
+
+export function categorizeNotification(title: string, preview: string | null, channel: string, metadata?: Record<string, any>): string | null {
+  const text = `${title} ${preview || ''}`.toLowerCase();
+  if (text.includes('rechnung') || text.includes('zahlung') || text.includes('überfällig')) return 'Finanzen';
+  if (text.includes('aufgabe') || text.includes('task') || text.includes('erledigt')) return 'Aufgabe';
+  if (text.includes('kunde') || text.includes('ampelstatus') || text.includes('laufzeit')) return 'Kunden';
+  if (text.includes('mitarbeiter') || text.includes('bewerbung') || text.includes('konto')) return 'Team';
+  if (text.includes('projekt') || text.includes('status')) return 'Projekt';
+  if (channel === 'slack') return 'Slack';
+  if (channel === 'email') return 'E-Mail';
+  return null;
+}
+
 const NAV_TILES = [
   { icon: BarChart3, label: 'Sales', sub: 'KPIs & Leaderboard', href: '/sales/kpis' },
   { icon: Target, label: 'Fulfillment', sub: 'Ad Performance', href: '/fulfillment/ads' },
@@ -73,6 +136,8 @@ export default function Dashboard() {
   const salesPerf = useSalesPerformance(salesPeriod);
   const salesPerfMonth = useSalesPerformance('month');
   const effizienz = useEffizienzScore();
+  const { notifications, loading: notifLoading, unreadCount, unreadByChannel, markAsRead, markAllAsRead } = useNotifications();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const loading = deals.loading || revenue.loading || invoices.loading || team.loading || tasks.loading;
 
@@ -84,7 +149,6 @@ export default function Dashboard() {
   const monthName = now.toLocaleDateString('de-DE', { month: 'long' });
 
   // CARD 1: Umsatz aktueller Monat
-  // TODO: replace with Buchhaltung API or DATEV export
   const umsatzThisMonth = useMemo(() => invoices.data
     .filter(i => i.status === 'Bezahlt' && new Date(i.created_at).getMonth() === currentMonth && new Date(i.created_at).getFullYear() === currentYear)
     .reduce((s, i) => s + Number(i.brutto || 0), 0), [invoices.data, currentMonth, currentYear]);
@@ -98,7 +162,6 @@ export default function Dashboard() {
   const umsatzTrend = umsatzLastMonth > 0 ? ((umsatzThisMonth - umsatzLastMonth) / umsatzLastMonth * 100) : null;
 
   // CARD 2: Cash Collect
-  // TODO: connect to Stripe/bank feed for actual cash received
   const cashCollect = useMemo(() => invoices.data
     .filter(i => ['Versendet', 'Überfällig'].includes(i.status || '') && i.faelligkeitsdatum && new Date(i.faelligkeitsdatum).getMonth() === currentMonth && new Date(i.faelligkeitsdatum).getFullYear() === currentYear)
     , [invoices.data, currentMonth, currentYear]);
@@ -106,13 +169,11 @@ export default function Dashboard() {
   const cashCollectOverdue = useMemo(() => cashCollect.filter(i => i.status === 'Überfällig').length, [cashCollect]);
 
   // CARD 3: Kunden
-  // TODO: sync live from Close CRM API
   const activeClients = useMemo(() => deals.data.filter(d => d.status === 'Aktiv').length, [deals.data]);
   const neukunden = useMemo(() => deals.data.filter(d => d.deal_type === 'Neukunde' && new Date(d.created_at).getMonth() === currentMonth && new Date(d.created_at).getFullYear() === currentYear).length, [deals.data, currentMonth, currentYear]);
   const upsells = useMemo(() => deals.data.filter(d => d.deal_type === 'Upsell' && new Date(d.created_at).getMonth() === currentMonth && new Date(d.created_at).getFullYear() === currentYear).length, [deals.data, currentMonth, currentYear]);
 
   // CARD 4: Top Vertriebler
-  // TODO: pull from Close CRM activities API
   const topSeller = useMemo(() => {
     const map = new Map<string, { revenue: number; closes: number }>();
     (salesPerfMonth.data || []).forEach(r => {
@@ -148,7 +209,6 @@ export default function Dashboard() {
     return d;
   }, []);
   const weekDeals = useMemo(() => deals.data.filter(d => new Date(d.created_at) >= weekStart), [deals.data, weekStart]);
-  const weekVolume = useMemo(() => weekDeals.reduce((s, d) => s + Number(d.wert_eur || 0), 0), [weekDeals]);
 
   // Sales top 3
   const salesTop3 = useMemo(() => {
@@ -173,8 +233,6 @@ export default function Dashboard() {
 
   // Revenue chart (last 6 months from invoices)
   const revenueChart = useMemo(() => {
-    // TODO: replace with Close CRM revenue data when integrated
-    // const data = useCloseRevenue() || useSupabaseRevenue()
     const months: { name: string; bezahlt: number; offen: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
@@ -199,90 +257,107 @@ export default function Dashboard() {
     tasks.refetch();
   };
 
+  // Notification click handler
+  const handleNotifClick = (n: any) => {
+    markAsRead(n.id);
+    if (n.action_url) {
+      navigate(n.action_url);
+    } else {
+      setDrawerOpen(true);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="space-y-6" role="status" aria-busy="true">
-        <div className="flex justify-between items-end">
-          <div><Skeleton className="h-8 w-64 mb-2" /><Skeleton className="h-4 w-40" /></div>
-          <Skeleton className="h-14 w-28" />
+      <div className="px-6 md:px-12 py-10 space-y-8" role="status" aria-busy="true">
+        <div className="flex flex-col items-center gap-4">
+          <Skeleton className="h-[72px] w-[72px] rounded-full" />
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-40" />
         </div>
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}</div>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Skeleton className="h-80 rounded-xl" />
-          <Skeleton className="h-80 rounded-xl" />
-          <Skeleton className="h-80 rounded-xl" />
+        <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-36 rounded-xl" />)}</div>
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-80 rounded-xl" />)}
         </div>
-        <Skeleton className="h-52 rounded-xl" />
       </div>
     );
   }
 
+  const avatarUrl = getAvatarUrl(user);
+  const initials = getInitials(user, team.data);
+  const firstName = getFirstName(user, team.data);
+
   return (
-    <div className="space-y-6">
-      {/* 1. Hero Header */}
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-[28px] font-semibold text-foreground leading-tight">
-            Herzlich Willkommen, {getFirstName(user)}! 👋
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">{formatDateLong()}</p>
-        </div>
-        <div className="hidden sm:block"><TrendIllustration /></div>
+    <div className="px-6 md:px-12 py-10 space-y-8">
+      {/* 1. Hero — Centered greeting with avatar */}
+      <div className="flex flex-col items-center text-center pt-2 pb-2">
+        <Avatar className="h-[72px] w-[72px] border-[3px] border-card mb-4">
+          {avatarUrl ? (
+            <AvatarImage src={avatarUrl} alt={firstName} />
+          ) : null}
+          <AvatarFallback className="bg-primary text-primary-foreground text-[28px] font-semibold">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <h1 className="text-[32px] font-bold text-foreground leading-tight tracking-[-0.02em]">
+          Herzlich Willkommen, {firstName}! 👋
+        </h1>
+        <p className="text-[15px] text-muted-foreground mt-1.5">{formatDateLong()}</p>
       </div>
 
       {/* 2. KPI Cards — 6 cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {/* CARD 1: Umsatz */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/finanzen')}>
-          <CardContent className="p-4 sm:p-5">
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px]" onClick={() => navigate('/finanzen')}>
+          <CardContent className="p-6">
             <div className="flex items-start justify-between mb-2">
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">UMSATZ</p>
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><TrendingUp className="h-4 w-4 text-primary" /></div>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><TrendingUp className="h-5 w-5 text-primary" /></div>
             </div>
-            <p className="text-lg sm:text-xl font-bold text-foreground">{umsatzThisMonth.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+            <p className="text-[28px] font-bold text-foreground leading-tight">{umsatzThisMonth.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
             <p className="text-[11px] text-muted-foreground mt-0.5">Bezahlt im {monthName} {currentYear}</p>
             {umsatzTrend !== null ? (
-              <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium mt-1.5 px-1.5 py-0.5 rounded-full ${umsatzTrend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'}`}>
+              <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium mt-2 px-1.5 py-0.5 rounded-full ${umsatzTrend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'}`}>
                 {umsatzTrend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                 {umsatzTrend >= 0 ? '+' : ''}{umsatzTrend.toFixed(1)}%
               </span>
-            ) : <span className="text-[10px] text-muted-foreground mt-1.5 inline-block">–</span>}
+            ) : <span className="text-[10px] text-muted-foreground mt-2 inline-block">–</span>}
           </CardContent>
         </Card>
 
         {/* CARD 2: Cash Collect */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/finanzen/rechnungen')}>
-          <CardContent className="p-4 sm:p-5">
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px]" onClick={() => navigate('/finanzen/rechnungen')}>
+          <CardContent className="p-6">
             <div className="flex items-start justify-between mb-2">
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">CASH COLLECT</p>
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Wallet className="h-4 w-4 text-primary" /></div>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Wallet className="h-5 w-5 text-primary" /></div>
             </div>
-            <p className="text-lg sm:text-xl font-bold text-foreground">{cashCollectTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+            <p className="text-[28px] font-bold text-foreground leading-tight">{cashCollectTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
             <p className="text-[11px] text-muted-foreground mt-0.5">{cashCollect.length} Rechnungen fällig</p>
-            {cashCollectOverdue > 0 && <Badge variant="destructive" className="text-[10px] mt-1.5">⚠ {cashCollectOverdue} überfällig</Badge>}
+            {cashCollectOverdue > 0 && <Badge variant="destructive" className="text-[10px] mt-2">⚠ {cashCollectOverdue} überfällig</Badge>}
           </CardContent>
         </Card>
 
         {/* CARD 3: Kunden */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/kunden')}>
-          <CardContent className="p-4 sm:p-5">
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px]" onClick={() => navigate('/kunden')}>
+          <CardContent className="p-6">
             <div className="flex items-start justify-between mb-2">
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">KUNDEN GESAMT</p>
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Users className="h-4 w-4 text-primary" /></div>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Users className="h-5 w-5 text-primary" /></div>
             </div>
-            <p className="text-lg sm:text-xl font-bold text-foreground">{activeClients}</p>
+            <p className="text-[28px] font-bold text-foreground leading-tight">{activeClients}</p>
             <p className="text-[11px] text-muted-foreground mt-0.5">{neukunden} Neukunden diesen Monat</p>
             <p className="text-[11px] text-muted-foreground">{upsells} Upsells</p>
           </CardContent>
         </Card>
 
         {/* CARD 4: Top Vertriebler */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/sales/kpis')}>
-          <CardContent className="p-4 sm:p-5">
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px]" onClick={() => navigate('/sales/kpis')}>
+          <CardContent className="p-6">
             <div className="flex items-start justify-between mb-2">
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">TOP VERTRIEBLER</p>
-              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:bg-amber-500/20 transition-colors"><Trophy className="h-4 w-4 text-amber-500" /></div>
+              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:bg-amber-500/20 transition-colors"><Trophy className="h-5 w-5 text-amber-500" /></div>
             </div>
             {topSeller ? (
               <>
@@ -297,19 +372,19 @@ export default function Dashboard() {
         </Card>
 
         {/* CARD 5: Offene Rechnungen */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/finanzen/rechnungen')}>
-          <CardContent className="p-4 sm:p-5">
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px]" onClick={() => navigate('/finanzen/rechnungen')}>
+          <CardContent className="p-6">
             <div className="flex items-start justify-between mb-2">
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">OFFENE RECHNUNGEN</p>
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Clock className="h-4 w-4 text-primary" /></div>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Clock className="h-5 w-5 text-primary" /></div>
             </div>
             {allPaid ? (
               <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Alle Rechnungen bezahlt 🎉</p>
             ) : (
               <>
-                <p className="text-lg sm:text-xl font-bold text-foreground">{openInvoicesTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+                <p className="text-[28px] font-bold text-foreground leading-tight">{openInvoicesTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">Gesamt ausstehend</p>
-                <div className="mt-1.5 space-y-0.5">
+                <div className="mt-2 space-y-0.5">
                   {sentInvoices.length > 0 && <p className="text-[11px] text-muted-foreground">{sentInvoices.length} Versendet · {sentTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
                   {overdueInvoices.length > 0 && <p className="text-[11px] text-destructive font-medium">{overdueInvoices.length} Überfällig · {overdueTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
                 </div>
@@ -322,22 +397,21 @@ export default function Dashboard() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => navigate('/projekte')}>
-                <CardContent className="p-4 sm:p-5">
+              <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px]" onClick={() => navigate('/projekte')}>
+                <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-2">
                     <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">EFFIZIENZ</p>
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Zap className="h-4 w-4 text-primary" /></div>
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Zap className="h-5 w-5 text-primary" /></div>
                   </div>
                   {effizienz.loading ? (
                     <Skeleton className="h-12 w-full rounded" />
                   ) : (
                     <>
                       <div className="flex items-end gap-1">
-                        <span className={`text-lg sm:text-xl font-bold ${effizienz.score >= 80 ? 'text-primary' : effizienz.score >= 60 ? 'text-amber-500' : 'text-destructive'}`}>{effizienz.score}</span>
+                        <span className={`text-[28px] font-bold leading-tight ${effizienz.score >= 80 ? 'text-primary' : effizienz.score >= 60 ? 'text-amber-500' : 'text-destructive'}`}>{effizienz.score}</span>
                         <span className="text-sm text-muted-foreground mb-0.5">/100</span>
                       </div>
-                      {/* Mini gauge arc */}
-                      <svg width="48" height="28" viewBox="0 0 48 28" className="mt-1" aria-hidden="true">
+                      <svg width="48" height="28" viewBox="0 0 48 28" className="mt-2" aria-hidden="true">
                         <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke="hsl(var(--border))" strokeWidth="3" strokeLinecap="round" />
                         <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke={effizienz.score >= 80 ? 'hsl(var(--primary))' : effizienz.score >= 60 ? '#FF9F0A' : '#FF3B30'} strokeWidth="3" strokeLinecap="round"
                           strokeDasharray={`${(effizienz.score / 100) * 62.8} 62.8`} />
@@ -362,62 +436,60 @@ export default function Dashboard() {
         {NAV_TILES.map(tile => (
           <Card
             key={tile.href}
-            className="cursor-pointer hover:border-primary transition-all group"
+            className="cursor-pointer hover:border-primary transition-all group rounded-xl"
             onClick={() => navigate(tile.href)}
           >
-            <CardContent className="p-3 sm:p-4 flex flex-col items-center text-center gap-1.5">
-              <tile.icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-              <p className="text-xs sm:text-sm font-medium text-foreground leading-tight">{tile.label}</p>
-              <p className="text-[10px] text-muted-foreground hidden sm:block">{tile.sub}</p>
+            <CardContent className="px-4 py-5 flex flex-col items-center text-center gap-2">
+              <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+              <p className="text-sm font-medium text-foreground leading-tight">{tile.label}</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">{tile.sub}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* 4. Alerts */}
+      {/* 4. Alerts — wrapped container */}
       {alerts.length > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-              <AlertTriangle className="h-4 w-4" /> Handlungsbedarf
-            </p>
-            <div className="space-y-2">
-              {alerts.map((a, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm cursor-pointer transition-colors ${
-                    a.severity === 'red'
-                      ? 'bg-destructive/5 dark:bg-destructive/10 border-l-[3px] border-l-destructive'
-                      : a.severity === 'yellow'
-                      ? 'bg-warning/5 dark:bg-warning/10 border-l-[3px] border-l-warning'
-                      : 'bg-primary/5 dark:bg-primary/10 border-l-[3px] border-l-primary'
-                  }`}
-                  onClick={() => navigate(a.link)}
-                >
-                  <span className="text-foreground">{a.message}</span>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0 ml-3">
-                    Ansehen <ArrowRight className="h-3 w-3" />
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-card border border-border rounded-[14px] p-5 px-6">
+          <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-3 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" /> Handlungsbedarf
+          </p>
+          <div className="space-y-2">
+            {alerts.map((a, i) => (
+              <div
+                key={i}
+                className={`flex items-center justify-between rounded-lg px-4 py-3 text-sm cursor-pointer transition-colors border-l-[3px] hover:bg-accent ${
+                  a.severity === 'red'
+                    ? 'border-l-destructive'
+                    : a.severity === 'yellow'
+                    ? 'border-l-warning'
+                    : 'border-l-primary'
+                }`}
+                onClick={() => navigate(a.link)}
+              >
+                <span className="text-foreground">{a.message}</span>
+                <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0 ml-3">
+                  Ansehen <ArrowRight className="h-3 w-3" />
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
-      {/* 5. 3-Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* 5. 4-Column Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Column 1: Letzte Abschlüsse */}
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="rounded-[14px]">
+          <CardHeader className="p-6 pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Letzte Abschlüsse</CardTitle>
+              <CardTitle className="text-base font-semibold">Letzte Abschlüsse</CardTitle>
               <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('/kunden/abschluesse')}>
-                Alle ansehen <ChevronRight className="h-3 w-3 ml-1" />
+                Alle <ChevronRight className="h-3 w-3 ml-1" />
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-0">
+          <CardContent className="p-6 pt-0 space-y-0">
             {deals.data.length === 0 ? (
               <div className="text-center py-6">
                 <p className="text-sm text-muted-foreground">Noch keine Abschlüsse diese Woche.</p>
@@ -464,16 +536,16 @@ export default function Dashboard() {
         </Card>
 
         {/* Column 2: Tasks */}
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="rounded-[14px]">
+          <CardHeader className="p-6 pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Dringendste Aufgaben</CardTitle>
+              <CardTitle className="text-base font-semibold">Dringendste Aufgaben</CardTitle>
               <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => navigate('/projekte/aufgaben')}>
                 + Neu
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="space-y-0">
+          <CardContent className="p-6 pt-0 space-y-0">
             {tasks.data.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">Keine offenen Aufgaben. 🎉</p>
             ) : (
@@ -482,7 +554,7 @@ export default function Dashboard() {
                 const isOverdue = t.due_date && t.due_date < today;
                 const isToday = t.due_date === today;
                 return (
-                  <div key={t.id} className={`flex items-center gap-3 py-2.5 ${i < tasks.data.length - 1 ? 'border-b border-border' : ''}`}>
+                  <div key={t.id} className={`flex items-center gap-3 py-2.5 leading-relaxed ${i < tasks.data.length - 1 ? 'border-b border-border' : ''}`}>
                     <Checkbox
                       className="shrink-0"
                       onCheckedChange={() => completeTask(t.id)}
@@ -510,10 +582,10 @@ export default function Dashboard() {
         </Card>
 
         {/* Column 3: Sales Top 3 */}
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className="rounded-[14px]">
+          <CardHeader className="p-6 pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Sales Performance</CardTitle>
+              <CardTitle className="text-base font-semibold">Sales Performance</CardTitle>
               <div className="flex rounded-lg border border-border overflow-hidden">
                 <button
                   className={`text-[11px] px-2.5 py-1 transition-colors ${salesPeriod === 'week' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
@@ -526,7 +598,7 @@ export default function Dashboard() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 pt-0">
             {salesTop3.length === 0 ? (
               <div className="text-center py-6">
                 <p className="text-sm text-muted-foreground">Noch keine Performance-Daten.</p>
@@ -540,7 +612,7 @@ export default function Dashboard() {
                       <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ backgroundColor: RANK_COLORS[i] }}>
                         {i + 1}
                       </div>
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
+                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
                         {s.initials}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -562,7 +634,7 @@ export default function Dashboard() {
               <>
                 <div className="mt-3" aria-label="Team Revenue Trend">
                   <ResponsiveContainer width="100%" height={40}>
-                    <LineChart data={salesTop3.map((s, i) => ({ name: s.name, val: s.revenue }))}>
+                    <LineChart data={salesTop3.map((s) => ({ name: s.name, val: s.revenue }))}>
                       <Line type="monotone" dataKey="val" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
@@ -574,14 +646,86 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Column 4: Notifications Preview */}
+        <Card className="rounded-[14px]">
+          <CardHeader className="p-6 pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base font-semibold">Benachrichtigungen</CardTitle>
+                {unreadCount > 0 && (
+                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </div>
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => setDrawerOpen(true)}>
+                Alle <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            {notifLoading ? (
+              <div className="space-y-3" aria-busy="true">
+                {[1,2,3].map(i => (
+                  <div key={i} className="flex gap-2 animate-pulse">
+                    <div className="w-5 h-5 rounded-full bg-muted shrink-0" />
+                    <div className="flex-1 space-y-1">
+                      <div className="h-3 bg-muted rounded w-3/4" />
+                      <div className="h-2 bg-muted rounded w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : notifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <Bell className="h-8 w-8 mb-2 opacity-30" />
+                <p className="text-xs">Keine Benachrichtigungen</p>
+              </div>
+            ) : (
+              <div className="space-y-0">
+                {notifications.slice(0, 6).map((n, i) => {
+                  const tag = categorizeNotification(n.title, n.preview, n.channel, n.metadata as Record<string, any>);
+                  return (
+                    <div
+                      key={n.id}
+                      className={`flex items-start gap-2.5 py-2.5 cursor-pointer rounded-lg px-1 -mx-1 hover:bg-accent transition-colors ${i < Math.min(notifications.length, 6) - 1 ? 'border-b border-border' : ''}`}
+                      onClick={() => handleNotifClick(n)}
+                    >
+                      <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5 ${getChannelBg(n.channel)}`}>
+                        {getChannelIcon(n.channel)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[13px] leading-tight text-foreground truncate ${!n.read ? 'font-medium' : 'font-normal'}`}>
+                          {n.title}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {tag && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{tag}</span>
+                          )}
+                          <span className="text-[11px] text-muted-foreground">{timeAgo(n.created_at)}</span>
+                        </div>
+                      </div>
+                      {!n.read && (
+                        <div className="flex-shrink-0 mt-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* 6. Revenue Chart */}
-      <Card>
-        <CardHeader className="pb-2">
+      <Card className="rounded-[14px]">
+        <CardHeader className="p-6 pb-2">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base">Umsatzentwicklung</CardTitle>
+              <CardTitle className="text-base font-semibold">Umsatzentwicklung</CardTitle>
               <p className="text-xs text-muted-foreground">letzte 6 Monate</p>
             </div>
             <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('/finanzen')}>
@@ -589,7 +733,7 @@ export default function Dashboard() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 pt-0">
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={revenueChart} barCategoryGap="20%">
               <XAxis dataKey="name" axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
@@ -604,6 +748,17 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+
+      {/* Notification Drawer */}
+      <NotificationDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        notifications={notifications}
+        loading={notifLoading}
+        unreadByChannel={unreadByChannel}
+        onMarkAsRead={markAsRead}
+        onMarkAllAsRead={markAllAsRead}
+      />
     </div>
   );
 }
