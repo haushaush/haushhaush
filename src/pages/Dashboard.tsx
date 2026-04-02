@@ -86,8 +86,8 @@ export default function Dashboard() {
   const salesPerf = useSalesPerformance(salesPeriod);
   const salesPerfMonth = useSalesPerformance('month');
   const effizienz = useEffizienzScore();
-  const { notifications, loading: notifLoading, unreadCount, unreadByChannel, markAsRead, markAllAsRead } = useNotifications();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+
+
 
   const loading = deals.loading || revenue.loading || invoices.loading || team.loading || tasks.loading;
 
