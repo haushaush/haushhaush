@@ -589,77 +589,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Column 4: Notifications Preview */}
-        <Card className="rounded-[14px]">
-          <CardHeader className="p-6 pb-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base font-semibold">Benachrichtigungen</CardTitle>
-                {unreadCount > 0 && (
-                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </div>
-              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => setDrawerOpen(true)}>
-                Alle <ArrowRight className="h-3 w-3 ml-1" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 pt-0">
-            {notifLoading ? (
-              <div className="space-y-3" aria-busy="true">
-                {[1,2,3].map(i => (
-                  <div key={i} className="flex gap-2 animate-pulse">
-                    <div className="w-5 h-5 rounded-full bg-muted shrink-0" />
-                    <div className="flex-1 space-y-1">
-                      <div className="h-3 bg-muted rounded w-3/4" />
-                      <div className="h-2 bg-muted rounded w-1/2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <Bell className="h-8 w-8 mb-2 opacity-30" />
-                <p className="text-xs">Keine Benachrichtigungen</p>
-              </div>
-            ) : (
-              <div className="space-y-0">
-                {notifications.slice(0, 6).map((n, i) => {
-                  const tag = categorizeNotification(n.title, n.preview, n.channel, n.metadata as Record<string, any>);
-                  return (
-                    <div
-                      key={n.id}
-                      className={`flex items-start gap-2.5 py-2.5 cursor-pointer rounded-lg px-1 -mx-1 hover:bg-accent transition-colors ${i < Math.min(notifications.length, 6) - 1 ? 'border-b border-border' : ''}`}
-                      onClick={() => handleNotifClick(n)}
-                    >
-                      <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5 ${getChannelBg(n.channel)}`}>
-                        {getChannelIcon(n.channel)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-[13px] leading-tight text-foreground truncate ${!n.read ? 'font-medium' : 'font-normal'}`}>
-                          {n.title}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {tag && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{tag}</span>
-                          )}
-                          <span className="text-[11px] text-muted-foreground">{timeAgo(n.created_at)}</span>
-                        </div>
-                      </div>
-                      {!n.read && (
-                        <div className="flex-shrink-0 mt-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       {/* 6. Revenue Chart */}
@@ -690,17 +619,6 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
-
-      {/* Notification Drawer */}
-      <NotificationDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        notifications={notifications}
-        loading={notifLoading}
-        unreadByChannel={unreadByChannel}
-        onMarkAsRead={markAsRead}
-        onMarkAllAsRead={markAllAsRead}
-      />
     </div>
   );
 }
