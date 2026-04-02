@@ -420,7 +420,7 @@ export default function Dashboard() {
       )}
 
       {/* 5. 4-Column Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Column 1: Letzte Abschlüsse */}
         <Card className="rounded-[14px]">
           <CardHeader className="p-6 pb-2">
