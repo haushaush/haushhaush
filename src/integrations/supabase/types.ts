@@ -842,6 +842,96 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          desktop_push_enabled: boolean | null
+          email_enabled: boolean | null
+          email_sync_interval: number | null
+          id: string
+          intern_enabled: boolean | null
+          slack_channels: Json | null
+          slack_enabled: boolean | null
+          sound_enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          desktop_push_enabled?: boolean | null
+          email_enabled?: boolean | null
+          email_sync_interval?: number | null
+          id?: string
+          intern_enabled?: boolean | null
+          slack_channels?: Json | null
+          slack_enabled?: boolean | null
+          sound_enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          desktop_push_enabled?: boolean | null
+          email_enabled?: boolean | null
+          email_sync_interval?: number | null
+          id?: string
+          intern_enabled?: boolean | null
+          slack_channels?: Json | null
+          slack_enabled?: boolean | null
+          sound_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          action_url: string | null
+          body: string | null
+          channel: string
+          created_at: string | null
+          external_id: string | null
+          external_thread_id: string | null
+          id: string
+          metadata: Json | null
+          preview: string | null
+          read: boolean | null
+          source_avatar_url: string | null
+          source_name: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          body?: string | null
+          channel: string
+          created_at?: string | null
+          external_id?: string | null
+          external_thread_id?: string | null
+          id?: string
+          metadata?: Json | null
+          preview?: string | null
+          read?: boolean | null
+          source_avatar_url?: string | null
+          source_name?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          body?: string | null
+          channel?: string
+          created_at?: string | null
+          external_id?: string | null
+          external_thread_id?: string | null
+          id?: string
+          metadata?: Json | null
+          preview?: string | null
+          read?: boolean | null
+          source_avatar_url?: string | null
+          source_name?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       probewoche_candidates: {
         Row: {
           bewertung: number | null
