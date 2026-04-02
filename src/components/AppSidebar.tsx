@@ -336,6 +336,33 @@ export function AppSidebar() {
         <nav className="flex-1 px-2 py-2 space-y-0.5" aria-label="Hauptnavigation">
           {navItems.map(renderNavItem)}
         </nav>
+
+        {/* Collapse/Expand toggle — above footer divider */}
+        <div className="px-2 pb-2">
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={toggleSidebar}
+                  className="h-9 w-full flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-all duration-150"
+                  aria-label="Menü ausklappen"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs">Menü ausklappen</TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              onClick={toggleSidebar}
+              className="h-9 w-full flex items-center gap-2 px-4 rounded-lg text-muted-foreground hover:bg-accent transition-all duration-150"
+              aria-label="Menü einklappen"
+            >
+              <ChevronLeft className="h-4 w-4 shrink-0" />
+              <span className="text-xs">Menü einklappen</span>
+            </button>
+          )}
+        </div>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border p-3 space-y-2">
@@ -347,30 +374,6 @@ export function AppSidebar() {
             </TooltipContent>
           </Tooltip>
         ) : nachrichtenLink}
-
-        {/* Collapse/Expand toggle */}
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={toggleSidebar}
-                className="h-8 w-8 mx-auto flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 transition-colors"
-                aria-label="Menü ausklappen"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">Menü ausklappen</TooltipContent>
-          </Tooltip>
-        ) : (
-          <button
-            onClick={toggleSidebar}
-            className="h-8 w-8 mx-auto flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 transition-colors"
-            aria-label="Menü einklappen"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-        )}
 
         {collapsed ? (
           <Tooltip>

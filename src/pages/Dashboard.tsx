@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDeals, useRevenue, useInvoices, useSalesPerformance, useTasks, useTeam, useAlerts, useEffizienzScore } from '@/hooks/useDataSources';
@@ -13,6 +13,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatValue } from '@/lib/utils';
+import { MicroLearning } from '@/components/dashboard/MicroLearning';
+import { SearchBar, GlobalSearchModal } from '@/components/dashboard/GlobalSearch';
 
 const LEISTUNG_SHORT: Record<string, string> = {
   'Meta Werbeanzeigen': 'Meta Ads',
@@ -88,11 +90,24 @@ export default function Dashboard() {
   const salesPerfMonth = useSalesPerformance('month');
   const effizienz = useEffizienzScore();
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Global Cmd+K / Ctrl+K
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   const isMobile = windowWidth < 640;
@@ -255,7 +270,11 @@ export default function Dashboard() {
           Herzlich Willkommen, {firstName}! 👋
         </h1>
         <p className="text-[15px] text-muted-foreground mt-1.5">{formatDateLong()}</p>
+        <MicroLearning />
+        <SearchBar onClick={() => setSearchOpen(true)} />
       </div>
+
+      <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* 2. KPI Cards — 6 cards */}
       <div className="kpi-grid">
