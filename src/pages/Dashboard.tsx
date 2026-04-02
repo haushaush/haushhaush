@@ -258,7 +258,7 @@ export default function Dashboard() {
               <p className="kpi-label text-muted-foreground">UMSATZ</p>
               <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><TrendingUp className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
             </div>
-            <p className="kpi-value text-foreground">{umsatzThisMonth.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+            <p className="kpi-value text-foreground">{formatValue(umsatzThisMonth, 'currency', true)}</p>
             <p className="kpi-sub text-muted-foreground mt-0.5">Bezahlt im {monthName} {currentYear}</p>
             {umsatzTrend !== null ? (
               <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium mt-2 px-1.5 py-0.5 rounded-full ${umsatzTrend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'}`}>
