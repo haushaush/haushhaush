@@ -86,6 +86,7 @@ const App = () => (
               <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
               <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
               <Route path="/api-docs" element={<ApiDocs />} />
+              <Route path="/profil" element={<DL><Profil /></DL>} />
               <Route path="/creatives" element={<DL><Creatives /></DL>} />
               <Route path="/creatives/:id" element={<DL><CreativeDetail /></DL>} />
               <Route path="/review/:token" element={<CreativeReview />} />
