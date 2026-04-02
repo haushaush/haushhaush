@@ -210,6 +210,9 @@ export default function Finanzen() {
           </Card>
 
           <Button variant="outline" onClick={() => toast({ title: 'DATEV Export', description: 'CSV wird generiert...' })}>DATEV Export (CSV)</Button>
+
+          {/* Qonto Section */}
+          <QontoBuchhaltung />
         </TabsContent>
 
         <TabsContent value="laufzeiten" className="space-y-4 mt-4">
