@@ -231,7 +231,7 @@ export default function Dashboard() {
   const firstName = getFirstName(user, team.data);
 
   return (
-    <div className="px-6 md:px-12 py-10 space-y-8">
+    <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10 space-y-8">
       {/* 1. Hero — Centered greeting with avatar */}
       <div className="flex flex-col items-center text-center pt-2 pb-2">
         <Avatar className="h-[72px] w-[72px] border-[3px] border-card mb-4">
