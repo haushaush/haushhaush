@@ -325,11 +325,11 @@ export default function Dashboard() {
               <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Alle bezahlt 🎉</p>
             ) : (
               <>
-                <p className="kpi-value text-foreground">{openInvoicesTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+                <p className="kpi-value text-foreground">{formatValue(openInvoicesTotal, 'currency', true)}</p>
                 <p className="kpi-sub text-muted-foreground mt-0.5">Gesamt ausstehend</p>
                 <div className="mt-2 space-y-0.5">
-                  {sentInvoices.length > 0 && <p className="kpi-sub text-muted-foreground">{sentInvoices.length} Versendet · {sentTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
-                  {overdueInvoices.length > 0 && <p className="kpi-sub text-destructive font-medium">{overdueInvoices.length} Überfällig · {overdueTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
+                  {sentInvoices.length > 0 && <p className="kpi-sub text-muted-foreground">{sentInvoices.length} Versendet · {formatValue(sentTotal, 'currency', true)}</p>}
+                  {overdueInvoices.length > 0 && <p className="kpi-sub text-destructive font-medium">{overdueInvoices.length} Überfällig · {formatValue(overdueTotal, 'currency', true)}</p>}
                 </div>
               </>
             )}
