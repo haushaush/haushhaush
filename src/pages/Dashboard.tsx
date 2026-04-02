@@ -266,7 +266,7 @@ export default function Dashboard() {
               <p className="kpi-label text-muted-foreground">UMSATZ</p>
               <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><TrendingUp className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
             </div>
-            <p className="kpi-value text-foreground">{formatValue(umsatzThisMonth, 'currency', true)}</p>
+            <p className="kpi-value text-foreground">{fmtCurrency(umsatzThisMonth)}</p>
             <p className="kpi-sub text-muted-foreground mt-0.5">Bezahlt im {monthName} {currentYear}</p>
             {umsatzTrend !== null ? (
               <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium mt-2 px-1.5 py-0.5 rounded-full ${umsatzTrend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'}`}>
@@ -284,7 +284,7 @@ export default function Dashboard() {
               <p className="kpi-label text-muted-foreground">CASH COLLECT</p>
               <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Wallet className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
             </div>
-            <p className="kpi-value text-foreground">{formatValue(cashCollectTotal, 'currency', true)}</p>
+            <p className="kpi-value text-foreground">{fmtCurrency(cashCollectTotal)}</p>
             <p className="kpi-sub text-muted-foreground mt-0.5">{cashCollect.length} Rechnungen fällig</p>
             {cashCollectOverdue > 0 && <Badge variant="destructive" className="text-[10px] mt-2">⚠ {cashCollectOverdue} überfällig</Badge>}
           </CardContent>
@@ -316,7 +316,7 @@ export default function Dashboard() {
                   <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">{topSeller.initials}</div>
                   <p className="text-sm font-semibold text-foreground truncate">{topSeller.name}</p>
                 </div>
-                <p className="kpi-sub text-muted-foreground mt-1">{formatValue(topSeller.revenue, 'currency', true)} · {topSeller.closes} Abschlüsse</p>
+                <p className="kpi-sub text-muted-foreground mt-1">{fmtCurrency(topSeller.revenue)} · {topSeller.closes} Abschlüsse</p>
               </>
             ) : <p className="text-sm text-muted-foreground">Noch keine Daten</p>}
           </CardContent>
@@ -333,11 +333,11 @@ export default function Dashboard() {
               <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Alle bezahlt 🎉</p>
             ) : (
               <>
-                <p className="kpi-value text-foreground">{formatValue(openInvoicesTotal, 'currency', true)}</p>
+                <p className="kpi-value text-foreground">{fmtCurrency(openInvoicesTotal)}</p>
                 <p className="kpi-sub text-muted-foreground mt-0.5">Gesamt ausstehend</p>
                 <div className="mt-2 space-y-0.5">
-                  {sentInvoices.length > 0 && <p className="kpi-sub text-muted-foreground">{sentInvoices.length} Versendet · {formatValue(sentTotal, 'currency', true)}</p>}
-                  {overdueInvoices.length > 0 && <p className="kpi-sub text-destructive font-medium">{overdueInvoices.length} Überfällig · {formatValue(overdueTotal, 'currency', true)}</p>}
+                  {sentInvoices.length > 0 && <p className="kpi-sub text-muted-foreground">{sentInvoices.length} Versendet · {fmtCurrency(sentTotal)}</p>}
+                  {overdueInvoices.length > 0 && <p className="kpi-sub text-destructive font-medium">{overdueInvoices.length} Überfällig · {fmtCurrency(overdueTotal)}</p>}
                 </div>
               </>
             )}
@@ -572,10 +572,10 @@ export default function Dashboard() {
                           <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{s.calls} Calls</span>
                           <span className="text-[11px] text-muted-foreground flex items-center gap-1"><CalendarCheck className="h-3 w-3" />{s.tq}% TQ</span>
                           <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Trophy className="h-3 w-3" />{s.closes} Abschl.</span>
-                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Banknote className="h-3 w-3" />{formatValue(s.revenue, 'currency', true)}</span>
+                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Banknote className="h-3 w-3" />{fmtCurrency(s.revenue)}</span>
                         </div>
                       </div>
-                      <p className="text-sm font-semibold text-primary shrink-0">{formatValue(s.revenue, 'currency', true)}</p>
+                      <p className="text-sm font-semibold text-primary shrink-0">{fmtCurrency(s.revenue)}</p>
                     </div>
                   </div>
                 ))}
