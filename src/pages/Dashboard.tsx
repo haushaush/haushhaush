@@ -315,7 +315,7 @@ export default function Dashboard() {
         </Card>
 
         {/* CARD 5: Offene Rechnungen */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen/rechnungen')}>
+        <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen/rechnungen')}>
           <CardContent className="p-4 xl:p-6">
             <div className="flex items-start justify-between mb-2 gap-1">
               <p className="kpi-label text-muted-foreground">OFFENE RECHNUNGEN</p>
