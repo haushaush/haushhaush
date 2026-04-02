@@ -211,16 +211,16 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="px-6 md:px-12 py-10 space-y-8" role="status" aria-busy="true">
+      <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10 space-y-8" role="status" aria-busy="true">
         <div className="flex flex-col items-center gap-4">
           <Skeleton className="h-[72px] w-[72px] rounded-full" />
-          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-8 w-64 max-w-full" />
           <Skeleton className="h-4 w-40" />
         </div>
-        <div className="grid grid-cols-2 xl:grid-cols-6 gap-4">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-36 rounded-xl" />)}</div>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {[1,2,3,4].map(i => <Skeleton key={i} className="h-80 rounded-xl" />)}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-36 rounded-xl" />)}</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1,2,3].map(i => <Skeleton key={i} className="h-80 rounded-xl" />)}
         </div>
       </div>
     );
@@ -231,7 +231,7 @@ export default function Dashboard() {
   const firstName = getFirstName(user, team.data);
 
   return (
-    <div className="px-6 md:px-12 py-10 space-y-8">
+    <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10 space-y-8">
       {/* 1. Hero — Centered greeting with avatar */}
       <div className="flex flex-col items-center text-center pt-2 pb-2">
         <Avatar className="h-[72px] w-[72px] border-[3px] border-card mb-4">
@@ -249,16 +249,16 @@ export default function Dashboard() {
       </div>
 
       {/* 2. KPI Cards — 6 cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4" style={{ gridTemplateColumns: undefined }}>
         {/* CARD 1: Umsatz */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px]" onClick={() => navigate('/finanzen')}>
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between mb-2">
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">UMSATZ</p>
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><TrendingUp className="h-5 w-5 text-primary" /></div>
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen')}>
+          <CardContent className="p-4 xl:p-6">
+            <div className="flex items-start justify-between mb-2 gap-1">
+              <p className="kpi-label text-muted-foreground">UMSATZ</p>
+              <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><TrendingUp className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
             </div>
-            <p className="text-[28px] font-bold text-foreground leading-tight">{umsatzThisMonth.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Bezahlt im {monthName} {currentYear}</p>
+            <p className="kpi-value text-foreground">{umsatzThisMonth.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+            <p className="kpi-sub text-muted-foreground mt-0.5">Bezahlt im {monthName} {currentYear}</p>
             {umsatzTrend !== null ? (
               <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium mt-2 px-1.5 py-0.5 rounded-full ${umsatzTrend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'}`}>
                 {umsatzTrend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
@@ -269,66 +269,66 @@ export default function Dashboard() {
         </Card>
 
         {/* CARD 2: Cash Collect */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px]" onClick={() => navigate('/finanzen/rechnungen')}>
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between mb-2">
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">CASH COLLECT</p>
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Wallet className="h-5 w-5 text-primary" /></div>
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen/rechnungen')}>
+          <CardContent className="p-4 xl:p-6">
+            <div className="flex items-start justify-between mb-2 gap-1">
+              <p className="kpi-label text-muted-foreground">CASH COLLECT</p>
+              <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Wallet className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
             </div>
-            <p className="text-[28px] font-bold text-foreground leading-tight">{cashCollectTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{cashCollect.length} Rechnungen fällig</p>
+            <p className="kpi-value text-foreground">{cashCollectTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+            <p className="kpi-sub text-muted-foreground mt-0.5">{cashCollect.length} Rechnungen fällig</p>
             {cashCollectOverdue > 0 && <Badge variant="destructive" className="text-[10px] mt-2">⚠ {cashCollectOverdue} überfällig</Badge>}
           </CardContent>
         </Card>
 
         {/* CARD 3: Kunden */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px]" onClick={() => navigate('/kunden')}>
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between mb-2">
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">KUNDEN GESAMT</p>
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Users className="h-5 w-5 text-primary" /></div>
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/kunden')}>
+          <CardContent className="p-4 xl:p-6">
+            <div className="flex items-start justify-between mb-2 gap-1">
+              <p className="kpi-label text-muted-foreground">KUNDEN GESAMT</p>
+              <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Users className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
             </div>
-            <p className="text-[28px] font-bold text-foreground leading-tight">{activeClients}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{neukunden} Neukunden diesen Monat</p>
-            <p className="text-[11px] text-muted-foreground">{upsells} Upsells</p>
+            <p className="kpi-value text-foreground">{activeClients}</p>
+            <p className="kpi-sub text-muted-foreground mt-0.5">{neukunden} Neukunden diesen Monat</p>
+            <p className="kpi-sub text-muted-foreground">{upsells} Upsells</p>
           </CardContent>
         </Card>
 
         {/* CARD 4: Top Vertriebler */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px]" onClick={() => navigate('/sales/kpis')}>
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between mb-2">
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">TOP VERTRIEBLER</p>
-              <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:bg-amber-500/20 transition-colors"><Trophy className="h-5 w-5 text-amber-500" /></div>
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/sales/kpis')}>
+          <CardContent className="p-4 xl:p-6">
+            <div className="flex items-start justify-between mb-2 gap-1">
+              <p className="kpi-label text-muted-foreground">TOP VERTRIEBLER</p>
+              <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:bg-amber-500/20 transition-colors"><Trophy className="h-4 w-4 xl:h-5 xl:w-5 text-amber-500" /></div>
             </div>
             {topSeller ? (
               <>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">{topSeller.initials}</div>
                   <p className="text-sm font-semibold text-foreground truncate">{topSeller.name}</p>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">{topSeller.revenue.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} · {topSeller.closes} Abschlüsse</p>
+                <p className="kpi-sub text-muted-foreground mt-1">{topSeller.revenue.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} · {topSeller.closes} Abschlüsse</p>
               </>
             ) : <p className="text-sm text-muted-foreground">Noch keine Daten</p>}
           </CardContent>
         </Card>
 
         {/* CARD 5: Offene Rechnungen */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px]" onClick={() => navigate('/finanzen/rechnungen')}>
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between mb-2">
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">OFFENE RECHNUNGEN</p>
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Clock className="h-5 w-5 text-primary" /></div>
+        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen/rechnungen')}>
+          <CardContent className="p-4 xl:p-6">
+            <div className="flex items-start justify-between mb-2 gap-1">
+              <p className="kpi-label text-muted-foreground">OFFENE RECHNUNGEN</p>
+              <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Clock className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
             </div>
             {allPaid ? (
-              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Alle Rechnungen bezahlt 🎉</p>
+              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Alle bezahlt 🎉</p>
             ) : (
               <>
-                <p className="text-[28px] font-bold text-foreground leading-tight">{openInvoicesTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Gesamt ausstehend</p>
+                <p className="kpi-value text-foreground">{openInvoicesTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+                <p className="kpi-sub text-muted-foreground mt-0.5">Gesamt ausstehend</p>
                 <div className="mt-2 space-y-0.5">
-                  {sentInvoices.length > 0 && <p className="text-[11px] text-muted-foreground">{sentInvoices.length} Versendet · {sentTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
-                  {overdueInvoices.length > 0 && <p className="text-[11px] text-destructive font-medium">{overdueInvoices.length} Überfällig · {overdueTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
+                  {sentInvoices.length > 0 && <p className="kpi-sub text-muted-foreground">{sentInvoices.length} Versendet · {sentTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
+                  {overdueInvoices.length > 0 && <p className="kpi-sub text-destructive font-medium">{overdueInvoices.length} Überfällig · {overdueTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
                 </div>
               </>
             )}
@@ -339,18 +339,18 @@ export default function Dashboard() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px]" onClick={() => navigate('/projekte')}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-2">
-                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">EFFIZIENZ</p>
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Zap className="h-5 w-5 text-primary" /></div>
+              <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/projekte')}>
+                <CardContent className="p-4 xl:p-6">
+                  <div className="flex items-start justify-between mb-2 gap-1">
+                    <p className="kpi-label text-muted-foreground">EFFIZIENZ</p>
+                    <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Zap className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
                   </div>
                   {effizienz.loading ? (
                     <Skeleton className="h-12 w-full rounded" />
                   ) : (
                     <>
                       <div className="flex items-end gap-1">
-                        <span className={`text-[28px] font-bold leading-tight ${effizienz.score >= 80 ? 'text-primary' : effizienz.score >= 60 ? 'text-amber-500' : 'text-destructive'}`}>{effizienz.score}</span>
+                        <span className={`kpi-value ${effizienz.score >= 80 ? 'text-primary' : effizienz.score >= 60 ? 'text-amber-500' : 'text-destructive'}`}>{effizienz.score}</span>
                         <span className="text-sm text-muted-foreground mb-0.5">/100</span>
                       </div>
                       <svg width="48" height="28" viewBox="0 0 48 28" className="mt-2" aria-hidden="true">
@@ -358,7 +358,7 @@ export default function Dashboard() {
                         <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke={effizienz.score >= 80 ? 'hsl(var(--primary))' : effizienz.score >= 60 ? '#FF9F0A' : '#FF3B30'} strokeWidth="3" strokeLinecap="round"
                           strokeDasharray={`${(effizienz.score / 100) * 62.8} 62.8`} />
                       </svg>
-                      <p className="text-[10px] text-muted-foreground mt-1">Deadlines {effizienz.scoreA}% · Tickets {effizienz.scoreB}% · Laufzeit {effizienz.scoreC}%</p>
+                      <p className="kpi-sub text-muted-foreground mt-1">Deadlines {effizienz.scoreA}% · Tickets {effizienz.scoreB}% · Laufzeit {effizienz.scoreC}%</p>
                     </>
                   )}
                 </CardContent>
@@ -374,17 +374,17 @@ export default function Dashboard() {
       </div>
 
       {/* 3. Quick Navigation */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {NAV_TILES.map(tile => (
           <Card
             key={tile.href}
-            className="cursor-pointer hover:border-primary transition-all group rounded-xl"
+            className="cursor-pointer hover:border-primary transition-all group rounded-xl overflow-hidden min-w-0"
             onClick={() => navigate(tile.href)}
           >
             <CardContent className="px-4 py-5 flex flex-col items-center text-center gap-2">
-              <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
-              <p className="text-sm font-medium text-foreground leading-tight">{tile.label}</p>
-              <p className="text-xs text-muted-foreground hidden sm:block">{tile.sub}</p>
+              <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+              <p className="text-[14px] font-medium text-foreground leading-tight truncate w-full">{tile.label}</p>
+              <p className="text-xs text-muted-foreground hidden sm:block truncate w-full">{tile.sub}</p>
             </CardContent>
           </Card>
         ))}
@@ -419,8 +419,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 5. 4-Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* 5. 3-Column Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Column 1: Letzte Abschlüsse */}
         <Card className="rounded-[14px]">
           <CardHeader className="p-6 pb-2">

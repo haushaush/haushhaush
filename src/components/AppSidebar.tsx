@@ -103,7 +103,6 @@ export function AppSidebar() {
 
   useEffect(() => { saveSidebarState(openGroups); }, [openGroups]);
 
-  // Fetch pending employee requests count
   useEffect(() => {
     if (!isAdminOrManager) return;
     const fetch = async () => {
@@ -115,9 +114,8 @@ export function AppSidebar() {
     return () => clearInterval(interval);
   }, [isAdminOrManager]);
 
-  // Fetch unread notification count
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     const fetchCount = async () => {
       const { count } = await supabase
         .from('notifications')
@@ -130,9 +128,8 @@ export function AppSidebar() {
     fetchCount();
     const interval = setInterval(fetchCount, 30000);
 
-    // Realtime updates
     const channel = supabase
-      .channel('sidebar-notif-count')
+      .channel(`sidebar-notif-${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => {
         fetchCount();
       })
@@ -142,7 +139,7 @@ export function AppSidebar() {
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user?.id]);
 
   const toggleTheme = () => {
     const next = theme === 'light' ? 'dark' : 'light';
@@ -167,130 +164,195 @@ export function AppSidebar() {
 
   const nachrichtenActive = location.pathname === '/nachrichten';
 
+  const renderNavItem = (item: NavItem) => {
+    const parentActive = isParentActive(item);
+
+    if (!item.children) {
+      const link = (
+        <NavLink to={item.url} end className={cn(
+          'sidebar-nav-item flex items-center gap-3 rounded-lg text-sm transition-colors min-h-[40px]',
+          collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5',
+          parentActive ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary' : 'text-muted-foreground hover:bg-muted/60'
+        )} aria-current={parentActive ? 'page' : undefined}>
+          <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+          {!collapsed && <span className="truncate">{item.title}</span>}
+        </NavLink>
+      );
+
+      if (collapsed) {
+        return (
+          <Tooltip key={item.title}>
+            <TooltipTrigger asChild>{link}</TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">{item.title}</TooltipContent>
+          </Tooltip>
+        );
+      }
+      return <div key={item.title}>{link}</div>;
+    }
+
+    const isOpen = openGroups[item.title] ?? false;
+
+    if (collapsed) {
+      return (
+        <Tooltip key={item.title}>
+          <TooltipTrigger asChild>
+            <NavLink to={item.url} className={cn(
+              'sidebar-nav-item flex items-center justify-center rounded-lg text-sm transition-colors min-h-[40px] px-0 py-2.5',
+              parentActive ? 'text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
+            )}>
+              <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+            </NavLink>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="text-xs">{item.title}</TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return (
+      <div key={item.title}>
+        <button
+          onClick={() => toggleGroup(item.title)}
+          className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left transition-colors min-h-[40px]',
+            parentActive ? 'text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
+          )}
+          aria-expanded={isOpen}
+        >
+          <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <span className="flex-1 truncate">{item.title}</span>
+          <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200', isOpen && 'rotate-90')} aria-hidden="true" />
+        </button>
+        <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', isOpen ? 'max-h-96' : 'max-h-0')}>
+          <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
+            {item.children!.map(child => {
+              const childActive = isActive(child.url);
+              return (
+                <NavLink key={child.url} to={child.url} end={child.url === item.url} className={cn(
+                  'block px-3 py-2 rounded-md text-sm transition-colors min-h-[36px] truncate',
+                  childActive ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary -ml-[calc(0.75rem+1px)] pl-[calc(0.75rem+1px)]' : 'text-muted-foreground hover:bg-muted/60'
+                )} aria-current={childActive ? 'page' : undefined}>
+                  {child.title}
+                </NavLink>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const nachrichtenLink = (
+    <NavLink to="/nachrichten" className={cn(
+      'sidebar-nav-item flex items-center gap-3 rounded-lg text-sm transition-colors min-h-[40px] relative',
+      collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5',
+      nachrichtenActive ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
+    )}>
+      <div className="relative shrink-0">
+        <Bell className="h-5 w-5" aria-hidden="true" />
+        {unreadNotifs > 0 && (
+          <span className="absolute -top-1.5 -right-2 inline-flex items-center justify-center h-[18px] min-w-[18px] px-1 text-[10px] font-semibold rounded-full bg-destructive text-destructive-foreground">
+            {unreadNotifs > 99 ? '99+' : unreadNotifs}
+          </span>
+        )}
+      </div>
+      {!collapsed && <span className="truncate">Nachrichten</span>}
+    </NavLink>
+  );
+
   return (
     <Sidebar collapsible="icon" className="hidden md:flex border-r border-border">
       <SidebarContent className="py-4">
         <div className="px-4 pb-4 border-b border-border">
           {!collapsed ? (
-            <div>
-              <h2 className="text-sm font-semibold text-foreground">Haush Haush Dashboard</h2>
-              <p className="text-xs text-muted-foreground">Viral Connect · Haush Haush</p>
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-foreground truncate">Haush Haush Dashboard</h2>
+              <p className="text-xs text-muted-foreground truncate">Viral Connect · Haush Haush</p>
             </div>
           ) : (
-            <span className="text-primary font-bold text-lg" aria-label="Dashboard">H</span>
+            <div className="flex justify-center">
+              <span className="text-primary font-bold text-lg" aria-label="Dashboard">H</span>
+            </div>
           )}
         </div>
         <nav className="flex-1 px-2 py-2 space-y-0.5" aria-label="Hauptnavigation">
-          {navItems.map(item => {
-            const parentActive = isParentActive(item);
-            const isOpen = openGroups[item.title] ?? false;
-
-            if (!item.children) {
-              return (
-                <NavLink key={item.title} to={item.url} end className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[40px]',
-                  parentActive ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary' : 'text-muted-foreground hover:bg-muted/60'
-                )} aria-current={parentActive ? 'page' : undefined}>
-                  <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  {!collapsed && <span>{item.title}</span>}
-                </NavLink>
-              );
-            }
-
-            return (
-              <div key={item.title}>
-                <button
-                  onClick={() => toggleGroup(item.title)}
-                  className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left transition-colors min-h-[40px]',
-                    parentActive ? 'text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
-                  )}
-                  aria-expanded={isOpen}
-                >
-                  <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  {!collapsed && (
-                    <>
-                      <span className="flex-1">{item.title}</span>
-                      <ChevronRight className={cn('h-3.5 w-3.5 transition-transform duration-200', isOpen && 'rotate-90')} aria-hidden="true" />
-                    </>
-                  )}
-                </button>
-                {!collapsed && (
-                  <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', isOpen ? 'max-h-96' : 'max-h-0')}>
-                    <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
-                      {item.children.map(child => {
-                        const childActive = isActive(child.url);
-                        return (
-                          <NavLink key={child.url} to={child.url} end={child.url === item.url} className={cn(
-                            'block px-3 py-2 rounded-md text-sm transition-colors min-h-[36px]',
-                            childActive ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary -ml-[calc(0.75rem+1px)]  pl-[calc(0.75rem+1px)]' : 'text-muted-foreground hover:bg-muted/60'
-                          )} aria-current={childActive ? 'page' : undefined}>
-                            {child.title}
-                          </NavLink>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {navItems.map(renderNavItem)}
         </nav>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border p-3 space-y-2">
-        {/* Nachrichten */}
-        <NavLink to="/nachrichten" className={cn(
-          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[40px] relative',
-          nachrichtenActive ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60',
-          unreadNotifs > 0 && !nachrichtenActive && 'border border-destructive/40 bg-destructive/5'
-        )}>
-          <div className="relative shrink-0">
-            <Bell className="h-4 w-4" aria-hidden="true" />
-            {unreadNotifs > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center h-[16px] min-w-[16px] px-0.5 text-[9px] font-bold rounded-full bg-destructive text-destructive-foreground">
-                {unreadNotifs > 99 ? '99+' : unreadNotifs}
-              </span>
-            )}
-          </div>
-          {!collapsed && <span>Nachrichten</span>}
-        </NavLink>
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{nachrichtenLink}</TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              Nachrichten{unreadNotifs > 0 ? ` (${unreadNotifs})` : ''}
+            </TooltipContent>
+          </Tooltip>
+        ) : nachrichtenLink}
 
-        {/* Einstellungen */}
-        <NavLink to="/einstellungen" className={cn(
-          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[40px]',
-          location.pathname === '/einstellungen' ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
-        )}>
-          <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
-          {!collapsed && <span>Einstellungen</span>}
-          {!collapsed && pendingCount > 0 && (
-            <span className="ml-auto inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5">{pendingCount}</span>
-          )}
-        </NavLink>
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <NavLink to="/einstellungen" className={cn(
+                'sidebar-nav-item flex items-center justify-center rounded-lg text-sm transition-colors min-h-[40px] px-0 py-2.5',
+                location.pathname === '/einstellungen' ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
+              )}>
+                <Settings className="h-5 w-5 shrink-0" aria-hidden="true" />
+              </NavLink>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">Einstellungen</TooltipContent>
+          </Tooltip>
+        ) : (
+          <NavLink to="/einstellungen" className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[40px]',
+            location.pathname === '/einstellungen' ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
+          )}>
+            <Settings className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span className="truncate">Einstellungen</span>
+            {pendingCount > 0 && (
+              <span className="ml-auto inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 shrink-0">{pendingCount}</span>
+            )}
+          </NavLink>
+        )}
+
         {!collapsed && user && (
           <p className="text-xs text-muted-foreground truncate px-3">{user.email}</p>
         )}
-        <div className="flex items-center gap-2 px-3">
+        <div className={cn('flex items-center gap-2', collapsed ? 'flex-col px-0' : 'px-3')}>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={toggleTheme}
-                className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 transition-colors"
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 transition-colors shrink-0"
                 aria-label={theme === 'light' ? 'Dark Mode aktivieren' : 'Light Mode aktivieren'}
               >
                 {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right">
+            <TooltipContent side="right" className="text-xs">
               {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
             </TooltipContent>
           </Tooltip>
-          <Button variant="ghost" size="sm" onClick={signOut}
-            className="flex-1 justify-start text-muted-foreground hover:text-destructive min-h-[40px] px-3"
-            aria-label="Abmelden">
-            <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
-            {!collapsed && 'Abmelden'}
-          </Button>
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={signOut}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                  aria-label="Abmelden"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs">Abmelden</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={signOut}
+              className="flex-1 justify-start text-muted-foreground hover:text-destructive min-h-[40px] px-3"
+              aria-label="Abmelden">
+              <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
+              Abmelden
+            </Button>
+          )}
         </div>
       </SidebarFooter>
     </Sidebar>
