@@ -270,7 +270,11 @@ export default function Dashboard() {
           Herzlich Willkommen, {firstName}! 👋
         </h1>
         <p className="text-[15px] text-muted-foreground mt-1.5">{formatDateLong()}</p>
+        <MicroLearning />
+        <SearchBar onClick={() => setSearchOpen(true)} />
       </div>
+
+      <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* 2. KPI Cards — 6 cards */}
       <div className="kpi-grid">
