@@ -2,9 +2,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Data Adapter Pattern — swap for external notification aggregator later
-// e.g.: import { useUnifiedNotifications } from './integrations/unified'
-
 export type NotificationChannel = 'intern' | 'email' | 'slack' | 'aufgabe' | 'system';
 
 export interface Notification {
@@ -46,33 +43,30 @@ export function useNotifications() {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // Realtime subscription
+  // Realtime subscription — build channel BEFORE subscribing
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
+
     const channel = supabase
-      .channel('notifications-realtime')
+      .channel(`notifications-rt-${user.id}`)
       .on('postgres_changes', {
-        event: 'INSERT',
+        event: '*',
         schema: 'public',
         table: 'notifications',
         filter: `user_id=eq.${user.id}`,
       }, (payload) => {
-        const newNotif = payload.new as Notification;
-        setNotifications(prev => [newNotif, ...prev]);
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${user.id}`,
-      }, (payload) => {
-        const updated = payload.new as Notification;
-        setNotifications(prev => prev.map(n => n.id === updated.id ? updated : n));
+        if (payload.eventType === 'INSERT') {
+          const newNotif = payload.new as Notification;
+          setNotifications(prev => [newNotif, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as Notification;
+          setNotifications(prev => prev.map(n => n.id === updated.id ? updated : n));
+        }
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [user?.id]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -105,7 +99,6 @@ export function useNotifications() {
   };
 }
 
-// Helper to create a notification from anywhere in the app
 export async function createNotification(
   userId: string,
   channel: NotificationChannel,

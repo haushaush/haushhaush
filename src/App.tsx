@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -5,6 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { toast } from "sonner";
 import Auth from "./pages/Auth.tsx";
 import Registrierung from "./pages/Registrierung.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
@@ -24,61 +27,83 @@ import Creatives from "./pages/Creatives.tsx";
 import CreativeDetail from "./pages/CreativeDetail.tsx";
 import CreativeReview from "./pages/CreativeReview.tsx";
 import Nachrichten from "./pages/Nachrichten.tsx";
+import ErrorPage from "./pages/ErrorPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
 
 const DL = ({ children }: { children: React.ReactNode }) => <DashboardLayout>{children}</DashboardLayout>;
 
+function OfflineDetector() {
+  useEffect(() => {
+    const handleOffline = () => {
+      toast.error('Keine Internetverbindung', { id: 'offline-toast', duration: Infinity });
+    };
+    const handleOnline = () => {
+      toast.dismiss('offline-toast');
+      toast.success('Verbindung wiederhergestellt ✓', { duration: 3000 });
+    };
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
+  return null;
+}
+
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/registrierung" element={<Registrierung />} />
-            <Route path="/" element={<DL><Dashboard /></DL>} />
-            <Route path="/kunden" element={<DL><Kunden /></DL>} />
-            <Route path="/kunden/pipeline" element={<DL><KundenPipeline /></DL>} />
-            <Route path="/kunden/abschluesse" element={<DL><KundenAbschluesse /></DL>} />
-            <Route path="/kunden/laufzeiten" element={<DL><KundenLaufzeiten /></DL>} />
-            <Route path="/kunden/:id" element={<DL><KundenDetail /></DL>} />
-            <Route path="/projekte" element={<DL><Projekte /></DL>} />
-            <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
-            <Route path="/sales" element={<Navigate to="/sales/kpis" replace />} />
-            <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
-            <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
-            <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />
-            <Route path="/finanzen" element={<DL><Finanzen /></DL>} />
-            <Route path="/finanzen/:tab" element={<DL><Finanzen /></DL>} />
-            <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
-            <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
-            <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
-            <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
-            <Route path="/creatives" element={<DL><Creatives /></DL>} />
-            <Route path="/creatives/:id" element={<DL><CreativeDetail /></DL>} />
-            <Route path="/review/:token" element={<CreativeReview />} />
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <OfflineDetector />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/registrierung" element={<Registrierung />} />
+              <Route path="/" element={<DL><Dashboard /></DL>} />
+              <Route path="/kunden" element={<DL><Kunden /></DL>} />
+              <Route path="/kunden/pipeline" element={<DL><KundenPipeline /></DL>} />
+              <Route path="/kunden/abschluesse" element={<DL><KundenAbschluesse /></DL>} />
+              <Route path="/kunden/laufzeiten" element={<DL><KundenLaufzeiten /></DL>} />
+              <Route path="/kunden/:id" element={<DL><KundenDetail /></DL>} />
+              <Route path="/projekte" element={<DL><Projekte /></DL>} />
+              <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
+              <Route path="/sales" element={<Navigate to="/sales/kpis" replace />} />
+              <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
+              <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
+              <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />
+              <Route path="/finanzen" element={<DL><Finanzen /></DL>} />
+              <Route path="/finanzen/:tab" element={<DL><Finanzen /></DL>} />
+              <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
+              <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
+              <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
+              <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
+              <Route path="/creatives" element={<DL><Creatives /></DL>} />
+              <Route path="/creatives/:id" element={<DL><CreativeDetail /></DL>} />
+              <Route path="/review/:token" element={<CreativeReview />} />
 
-            {/* Redirects */}
-            <Route path="/performance" element={<Navigate to="/sales/kpis" replace />} />
-            <Route path="/team" element={<Navigate to="/hr/mitarbeiter" replace />} />
-            <Route path="/projekte" element={<Navigate to="/projekte" replace />} />
-            <Route path="/kpi" element={<Navigate to="/sales/kpis" replace />} />
-            <Route path="/faktura" element={<Navigate to="/finanzen/rechnungen" replace />} />
-            <Route path="/mitarbeiter" element={<Navigate to="/hr/mitarbeiter" replace />} />
-            <Route path="/dateien" element={<Navigate to="/kunden" replace />} />
-            <Route path="/learning" element={<Navigate to="/hr/akademie" replace />} />
-            <Route path="/aufgaben" element={<Navigate to="/projekte/aufgaben" replace />} />
+              {/* Redirects */}
+              <Route path="/performance" element={<Navigate to="/sales/kpis" replace />} />
+              <Route path="/team" element={<Navigate to="/hr/mitarbeiter" replace />} />
+              <Route path="/kpi" element={<Navigate to="/sales/kpis" replace />} />
+              <Route path="/faktura" element={<Navigate to="/finanzen/rechnungen" replace />} />
+              <Route path="/mitarbeiter" element={<Navigate to="/hr/mitarbeiter" replace />} />
+              <Route path="/dateien" element={<Navigate to="/kunden" replace />} />
+              <Route path="/learning" element={<Navigate to="/hr/akademie" replace />} />
+              <Route path="/aufgaben" element={<Navigate to="/projekte/aufgaben" replace />} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+              <Route path="*" element={<ErrorPage type="404" />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
