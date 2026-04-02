@@ -207,15 +207,7 @@ export default function Dashboard() {
     tasks.refetch();
   };
 
-  // Notification click handler
-  const handleNotifClick = (n: any) => {
-    markAsRead(n.id);
-    if (n.action_url) {
-      navigate(n.action_url);
-    } else {
-      setDrawerOpen(true);
-    }
-  };
+
 
   if (loading) {
     return (
