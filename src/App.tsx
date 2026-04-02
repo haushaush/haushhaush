@@ -9,6 +9,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { toast } from "sonner";
 import Auth from "./pages/Auth.tsx";
+import Profil from "./pages/Profil.tsx";
 import Registrierung from "./pages/Registrierung.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Kunden from "./pages/Kunden.tsx";
@@ -85,6 +86,7 @@ const App = () => (
               <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
               <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
               <Route path="/api-docs" element={<ApiDocs />} />
+              <Route path="/profil" element={<DL><Profil /></DL>} />
               <Route path="/creatives" element={<DL><Creatives /></DL>} />
               <Route path="/creatives/:id" element={<DL><CreativeDetail /></DL>} />
               <Route path="/review/:token" element={<CreativeReview />} />

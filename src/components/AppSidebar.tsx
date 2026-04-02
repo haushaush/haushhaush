@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight, Sun, Moon, Bell } from 'lucide-react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell } from 'lucide-react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -81,14 +82,23 @@ function saveSidebarState(s: Record<string, boolean>) {
   localStorage.setItem('sidebar-state', JSON.stringify(s));
 }
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return (parts[0]?.[0] || '?').toUpperCase();
+}
+
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, toggleSidebar } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
+  const navigate = useNavigate();
   const { signOut, user, isAdminOrManager } = useAuth();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [pendingCount, setPendingCount] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
     const result = { ...saved };
@@ -102,6 +112,28 @@ export function AppSidebar() {
   });
 
   useEffect(() => { saveSidebarState(openGroups); }, [openGroups]);
+
+  // Fetch profile info
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchProfile = async () => {
+      const { data } = await supabase
+        .from('team')
+        .select('name')
+        .eq('email', user.email || '')
+        .maybeSingle();
+      if (data?.name) {
+        setProfileName(data.name);
+      } else {
+        // Fallback to email prefix
+        const prefix = (user.email || '').split('@')[0];
+        setProfileName(prefix.charAt(0).toUpperCase() + prefix.slice(1));
+      }
+      // Avatar from user metadata
+      setProfileAvatar(user.user_metadata?.avatar_url || null);
+    };
+    fetchProfile();
+  }, [user?.id, user?.email]);
 
   useEffect(() => {
     if (!isAdminOrManager) return;
@@ -163,6 +195,8 @@ export function AppSidebar() {
   };
 
   const nachrichtenActive = location.pathname === '/nachrichten';
+  const displayName = profileName || 'Benutzer';
+  const initials = getInitials(displayName);
 
   const renderNavItem = (item: NavItem) => {
     const parentActive = isParentActive(item);
@@ -262,16 +296,41 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="hidden md:flex border-r border-border">
       <SidebarContent className="py-4">
-        <div className="px-4 pb-4 border-b border-border">
+        {/* User Profile Header */}
+        <div className="px-3 pb-3 border-b border-border">
           {!collapsed ? (
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-foreground truncate">Haush Haush Dashboard</h2>
-              <p className="text-xs text-muted-foreground truncate">Viral Connect · Haush Haush</p>
-            </div>
+            <button
+              onClick={() => navigate('/profil')}
+              className="flex items-center gap-3 w-full rounded-[10px] px-3 py-3 cursor-pointer transition-colors duration-150 hover:bg-muted/60 text-left"
+            >
+              <Avatar className="h-9 w-9 shrink-0">
+                {profileAvatar && <AvatarImage src={profileAvatar} alt={displayName} />}
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
+                <p className="text-[11px] text-muted-foreground truncate mt-px">Haush Haush × Viral Connect</p>
+              </div>
+            </button>
           ) : (
-            <div className="flex justify-center">
-              <span className="text-primary font-bold text-lg" aria-label="Dashboard">H</span>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => navigate('/profil')}
+                  className="flex justify-center w-full py-2 cursor-pointer rounded-[10px] transition-colors duration-150 hover:bg-muted/60"
+                >
+                  <Avatar className="h-9 w-9">
+                    {profileAvatar && <AvatarImage src={profileAvatar} alt={displayName} />}
+                    <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs">{displayName}</TooltipContent>
+            </Tooltip>
           )}
         </div>
         <nav className="flex-1 px-2 py-2 space-y-0.5" aria-label="Hauptnavigation">
@@ -288,6 +347,30 @@ export function AppSidebar() {
             </TooltipContent>
           </Tooltip>
         ) : nachrichtenLink}
+
+        {/* Collapse/Expand toggle */}
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleSidebar}
+                className="h-8 w-8 mx-auto flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 transition-colors"
+                aria-label="Menü ausklappen"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">Menü ausklappen</TooltipContent>
+          </Tooltip>
+        ) : (
+          <button
+            onClick={toggleSidebar}
+            className="h-8 w-8 mx-auto flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 transition-colors"
+            aria-label="Menü einklappen"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
 
         {collapsed ? (
           <Tooltip>
@@ -314,9 +397,6 @@ export function AppSidebar() {
           </NavLink>
         )}
 
-        {!collapsed && user && (
-          <p className="text-xs text-muted-foreground truncate px-3">{user.email}</p>
-        )}
         <div className={cn('flex items-center gap-2', collapsed ? 'flex-col px-0' : 'px-3')}>
           <Tooltip>
             <TooltipTrigger asChild>

@@ -1,4 +1,4 @@
-import { Home, Users, TrendingUp, Euro, UserCircle } from 'lucide-react';
+import { Home, Users, TrendingUp, Euro, User } from 'lucide-react';
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
 
 const tabs = [
@@ -6,7 +6,7 @@ const tabs = [
   { title: 'Kunden', url: '/kunden', icon: Users },
   { title: 'Sales', url: '/sales', icon: TrendingUp },
   { title: 'Finanzen', url: '/finanzen', icon: Euro },
-  { title: 'Team', url: '/hr', icon: UserCircle },
+  { title: 'Profil', url: '/profil', icon: User },
 ];
 
 export function MobileTabBar() {
