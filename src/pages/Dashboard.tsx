@@ -12,7 +12,6 @@ import { Euro, Users, Clock, TrendingUp, BarChart3, Target, CreditCard, UserCirc
 import { supabase } from '@/integrations/supabase/client';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import type { NotificationChannel } from '@/hooks/useNotifications';
 
 const LEISTUNG_SHORT: Record<string, string> = {
   'Meta Werbeanzeigen': 'Meta Ads',
