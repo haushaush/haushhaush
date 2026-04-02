@@ -12,6 +12,7 @@ import { Euro, Users, Clock, TrendingUp, BarChart3, Target, CreditCard, UserCirc
 import { supabase } from '@/integrations/supabase/client';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatValue } from '@/lib/utils';
 
 const LEISTUNG_SHORT: Record<string, string> = {
   'Meta Werbeanzeigen': 'Meta Ads',
@@ -251,13 +252,13 @@ export default function Dashboard() {
       {/* 2. KPI Cards — 6 cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         {/* CARD 1: Umsatz */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen')}>
+        <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen')}>
           <CardContent className="p-4 xl:p-6">
             <div className="flex items-start justify-between mb-2 gap-1">
               <p className="kpi-label text-muted-foreground">UMSATZ</p>
               <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><TrendingUp className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
             </div>
-            <p className="kpi-value text-foreground">{umsatzThisMonth.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+            <p className="kpi-value text-foreground">{formatValue(umsatzThisMonth, 'currency', true)}</p>
             <p className="kpi-sub text-muted-foreground mt-0.5">Bezahlt im {monthName} {currentYear}</p>
             {umsatzTrend !== null ? (
               <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium mt-2 px-1.5 py-0.5 rounded-full ${umsatzTrend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'}`}>
@@ -269,20 +270,20 @@ export default function Dashboard() {
         </Card>
 
         {/* CARD 2: Cash Collect */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen/rechnungen')}>
+        <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen/rechnungen')}>
           <CardContent className="p-4 xl:p-6">
             <div className="flex items-start justify-between mb-2 gap-1">
               <p className="kpi-label text-muted-foreground">CASH COLLECT</p>
               <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Wallet className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
             </div>
-            <p className="kpi-value text-foreground">{cashCollectTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+            <p className="kpi-value text-foreground">{formatValue(cashCollectTotal, 'currency', true)}</p>
             <p className="kpi-sub text-muted-foreground mt-0.5">{cashCollect.length} Rechnungen fällig</p>
             {cashCollectOverdue > 0 && <Badge variant="destructive" className="text-[10px] mt-2">⚠ {cashCollectOverdue} überfällig</Badge>}
           </CardContent>
         </Card>
 
         {/* CARD 3: Kunden */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/kunden')}>
+        <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/kunden')}>
           <CardContent className="p-4 xl:p-6">
             <div className="flex items-start justify-between mb-2 gap-1">
               <p className="kpi-label text-muted-foreground">KUNDEN GESAMT</p>
@@ -295,7 +296,7 @@ export default function Dashboard() {
         </Card>
 
         {/* CARD 4: Top Vertriebler */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/sales/kpis')}>
+        <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/sales/kpis')}>
           <CardContent className="p-4 xl:p-6">
             <div className="flex items-start justify-between mb-2 gap-1">
               <p className="kpi-label text-muted-foreground">TOP VERTRIEBLER</p>
@@ -307,14 +308,14 @@ export default function Dashboard() {
                   <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">{topSeller.initials}</div>
                   <p className="text-sm font-semibold text-foreground truncate">{topSeller.name}</p>
                 </div>
-                <p className="kpi-sub text-muted-foreground mt-1">{topSeller.revenue.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} · {topSeller.closes} Abschlüsse</p>
+                <p className="kpi-sub text-muted-foreground mt-1">{formatValue(topSeller.revenue, 'currency', true)} · {topSeller.closes} Abschlüsse</p>
               </>
             ) : <p className="text-sm text-muted-foreground">Noch keine Daten</p>}
           </CardContent>
         </Card>
 
         {/* CARD 5: Offene Rechnungen */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen/rechnungen')}>
+        <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen/rechnungen')}>
           <CardContent className="p-4 xl:p-6">
             <div className="flex items-start justify-between mb-2 gap-1">
               <p className="kpi-label text-muted-foreground">OFFENE RECHNUNGEN</p>
@@ -324,11 +325,11 @@ export default function Dashboard() {
               <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Alle bezahlt 🎉</p>
             ) : (
               <>
-                <p className="kpi-value text-foreground">{openInvoicesTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>
+                <p className="kpi-value text-foreground">{formatValue(openInvoicesTotal, 'currency', true)}</p>
                 <p className="kpi-sub text-muted-foreground mt-0.5">Gesamt ausstehend</p>
                 <div className="mt-2 space-y-0.5">
-                  {sentInvoices.length > 0 && <p className="kpi-sub text-muted-foreground">{sentInvoices.length} Versendet · {sentTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
-                  {overdueInvoices.length > 0 && <p className="kpi-sub text-destructive font-medium">{overdueInvoices.length} Überfällig · {overdueTotal.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</p>}
+                  {sentInvoices.length > 0 && <p className="kpi-sub text-muted-foreground">{sentInvoices.length} Versendet · {formatValue(sentTotal, 'currency', true)}</p>}
+                  {overdueInvoices.length > 0 && <p className="kpi-sub text-destructive font-medium">{overdueInvoices.length} Überfällig · {formatValue(overdueTotal, 'currency', true)}</p>}
                 </div>
               </>
             )}
@@ -339,7 +340,7 @@ export default function Dashboard() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/projekte')}>
+              <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/projekte')}>
                 <CardContent className="p-4 xl:p-6">
                   <div className="flex items-start justify-between mb-2 gap-1">
                     <p className="kpi-label text-muted-foreground">EFFIZIENZ</p>
@@ -378,7 +379,7 @@ export default function Dashboard() {
         {NAV_TILES.map(tile => (
           <Card
             key={tile.href}
-            className="cursor-pointer hover:border-primary transition-all group rounded-xl overflow-hidden min-w-0"
+            className="cursor-pointer card-interactive group rounded-xl overflow-hidden min-w-0"
             onClick={() => navigate(tile.href)}
           >
             <CardContent className="px-4 py-5 flex flex-col items-center text-center gap-2">
@@ -393,24 +394,24 @@ export default function Dashboard() {
       {/* 4. Alerts — wrapped container */}
       {alerts.length > 0 && (
         <div className="bg-card border border-border rounded-[14px] p-5 px-6">
-          <p className="text-[13px] font-semibold text-muted-foreground uppercase tracking-[0.05em] mb-3 flex items-center gap-2">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.06em] mb-3 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" /> Handlungsbedarf
           </p>
           <div className="space-y-2">
             {alerts.map((a, i) => (
               <div
                 key={i}
-                className={`flex items-center justify-between rounded-lg px-4 py-3 text-sm cursor-pointer transition-colors border-l-[3px] hover:bg-accent ${
+                className={`alert-holo ${
                   a.severity === 'red'
-                    ? 'border-l-destructive'
+                    ? 'alert-holo-red'
                     : a.severity === 'yellow'
-                    ? 'border-l-warning'
-                    : 'border-l-primary'
+                    ? 'alert-holo-orange'
+                    : 'alert-holo-teal'
                 }`}
                 onClick={() => navigate(a.link)}
               >
                 <span className="text-foreground">{a.message}</span>
-                <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0 ml-3">
+                <span className="text-[13px] text-muted-foreground flex items-center gap-1 shrink-0 ml-3 hover:text-primary transition-colors">
                   Ansehen <ArrowRight className="h-3 w-3" />
                 </span>
               </div>
@@ -464,7 +465,7 @@ export default function Dashboard() {
                         <p className="text-[11px] text-muted-foreground mt-1">Start: {d.start_datum ? formatDate(d.start_datum) : '–'}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-primary">€{Number(d.wert_eur || 0).toLocaleString('de-DE')}</p>
+                        <p className="text-sm font-semibold text-primary">€{formatValue(Number(d.wert_eur || 0), 'number')}</p>
                         <Badge variant={d.deal_type === 'Neukunde' ? 'default' : 'secondary'} className={`text-[9px] mt-1 ${d.deal_type === 'Neukunde' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-0' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-0'}`}>
                           {d.deal_type}
                         </Badge>
@@ -563,10 +564,10 @@ export default function Dashboard() {
                           <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{s.calls} Calls</span>
                           <span className="text-[11px] text-muted-foreground flex items-center gap-1"><CalendarCheck className="h-3 w-3" />{s.tq}% TQ</span>
                           <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Trophy className="h-3 w-3" />{s.closes} Abschl.</span>
-                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Banknote className="h-3 w-3" />€{s.revenue.toLocaleString('de-DE')}</span>
+                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Banknote className="h-3 w-3" />{formatValue(s.revenue, 'currency', true)}</span>
                         </div>
                       </div>
-                      <p className="text-sm font-semibold text-primary shrink-0">€{s.revenue.toLocaleString('de-DE')}</p>
+                      <p className="text-sm font-semibold text-primary shrink-0">{formatValue(s.revenue, 'currency', true)}</p>
                     </div>
                   </div>
                 ))}
@@ -610,8 +611,8 @@ export default function Dashboard() {
               <XAxis dataKey="name" axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
               <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={35} />
               <RechartsTooltip
-                formatter={(value: number, name: string) => [`€${value.toLocaleString('de-DE')}`, name === 'bezahlt' ? 'Bezahlt' : 'Offen']}
-                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                formatter={(value: number, name: string) => [formatValue(value, 'currency'), name === 'bezahlt' ? 'Bezahlt' : 'Offen']}
+                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
               />
               <Bar dataKey="bezahlt" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
               <Bar dataKey="offen" stackId="a" fill="hsl(var(--primary) / 0.2)" radius={[4, 4, 0, 0]} />
