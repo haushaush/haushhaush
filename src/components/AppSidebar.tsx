@@ -245,7 +245,7 @@ export function AppSidebar() {
     <NavLink to="/nachrichten" className={cn(
       'sidebar-nav-item flex items-center gap-3 rounded-lg text-sm transition-colors min-h-[40px] relative',
       collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5',
-      nachrichtenActive ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
+      nachrichtenActive ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary' : 'text-muted-foreground hover:bg-muted/60'
     )}>
       <div className="relative shrink-0">
         <Bell className="h-5 w-5" aria-hidden="true" />

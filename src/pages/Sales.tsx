@@ -12,7 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { TrendingUp, Mail, ChevronLeft } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-const tooltipStyle = { backgroundColor: '#fff', border: '1px solid #E5E5E7', borderRadius: '8px', color: '#1D1D1F' };
+const tooltipStyle = { backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' };
 type TimeFilter = 'week' | 'month' | 'all';
 
 function getDateThreshold(filter: TimeFilter): string | null {
@@ -156,7 +156,7 @@ export default function Sales() {
               <Card>
                 <CardHeader><CardTitle className="text-base flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /> Cold Mail Performance</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="text-center"><p className="text-2xl font-bold">{coldMailTotals.sent}</p><p className="text-xs text-muted-foreground">Gesendet</p></div>
                     <div className="text-center"><p className="text-2xl font-bold">{coldMailTotals.resp}</p><p className="text-xs text-muted-foreground">Responses</p></div>
                     <div className="text-center"><p className="text-2xl font-bold text-primary">{coldMailTotals.rate}%</p><p className="text-xs text-muted-foreground">Response Rate</p></div>
@@ -186,7 +186,7 @@ export default function Sales() {
           <Card>
             <CardHeader><CardTitle className="text-base">Cold Mail Performance</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="text-center"><p className="text-2xl font-bold">{coldMailTotals.sent}</p><p className="text-xs text-muted-foreground">Gesendet</p></div>
                 <div className="text-center"><p className="text-2xl font-bold">{coldMailTotals.resp}</p><p className="text-xs text-muted-foreground">Responses</p></div>
                 <div className="text-center"><p className="text-2xl font-bold text-primary">{coldMailTotals.rate}%</p><p className="text-xs text-muted-foreground">Rate</p></div>

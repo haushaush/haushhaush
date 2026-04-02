@@ -217,7 +217,7 @@ export default function Dashboard() {
           <Skeleton className="h-8 w-64 max-w-full" />
           <Skeleton className="h-4 w-40" />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-36 rounded-xl" />)}</div>
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-36 rounded-xl min-w-0" />)}</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">{[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1,2,3].map(i => <Skeleton key={i} className="h-80 rounded-xl" />)}
@@ -249,7 +249,7 @@ export default function Dashboard() {
       </div>
 
       {/* 2. KPI Cards — 6 cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4" style={{ gridTemplateColumns: undefined }}>
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         {/* CARD 1: Umsatz */}
         <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen')}>
           <CardContent className="p-4 xl:p-6">
