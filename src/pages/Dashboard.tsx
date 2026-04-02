@@ -314,7 +314,7 @@ export default function Dashboard() {
               <>
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">{topSeller.initials}</div>
-                  <p className="text-sm font-semibold text-foreground truncate">{topSeller.name}</p>
+                  <p className="text-sm font-semibold text-foreground break-words">{topSeller.name}</p>
                 </div>
                 <p className="kpi-sub text-muted-foreground mt-1">{fmtCurrency(topSeller.revenue)} · {topSeller.closes} Abschlüsse</p>
               </>
