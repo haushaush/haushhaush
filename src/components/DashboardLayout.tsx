@@ -1,9 +1,8 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { MobileTabBar } from '@/components/MobileTabBar';
-import { NotificationBell } from '@/components/NotificationBell';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -31,9 +30,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center">
               {!isMobile && <SidebarTrigger className="mr-4 min-h-[44px] min-w-[44px]" aria-label="Seitenleiste umschalten" />}
             </div>
-            <div className="flex items-center gap-2">
-              <NotificationBell />
-            </div>
+            <div className="flex items-center gap-2" />
           </header>
           <main id="main-content" className="flex-1 p-4 md:p-6 overflow-auto pb-20 md:pb-6" role="main" aria-label="Hauptinhalt">
             {children}

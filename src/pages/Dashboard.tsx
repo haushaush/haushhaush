@@ -2,19 +2,16 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDeals, useRevenue, useInvoices, useSalesPerformance, useTasks, useTeam, useAlerts, useEffizienzScore } from '@/hooks/useDataSources';
-import { useNotifications } from '@/hooks/useNotifications';
-import { NotificationDrawer } from '@/components/NotificationDrawer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Euro, Users, Clock, TrendingUp, BarChart3, Target, FolderOpen, CreditCard, UserCircle, ListTodo, AlertTriangle, ArrowRight, ChevronRight, Phone, CalendarCheck, Trophy, Banknote, Wallet, Zap, ArrowUpRight, ArrowDownRight, Bell, Mail, Hash, CheckSquare, Info } from 'lucide-react';
+import { Euro, Users, Clock, TrendingUp, BarChart3, Target, CreditCard, UserCircle, ListTodo, AlertTriangle, ArrowRight, ChevronRight, Phone, CalendarCheck, Trophy, Banknote, Wallet, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import type { NotificationChannel } from '@/hooks/useNotifications';
 
 const LEISTUNG_SHORT: Record<string, string> = {
   'Meta Werbeanzeigen': 'Meta Ads',
@@ -64,54 +61,7 @@ function getAvatarUrl(user: any) {
   return user?.user_metadata?.avatar_url || null;
 }
 
-function timeAgo(dateStr: string): string {
-  const now = new Date();
-  const d = new Date(dateStr);
-  const diffMs = now.getTime() - d.getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'Gerade eben';
-  if (mins < 60) return `vor ${mins} Min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `vor ${hours} Std`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return 'Gestern';
-  if (days < 7) return `vor ${days} Tagen`;
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-}
 
-function getChannelIcon(channel: string) {
-  switch (channel) {
-    case 'intern': return <Bell className="h-2.5 w-2.5 text-white" />;
-    case 'email': return <Mail className="h-2.5 w-2.5 text-white" />;
-    case 'slack': return <Hash className="h-2.5 w-2.5 text-white" />;
-    case 'aufgabe': return <CheckSquare className="h-2.5 w-2.5 text-white" />;
-    case 'system': return <Info className="h-2.5 w-2.5 text-white" />;
-    default: return <Bell className="h-2.5 w-2.5 text-white" />;
-  }
-}
-
-function getChannelBg(channel: string) {
-  switch (channel) {
-    case 'intern': return 'bg-primary';
-    case 'email': return 'bg-blue-500';
-    case 'slack': return 'bg-purple-500';
-    case 'aufgabe': return 'bg-orange-500';
-    case 'system': return 'bg-muted-foreground';
-    default: return 'bg-muted-foreground';
-  }
-}
-
-export function categorizeNotification(title: string, preview: string | null, channel: string, metadata?: Record<string, any>): string | null {
-  const text = `${title} ${preview || ''}`.toLowerCase();
-  if (text.includes('rechnung') || text.includes('zahlung') || text.includes('überfällig')) return 'Finanzen';
-  if (text.includes('aufgabe') || text.includes('task') || text.includes('erledigt')) return 'Aufgabe';
-  if (text.includes('kunde') || text.includes('ampelstatus') || text.includes('laufzeit')) return 'Kunden';
-  if (text.includes('mitarbeiter') || text.includes('bewerbung') || text.includes('konto')) return 'Team';
-  if (text.includes('projekt') || text.includes('status')) return 'Projekt';
-  if (channel === 'slack') return 'Slack';
-  if (channel === 'email') return 'E-Mail';
-  return null;
-}
 
 const NAV_TILES = [
   { icon: BarChart3, label: 'Sales', sub: 'KPIs & Leaderboard', href: '/sales/kpis' },
@@ -136,8 +86,8 @@ export default function Dashboard() {
   const salesPerf = useSalesPerformance(salesPeriod);
   const salesPerfMonth = useSalesPerformance('month');
   const effizienz = useEffizienzScore();
-  const { notifications, loading: notifLoading, unreadCount, unreadByChannel, markAsRead, markAllAsRead } = useNotifications();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+
+
 
   const loading = deals.loading || revenue.loading || invoices.loading || team.loading || tasks.loading;
 
@@ -257,15 +207,7 @@ export default function Dashboard() {
     tasks.refetch();
   };
 
-  // Notification click handler
-  const handleNotifClick = (n: any) => {
-    markAsRead(n.id);
-    if (n.action_url) {
-      navigate(n.action_url);
-    } else {
-      setDrawerOpen(true);
-    }
-  };
+
 
   if (loading) {
     return (
@@ -478,7 +420,7 @@ export default function Dashboard() {
       )}
 
       {/* 5. 4-Column Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Column 1: Letzte Abschlüsse */}
         <Card className="rounded-[14px]">
           <CardHeader className="p-6 pb-2">
@@ -647,77 +589,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Column 4: Notifications Preview */}
-        <Card className="rounded-[14px]">
-          <CardHeader className="p-6 pb-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base font-semibold">Benachrichtigungen</CardTitle>
-                {unreadCount > 0 && (
-                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] font-bold rounded-full bg-destructive text-destructive-foreground">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </div>
-              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => setDrawerOpen(true)}>
-                Alle <ArrowRight className="h-3 w-3 ml-1" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 pt-0">
-            {notifLoading ? (
-              <div className="space-y-3" aria-busy="true">
-                {[1,2,3].map(i => (
-                  <div key={i} className="flex gap-2 animate-pulse">
-                    <div className="w-5 h-5 rounded-full bg-muted shrink-0" />
-                    <div className="flex-1 space-y-1">
-                      <div className="h-3 bg-muted rounded w-3/4" />
-                      <div className="h-2 bg-muted rounded w-1/2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <Bell className="h-8 w-8 mb-2 opacity-30" />
-                <p className="text-xs">Keine Benachrichtigungen</p>
-              </div>
-            ) : (
-              <div className="space-y-0">
-                {notifications.slice(0, 6).map((n, i) => {
-                  const tag = categorizeNotification(n.title, n.preview, n.channel, n.metadata as Record<string, any>);
-                  return (
-                    <div
-                      key={n.id}
-                      className={`flex items-start gap-2.5 py-2.5 cursor-pointer rounded-lg px-1 -mx-1 hover:bg-accent transition-colors ${i < Math.min(notifications.length, 6) - 1 ? 'border-b border-border' : ''}`}
-                      onClick={() => handleNotifClick(n)}
-                    >
-                      <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5 ${getChannelBg(n.channel)}`}>
-                        {getChannelIcon(n.channel)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-[13px] leading-tight text-foreground truncate ${!n.read ? 'font-medium' : 'font-normal'}`}>
-                          {n.title}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {tag && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{tag}</span>
-                          )}
-                          <span className="text-[11px] text-muted-foreground">{timeAgo(n.created_at)}</span>
-                        </div>
-                      </div>
-                      {!n.read && (
-                        <div className="flex-shrink-0 mt-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       {/* 6. Revenue Chart */}
@@ -748,17 +619,6 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
-
-      {/* Notification Drawer */}
-      <NotificationDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        notifications={notifications}
-        loading={notifLoading}
-        unreadByChannel={unreadByChannel}
-        onMarkAsRead={markAsRead}
-        onMarkAllAsRead={markAllAsRead}
-      />
     </div>
   );
 }
