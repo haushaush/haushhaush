@@ -258,7 +258,7 @@ export default function Dashboard() {
       </div>
 
       {/* 2. KPI Cards — 6 cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="kpi-grid">
         {/* CARD 1: Umsatz */}
         <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen')}>
           <CardContent className="p-4 xl:p-6">
