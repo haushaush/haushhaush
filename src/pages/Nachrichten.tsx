@@ -202,23 +202,29 @@ export default function Nachrichten() {
 
   // Realtime
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
     const channel = supabase
-      .channel('nachrichten-rt')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, (payload) => {
-        const n = payload.new as Notification;
-        if (activeTab === 'archiv' && !n.archived) return;
-        if (activeTab !== 'archiv' && n.archived) return;
-        setNotifications(prev => [n, ...prev]);
-        fetchCounts();
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => {
-        fetchNotifications(true);
-        fetchCounts();
+      .channel(`nachrichten-rt-${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const n = payload.new as Notification;
+          if (activeTab === 'archiv' && !n.archived) return;
+          if (activeTab !== 'archiv' && n.archived) return;
+          setNotifications(prev => [n, ...prev]);
+          fetchCounts();
+        } else if (payload.eventType === 'UPDATE') {
+          fetchNotifications(true);
+          fetchCounts();
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [user, activeTab]);
+  }, [user?.id, activeTab]);
 
   // Intersection observer for infinite scroll
   useEffect(() => {
