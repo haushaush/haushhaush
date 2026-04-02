@@ -379,7 +379,7 @@ export default function Dashboard() {
         {NAV_TILES.map(tile => (
           <Card
             key={tile.href}
-            className="cursor-pointer hover:border-primary transition-all group rounded-xl overflow-hidden min-w-0"
+            className="cursor-pointer card-interactive group rounded-xl overflow-hidden min-w-0"
             onClick={() => navigate(tile.href)}
           >
             <CardContent className="px-4 py-5 flex flex-col items-center text-center gap-2">
