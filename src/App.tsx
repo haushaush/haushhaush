@@ -9,6 +9,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { toast } from "sonner";
 import Auth from "./pages/Auth.tsx";
+import Profil from "./pages/Profil.tsx";
 import Registrierung from "./pages/Registrierung.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Kunden from "./pages/Kunden.tsx";
