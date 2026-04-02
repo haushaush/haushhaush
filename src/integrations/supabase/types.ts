@@ -94,6 +94,92 @@ export type Database = {
         }
         Relationships: []
       }
+      api_logs: {
+        Row: {
+          created_at: string | null
+          endpoint: string | null
+          id: string
+          ip_address: string | null
+          method: string | null
+          response_time_ms: number | null
+          status_code: number | null
+          token_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          endpoint?: string | null
+          id?: string
+          ip_address?: string | null
+          method?: string | null
+          response_time_ms?: number | null
+          status_code?: number | null
+          token_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          endpoint?: string | null
+          id?: string
+          ip_address?: string | null
+          method?: string | null
+          response_time_ms?: number | null
+          status_code?: number | null
+          token_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_logs_token_id_fkey"
+            columns: ["token_id"]
+            isOneToOne: false
+            referencedRelation: "api_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_tokens: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          last_used_at: string | null
+          name: string
+          revoked: boolean | null
+          revoked_at: string | null
+          scopes: Json | null
+          token_hash: string
+          token_preview: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          name: string
+          revoked?: boolean | null
+          revoked_at?: string | null
+          scopes?: Json | null
+          token_hash: string
+          token_preview: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          name?: string
+          revoked?: boolean | null
+          revoked_at?: string | null
+          scopes?: Json | null
+          token_hash?: string
+          token_preview?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           id: string
@@ -776,6 +862,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      integration_settings: {
+        Row: {
+          access_token: string | null
+          api_key: string | null
+          api_secret: string | null
+          config: Json | null
+          connected: boolean | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          last_sync_at: string | null
+          last_sync_error: string | null
+          last_sync_status: string | null
+          provider: string
+          refresh_token: string | null
+          updated_at: string | null
+          user_id: string
+          webhook_url: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          api_key?: string | null
+          api_secret?: string | null
+          config?: Json | null
+          connected?: boolean | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          last_sync_at?: string | null
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          provider: string
+          refresh_token?: string | null
+          updated_at?: string | null
+          user_id: string
+          webhook_url?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          api_key?: string | null
+          api_secret?: string | null
+          config?: Json | null
+          connected?: boolean | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          last_sync_at?: string | null
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          provider?: string
+          refresh_token?: string | null
+          updated_at?: string | null
+          user_id?: string
+          webhook_url?: string | null
+        }
+        Relationships: []
       }
       invoices: {
         Row: {
