@@ -340,7 +340,7 @@ export default function Dashboard() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/projekte')}>
+              <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/projekte')}>
                 <CardContent className="p-4 xl:p-6">
                   <div className="flex items-start justify-between mb-2 gap-1">
                     <p className="kpi-label text-muted-foreground">EFFIZIENZ</p>
