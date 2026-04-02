@@ -567,7 +567,7 @@ export default function Dashboard() {
                           <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Banknote className="h-3 w-3" />{formatValue(s.revenue, 'currency', true)}</span>
                         </div>
                       </div>
-                      <p className="text-sm font-semibold text-primary shrink-0">€{s.revenue.toLocaleString('de-DE')}</p>
+                      <p className="text-sm font-semibold text-primary shrink-0">{formatValue(s.revenue, 'currency', true)}</p>
                     </div>
                   </div>
                 ))}
