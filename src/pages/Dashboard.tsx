@@ -296,7 +296,7 @@ export default function Dashboard() {
         </Card>
 
         {/* CARD 4: Top Vertriebler */}
-        <Card className="cursor-pointer hover:border-primary hover:shadow-md transition-all group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/sales/kpis')}>
+        <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/sales/kpis')}>
           <CardContent className="p-4 xl:p-6">
             <div className="flex items-start justify-between mb-2 gap-1">
               <p className="kpi-label text-muted-foreground">TOP VERTRIEBLER</p>
