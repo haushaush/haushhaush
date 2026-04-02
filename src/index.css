@@ -163,14 +163,27 @@
     max-width: 100%;
   }
 
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    width: 100%;
+  }
+
+  @media (max-width: 640px) {
+    .kpi-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+  }
+
   .kpi-value {
-    font-size: clamp(20px, 2.5vw, 28px);
+    font-size: clamp(18px, 2vw, 26px);
     font-weight: 700;
     line-height: 1.2;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 100%;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    min-width: 0;
   }
 
   .kpi-label {
@@ -184,10 +197,10 @@
 
   .kpi-sub {
     font-size: 11px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    min-width: 0;
   }
 
   /* Table mobile scroll */
