@@ -61,54 +61,7 @@ function getAvatarUrl(user: any) {
   return user?.user_metadata?.avatar_url || null;
 }
 
-function timeAgo(dateStr: string): string {
-  const now = new Date();
-  const d = new Date(dateStr);
-  const diffMs = now.getTime() - d.getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'Gerade eben';
-  if (mins < 60) return `vor ${mins} Min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `vor ${hours} Std`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return 'Gestern';
-  if (days < 7) return `vor ${days} Tagen`;
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
-}
 
-function getChannelIcon(channel: string) {
-  switch (channel) {
-    case 'intern': return <Bell className="h-2.5 w-2.5 text-white" />;
-    case 'email': return <Mail className="h-2.5 w-2.5 text-white" />;
-    case 'slack': return <Hash className="h-2.5 w-2.5 text-white" />;
-    case 'aufgabe': return <CheckSquare className="h-2.5 w-2.5 text-white" />;
-    case 'system': return <Info className="h-2.5 w-2.5 text-white" />;
-    default: return <Bell className="h-2.5 w-2.5 text-white" />;
-  }
-}
-
-function getChannelBg(channel: string) {
-  switch (channel) {
-    case 'intern': return 'bg-primary';
-    case 'email': return 'bg-blue-500';
-    case 'slack': return 'bg-purple-500';
-    case 'aufgabe': return 'bg-orange-500';
-    case 'system': return 'bg-muted-foreground';
-    default: return 'bg-muted-foreground';
-  }
-}
-
-export function categorizeNotification(title: string, preview: string | null, channel: string, metadata?: Record<string, any>): string | null {
-  const text = `${title} ${preview || ''}`.toLowerCase();
-  if (text.includes('rechnung') || text.includes('zahlung') || text.includes('überfällig')) return 'Finanzen';
-  if (text.includes('aufgabe') || text.includes('task') || text.includes('erledigt')) return 'Aufgabe';
-  if (text.includes('kunde') || text.includes('ampelstatus') || text.includes('laufzeit')) return 'Kunden';
-  if (text.includes('mitarbeiter') || text.includes('bewerbung') || text.includes('konto')) return 'Team';
-  if (text.includes('projekt') || text.includes('status')) return 'Projekt';
-  if (channel === 'slack') return 'Slack';
-  if (channel === 'email') return 'E-Mail';
-  return null;
-}
 
 const NAV_TILES = [
   { icon: BarChart3, label: 'Sales', sub: 'KPIs & Leaderboard', href: '/sales/kpis' },
