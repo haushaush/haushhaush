@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Mail, ChevronLeft } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { formatValue } from '@/lib/utils';
 
 const tooltipStyle = { backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' };
 type TimeFilter = 'week' | 'month' | 'all';
