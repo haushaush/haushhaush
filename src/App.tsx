@@ -56,6 +56,7 @@ const App = () => (
             <Route path="/finanzen/:tab" element={<DL><Finanzen /></DL>} />
             <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
             <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
+            <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
             <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
             <Route path="/creatives" element={<DL><Creatives /></DL>} />
             <Route path="/creatives/:id" element={<DL><CreativeDetail /></DL>} />
