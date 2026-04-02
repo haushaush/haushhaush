@@ -32,7 +32,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex items-center gap-2" />
           </header>
-          <main id="main-content" className="flex-1 p-4 md:p-6 overflow-auto pb-20 md:pb-6 min-w-0" role="main" aria-label="Hauptinhalt">
+          <main id="main-content" className="flex-1 p-4 sm:p-6 lg:p-10 overflow-auto pb-20 md:pb-6 min-w-0" role="main" aria-label="Hauptinhalt">
             {children}
           </main>
         </div>

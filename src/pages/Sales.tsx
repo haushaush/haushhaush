@@ -186,7 +186,7 @@ export default function Sales() {
           <Card>
             <CardHeader><CardTitle className="text-base">Cold Mail Performance</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="text-center"><p className="text-2xl font-bold">{coldMailTotals.sent}</p><p className="text-xs text-muted-foreground">Gesendet</p></div>
                 <div className="text-center"><p className="text-2xl font-bold">{coldMailTotals.resp}</p><p className="text-xs text-muted-foreground">Responses</p></div>
                 <div className="text-center"><p className="text-2xl font-bold text-primary">{coldMailTotals.rate}%</p><p className="text-xs text-muted-foreground">Rate</p></div>
