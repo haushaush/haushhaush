@@ -222,10 +222,6 @@ export default function Dashboard() {
     );
   }
 
-  const avatarUrl = getAvatarUrl(user);
-  const initials = getInitials(user, team.data);
-  const firstName = getFirstName(user, team.data);
-
   return (
     <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10 space-y-8">
       {/* 1. Hero — Centered greeting with avatar */}
@@ -242,8 +238,11 @@ export default function Dashboard() {
           Herzlich Willkommen, {firstName}! 👋
         </h1>
         <p className="text-[15px] text-muted-foreground mt-1.5">{formatDateLong()}</p>
-        <MicroLearning />
         <SearchBar onClick={() => setSearchOpen(true)} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-[800px] mx-auto mt-4">
+          <MicroLearning />
+          <TimeTracker />
+        </div>
       </div>
 
       <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
