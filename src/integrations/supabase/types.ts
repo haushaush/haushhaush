@@ -1382,6 +1382,63 @@ export type Database = {
           },
         ]
       }
+      support_tickets: {
+        Row: {
+          created_at: string | null
+          error_code: string | null
+          error_message: string | null
+          error_stack: string | null
+          error_type: string | null
+          id: string
+          page_url: string | null
+          priority: string | null
+          slack_message_ts: string | null
+          status: string | null
+          ticket_nr: string
+          updated_at: string | null
+          user_email: string | null
+          user_id: string | null
+          user_message: string
+          user_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          error_type?: string | null
+          id?: string
+          page_url?: string | null
+          priority?: string | null
+          slack_message_ts?: string | null
+          status?: string | null
+          ticket_nr?: string
+          updated_at?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_message: string
+          user_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          error_type?: string | null
+          id?: string
+          page_url?: string | null
+          priority?: string | null
+          slack_message_ts?: string | null
+          status?: string | null
+          ticket_nr?: string
+          updated_at?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_message?: string
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           assignee_id: string | null
