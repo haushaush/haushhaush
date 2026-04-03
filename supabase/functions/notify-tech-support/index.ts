@@ -70,8 +70,18 @@ Deno.serve(async (req) => {
 
     if (error_message) {
       blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*Fehlermeldung:*\n\`\`\`${error_message.slice(0, 500)}\`\`\``,
+        },
+      } as any);
+    }
+
+    if (error_stack) {
+      blocks.push({
         type: 'context',
-        elements: [{ type: 'mrkdwn', text: `Fehlermeldung: \`${error_message.slice(0, 200)}\`` }],
+        elements: [{ type: 'mrkdwn', text: `Stack: \`${error_stack.split('\n')[0]}\`` }],
       } as any);
     }
 
