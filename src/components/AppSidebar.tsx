@@ -298,7 +298,7 @@ export function AppSidebar() {
                   className="flex justify-center w-full py-2 cursor-pointer rounded-[10px] transition-colors duration-150 hover:bg-muted/60"
                 >
                   <Avatar className="h-9 w-9">
-                    {profileAvatar && <AvatarImage src={profileAvatar} alt={displayName} />}
+                    {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
                     <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                       {initials}
                     </AvatarFallback>
