@@ -305,7 +305,7 @@ export function AppSidebar() {
                   </Avatar>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="text-xs">{displayName}</TooltipContent>
+              <TooltipContent side="right" className="text-xs">{displayName} — Profil bearbeiten</TooltipContent>
             </Tooltip>
           )}
         </div>
