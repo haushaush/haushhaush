@@ -238,10 +238,10 @@ export default function Dashboard() {
           Herzlich Willkommen, {firstName}! 👋
         </h1>
         <p className="text-[15px] text-muted-foreground mt-1.5">{formatDateLong()}</p>
-        <div className="w-full mt-4">
+        <div className="w-full mt-3 mb-5">
           <SearchBar onClick={() => setSearchOpen(true)} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch mb-8">
           <MicroLearning />
           <TimeTracker />
         </div>

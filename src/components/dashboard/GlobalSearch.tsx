@@ -40,13 +40,13 @@ function removeRecentSearch(q: string) {
 
 export function SearchBar({ onClick }: { onClick: () => void }) {
   return (
-    <div className="max-w-[560px] w-full mx-auto mt-6">
+    <div className="w-full">
       <button
         onClick={onClick}
-        className="w-full h-11 bg-card border border-border rounded-[10px] px-4 flex items-center gap-2.5 cursor-text hover:border-primary/40 focus:border-primary focus:ring-[3px] focus:ring-accent transition-all duration-150"
+        className="w-full h-12 bg-card border border-border rounded-[10px] px-[18px] flex items-center gap-2.5 cursor-text hover:border-primary/40 focus:border-primary focus:ring-[3px] focus:ring-accent transition-all duration-150"
       >
         <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-        <span className="text-sm text-muted-foreground flex-1 text-left">Kunden, Aufgaben, Seiten suchen...</span>
+        <span className="text-[14px] text-muted-foreground flex-1 text-left">Kunden, Aufgaben, Seiten suchen...</span>
         <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[11px] text-muted-foreground border border-border rounded px-1.5 py-0.5">⌘K</kbd>
       </button>
     </div>
