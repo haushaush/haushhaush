@@ -2,9 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { Play, Square, X } from 'lucide-react';
+import { Play, Square, X, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TimerState {
@@ -44,42 +42,6 @@ function formatDuration(seconds: number): string {
 export function TimeTracker() {
   const { user } = useAuth();
   const [timer, setTimer] = useState<TimerState>(loadTimerState);
-  const [todayTotal, setTodayTotal] = useState(0);
-  const [recentEntries, setRecentEntries] = useState<any[]>([]);
-
-  // Fetch today's total
-  const fetchToday = useCallback(async () => {
-    if (!user?.id) return;
-    const today = new Date().toISOString().split('T')[0];
-    const { data } = await supabase
-      .from('time_entries')
-      .select('duration_seconds')
-      .eq('user_id', user.id)
-      .gte('started_at', `${today}T00:00:00`)
-      .not('duration_seconds', 'is', null);
-    const total = (data || []).reduce((s: number, e: any) => s + (e.duration_seconds || 0), 0);
-    setTodayTotal(total);
-  }, [user?.id]);
-
-  // Fetch recent entries
-  const fetchRecent = useCallback(async () => {
-    if (!user?.id) return;
-    const today = new Date().toISOString().split('T')[0];
-    const { data } = await supabase
-      .from('time_entries')
-      .select('task_label, duration_seconds')
-      .eq('user_id', user.id)
-      .gte('started_at', `${today}T00:00:00`)
-      .not('duration_seconds', 'is', null)
-      .order('started_at', { ascending: false })
-      .limit(3);
-    setRecentEntries(data || []);
-  }, [user?.id]);
-
-  useEffect(() => {
-    fetchToday();
-    fetchRecent();
-  }, [fetchToday, fetchRecent]);
 
   // Timer tick
   useEffect(() => {
@@ -120,8 +82,6 @@ export function TimeTracker() {
       .eq('id', timer.entryId);
     toast.success(`Zeit gestoppt: ${formatDuration(duration)}`);
     setTimer({ running: false, startedAt: null, elapsed: 0, entryId: null, taskLabel: '' });
-    fetchToday();
-    fetchRecent();
   };
 
   const handleDiscard = async () => {
@@ -132,21 +92,13 @@ export function TimeTracker() {
     toast('Eintrag verworfen');
   };
 
-  const todayH = Math.floor(todayTotal / 3600);
-  const todayM = Math.floor((todayTotal % 3600) / 60);
-
   return (
-    <div className="bg-card border border-border rounded-xl p-5 flex flex-col justify-between h-full">
-      {/* Top row */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[13px] font-semibold text-foreground">Zeiterfassung</span>
-        <span className="text-[11px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-          {todayH}h {todayM}m heute
-        </span>
-      </div>
+    <div className="bg-card border border-border rounded-xl flex flex-col justify-between h-[200px] min-h-[200px] max-h-[200px] overflow-hidden p-5 px-6">
+      {/* Row 1 — Label */}
+      <span className="text-[13px] font-semibold text-foreground shrink-0">Zeiterfassung</span>
 
-      {/* Timer display */}
-      <div className="flex items-center justify-center py-3">
+      {/* Row 2 — Timer display */}
+      <div className="flex items-center justify-center shrink-0">
         <span
           className={`font-mono text-[32px] font-bold tracking-wider transition-colors ${
             timer.running ? 'text-primary animate-pulse' : 'text-foreground'
@@ -156,57 +108,55 @@ export function TimeTracker() {
         </span>
       </div>
 
-      {/* Task input */}
-      <div className="mb-3">
+      {/* Row 3 — Task input (pill style) */}
+      <div className="shrink-0">
         {timer.running ? (
-          <p className="text-[13px] text-muted-foreground truncate border-b border-border pb-1.5">
-            {timer.taskLabel || 'Keine Aufgabe'}
-          </p>
+          <div className="flex items-center gap-2 h-9 rounded-full bg-background border border-border px-3.5 opacity-60">
+            <Pencil className="h-3 w-3 text-muted-foreground shrink-0" />
+            <span className="text-[13px] text-muted-foreground truncate">
+              {timer.taskLabel || 'Keine Aufgabe'}
+            </span>
+          </div>
         ) : (
-          <Input
-            value={timer.taskLabel}
-            onChange={e => setTimer(prev => ({ ...prev, taskLabel: e.target.value }))}
-            placeholder="Was arbeitest du gerade an?"
-            className="text-[13px] border-0 border-b border-border rounded-none bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 h-8"
-          />
+          <div className="relative">
+            <Pencil className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+            <input
+              value={timer.taskLabel}
+              onChange={e => setTimer(prev => ({ ...prev, taskLabel: e.target.value }))}
+              placeholder="Woran arbeitest du?"
+              className="w-full h-9 rounded-full bg-background border border-border pl-8 pr-3.5 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-[3px] focus:ring-primary/12 focus:outline-none transition-all"
+            />
+          </div>
         )}
       </div>
 
-      {/* Action buttons */}
-      {!timer.running ? (
-        <Button onClick={handleStart} className="w-full h-10 gap-2">
-          <Play className="h-4 w-4" /> Starten
-        </Button>
-      ) : (
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            onClick={handleStop}
-            variant="destructive"
-            className="h-10 gap-1.5 text-[13px]"
-          >
-            <Square className="h-3.5 w-3.5" /> Stopp
+      {/* Row 4 — Action buttons */}
+      <div className="shrink-0">
+        {!timer.running ? (
+          <Button onClick={handleStart} className="w-full h-9 gap-2 rounded-lg">
+            <Play className="h-4 w-4" /> Starten
           </Button>
-          <Button
-            onClick={handleDiscard}
-            variant="ghost"
-            className="h-10 gap-1.5 text-[13px] text-muted-foreground"
-          >
-            <X className="h-3.5 w-3.5" /> Verwerfen
-          </Button>
-        </div>
-      )}
+        ) : (
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <Button
+              onClick={handleStop}
+              variant="outline"
+              className="h-9 gap-1.5 text-[13px] rounded-lg border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20"
+            >
+              <Square className="h-3.5 w-3.5" /> Stopp
+            </Button>
+            <Button
+              onClick={handleDiscard}
+              variant="ghost"
+              className="h-9 w-9 p-0 rounded-lg text-muted-foreground border border-border"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
+      </div>
 
-      {/* Recent entries */}
-      {recentEntries.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-border space-y-1">
-          {recentEntries.map((e, i) => (
-            <div key={i} className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span className="truncate mr-2">{e.task_label || 'Ohne Titel'}</span>
-              <span className="shrink-0">{formatDuration(e.duration_seconds || 0)}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* TODO: Time tracking logs — will be connected in Zeiterfassung section */}
     </div>
   );
 }

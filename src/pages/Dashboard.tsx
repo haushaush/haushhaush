@@ -225,7 +225,7 @@ export default function Dashboard() {
   return (
     <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10 space-y-8">
       {/* 1. Hero — Centered greeting with avatar */}
-      <div className="flex flex-col items-center text-center pt-2 pb-2">
+      <div className="flex flex-col items-center text-center pt-2 pb-2 w-full">
         <Avatar className="h-[72px] w-[72px] border-[3px] border-card mb-4">
           {avatarUrl ? (
             <AvatarImage src={avatarUrl} alt={firstName} />
@@ -238,8 +238,10 @@ export default function Dashboard() {
           Herzlich Willkommen, {firstName}! 👋
         </h1>
         <p className="text-[15px] text-muted-foreground mt-1.5">{formatDateLong()}</p>
-        <SearchBar onClick={() => setSearchOpen(true)} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-[800px] mx-auto mt-4">
+        <div className="w-full mt-4">
+          <SearchBar onClick={() => setSearchOpen(true)} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mt-4">
           <MicroLearning />
           <TimeTracker />
         </div>
