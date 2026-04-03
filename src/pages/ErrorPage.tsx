@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,6 +81,19 @@ export default function ErrorPage({ type, error }: ErrorPageProps) {
   const c = textConfig[type];
   const now = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+  const errorDetails = useMemo(() => ({
+    message: error?.message || null,
+    stack: error?.stack || null,
+    code: (error as any)?.code || (type === 'crash' ? '500' : type === '404' ? '404' : type === 'unauthorized' ? '403' : null),
+    type,
+    page_url: window.location.href,
+    user_agent: navigator.userAgent,
+    timestamp: new Date().toISOString(),
+    raw_error_string: error?.message
+      ? `${error.message}${error.stack ? '\n\n' + error.stack : ''}`
+      : null,
+  }), [type, error]);
+
   const handleHomeClick = useCallback(async () => {
     setRedirecting(true);
     try {
@@ -147,6 +160,7 @@ export default function ErrorPage({ type, error }: ErrorPageProps) {
         onClose={() => setSupportOpen(false)}
         errorType={type}
         error={error}
+        errorDetails={errorDetails}
       />
 
       <style>{`
