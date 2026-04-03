@@ -277,7 +277,7 @@ export function AppSidebar() {
           {!collapsed ? (
             <button
               onClick={() => navigate('/profil')}
-              className="flex items-center gap-3 w-full rounded-[10px] px-3 py-3 cursor-pointer transition-colors duration-150 hover:bg-muted/60 text-left"
+              className="group/profile flex items-center gap-3 w-full rounded-[10px] px-3 py-3 cursor-pointer transition-colors duration-150 hover:bg-muted/60 text-left"
             >
               <Avatar className="h-9 w-9 shrink-0">
                 {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
