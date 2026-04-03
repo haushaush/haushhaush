@@ -50,6 +50,7 @@ const RANK_COLORS = ['#F5A623', '#9B9B9B', '#8B6347'];
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { firstName, initials, avatarUrl } = useProfile();
   const navigate = useNavigate();
   const deals = useDeals();
   const revenue = useRevenue();
