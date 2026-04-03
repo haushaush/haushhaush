@@ -280,14 +280,14 @@ export function AppSidebar() {
               className="flex items-center gap-3 w-full rounded-[10px] px-3 py-3 cursor-pointer transition-colors duration-150 hover:bg-muted/60 text-left"
             >
               <Avatar className="h-9 w-9 shrink-0">
-                {profileAvatar && <AvatarImage src={profileAvatar} alt={displayName} />}
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0 overflow-hidden">
                 <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
-                <p className="text-[11px] text-muted-foreground truncate mt-px">Haush Haush × Viral Connect</p>
+                <p className="text-[11px] text-muted-foreground truncate mt-px group-hover/profile:text-primary transition-colors">Profil bearbeiten →</p>
               </div>
             </button>
           ) : (
