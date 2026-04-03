@@ -226,11 +226,11 @@ export default function Dashboard() {
     <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10 space-y-8">
       {/* 1. Hero — Centered greeting with avatar */}
       <div className="flex flex-col items-center text-center pt-2 pb-2 w-full">
-        <Avatar className="h-[72px] w-[72px] border-[3px] border-card mb-4">
+        <Avatar className="h-24 w-24 border-[3px] border-card mb-4">
           {avatarUrl ? (
             <AvatarImage src={avatarUrl} alt={firstName} />
           ) : null}
-          <AvatarFallback className="bg-primary text-primary-foreground text-[28px] font-semibold">
+          <AvatarFallback className="bg-primary text-primary-foreground text-[36px] font-semibold">
             {initials}
           </AvatarFallback>
         </Avatar>
