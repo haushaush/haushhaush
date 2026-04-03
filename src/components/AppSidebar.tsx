@@ -3,6 +3,7 @@ import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Setti
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useProfile } from '@/hooks/useProfile';
 import {
   Sidebar, SidebarContent, SidebarFooter, useSidebar,
 } from '@/components/ui/sidebar';
