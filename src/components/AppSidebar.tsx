@@ -173,8 +173,6 @@ export function AppSidebar() {
   };
 
   const nachrichtenActive = location.pathname === '/nachrichten';
-  const displayName = profileName || 'Benutzer';
-  const initials = getInitials(displayName);
 
   const renderNavItem = (item: NavItem) => {
     const parentActive = isParentActive(item);
