@@ -1479,6 +1479,45 @@ export type Database = {
         }
         Relationships: []
       }
+      time_entries: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          duration_seconds: number | null
+          id: string
+          notes: string | null
+          started_at: string
+          stopped_at: string | null
+          task_id: string | null
+          task_label: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          notes?: string | null
+          started_at: string
+          stopped_at?: string | null
+          task_id?: string | null
+          task_label?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          notes?: string | null
+          started_at?: string
+          stopped_at?: string | null
+          task_id?: string | null
+          task_label?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       time_off_requests: {
         Row: {
           anmerkung: string | null
