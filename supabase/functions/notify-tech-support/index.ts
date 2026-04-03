@@ -25,6 +25,7 @@ Deno.serve(async (req) => {
       user_message,
       priority,
       created_at,
+      error_stack,
     } = body;
 
     // Format timestamp
