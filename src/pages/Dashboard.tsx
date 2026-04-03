@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { useDeals, useRevenue, useInvoices, useSalesPerformance, useTasks, useTeam, useAlerts, useEffizienzScore } from '@/hooks/useDataSources';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsToolti
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatValue } from '@/lib/utils';
 import { MicroLearning } from '@/components/dashboard/MicroLearning';
+import { TimeTracker } from '@/components/dashboard/TimeTracker';
 import { SearchBar, GlobalSearchModal } from '@/components/dashboard/GlobalSearch';
 
 const LEISTUNG_SHORT: Record<string, string> = {
@@ -32,37 +34,6 @@ function formatDateLong() {
   return new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function getFirstName(user: any, teamData?: any[]) {
-  // Try team table first
-  if (teamData && user?.email) {
-    const member = teamData.find((m: any) => m.email === user.email);
-    if (member?.name) return member.name.split(' ')[0];
-  }
-  const meta = user?.user_metadata;
-  if (meta?.full_name) return meta.full_name.split(' ')[0];
-  if (meta?.name) return meta.name.split(' ')[0];
-  const email = user?.email || '';
-  const part = email.split('@')[0] || 'User';
-  return part.charAt(0).toUpperCase() + part.slice(1);
-}
-
-function getInitials(user: any, teamData?: any[]) {
-  if (teamData && user?.email) {
-    const member = teamData.find((m: any) => m.email === user.email);
-    if (member?.name) {
-      const parts = member.name.split(' ');
-      return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
-    }
-  }
-  const meta = user?.user_metadata;
-  const name = meta?.full_name || meta?.name || user?.email?.split('@')[0] || 'U';
-  const parts = name.split(' ');
-  return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
-}
-
-function getAvatarUrl(user: any) {
-  return user?.user_metadata?.avatar_url || null;
-}
 
 
 
@@ -79,6 +50,7 @@ const RANK_COLORS = ['#F5A623', '#9B9B9B', '#8B6347'];
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { firstName, initials, avatarUrl } = useProfile();
   const navigate = useNavigate();
   const deals = useDeals();
   const revenue = useRevenue();
@@ -250,10 +222,6 @@ export default function Dashboard() {
     );
   }
 
-  const avatarUrl = getAvatarUrl(user);
-  const initials = getInitials(user, team.data);
-  const firstName = getFirstName(user, team.data);
-
   return (
     <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10 space-y-8">
       {/* 1. Hero — Centered greeting with avatar */}
@@ -270,8 +238,11 @@ export default function Dashboard() {
           Herzlich Willkommen, {firstName}! 👋
         </h1>
         <p className="text-[15px] text-muted-foreground mt-1.5">{formatDateLong()}</p>
-        <MicroLearning />
         <SearchBar onClick={() => setSearchOpen(true)} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-[800px] mx-auto mt-4">
+          <MicroLearning />
+          <TimeTracker />
+        </div>
       </div>
 
       <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />

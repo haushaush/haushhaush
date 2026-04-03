@@ -3,6 +3,7 @@ import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Setti
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useProfile } from '@/hooks/useProfile';
 import {
   Sidebar, SidebarContent, SidebarFooter, useSidebar,
 } from '@/components/ui/sidebar';
@@ -94,11 +95,10 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user, isAdminOrManager } = useAuth();
+  const { displayName, initials, avatarUrl } = useProfile();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [pendingCount, setPendingCount] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
-  const [profileName, setProfileName] = useState<string | null>(null);
-  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
     const result = { ...saved };
@@ -112,28 +112,6 @@ export function AppSidebar() {
   });
 
   useEffect(() => { saveSidebarState(openGroups); }, [openGroups]);
-
-  // Fetch profile info
-  useEffect(() => {
-    if (!user?.id) return;
-    const fetchProfile = async () => {
-      const { data } = await supabase
-        .from('team')
-        .select('name')
-        .eq('email', user.email || '')
-        .maybeSingle();
-      if (data?.name) {
-        setProfileName(data.name);
-      } else {
-        // Fallback to email prefix
-        const prefix = (user.email || '').split('@')[0];
-        setProfileName(prefix.charAt(0).toUpperCase() + prefix.slice(1));
-      }
-      // Avatar from user metadata
-      setProfileAvatar(user.user_metadata?.avatar_url || null);
-    };
-    fetchProfile();
-  }, [user?.id, user?.email]);
 
   useEffect(() => {
     if (!isAdminOrManager) return;
@@ -195,8 +173,6 @@ export function AppSidebar() {
   };
 
   const nachrichtenActive = location.pathname === '/nachrichten';
-  const displayName = profileName || 'Benutzer';
-  const initials = getInitials(displayName);
 
   const renderNavItem = (item: NavItem) => {
     const parentActive = isParentActive(item);
@@ -301,17 +277,17 @@ export function AppSidebar() {
           {!collapsed ? (
             <button
               onClick={() => navigate('/profil')}
-              className="flex items-center gap-3 w-full rounded-[10px] px-3 py-3 cursor-pointer transition-colors duration-150 hover:bg-muted/60 text-left"
+              className="group/profile flex items-center gap-3 w-full rounded-[10px] px-3 py-3 cursor-pointer transition-colors duration-150 hover:bg-muted/60 text-left"
             >
               <Avatar className="h-9 w-9 shrink-0">
-                {profileAvatar && <AvatarImage src={profileAvatar} alt={displayName} />}
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0 overflow-hidden">
                 <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
-                <p className="text-[11px] text-muted-foreground truncate mt-px">Haush Haush × Viral Connect</p>
+                <p className="text-[11px] text-muted-foreground truncate mt-px group-hover/profile:text-primary transition-colors">Profil bearbeiten →</p>
               </div>
             </button>
           ) : (
@@ -322,14 +298,14 @@ export function AppSidebar() {
                   className="flex justify-center w-full py-2 cursor-pointer rounded-[10px] transition-colors duration-150 hover:bg-muted/60"
                 >
                   <Avatar className="h-9 w-9">
-                    {profileAvatar && <AvatarImage src={profileAvatar} alt={displayName} />}
+                    {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
                     <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="text-xs">{displayName}</TooltipContent>
+              <TooltipContent side="right" className="text-xs">{displayName} — Profil bearbeiten</TooltipContent>
             </Tooltip>
           )}
         </div>

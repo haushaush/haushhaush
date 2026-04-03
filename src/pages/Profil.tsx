@@ -137,6 +137,13 @@ export default function Profil() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Update team table (triggers realtime for useProfile hook)
+      const fullName = `${form.vorname} ${form.nachname}`.trim();
+      await supabase
+        .from('team')
+        .update({ name: fullName })
+        .eq('email', user?.email || '');
+
       // Update employee_requests if exists
       const { data: existing } = await supabase
         .from('employee_requests')
