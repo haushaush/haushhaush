@@ -113,28 +113,6 @@ export function AppSidebar() {
 
   useEffect(() => { saveSidebarState(openGroups); }, [openGroups]);
 
-  // Fetch profile info
-  useEffect(() => {
-    if (!user?.id) return;
-    const fetchProfile = async () => {
-      const { data } = await supabase
-        .from('team')
-        .select('name')
-        .eq('email', user.email || '')
-        .maybeSingle();
-      if (data?.name) {
-        setProfileName(data.name);
-      } else {
-        // Fallback to email prefix
-        const prefix = (user.email || '').split('@')[0];
-        setProfileName(prefix.charAt(0).toUpperCase() + prefix.slice(1));
-      }
-      // Avatar from user metadata
-      setProfileAvatar(user.user_metadata?.avatar_url || null);
-    };
-    fetchProfile();
-  }, [user?.id, user?.email]);
-
   useEffect(() => {
     if (!isAdminOrManager) return;
     const fetch = async () => {
