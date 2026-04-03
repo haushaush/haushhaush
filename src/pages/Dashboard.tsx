@@ -34,37 +34,6 @@ function formatDateLong() {
   return new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function getFirstName(user: any, teamData?: any[]) {
-  // Try team table first
-  if (teamData && user?.email) {
-    const member = teamData.find((m: any) => m.email === user.email);
-    if (member?.name) return member.name.split(' ')[0];
-  }
-  const meta = user?.user_metadata;
-  if (meta?.full_name) return meta.full_name.split(' ')[0];
-  if (meta?.name) return meta.name.split(' ')[0];
-  const email = user?.email || '';
-  const part = email.split('@')[0] || 'User';
-  return part.charAt(0).toUpperCase() + part.slice(1);
-}
-
-function getInitials(user: any, teamData?: any[]) {
-  if (teamData && user?.email) {
-    const member = teamData.find((m: any) => m.email === user.email);
-    if (member?.name) {
-      const parts = member.name.split(' ');
-      return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
-    }
-  }
-  const meta = user?.user_metadata;
-  const name = meta?.full_name || meta?.name || user?.email?.split('@')[0] || 'U';
-  const parts = name.split(' ');
-  return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
-}
-
-function getAvatarUrl(user: any) {
-  return user?.user_metadata?.avatar_url || null;
-}
 
 
 
