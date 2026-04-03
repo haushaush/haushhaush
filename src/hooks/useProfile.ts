@@ -12,18 +12,22 @@ interface ProfileData {
 export function useProfile() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
 
     const fetchProfile = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('team')
         .select('name, rolle, department')
         .eq('email', user.email || '')
         .maybeSingle();
 
-      if (data) {
+      if (!error && data) {
         setProfile({
           name: data.name,
           rolle: data.rolle,
@@ -31,7 +35,6 @@ export function useProfile() {
           abteilung: data.department,
         });
       } else {
-        // Fallback
         const prefix = (user.email || '').split('@')[0];
         setProfile({
           name: prefix.charAt(0).toUpperCase() + prefix.slice(1),
@@ -40,20 +43,32 @@ export function useProfile() {
           abteilung: null,
         });
       }
+      setLoading(false);
     };
 
     fetchProfile();
 
-    const sub = supabase
+    // CORRECT ORDER: .on() first, .subscribe() last
+    const channel = supabase
       .channel(`profile-changes-${user.id}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'team',
-      }, () => fetchProfile())
-      .subscribe();
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'team',
+        },
+        () => fetchProfile()
+      )
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.warn('Profile realtime subscription failed');
+        }
+      });
 
-    return () => { supabase.removeChannel(sub); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user?.id, user?.email]);
 
   const displayName = profile?.name || user?.email?.split('@')[0] || 'Nutzer';
@@ -61,5 +76,5 @@ export function useProfile() {
   const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   const avatarUrl = profile?.profilbild_url || user?.user_metadata?.avatar_url || null;
 
-  return { profile, displayName, firstName, initials, avatarUrl };
+  return { profile, displayName, firstName, initials, avatarUrl, loading };
 }
