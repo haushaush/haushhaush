@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { useDeals, useRevenue, useInvoices, useSalesPerformance, useTasks, useTeam, useAlerts, useEffizienzScore } from '@/hooks/useDataSources';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsToolti
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatValue } from '@/lib/utils';
 import { MicroLearning } from '@/components/dashboard/MicroLearning';
+import { TimeTracker } from '@/components/dashboard/TimeTracker';
 import { SearchBar, GlobalSearchModal } from '@/components/dashboard/GlobalSearch';
 
 const LEISTUNG_SHORT: Record<string, string> = {
