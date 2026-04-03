@@ -7,11 +7,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 
+interface ErrorDetails {
+  message: string | null;
+  stack: string | null;
+  code: string | null;
+  type: string;
+  page_url: string;
+  user_agent: string;
+  timestamp: string;
+  raw_error_string: string | null;
+}
+
 interface SupportModalProps {
   open: boolean;
   onClose: () => void;
   errorType: '404' | 'crash' | 'unauthorized' | 'offline';
   error?: Error | null;
+  errorDetails: ErrorDetails;
 }
 
 const priorityMap: Record<string, string> = {
@@ -21,14 +33,7 @@ const priorityMap: Record<string, string> = {
   offline: 'Normal',
 };
 
-const errorCodeMap: Record<string, string> = {
-  crash: '500',
-  '404': '404',
-  unauthorized: '403',
-  offline: 'OFFLINE',
-};
-
-export default function SupportModal({ open, onClose, errorType, error }: SupportModalProps) {
+export default function SupportModal({ open, onClose, errorType, error, errorDetails }: SupportModalProps) {
   const { user } = useAuth();
   const { displayName } = useProfile();
 
@@ -41,9 +46,7 @@ export default function SupportModal({ open, onClose, errorType, error }: Suppor
 
   const nameRef = useRef<HTMLInputElement>(null);
   const messageRef = useRef<HTMLTextAreaElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
 
-  // Pre-fill from auth
   useEffect(() => {
     if (open) {
       setSuccess(null);
@@ -59,7 +62,6 @@ export default function SupportModal({ open, onClose, errorType, error }: Suppor
     }
   }, [open, user, displayName]);
 
-  // Focus management
   useEffect(() => {
     if (open && !success) {
       const timer = setTimeout(() => {
@@ -73,7 +75,6 @@ export default function SupportModal({ open, onClose, errorType, error }: Suppor
     }
   }, [open, success, user, displayName]);
 
-  // Escape key
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -93,11 +94,11 @@ export default function SupportModal({ open, onClose, errorType, error }: Suppor
         user_id: user?.id || null,
         user_name: name || null,
         user_email: email || null,
-        error_type: errorType,
-        error_code: error?.name || errorCodeMap[errorType] || null,
-        error_message: error?.message || null,
-        error_stack: error?.stack || null,
-        page_url: window.location.href,
+        error_type: errorDetails.type,
+        error_code: errorDetails.code,
+        error_message: errorDetails.message,
+        error_stack: errorDetails.stack,
+        page_url: errorDetails.page_url,
         user_message: message.trim(),
         priority: priorityMap[errorType] || 'Normal',
       };
@@ -110,21 +111,21 @@ export default function SupportModal({ open, onClose, errorType, error }: Suppor
 
       if (insertError) throw insertError;
 
-      // Try to notify via edge function (non-blocking)
+      // Notify via edge function (non-blocking)
       try {
         await supabase.functions.invoke('notify-tech-support', {
           body: {
-            ticket_id: data?.ticket_nr,
             ticket_nr: data?.ticket_nr,
             user_name: name,
             user_email: email,
-            error_type: errorType,
-            error_code: errorCodeMap[errorType],
-            error_message: error?.message || null,
-            page_url: window.location.href,
+            error_type: errorDetails.type,
+            error_code: errorDetails.code,
+            error_message: errorDetails.message,
+            error_stack: errorDetails.stack,
+            page_url: errorDetails.page_url,
             user_message: message.trim(),
             priority: priorityMap[errorType],
-            created_at: new Date().toISOString(),
+            created_at: errorDetails.timestamp,
           },
         });
       } catch {
@@ -137,14 +138,9 @@ export default function SupportModal({ open, onClose, errorType, error }: Suppor
     } finally {
       setSubmitting(false);
     }
-  }, [message, name, email, user, errorType, error, submitting]);
+  }, [message, name, email, user, errorType, errorDetails, submitting]);
 
   if (!open) return null;
-
-  const now = new Date().toLocaleDateString('de-DE', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
 
   return (
     <div
@@ -154,15 +150,9 @@ export default function SupportModal({ open, onClose, errorType, error }: Suppor
       aria-modal="true"
       aria-labelledby="support-modal-title"
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 dark:bg-black/70" />
 
-      {/* Modal card */}
-      <div
-        ref={modalRef}
-        className="relative w-full max-w-[480px] bg-card border border-border rounded-[14px] p-8 shadow-[0_24px_64px_rgba(0,0,0,0.18)]"
-      >
-        {/* Close button */}
+      <div className="relative w-full max-w-[480px] bg-card border border-border rounded-[14px] p-8 shadow-[0_24px_64px_rgba(0,0,0,0.18)] max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
@@ -171,7 +161,6 @@ export default function SupportModal({ open, onClose, errorType, error }: Suppor
         </button>
 
         {success ? (
-          /* ───── Success State ───── */
           <div className="flex flex-col items-center text-center py-4">
             <div className="mb-4">
               <CheckCircle2 className="h-12 w-12 text-[#0A9396]" strokeWidth={1.5} />
@@ -184,7 +173,6 @@ export default function SupportModal({ open, onClose, errorType, error }: Suppor
             <Button onClick={onClose} className="w-full max-w-[200px]">Schließen</Button>
           </div>
         ) : (
-          /* ───── Form State ───── */
           <>
             <div className="flex items-start gap-3 mb-6">
               <LifeBuoy className="h-6 w-6 text-[#0A9396] flex-shrink-0 mt-0.5" />
@@ -198,36 +186,40 @@ export default function SupportModal({ open, onClose, errorType, error }: Suppor
               </div>
             </div>
 
-            {/* Error details auto-filled block */}
-            {errorType === 'crash' && error && (
-              <div className="bg-muted/50 border border-border rounded-lg p-3 mb-4 text-[11px] font-mono text-muted-foreground space-y-0.5">
-                <p>Fehlercode: {error.name || '500'}</p>
-                <p>Seite: {window.location.pathname}</p>
-                <p>Zeitpunkt: {now}</p>
+            {/* Auto-captured error details — always visible */}
+            <div className="bg-muted/50 border border-border rounded-lg p-3 mb-4">
+              <p className="text-[11px] font-semibold text-muted-foreground mb-2 tracking-wider">
+                WIRD AUTOMATISCH MITGESENDET
+              </p>
+              <div className="flex flex-col gap-1">
+                {errorDetails.code && (
+                  <span className="text-xs text-muted-foreground">
+                    Fehlercode: <code className="text-destructive font-mono">{errorDetails.code}</code>
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground">
+                  Seite: <code className="font-mono text-[11px]">{errorDetails.page_url}</code>
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Zeitpunkt: {new Date(errorDetails.timestamp).toLocaleString('de-DE')}
+                </span>
+                {errorDetails.message && (
+                  <div className="mt-2 bg-card border border-destructive/20 rounded-md p-2 font-mono text-[11px] text-destructive break-all max-h-[80px] overflow-y-auto">
+                    {errorDetails.message}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">Name</label>
-                <Input
-                  ref={nameRef}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Dein Name"
-                />
+                <Input ref={nameRef} value={name} onChange={(e) => setName(e.target.value)} placeholder="Dein Name" />
               </div>
-
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">E-Mail</label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="deine@email.de"
-                />
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="deine@email.de" />
               </div>
-
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">Nachricht *</label>
                 <div className="relative">
@@ -250,16 +242,9 @@ export default function SupportModal({ open, onClose, errorType, error }: Suppor
                 </div>
               )}
 
-              <Button
-                onClick={handleSubmit}
-                disabled={!message.trim() || submitting}
-                className="w-full h-11"
-              >
+              <Button onClick={handleSubmit} disabled={!message.trim() || submitting} className="w-full h-11">
                 {submitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Wird gesendet...
-                  </>
+                  <><Loader2 className="h-4 w-4 animate-spin mr-2" />Wird gesendet...</>
                 ) : (
                   'Ticket erstellen'
                 )}
