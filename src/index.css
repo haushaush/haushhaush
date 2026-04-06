@@ -556,13 +556,17 @@
 }
 .aria-chat-panel--overview {
   bottom: 64px;
-  left: 240px;
+  left: var(--sidebar-width, 240px);
   right: 0;
 }
 .aria-chat-panel--bar {
-  bottom: 48px;
-  left: 240px;
+  bottom: 52px;
+  left: var(--sidebar-width, 240px);
   right: 0;
+}
+[data-sidebar="collapsed"] ~ .aria-chat-panel--overview,
+[data-sidebar="collapsed"] ~ .aria-chat-panel--bar {
+  left: 56px;
 }
 @media (max-width: 768px) {
   .aria-chat-panel--overview,
