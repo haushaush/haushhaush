@@ -521,7 +521,7 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
       setIsLoading(false);
       setStatus('idle');
     }
-  }, [isLoading, messages, addMessage, updateLastAssistant, setIsLoading, setStatus, executeAction, speak, ariaData, displayName, pageName]);
+  }, [isLoading, messages, addMessage, updateLastAssistant, setIsLoading, setStatus, executeAction, speak, ariaData, displayName, pageCtx]);
 
   useEffect(() => {
     const handler = (e: Event) => {
