@@ -93,16 +93,17 @@ export function TimeTracker() {
   };
 
   return (
-    <div className="bg-card border border-border rounded-xl flex flex-col justify-between h-[200px] min-h-[200px] max-h-[200px] overflow-hidden p-[18px_20px]">
+    <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center h-[200px] min-h-[200px] max-h-[200px] overflow-hidden p-6 text-center gap-3.5">
       {/* Row 1 — Label */}
-      <span className="text-[13px] font-semibold text-foreground shrink-0">Zeiterfassung</span>
+      <span className="text-[13px] font-semibold text-muted-foreground shrink-0 text-center" style={{ letterSpacing: '0.02em' }}>Zeiterfassung</span>
 
       {/* Row 2 — Timer display */}
       <div className="flex items-center justify-center shrink-0">
         <span
-          className={`font-mono text-[32px] font-bold tracking-wider transition-colors ${
+          className={`text-[40px] font-bold tracking-wide transition-colors ${
             timer.running ? 'text-primary animate-pulse' : 'text-foreground'
           }`}
+          style={{ fontFamily: "'Sora', -apple-system, sans-serif", fontVariantNumeric: 'tabular-nums' }}
         >
           {formatTimer(timer.elapsed)}
         </span>
