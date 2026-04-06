@@ -294,6 +294,14 @@ export default function Dashboard() {
               Herzlich Willkommen, {firstName}! 👋
             </h1>
             <p className="text-[15px] text-muted-foreground mt-1.5">{formatDateLong()}</p>
+            {!isMobile && JSON.stringify(blockOrder) !== JSON.stringify(DEFAULT_ORDER) && (
+              <button
+                onClick={resetLayout}
+                className="inline-flex items-center gap-[5px] mt-2 px-[10px] py-[3px] text-[11px] text-muted-foreground bg-transparent border border-border rounded-md cursor-pointer transition-all duration-150 hover:text-destructive hover:border-destructive hover:bg-destructive/10"
+              >
+                <RotateCcw className="h-[11px] w-[11px]" /> Layout zurücksetzen
+              </button>
+            )}
           </div>
         );
       case 'search':
@@ -546,14 +554,6 @@ export default function Dashboard() {
 
   return (
     <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10">
-      {/* Reset button — top right, visible on hover */}
-      {!isMobile && JSON.stringify(blockOrder) !== JSON.stringify(DEFAULT_ORDER) && (
-        <div className="flex justify-end mb-2">
-          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1" onClick={resetLayout}>
-            <RotateCcw className="h-3 w-3" /> Layout zurücksetzen
-          </Button>
-        </div>
-      )}
 
       <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
 
