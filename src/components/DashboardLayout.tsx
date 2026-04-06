@@ -4,6 +4,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { MobileTabBar } from '@/components/MobileTabBar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { TimerBar } from '@/components/dashboard/TimerBar';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -26,6 +27,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </a>
         {!isMobile && <AppSidebar />}
         <div className="flex-1 flex flex-col min-w-0">
+          <TimerBar />
           <main id="main-content" className="flex-1 p-4 sm:p-6 lg:p-10 overflow-auto pb-20 md:pb-6 min-w-0" role="main" aria-label="Hauptinhalt">
             {children}
           </main>
