@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -74,7 +74,7 @@ function KpiCard({ card, isMobile }: { card: KpiCardData; isMobile: boolean }) {
 
   return (
     <Card
-      className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0 h-[120px] min-h-[120px] max-h-[120px]"
+      className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0 h-[130px] min-h-[130px] max-h-[130px]"
       onClick={() => navigate(card.href)}
     >
       <CardContent className="p-4 h-full flex flex-col justify-between">
@@ -118,6 +118,9 @@ function KpiCard({ card, isMobile }: { card: KpiCardData; isMobile: boolean }) {
 
 export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth, team, tasks, effizienz, isMobile }: KpiSliderProps) {
   const [activeSlide, setActiveSlide] = useState(0);
+  const autoAdvanceRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [progressKey, setProgressKey] = useState(0);
+  const [paused, setPaused] = useState(false);
   const fmtC = (v: number) => formatValue(v, 'currency', isMobile);
   const fmtN = (v: number) => formatValue(v, 'number', isMobile);
 
@@ -275,20 +278,70 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
   }, [deals, invoices, revenue, salesPerf, salesPerfMonth, team, tasks, effizienz, isMobile, currentMonth, currentYear]);
 
   const SLIDE_LABELS = slides.map(s => s.label);
+  const totalSlides = slides.length;
+
+  const startAutoAdvance = useCallback(() => {
+    if (autoAdvanceRef.current) clearInterval(autoAdvanceRef.current);
+    autoAdvanceRef.current = setInterval(() => {
+      setActiveSlide(prev => (prev + 1) % totalSlides);
+      setProgressKey(k => k + 1);
+    }, 5000);
+  }, [totalSlides]);
+
+  useEffect(() => {
+    startAutoAdvance();
+    return () => { if (autoAdvanceRef.current) clearInterval(autoAdvanceRef.current); };
+  }, [startAutoAdvance]);
+
+  const goToSlide = useCallback((i: number) => {
+    setActiveSlide(i);
+    setProgressKey(k => k + 1);
+    startAutoAdvance();
+  }, [startAutoAdvance]);
+
+  const prevSlide = () => goToSlide((activeSlide - 1 + totalSlides) % totalSlides);
+  const nextSlide = () => goToSlide((activeSlide + 1) % totalSlides);
+
+  const handleMouseEnter = () => {
+    setPaused(true);
+    if (autoAdvanceRef.current) clearInterval(autoAdvanceRef.current);
+  };
+  const handleMouseLeave = () => {
+    setPaused(false);
+    startAutoAdvance();
+  };
 
   return (
-    <div className="relative">
-      {/* Slide Label Pills */}
-      <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
+    <div className="relative w-full" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+      {/* Card Grid — full width */}
+      <div className="overflow-hidden w-full">
+        <div
+          className="flex transition-transform duration-250 ease-in-out"
+          style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+        >
+          {slides.map((slide) => (
+            <div key={slide.id} className="w-full shrink-0">
+              <div className="kpi-grid" style={{ gridTemplateRows: '130px 130px' }}>
+                {slide.cards.map((card, ci) => (
+                  <KpiCard key={ci} card={card} isMobile={isMobile} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tab Labels */}
+      <div className="flex items-center justify-center gap-1 mt-4 flex-wrap">
         {SLIDE_LABELS.map((label, i) => (
           <button
             key={label}
-            onClick={() => setActiveSlide(i)}
+            onClick={() => goToSlide(i)}
             className={cn(
-              'px-3 py-1 rounded-full text-xs font-medium transition-all duration-200',
+              'px-2 py-0.5 rounded text-[11px] font-medium transition-all duration-150 border-none cursor-pointer',
               activeSlide === i
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted/60'
+                ? 'bg-primary/10 text-primary font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
             )}
           >
             {label}
@@ -296,73 +349,59 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
         ))}
       </div>
 
-      {/* Slide Content with Nav Buttons */}
-      <div className="relative px-9">
-        {/* Prev Button — outside grid, absolutely positioned */}
+      {/* Navigation Row — below grid */}
+      <div className="flex items-center justify-center gap-3 mt-2">
+        {/* Prev */}
         <button
-          onClick={() => setActiveSlide(prev => Math.max(0, prev - 1))}
-          className={cn(
-            'absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground shadow-sm transition-all duration-150',
-            activeSlide === 0
-              ? 'opacity-0 pointer-events-none'
-              : 'hover:border-primary hover:text-primary hover:shadow-md'
-          )}
+          onClick={prevSlide}
+          className="h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground transition-all duration-150 hover:border-primary hover:text-primary"
           aria-label="Vorherige Slide"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
 
-        {/* Slider */}
-        <div className="overflow-hidden">
-          <div
-            className="flex transition-transform duration-250 ease-in-out"
-            style={{ transform: `translateX(-${activeSlide * 100}%)` }}
-          >
-            {slides.map((slide) => (
-              <div key={slide.id} className="w-full shrink-0">
-                <div className="kpi-grid" style={{ gridTemplateRows: '120px 120px' }}>
-                  {slide.cards.map((card, ci) => (
-                    <KpiCard key={ci} card={card} isMobile={isMobile} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Next Button — outside grid, absolutely positioned */}
-        <button
-          onClick={() => setActiveSlide(prev => Math.min(slides.length - 1, prev + 1))}
-          className={cn(
-            'absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground shadow-sm transition-all duration-150',
-            activeSlide === slides.length - 1
-              ? 'opacity-0 pointer-events-none'
-              : 'hover:border-primary hover:text-primary hover:shadow-md'
-          )}
-          aria-label="Nächste Slide"
-        >
-          <ChevronRight className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      {/* Dots + Counter */}
-      <div className="flex flex-col items-center gap-2 mt-4">
-        <div className="flex items-center gap-2">
+        {/* Dots */}
+        <div className="flex items-center gap-1.5">
           {slides.map((_, i) => (
             <button
               key={i}
-              onClick={() => setActiveSlide(i)}
-              className={cn(
-                'rounded-full transition-all duration-200',
-                activeSlide === i
-                  ? 'h-2.5 w-2.5 bg-primary'
-                  : 'h-2 w-2 bg-border hover:bg-muted-foreground/50'
-              )}
+              onClick={() => goToSlide(i)}
+              className="p-0 border-none cursor-pointer transition-all duration-250 rounded-full"
+              style={{
+                width: activeSlide === i ? 20 : 6,
+                height: 6,
+                borderRadius: 3,
+                background: activeSlide === i ? 'hsl(var(--primary))' : 'hsl(var(--border))',
+              }}
               aria-label={`Slide ${i + 1}`}
             />
           ))}
         </div>
-        <span className="text-[11px] text-muted-foreground">{activeSlide + 1} / {slides.length}</span>
+
+        {/* Next */}
+        <button
+          onClick={nextSlide}
+          className="h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground transition-all duration-150 hover:border-primary hover:text-primary"
+          aria-label="Nächste Slide"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Counter */}
+        <span className="text-[11px] text-muted-foreground ml-1">{activeSlide + 1} / {totalSlides}</span>
+      </div>
+
+      {/* Auto-advance progress bar */}
+      <div className="flex justify-center mt-1.5">
+        <div className="w-20 h-0.5 rounded-full bg-border overflow-hidden">
+          <div
+            key={progressKey}
+            className="h-full bg-primary rounded-full"
+            style={{
+              animation: paused ? 'none' : 'slideProgress 5s linear forwards',
+            }}
+          />
+        </div>
       </div>
     </div>
   );
