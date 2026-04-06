@@ -20,6 +20,7 @@ import { GlobalSearchModal } from '@/components/dashboard/GlobalSearch';
 import { Search } from 'lucide-react';
 import { KpiSlider } from '@/components/dashboard/KpiSlider';
 import { SortableBlock } from '@/components/dashboard/SortableBlock';
+import { MitteilungenCard } from '@/components/dashboard/MitteilungenCard';
 import { ARIAHeroBlock } from '@/components/aria/ARIAHeroBlock';
 import { ARIAPanel } from '@/components/aria/ARIAPanel';
 import { useARIA } from '@/contexts/ARIAContext';
@@ -59,10 +60,11 @@ const NAV_TILES = [
 
 const RANK_COLORS = ['#F5A623', '#9B9B9B', '#8B6347'];
 
-const DEFAULT_ORDER = ['widgets', 'kpi-slider', 'quicknav', 'handlungsbedarf', 'schnellaktionen', 'bottom-row', 'revenue-chart'];
+const DEFAULT_ORDER = ['mitteilungen', 'widgets', 'kpi-slider', 'quicknav', 'handlungsbedarf', 'schnellaktionen', 'bottom-row', 'revenue-chart'];
 
 const BLOCK_LABELS: Record<string, string> = {
   'hero': 'Begrüßung',
+  'mitteilungen': 'Neueste Mitteilungen',
   'widgets': 'Learning & Zeiterfassung',
   'kpi-slider': 'KPI Dashboard',
   'quicknav': 'Schnellnavigation',
@@ -335,6 +337,8 @@ export default function Dashboard() {
         );
       case 'search':
         return null; // search is now part of quicknav block
+      case 'mitteilungen':
+        return <MitteilungenCard />;
       case 'widgets':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch">
