@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
+import Wissensbank from '@/components/aria/Wissensbank';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -204,6 +205,9 @@ export default function Aria() {
           </TabsTrigger>
           <TabsTrigger value="memory" className="gap-1.5">
             <Brain className="h-3.5 w-3.5" /> Gedächtnis
+          </TabsTrigger>
+          <TabsTrigger value="knowledge" className="gap-1.5">
+            <BookOpen className="h-3.5 w-3.5" /> Wissensbank
           </TabsTrigger>
         </TabsList>
 
