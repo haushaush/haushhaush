@@ -799,17 +799,19 @@
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: 14px;
-  max-height: 400px;
+  height: 320px;
+  min-height: 320px;
+  max-height: 320px;
   overflow-y: auto;
-  animation: ariaCardAppear 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: ariaCardAppear 250ms ease-out;
 }
 .dark .aria-hero-chat {
   background: hsla(240, 10%, 12%, 0.95);
   border-color: hsla(0, 0%, 100%, 0.08);
 }
 @keyframes ariaCardAppear {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
 }
 .aria-hero-input-bar {
   position: relative;
