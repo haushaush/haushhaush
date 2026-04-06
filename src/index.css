@@ -166,15 +166,14 @@
   .kpi-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-template-rows: repeat(2, auto);
-    gap: 16px;
+    gap: 12px;
     width: 100%;
   }
 
   @media (max-width: 640px) {
     .kpi-grid {
       grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
+      gap: 10px;
     }
   }
 
