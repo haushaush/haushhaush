@@ -83,6 +83,7 @@ export default function Dashboard() {
   const effizienz = useEffizienzScore();
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [ariaInput, setAriaInput] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const [blockOrder, setBlockOrder] = useState<string[]>(() => {
