@@ -13,6 +13,9 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  optimizeDeps: {
+    include: ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
