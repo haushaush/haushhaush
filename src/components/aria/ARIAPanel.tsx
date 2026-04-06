@@ -503,7 +503,7 @@ export function ARIAPanel() {
                     : 'aria-jarvis-msg-assistant rounded-[18px_18px_18px_4px]'
                 }`}>
                   {m.role === 'assistant' ? (
-                    <div className="prose prose-sm prose-invert max-w-none [&_p]:mb-1 [&_ul]:mb-1 [&_strong]:text-[#0BC2C6]">
+                    <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-1 [&_ul]:mb-1 [&_strong]:text-[#0BC2C6]">
                       <ReactMarkdown>{cleanText}</ReactMarkdown>
                     </div>
                   ) : m.content}
