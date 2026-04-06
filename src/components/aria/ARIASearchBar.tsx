@@ -109,6 +109,13 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
     else startListening();
   }, [listening, stopListening, startListening]);
 
+  // Listen for Cmd+J start-listening
+  useEffect(() => {
+    const handler = () => { if (!listening) startListening(); };
+    window.addEventListener('aria-start-listening', handler);
+    return () => window.removeEventListener('aria-start-listening', handler);
+  }, [listening, startListening]);
+
   // Stop mic on beforeunload
   useEffect(() => {
     const handler = () => stopListening();
