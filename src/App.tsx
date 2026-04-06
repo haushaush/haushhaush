@@ -6,6 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ARIAProvider } from "@/contexts/ARIAContext";
+import { ErrorProvider } from "@/contexts/ErrorContext";
+import { ErrorCardOverlay } from "@/components/ErrorCardOverlay";
 import { ARIASystem } from "@/components/aria/ARIASystem";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -60,6 +62,7 @@ function OfflineDetector() {
 
 const App = () => (
   <ErrorBoundary>
+    <ErrorProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
@@ -112,8 +115,10 @@ const App = () => (
             </ARIAProvider>
           </AuthProvider>
         </BrowserRouter>
+        <ErrorCardOverlay />
       </TooltipProvider>
     </QueryClientProvider>
+    </ErrorProvider>
   </ErrorBoundary>
 );
 
