@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useARIA } from '@/contexts/ARIAContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Play, Square, X, Pencil } from 'lucide-react';
@@ -41,6 +42,7 @@ function formatDuration(seconds: number): string {
 
 export function TimeTracker() {
   const { user } = useAuth();
+  const { registerActionHandler } = useARIA();
   const [timer, setTimer] = useState<TimerState>(loadTimerState);
 
   // Timer tick
@@ -57,6 +59,44 @@ export function TimeTracker() {
 
   // Persist state
   useEffect(() => { saveTimerState(timer); }, [timer]);
+
+  // Register ARIA action handlers
+  useEffect(() => {
+    const unreg1 = registerActionHandler('start_timer', async ({ taskLabel }: any) => {
+      if (!user?.id) return '❌ Nicht eingeloggt';
+      if (timer.running) return `Timer läuft bereits (${formatTimer(timer.elapsed)})`;
+      const now = new Date().toISOString();
+      const label = taskLabel || timer.taskLabel || '';
+      const { data, error } = await supabase
+        .from('time_entries')
+        .insert({ user_id: user.id, task_label: label || null, started_at: now })
+        .select('id')
+        .single();
+      if (error || !data) return '❌ Timer konnte nicht gestartet werden';
+      setTimer({ running: true, startedAt: now, elapsed: 0, entryId: data.id, taskLabel: label });
+      return `✓ Timer gestartet${label ? ` für "${label}"` : ''}`;
+    });
+
+    const unreg2 = registerActionHandler('stop_timer', async () => {
+      if (!timer.running || !timer.entryId) return 'Kein Timer aktiv.';
+      const duration = Math.round((Date.now() - new Date(timer.startedAt!).getTime()) / 1000);
+      await supabase
+        .from('time_entries')
+        .update({ stopped_at: new Date().toISOString(), duration_seconds: duration })
+        .eq('id', timer.entryId);
+      const result = `✓ Timer gestoppt: ${formatDuration(duration)}`;
+      setTimer({ running: false, startedAt: null, elapsed: 0, entryId: null, taskLabel: '' });
+      toast.success(`Zeit gestoppt: ${formatDuration(duration)}`);
+      return result;
+    });
+
+    const unreg3 = registerActionHandler('get_timer_status', () => {
+      if (!timer.running) return 'Kein Timer aktiv.';
+      return `Timer läuft: ${formatTimer(timer.elapsed)}${timer.taskLabel ? ` — "${timer.taskLabel}"` : ''}`;
+    });
+
+    return () => { unreg1(); unreg2(); unreg3(); };
+  }, [registerActionHandler, user?.id, timer.running, timer.entryId, timer.startedAt, timer.elapsed, timer.taskLabel]);
 
   const handleStart = async () => {
     if (!user?.id) return;

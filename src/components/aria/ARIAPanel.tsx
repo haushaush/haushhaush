@@ -225,50 +225,53 @@ Nutze dieses Wissen bei relevanten Anfragen.
 Skripte und Einwände: nutze sie wörtlich wenn nach Formulierungen gefragt wird.
 SOPs: folge den Schritten exakt wenn nach Prozessen gefragt wird.` : ''}
 
-═══ VERFÜGBARE AKTIONEN ═══
-- navigate: {"action":"navigate","params":{"path":"/kunden"}}
-- search_client: {"action":"search_client","params":{"name":"..."}}
-- create_task: {"action":"create_task","params":{"title":"...","due_date":"..."}}
-- mark_task_done: {"action":"mark_task_done","params":{"task_id":"..."}}
-- update_ampel: {"action":"update_ampel","params":{"client_id":"...","status":"Grün|Gelb|Rot"}}
+═══ VERFÜGBARE AKTIONEN (LIVE — steuern Dashboard in Echtzeit) ═══
+
+WICHTIG: Diese Aktionen funktionieren wirklich — sie steuern das Dashboard live.
+Nutze sie aktiv wenn der Nutzer etwas möchte. Nicht nachfragen ob du etwas tun sollst wenn der Intent klar ist.
+
+TIMER:
+{"action":"start_timer","params":{"taskLabel":"optional Aufgabenname"}}
+  → Startet die Zeiterfassung live im Dashboard
+{"action":"stop_timer","params":{}}
+  → Stoppt den laufenden Timer und speichert die Zeit
+{"action":"get_timer_status","params":{}}
+  → Gibt aktuellen Timer-Status zurück
+
+AUFGABEN:
+{"action":"create_task","params":{"title":"...","due_date":"YYYY-MM-DD","client_id":"..."}}
+  → Erstellt eine echte Aufgabe, erscheint sofort in Aufgabenliste
+{"action":"mark_task_done","params":{"task_id":"...","task_title":"..."}}
+  → Markiert Aufgabe als erledigt
+
+NAVIGATION:
+{"action":"navigate","params":{"path":"/kunden"}}
+  → Navigiert das Portal zu einer anderen Seite
+{"action":"open_client","params":{"client_name":"..."}}
+  → Öffnet Kundenprofil anhand Name
+
+STATUS:
+{"action":"update_ampel","params":{"client_id":"...","status":"Grün|Gelb|Rot"}}
+  → Ändert Ampelstatus sofort
+
+BENACHRICHTIGUNGEN:
+{"action":"create_notification","params":{"title":"...","message":"...","channel":"intern"}}
+  → Erstellt interne Benachrichtigung
+
+VERHALTEN:
+Wenn der Nutzer sagt "starte die Zeit" → SOFORT start_timer ausführen.
+Wenn der Nutzer sagt "erstelle Aufgabe XY" → SOFORT create_task ausführen.
+Einfach tun und kurz bestätigen.
+
+Wenn du eine Aktion ausführen willst, füge sie als einzelnes JSON Objekt in den Text ein:
+{"action": "start_timer", "params": {"taskLabel": "Kundenprojekt"}}
+
+Oder als [ACTIONS] Block für Buttons die der Nutzer klicken kann:
 
 ═══ ACTION BUTTONS (PFLICHT) ═══
 PFLICHT REGEL: Nach JEDER Antwort die Daten aus dem Portal enthält, MUSST du [ACTIONS] hinzufügen.
-Wähle Buttons logisch basierend auf dem Kontext:
-
-RECHNUNGEN →
-[ACTIONS]
-[{"label":"Rechnung öffnen","action":"navigate","params":{"path":"/finanzen/rechnungen"},"icon":"file-text","variant":"primary"},{"label":"Rechnungsübersicht","action":"navigate","params":{"path":"/finanzen"},"icon":"euro","variant":"secondary"}]
-[/ACTIONS]
-
-KUNDEN →
-[ACTIONS]
-[{"label":"Kunden öffnen","action":"navigate","params":{"path":"/kunden"},"icon":"users","variant":"primary"},{"label":"Aufgabe erstellen","action":"create_task","params":{},"icon":"plus","variant":"secondary"}]
-[/ACTIONS]
-
-AUFGABEN →
-[ACTIONS]
-[{"label":"Aufgaben öffnen","action":"navigate","params":{"path":"/projekte/aufgaben"},"icon":"check","variant":"primary"},{"label":"Als erledigt","action":"mark_task_done","params":{},"icon":"check","variant":"secondary"}]
-[/ACTIONS]
-
-SALES / KPI →
-[ACTIONS]
-[{"label":"Sales Dashboard","action":"navigate","params":{"path":"/sales/kpis"},"icon":"navigation","variant":"primary"},{"label":"Call loggen","action":"navigate","params":{"path":"/sales"},"icon":"phone","variant":"secondary"}]
-[/ACTIONS]
-
-FULFILLMENT →
-[ACTIONS]
-[{"label":"Ad Performance","action":"navigate","params":{"path":"/fulfillment/ads"},"icon":"navigation","variant":"primary"}]
-[/ACTIONS]
-
-NAVIGATION →
-[ACTIONS]
-[{"label":"Zur Seite","action":"navigate","params":{"path":"[relevant path]"},"icon":"navigation","variant":"primary"}]
-[/ACTIONS]
-
 Maximal 3 Buttons pro Antwort.
 Kein [ACTIONS] Block NUR bei: Begrüßungen, einfachen Wissensfragen ohne Portal-Bezug.
-Aktions-Links sollen immer auf die AKTUELLE Seite oder direkt relevante Unterseite zeigen.
 
 ═══ SELBST-LERNEN ═══
 [LEARN] {"type": "user_preference|fact|workflow", "key": "...", "value": "..."} [/LEARN]
@@ -287,7 +290,7 @@ interface MessageMeta {
 }
 
 export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?: () => void } = {}) {
-  const { isOpen, closeARIA, messages, addMessage, updateLastAssistant, isLoading, setIsLoading, status, setStatus } = useARIA();
+  const { isOpen, closeARIA, messages, addMessage, updateLastAssistant, isLoading, setIsLoading, status, setStatus, registerActionHandler, executeAction } = useARIA();
   const [input, setInput] = useState('');
   const isMutedRef = useRef(localStorage.getItem('aria-muted') === 'true');
   const [, forceRender] = useState(0);
@@ -358,47 +361,68 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
     setIsSpeaking(false);
   }, []);
 
-  const executeAction = useCallback(async (action: string, params: any): Promise<string> => {
-    setStatus('executing');
-    try {
-      switch (action) {
-        case 'navigate':
-          navigate(params.path);
-          return `✓ Navigiert zu ${params.path}`;
-        case 'search_client': {
-          if (ariaData) {
-            const found = ariaData.allClients.filter(c =>
-              c.name.toLowerCase().includes((params.name || '').toLowerCase())
-            );
-            if (found.length > 0) {
-              return `Gefunden:\n${found.map(c => `• **${c.name}** — ${c.art || '–'} · ${c.ampel || '–'} · €${fmt(c.wert || 0)}`).join('\n')}`;
-            }
+  // Register built-in action handlers via bridge
+  useEffect(() => {
+    const unregs = [
+      registerActionHandler('navigate', ({ path }: any) => {
+        navigate(path);
+        return `✓ Navigiert zu ${path}`;
+      }),
+      registerActionHandler('search_client', async ({ name }: any) => {
+        if (ariaData) {
+          const found = ariaData.allClients.filter((c: any) =>
+            c.name.toLowerCase().includes((name || '').toLowerCase())
+          );
+          if (found.length > 0) {
+            return `Gefunden:\n${found.map((c: any) => `• **${c.name}** — ${c.art || '–'} · ${c.ampel || '–'} · €${fmt(c.wert || 0)}`).join('\n')}`;
           }
-          const { data } = await supabase.from('close_deals').select('id, client_name, art, wert_eur, ampelstatus').ilike('client_name', `%${params.name}%`).limit(5);
-          if (!data?.length) return `Keine Kunden gefunden für "${params.name}"`;
-          return `Gefunden:\n${data.map(c => `• **${c.client_name}** — ${c.art || '–'} · ${c.ampelstatus || '–'} · €${fmt(c.wert_eur || 0)}`).join('\n')}`;
         }
-        case 'show_kpi':
-          navigate(params.section === 'sales' ? '/sales/kpis' : params.section === 'finanzen' ? '/finanzen' : '/');
-          return `✓ KPI Dashboard geöffnet`;
-        case 'create_task':
-          await supabase.from('tasks').insert({ title: params.title, client_id: params.client_id || null, due_date: params.due_date || null, status: 'Offen' });
-          return `✓ Aufgabe "${params.title}" erstellt`;
-        case 'mark_task_done':
-          await supabase.from('tasks').update({ status: 'Abgeschlossen' }).eq('id', params.task_id);
-          return `✓ Aufgabe erledigt`;
-        case 'update_ampel':
-          await supabase.from('close_deals').update({ ampelstatus: params.status }).eq('id', params.client_id);
-          return `✓ Ampelstatus auf ${params.status} gesetzt`;
-        default:
-          return `Unbekannte Aktion: ${action}`;
-      }
-    } catch (e: any) {
-      return `❌ Fehler: ${e.message}`;
-    } finally {
-      setStatus('idle');
-    }
-  }, [navigate, setStatus, ariaData]);
+        const { data } = await supabase.from('close_deals').select('id, client_name, art, wert_eur, ampelstatus').ilike('client_name', `%${name}%`).limit(5);
+        if (!data?.length) return `Keine Kunden gefunden für "${name}"`;
+        return `Gefunden:\n${data.map((c: any) => `• **${c.client_name}** — ${c.art || '–'} · ${c.ampelstatus || '–'} · €${fmt(c.wert_eur || 0)}`).join('\n')}`;
+      }),
+      registerActionHandler('open_client', async ({ client_name, client_id }: any) => {
+        let id = client_id;
+        if (!id && client_name) {
+          const { data } = await supabase.from('close_deals').select('id').ilike('client_name', `%${client_name}%`).limit(1).single();
+          id = data?.id;
+        }
+        if (id) { navigate(`/kunden/${id}`); return `✓ Öffne Kundenprofil...`; }
+        return `Kunde nicht gefunden: ${client_name}`;
+      }),
+      registerActionHandler('show_kpi', ({ section }: any) => {
+        navigate(section === 'sales' ? '/sales/kpis' : section === 'finanzen' ? '/finanzen' : '/');
+        return `✓ KPI Dashboard geöffnet`;
+      }),
+      registerActionHandler('create_task', async ({ title, client_id, due_date }: any) => {
+        await supabase.from('tasks').insert({ title, client_id: client_id || null, due_date: due_date || null, status: 'Offen' });
+        return `✓ Aufgabe "${title}" erstellt`;
+      }),
+      registerActionHandler('mark_task_done', async ({ task_id, task_title }: any) => {
+        await supabase.from('tasks').update({ status: 'Abgeschlossen' }).eq('id', task_id);
+        return `✓ "${task_title || 'Aufgabe'}" als erledigt markiert`;
+      }),
+      registerActionHandler('update_ampel', async ({ client_id, client_name, status }: any) => {
+        let id = client_id;
+        if (!id && client_name) {
+          const { data } = await supabase.from('close_deals').select('id').ilike('client_name', `%${client_name}%`).limit(1).single();
+          id = data?.id;
+        }
+        if (!id) return `Kunde nicht gefunden: ${client_name}`;
+        await supabase.from('close_deals').update({ ampelstatus: status }).eq('id', id);
+        return `✓ Ampelstatus auf ${status} gesetzt`;
+      }),
+      registerActionHandler('create_notification', async ({ title, message, channel }: any) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return '❌ Nicht eingeloggt';
+        await supabase.from('notifications').insert({
+          user_id: user.id, title, preview: message, channel: channel || 'intern', read: false,
+        } as any);
+        return `✓ Mitteilung erstellt: "${title}"`;
+      }),
+    ];
+    return () => unregs.forEach(u => u());
+  }, [registerActionHandler, navigate, ariaData]);
 
   const handleActionButton = useCallback(async (messageId: string, actionIndex: number, btn: ActionButton) => {
     const result = await executeAction(btn.action, btn.params);
@@ -520,20 +544,31 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
         }
       }
 
-      const actionMatch = assistantText.match(/\{"action"\s*:\s*"([^"]+)"\s*,\s*"params"\s*:\s*(\{[^}]+\})\}/);
-      if (actionMatch) {
+      // Auto-execute inline action JSON from response
+      const inlineActionRegex = /\{"action"\s*:\s*"([^"]+)"\s*,\s*"params"\s*:\s*(\{[^}]*\})\}/g;
+      let inlineMatch;
+      const executedResults: string[] = [];
+      const textForCleaning = assistantText;
+      while ((inlineMatch = inlineActionRegex.exec(textForCleaning)) !== null) {
         try {
-          const result = await executeAction(actionMatch[1], JSON.parse(actionMatch[2]));
-          const cleanText = assistantText.replace(actionMatch[0], '').trim();
-          updateLastAssistant((cleanText ? cleanText + '\n\n' : '') + result);
-          assistantText = cleanText + '\n\n' + result;
+          setStatus('executing');
+          const result = await executeAction(inlineMatch[1], JSON.parse(inlineMatch[2]));
+          executedResults.push(result);
         } catch {}
       }
 
       const { cleanText, actions, learns } = parseResponse(assistantText);
-      if (cleanText !== assistantText) {
-        updateLastAssistant(cleanText);
-        assistantText = cleanText;
+      // Remove inline action JSON from display text
+      let displayText = cleanText.replace(/\{"action"\s*:\s*"[^"]+"\s*,\s*"params"\s*:\s*\{[^}]*\}\}/g, '').trim();
+      
+      // Append executed action results
+      if (executedResults.length > 0) {
+        displayText = displayText + '\n\n' + executedResults.join('\n');
+      }
+      
+      if (displayText !== assistantText) {
+        updateLastAssistant(displayText);
+        assistantText = displayText;
       }
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -547,10 +582,10 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
       }, 100);
 
       if (session?.user?.id) {
-        await saveInteraction(session.user.id, msg, cleanText, actions.map(a => ({ action: a.action, params: a.params })));
+        await saveInteraction(session.user.id, msg, displayText, actions.map(a => ({ action: a.action, params: a.params })));
       }
 
-      speak(assistantText);
+      speak(displayText);
     } catch (e: any) {
       if (e.name !== 'AbortError') toast.error('ARIA Fehler: ' + e.message);
     } finally {

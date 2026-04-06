@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 
 export interface ARIAMessage {
   id: string;
@@ -7,6 +7,8 @@ export interface ARIAMessage {
   timestamp: Date;
   actionResult?: string;
 }
+
+type ActionHandler = (params: any) => any | Promise<any>;
 
 interface ARIAContextType {
   isOpen: boolean;
@@ -23,6 +25,8 @@ interface ARIAContextType {
   setStatus: (s: 'idle' | 'listening' | 'processing' | 'executing') => void;
   modalOpen: boolean;
   setAnyModalOpen: (open: boolean) => void;
+  registerActionHandler: (action: string, handler: ActionHandler) => () => void;
+  executeAction: (action: string, params: any) => Promise<string>;
 }
 
 const ARIAContext = createContext<ARIAContextType>({} as ARIAContextType);
@@ -35,6 +39,7 @@ export function ARIAProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'listening' | 'processing' | 'executing'>('idle');
   const [modalOpen, setModalOpen] = useState(false);
+  const actionBridgeRef = useRef<Map<string, ActionHandler>>(new Map());
 
   const setAnyModalOpen = useCallback((open: boolean) => setModalOpen(open), []);
 
@@ -64,6 +69,24 @@ export function ARIAProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearMessages = useCallback(() => setMessages([]), []);
+
+  const registerActionHandler = useCallback((action: string, handler: ActionHandler) => {
+    actionBridgeRef.current.set(action, handler);
+    return () => { actionBridgeRef.current.delete(action); };
+  }, []);
+
+  const executeAction = useCallback(async (action: string, params: any): Promise<string> => {
+    const handler = actionBridgeRef.current.get(action);
+    if (handler) {
+      try {
+        const result = await handler(params);
+        return typeof result === 'string' ? result : JSON.stringify(result);
+      } catch (e: any) {
+        return `❌ Fehler: ${e.message}`;
+      }
+    }
+    return `Unbekannte Aktion: ${action}`;
+  }, []);
 
   // Close ARIA panel when a modal opens
   useEffect(() => {
@@ -99,6 +122,7 @@ export function ARIAProvider({ children }: { children: ReactNode }) {
       messages, addMessage, updateLastAssistant, clearMessages,
       isLoading, setIsLoading, status, setStatus,
       modalOpen, setAnyModalOpen,
+      registerActionHandler, executeAction,
     }}>
       {children}
     </ARIAContext.Provider>
