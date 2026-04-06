@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { X, Volume2, VolumeX, Square, FileText, Plus, Navigation, Check, Phone, Euro, User, AlertCircle, ExternalLink, ThumbsUp, ThumbsDown, Send } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, UIEvent } from 'react';
+import { X, Volume2, VolumeX, Square, FileText, Plus, Navigation, Check, Phone, Euro, User, AlertCircle, ExternalLink, ThumbsUp, ThumbsDown, Send, ChevronDown, ArrowDown } from 'lucide-react';
 import { useARIA } from '@/contexts/ARIAContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
@@ -200,6 +200,10 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
   const [messageMeta, setMessageMeta] = useState<Record<string, MessageMeta>>({});
   const [correctionTexts, setCorrectionTexts] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [showScrollDown, setShowScrollDown] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const location = useLocation();
@@ -210,8 +214,30 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
   const pageName = PAGE_NAMES[location.pathname] || location.pathname;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (!isScrolledUp) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      setHasNewMessage(true);
+    }
   }, [messages]);
+
+  const handleMessagesScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const threeScrolls = el.clientHeight * 0.8 * 3;
+    setIsScrolledUp(distanceFromBottom > 80);
+    setShowScrollDown(distanceFromBottom > threeScrolls);
+    if (distanceFromBottom < 40) {
+      setHasNewMessage(false);
+    }
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setHasNewMessage(false);
+    setShowScrollDown(false);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -470,7 +496,7 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
   return (
     <div className={embedded ? 'aria-hero-chat' : 'aria-jarvis-panel'}>
       {/* Header */}
-      <div className={embedded ? 'flex items-center gap-2 px-4 py-2.5 border-b border-border' : 'aria-jarvis-panel-header'}>
+      <div className={embedded ? 'aria-hero-chat-header' : 'aria-jarvis-panel-header'}>
         <ARIAAvatar size={embedded ? 24 : 32} />
         <span className={`font-bold ${embedded ? 'text-[13px] text-foreground' : 'text-[15px]'}`} style={{ letterSpacing: '-0.02em', ...(!embedded ? { color: 'var(--foreground)' } : {}) }}>ARIA</span>
         {statusDot()}
@@ -490,7 +516,7 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
       </div>
 
       {/* Messages */}
-      <div className={`flex-1 overflow-y-auto space-y-3 min-h-0 ${embedded ? 'p-4 px-5' : 'p-4'}`}>
+      <div ref={scrollContainerRef} onScroll={handleMessagesScroll} className={`${embedded ? 'aria-hero-chat-messages' : 'flex-1 overflow-y-auto min-h-0'} space-y-3 ${embedded ? 'p-4 px-5' : 'p-4'}`}>
         {messages.map(m => {
           const { cleanText, actions: parsedActions } = m.role === 'assistant' ? parseResponse(m.content) : { cleanText: m.content, actions: [] };
           const meta = messageMeta[m.id];
@@ -594,6 +620,21 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
           </div>
         )}
         <div ref={messagesEndRef} />
+
+        {/* Neue Antwort banner */}
+        {embedded && isScrolledUp && hasNewMessage && (
+          <button className="aria-new-answer-banner" onClick={scrollToBottom}>
+            <ChevronDown className="h-3.5 w-3.5" />
+            Neue Antwort
+          </button>
+        )}
+
+        {/* Scroll down button */}
+        {embedded && showScrollDown && !hasNewMessage && (
+          <button className="aria-scroll-down-btn" onClick={scrollToBottom}>
+            <ArrowDown className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
       </div>
     </div>
   );
