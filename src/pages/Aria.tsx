@@ -405,6 +405,10 @@ export default function Aria() {
             )}
           </div>
         </TabsContent>
+        {/* Knowledge Tab */}
+        <TabsContent value="knowledge" className="mt-4">
+          <Wissensbank />
+        </TabsContent>
       </Tabs>
     </div>
   );
