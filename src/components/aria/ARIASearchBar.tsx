@@ -7,9 +7,8 @@ import { toast } from 'sonner';
 
 const PLACEHOLDERS_FULL = [
   'Frag ARIA etwas...',
-  'Was möchtest du wissen?',
-  'Aufgabe erstellen, navigieren, analysieren...',
-  'Sag mir was du brauchst...',
+  'Kunden, Aufgaben, KPIs...',
+  'Navigieren, analysieren, automatisieren...',
 ];
 
 const ROUTE_PLACEHOLDERS: Record<string, string[]> = {
@@ -63,9 +62,6 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full', route
   const [placeholderVisible, setPlaceholderVisible] = useState(true);
 
   const isFull = variant === 'full';
-  const barHeight = isFull ? 56 : 48;
-  const avatarSize = isFull ? 38 : 32;
-  const inputHeight = isFull ? 56 : 34;
 
   // Cycle placeholders
   useEffect(() => {
@@ -79,7 +75,7 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full', route
     return () => clearInterval(interval);
   }, [isFull, routePath]);
 
-  // Proactive suggestion from data
+  // Proactive suggestion
   const proactiveSuggestion = ariaData && ariaData.overdueInvoicesCount > 0
     ? `💶 ${ariaData.overdueInvoicesCount} überfällige Rechnung${ariaData.overdueInvoicesCount > 1 ? 'en' : ''} — soll ich helfen?`
     : null;
@@ -136,72 +132,64 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full', route
     if (!isOpen) openARIA();
   };
 
+  const isProcessing = status === 'processing' || status === 'executing';
+
   return (
-    <div
-      className={`aria-search-bar ${isOpen ? 'aria-search-bar--active' : ''} ${listening ? 'aria-search-bar--listening' : ''}`}
-      style={{ height: barHeight }}
-    >
-      {/* ARIA Avatar */}
-      <div
-        className={`aria-avatar ${listening ? 'aria-avatar--listening' : ''} ${status === 'processing' || status === 'executing' ? 'aria-avatar--processing' : ''}`}
-        style={{ width: avatarSize, height: avatarSize }}
-        onClick={handleFocus}
-      >
-        <Sparkles style={{ width: avatarSize * 0.5, height: avatarSize * 0.5 }} className="text-white" />
-        {listening && (
-          <>
-            <span className="aria-avatar-ring aria-avatar-ring--1" />
-            <span className="aria-avatar-ring aria-avatar-ring--2" />
-          </>
-        )}
-        {(status === 'processing' || status === 'executing') && (
-          <span className="aria-avatar-spinner" />
-        )}
-      </div>
+    <div className={`aria-pill ${isFull ? 'aria-pill--full' : 'aria-pill--slim'} ${isOpen ? 'aria-pill--active' : ''} ${listening ? 'aria-pill--listening' : ''} ${isProcessing ? 'aria-pill--processing' : ''}`}>
+      {/* Animated blob behind pill (full variant only) */}
+      {isFull && <div className="aria-blob" aria-hidden="true" />}
 
-      {/* Input area */}
-      <div className="flex-1 min-w-0 relative" style={{ height: inputHeight }}>
-        {listening ? (
-          <div className="flex items-center gap-3 h-full">
-            <Waveform />
-            {input && <span className="text-sm text-foreground truncate">{input}</span>}
-          </div>
-        ) : status === 'processing' || status === 'executing' ? (
-          <div className="flex items-center h-full">
-            <span className="text-sm text-muted-foreground aria-dots">Denke nach</span>
-          </div>
-        ) : (
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-            onFocus={handleFocus}
-            placeholder={currentPlaceholder}
-            className={`w-full h-full bg-transparent text-foreground outline-none aria-search-input ${!placeholderVisible ? 'placeholder-fade-out' : 'placeholder-fade-in'}`}
-            style={{ fontSize: isFull ? 16 : 14 }}
-          />
-        )}
-      </div>
+      {/* Animated gradient border when listening */}
+      {listening && <div className="aria-pill-glow-border" aria-hidden="true" />}
 
-      {/* Controls */}
-      <div className="flex items-center gap-2 shrink-0">
+      {/* Inner content */}
+      <div className="aria-pill-inner">
+        {/* Sparkles icon */}
+        <Sparkles className={`aria-pill-icon ${listening ? 'aria-pill-icon--listening' : ''}`} />
+
+        {/* Input area */}
+        <div className="flex-1 min-w-0 flex items-center h-full">
+          {listening ? (
+            <div className="flex items-center gap-3 h-full">
+              <Waveform />
+              {input && <span className="text-sm text-foreground truncate">{input}</span>}
+            </div>
+          ) : isProcessing ? (
+            <div className="flex items-center h-full">
+              <span className="text-sm text-muted-foreground aria-dots">Denke nach</span>
+            </div>
+          ) : (
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
+              onFocus={handleFocus}
+              placeholder={currentPlaceholder}
+              className={`w-full h-full bg-transparent text-foreground outline-none aria-search-input ${!placeholderVisible ? 'placeholder-fade-out' : 'placeholder-fade-in'}`}
+              style={{ fontSize: isFull ? 15 : 14 }}
+            />
+          )}
+        </div>
+
+        {/* Separator */}
+        <div className="aria-pill-sep" />
+
         {/* Mic */}
         <button
           onClick={toggleListening}
           className={`aria-mic-btn ${listening ? 'aria-mic-btn--active' : ''}`}
-          style={{ width: isFull ? 40 : 36, height: isFull ? 40 : 36 }}
+          style={{ width: 40, height: 40 }}
           aria-label={listening ? 'Aufnahme stoppen' : 'Spracheingabe'}
         >
-          {listening ? <MicOff style={{ width: 18, height: 18 }} /> : <Mic style={{ width: 18, height: 18 }} />}
+          {listening ? <MicOff className="h-[18px] w-[18px]" /> : <Mic className="h-[18px] w-[18px]" />}
         </button>
 
-        {/* ⌘J hint */}
-        {!isFull && (
-          <kbd className="hidden sm:inline-flex items-center text-[11px] font-medium text-muted-foreground bg-background border border-border rounded-[7px] px-[7px] py-[3px] tracking-wide">⌘J</kbd>
-        )}
-        {isFull && (
+        {/* ⌘ hint */}
+        {isFull ? (
           <kbd className="hidden sm:inline-flex items-center text-[11px] font-medium text-muted-foreground bg-background border border-border rounded-[7px] px-[7px] py-[3px] tracking-wide mr-1">⌘K</kbd>
+        ) : (
+          <kbd className="hidden sm:inline-flex items-center text-[11px] font-medium text-muted-foreground bg-background border border-border rounded-[7px] px-[7px] py-[3px] tracking-wide">⌘J</kbd>
         )}
 
         {/* Send */}
@@ -210,9 +198,9 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full', route
             onClick={handleSubmit}
             disabled={isLoading}
             className="aria-send-btn"
-            style={{ width: isFull ? 40 : 36, height: isFull ? 40 : 36 }}
+            style={{ width: 40, height: 40 }}
           >
-            <ArrowUp style={{ width: 18, height: 18 }} />
+            <ArrowUp className="h-4 w-4" />
           </button>
         )}
       </div>

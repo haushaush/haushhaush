@@ -3,24 +3,29 @@ import { useEffect } from 'react';
 import { useARIA } from '@/contexts/ARIAContext';
 
 export function ARIAGlow() {
-  const { isOpen, status } = useARIA();
+  const { status } = useARIA();
+
+  const isActive = status === 'listening' || status === 'processing' || status === 'executing';
 
   useEffect(() => {
     const html = document.documentElement;
     html.classList.remove('aria-listening', 'aria-processing');
-    if (isOpen) {
-      if (status === 'listening') html.classList.add('aria-listening');
-      else if (status === 'processing' || status === 'executing') html.classList.add('aria-processing');
-    }
+    if (status === 'listening') html.classList.add('aria-listening');
+    else if (status === 'processing' || status === 'executing') html.classList.add('aria-processing');
     return () => {
       html.classList.remove('aria-listening', 'aria-processing');
     };
-  }, [isOpen, status]);
-
-  if (!isOpen) return null;
+  }, [status]);
 
   return createPortal(
-    <div id="aria-screen-glow" />,
+    <div
+      id="aria-screen-glow"
+      style={{
+        opacity: isActive ? 1 : 0,
+        visibility: isActive ? 'visible' : 'hidden',
+        transition: 'opacity 400ms ease, visibility 400ms ease',
+      }}
+    />,
     document.body
   );
 }
