@@ -93,14 +93,14 @@ export function TimeTracker() {
   };
 
   return (
-    <div className="bg-card border border-border rounded-xl flex flex-col justify-between h-[200px] min-h-[200px] max-h-[200px] overflow-hidden px-5 py-4 gap-2.5 box-border">
+    <div className="bg-card border border-border rounded-xl flex flex-col overflow-hidden box-border h-full min-h-[200px]" style={{ padding: '18px 18px 20px 18px', gap: '8px' }}>
       {/* Row 1 — Label */}
-      <span className="text-[12px] font-semibold text-muted-foreground shrink-0 text-center" style={{ letterSpacing: '0.02em' }}>Zeiterfassung</span>
+      <span className="text-[11px] font-semibold text-muted-foreground shrink-0 text-center" style={{ letterSpacing: '0.02em' }}>Zeiterfassung</span>
 
       {/* Row 2 — Timer display */}
       <div className="flex items-center justify-center shrink-0">
         <span
-          className={`text-[36px] font-bold tracking-wide transition-colors ${
+          className={`text-[32px] font-bold tracking-wide transition-colors ${
             timer.running ? 'text-primary animate-pulse' : 'text-foreground'
           }`}
           style={{ fontFamily: "'Sora', -apple-system, sans-serif", fontVariantNumeric: 'tabular-nums' }}
@@ -112,7 +112,7 @@ export function TimeTracker() {
       {/* Row 3 — Task input */}
       <div className="shrink-0">
         {timer.running ? (
-          <div className="flex items-center gap-2 h-[38px] rounded-lg bg-background border border-border px-3.5 opacity-60">
+          <div className="flex items-center gap-2 h-9 rounded-lg bg-background border border-border px-3 opacity-60">
             <Pencil className="h-3 w-3 text-muted-foreground shrink-0" />
             <span className="text-[13px] text-muted-foreground truncate">
               {timer.taskLabel || 'Keine Aufgabe'}
@@ -125,7 +125,7 @@ export function TimeTracker() {
               value={timer.taskLabel}
               onChange={e => setTimer(prev => ({ ...prev, taskLabel: e.target.value }))}
               placeholder="Woran arbeitest du?"
-              className="w-full h-[38px] rounded-lg bg-background border border-border pl-8 pr-3.5 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-[3px] focus:ring-primary/12 focus:outline-none transition-all"
+              className="w-full h-9 rounded-lg bg-background border border-border pl-8 pr-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-[3px] focus:ring-primary/12 focus:outline-none transition-all"
             />
           </div>
         )}
@@ -134,7 +134,7 @@ export function TimeTracker() {
       {/* Row 4 — Action buttons */}
       <div className="shrink-0">
         {!timer.running ? (
-          <Button onClick={handleStart} className="w-full h-[38px] gap-2 rounded-lg">
+          <Button onClick={handleStart} className="w-full h-9 gap-2 rounded-lg text-[13px] font-semibold">
             <Play className="h-4 w-4" /> Starten
           </Button>
         ) : (
