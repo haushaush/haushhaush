@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Play, Clock, CheckCircle2, XCircle, Zap, RefreshCw, Brain, Trash2, Pencil, X } from 'lucide-react';
+import { Sparkles, Play, Clock, CheckCircle2, XCircle, Zap, RefreshCw, Brain, Trash2, Pencil, X, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
