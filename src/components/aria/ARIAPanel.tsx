@@ -235,6 +235,16 @@ export function ARIAPanel() {
     }
   }, [isLoading, messages, addMessage, updateLastAssistant, setIsLoading, setStatus, executeAction, speak, ariaData, displayName, pageName]);
 
+  // Listen for aria-send events from the search bar
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent).detail;
+      if (text) handleSend(text);
+    };
+    window.addEventListener('aria-send', handler);
+    return () => window.removeEventListener('aria-send', handler);
+  }, [handleSend]);
+
   // Cmd+J focuses aria bar
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
