@@ -622,13 +622,6 @@
   from { max-height: 0; opacity: 0; transform: scaleY(0.95); }
   to { max-height: min(60vh, 520px); opacity: 1; transform: scaleY(1); }
 }
-@media (max-width: 768px) {
-  .aria-jarvis-panel {
-    width: calc(100vw - 24px);
-    left: 50%;
-    bottom: calc(80px + 64px + 8px);
-  }
-}
 
 /* Panel header */
 .aria-jarvis-panel-header {
@@ -636,7 +629,7 @@
   align-items: center;
   gap: 10px;
   padding: 0 16px;
-  height: 48px;
+  height: 52px;
   background: hsla(0, 0%, 100%, 0.03);
   border-bottom: 1px solid hsla(0, 0%, 100%, 0.08);
   flex-shrink: 0;
