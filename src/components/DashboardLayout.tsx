@@ -65,22 +65,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {isMobile && <MobileTabBar />}
         <BugReportWidget />
 
-        {/* Unified ARIA wrapper: panel + pill in one container */}
-        <div
-          className={`aria-bottom-bar ${isOpen ? 'aria-bottom-bar--open' : ''}`}
-          tabIndex={-1}
-          onFocus={(e) => {
-            e.stopPropagation();
-            window.scrollTo(window.scrollX, window.scrollY);
-          }}
-        >
-          <ARIAPanel />
-          <ARIASearchBar
-            onSend={handleAriaSend}
-            input={ariaInput}
-            setInput={setAriaInput}
-          />
-        </div>
+        {/* Unified ARIA wrapper: panel + pill — hidden on home page */}
+        {!isOnHome && (
+          <div
+            className={`aria-bottom-bar ${isOpen ? 'aria-bottom-bar--open' : ''}`}
+            tabIndex={-1}
+            onFocus={(e) => {
+              e.stopPropagation();
+              window.scrollTo(window.scrollX, window.scrollY);
+            }}
+          >
+            <ARIAPanel />
+            <ARIASearchBar
+              onSend={handleAriaSend}
+              input={ariaInput}
+              setInput={setAriaInput}
+            />
+          </div>
+        )}
       </div>
     </SidebarProvider>
   );
