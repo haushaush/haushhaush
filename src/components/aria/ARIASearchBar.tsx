@@ -166,7 +166,7 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
   };
 
   return (
-    <div className={`aria-jarvis-pill ${listening ? 'aria-jarvis-pill--listening' : ''} ${isProcessing ? 'aria-jarvis-pill--processing' : ''}`}>
+    <div className={`aria-jarvis-pill ${listening ? 'aria-jarvis-pill--listening' : ''} ${isProcessing ? 'aria-jarvis-pill--processing' : ''} ${isOpen ? 'aria-jarvis-pill--open' : ''}`}>
       <ARIAIcon size={20} animated={isProcessing} />
 
       <div className="flex-1 min-w-0 flex items-center h-full">
@@ -194,6 +194,7 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
         )}
       </div>
 
+      <ShortcutHint />
       {renderRightButton()}
     </div>
   );
