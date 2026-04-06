@@ -662,6 +662,13 @@
 }
 .aria-jarvis-header-btn:focus { outline: none; box-shadow: none; }
 
+/* Header icon color */
+.aria-header-icon-color { color: hsla(0, 0%, 100%, 0.45); }
+:root:not(.dark) .aria-header-icon-color { color: hsla(0, 0%, 0%, 0.50); }
+.aria-jarvis-header-btn:hover .aria-header-icon-color { color: hsla(0, 0%, 100%, 0.80); }
+:root:not(.dark) .aria-jarvis-header-btn:hover .aria-header-icon-color { color: hsla(0, 0%, 0%, 0.80); }
+:root:not(.dark) .aria-jarvis-header-btn:hover { background: hsla(0, 0%, 0%, 0.06); border-radius: 6px; }
+
 /* Status dot */
 .aria-status-dot {
   width: 8px;
