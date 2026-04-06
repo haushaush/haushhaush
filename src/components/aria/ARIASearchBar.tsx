@@ -63,9 +63,9 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full', route
   const [placeholderVisible, setPlaceholderVisible] = useState(true);
 
   const isFull = variant === 'full';
-  const barHeight = isFull ? 52 : 48;
-  const avatarSize = isFull ? 36 : 28;
-  const inputHeight = isFull ? 52 : 32;
+  const barHeight = isFull ? 56 : 48;
+  const avatarSize = isFull ? 38 : 32;
+  const inputHeight = isFull ? 56 : 34;
 
   // Cycle placeholders
   useEffect(() => {
