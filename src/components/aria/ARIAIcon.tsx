@@ -1,35 +1,62 @@
-export function ARIAIcon({ size = 20, animated = false, white = false }: { size?: number; animated?: boolean; white?: boolean }) {
+export function ARIAIcon({ size = 28, animated = false, white = false }: { size?: number; animated?: boolean; white?: boolean }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox="0 0 100 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
       style={animated ? { animation: 'ariaIconSpin 8s linear infinite' } : {}}
     >
       {!white && (
         <defs>
           <linearGradient id="ariaIconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#0A9396" />
-            <stop offset="50%" stopColor="#0BC2C6" />
+            <stop offset="0%" stopColor="#0BC2C6" />
+            <stop offset="50%" stopColor="#0A9396" />
             <stop offset="100%" stopColor="#00E5FF" />
           </linearGradient>
         </defs>
       )}
+      {/* Outer ring — top loop */}
       <path
-        d="M12 2 C12 2 13.5 8 12 12 C10.5 8 12 2 12 2Z
-           M22 12 C22 12 16 13.5 12 12 C16 10.5 22 12 22 12Z
-           M12 22 C12 22 10.5 16 12 12 C13.5 16 12 22 12 22Z
-           M2 12 C2 12 8 10.5 12 12 C8 13.5 2 12 2 12Z"
-        fill={white ? 'white' : 'url(#ariaIconGrad)'}
+        d="M50 8 C65 8, 78 18, 82 32 C86 46, 80 58, 70 65 C80 70, 88 82, 84 94 C82 98, 76 100, 70 98"
+        stroke={white ? 'white' : 'url(#ariaIconGrad)'}
+        strokeWidth="6"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Inner weaving path */}
+      <path
+        d="M50 8 C35 8, 22 18, 18 32 C14 46, 20 58, 30 65 C20 70, 12 82, 16 94 C18 98, 24 100, 30 98"
+        stroke={white ? 'white' : 'url(#ariaIconGrad)'}
+        strokeWidth="6"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.7"
+      />
+      {/* Crossing horizontal band */}
+      <path
+        d="M18 32 C30 28, 42 30, 50 35 C58 30, 70 28, 82 32"
+        stroke={white ? 'white' : 'url(#ariaIconGrad)'}
+        strokeWidth="6"
+        strokeLinecap="round"
+        fill="none"
       />
       <path
-        d="M12 4.5 C12 4.5 13 8.5 12 12 C11 8.5 12 4.5 12 4.5Z
-           M19.5 12 C19.5 12 15.5 13 12 12 C15.5 11 19.5 12 19.5 12Z
-           M12 19.5 C12 19.5 11 15.5 12 12 C13 15.5 12 19.5 12 19.5Z
-           M4.5 12 C4.5 12 8.5 11 12 12 C8.5 13 4.5 12 4.5 12Z"
-        fill={white ? 'white' : 'url(#ariaIconGrad)'}
-        opacity="0.5"
-        transform="rotate(45 12 12)"
+        d="M16 68 C28 64, 42 66, 50 71 C58 66, 72 64, 84 68"
+        stroke={white ? 'white' : 'url(#ariaIconGrad)'}
+        strokeWidth="6"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.7"
+      />
+      {/* Bottom closing arc */}
+      <path
+        d="M30 98 C38 96, 44 92, 50 92 C56 92, 62 96, 70 98"
+        stroke={white ? 'white' : 'url(#ariaIconGrad)'}
+        strokeWidth="6"
+        strokeLinecap="round"
+        fill="none"
       />
     </svg>
   );

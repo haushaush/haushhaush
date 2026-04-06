@@ -354,23 +354,31 @@
   pointer-events: none;
 }
 .aria-ring-1 {
-  padding: 2px;
+  padding: calc(2px + var(--aria-amplitude, 0) * 3px);
   background: hsla(174, 90%, 31%, calc(0.3 + var(--aria-amplitude, 0) * 0.5));
+  opacity: calc(0.4 + var(--aria-amplitude, 0) * 0.6);
+  transition: padding 80ms ease, opacity 80ms ease;
   animation: ariaRingPulse1 2.0s ease-in-out infinite;
 }
 .aria-ring-2 {
-  padding: 5px;
+  padding: calc(5px + var(--aria-amplitude, 0) * 4px);
   background: hsla(180, 80%, 41%, calc(0.25 + var(--aria-amplitude, 0) * 0.45));
+  opacity: calc(0.3 + var(--aria-amplitude, 0) * 0.5);
+  transition: padding 100ms ease, opacity 100ms ease;
   animation: ariaRingPulse2 1.6s ease-in-out infinite;
 }
 .aria-ring-3 {
-  padding: 9px;
+  padding: calc(9px + var(--aria-amplitude, 0) * 5px);
   background: hsla(185, 100%, 50%, calc(0.15 + var(--aria-amplitude, 0) * 0.35));
+  opacity: calc(0.2 + var(--aria-amplitude, 0) * 0.4);
+  transition: padding 120ms ease, opacity 120ms ease;
   animation: ariaRingPulse3 2.4s ease-in-out infinite;
 }
 .aria-ring-4 {
-  padding: 14px;
+  padding: calc(14px + var(--aria-amplitude, 0) * 6px);
   background: hsla(174, 90%, 31%, calc(0.10 + var(--aria-amplitude, 0) * 0.25));
+  opacity: calc(0.1 + var(--aria-amplitude, 0) * 0.3);
+  transition: padding 140ms ease, opacity 140ms ease;
   animation: ariaRingPulse4 1.2s ease-in-out infinite;
 }
 @keyframes ariaRingPulse1 {
@@ -409,10 +417,10 @@
   background: hsla(240, 20%, 4%, 0.85);
   backdrop-filter: blur(40px) saturate(200%);
   -webkit-backdrop-filter: blur(40px) saturate(200%);
-  border: 1px solid hsla(174, 90%, 31%, 0.35);
+  border: 1.5px solid hsla(174, 90%, 31%, 0.45);
   box-shadow:
-    0 8px 40px hsla(0, 0%, 0%, 0.50),
-    0 0 0 1px hsla(174, 90%, 31%, 0.10),
+    0 0 0 0.5px hsla(174, 90%, 31%, 0.15),
+    0 8px 32px hsla(0, 0%, 0%, 0.40),
     inset 0 1px 0 hsla(0, 0%, 100%, 0.06);
   padding: 0 10px 0 22px;
   transition: border-color 200ms ease, box-shadow 200ms ease, border-radius 200ms ease;
@@ -432,11 +440,10 @@
   box-shadow: none;
 }
 .aria-jarvis-pill:hover {
-  border-color: hsla(174, 90%, 31%, 0.6);
+  border-color: hsla(174, 90%, 31%, 0.70);
   box-shadow:
-    0 8px 40px hsla(0, 0%, 0%, 0.50),
-    0 0 30px hsla(174, 90%, 31%, 0.15),
-    0 0 0 1px hsla(174, 90%, 31%, 0.10),
+    0 0 0 1px hsla(174, 90%, 31%, 0.20),
+    0 8px 32px hsla(0, 0%, 0%, 0.40),
     inset 0 1px 0 hsla(0, 0%, 100%, 0.06);
 }
 .aria-jarvis-pill--open:hover { box-shadow: none; }
@@ -445,12 +452,17 @@
 }
 :root:not(.dark) .aria-jarvis-pill--open:hover { box-shadow: none; }
 .aria-jarvis-pill--listening {
-  border-color: hsla(174, 90%, 31%, 0.8);
+  border-color: hsla(174, 90%, 31%, 0.80);
   box-shadow:
-    0 8px 40px hsla(0, 0%, 0%, 0.50),
-    0 0 40px hsla(174, 90%, 31%, 0.25),
-    0 0 0 1px hsla(174, 90%, 31%, 0.20);
+    0 0 0 2px hsla(174, 90%, 31%, 0.18),
+    0 8px 32px hsla(0, 0%, 0%, 0.40);
   transform: scale(1.02);
+}
+.aria-jarvis-pill:focus-within {
+  border-color: hsla(174, 90%, 31%, 0.80);
+  box-shadow:
+    0 0 0 2px hsla(174, 90%, 31%, 0.18),
+    0 8px 32px hsla(0, 0%, 0%, 0.40);
 }
 
 /* Shortcut hint */
@@ -529,8 +541,8 @@
 
 /* JARVIS dynamic right button */
 .aria-jarvis-mic {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   background: linear-gradient(135deg, #0A9396, #0BC2C6);
   box-shadow: 0 2px 12px hsla(174, 90%, 31%, 0.40);
