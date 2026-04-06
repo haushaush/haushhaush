@@ -464,7 +464,7 @@ export function ARIAPanel({ embedded }: { embedded?: boolean } = {}) {
   if (!isOpen || messages.length === 0) return null;
 
   return (
-    <div className="aria-jarvis-panel">
+    <div className={embedded ? 'aria-hero-chat' : 'aria-jarvis-panel'}>
       {/* Header */}
       <div className="aria-jarvis-panel-header">
         <ARIAAvatar size={32} />
