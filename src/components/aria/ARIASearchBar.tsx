@@ -55,6 +55,7 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
     return () => window.removeEventListener('aria-stop-listening', handler);
   }, [stopListening]);
 
+
   const startListening = useCallback(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
@@ -108,6 +109,13 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
     else startListening();
   }, [listening, stopListening, startListening]);
 
+  // Listen for Cmd+J start-listening
+  useEffect(() => {
+    const handler = () => { if (!listening) startListening(); };
+    window.addEventListener('aria-start-listening', handler);
+    return () => window.removeEventListener('aria-start-listening', handler);
+  }, [listening, startListening]);
+
   // Stop mic on beforeunload
   useEffect(() => {
     const handler = () => stopListening();
@@ -128,64 +136,45 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
 
   // Dynamic right button logic
   const renderRightButton = () => {
-    // 1. Recording → stop
     if (listening) {
       return (
-        <button
-          onClick={stopListening}
-          className="aria-jarvis-mic aria-jarvis-mic--active"
-          aria-label="Aufnahme stoppen"
-          title="Aufnahme stoppen"
-        >
+        <button onClick={stopListening} className="aria-jarvis-mic aria-jarvis-mic--active" aria-label="Aufnahme stoppen" title="Aufnahme stoppen">
           <MicOff className="h-[22px] w-[22px]" />
         </button>
       );
     }
-
-    // 2. ARIA speaking → stop speech
     if (isSpeaking) {
       return (
-        <button
-          onClick={() => { speechSynthesis.cancel(); setIsSpeaking(false); }}
-          className="aria-jarvis-mic aria-jarvis-mic--speaking"
-          aria-label="Antwort stoppen"
-          title="Antwort stoppen"
-        >
+        <button onClick={() => { speechSynthesis.cancel(); setIsSpeaking(false); }} className="aria-jarvis-mic aria-jarvis-mic--speaking" aria-label="Antwort stoppen" title="Antwort stoppen">
           <Square className="h-5 w-5" fill="white" />
         </button>
       );
     }
-
-    // 3. Text typed → send
     if (input.trim().length > 0) {
       return (
-        <button
-          onClick={handleSubmit}
-          disabled={isLoading}
-          className="aria-jarvis-mic"
-          aria-label="Senden"
-          title="Senden"
-        >
+        <button onClick={handleSubmit} disabled={isLoading} className="aria-jarvis-mic" aria-label="Senden" title="Senden">
           <ArrowUp className="h-[22px] w-[22px]" />
         </button>
       );
     }
-
-    // 4. Default → mic
     return (
-      <button
-        onClick={startListening}
-        className="aria-jarvis-mic"
-        aria-label="Sprachbefehl"
-        title="Sprachbefehl"
-      >
+      <button onClick={startListening} className="aria-jarvis-mic" aria-label="Sprachbefehl" title="Sprachbefehl">
         <Mic className="h-[22px] w-[22px]" />
       </button>
     );
   };
 
+  // Shortcut hint component
+  const ShortcutHint = () => {
+    if (listening || isSpeaking || input.trim().length > 0) return null;
+    const isMac = navigator.platform?.toUpperCase().includes('MAC');
+    return (
+      <span className="aria-shortcut-hint">{isMac ? '⌘' : 'Ctrl+'}J</span>
+    );
+  };
+
   return (
-    <div className={`aria-jarvis-pill ${listening ? 'aria-jarvis-pill--listening' : ''} ${isProcessing ? 'aria-jarvis-pill--processing' : ''}`}>
+    <div className={`aria-jarvis-pill ${listening ? 'aria-jarvis-pill--listening' : ''} ${isProcessing ? 'aria-jarvis-pill--processing' : ''} ${isOpen ? 'aria-jarvis-pill--open' : ''}`}>
       <ARIAIcon size={20} animated={isProcessing} />
 
       <div className="flex-1 min-w-0 flex items-center h-full">
@@ -213,6 +202,7 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
         )}
       </div>
 
+      <ShortcutHint />
       {renderRightButton()}
     </div>
   );

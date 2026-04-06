@@ -194,8 +194,8 @@ interface MessageMeta {
 export function ARIAPanel() {
   const { isOpen, closeARIA, messages, addMessage, updateLastAssistant, isLoading, setIsLoading, status, setStatus } = useARIA();
   const [input, setInput] = useState('');
-  const [isMuted, setIsMuted] = useState(() => localStorage.getItem('aria-muted') === 'true');
-  const isMutedRef = useRef(isMuted);
+  const isMutedRef = useRef(localStorage.getItem('aria-muted') === 'true');
+  const [, forceRender] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [messageMeta, setMessageMeta] = useState<Record<string, MessageMeta>>({});
   const [correctionTexts, setCorrectionTexts] = useState<Record<string, string>>({});
@@ -221,14 +221,13 @@ export function ARIAPanel() {
   }, []);
 
   const toggleMute = useCallback(() => {
-    const next = !isMutedRef.current;
-    isMutedRef.current = next;
-    setIsMuted(next);
-    localStorage.setItem('aria-muted', String(next));
-    if (next) {
-      speechSynthesis.cancel();
+    isMutedRef.current = !isMutedRef.current;
+    localStorage.setItem('aria-muted', String(isMutedRef.current));
+    if (isMutedRef.current) {
+      window.speechSynthesis.cancel();
       setIsSpeaking(false);
     }
+    forceRender(x => x + 1);
   }, []);
 
   const stopEverything = useCallback(() => {
@@ -468,13 +467,13 @@ export function ARIAPanel() {
     <div className="aria-jarvis-panel">
       {/* Header */}
       <div className="aria-jarvis-panel-header">
-        <ARIAIcon size={18} animated />
-        <span className="text-[15px] font-bold text-white" style={{ letterSpacing: '-0.02em' }}>ARIA</span>
+        <ARIAAvatar size={32} />
+        <span className="text-[15px] font-bold" style={{ letterSpacing: '-0.02em', color: 'var(--foreground)' }}>ARIA</span>
         {statusDot()}
         <div className="flex-1" />
 
-        <button onClick={toggleMute} className="aria-jarvis-header-btn" title={isMuted ? 'Ton an' : 'Ton aus'}>
-          {isMuted ? <VolumeX className="h-3.5 w-3.5 text-red-400/70" /> : <Volume2 className="h-3.5 w-3.5 text-white/50" />}
+        <button onClick={toggleMute} className="aria-jarvis-header-btn" title={isMutedRef.current ? 'Ton an' : 'Ton aus'}>
+          {isMutedRef.current ? <VolumeX className="h-3.5 w-3.5 text-red-400/70" /> : <Volume2 className="h-3.5 w-3.5 aria-header-icon-color" />}
         </button>
         {(isSpeaking || isLoading) && (
           <button onClick={stopEverything} className="aria-jarvis-header-btn" title="Stoppen">
@@ -482,7 +481,7 @@ export function ARIAPanel() {
           </button>
         )}
         <button onClick={() => { closeARIA(); speechSynthesis.cancel(); }} className="aria-jarvis-header-btn">
-          <X className="h-4 w-4 text-white/40" />
+          <X className="h-4 w-4 aria-header-icon-color" />
         </button>
       </div>
 
@@ -504,7 +503,7 @@ export function ARIAPanel() {
                     : 'aria-jarvis-msg-assistant rounded-[18px_18px_18px_4px]'
                 }`}>
                   {m.role === 'assistant' ? (
-                    <div className="prose prose-sm prose-invert max-w-none [&_p]:mb-1 [&_ul]:mb-1 [&_strong]:text-[#0BC2C6]">
+                    <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-1 [&_ul]:mb-1 [&_strong]:text-[#0BC2C6]">
                       <ReactMarkdown>{cleanText}</ReactMarkdown>
                     </div>
                   ) : m.content}
