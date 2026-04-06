@@ -383,7 +383,7 @@ export function AppSidebar() {
           </button>
         )}
 
-
+        {collapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>
               <NavLink to="/einstellungen" className={cn(
