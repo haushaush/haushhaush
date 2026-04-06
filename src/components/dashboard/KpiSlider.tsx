@@ -2,8 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, TrendingUp, Users, Target, Trophy, Clock, Zap, Phone, CalendarCheck, BarChart3, Mail, MailCheck, FolderOpen, ListTodo, Activity, DollarSign, Wallet, CreditCard, Receipt, AlertTriangle, UserCircle, GraduationCap, UserPlus, Calendar, Star, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ChevronLeft, ChevronRight, TrendingUp, Users, Target, Trophy, Clock, Zap, Phone, CalendarCheck, BarChart3, Mail, MailCheck, FolderOpen, ListTodo, Activity, DollarSign, Wallet, CreditCard, Receipt, AlertTriangle, UserCircle, GraduationCap, UserPlus, Calendar, Star, ArrowUpRight, ArrowDownRight, CheckSquare, Timer, AlertCircle, BarChart2, Gem, BookOpen } from 'lucide-react';
 import { formatValue } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
@@ -122,30 +121,27 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
   const monthName = now.toLocaleDateString('de-DE', { month: 'long' });
-  const monthStart = getMonthStart();
   const weekStart = getWeekStart();
 
   const slides: SlideData[] = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
     // === SLIDE 1: ÜBERSICHT ===
     const umsatzThisMonth = invoices
       .filter(i => i.status === 'Bezahlt' && new Date(i.created_at).getMonth() === currentMonth && new Date(i.created_at).getFullYear() === currentYear)
       .reduce((s, i) => s + Number(i.brutto || 0), 0);
-    const umsatzLastMonth = (() => {
-      const lm = currentMonth === 0 ? 11 : currentMonth - 1;
-      const ly = currentMonth === 0 ? currentYear - 1 : currentYear;
-      return invoices
-        .filter(i => i.status === 'Bezahlt' && new Date(i.created_at).getMonth() === lm && new Date(i.created_at).getFullYear() === ly)
-        .reduce((s, i) => s + Number(i.brutto || 0), 0);
-    })();
+    const umsatzLastMonth = invoices
+      .filter(i => i.status === 'Bezahlt' && new Date(i.created_at).getMonth() === lastMonth && new Date(i.created_at).getFullYear() === lastMonthYear)
+      .reduce((s, i) => s + Number(i.brutto || 0), 0);
     const umsatzTrend = umsatzLastMonth > 0 ? ((umsatzThisMonth - umsatzLastMonth) / umsatzLastMonth * 100) : null;
 
     const activeClients = deals.filter(d => d.status === 'Aktiv').length;
     const neukunden = deals.filter(d => d.deal_type === 'Neukunde' && new Date(d.created_at).getMonth() === currentMonth && new Date(d.created_at).getFullYear() === currentYear).length;
-
     const weekDeals = deals.filter(d => new Date(d.created_at) >= weekStart);
     const weekVolume = weekDeals.reduce((s, d) => s + Number(d.wert_eur || 0), 0);
 
-    // Top setter
     const setterMap = new Map<string, { revenue: number; closes: number }>();
     (salesPerfMonth || []).forEach(r => {
       const ex = setterMap.get(r.setter_id) || { revenue: 0, closes: 0 };
@@ -165,6 +161,12 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
     const openTotal = openInvs.reduce((s, i) => s + Number(i.brutto || 0), 0);
     const overdueCount = openInvs.filter(i => i.status === 'Überfällig').length;
 
+    const cashCollectMonth = invoices.filter(i => ['Versendet', 'Überfällig'].includes(i.status || '') && i.faelligkeitsdatum && new Date(i.faelligkeitsdatum).getMonth() === currentMonth && new Date(i.faelligkeitsdatum).getFullYear() === currentYear);
+    const cashCollectTotal = cashCollectMonth.reduce((s, i) => s + Number(i.brutto || 0), 0);
+
+    const openTasks = tasks.filter(t => t.status === 'Offen').length;
+    const overdueTasks = tasks.filter(t => t.due_date && t.due_date < today && t.status !== 'Erledigt').length;
+
     const slide1: SlideData = {
       id: 'uebersicht', label: 'Übersicht',
       cards: [
@@ -174,6 +176,8 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
         { label: 'TOP SETTER', value: topSeller?.name || '–', subtext: topSeller ? `${fmtC(topSeller.revenue)} · ${topSeller.closes} Abschlüsse` : 'Keine Daten', icon: Trophy, href: '/sales/kpis' },
         { label: 'OFFENE RECHNUNGEN', value: fmtC(openTotal), subtext: `${openInvs.length} Rechnungen offen`, icon: Clock, href: '/finanzen/rechnungen', badge: overdueCount > 0 ? `⚠ ${overdueCount} überfällig` : undefined, badgeColor: 'destructive' },
         { label: 'EFFIZIENZ', value: String(effizienz.score), subtext: `Deadlines ${effizienz.scoreA}% · Tickets ${effizienz.scoreB}%`, icon: Zap, href: '/projekte', gauge: effizienz.score, color: effizienz.score >= 80 ? 'green' : effizienz.score >= 60 ? 'orange' : 'red' },
+        { label: 'CASH COLLECT', value: fmtC(cashCollectTotal), subtext: 'Erwartet diesen Monat', icon: Wallet, href: '/finanzen/rechnungen' },
+        { label: 'OFFENE AUFGABEN', value: String(openTasks), subtext: overdueTasks > 0 ? `${overdueTasks} überfällig` : 'Alle im Plan', icon: CheckSquare, href: '/projekte/aufgaben', color: overdueTasks > 0 ? 'red' : 'green' },
       ],
     };
 
@@ -189,6 +193,7 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
     const salesMonthMails = (salesPerfMonth || []).reduce((s, r) => s + (r.cold_mails_sent || 0), 0);
     const salesMonthMailResp = (salesPerfMonth || []).reduce((s, r) => s + (r.cold_mail_responses || 0), 0);
     const mailRate = salesMonthMails > 0 ? Math.round((salesMonthMailResp / salesMonthMails) * 100) : 0;
+    const activeSetters = new Set((salesPerf || []).filter(r => new Date(r.datum) >= weekStart).map(r => r.setter_id)).size;
 
     const slide2: SlideData = {
       id: 'sales', label: 'Sales',
@@ -199,14 +204,13 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
         { label: 'CLOSES MONAT', value: String(salesMonthCloses), subtext: `${fmtC(salesMonthRevenue)} Umsatz`, icon: Trophy, href: '/sales/kpis' },
         { label: 'COLD MAILS', value: fmtN(salesMonthMails), subtext: `${salesMonthMailResp} Antworten · ${mailRate}% Rate`, icon: Mail, href: '/sales/coldmail' },
         { label: 'VORQUALI TQ', value: `${tq}%`, subtext: 'Telefonische Vorqualifikation', icon: BarChart3, href: '/sales/vorquali' },
+        { label: 'UMSATZ MONAT', value: fmtC(salesMonthRevenue), subtext: 'Alle Setter kombiniert', icon: TrendingUp, href: '/sales/kpis' },
+        { label: 'SETTER AKTIV', value: String(activeSetters), subtext: 'Haben diese Woche gecallt', icon: Users, href: '/sales/kpis' },
       ],
     };
 
     // === SLIDE 3: FULFILLMENT ===
     const activeProjects = deals.filter(d => !['Abgeschlossen', 'Archiviert', 'Churned'].includes(d.status || '')).length;
-    const openTasks = tasks.filter(t => t.status === 'Offen').length;
-    const today = new Date().toISOString().split('T')[0];
-    const overdueTasks = tasks.filter(t => t.due_date && t.due_date < today && t.status !== 'Erledigt').length;
     const redAmpel = deals.filter(d => d.ampelstatus === 'Rot').length;
 
     const slide3: SlideData = {
@@ -218,18 +222,18 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
         { label: 'CPL INTERN', value: '–', subtext: 'Cost per Lead intern', icon: DollarSign, href: '/fulfillment/ads' },
         { label: 'AD SPEND KUNDEN', value: '–', subtext: '€ in Kundenaccounts', icon: Wallet, href: '/fulfillment/ads' },
         { label: 'AMPEL ROT', value: String(redAmpel), subtext: 'Kunden mit Handlungsbedarf', icon: AlertTriangle, href: '/kunden', color: redAmpel > 0 ? 'red' : 'green' },
+        { label: 'ÜBERFÄLLIGE AUFGABEN', value: String(overdueTasks), subtext: overdueTasks > 0 ? 'Sofort handeln' : 'Keine überfällig', icon: AlertCircle, href: '/projekte/aufgaben', color: overdueTasks > 0 ? 'red' : 'green' },
+        { label: 'MEETINGS WOCHE', value: '–', subtext: 'Kundenmeetings', icon: Calendar, href: '/kunden' },
       ],
     };
 
     // === SLIDE 4: FINANZEN ===
     const mrr = revenue.mrr;
     const arr = mrr * 12;
-    const cashCollectMonth = invoices
-      .filter(i => ['Versendet', 'Überfällig'].includes(i.status || '') && i.faelligkeitsdatum && new Date(i.faelligkeitsdatum).getMonth() === currentMonth && new Date(i.faelligkeitsdatum).getFullYear() === currentYear);
-    const cashCollectTotal = cashCollectMonth.reduce((s, i) => s + Number(i.brutto || 0), 0);
     const paidThisMonth = umsatzThisMonth;
     const overdueInvs = invoices.filter(i => i.status === 'Überfällig');
     const overdueSum = overdueInvs.reduce((s, i) => s + Number(i.brutto || 0), 0);
+    const clvTotal = deals.filter(d => d.status === 'Aktiv').reduce((s, d) => s + Number(d.wert_eur || 0), 0);
 
     const slide4: SlideData = {
       id: 'finanzen', label: 'Finanzen',
@@ -240,6 +244,8 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
         { label: 'BEZAHLT', value: fmtC(paidThisMonth), subtext: 'Bereits eingegangen', icon: Receipt, href: '/finanzen', color: 'green' },
         { label: 'ÜBERFÄLLIG', value: String(overdueInvs.length), subtext: fmtC(overdueSum), icon: AlertTriangle, href: '/finanzen/rechnungen', color: overdueInvs.length > 0 ? 'red' : 'green' },
         { label: 'QONTO', value: '–', subtext: 'Qonto verbinden', icon: Wallet, href: '/finanzen/buchhaltung' },
+        { label: 'UMSATZ VORMONAT', value: fmtC(umsatzLastMonth), subtext: 'Vormonat zum Vergleich', icon: BarChart2, href: '/finanzen' },
+        { label: 'CLV GESAMT', value: fmtC(clvTotal), subtext: 'Aktive Kunden', icon: Gem, href: '/kunden' },
       ],
     };
 
@@ -256,6 +262,8 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
         { label: 'PROBEWOCHEN', value: '–', subtext: 'Aktuelle Probewochen', icon: Calendar, href: '/hr/probewoche' },
         { label: 'COACHING', value: '–', subtext: 'Diesen Monat', icon: Phone, href: '/hr/coaching' },
         { label: 'Ø COACHING SCORE', value: '–', subtext: 'Aus 0 Sessions', icon: Star, href: '/hr/coaching' },
+        { label: 'WIKI SEITEN', value: '–', subtext: 'SOPs & Prozesse', icon: BookOpen, href: '/hr/wiki' },
+        { label: 'ZEIT HEUTE', value: '–', subtext: 'Deine Zeit heute', icon: Timer, href: '/zeiterfassung' },
       ],
     };
 
@@ -265,7 +273,7 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
   const SLIDE_LABELS = slides.map(s => s.label);
 
   return (
-    <div className="relative">
+    <div className="relative px-7">
       {/* Slide Label Pills */}
       <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
         {SLIDE_LABELS.map((label, i) => (
@@ -284,43 +292,54 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
         ))}
       </div>
 
-      {/* Slide Content */}
-      <div className="relative overflow-hidden">
-        <div
-          className="flex transition-transform duration-250 ease-in-out"
-          style={{ transform: `translateX(-${activeSlide * 100}%)` }}
-        >
-          {slides.map((slide) => (
-            <div key={slide.id} className="w-full shrink-0">
-              <div className="kpi-grid">
-                {slide.cards.map((card, ci) => (
-                  <KpiCard key={ci} card={card} isMobile={isMobile} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Navigation Arrows */}
-      {activeSlide > 0 && (
+      {/* Slide Content with Nav Buttons */}
+      <div className="relative">
+        {/* Prev Button */}
         <button
           onClick={() => setActiveSlide(prev => Math.max(0, prev - 1))}
-          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 h-8 w-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary transition-colors shadow-sm z-10"
+          className={cn(
+            'absolute -left-5 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground shadow-sm transition-all duration-150',
+            activeSlide === 0
+              ? 'opacity-0 pointer-events-none'
+              : 'hover:border-primary hover:text-primary hover:shadow-md'
+          )}
           aria-label="Vorherige Slide"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronLeft className="h-4 w-4" />
         </button>
-      )}
-      {activeSlide < slides.length - 1 && (
+
+        {/* Slider */}
+        <div className="overflow-hidden">
+          <div
+            className="flex transition-transform duration-250 ease-in-out"
+            style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+          >
+            {slides.map((slide) => (
+              <div key={slide.id} className="w-full shrink-0">
+                <div className="kpi-grid">
+                  {slide.cards.map((card, ci) => (
+                    <KpiCard key={ci} card={card} isMobile={isMobile} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Next Button */}
         <button
           onClick={() => setActiveSlide(prev => Math.min(slides.length - 1, prev + 1))}
-          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 h-8 w-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary transition-colors shadow-sm z-10"
+          className={cn(
+            'absolute -right-5 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground shadow-sm transition-all duration-150',
+            activeSlide === slides.length - 1
+              ? 'opacity-0 pointer-events-none'
+              : 'hover:border-primary hover:text-primary hover:shadow-md'
+          )}
           aria-label="Nächste Slide"
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight className="h-4 w-4" />
         </button>
-      )}
+      </div>
 
       {/* Dots + Counter */}
       <div className="flex flex-col items-center gap-2 mt-4">
