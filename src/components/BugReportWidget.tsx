@@ -102,7 +102,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
         if (setting?.value) {
           const webhookUrl = typeof setting.value === 'string' ? setting.value : (setting.value as any)?.url || String(setting.value);
           const typeEmoji: Record<string, string> = { Bug: '🐛', Darstellungsfehler: '🎨', 'Funktion fehlt': '➕', 'Falscher Text': '✏️', Sonstiges: '📝' };
-          await fetch(webhookUrl, {
+          const res = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -120,9 +120,13 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
               ],
             }),
           });
+          if (!res.ok) console.error('Slack webhook failed:', res.status);
+          else console.log('✅ Slack Bug-Report notification sent');
+        } else {
+          console.error('❌ Slack Webhook URL fehlt! Gehe zu Einstellungen → Benachrichtigungen und trage die Webhook URL ein.');
         }
-      } catch {
-        // Slack failure is non-blocking
+      } catch (slackErr) {
+        console.error('Slack notification error:', slackErr);
       }
 
       setSuccess(true);

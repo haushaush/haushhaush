@@ -121,7 +121,7 @@ export default function SupportModal({ open, onClose, errorType, error, errorDet
 
         if (setting?.value) {
           const webhookUrl = typeof setting.value === 'string' ? setting.value : (setting.value as any)?.url || String(setting.value);
-          await fetch(webhookUrl, {
+          const res = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -141,9 +141,13 @@ export default function SupportModal({ open, onClose, errorType, error, errorDet
               ],
             }),
           });
+          if (!res.ok) console.error('Slack webhook failed:', res.status);
+          else console.log('✅ Slack Support-Ticket notification sent');
+        } else {
+          console.error('❌ Slack Webhook URL fehlt! Gehe zu Einstellungen → Benachrichtigungen und trage die Webhook URL ein.');
         }
-      } catch {
-        // Slack notification failure is non-blocking
+      } catch (slackErr) {
+        console.error('Slack notification error:', slackErr);
       }
 
       setSuccess(data?.ticket_nr || 'TKT-????');
