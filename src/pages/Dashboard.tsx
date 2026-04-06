@@ -17,8 +17,7 @@ import { formatValue } from '@/lib/utils';
 import { MicroLearning } from '@/components/dashboard/MicroLearning';
 import { TimeTracker } from '@/components/dashboard/TimeTracker';
 import { GlobalSearchModal } from '@/components/dashboard/GlobalSearch';
-import { ARIASearchBar } from '@/components/aria/ARIASearchBar';
-import { useARIA } from '@/contexts/ARIAContext';
+import { Search } from 'lucide-react';
 import { KpiSlider } from '@/components/dashboard/KpiSlider';
 import { SortableBlock } from '@/components/dashboard/SortableBlock';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
@@ -82,7 +81,7 @@ export default function Dashboard() {
   const effizienz = useEffizienzScore();
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [ariaInput, setAriaInput] = useState('');
+  
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const [blockOrder, setBlockOrder] = useState<string[]>(() => {
@@ -297,22 +296,17 @@ export default function Dashboard() {
             <p className="text-[15px] text-muted-foreground mt-1.5">{formatDateLong()}</p>
           </div>
         );
-      case 'search': {
-        const ariaBarSend = (text: string) => {
-          // Access ARIA send via custom event
-          window.dispatchEvent(new CustomEvent('aria-send', { detail: text }));
-        };
+      case 'search':
         return (
-          <div className="w-full">
-            <ARIASearchBar
-              onSend={ariaBarSend}
-              input={ariaInput}
-              setInput={setAriaInput}
-              variant="full"
-            />
-          </div>
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="w-full h-12 flex items-center gap-3 px-4 rounded-xl border border-border bg-card text-muted-foreground hover:border-primary/30 hover:shadow-sm transition-all cursor-text"
+          >
+            <Search className="h-4 w-4 shrink-0" />
+            <span className="text-[15px]">Kunden, Aufgaben, Seiten suchen...</span>
+            <kbd className="ml-auto hidden sm:inline-flex items-center text-[11px] font-medium bg-background border border-border rounded-md px-1.5 py-0.5 tracking-wide">⌘K</kbd>
+          </button>
         );
-      }
       case 'widgets':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch">
