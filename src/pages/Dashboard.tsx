@@ -107,13 +107,18 @@ export default function Dashboard() {
   
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  const VALID_IDS = new Set(DEFAULT_ORDER);
+
   const [blockOrder, setBlockOrder] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('dashboard-layout');
       if (saved) {
-        const parsed = JSON.parse(saved).filter((id: string) => id !== 'hero' && id !== 'search');
-        const missing = DEFAULT_ORDER.filter(id => !parsed.includes(id));
-        const merged = [...parsed, ...missing];
+        const parsed = JSON.parse(saved) as string[];
+        // Keep only valid IDs, drop any orphaned/old ones
+        const cleaned = parsed.filter((id: string) => VALID_IDS.has(id));
+        // Add any missing new blocks
+        const missing = DEFAULT_ORDER.filter(id => !cleaned.includes(id));
+        const merged = [...cleaned, ...missing];
         return merged;
       }
     } catch {}
