@@ -160,20 +160,42 @@ ${memoryBlock}
 - mark_task_done: {"action":"mark_task_done","params":{"task_id":"..."}}
 - update_ampel: {"action":"update_ampel","params":{"client_id":"...","status":"Grün|Gelb|Rot"}}
 
-═══ ACTION BUTTONS ═══
-PFLICHT: Nach JEDER Antwort die Daten enthält, MUSST du [ACTIONS] hinzufügen.
-Beispiele:
-- Rechnungsinformationen → Button 'Rechnung öffnen' + 'Zur Rechnungsliste'
-- Kundeninformationen → Button 'Kunden öffnen' + 'Aufgabe erstellen'
-- Aufgabeninformationen → Button 'Aufgabe öffnen' + 'Als erledigt markieren'
-- Sales-Daten → Button 'Sales öffnen' + 'Call loggen'
-- Kein Button nur bei reinen Wissensfragen ohne Portal-Bezug.
+═══ ACTION BUTTONS (PFLICHT) ═══
+PFLICHT REGEL: Nach JEDER Antwort die Daten aus dem Portal enthält, MUSST du [ACTIONS] hinzufügen.
+Wähle Buttons logisch basierend auf dem Kontext:
 
-Format:
+RECHNUNGEN →
 [ACTIONS]
-[{"label": "...", "action": "navigate", "params": {"path": "..."}, "icon": "user", "variant": "primary"}]
+[{"label":"Rechnung öffnen","action":"navigate","params":{"path":"/finanzen/rechnungen"},"icon":"file-text","variant":"primary"},{"label":"Rechnungsübersicht","action":"navigate","params":{"path":"/finanzen"},"icon":"euro","variant":"secondary"}]
 [/ACTIONS]
-Maximal 3 Buttons.
+
+KUNDEN →
+[ACTIONS]
+[{"label":"Kunden öffnen","action":"navigate","params":{"path":"/kunden"},"icon":"users","variant":"primary"},{"label":"Aufgabe erstellen","action":"create_task","params":{},"icon":"plus","variant":"secondary"}]
+[/ACTIONS]
+
+AUFGABEN →
+[ACTIONS]
+[{"label":"Aufgaben öffnen","action":"navigate","params":{"path":"/projekte/aufgaben"},"icon":"check","variant":"primary"},{"label":"Als erledigt","action":"mark_task_done","params":{},"icon":"check","variant":"secondary"}]
+[/ACTIONS]
+
+SALES / KPI →
+[ACTIONS]
+[{"label":"Sales Dashboard","action":"navigate","params":{"path":"/sales/kpis"},"icon":"navigation","variant":"primary"},{"label":"Call loggen","action":"navigate","params":{"path":"/sales"},"icon":"phone","variant":"secondary"}]
+[/ACTIONS]
+
+FULFILLMENT →
+[ACTIONS]
+[{"label":"Ad Performance","action":"navigate","params":{"path":"/fulfillment/ads"},"icon":"navigation","variant":"primary"}]
+[/ACTIONS]
+
+NAVIGATION →
+[ACTIONS]
+[{"label":"Zur Seite","action":"navigate","params":{"path":"[relevant path]"},"icon":"navigation","variant":"primary"}]
+[/ACTIONS]
+
+Maximal 3 Buttons pro Antwort.
+Kein [ACTIONS] Block NUR bei: Begrüßungen, einfachen Wissensfragen ohne Portal-Bezug.
 
 ═══ SELBST-LERNEN ═══
 [LEARN] {"type": "user_preference|fact|workflow", "key": "...", "value": "..."} [/LEARN]
@@ -465,9 +487,20 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
       const text = (e as CustomEvent).detail;
       if (text) handleSend(text);
     };
+    const abortHandler = () => {
+      abortRef.current?.abort();
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+      setIsLoading(false);
+      setStatus('idle');
+    };
     window.addEventListener('aria-send', handler);
-    return () => window.removeEventListener('aria-send', handler);
-  }, [handleSend]);
+    window.addEventListener('aria-abort', abortHandler);
+    return () => {
+      window.removeEventListener('aria-send', handler);
+      window.removeEventListener('aria-abort', abortHandler);
+    };
+  }, [handleSend, setIsLoading, setStatus]);
 
   useEffect(() => {
     messages.forEach(m => {
