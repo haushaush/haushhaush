@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { toast } from 'sonner';
+import { slackNotifyBugReport } from '@/lib/slack';
 
 const PROBLEM_TYPES = [
   'Bug',
@@ -92,42 +93,14 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
       if (dbError) throw dbError;
 
       // 2. Send Slack notification (non-blocking)
-      try {
-        const { data: setting } = await supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'slack_tech_support_webhook')
-          .maybeSingle();
-
-        if (setting?.value) {
-          const webhookUrl = typeof setting.value === 'string' ? setting.value : (setting.value as any)?.url || String(setting.value);
-          const typeEmoji: Record<string, string> = { Bug: '🐛', Darstellungsfehler: '🎨', 'Funktion fehlt': '➕', 'Falscher Text': '✏️', Sonstiges: '📝' };
-          const res = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              text: `${typeEmoji[problemType] || '🐛'} Bug-Report: ${problemType} von ${displayName || user?.email || 'Unbekannt'}`,
-              blocks: [
-                { type: 'header', text: { type: 'plain_text', text: `${typeEmoji[problemType] || '🐛'} Bug-Report: ${problemType}`, emoji: true } },
-                { type: 'section', fields: [
-                  { type: 'mrkdwn', text: `*Gemeldet von:*\n${displayName || user?.email || 'Unbekannt'}` },
-                  { type: 'mrkdwn', text: `*Seite:*\n\`${window.location.pathname}\`` },
-                ]},
-                { type: 'section', text: { type: 'mrkdwn', text: `*Beschreibung:*\n${description.trim().slice(0, 500)}` } },
-                ...(screenshotUrl ? [{ type: 'image', image_url: screenshotUrl, alt_text: 'Screenshot' } as any] : []),
-                { type: 'divider' },
-                { type: 'context', elements: [{ type: 'mrkdwn', text: `Browser: ${shortBrowser()} · ${new Date().toLocaleDateString('de-DE')}` }] },
-              ],
-            }),
-          });
-          if (!res.ok) console.error('Slack webhook failed:', res.status);
-          else console.log('✅ Slack Bug-Report notification sent');
-        } else {
-          console.error('❌ Slack Webhook URL fehlt! Gehe zu Einstellungen → Benachrichtigungen und trage die Webhook URL ein.');
-        }
-      } catch (slackErr) {
-        console.error('Slack notification error:', slackErr);
-      }
+      slackNotifyBugReport({
+        user_name: displayName || user?.email || null,
+        user_email: user?.email || null,
+        page_url: window.location.pathname,
+        problem_type: problemType,
+        description: description.trim(),
+        screenshot_url: screenshotUrl,
+      }).catch(() => {});
 
       setSuccess(true);
       toast.success('Bug Report gesendet!');

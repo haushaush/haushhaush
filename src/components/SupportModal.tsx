@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
+import { slackNotifySupportTicket } from '@/lib/slack';
 
 interface ErrorDetails {
   message: string | null;
@@ -112,43 +113,16 @@ export default function SupportModal({ open, onClose, errorType, error, errorDet
       if (insertError) throw insertError;
 
       // Send Slack notification (non-blocking)
-      try {
-        const { data: setting } = await supabase
-          .from('app_settings')
-          .select('value')
-          .eq('key', 'slack_tech_support_webhook')
-          .maybeSingle();
-
-        if (setting?.value) {
-          const webhookUrl = typeof setting.value === 'string' ? setting.value : (setting.value as any)?.url || String(setting.value);
-          const res = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              text: `🎫 Support-Ticket ${data?.ticket_nr} von ${name}`,
-              blocks: [
-                { type: 'header', text: { type: 'plain_text', text: `🎫 Support-Ticket ${data?.ticket_nr}` } },
-                { type: 'section', fields: [
-                  { type: 'mrkdwn', text: `*Nutzer:*\n${name} (${email || 'keine Email'})` },
-                  { type: 'mrkdwn', text: `*Typ:*\n${errorDetails.type}` },
-                  { type: 'mrkdwn', text: `*Seite:*\n${errorDetails.page_url || 'Unbekannt'}` },
-                  { type: 'mrkdwn', text: `*Priorität:*\n${priorityMap[errorType] || 'Normal'}` },
-                ]},
-                { type: 'section', text: { type: 'mrkdwn', text: `*Nachricht:*\n${message.trim().slice(0, 500)}` } },
-                ...(errorDetails.message ? [{ type: 'section', text: { type: 'mrkdwn', text: `*Fehlermeldung:*\n\`\`\`${errorDetails.message.slice(0, 300)}\`\`\`` } }] : []),
-                { type: 'divider' },
-                { type: 'context', elements: [{ type: 'mrkdwn', text: `Agency Hub · ${new Date().toLocaleDateString('de-DE')}` }] },
-              ],
-            }),
-          });
-          if (!res.ok) console.error('Slack webhook failed:', res.status);
-          else console.log('✅ Slack Support-Ticket notification sent');
-        } else {
-          console.error('❌ Slack Webhook URL fehlt! Gehe zu Einstellungen → Benachrichtigungen und trage die Webhook URL ein.');
-        }
-      } catch (slackErr) {
-        console.error('Slack notification error:', slackErr);
-      }
+      slackNotifySupportTicket({
+        ticket_nr: data?.ticket_nr,
+        user_name: name,
+        user_email: email,
+        user_message: message.trim(),
+        error_type: errorDetails.type,
+        error_message: errorDetails.message,
+        page_url: errorDetails.page_url,
+        priority: priorityMap[errorType] || 'Normal',
+      }).catch(() => {});
 
       setSuccess(data?.ticket_nr || 'TKT-????');
     } catch {
