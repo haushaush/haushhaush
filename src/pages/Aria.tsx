@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Play, Pause, Plus, Clock, CheckCircle2, XCircle, Zap, RefreshCw } from 'lucide-react';
+import { Sparkles, Play, Clock, CheckCircle2, XCircle, Zap, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,12 +41,6 @@ const TRIGGER_LABELS: Record<string, string> = {
   event: 'Event-basiert',
 };
 
-const TRIGGER_COLORS: Record<string, string> = {
-  manual: 'bg-primary/10 text-primary',
-  schedule: 'bg-warning/10 text-warning-foreground',
-  event: 'bg-accent text-accent-foreground',
-};
-
 export default function Aria() {
   const { isAdminOrManager } = useAuth();
   const [automations, setAutomations] = useState<Automation[]>([]);
@@ -57,18 +51,18 @@ export default function Aria() {
 
   const fetchData = async () => {
     const [{ data: autos }, { data: logData }] = await Promise.all([
-      supabase.from('aria_automations').select('*').order('created_at', { ascending: false }),
-      supabase.from('aria_automation_logs').select('*').order('created_at', { ascending: false }).limit(50),
+      supabase.from('aria_automations' as any).select('*').order('created_at', { ascending: false }),
+      supabase.from('aria_automation_logs' as any).select('*').order('created_at', { ascending: false }).limit(50),
     ]);
-    setAutomations((autos as Automation[]) || []);
-    setLogs((logData as AutomationLog[]) || []);
+    setAutomations((autos as unknown as Automation[]) || []);
+    setLogs((logData as unknown as AutomationLog[]) || []);
     setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
 
   const toggleActive = async (id: string, active: boolean) => {
-    await supabase.from('aria_automations').update({ active }).eq('id', id);
+    await (supabase.from('aria_automations' as any) as any).update({ active }).eq('id', id);
     setAutomations(prev => prev.map(a => a.id === id ? { ...a, active } : a));
     toast.success(active ? 'Automation aktiviert' : 'Automation deaktiviert');
   };
@@ -86,9 +80,9 @@ export default function Aria() {
           case 'supabase_query': {
             const query = supabase.from(step.table).select('*');
             if (step.filter) {
-              query.eq(step.filter.field, step.filter.value);
+              (query as any).eq(step.filter.field, step.filter.value);
             }
-            const { data } = await query.limit(step.limit || 100);
+            const { data } = await (query as any).limit(step.limit || 100);
             results.push({ type: step.type, table: step.table, count: data?.length || 0, status: 'success' });
             break;
           }
@@ -115,14 +109,14 @@ export default function Aria() {
       }
 
       const duration = Date.now() - startTime;
-      await supabase.from('aria_automation_logs').insert({
+      await (supabase.from('aria_automation_logs' as any) as any).insert({
         automation_id: auto.id,
         triggered_by: 'manual',
         status: 'success',
         steps_executed: results,
         duration_ms: duration,
       });
-      await supabase.from('aria_automations').update({
+      await (supabase.from('aria_automations' as any) as any).update({
         last_run_at: new Date().toISOString(),
         run_count: auto.run_count + 1,
       }).eq('id', auto.id);
@@ -131,7 +125,7 @@ export default function Aria() {
       fetchData();
     } catch (e: any) {
       const duration = Date.now() - startTime;
-      await supabase.from('aria_automation_logs').insert({
+      await (supabase.from('aria_automation_logs' as any) as any).insert({
         automation_id: auto.id,
         triggered_by: 'manual',
         status: 'error',
@@ -144,9 +138,6 @@ export default function Aria() {
       setRunning(null);
     }
   };
-
-  const selectedAuto = automations.find(a => a.id === selectedId);
-  const selectedLogs = logs.filter(l => l.automation_id === selectedId);
 
   if (loading) {
     return (
@@ -161,8 +152,8 @@ export default function Aria() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, hsl(174 90% 31%), hsl(180 80% 45%))' }}>
-            <Sparkles className="h-5 w-5 text-white" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary text-primary-foreground">
+            <Sparkles className="h-5 w-5" />
           </div>
           <div>
             <h1 className="text-2xl font-heading font-bold text-foreground">ARIA Automationen</h1>
@@ -199,8 +190,8 @@ export default function Aria() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-foreground">{auto.name}</h3>
-                          <Badge variant="secondary" className={TRIGGER_COLORS[auto.trigger_type]}>
-                            {TRIGGER_LABELS[auto.trigger_type]}
+                          <Badge variant="secondary">
+                            {TRIGGER_LABELS[auto.trigger_type] || auto.trigger_type}
                           </Badge>
                           {!auto.active && <Badge variant="outline" className="text-muted-foreground">Inaktiv</Badge>}
                         </div>
@@ -245,7 +236,7 @@ export default function Aria() {
                         {autoLogs.map(log => (
                           <div key={log.id} className="flex items-center gap-2 text-xs">
                             {log.status === 'success' ? (
-                              <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                              <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
                             ) : log.status === 'error' ? (
                               <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
                             ) : (
@@ -271,7 +262,7 @@ export default function Aria() {
                         <div className="space-y-1.5">
                           {auto.steps.map((step: any, i: number) => (
                             <div key={i} className="flex items-center gap-2 text-xs bg-muted/50 rounded-md px-3 py-2">
-                              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0">
+                              <span className="w-5 h-5 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-[10px] font-bold shrink-0">
                                 {i + 1}
                               </span>
                               <span className="font-medium">{step.type}</span>
@@ -303,7 +294,7 @@ export default function Aria() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Aktiv</span>
-                <span className="font-semibold text-green-600">{automations.filter(a => a.active).length}</span>
+                <span className="font-semibold text-success">{automations.filter(a => a.active).length}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Ausführungen heute</span>
@@ -337,7 +328,7 @@ export default function Aria() {
                   '"Führe Wochenreport aus"',
                   '"Welche Automationen gibt es?"',
                 ].map(tip => (
-                  <p key={tip} className="text-xs text-primary/80 italic">
+                  <p key={tip} className="text-xs text-primary italic">
                     {tip}
                   </p>
                 ))}
