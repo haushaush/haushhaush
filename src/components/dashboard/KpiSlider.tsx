@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, TrendingUp, Users, Target, Trophy, Clock, Zap, Phone, CalendarCheck, BarChart3, Mail, MailCheck, FolderOpen, ListTodo, Activity, DollarSign, Wallet, CreditCard, Receipt, AlertTriangle, UserCircle, GraduationCap, UserPlus, Calendar, Star, ArrowUpRight, ArrowDownRight, CheckSquare, Timer, AlertCircle, BarChart2, Gem, BookOpen } from 'lucide-react';
+import { TrendingUp, Users, Target, Trophy, Clock, Zap, Phone, CalendarCheck, BarChart3, Mail, FolderOpen, ListTodo, Activity, DollarSign, Wallet, CreditCard, Receipt, AlertTriangle, UserCircle, GraduationCap, UserPlus, Calendar, Star, ArrowUpRight, ArrowDownRight, CheckSquare, Timer, AlertCircle, BarChart2, Gem, BookOpen } from 'lucide-react';
 import { formatValue } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
