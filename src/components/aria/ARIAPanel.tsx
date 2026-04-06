@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, UIEvent } from 'react';
 import { X, Volume2, VolumeX, Square, FileText, Plus, Navigation, Check, Phone, Euro, User, AlertCircle, ExternalLink, ThumbsUp, ThumbsDown, Send } from 'lucide-react';
 import { useARIA } from '@/contexts/ARIAContext';
 import { useLocation, useNavigate } from 'react-router-dom';
