@@ -8,6 +8,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { TimerBar } from '@/components/dashboard/TimerBar';
 import { BugReportWidget } from '@/components/BugReportWidget';
 import { ARIASearchBar } from '@/components/aria/ARIASearchBar';
+import { ARIAPanel } from '@/components/aria/ARIAPanel';
+import { useARIA } from '@/contexts/ARIAContext';
 
 function SidebarWidthSync() {
   const { state, isMobile } = useSidebar();
@@ -22,6 +24,7 @@ function SidebarWidthSync() {
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const isMobile = useIsMobile();
+  const { isOpen } = useARIA();
   
   const [ariaInput, setAriaInput] = useState('');
 
@@ -61,8 +64,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {isMobile && <MobileTabBar />}
         <BugReportWidget />
 
-        {/* Persistent ARIA bottom bar on ALL pages */}
-        <div className="aria-bottom-bar">
+        {/* Unified ARIA wrapper: panel + pill in one container */}
+        <div className={`aria-bottom-bar ${isOpen ? 'aria-bottom-bar--open' : ''}`}>
+          <ARIAPanel />
           <ARIASearchBar
             onSend={handleAriaSend}
             input={ariaInput}
