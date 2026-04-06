@@ -80,18 +80,18 @@ export function MicroLearning() {
   }, []);
 
   return (
-    <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-between h-[200px] min-h-[200px] max-h-[200px] overflow-hidden p-[18px_20px]">
-      <span className="inline-block text-[10px] font-semibold px-2 py-[3px] rounded bg-primary/10 text-primary shrink-0 mb-2">
+    <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center h-[200px] min-h-[200px] max-h-[200px] overflow-hidden p-6">
+      <span className="inline-block text-[13px] font-semibold px-[14px] py-[6px] rounded-md bg-primary/10 text-primary shrink-0 mb-5" style={{ letterSpacing: '0.02em' }}>
         Learning des Tages
       </span>
-      <p className="text-[14px] leading-[1.6] text-foreground text-center px-2 flex-1 flex items-center overflow-hidden mb-2">
+      <p className="text-[15px] leading-[1.65] text-foreground text-center px-3 flex-1 flex items-center overflow-hidden mb-0">
         {learning.text}
       </p>
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             onClick={next}
-            className="mx-auto block w-fit text-muted-foreground hover:text-primary transition-all duration-300 shrink-0 cursor-pointer"
+            className="mx-auto block w-fit text-muted-foreground hover:text-primary transition-all duration-300 shrink-0 cursor-pointer mt-5"
             aria-label="Anderes Learning anzeigen"
           >
             <RotateCw className={`h-4 w-4 transition-transform duration-300 ${spinning ? 'rotate-180' : ''}`} />
