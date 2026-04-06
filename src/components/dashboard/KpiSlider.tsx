@@ -74,39 +74,43 @@ function KpiCard({ card, isMobile }: { card: KpiCardData; isMobile: boolean }) {
 
   return (
     <Card
-      className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0"
+      className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0 h-[120px] min-h-[120px] max-h-[120px]"
       onClick={() => navigate(card.href)}
     >
-      <CardContent className="p-4 xl:p-5">
-        <div className="flex items-start justify-between mb-2 gap-1">
-          <p className="kpi-label text-muted-foreground">{card.label}</p>
-          <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-            <Icon className="h-4 w-4 text-primary" />
+      <CardContent className="p-4 h-full flex flex-col justify-between">
+        <div>
+          <div className="flex items-start justify-between mb-1 gap-1">
+            <p className="kpi-label text-muted-foreground truncate">{card.label}</p>
+            <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+              <Icon className="h-3.5 w-3.5 text-primary" />
+            </div>
           </div>
+          <p className={cn('kpi-value', valueColor)}>{card.value}</p>
         </div>
-        <p className={cn('kpi-value', valueColor)}>{card.value}</p>
-        <p className="kpi-sub text-muted-foreground mt-0.5">{card.subtext}</p>
-        {card.badge && (
-          <Badge variant={card.badgeColor || 'destructive'} className="text-[10px] mt-2">
-            {card.badge}
-          </Badge>
-        )}
-        {card.trend !== undefined && card.trend !== null && (
-          <span className={cn(
-            'inline-flex items-center gap-0.5 text-[10px] font-medium mt-2 px-1.5 py-0.5 rounded-full',
-            card.trend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'
-          )}>
-            {card.trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-            {card.trend >= 0 ? '+' : ''}{card.trend.toFixed(1)}%
-          </span>
-        )}
-        {card.gauge !== undefined && (
-          <svg width="48" height="28" viewBox="0 0 48 28" className="mt-2" aria-hidden="true">
-            <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke="hsl(var(--border))" strokeWidth="3" strokeLinecap="round" />
-            <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke={card.color === 'green' ? 'hsl(var(--primary))' : card.color === 'orange' ? '#FF9F0A' : '#FF3B30'} strokeWidth="3" strokeLinecap="round"
-              strokeDasharray={`${(card.gauge / 100) * 62.8} 62.8`} />
-          </svg>
-        )}
+        <div className="overflow-hidden">
+          <p className="kpi-sub text-muted-foreground line-clamp-1">{card.subtext}</p>
+          {card.badge && (
+            <Badge variant={card.badgeColor || 'destructive'} className="text-[10px] mt-1 truncate max-w-full">
+              {card.badge}
+            </Badge>
+          )}
+          {card.trend !== undefined && card.trend !== null && (
+            <span className={cn(
+              'inline-flex items-center gap-0.5 text-[10px] font-medium mt-1 px-1.5 py-0.5 rounded-full',
+              card.trend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'
+            )}>
+              {card.trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+              {card.trend >= 0 ? '+' : ''}{card.trend.toFixed(1)}%
+            </span>
+          )}
+          {card.gauge !== undefined && (
+            <svg width="40" height="22" viewBox="0 0 48 28" className="mt-1" aria-hidden="true">
+              <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke="hsl(var(--border))" strokeWidth="3" strokeLinecap="round" />
+              <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke={card.color === 'green' ? 'hsl(var(--primary))' : card.color === 'orange' ? '#FF9F0A' : '#FF3B30'} strokeWidth="3" strokeLinecap="round"
+                strokeDasharray={`${(card.gauge / 100) * 62.8} 62.8`} />
+            </svg>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -273,7 +277,7 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
   const SLIDE_LABELS = slides.map(s => s.label);
 
   return (
-    <div className="relative px-7">
+    <div className="relative">
       {/* Slide Label Pills */}
       <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
         {SLIDE_LABELS.map((label, i) => (
@@ -293,19 +297,19 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
       </div>
 
       {/* Slide Content with Nav Buttons */}
-      <div className="relative">
-        {/* Prev Button */}
+      <div className="relative px-9">
+        {/* Prev Button — outside grid, absolutely positioned */}
         <button
           onClick={() => setActiveSlide(prev => Math.max(0, prev - 1))}
           className={cn(
-            'absolute -left-5 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground shadow-sm transition-all duration-150',
+            'absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground shadow-sm transition-all duration-150',
             activeSlide === 0
               ? 'opacity-0 pointer-events-none'
               : 'hover:border-primary hover:text-primary hover:shadow-md'
           )}
           aria-label="Vorherige Slide"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-3.5 w-3.5" />
         </button>
 
         {/* Slider */}
@@ -316,7 +320,7 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
           >
             {slides.map((slide) => (
               <div key={slide.id} className="w-full shrink-0">
-                <div className="kpi-grid">
+                <div className="kpi-grid" style={{ gridTemplateRows: '120px 120px' }}>
                   {slide.cards.map((card, ci) => (
                     <KpiCard key={ci} card={card} isMobile={isMobile} />
                   ))}
@@ -326,18 +330,18 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
           </div>
         </div>
 
-        {/* Next Button */}
+        {/* Next Button — outside grid, absolutely positioned */}
         <button
           onClick={() => setActiveSlide(prev => Math.min(slides.length - 1, prev + 1))}
           className={cn(
-            'absolute -right-5 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground shadow-sm transition-all duration-150',
+            'absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground shadow-sm transition-all duration-150',
             activeSlide === slides.length - 1
               ? 'opacity-0 pointer-events-none'
               : 'hover:border-primary hover:text-primary hover:shadow-md'
           )}
           aria-label="Nächste Slide"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </div>
 
