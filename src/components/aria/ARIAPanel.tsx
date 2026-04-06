@@ -200,6 +200,10 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
   const [messageMeta, setMessageMeta] = useState<Record<string, MessageMeta>>({});
   const [correctionTexts, setCorrectionTexts] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [showScrollDown, setShowScrollDown] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const location = useLocation();
@@ -210,8 +214,30 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
   const pageName = PAGE_NAMES[location.pathname] || location.pathname;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (!isScrolledUp) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      setHasNewMessage(true);
+    }
   }, [messages]);
+
+  const handleMessagesScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const threeScrolls = el.clientHeight * 0.8 * 3;
+    setIsScrolledUp(distanceFromBottom > 80);
+    setShowScrollDown(distanceFromBottom > threeScrolls);
+    if (distanceFromBottom < 40) {
+      setHasNewMessage(false);
+    }
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setHasNewMessage(false);
+    setShowScrollDown(false);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
