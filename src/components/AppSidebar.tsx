@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -381,6 +381,29 @@ export function AppSidebar() {
             <Bug className="h-5 w-5 shrink-0" aria-hidden="true" />
             <span className="truncate">Fehler melden</span>
           </button>
+        )}
+
+        {/* ARIA & Automationen */}
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <NavLink to="/aria" className={cn(
+                'sidebar-nav-item flex items-center justify-center rounded-lg text-sm transition-colors min-h-[40px] px-0 py-2.5',
+                location.pathname === '/aria' ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              )}>
+                <Sparkles className="h-5 w-5 shrink-0" aria-hidden="true" />
+              </NavLink>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">ARIA & Automationen</TooltipContent>
+          </Tooltip>
+        ) : (
+          <NavLink to="/aria" className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[40px]',
+            location.pathname === '/aria' ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          )}>
+            <Sparkles className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span className="truncate">ARIA & Automationen</span>
+          </NavLink>
         )}
 
         {collapsed ? (

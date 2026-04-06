@@ -33,6 +33,7 @@ import Nachrichten from "./pages/Nachrichten.tsx";
 import ApiDocs from "./pages/ApiDocs.tsx";
 import ErrorPage from "./pages/ErrorPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import AriaPage from "./pages/Aria.tsx";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,7 @@ const App = () => (
                 <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
                 <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
                 <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
+                <Route path="/aria" element={<DL><AriaPage /></DL>} />
                 <Route path="/api-docs" element={<ApiDocs />} />
                 <Route path="/profil" element={<DL><Profil /></DL>} />
                 <Route path="/creatives" element={<DL><Creatives /></DL>} />

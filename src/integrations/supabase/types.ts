@@ -201,6 +201,89 @@ export type Database = {
         }
         Relationships: []
       }
+      aria_automation_logs: {
+        Row: {
+          automation_id: string | null
+          created_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          status: string
+          steps_executed: Json | null
+          triggered_by: string | null
+        }
+        Insert: {
+          automation_id?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          status?: string
+          steps_executed?: Json | null
+          triggered_by?: string | null
+        }
+        Update: {
+          automation_id?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          status?: string
+          steps_executed?: Json | null
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aria_automation_logs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "aria_automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aria_automations: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          last_run_at: string | null
+          name: string
+          run_count: number | null
+          steps: Json
+          trigger_config: Json | null
+          trigger_type: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          last_run_at?: string | null
+          name: string
+          run_count?: number | null
+          steps?: Json
+          trigger_config?: Json | null
+          trigger_type?: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          run_count?: number | null
+          steps?: Json
+          trigger_config?: Json | null
+          trigger_type?: string
+        }
+        Relationships: []
+      }
       bug_reports: {
         Row: {
           browser_info: string | null
