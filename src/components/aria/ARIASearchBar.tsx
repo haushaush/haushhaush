@@ -16,6 +16,7 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
   const recognitionRef = useRef<any>(null);
   const [listening, setListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
 
   const isProcessing = status === 'processing' || status === 'executing';
 
@@ -77,12 +78,14 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
     };
     recognition.onend = () => {
       setListening(false);
+      setInterimTranscript('');
       setStatus('idle');
       recognitionRef.current = null;
       document.documentElement.classList.remove('aria-listening');
     };
     recognition.onerror = (e: any) => {
       setListening(false);
+      setInterimTranscript('');
       setStatus('idle');
       recognitionRef.current = null;
       if (e.error === 'not-allowed') {
@@ -92,12 +95,20 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
       }
     };
     recognition.onresult = (e: any) => {
-      const transcript = Array.from(e.results).map((r: any) => r[0].transcript).join('');
-      if (e.results[0].isFinal) {
+      let interim = '';
+      let final = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          final += e.results[i][0].transcript;
+        } else {
+          interim += e.results[i][0].transcript;
+        }
+      }
+      setInterimTranscript(interim);
+      if (final) {
+        setInterimTranscript('');
         setInput('');
-        onSend(transcript);
-      } else {
-        setInput(transcript);
+        onSend(final);
       }
     };
 
@@ -180,7 +191,12 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
   };
 
   return (
-    <div className={`aria-jarvis-pill ${listening ? 'aria-jarvis-pill--listening' : ''} ${isProcessing ? 'aria-jarvis-pill--processing' : ''} ${isOpen ? 'aria-jarvis-pill--open' : ''}`}>
+    <div className={`aria-jarvis-pill ${listening ? 'aria-jarvis-pill--listening' : ''} ${isProcessing ? 'aria-jarvis-pill--processing' : ''} ${isOpen ? 'aria-jarvis-pill--open' : ''}`} style={{ position: 'relative' }}>
+      {listening && (
+        <div className="aria-voice-transcript">
+          {interimTranscript || 'Ich höre zu...'}
+        </div>
+      )}
       <ARIAIcon size={20} animated={isProcessing} />
 
       <div className="flex-1 min-w-0 flex items-center h-full">
@@ -191,7 +207,6 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
                 <div key={i} className={`bar bar-${i}`} />
               ))}
             </div>
-            {input && <span className="text-sm text-white/80 truncate">{input}</span>}
           </div>
         ) : isProcessing ? (
           <span className="text-sm text-white/40 aria-dots">Denke nach</span>
