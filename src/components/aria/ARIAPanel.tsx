@@ -361,47 +361,68 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
     setIsSpeaking(false);
   }, []);
 
-  const executeAction = useCallback(async (action: string, params: any): Promise<string> => {
-    setStatus('executing');
-    try {
-      switch (action) {
-        case 'navigate':
-          navigate(params.path);
-          return `✓ Navigiert zu ${params.path}`;
-        case 'search_client': {
-          if (ariaData) {
-            const found = ariaData.allClients.filter(c =>
-              c.name.toLowerCase().includes((params.name || '').toLowerCase())
-            );
-            if (found.length > 0) {
-              return `Gefunden:\n${found.map(c => `• **${c.name}** — ${c.art || '–'} · ${c.ampel || '–'} · €${fmt(c.wert || 0)}`).join('\n')}`;
-            }
+  // Register built-in action handlers via bridge
+  useEffect(() => {
+    const unregs = [
+      registerActionHandler('navigate', ({ path }: any) => {
+        navigate(path);
+        return `✓ Navigiert zu ${path}`;
+      }),
+      registerActionHandler('search_client', async ({ name }: any) => {
+        if (ariaData) {
+          const found = ariaData.allClients.filter((c: any) =>
+            c.name.toLowerCase().includes((name || '').toLowerCase())
+          );
+          if (found.length > 0) {
+            return `Gefunden:\n${found.map((c: any) => `• **${c.name}** — ${c.art || '–'} · ${c.ampel || '–'} · €${fmt(c.wert || 0)}`).join('\n')}`;
           }
-          const { data } = await supabase.from('close_deals').select('id, client_name, art, wert_eur, ampelstatus').ilike('client_name', `%${params.name}%`).limit(5);
-          if (!data?.length) return `Keine Kunden gefunden für "${params.name}"`;
-          return `Gefunden:\n${data.map(c => `• **${c.client_name}** — ${c.art || '–'} · ${c.ampelstatus || '–'} · €${fmt(c.wert_eur || 0)}`).join('\n')}`;
         }
-        case 'show_kpi':
-          navigate(params.section === 'sales' ? '/sales/kpis' : params.section === 'finanzen' ? '/finanzen' : '/');
-          return `✓ KPI Dashboard geöffnet`;
-        case 'create_task':
-          await supabase.from('tasks').insert({ title: params.title, client_id: params.client_id || null, due_date: params.due_date || null, status: 'Offen' });
-          return `✓ Aufgabe "${params.title}" erstellt`;
-        case 'mark_task_done':
-          await supabase.from('tasks').update({ status: 'Abgeschlossen' }).eq('id', params.task_id);
-          return `✓ Aufgabe erledigt`;
-        case 'update_ampel':
-          await supabase.from('close_deals').update({ ampelstatus: params.status }).eq('id', params.client_id);
-          return `✓ Ampelstatus auf ${params.status} gesetzt`;
-        default:
-          return `Unbekannte Aktion: ${action}`;
-      }
-    } catch (e: any) {
-      return `❌ Fehler: ${e.message}`;
-    } finally {
-      setStatus('idle');
-    }
-  }, [navigate, setStatus, ariaData]);
+        const { data } = await supabase.from('close_deals').select('id, client_name, art, wert_eur, ampelstatus').ilike('client_name', `%${name}%`).limit(5);
+        if (!data?.length) return `Keine Kunden gefunden für "${name}"`;
+        return `Gefunden:\n${data.map((c: any) => `• **${c.client_name}** — ${c.art || '–'} · ${c.ampelstatus || '–'} · €${fmt(c.wert_eur || 0)}`).join('\n')}`;
+      }),
+      registerActionHandler('open_client', async ({ client_name, client_id }: any) => {
+        let id = client_id;
+        if (!id && client_name) {
+          const { data } = await supabase.from('close_deals').select('id').ilike('client_name', `%${client_name}%`).limit(1).single();
+          id = data?.id;
+        }
+        if (id) { navigate(`/kunden/${id}`); return `✓ Öffne Kundenprofil...`; }
+        return `Kunde nicht gefunden: ${client_name}`;
+      }),
+      registerActionHandler('show_kpi', ({ section }: any) => {
+        navigate(section === 'sales' ? '/sales/kpis' : section === 'finanzen' ? '/finanzen' : '/');
+        return `✓ KPI Dashboard geöffnet`;
+      }),
+      registerActionHandler('create_task', async ({ title, client_id, due_date }: any) => {
+        await supabase.from('tasks').insert({ title, client_id: client_id || null, due_date: due_date || null, status: 'Offen' });
+        return `✓ Aufgabe "${title}" erstellt`;
+      }),
+      registerActionHandler('mark_task_done', async ({ task_id, task_title }: any) => {
+        await supabase.from('tasks').update({ status: 'Abgeschlossen' }).eq('id', task_id);
+        return `✓ "${task_title || 'Aufgabe'}" als erledigt markiert`;
+      }),
+      registerActionHandler('update_ampel', async ({ client_id, client_name, status }: any) => {
+        let id = client_id;
+        if (!id && client_name) {
+          const { data } = await supabase.from('close_deals').select('id').ilike('client_name', `%${client_name}%`).limit(1).single();
+          id = data?.id;
+        }
+        if (!id) return `Kunde nicht gefunden: ${client_name}`;
+        await supabase.from('close_deals').update({ ampelstatus: status }).eq('id', id);
+        return `✓ Ampelstatus auf ${status} gesetzt`;
+      }),
+      registerActionHandler('create_notification', async ({ title, message, channel }: any) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return '❌ Nicht eingeloggt';
+        await supabase.from('notifications').insert({
+          user_id: user.id, title, preview: message, channel: channel || 'intern', read: false,
+        } as any);
+        return `✓ Mitteilung erstellt: "${title}"`;
+      }),
+    ];
+    return () => unregs.forEach(u => u());
+  }, [registerActionHandler, navigate, ariaData]);
 
   const handleActionButton = useCallback(async (messageId: string, actionIndex: number, btn: ActionButton) => {
     const result = await executeAction(btn.action, btn.params);
