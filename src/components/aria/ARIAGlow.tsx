@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useARIA } from '@/contexts/ARIAContext';
 
 export function ARIAGlow() {
@@ -30,10 +30,10 @@ export function ARIAGlow() {
         transition: 'opacity 400ms ease, visibility 400ms ease',
       }}
     >
-      <div className="aria-energy-line aria-line-1" />
-      <div className="aria-energy-line aria-line-2" />
-      <div className="aria-energy-line aria-line-3" />
-      <div className="aria-energy-line aria-line-4" />
+      <div className="aria-ring aria-ring-1" />
+      <div className="aria-ring aria-ring-2" />
+      <div className="aria-ring aria-ring-3" />
+      <div className="aria-ring aria-ring-4" />
     </div>,
     document.body
   );

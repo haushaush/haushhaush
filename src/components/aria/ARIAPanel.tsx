@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkles, X, Volume2, VolumeX, Square, FileText, Plus, Navigation, Check, Phone, Euro, User, AlertCircle, ExternalLink, ThumbsUp, ThumbsDown, Send } from 'lucide-react';
+import { X, Volume2, VolumeX, Square, FileText, Plus, Navigation, Check, Phone, Euro, User, AlertCircle, ExternalLink, ThumbsUp, ThumbsDown, Send } from 'lucide-react';
 import { useARIA } from '@/contexts/ARIAContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
@@ -7,6 +7,7 @@ import { useARIAData } from '@/hooks/useARIAData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import { ARIAIcon } from './ARIAIcon';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aria-chat`;
 
@@ -14,13 +15,6 @@ const PAGE_NAMES: Record<string, string> = {
   '/': 'Dashboard', '/kunden': 'Kunden', '/projekte': 'Projekte',
   '/sales': 'Sales', '/finanzen': 'Finanzen', '/hr': 'Team & HR',
   '/nachrichten': 'Nachrichten', '/einstellungen': 'Einstellungen',
-};
-
-const STATUS_TEXT = {
-  idle: 'Wie kann ich helfen?',
-  listening: 'Ich höre zu...',
-  processing: 'Denke nach...',
-  executing: 'Wird ausgeführt...',
 };
 
 const fmt = (n: number) => n.toLocaleString('de-DE');
@@ -80,23 +74,20 @@ async function saveInteraction(userId: string, userMessage: string, ariaResponse
   });
 }
 
-// ARIA SVG Avatar
 function ARIAAvatar({ size = 28 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 28 28" className="aria-avatar-svg">
-      <defs>
-        <linearGradient id="ariaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0A9396"/>
-          <stop offset="100%" stopColor="#0BC2C6"/>
-        </linearGradient>
-      </defs>
-      <circle cx="14" cy="14" r="13" fill="url(#ariaGrad)" opacity="0.15"/>
-      <circle cx="14" cy="14" r="13" fill="none" stroke="url(#ariaGrad)" strokeWidth="1"/>
-      <path d="M14 6 L14 22 M6 14 L22 14 M8.5 8.5 L19.5 19.5 M19.5 8.5 L8.5 19.5"
-            stroke="#0BC2C6" strokeWidth="0.8" opacity="0.4"/>
-      <circle cx="14" cy="14" r="3" fill="url(#ariaGrad)"/>
-      <circle cx="14" cy="14" r="1.5" fill="white" opacity="0.9"/>
-    </svg>
+    <div
+      className="flex items-center justify-center rounded-full flex-shrink-0"
+      style={{
+        width: size,
+        height: size,
+        background: 'linear-gradient(135deg, #0A9396, #0BC2C6)',
+        border: '1px solid hsla(174, 90%, 31%, 0.4)',
+        boxShadow: '0 2px 8px hsla(174, 90%, 31%, 0.3)',
+      }}
+    >
+      <ARIAIcon size={Math.round(size * 0.57)} white />
+    </div>
   );
 }
 
@@ -204,6 +195,7 @@ export function ARIAPanel() {
   const { isOpen, closeARIA, messages, addMessage, updateLastAssistant, isLoading, setIsLoading, status, setStatus } = useARIA();
   const [input, setInput] = useState('');
   const [isMuted, setIsMuted] = useState(() => localStorage.getItem('aria-muted') === 'true');
+  const isMutedRef = useRef(isMuted);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [messageMeta, setMessageMeta] = useState<Record<string, MessageMeta>>({});
   const [correctionTexts, setCorrectionTexts] = useState<Record<string, string>>({});
@@ -221,7 +213,6 @@ export function ARIAPanel() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Poll speechSynthesis.speaking
   useEffect(() => {
     const interval = setInterval(() => {
       setIsSpeaking(speechSynthesis.speaking);
@@ -230,11 +221,15 @@ export function ARIAPanel() {
   }, []);
 
   const toggleMute = useCallback(() => {
-    const next = !isMuted;
+    const next = !isMutedRef.current;
+    isMutedRef.current = next;
     setIsMuted(next);
     localStorage.setItem('aria-muted', String(next));
-    if (next) speechSynthesis.cancel();
-  }, [isMuted]);
+    if (next) {
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  }, []);
 
   const stopEverything = useCallback(() => {
     speechSynthesis.cancel();
@@ -328,7 +323,7 @@ export function ARIAPanel() {
   }, [correctionTexts, messageMeta, addMessage]);
 
   const speak = useCallback((text: string) => {
-    if (isMuted) return;
+    if (isMutedRef.current) return;
     speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text.replace(/[*#_`\[\]]/g, ''));
     utterance.lang = 'de-DE';
@@ -337,7 +332,7 @@ export function ARIAPanel() {
     utterance.voice = selectBestVoice();
     utteranceRef.current = utterance;
     speechSynthesis.speak(utterance);
-  }, [isMuted]);
+  }, []);
 
   const handleSend = useCallback(async (text: string) => {
     const msg = text.trim();
@@ -401,7 +396,6 @@ export function ARIAPanel() {
         }
       }
 
-      // Parse inline action JSON (legacy)
       const actionMatch = assistantText.match(/\{"action"\s*:\s*"([^"]+)"\s*,\s*"params"\s*:\s*(\{[^}]+\})\}/);
       if (actionMatch) {
         try {
@@ -441,7 +435,6 @@ export function ARIAPanel() {
     }
   }, [isLoading, messages, addMessage, updateLastAssistant, setIsLoading, setStatus, executeAction, speak, ariaData, displayName, pageName]);
 
-  // Listen for aria-send events
   useEffect(() => {
     const handler = (e: Event) => {
       const text = (e as CustomEvent).detail;
@@ -451,7 +444,6 @@ export function ARIAPanel() {
     return () => window.removeEventListener('aria-send', handler);
   }, [handleSend]);
 
-  // Store meta for messages with actions
   useEffect(() => {
     messages.forEach(m => {
       if (m.role === 'assistant' && !messageMeta[m.id]) {
@@ -463,25 +455,30 @@ export function ARIAPanel() {
     });
   }, [messages]);
 
+  // Status dot
+  const statusDot = () => {
+    if (status === 'listening') return <span className="aria-status-dot aria-status-dot--listening" />;
+    if (status === 'processing' || status === 'executing') return <span className="aria-status-dot aria-status-dot--processing" />;
+    return <span className="aria-status-dot aria-status-dot--idle" />;
+  };
+
   if (!isOpen || messages.length === 0) return null;
 
   return (
     <div className="aria-jarvis-panel">
       {/* Header */}
       <div className="aria-jarvis-panel-header">
-        <ARIAAvatar size={20} />
-        <div className="flex-1 min-w-0">
-          <span className="text-[13px] font-semibold text-white/90">ARIA</span>
-          <span className="text-[10px] text-white/40 ml-2">{STATUS_TEXT[status]}</span>
-        </div>
+        <ARIAIcon size={18} animated />
+        <span className="text-[15px] font-bold text-white" style={{ letterSpacing: '-0.02em' }}>ARIA</span>
+        {statusDot()}
+        <div className="flex-1" />
 
-        {/* TTS controls */}
         <button onClick={toggleMute} className="aria-jarvis-header-btn" title={isMuted ? 'Ton an' : 'Ton aus'}>
-          {isMuted ? <VolumeX className="h-3.5 w-3.5 text-red-400/70" /> : <Volume2 className="h-3.5 w-3.5 text-white/40" />}
+          {isMuted ? <VolumeX className="h-3.5 w-3.5 text-red-400/70" /> : <Volume2 className="h-3.5 w-3.5 text-white/50" />}
         </button>
         {(isSpeaking || isLoading) && (
           <button onClick={stopEverything} className="aria-jarvis-header-btn" title="Stoppen">
-            <Square className="h-3 w-3 text-red-400/70" />
+            <Square className="h-3 w-3 text-red-400/80" />
           </button>
         )}
         <button onClick={() => { closeARIA(); speechSynthesis.cancel(); }} className="aria-jarvis-header-btn">
@@ -498,7 +495,6 @@ export function ARIAPanel() {
 
           return (
             <div key={m.id} data-aria-msg={m.id} className={`flex gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              {/* ARIA avatar */}
               {m.role === 'assistant' && <div className="shrink-0 mt-1"><ARIAAvatar /></div>}
 
               <div className="max-w-[80%]">
@@ -514,12 +510,11 @@ export function ARIAPanel() {
                   ) : m.content}
                 </div>
 
-                {/* Action buttons */}
                 {m.role === 'assistant' && actions.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2 ml-1">
                     {actions.map((btn, i) => {
                       const executed = meta?.executedActions?.has(i);
-                      const IconComp = ICON_MAP[btn.icon || ''] || Sparkles;
+                      const IconComp = ICON_MAP[btn.icon || ''] || (() => <ARIAIcon size={12} />);
                       return (
                         <button
                           key={i}
@@ -535,7 +530,6 @@ export function ARIAPanel() {
                   </div>
                 )}
 
-                {/* Feedback */}
                 {m.role === 'assistant' && !isLoading && (
                   <div className="flex items-center gap-1 mt-1.5 ml-1 group">
                     {meta?.feedback === 1 ? (
@@ -555,7 +549,6 @@ export function ARIAPanel() {
                   </div>
                 )}
 
-                {/* Correction input */}
                 {meta?.showCorrectionInput && (
                   <div className="flex items-center gap-2 mt-2 ml-1">
                     <input
@@ -573,7 +566,6 @@ export function ARIAPanel() {
                 )}
               </div>
 
-              {/* User avatar */}
               {m.role === 'user' && (
                 <div className="shrink-0 mt-1">
                   {avatarUrl ? (
