@@ -111,23 +111,37 @@ export default function SupportModal({ open, onClose, errorType, error, errorDet
 
       if (insertError) throw insertError;
 
-      // Notify via edge function (non-blocking)
+      // Send Slack notification (non-blocking)
       try {
-        await supabase.functions.invoke('notify-tech-support', {
-          body: {
-            ticket_nr: data?.ticket_nr,
-            user_name: name,
-            user_email: email,
-            error_type: errorDetails.type,
-            error_code: errorDetails.code,
-            error_message: errorDetails.message,
-            error_stack: errorDetails.stack,
-            page_url: errorDetails.page_url,
-            user_message: message.trim(),
-            priority: priorityMap[errorType],
-            created_at: errorDetails.timestamp,
-          },
-        });
+        const { data: setting } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'slack_tech_support_webhook')
+          .maybeSingle();
+
+        if (setting?.value) {
+          const webhookUrl = typeof setting.value === 'string' ? setting.value : (setting.value as any)?.url || String(setting.value);
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: `🎫 Support-Ticket ${data?.ticket_nr} von ${name}`,
+              blocks: [
+                { type: 'header', text: { type: 'plain_text', text: `🎫 Support-Ticket ${data?.ticket_nr}` } },
+                { type: 'section', fields: [
+                  { type: 'mrkdwn', text: `*Nutzer:*\n${name} (${email || 'keine Email'})` },
+                  { type: 'mrkdwn', text: `*Typ:*\n${errorDetails.type}` },
+                  { type: 'mrkdwn', text: `*Seite:*\n${errorDetails.page_url || 'Unbekannt'}` },
+                  { type: 'mrkdwn', text: `*Priorität:*\n${priorityMap[errorType] || 'Normal'}` },
+                ]},
+                { type: 'section', text: { type: 'mrkdwn', text: `*Nachricht:*\n${message.trim().slice(0, 500)}` } },
+                ...(errorDetails.message ? [{ type: 'section', text: { type: 'mrkdwn', text: `*Fehlermeldung:*\n\`\`\`${errorDetails.message.slice(0, 300)}\`\`\`` } }] : []),
+                { type: 'divider' },
+                { type: 'context', elements: [{ type: 'mrkdwn', text: `Agency Hub · ${new Date().toLocaleDateString('de-DE')}` }] },
+              ],
+            }),
+          });
+        }
       } catch {
         // Slack notification failure is non-blocking
       }
