@@ -408,23 +408,45 @@
 .aria-search-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 26px;
-  padding: 0 8px 0 20px;
-  transition: border-color 200ms, box-shadow 200ms;
+  background: hsla(0, 0%, 100%, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid hsla(0, 0%, 0%, 0.08);
+  border-radius: 18px;
+  padding: 0 6px 0 20px;
+  box-shadow: 0 2px 20px hsla(0, 0%, 0%, 0.06), 0 1px 4px hsla(0, 0%, 0%, 0.04);
+  transition: border-color 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              box-shadow 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              border-radius 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   cursor: text;
+}
+.dark .aria-search-bar {
+  background: hsla(240, 4%, 17%, 0.85);
+  border-color: hsla(0, 0%, 100%, 0.12);
+  box-shadow: 0 2px 20px hsla(0, 0%, 0%, 0.30);
+}
+.aria-search-bar:hover {
+  border-color: hsla(174, 90%, 31%, 0.30);
+  box-shadow: 0 4px 24px hsla(174, 90%, 31%, 0.10), 0 1px 4px hsla(0, 0%, 0%, 0.04);
+}
+.dark .aria-search-bar:hover {
+  border-color: hsla(174, 90%, 31%, 0.35);
 }
 .aria-search-bar--active,
 .aria-search-bar:focus-within {
-  border-color: hsl(var(--primary));
-  box-shadow: 0 0 0 3px hsla(174, 90%, 31%, 0.15);
+  border-color: hsla(174, 90%, 31%, 0.50);
+  box-shadow: 0 0 0 4px hsla(174, 90%, 31%, 0.12), 0 4px 24px hsla(174, 90%, 31%, 0.12);
+}
+.aria-search-bar--active {
+  border-radius: 0 0 18px 18px;
+  border-top: none;
+  box-shadow: none;
 }
 .aria-search-bar--listening {
   border-color: hsl(var(--destructive));
-  box-shadow: 0 0 0 3px hsla(4, 90%, 58%, 0.15);
+  box-shadow: 0 0 0 4px hsla(4, 90%, 58%, 0.12);
 }
 
 /* ARIA Avatar */
@@ -433,62 +455,62 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, hsl(174 90% 31%), hsl(180 80% 45%));
+  background: linear-gradient(135deg, #0A9396 0%, #0BC2C6 100%);
   position: relative;
-  shrink: 0;
   flex-shrink: 0;
-  animation: ariaBreathe 3s ease-in-out infinite;
+  animation: ariaGlowPulse 3s ease-in-out infinite;
 }
-@keyframes ariaBreathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.04); }
+@keyframes ariaGlowPulse {
+  0%, 100% { box-shadow: 0 2px 8px hsla(174, 90%, 31%, 0.30); }
+  50% { box-shadow: 0 2px 16px hsla(174, 90%, 31%, 0.50); }
 }
-.aria-avatar--listening { animation: none; }
-.aria-avatar--processing { animation: none; }
-
-.aria-avatar-ring {
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 2px solid hsl(var(--primary));
-  animation: ariaRipple 1.5s ease-out infinite;
+.dark .aria-avatar {
+  box-shadow: 0 2px 12px hsla(174, 90%, 31%, 0.40);
 }
-.aria-avatar-ring--2 { animation-delay: 0.5s; }
-@keyframes ariaRipple {
-  0% { transform: scale(1); opacity: 0.6; }
-  100% { transform: scale(1.8); opacity: 0; }
+.aria-avatar--listening {
+  transform: scale(1.05);
 }
 
-.aria-avatar-spinner {
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  border-top-color: hsl(var(--primary));
-  animation: spin 0.8s linear infinite;
+/* ARIA Search Input */
+.aria-search-input {
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  caret-color: #0A9396;
+}
+.aria-search-input::placeholder {
+  color: hsl(var(--muted-foreground));
+  font-weight: 400;
+}
+.dark .aria-search-input::placeholder {
+  color: hsla(0, 0%, 100%, 0.35);
 }
 
 /* Mic button */
 .aria-mic-btn {
-  border-radius: 50%;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: hsl(var(--primary));
-  background: hsla(174, 90%, 31%, 0.1);
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  border: none;
   transition: background 150ms, color 150ms;
   flex-shrink: 0;
+  cursor: pointer;
 }
-.aria-mic-btn:hover { background: hsla(174, 90%, 31%, 0.18); }
+.aria-mic-btn:hover {
+  background: hsla(174, 90%, 31%, 0.10);
+  color: #0A9396;
+}
 .aria-mic-btn--active {
-  background: hsla(4, 90%, 58%, 0.12);
+  background: hsla(4, 90%, 58%, 0.10);
   color: hsl(var(--destructive));
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 /* Send button */
 .aria-send-btn {
-  border-radius: 50%;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -496,9 +518,27 @@
   background: hsl(var(--primary));
   transition: transform 150ms;
   flex-shrink: 0;
+  cursor: pointer;
+  border: none;
 }
 .aria-send-btn:hover { transform: scale(1.08); }
 .aria-send-btn:active { transform: scale(0.95); }
+
+/* Bottom bar glass */
+.aria-bottom-bar .aria-search-bar {
+  height: 48px;
+  border-radius: 0;
+  border: none;
+  border-top: 1px solid hsl(var(--border));
+  background: hsla(0, 0%, 100%, 0.90);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: none;
+  padding: 0 16px;
+}
+.dark .aria-bottom-bar .aria-search-bar {
+  background: hsla(240, 4%, 11%, 0.90);
+}
 
 /* Waveform */
 .aria-waveform {

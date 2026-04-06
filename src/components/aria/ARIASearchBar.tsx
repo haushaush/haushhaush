@@ -179,7 +179,7 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full', route
             onFocus={handleFocus}
             placeholder={currentPlaceholder}
             className={`w-full h-full bg-transparent text-foreground outline-none aria-search-input ${!placeholderVisible ? 'placeholder-fade-out' : 'placeholder-fade-in'}`}
-            style={{ fontSize: isFull ? 15 : 13 }}
+            style={{ fontSize: isFull ? 16 : 14 }}
           />
         )}
       </div>
@@ -190,18 +190,18 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full', route
         <button
           onClick={toggleListening}
           className={`aria-mic-btn ${listening ? 'aria-mic-btn--active' : ''}`}
-          style={{ width: isFull ? 40 : 28, height: isFull ? 40 : 28 }}
+          style={{ width: isFull ? 40 : 36, height: isFull ? 40 : 36 }}
           aria-label={listening ? 'Aufnahme stoppen' : 'Spracheingabe'}
         >
-          {listening ? <MicOff style={{ width: isFull ? 18 : 14, height: isFull ? 18 : 14 }} /> : <Mic style={{ width: isFull ? 18 : 14, height: isFull ? 18 : 14 }} />}
+          {listening ? <MicOff style={{ width: 18, height: 18 }} /> : <Mic style={{ width: 18, height: 18 }} />}
         </button>
 
         {/* ⌘J hint */}
         {!isFull && (
-          <kbd className="hidden sm:inline-flex items-center text-[10px] text-muted-foreground border border-border rounded px-1 py-0.5">⌘J</kbd>
+          <kbd className="hidden sm:inline-flex items-center text-[11px] font-medium text-muted-foreground bg-background border border-border rounded-[7px] px-[7px] py-[3px] tracking-wide">⌘J</kbd>
         )}
         {isFull && (
-          <kbd className="hidden sm:inline-flex items-center text-[11px] text-muted-foreground border border-border rounded px-1.5 py-0.5">⌘K</kbd>
+          <kbd className="hidden sm:inline-flex items-center text-[11px] font-medium text-muted-foreground bg-background border border-border rounded-[7px] px-[7px] py-[3px] tracking-wide mr-1">⌘K</kbd>
         )}
 
         {/* Send */}
@@ -210,9 +210,9 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full', route
             onClick={handleSubmit}
             disabled={isLoading}
             className="aria-send-btn"
-            style={{ width: isFull ? 40 : 28, height: isFull ? 40 : 28 }}
+            style={{ width: isFull ? 40 : 36, height: isFull ? 40 : 36 }}
           >
-            <ArrowUp style={{ width: isFull ? 18 : 14, height: isFull ? 18 : 14 }} />
+            <ArrowUp style={{ width: 18, height: 18 }} />
           </button>
         )}
       </div>
