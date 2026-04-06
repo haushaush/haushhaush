@@ -17,6 +17,7 @@ import { formatValue } from '@/lib/utils';
 import { MicroLearning } from '@/components/dashboard/MicroLearning';
 import { TimeTracker } from '@/components/dashboard/TimeTracker';
 import { SearchBar, GlobalSearchModal } from '@/components/dashboard/GlobalSearch';
+import { KpiSlider } from '@/components/dashboard/KpiSlider';
 
 const LEISTUNG_SHORT: Record<string, string> = {
   'Meta Werbeanzeigen': 'Meta Ads',
@@ -241,7 +242,7 @@ export default function Dashboard() {
         <div className="w-full mt-3 mb-5">
           <SearchBar onClick={() => setSearchOpen(true)} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch mb-5">
           <MicroLearning />
           <TimeTracker />
         </div>
@@ -249,130 +250,18 @@ export default function Dashboard() {
 
       <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      {/* 2. KPI Cards — 6 cards */}
-      <div className="kpi-grid">
-        {/* CARD 1: Umsatz */}
-        <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen')}>
-          <CardContent className="p-4 xl:p-6">
-            <div className="flex items-start justify-between mb-2 gap-1">
-              <p className="kpi-label text-muted-foreground">UMSATZ</p>
-              <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><TrendingUp className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
-            </div>
-            <p className="kpi-value text-foreground">{fmtCurrency(umsatzThisMonth)}</p>
-            <p className="kpi-sub text-muted-foreground mt-0.5">Bezahlt im {monthName} {currentYear}</p>
-            {umsatzTrend !== null ? (
-              <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium mt-2 px-1.5 py-0.5 rounded-full ${umsatzTrend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'}`}>
-                {umsatzTrend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                {umsatzTrend >= 0 ? '+' : ''}{umsatzTrend.toFixed(1)}%
-              </span>
-            ) : <span className="text-[10px] text-muted-foreground mt-2 inline-block">–</span>}
-          </CardContent>
-        </Card>
-
-        {/* CARD 2: Cash Collect */}
-        <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen/rechnungen')}>
-          <CardContent className="p-4 xl:p-6">
-            <div className="flex items-start justify-between mb-2 gap-1">
-              <p className="kpi-label text-muted-foreground">CASH COLLECT</p>
-              <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Wallet className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
-            </div>
-            <p className="kpi-value text-foreground">{fmtCurrency(cashCollectTotal)}</p>
-            <p className="kpi-sub text-muted-foreground mt-0.5">{cashCollect.length} Rechnungen fällig</p>
-            {cashCollectOverdue > 0 && <Badge variant="destructive" className="text-[10px] mt-2">⚠ {cashCollectOverdue} überfällig</Badge>}
-          </CardContent>
-        </Card>
-
-        {/* CARD 3: Kunden */}
-        <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/kunden')}>
-          <CardContent className="p-4 xl:p-6">
-            <div className="flex items-start justify-between mb-2 gap-1">
-              <p className="kpi-label text-muted-foreground">KUNDEN GESAMT</p>
-              <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Users className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
-            </div>
-            <p className="kpi-value text-foreground">{activeClients}</p>
-            <p className="kpi-sub text-muted-foreground mt-0.5">{neukunden} Neukunden diesen Monat</p>
-            <p className="kpi-sub text-muted-foreground">{upsells} Upsells</p>
-          </CardContent>
-        </Card>
-
-        {/* CARD 4: Top Vertriebler */}
-        <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/sales/kpis')}>
-          <CardContent className="p-4 xl:p-6">
-            <div className="flex items-start justify-between mb-2 gap-1">
-              <p className="kpi-label text-muted-foreground">TOP VERTRIEBLER</p>
-              <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 group-hover:bg-amber-500/20 transition-colors"><Trophy className="h-4 w-4 xl:h-5 xl:w-5 text-amber-500" /></div>
-            </div>
-            {topSeller ? (
-              <>
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary shrink-0">{topSeller.initials}</div>
-                  <p className="text-sm font-semibold text-foreground break-words">{topSeller.name}</p>
-                </div>
-                <p className="kpi-sub text-muted-foreground mt-1">{fmtCurrency(topSeller.revenue)} · {topSeller.closes} Abschlüsse</p>
-              </>
-            ) : <p className="text-sm text-muted-foreground">Noch keine Daten</p>}
-          </CardContent>
-        </Card>
-
-        {/* CARD 5: Offene Rechnungen */}
-        <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/finanzen/rechnungen')}>
-          <CardContent className="p-4 xl:p-6">
-            <div className="flex items-start justify-between mb-2 gap-1">
-              <p className="kpi-label text-muted-foreground">OFFENE RECHNUNGEN</p>
-              <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Clock className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
-            </div>
-            {allPaid ? (
-              <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Alle bezahlt 🎉</p>
-            ) : (
-              <>
-                <p className="kpi-value text-foreground">{fmtCurrency(openInvoicesTotal)}</p>
-                <p className="kpi-sub text-muted-foreground mt-0.5">Gesamt ausstehend</p>
-                <div className="mt-2 space-y-0.5">
-                  {sentInvoices.length > 0 && <p className="kpi-sub text-muted-foreground">{sentInvoices.length} Versendet · {fmtCurrency(sentTotal)}</p>}
-                  {overdueInvoices.length > 0 && <p className="kpi-sub text-destructive font-medium">{overdueInvoices.length} Überfällig · {fmtCurrency(overdueTotal)}</p>}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* CARD 6: Effizienz Score */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Card className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0" onClick={() => navigate('/projekte')}>
-                <CardContent className="p-4 xl:p-6">
-                  <div className="flex items-start justify-between mb-2 gap-1">
-                    <p className="kpi-label text-muted-foreground">EFFIZIENZ</p>
-                    <div className="h-7 w-7 xl:h-8 xl:w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors"><Zap className="h-4 w-4 xl:h-5 xl:w-5 text-primary" /></div>
-                  </div>
-                  {effizienz.loading ? (
-                    <Skeleton className="h-12 w-full rounded" />
-                  ) : (
-                    <>
-                      <div className="flex items-end gap-1">
-                        <span className={`kpi-value ${effizienz.score >= 80 ? 'text-primary' : effizienz.score >= 60 ? 'text-amber-500' : 'text-destructive'}`}>{effizienz.score}</span>
-                        <span className="text-sm text-muted-foreground mb-0.5">/100</span>
-                      </div>
-                      <svg width="48" height="28" viewBox="0 0 48 28" className="mt-2" aria-hidden="true">
-                        <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke="hsl(var(--border))" strokeWidth="3" strokeLinecap="round" />
-                        <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke={effizienz.score >= 80 ? 'hsl(var(--primary))' : effizienz.score >= 60 ? '#FF9F0A' : '#FF3B30'} strokeWidth="3" strokeLinecap="round"
-                          strokeDasharray={`${(effizienz.score / 100) * 62.8} 62.8`} />
-                      </svg>
-                      <p className="kpi-sub text-muted-foreground mt-1">Deadlines {effizienz.scoreA}% · Tickets {effizienz.scoreB}% · Laufzeit {effizienz.scoreC}%</p>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-[240px] text-xs">
-              <p>Deadlines: {effizienz.scoreA}% der Projekte pünktlich</p>
-              <p>Ø Ticket-Bearbeitungszeit: {effizienz.avgDaysOpen.toFixed(1)} Tage</p>
-              <p>Laufzeiteinhaltung: {effizienz.scoreC}% Kunden pünktlich</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
+      {/* 2. KPI Slider */}
+      <KpiSlider
+        deals={deals.data}
+        invoices={invoices.data}
+        revenue={revenue.data}
+        salesPerf={salesPerf.data}
+        salesPerfMonth={salesPerfMonth.data}
+        team={team.data}
+        tasks={tasks.data}
+        effizienz={effizienz}
+        isMobile={isMobile}
+      />
 
       {/* 3. Quick Navigation */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
