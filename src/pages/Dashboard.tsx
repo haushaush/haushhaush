@@ -329,17 +329,7 @@ export default function Dashboard() {
           </div>
         );
       case 'search':
-        return (
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="w-full flex items-center gap-3 px-4 rounded-[10px] border border-border bg-card text-muted-foreground hover:border-primary/30 hover:shadow-sm transition-all cursor-text"
-            style={{ height: 44, marginTop: 10, marginBottom: 14 }}
-          >
-            <Search className="h-4 w-4 shrink-0" />
-            <span className="text-[15px]">Kunden, Aufgaben, Seiten suchen...</span>
-            <kbd className="ml-auto hidden sm:inline-flex items-center text-[11px] font-medium bg-background border border-border rounded-md px-1.5 py-0.5 tracking-wide">⌘K</kbd>
-          </button>
-        );
+        return null; // search is now part of quicknav block
       case 'widgets':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch">
