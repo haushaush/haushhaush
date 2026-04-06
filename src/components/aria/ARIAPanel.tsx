@@ -461,7 +461,11 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
     return <span className="aria-status-dot aria-status-dot--idle" />;
   };
 
-  if (!isOpen || messages.length === 0) return null;
+  if (!embedded && (!isOpen || messages.length === 0)) return null;
+  if (embedded && messages.length === 0) {
+    // Mount invisibly so event listeners are active, but render nothing visible
+    return <div style={{ display: 'none' }} />;
+  }
 
   return (
     <div className={embedded ? 'aria-hero-chat' : 'aria-jarvis-panel'}>
