@@ -1,8 +1,7 @@
 import { ReactNode } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripHorizontal } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { GripVertical } from 'lucide-react';
 
 interface SortableBlockProps {
   id: string;
@@ -29,22 +28,17 @@ export function SortableBlock({ id, children, disabled }: SortableBlockProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className={cn(
-        'sortable-block relative pt-7',
-        isDragging && 'opacity-40 outline-2 outline-dashed outline-primary rounded-xl'
-      )}
+      className={`sortable-block relative ${isDragging ? 'opacity-40 outline-2 outline-dashed outline-primary rounded-xl' : ''}`}
+      {...attributes}
     >
       {!disabled && (
-        <button
-          {...attributes}
+        <div
           {...listeners}
-          className="drag-handle absolute top-1.5 left-1/2 -translate-x-1/2 z-20 opacity-35 hover:opacity-100 transition-all duration-150 cursor-grab active:cursor-grabbing bg-card border border-border rounded-md px-3 py-0.5 shadow-sm hidden md:flex items-center gap-1.5 select-none hover:bg-primary/10 hover:border-primary hover:text-primary text-muted-foreground"
+          className="drag-handle absolute top-1.5 left-1.5 z-50 w-[22px] h-[22px] rounded-[5px] bg-card border border-border flex items-center justify-center cursor-grab opacity-0 transition-all duration-150 shadow-sm select-none pointer-events-auto hidden md:flex"
           aria-label="Block verschieben"
-          title="Block verschieben"
         >
-          <GripHorizontal className="h-3.5 w-3.5" />
-          <span className="text-[11px] font-normal">bewegen</span>
-        </button>
+          <GripVertical className="h-3 w-3 text-muted-foreground" />
+        </div>
       )}
       {children}
     </div>

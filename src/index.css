@@ -325,3 +325,18 @@
 .animate-bounce-once {
   animation: bounce-once 0.4s ease-in-out 1;
 }
+
+.sortable-block:hover > .drag-handle {
+  opacity: 1 !important;
+}
+.sortable-block:hover > .drag-handle:hover {
+  border-color: hsl(var(--primary)) !important;
+  background: hsl(var(--primary) / 0.1) !important;
+}
+.sortable-block:hover > .drag-handle:hover svg {
+  color: hsl(var(--primary)) !important;
+}
+.drag-handle:active {
+  cursor: grabbing !important;
+  opacity: 1 !important;
+}
