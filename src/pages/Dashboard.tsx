@@ -73,7 +73,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { firstName, initials, avatarUrl } = useProfile();
   const navigate = useNavigate();
-  const { isOpen } = useARIA();
+  const { isOpen, messages } = useARIA();
   const [ariaInput, setAriaInput] = useState('');
 
   const handleAriaSend = (text: string) => {
