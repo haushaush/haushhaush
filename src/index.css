@@ -343,68 +343,57 @@
   display: none !important;
 }
 
-/* ═══ ARIA Energy Glow System ═══ */
-.aria-energy-line {
+/* ═══ ARIA Ring Glow System ═══ */
+.aria-ring {
   position: absolute;
   inset: 0;
   border-radius: 0;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-}
-.aria-line-1 {
-  padding: 2px;
-  background: linear-gradient(var(--a1, 0deg), transparent 40%, hsla(174, 90%, 31%, 0.4) 50%, transparent 60%);
-  animation: ariaLine1 3s linear infinite;
-}
-.aria-line-2 {
-  padding: 4px;
-  background: linear-gradient(var(--a2, 90deg), transparent 35%, hsla(180, 80%, 45%, 0.55) 50%, transparent 65%);
-  animation: ariaLine2 2.2s linear infinite;
-  opacity: calc(0.4 + var(--aria-amplitude, 0) * 0.6);
-}
-.aria-line-3 {
-  padding: 7px;
-  background: linear-gradient(var(--a3, 180deg), transparent 40%, hsla(185, 100%, 50%, 0.35) 50%, transparent 60%);
-  animation: ariaLine3 1.7s linear infinite reverse;
-}
-.aria-line-4 {
-  padding: 11px;
-  background: linear-gradient(var(--a4, 45deg), transparent 42%, hsla(174, 90%, 31%, 0.6) 50%, transparent 58%);
-  animation: ariaLine4 1.2s linear infinite;
-  opacity: calc(0.5 + var(--aria-amplitude, 0) * 0.5);
-}
-
-@property --a1 { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-@property --a2 { syntax: '<angle>'; initial-value: 90deg; inherits: false; }
-@property --a3 { syntax: '<angle>'; initial-value: 180deg; inherits: false; }
-@property --a4 { syntax: '<angle>'; initial-value: 45deg; inherits: false; }
-
-@keyframes ariaLine1 { to { --a1: 360deg; } }
-@keyframes ariaLine2 { to { --a2: 450deg; } }
-@keyframes ariaLine3 { to { --a3: -180deg; } }
-@keyframes ariaLine4 { to { --a4: 405deg; } }
-
-#aria-glow-system::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  box-shadow: inset 0 0 80px hsla(174, 90%, 31%, 0.08);
-  animation: ariaGlowBreath 1.5s ease-in-out infinite;
   pointer-events: none;
 }
-@keyframes ariaGlowBreath {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1.0; }
+.aria-ring-1 {
+  padding: 2px;
+  background: hsla(174, 90%, 31%, calc(0.3 + var(--aria-amplitude, 0) * 0.5));
+  animation: ariaRingPulse1 2.0s ease-in-out infinite;
+}
+.aria-ring-2 {
+  padding: 5px;
+  background: hsla(180, 80%, 41%, calc(0.25 + var(--aria-amplitude, 0) * 0.45));
+  animation: ariaRingPulse2 1.6s ease-in-out infinite;
+}
+.aria-ring-3 {
+  padding: 9px;
+  background: hsla(185, 100%, 50%, calc(0.15 + var(--aria-amplitude, 0) * 0.35));
+  animation: ariaRingPulse3 2.4s ease-in-out infinite;
+}
+.aria-ring-4 {
+  padding: 14px;
+  background: hsla(174, 90%, 31%, calc(0.10 + var(--aria-amplitude, 0) * 0.25));
+  animation: ariaRingPulse4 1.2s ease-in-out infinite;
+}
+@keyframes ariaRingPulse1 {
+  0%,100% { opacity: 0.4; transform: scale(1.000); }
+  50%     { opacity: 1.0; transform: scale(1.002); }
+}
+@keyframes ariaRingPulse2 {
+  0%,100% { opacity: 0.3; transform: scale(1.000); }
+  50%     { opacity: 0.8; transform: scale(1.003); }
+}
+@keyframes ariaRingPulse3 {
+  0%,100% { opacity: 0.2; transform: scale(1.000); }
+  50%     { opacity: 0.6; transform: scale(1.002); }
+}
+@keyframes ariaRingPulse4 {
+  0%,100% { opacity: 0.15; }
+  50%     { opacity: calc(0.15 + var(--aria-amplitude, 0) * 0.5); }
 }
 
-/* Listening: stronger glow */
-.aria-listening #aria-glow-system .aria-line-1 { animation-duration: 1.5s; }
-.aria-listening #aria-glow-system .aria-line-2 { animation-duration: 1.2s; }
-.aria-listening #aria-glow-system .aria-line-4 { animation-duration: 0.8s; }
-.aria-listening #aria-glow-system::after {
-  box-shadow: inset 0 0 100px hsla(174, 90%, 31%, 0.15);
-}
+/* Listening: faster rings */
+.aria-listening #aria-glow-system .aria-ring-1 { animation-duration: 1.0s; }
+.aria-listening #aria-glow-system .aria-ring-2 { animation-duration: 0.8s; }
+.aria-listening #aria-glow-system .aria-ring-4 { animation-duration: 0.6s; }
 
 /* ═══ ARIA JARVIS Pill ═══ */
 .aria-jarvis-pill {
