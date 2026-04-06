@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, UIEvent } from 'react';
-import { X, Volume2, VolumeX, Square, FileText, Plus, Navigation, Check, Phone, Euro, User, AlertCircle, ExternalLink, ThumbsUp, ThumbsDown, Send, ChevronDown, ArrowDown } from 'lucide-react';
+import { X, Volume2, VolumeX, Square, FileText, Plus, Navigation, Check, Phone, Euro, User, AlertCircle, ExternalLink, ThumbsUp, ThumbsDown, Send, ChevronDown, ArrowDown, MapPin } from 'lucide-react';
 import { useARIA } from '@/contexts/ARIAContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
@@ -8,14 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { ARIAIcon } from './ARIAIcon';
+import { getCurrentPageContext } from './ariaPageContexts';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aria-chat`;
-
-const PAGE_NAMES: Record<string, string> = {
-  '/': 'Dashboard', '/kunden': 'Kunden', '/projekte': 'Projekte',
-  '/sales': 'Sales', '/finanzen': 'Finanzen', '/hr': 'Team & HR',
-  '/nachrichten': 'Nachrichten', '/einstellungen': 'Einstellungen',
-};
 
 const fmt = (n: number) => n.toLocaleString('de-DE');
 
@@ -101,7 +96,7 @@ function selectBestVoice() {
   return voices.find(v => v.lang.startsWith('de')) || voices[0];
 }
 
-function buildSystemPrompt(ariaData: ReturnType<typeof useARIAData>, displayName: string, pageName: string, memories: Array<{ memory_type: string; key: string; value: string }>): string {
+function buildSystemPrompt(ariaData: ReturnType<typeof useARIAData>, displayName: string, pageCtx: { name: string; focus: string; suggested_actions: string[] }, memories: Array<{ memory_type: string; key: string; value: string }>, messageCount: number, lastMessage?: string): string {
   if (!ariaData) return 'Du bist ARIA. Daten werden gerade geladen...';
 
   const memoryBlock = memories.length > 0
@@ -156,8 +151,17 @@ SPRACHE:
   Wenn der Nutzer sachlich schreibt → sachlich bleiben.
 
 Aktueller Nutzer: ${displayName}
-Aktuelle Seite: ${pageName}
+Aktuelle Seite: ${pageCtx.name}
 Uhrzeit: ${new Date().toLocaleString('de-DE')}
+
+═══ AKTUELLE SEITE — KONTEXT ═══
+Du befindest dich aktuell auf: ${pageCtx.name}
+Fokus dieser Seite: ${pageCtx.focus}
+Typische Anfragen hier: ${pageCtx.suggested_actions.join(', ')}
+
+Passe deine Antworten und Aktions-Buttons auf diesen Kontext an.
+Wenn der Nutzer eine unklare Anfrage stellt, interpretiere sie im Kontext von "${pageCtx.name}".
+Beispiel: "zeig mir die offenen" auf Rechnungen → offene Rechnungen, nicht Aufgaben.
 
 ═══ LIVE DATEN ═══
 
@@ -183,6 +187,11 @@ SALES (diese Woche):
 - Abschlüsse: ${ariaData.thisWeekCloses}
 - Revenue: €${fmt(ariaData.thisWeekRevenue)}
 ${memoryBlock}
+
+═══ ERINNERUNGEN (diese Session) ═══
+Wir sind bereits im Gespräch seit ${messageCount} Nachrichten.
+${lastMessage ? `Zuletzt besprochen: "${lastMessage.slice(0, 100)}"` : 'Gespräch gerade gestartet.'}
+
 ═══ VERFÜGBARE AKTIONEN ═══
 - navigate: {"action":"navigate","params":{"path":"/kunden"}}
 - search_client: {"action":"search_client","params":{"name":"..."}}
@@ -226,6 +235,7 @@ NAVIGATION →
 
 Maximal 3 Buttons pro Antwort.
 Kein [ACTIONS] Block NUR bei: Begrüßungen, einfachen Wissensfragen ohne Portal-Bezug.
+Aktions-Links sollen immer auf die AKTUELLE Seite oder direkt relevante Unterseite zeigen.
 
 ═══ SELBST-LERNEN ═══
 [LEARN] {"type": "user_preference|fact|workflow", "key": "...", "value": "..."} [/LEARN]
@@ -263,7 +273,8 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
   const { displayName, initials, avatarUrl } = useProfile();
   const ariaData = useARIAData();
 
-  const pageName = PAGE_NAMES[location.pathname] || location.pathname;
+  const pageCtx = getCurrentPageContext(location.pathname);
+  const pageName = pageCtx.name;
 
   useEffect(() => {
     if (!isScrolledUp) {
@@ -425,7 +436,7 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
     try {
       const memories = await fetchMemories();
       const history = [...messages.map(m => ({ role: m.role, content: m.content })), { role: 'user' as const, content: msg }];
-      const systemPrompt = buildSystemPrompt(ariaData, displayName, pageName, memories);
+      const systemPrompt = buildSystemPrompt(ariaData, displayName, pageCtx, memories, messages.length, messages[messages.length - 1]?.content);
 
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
@@ -510,7 +521,7 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
       setIsLoading(false);
       setStatus('idle');
     }
-  }, [isLoading, messages, addMessage, updateLastAssistant, setIsLoading, setStatus, executeAction, speak, ariaData, displayName, pageName]);
+  }, [isLoading, messages, addMessage, updateLastAssistant, setIsLoading, setStatus, executeAction, speak, ariaData, displayName, pageCtx]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -578,8 +589,44 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
         </button>
       </div>
 
+      {/* Context chip */}
+      <div style={{
+        padding: '4px 14px',
+        fontSize: 10,
+        color: 'hsl(var(--muted-foreground))',
+        borderBottom: '1px solid hsl(var(--border) / 0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+      }}>
+        <MapPin size={9} style={{ color: 'hsl(174, 90%, 31%)' }} />
+        {pageCtx.name}
+        <span style={{ opacity: 0.5 }}>·</span>
+        {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+      </div>
+
       {/* Messages */}
       <div ref={scrollContainerRef} onScroll={handleMessagesScroll} className={`${embedded ? 'aria-hero-chat-messages' : 'flex-1 overflow-y-auto min-h-0'} space-y-3 ${embedded ? 'p-4 px-5' : 'p-4'}`}>
+        {/* Suggestion chips when no messages */}
+        {messages.length === 0 && pageCtx.suggested_actions.length > 0 && (
+          <div className="flex flex-wrap gap-2 py-2">
+            {pageCtx.suggested_actions.slice(0, 3).map(suggestion => (
+              <button
+                key={suggestion}
+                onClick={() => handleSend(suggestion)}
+                className="text-xs font-medium rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.03]"
+                style={{
+                  padding: '6px 12px',
+                  border: '1px solid hsla(174, 90%, 31%, 0.25)',
+                  background: 'hsla(174, 90%, 31%, 0.06)',
+                  color: 'hsl(174, 90%, 31%)',
+                }}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
         {messages.map(m => {
           const { cleanText, actions: parsedActions } = m.role === 'assistant' ? parseResponse(m.content) : { cleanText: m.content, actions: [] };
           const meta = messageMeta[m.id];
