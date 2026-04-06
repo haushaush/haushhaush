@@ -34,7 +34,11 @@ export function ARIAProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<'idle' | 'listening' | 'processing' | 'executing'>('idle');
 
   const openARIA = useCallback(() => setIsOpen(true), []);
-  const closeARIA = useCallback(() => setIsOpen(false), []);
+  const closeARIA = useCallback(() => {
+    setIsOpen(false);
+    window.dispatchEvent(new CustomEvent('aria-stop-listening'));
+    speechSynthesis.cancel();
+  }, []);
   const toggleARIA = useCallback(() => setIsOpen(p => !p), []);
 
   const addMessage = useCallback((msg: Omit<ARIAMessage, 'id' | 'timestamp'>) => {
