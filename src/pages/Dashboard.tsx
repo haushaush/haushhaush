@@ -20,6 +20,9 @@ import { GlobalSearchModal } from '@/components/dashboard/GlobalSearch';
 import { Search } from 'lucide-react';
 import { KpiSlider } from '@/components/dashboard/KpiSlider';
 import { SortableBlock } from '@/components/dashboard/SortableBlock';
+import { ARIAHeroBlock } from '@/components/aria/ARIAHeroBlock';
+import { ARIAPanel } from '@/components/aria/ARIAPanel';
+import { useARIA } from '@/contexts/ARIAContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { toast } from 'sonner';
@@ -70,6 +73,13 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { firstName, initials, avatarUrl } = useProfile();
   const navigate = useNavigate();
+  const { isOpen } = useARIA();
+  const [ariaInput, setAriaInput] = useState('');
+
+  const handleAriaSend = (text: string) => {
+    window.dispatchEvent(new CustomEvent('aria-send', { detail: text }));
+    setAriaInput('');
+  };
   const deals = useDeals();
   const revenue = useRevenue();
   const invoices = useInvoices();
@@ -308,7 +318,8 @@ export default function Dashboard() {
         return (
           <button
             onClick={() => setSearchOpen(true)}
-            className="w-full h-12 flex items-center gap-3 px-4 rounded-xl border border-border bg-card text-muted-foreground hover:border-primary/30 hover:shadow-sm transition-all cursor-text"
+            className="w-full flex items-center gap-3 px-4 rounded-[10px] border border-border bg-card text-muted-foreground hover:border-primary/30 hover:shadow-sm transition-all cursor-text"
+            style={{ height: 44, marginTop: 10, marginBottom: 14 }}
           >
             <Search className="h-4 w-4 shrink-0" />
             <span className="text-[15px]">Kunden, Aufgaben, Seiten suchen...</span>
@@ -557,9 +568,14 @@ export default function Dashboard() {
 
       <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      {/* Hero + ARIA bar — locked at top, never draggable */}
-      <div className="mb-8 space-y-6">
+      {/* Hero + ARIA block + search — locked at top */}
+      <div className="mb-8 space-y-0">
         {renderBlock('hero')}
+        {/* ARIA Hero Block */}
+        <div className="relative">
+          {isOpen && messages.length > 0 && <ARIAPanel embedded />}
+          <ARIAHeroBlock onSend={handleAriaSend} input={ariaInput} setInput={setAriaInput} />
+        </div>
         {renderBlock('search')}
       </div>
 
