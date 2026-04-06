@@ -265,7 +265,7 @@ export default function Aria() {
                             <p className="text-xs font-medium text-muted-foreground">Letzte Ausführungen</p>
                             {autoLogs.map(log => (
                               <div key={log.id} className="flex items-center gap-2 text-xs">
-                                {log.status === 'success' ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" /> : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                                {log.status === 'success' ? <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" /> : <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />}
                                 <span className="text-muted-foreground">{format(new Date(log.created_at), 'dd.MM. HH:mm', { locale: de })}</span>
                                 <span className="text-muted-foreground">·</span>
                                 <span>{log.duration_ms}ms</span>
@@ -302,7 +302,7 @@ export default function Aria() {
                 <CardHeader className="pb-3"><CardTitle className="text-base">Statistiken</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Gesamt</span><span className="font-semibold">{automations.length}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Aktiv</span><span className="font-semibold text-emerald-500">{automations.filter(a => a.active).length}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Aktiv</span><span className="font-semibold text-primary">{automations.filter(a => a.active).length}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Ausführungen heute</span><span className="font-semibold">{logs.filter(l => new Date(l.created_at).toDateString() === new Date().toDateString()).length}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Fehler (letzte 50)</span><span className="font-semibold text-destructive">{logs.filter(l => l.status === 'error').length}</span></div>
                 </CardContent>
