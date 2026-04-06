@@ -470,19 +470,17 @@ export function ARIAPanel() {
     <>
       {/* Panel that slides up */}
       <div className={`aria-chat-panel ${isOverview ? 'aria-chat-panel--overview' : 'aria-chat-panel--bar'}`}>
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-3 aria-panel-header">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-white/20 shrink-0 ${isLoading ? 'animate-pulse' : ''}`}>
-            <Sparkles className="h-4 w-4 text-white" />
-          </div>
+        {/* Header — glass style */}
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-border/50 backdrop-blur-xl">
+          <Sparkles className="h-4 w-4 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
-            <div className="text-white font-bold text-sm">ARIA</div>
-            <div className="text-white/70 text-[11px]">{STATUS_TEXT[status]}</div>
+            <div className="text-foreground font-semibold text-sm">ARIA</div>
+            <div className="text-muted-foreground text-[11px]">{STATUS_TEXT[status]}</div>
           </div>
-          <button onClick={() => setSpeakEnabled(p => !p)} className="w-7 h-7 rounded-full flex items-center justify-center bg-white/20 hover:bg-white/30 transition-colors">
-            {speakEnabled ? <Volume2 className="h-3.5 w-3.5 text-white" /> : <VolumeX className="h-3.5 w-3.5 text-white" />}
+          <button onClick={() => setSpeakEnabled(p => !p)} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-accent transition-colors">
+            {speakEnabled ? <Volume2 className="h-3.5 w-3.5 text-muted-foreground" /> : <VolumeX className="h-3.5 w-3.5 text-muted-foreground" />}
           </button>
-          <button onClick={closeARIA} className="text-white/60 hover:text-white transition-colors">
+          <button onClick={closeARIA} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
