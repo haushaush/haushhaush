@@ -63,6 +63,7 @@ const BLOCK_LABELS: Record<string, string> = {
   'hero': 'Begrüßung',
   'widgets': 'Learning & Zeiterfassung',
   'kpi-slider': 'KPI Dashboard',
+  'search': 'Suchleiste',
   'quicknav': 'Schnellnavigation',
   'handlungsbedarf': 'Handlungsbedarf',
   'bottom-row': 'Abschlüsse, Aufgaben, Sales',
