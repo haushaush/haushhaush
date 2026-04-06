@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug } from 'lucide-react';
+
+import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -99,6 +101,7 @@ export function AppSidebar() {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [pendingCount, setPendingCount] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [bugModalOpen, setBugModalOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
     const result = { ...saved };
@@ -351,6 +354,35 @@ export function AppSidebar() {
           </Tooltip>
         ) : nachrichtenLink}
 
+        {/* Bug Report */}
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setBugModalOpen(true)}
+                className={cn(
+                  'sidebar-nav-item flex items-center justify-center rounded-lg text-sm transition-colors min-h-[40px] px-0 py-2.5 w-full',
+                  bugModalOpen ? 'bg-destructive/10 text-destructive' : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
+                )}
+              >
+                <Bug className="h-5 w-5 shrink-0" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">Fehler melden</TooltipContent>
+          </Tooltip>
+        ) : (
+          <button
+            onClick={() => setBugModalOpen(true)}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[40px] w-full text-left',
+              bugModalOpen ? 'bg-destructive/10 text-destructive' : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
+            )}
+          >
+            <Bug className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span className="truncate">Fehler melden</span>
+          </button>
+        )}
+
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -414,6 +446,7 @@ export function AppSidebar() {
           )}
         </div>
       </SidebarFooter>
+      <BugReportModal open={bugModalOpen} onClose={() => setBugModalOpen(false)} />
     </Sidebar>
   );
 }
