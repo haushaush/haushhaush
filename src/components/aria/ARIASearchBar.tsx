@@ -128,59 +128,40 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
 
   // Dynamic right button logic
   const renderRightButton = () => {
-    // 1. Recording → stop
     if (listening) {
       return (
-        <button
-          onClick={stopListening}
-          className="aria-jarvis-mic aria-jarvis-mic--active"
-          aria-label="Aufnahme stoppen"
-          title="Aufnahme stoppen"
-        >
+        <button onClick={stopListening} className="aria-jarvis-mic aria-jarvis-mic--active" aria-label="Aufnahme stoppen" title="Aufnahme stoppen">
           <MicOff className="h-[22px] w-[22px]" />
         </button>
       );
     }
-
-    // 2. ARIA speaking → stop speech
     if (isSpeaking) {
       return (
-        <button
-          onClick={() => { speechSynthesis.cancel(); setIsSpeaking(false); }}
-          className="aria-jarvis-mic aria-jarvis-mic--speaking"
-          aria-label="Antwort stoppen"
-          title="Antwort stoppen"
-        >
+        <button onClick={() => { speechSynthesis.cancel(); setIsSpeaking(false); }} className="aria-jarvis-mic aria-jarvis-mic--speaking" aria-label="Antwort stoppen" title="Antwort stoppen">
           <Square className="h-5 w-5" fill="white" />
         </button>
       );
     }
-
-    // 3. Text typed → send
     if (input.trim().length > 0) {
       return (
-        <button
-          onClick={handleSubmit}
-          disabled={isLoading}
-          className="aria-jarvis-mic"
-          aria-label="Senden"
-          title="Senden"
-        >
+        <button onClick={handleSubmit} disabled={isLoading} className="aria-jarvis-mic" aria-label="Senden" title="Senden">
           <ArrowUp className="h-[22px] w-[22px]" />
         </button>
       );
     }
-
-    // 4. Default → mic
     return (
-      <button
-        onClick={startListening}
-        className="aria-jarvis-mic"
-        aria-label="Sprachbefehl"
-        title="Sprachbefehl"
-      >
+      <button onClick={startListening} className="aria-jarvis-mic" aria-label="Sprachbefehl" title="Sprachbefehl">
         <Mic className="h-[22px] w-[22px]" />
       </button>
+    );
+  };
+
+  // Shortcut hint component
+  const ShortcutHint = () => {
+    if (listening || isSpeaking || input.trim().length > 0) return null;
+    const isMac = navigator.platform?.toUpperCase().includes('MAC');
+    return (
+      <span className="aria-shortcut-hint">{isMac ? '⌘' : 'Ctrl+'}J</span>
     );
   };
 
