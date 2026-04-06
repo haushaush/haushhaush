@@ -101,6 +101,7 @@ export function AppSidebar() {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [pendingCount, setPendingCount] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [bugModalOpen, setBugModalOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
     const result = { ...saved };
