@@ -156,27 +156,27 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
     if (listening) {
       return (
         <button onClick={stopListening} className="aria-jarvis-mic aria-jarvis-mic--active" aria-label="Aufnahme stoppen" title="Aufnahme stoppen">
-          <MicOff className="h-[22px] w-[22px]" />
+          <MicOff className="h-[16px] w-[16px]" />
         </button>
       );
     }
     if (isSpeaking) {
       return (
         <button onClick={() => { speechSynthesis.cancel(); setIsSpeaking(false); }} className="aria-jarvis-mic aria-jarvis-mic--speaking" aria-label="Antwort stoppen" title="Antwort stoppen">
-          <Square className="h-[22px] w-[22px]" fill="white" />
+          <Square className="h-[16px] w-[16px]" fill="white" />
         </button>
       );
     }
     if (input.trim().length > 0) {
       return (
         <button onClick={handleSubmit} disabled={isLoading} className="aria-jarvis-mic" aria-label="Senden" title="Senden">
-          <ArrowUp className="h-[22px] w-[22px]" />
+          <ArrowUp className="h-[16px] w-[16px]" />
         </button>
       );
     }
     return (
       <button onClick={startListening} className="aria-jarvis-mic" aria-label="Sprachbefehl" title="Sprachbefehl">
-        <Mic className="h-[22px] w-[22px]" />
+        <Mic className="h-[16px] w-[16px]" />
       </button>
     );
   };
@@ -197,7 +197,7 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
           {interimTranscript || 'Ich höre zu...'}
         </div>
       )}
-      <ARIAIcon size={36} animated={isProcessing} />
+      <ARIAIcon size={25} animated={isProcessing} />
 
       <div className="flex-1 min-w-0 flex items-center h-full">
         {listening ? (
