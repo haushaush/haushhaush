@@ -5,6 +5,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ARIAProvider } from "@/contexts/ARIAContext";
+import { ARIASystem } from "@/components/aria/ARIASystem";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { toast } from "sonner";
@@ -64,45 +66,48 @@ const App = () => (
         <OfflineDetector />
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/registrierung" element={<Registrierung />} />
-              <Route path="/" element={<DL><Dashboard /></DL>} />
-              <Route path="/kunden" element={<DL><Kunden /></DL>} />
-              <Route path="/kunden/pipeline" element={<DL><KundenPipeline /></DL>} />
-              <Route path="/kunden/abschluesse" element={<DL><KundenAbschluesse /></DL>} />
-              <Route path="/kunden/laufzeiten" element={<DL><KundenLaufzeiten /></DL>} />
-              <Route path="/kunden/:id" element={<DL><KundenDetail /></DL>} />
-              <Route path="/projekte" element={<DL><Projekte /></DL>} />
-              <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
-              <Route path="/sales" element={<Navigate to="/sales/kpis" replace />} />
-              <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
-              <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
-              <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />
-              <Route path="/finanzen" element={<DL><Finanzen /></DL>} />
-              <Route path="/finanzen/:tab" element={<DL><Finanzen /></DL>} />
-              <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
-              <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
-              <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
-              <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
-              <Route path="/api-docs" element={<ApiDocs />} />
-              <Route path="/profil" element={<DL><Profil /></DL>} />
-              <Route path="/creatives" element={<DL><Creatives /></DL>} />
-              <Route path="/creatives/:id" element={<DL><CreativeDetail /></DL>} />
-              <Route path="/review/:token" element={<CreativeReview />} />
+            <ARIAProvider>
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/registrierung" element={<Registrierung />} />
+                <Route path="/" element={<DL><Dashboard /></DL>} />
+                <Route path="/kunden" element={<DL><Kunden /></DL>} />
+                <Route path="/kunden/pipeline" element={<DL><KundenPipeline /></DL>} />
+                <Route path="/kunden/abschluesse" element={<DL><KundenAbschluesse /></DL>} />
+                <Route path="/kunden/laufzeiten" element={<DL><KundenLaufzeiten /></DL>} />
+                <Route path="/kunden/:id" element={<DL><KundenDetail /></DL>} />
+                <Route path="/projekte" element={<DL><Projekte /></DL>} />
+                <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
+                <Route path="/sales" element={<Navigate to="/sales/kpis" replace />} />
+                <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
+                <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
+                <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />
+                <Route path="/finanzen" element={<DL><Finanzen /></DL>} />
+                <Route path="/finanzen/:tab" element={<DL><Finanzen /></DL>} />
+                <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
+                <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
+                <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
+                <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
+                <Route path="/api-docs" element={<ApiDocs />} />
+                <Route path="/profil" element={<DL><Profil /></DL>} />
+                <Route path="/creatives" element={<DL><Creatives /></DL>} />
+                <Route path="/creatives/:id" element={<DL><CreativeDetail /></DL>} />
+                <Route path="/review/:token" element={<CreativeReview />} />
 
-              {/* Redirects */}
-              <Route path="/performance" element={<Navigate to="/sales/kpis" replace />} />
-              <Route path="/team" element={<Navigate to="/hr/mitarbeiter" replace />} />
-              <Route path="/kpi" element={<Navigate to="/sales/kpis" replace />} />
-              <Route path="/faktura" element={<Navigate to="/finanzen/rechnungen" replace />} />
-              <Route path="/mitarbeiter" element={<Navigate to="/hr/mitarbeiter" replace />} />
-              <Route path="/dateien" element={<Navigate to="/kunden" replace />} />
-              <Route path="/learning" element={<Navigate to="/hr/akademie" replace />} />
-              <Route path="/aufgaben" element={<Navigate to="/projekte/aufgaben" replace />} />
+                {/* Redirects */}
+                <Route path="/performance" element={<Navigate to="/sales/kpis" replace />} />
+                <Route path="/team" element={<Navigate to="/hr/mitarbeiter" replace />} />
+                <Route path="/kpi" element={<Navigate to="/sales/kpis" replace />} />
+                <Route path="/faktura" element={<Navigate to="/finanzen/rechnungen" replace />} />
+                <Route path="/mitarbeiter" element={<Navigate to="/hr/mitarbeiter" replace />} />
+                <Route path="/dateien" element={<Navigate to="/kunden" replace />} />
+                <Route path="/learning" element={<Navigate to="/hr/akademie" replace />} />
+                <Route path="/aufgaben" element={<Navigate to="/projekte/aufgaben" replace />} />
 
-              <Route path="*" element={<ErrorPage type="404" />} />
-            </Routes>
+                <Route path="*" element={<ErrorPage type="404" />} />
+              </Routes>
+              <ARIASystem />
+            </ARIAProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
