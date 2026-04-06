@@ -562,6 +562,32 @@
   50%     { box-shadow: 0 0 0 8px hsla(4, 90%, 58%, 0); }
 }
 
+/* Voice transcript floating label */
+.aria-voice-transcript {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 6px;
+  background: hsla(240, 20%, 5%, 0.90);
+  border: 1px solid hsla(174, 90%, 31%, 0.25);
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 13px;
+  color: hsla(0, 0%, 100%, 0.85);
+  max-width: 340px;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  backdrop-filter: blur(20px);
+  pointer-events: none;
+  z-index: 9001;
+}
+:root:not(.dark) .aria-voice-transcript {
+  background: hsla(240, 10%, 98%, 0.95);
+  color: hsl(var(--foreground));
+}
+
 /* Waveform */
 .aria-waveform {
   display: flex;
