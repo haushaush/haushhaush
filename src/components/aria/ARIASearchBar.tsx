@@ -55,6 +55,13 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
     return () => window.removeEventListener('aria-stop-listening', handler);
   }, [stopListening]);
 
+  // Listen for Cmd+J start-listening
+  useEffect(() => {
+    const handler = () => { if (!listening) startListening(); };
+    window.addEventListener('aria-start-listening', handler);
+    return () => window.removeEventListener('aria-start-listening', handler);
+  }, [listening, startListening]);
+
   const startListening = useCallback(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) {
