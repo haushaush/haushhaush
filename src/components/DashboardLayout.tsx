@@ -5,6 +5,7 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { MobileTabBar } from '@/components/MobileTabBar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { TimerBar } from '@/components/dashboard/TimerBar';
+import { BugReportWidget } from '@/components/BugReportWidget';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -33,6 +34,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
         {isMobile && <MobileTabBar />}
+        <BugReportWidget />
       </div>
     </SidebarProvider>
   );
