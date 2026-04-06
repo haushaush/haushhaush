@@ -620,6 +620,21 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
           </div>
         )}
         <div ref={messagesEndRef} />
+
+        {/* Neue Antwort banner */}
+        {embedded && isScrolledUp && hasNewMessage && (
+          <button className="aria-new-answer-banner" onClick={scrollToBottom}>
+            <ChevronDown className="h-3.5 w-3.5" />
+            Neue Antwort
+          </button>
+        )}
+
+        {/* Scroll down button */}
+        {embedded && showScrollDown && !hasNewMessage && (
+          <button className="aria-scroll-down-btn" onClick={scrollToBottom}>
+            <ArrowDown className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
       </div>
     </div>
   );
