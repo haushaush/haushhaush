@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Users, Target, Trophy, Clock, Zap, Phone, CalendarCheck, BarChart3, Mail, FolderOpen, ListTodo, Activity, DollarSign, Wallet, CreditCard, Receipt, AlertTriangle, UserCircle, GraduationCap, UserPlus, Calendar, Star, ArrowUpRight, ArrowDownRight, CheckSquare, Timer, AlertCircle, BarChart2, Gem, BookOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, Users, Target, Trophy, Clock, Zap, Phone, CalendarCheck, BarChart3, Mail, FolderOpen, ListTodo, Activity, DollarSign, Wallet, CreditCard, Receipt, AlertTriangle, UserCircle, GraduationCap, UserPlus, Calendar, Star, ArrowUpRight, ArrowDownRight, CheckSquare, Timer, AlertCircle, BarChart2, Gem, BookOpen } from 'lucide-react';
 import { formatValue } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
@@ -327,8 +327,24 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
         </div>
       </div>
 
-      {/* Tab Pills — single row navigation */}
-      <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
+      {/* Navigation: Prev + Tab Pills + Next */}
+      <div className="flex items-center justify-center gap-2.5 mt-4 flex-wrap">
+        {/* Prev */}
+        <button
+          onClick={prevSlide}
+          className={cn(
+            'h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center shrink-0 transition-all duration-150',
+            activeSlide === 0
+              ? 'opacity-30 cursor-default'
+              : 'text-muted-foreground hover:border-primary hover:text-primary cursor-pointer'
+          )}
+          disabled={activeSlide === 0}
+          aria-label="Vorherige Slide"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Tab Pills */}
         {SLIDE_LABELS.map((label, i) => (
           <button
             key={label}
@@ -339,24 +355,26 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/30'
             )}
-            style={{ padding: '5px 14px' }}
+            style={{ padding: '4px 12px' }}
           >
             {label}
           </button>
         ))}
-      </div>
 
-      {/* Auto-advance progress bar */}
-      <div className="flex justify-center mt-2">
-        <div className="w-24 h-0.5 rounded-full bg-border overflow-hidden">
-          <div
-            key={progressKey}
-            className="h-full bg-primary rounded-full"
-            style={{
-              animation: paused ? 'none' : 'slideProgress 5s linear forwards',
-            }}
-          />
-        </div>
+        {/* Next */}
+        <button
+          onClick={nextSlide}
+          className={cn(
+            'h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center shrink-0 transition-all duration-150',
+            activeSlide === totalSlides - 1
+              ? 'opacity-30 cursor-default'
+              : 'text-muted-foreground hover:border-primary hover:text-primary cursor-pointer'
+          )}
+          disabled={activeSlide === totalSlides - 1}
+          aria-label="Nächste Slide"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   );
