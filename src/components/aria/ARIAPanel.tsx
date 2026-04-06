@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, UIEvent } from 'react';
-import { X, Volume2, VolumeX, Square, FileText, Plus, Navigation, Check, Phone, Euro, User, AlertCircle, ExternalLink, ThumbsUp, ThumbsDown, Send, ChevronDown, ArrowDown } from 'lucide-react';
+import { X, Volume2, VolumeX, Square, FileText, Plus, Navigation, Check, Phone, Euro, User, AlertCircle, ExternalLink, ThumbsUp, ThumbsDown, Send, ChevronDown, ArrowDown, MapPin } from 'lucide-react';
 import { useARIA } from '@/contexts/ARIAContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
@@ -8,14 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { ARIAIcon } from './ARIAIcon';
+import { getCurrentPageContext } from './ariaPageContexts';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aria-chat`;
-
-const PAGE_NAMES: Record<string, string> = {
-  '/': 'Dashboard', '/kunden': 'Kunden', '/projekte': 'Projekte',
-  '/sales': 'Sales', '/finanzen': 'Finanzen', '/hr': 'Team & HR',
-  '/nachrichten': 'Nachrichten', '/einstellungen': 'Einstellungen',
-};
 
 const fmt = (n: number) => n.toLocaleString('de-DE');
 
