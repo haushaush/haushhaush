@@ -65,7 +65,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <BugReportWidget />
 
         {/* Unified ARIA wrapper: panel + pill in one container */}
-        <div className={`aria-bottom-bar ${isOpen ? 'aria-bottom-bar--open' : ''}`}>
+        <div
+          className={`aria-bottom-bar ${isOpen ? 'aria-bottom-bar--open' : ''}`}
+          tabIndex={-1}
+          onFocus={(e) => {
+            e.stopPropagation();
+            window.scrollTo(window.scrollX, window.scrollY);
+          }}
+        >
           <ARIAPanel />
           <ARIASearchBar
             onSend={handleAriaSend}

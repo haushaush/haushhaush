@@ -130,7 +130,13 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
     onSend(text);
   };
 
-  const handleFocus = () => {
+  const handleFocus = (e: React.FocusEvent) => {
+    e.preventDefault();
+    const scrollY = window.scrollY;
+    const scrollX = window.scrollX;
+    requestAnimationFrame(() => {
+      window.scrollTo(scrollX, scrollY);
+    });
     if (!isOpen) openARIA();
   };
 
