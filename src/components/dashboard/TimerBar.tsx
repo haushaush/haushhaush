@@ -109,7 +109,7 @@ export function TimerBar() {
 
   return (
     <div
-      className="fixed top-0 z-[100] flex items-center gap-4 px-5"
+      className="fixed top-0 z-[200] flex items-center gap-4 px-5"
       style={{
         left: leftOffset,
         right: 0,
