@@ -331,69 +331,28 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
         </div>
       </div>
 
-      {/* Tab Labels */}
-      <div className="flex items-center justify-center gap-1 mt-4 flex-wrap">
+      {/* Tab Pills — single row navigation */}
+      <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
         {SLIDE_LABELS.map((label, i) => (
           <button
             key={label}
             onClick={() => goToSlide(i)}
             className={cn(
-              'px-2 py-0.5 rounded text-[11px] font-medium transition-all duration-150 border-none cursor-pointer',
+              'text-[13px] font-medium rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap border',
               activeSlide === i
-                ? 'bg-primary/10 text-primary font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/30'
             )}
+            style={{ padding: '5px 14px' }}
           >
             {label}
           </button>
         ))}
       </div>
 
-      {/* Navigation Row — below grid */}
-      <div className="flex items-center justify-center gap-3 mt-2">
-        {/* Prev */}
-        <button
-          onClick={prevSlide}
-          className="h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground transition-all duration-150 hover:border-primary hover:text-primary"
-          aria-label="Vorherige Slide"
-        >
-          <ChevronLeft className="h-3.5 w-3.5" />
-        </button>
-
-        {/* Dots */}
-        <div className="flex items-center gap-1.5">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => goToSlide(i)}
-              className="p-0 border-none cursor-pointer transition-all duration-250 rounded-full"
-              style={{
-                width: activeSlide === i ? 20 : 6,
-                height: 6,
-                borderRadius: 3,
-                background: activeSlide === i ? 'hsl(var(--primary))' : 'hsl(var(--border))',
-              }}
-              aria-label={`Slide ${i + 1}`}
-            />
-          ))}
-        </div>
-
-        {/* Next */}
-        <button
-          onClick={nextSlide}
-          className="h-7 w-7 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground transition-all duration-150 hover:border-primary hover:text-primary"
-          aria-label="Nächste Slide"
-        >
-          <ChevronRight className="h-3.5 w-3.5" />
-        </button>
-
-        {/* Counter */}
-        <span className="text-[11px] text-muted-foreground ml-1">{activeSlide + 1} / {totalSlides}</span>
-      </div>
-
       {/* Auto-advance progress bar */}
-      <div className="flex justify-center mt-1.5">
-        <div className="w-20 h-0.5 rounded-full bg-border overflow-hidden">
+      <div className="flex justify-center mt-2">
+        <div className="w-24 h-0.5 rounded-full bg-border overflow-hidden">
           <div
             key={progressKey}
             className="h-full bg-primary rounded-full"
