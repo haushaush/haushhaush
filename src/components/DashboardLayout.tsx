@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
@@ -25,7 +25,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const isMobile = useIsMobile();
   const { isOpen } = useARIA();
-  
+  const location = useLocation();
+  const isOnHome = location.pathname === '/';
   const [ariaInput, setAriaInput] = useState('');
 
   const handleAriaSend = (text: string) => {
@@ -64,22 +65,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {isMobile && <MobileTabBar />}
         <BugReportWidget />
 
-        {/* Unified ARIA wrapper: panel + pill in one container */}
-        <div
-          className={`aria-bottom-bar ${isOpen ? 'aria-bottom-bar--open' : ''}`}
-          tabIndex={-1}
-          onFocus={(e) => {
-            e.stopPropagation();
-            window.scrollTo(window.scrollX, window.scrollY);
-          }}
-        >
-          <ARIAPanel />
-          <ARIASearchBar
-            onSend={handleAriaSend}
-            input={ariaInput}
-            setInput={setAriaInput}
-          />
-        </div>
+        {/* Unified ARIA wrapper: panel + pill — hidden on home page */}
+        {!isOnHome && (
+          <div
+            className={`aria-bottom-bar ${isOpen ? 'aria-bottom-bar--open' : ''}`}
+            tabIndex={-1}
+            onFocus={(e) => {
+              e.stopPropagation();
+              window.scrollTo(window.scrollX, window.scrollY);
+            }}
+          >
+            <ARIAPanel />
+            <ARIASearchBar
+              onSend={handleAriaSend}
+              input={ariaInput}
+              setInput={setAriaInput}
+            />
+          </div>
+        )}
       </div>
     </SidebarProvider>
   );
