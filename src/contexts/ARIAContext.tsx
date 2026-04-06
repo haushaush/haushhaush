@@ -21,6 +21,8 @@ interface ARIAContextType {
   setIsLoading: (v: boolean) => void;
   status: 'idle' | 'listening' | 'processing' | 'executing';
   setStatus: (s: 'idle' | 'listening' | 'processing' | 'executing') => void;
+  modalOpen: boolean;
+  setAnyModalOpen: (open: boolean) => void;
 }
 
 const ARIAContext = createContext<ARIAContextType>({} as ARIAContextType);
@@ -32,6 +34,9 @@ export function ARIAProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ARIAMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'listening' | 'processing' | 'executing'>('idle');
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const setAnyModalOpen = useCallback((open: boolean) => setModalOpen(open), []);
 
   const openARIA = useCallback(() => setIsOpen(true), []);
   const closeARIA = useCallback(() => {
@@ -44,7 +49,7 @@ export function ARIAProvider({ children }: { children: ReactNode }) {
   const addMessage = useCallback((msg: Omit<ARIAMessage, 'id' | 'timestamp'>) => {
     setMessages(prev => {
       const next = [...prev, { ...msg, id: crypto.randomUUID(), timestamp: new Date() }];
-      return next.slice(-30); // max 30 messages
+      return next.slice(-30);
     });
   }, []);
 
@@ -60,15 +65,25 @@ export function ARIAProvider({ children }: { children: ReactNode }) {
 
   const clearMessages = useCallback(() => setMessages([]), []);
 
+  // Close ARIA panel when a modal opens
+  useEffect(() => {
+    if (modalOpen && isOpen) {
+      setIsOpen(false);
+      window.dispatchEvent(new CustomEvent('aria-stop-listening'));
+    }
+  }, [modalOpen, isOpen]);
+
   // Keyboard shortcut: Cmd+J / Ctrl+J → open ARIA + start voice; Escape → close
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
         e.preventDefault();
-        openARIA();
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('aria-start-listening'));
-        }, 300);
+        if (!modalOpen) {
+          openARIA();
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('aria-start-listening'));
+          }, 300);
+        }
       }
       if (e.key === 'Escape' && isOpen) {
         closeARIA();
@@ -76,13 +91,14 @@ export function ARIAProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isOpen, openARIA, closeARIA]);
+  }, [isOpen, openARIA, closeARIA, modalOpen]);
 
   return (
     <ARIAContext.Provider value={{
       isOpen, openARIA, closeARIA, toggleARIA,
       messages, addMessage, updateLastAssistant, clearMessages,
       isLoading, setIsLoading, status, setStatus,
+      modalOpen, setAnyModalOpen,
     }}>
       {children}
     </ARIAContext.Provider>

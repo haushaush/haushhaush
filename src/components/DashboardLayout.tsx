@@ -24,7 +24,7 @@ function SidebarWidthSync() {
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const isMobile = useIsMobile();
-  const { isOpen } = useARIA();
+  const { isOpen, modalOpen } = useARIA();
   const location = useLocation();
   const isOnHome = location.pathname === '/';
   const [ariaInput, setAriaInput] = useState('');
@@ -55,7 +55,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <TimerBar />
           <main
             id="main-content"
-            className="flex-1 p-4 sm:p-6 lg:p-10 overflow-auto min-w-0 pb-20 md:pb-16"
+            className="flex-1 p-4 sm:p-6 lg:p-10 overflow-auto min-w-0 pb-24 md:pb-24"
             role="main"
             aria-label="Hauptinhalt"
           >
@@ -70,6 +70,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <div
             className={`aria-bottom-bar ${isOpen ? 'aria-bottom-bar--open' : ''}`}
             tabIndex={-1}
+            style={{
+              opacity: modalOpen ? 0.4 : 1,
+              pointerEvents: modalOpen ? 'none' : 'all',
+              transition: 'opacity 200ms ease',
+            }}
             onFocus={(e) => {
               e.stopPropagation();
               window.scrollTo(window.scrollX, window.scrollY);

@@ -35,7 +35,7 @@ export function ErrorCardOverlay() {
         position: 'fixed',
         top: 20,
         right: 20,
-        zIndex: 9500,
+        zIndex: 500,
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
