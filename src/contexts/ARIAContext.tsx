@@ -60,16 +60,15 @@ export function ARIAProvider({ children }: { children: ReactNode }) {
 
   const clearMessages = useCallback(() => setMessages([]), []);
 
-  // Keyboard shortcut: Cmd+J / Ctrl+J → focus ARIA bar; Escape → close
+  // Keyboard shortcut: Cmd+J / Ctrl+J → open ARIA + start voice; Escape → close
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
         e.preventDefault();
         openARIA();
         setTimeout(() => {
-          const el = document.querySelector<HTMLInputElement>('.aria-search-input');
-          if (el) el.focus();
-        }, 100);
+          window.dispatchEvent(new CustomEvent('aria-start-listening'));
+        }, 300);
       }
       if (e.key === 'Escape' && isOpen) {
         closeARIA();
