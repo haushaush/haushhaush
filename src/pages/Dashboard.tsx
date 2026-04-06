@@ -59,13 +59,15 @@ const NAV_TILES = [
 
 const RANK_COLORS = ['#F5A623', '#9B9B9B', '#8B6347'];
 
-const DEFAULT_ORDER = ['widgets', 'kpi-slider', 'handlungsbedarf', 'bottom-row', 'revenue-chart'];
+const DEFAULT_ORDER = ['widgets', 'kpi-slider', 'quicknav', 'handlungsbedarf', 'schnellaktionen', 'bottom-row', 'revenue-chart'];
 
 const BLOCK_LABELS: Record<string, string> = {
   'hero': 'Begrüßung',
   'widgets': 'Learning & Zeiterfassung',
   'kpi-slider': 'KPI Dashboard',
+  'quicknav': 'Schnellnavigation',
   'handlungsbedarf': 'Handlungsbedarf',
+  'schnellaktionen': 'Schnellaktionen',
   'bottom-row': 'Abschlüsse, Aufgaben, Sales',
   'revenue-chart': 'Umsatzentwicklung',
 };
@@ -109,9 +111,10 @@ export default function Dashboard() {
     try {
       const saved = localStorage.getItem('dashboard-layout');
       if (saved) {
-        const parsed = JSON.parse(saved).filter((id: string) => id !== 'hero' && id !== 'search' && id !== 'quicknav');
+        const parsed = JSON.parse(saved).filter((id: string) => id !== 'hero' && id !== 'search');
         const missing = DEFAULT_ORDER.filter(id => !parsed.includes(id));
-        return [...parsed, ...missing];
+        const merged = [...parsed, ...missing];
+        return merged;
       }
     } catch {}
     return DEFAULT_ORDER;
@@ -326,17 +329,7 @@ export default function Dashboard() {
           </div>
         );
       case 'search':
-        return (
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="w-full flex items-center gap-3 px-4 rounded-[10px] border border-border bg-card text-muted-foreground hover:border-primary/30 hover:shadow-sm transition-all cursor-text"
-            style={{ height: 44, marginTop: 10, marginBottom: 14 }}
-          >
-            <Search className="h-4 w-4 shrink-0" />
-            <span className="text-[15px]">Kunden, Aufgaben, Seiten suchen...</span>
-            <kbd className="ml-auto hidden sm:inline-flex items-center text-[11px] font-medium bg-background border border-border rounded-md px-1.5 py-0.5 tracking-wide">⌘K</kbd>
-          </button>
-        );
+        return null; // search is now part of quicknav block
       case 'widgets':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch">
@@ -360,16 +353,27 @@ export default function Dashboard() {
         );
       case 'quicknav':
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
-            {NAV_TILES.map(tile => (
-              <Card key={tile.href} className="cursor-pointer card-interactive group rounded-xl overflow-hidden min-w-0" onClick={() => navigate(tile.href)}>
-                <CardContent className="px-4 py-5 flex flex-col items-center text-center gap-2">
-                  <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                  <p className="text-[14px] font-medium text-foreground leading-tight truncate w-full">{tile.label}</p>
-                  <p className="text-xs text-muted-foreground hidden sm:block truncate w-full">{tile.sub}</p>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="space-y-4">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="w-full flex items-center gap-3 px-4 rounded-[10px] border border-border bg-card text-muted-foreground hover:border-primary/30 hover:shadow-sm transition-all cursor-text"
+              style={{ height: 44 }}
+            >
+              <Search className="h-4 w-4 shrink-0" />
+              <span className="text-[15px]">Kunden, Aufgaben, Seiten suchen...</span>
+              <kbd className="ml-auto hidden sm:inline-flex items-center text-[11px] font-medium bg-background border border-border rounded-md px-1.5 py-0.5 tracking-wide">⌘K</kbd>
+            </button>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+              {NAV_TILES.map(tile => (
+                <Card key={tile.href} className="cursor-pointer card-interactive group rounded-xl overflow-hidden min-w-0" onClick={() => navigate(tile.href)}>
+                  <CardContent className="px-4 py-5 flex flex-col items-center text-center gap-2">
+                    <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                    <p className="text-[14px] font-medium text-foreground leading-tight truncate w-full">{tile.label}</p>
+                    <p className="text-xs text-muted-foreground hidden sm:block truncate w-full">{tile.sub}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         );
       case 'handlungsbedarf':
@@ -618,12 +622,6 @@ export default function Dashboard() {
           ) : null}
         </DragOverlay>
       </DndContext>
-
-      {/* Fixed blocks — always after sortable content */}
-      <div className="space-y-8 mt-8">
-        {renderBlock('search')}
-        {renderBlock('quicknav')}
-      </div>
     </div>
   );
 }
