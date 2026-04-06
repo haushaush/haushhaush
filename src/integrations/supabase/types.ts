@@ -201,6 +201,51 @@ export type Database = {
         }
         Relationships: []
       }
+      bug_reports: {
+        Row: {
+          browser_info: string | null
+          created_at: string
+          description: string
+          id: string
+          page_url: string | null
+          problem_type: string
+          screenshot_url: string | null
+          slack_message_ts: string | null
+          status: string
+          user_email: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          browser_info?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          page_url?: string | null
+          problem_type: string
+          screenshot_url?: string | null
+          slack_message_ts?: string | null
+          status?: string
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          browser_info?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          page_url?: string | null
+          problem_type?: string
+          screenshot_url?: string | null
+          slack_message_ts?: string | null
+          status?: string
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       call_coaching: {
         Row: {
           coach_name: string | null
