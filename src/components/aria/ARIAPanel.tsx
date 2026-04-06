@@ -56,6 +56,32 @@ async function fetchMemories(): Promise<Array<{ memory_type: string; key: string
   return (data as any[]) || [];
 }
 
+async function fetchRelevantKnowledge(pathname: string): Promise<Array<{ title: string; content: string; category: string; priority: number; source_type: string }>> {
+  const { data } = await (supabase.from('aria_knowledge' as any) as any)
+    .select('title, content, category, priority, source_type, tags')
+    .eq('is_active', true)
+    .order('priority', { ascending: false })
+    .limit(15);
+  if (!data || data.length === 0) return [];
+
+  const pageCategories: Record<string, string> = {
+    '/sales': 'Sales & Vertrieb',
+    '/finanzen': 'Finanzen',
+    '/fulfillment': 'Fulfillment & Ads',
+    '/kunden': 'Kunden & CRM',
+    '/hr': 'Agentur & Team',
+  };
+  const matchedCategory = Object.entries(pageCategories).find(([path]) => pathname.startsWith(path))?.[1];
+
+  const scored = (data as any[]).map((entry: any) => {
+    let score = entry.priority || 5;
+    if (matchedCategory && entry.category === matchedCategory) score += 3;
+    return { ...entry, score };
+  });
+
+  return scored.sort((a: any, b: any) => b.score - a.score).slice(0, 8);
+}
+
 async function saveLearn(learn: { type: string; key: string; value: string }, userId?: string) {
   await (supabase.from('aria_memory' as any) as any).insert({
     memory_type: learn.type, key: learn.key, value: learn.value, created_by: userId || null,
@@ -96,7 +122,7 @@ function selectBestVoice() {
   return voices.find(v => v.lang.startsWith('de')) || voices[0];
 }
 
-function buildSystemPrompt(ariaData: ReturnType<typeof useARIAData>, displayName: string, pageCtx: { name: string; focus: string; suggested_actions: string[] }, memories: Array<{ memory_type: string; key: string; value: string }>, messageCount: number, lastMessage?: string): string {
+function buildSystemPrompt(ariaData: ReturnType<typeof useARIAData>, displayName: string, pageCtx: { name: string; focus: string; suggested_actions: string[] }, memories: Array<{ memory_type: string; key: string; value: string }>, messageCount: number, lastMessage?: string, knowledge?: Array<{ title: string; content: string; category: string; priority: number; source_type: string }>): string {
   if (!ariaData) return 'Du bist ARIA. Daten werden gerade geladen...';
 
   const memoryBlock = memories.length > 0
@@ -191,6 +217,13 @@ ${memoryBlock}
 ═══ ERINNERUNGEN (diese Session) ═══
 Wir sind bereits im Gespräch seit ${messageCount} Nachrichten.
 ${lastMessage ? `Zuletzt besprochen: "${lastMessage.slice(0, 100)}"` : 'Gespräch gerade gestartet.'}
+
+${knowledge && knowledge.length > 0 ? `═══ WISSENSBANK (manuell eingepflegte Daten) ═══
+${knowledge.map(k => `[${k.category} | Prio ${k.priority} | ${k.source_type}] ${k.title}:\n${k.content.slice(0, 500)}`).join('\n\n---\n\n')}
+
+Nutze dieses Wissen bei relevanten Anfragen.
+Skripte und Einwände: nutze sie wörtlich wenn nach Formulierungen gefragt wird.
+SOPs: folge den Schritten exakt wenn nach Prozessen gefragt wird.` : ''}
 
 ═══ VERFÜGBARE AKTIONEN ═══
 - navigate: {"action":"navigate","params":{"path":"/kunden"}}
@@ -434,9 +467,12 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
     abortRef.current = new AbortController();
 
     try {
-      const memories = await fetchMemories();
+      const [memories, knowledge] = await Promise.all([
+        fetchMemories(),
+        fetchRelevantKnowledge(location.pathname),
+      ]);
       const history = [...messages.map(m => ({ role: m.role, content: m.content })), { role: 'user' as const, content: msg }];
-      const systemPrompt = buildSystemPrompt(ariaData, displayName, pageCtx, memories, messages.length, messages[messages.length - 1]?.content);
+      const systemPrompt = buildSystemPrompt(ariaData, displayName, pageCtx, memories, messages.length, messages[messages.length - 1]?.content, knowledge);
 
       const resp = await fetch(CHAT_URL, {
         method: 'POST',

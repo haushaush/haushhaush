@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Play, Clock, CheckCircle2, XCircle, Zap, RefreshCw, Brain, Trash2, Pencil, X } from 'lucide-react';
+import { Sparkles, Play, Clock, CheckCircle2, XCircle, Zap, RefreshCw, Brain, Trash2, Pencil, X, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
+import Wissensbank from '@/components/aria/Wissensbank';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -205,6 +206,9 @@ export default function Aria() {
           <TabsTrigger value="memory" className="gap-1.5">
             <Brain className="h-3.5 w-3.5" /> Gedächtnis
           </TabsTrigger>
+          <TabsTrigger value="knowledge" className="gap-1.5">
+            <BookOpen className="h-3.5 w-3.5" /> Wissensbank
+          </TabsTrigger>
         </TabsList>
 
         {/* Automations Tab */}
@@ -400,6 +404,10 @@ export default function Aria() {
               </div>
             )}
           </div>
+        </TabsContent>
+        {/* Knowledge Tab */}
+        <TabsContent value="knowledge" className="mt-4">
+          <Wissensbank />
         </TabsContent>
       </Tabs>
     </div>

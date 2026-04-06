@@ -320,6 +320,57 @@ export type Database = {
         }
         Relationships: []
       }
+      aria_knowledge: {
+        Row: {
+          category: string
+          content: string
+          created_at: string | null
+          created_by: string | null
+          file_path: string | null
+          id: string
+          is_active: boolean | null
+          last_updated_by: string | null
+          priority: number | null
+          source_type: string
+          source_url: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          file_path?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_updated_by?: string | null
+          priority?: number | null
+          source_type?: string
+          source_url?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          file_path?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_updated_by?: string | null
+          priority?: number | null
+          source_type?: string
+          source_url?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       aria_memory: {
         Row: {
           confidence: number | null
