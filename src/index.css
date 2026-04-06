@@ -402,10 +402,10 @@
   align-items: center;
   gap: 14px;
   width: auto;
-  min-width: 280px;
-  max-width: 480px;
-  height: 60px;
-  border-radius: 30px;
+  min-width: 300px;
+  max-width: 520px;
+  height: 64px;
+  border-radius: 32px;
   background: hsla(240, 20%, 4%, 0.85);
   backdrop-filter: blur(40px) saturate(200%);
   -webkit-backdrop-filter: blur(40px) saturate(200%);
@@ -414,7 +414,7 @@
     0 8px 40px hsla(0, 0%, 0%, 0.50),
     0 0 0 1px hsla(174, 90%, 31%, 0.10),
     inset 0 1px 0 hsla(0, 0%, 100%, 0.06);
-  padding: 0 8px 0 20px;
+  padding: 0 10px 0 22px;
   transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 .aria-jarvis-pill:hover {
@@ -433,6 +433,10 @@
     0 0 0 1px hsla(174, 90%, 31%, 0.20);
   transform: scale(1.02);
 }
+
+/* No focus outlines inside pill */
+.aria-jarvis-pill *:focus { outline: none !important; box-shadow: none !important; }
+.aria-jarvis-pill *:focus-visible { outline: none !important; }
 
 /* JARVIS icon */
 .aria-jarvis-icon {
@@ -453,6 +457,10 @@
 @keyframes ariaJarvisSpin {
   to { transform: rotate(360deg); }
 }
+@keyframes ariaIconSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 
 /* JARVIS input */
 .aria-jarvis-input {
@@ -460,7 +468,9 @@
   height: 100%;
   background: transparent;
   border: none;
-  outline: none;
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-appearance: none;
   font-size: 14px;
   font-weight: 400;
   color: hsla(0, 0%, 100%, 0.85);
@@ -471,13 +481,13 @@
   font-size: 14px;
 }
 
-/* JARVIS mic button */
+/* JARVIS dynamic right button */
 .aria-jarvis-mic {
-  width: 46px;
-  height: 46px;
-  border-radius: 23px;
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
   background: linear-gradient(135deg, #0A9396, #0BC2C6);
-  box-shadow: 0 2px 16px hsla(174, 90%, 31%, 0.50);
+  box-shadow: 0 2px 12px hsla(174, 90%, 31%, 0.40);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -485,8 +495,8 @@
   border: none;
   cursor: pointer;
   flex-shrink: 0;
-  margin: 7px;
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  margin: 8px;
+  transition: all 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .aria-jarvis-mic:hover {
   transform: scale(1.05);
@@ -495,29 +505,16 @@
 .aria-jarvis-mic--active {
   background: #FF3B30;
   box-shadow: 0 2px 16px hsla(4, 90%, 58%, 0.50);
-  animation: pulse 1.5s ease-in-out infinite;
+  animation: micPulse 1.2s ease-in-out infinite;
 }
-
-/* JARVIS send */
-.aria-jarvis-send {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #0A9396, #0BC2C6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  border: none;
-  cursor: pointer;
-  flex-shrink: 0;
-  animation: ariaSendIn 150ms cubic-bezier(0.34, 1.56, 0.64, 1);
+.aria-jarvis-mic--speaking {
+  background: linear-gradient(135deg, #FF6B35, #FF3B30);
+  box-shadow: 0 2px 16px hsla(4, 90%, 58%, 0.40);
 }
-@keyframes ariaSendIn {
-  from { transform: scale(0); }
-  to { transform: scale(1); }
+@keyframes micPulse {
+  0%,100% { box-shadow: 0 0 0 0 hsla(4, 90%, 58%, 0.4); }
+  50%     { box-shadow: 0 0 0 8px hsla(4, 90%, 58%, 0); }
 }
-.aria-jarvis-send:hover { transform: scale(1.08); }
 
 /* Waveform */
 .aria-waveform {
