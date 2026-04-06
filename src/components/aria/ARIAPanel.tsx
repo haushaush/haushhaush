@@ -258,7 +258,8 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
   const { displayName, initials, avatarUrl } = useProfile();
   const ariaData = useARIAData();
 
-  const pageName = PAGE_NAMES[location.pathname] || location.pathname;
+  const pageCtx = getCurrentPageContext(location.pathname);
+  const pageName = pageCtx.name;
 
   useEffect(() => {
     if (!isScrolledUp) {
