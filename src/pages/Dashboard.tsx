@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Euro, Users, Clock, TrendingUp, BarChart3, Target, CreditCard, UserCircle, ListTodo, AlertTriangle, ArrowRight, ChevronRight, Phone, CalendarCheck, Trophy, Banknote, Wallet, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Euro, Users, Clock, TrendingUp, BarChart3, Target, CreditCard, UserCircle, ListTodo, AlertTriangle, ArrowRight, ChevronRight, Phone, CalendarCheck, Trophy, Banknote, Wallet, Zap, ArrowUpRight, ArrowDownRight, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -18,6 +18,10 @@ import { MicroLearning } from '@/components/dashboard/MicroLearning';
 import { TimeTracker } from '@/components/dashboard/TimeTracker';
 import { SearchBar, GlobalSearchModal } from '@/components/dashboard/GlobalSearch';
 import { KpiSlider } from '@/components/dashboard/KpiSlider';
+import { SortableBlock } from '@/components/dashboard/SortableBlock';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { toast } from 'sonner';
 
 const LEISTUNG_SHORT: Record<string, string> = {
   'Meta Werbeanzeigen': 'Meta Ads',
