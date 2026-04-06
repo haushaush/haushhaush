@@ -122,7 +122,7 @@ function selectBestVoice() {
   return voices.find(v => v.lang.startsWith('de')) || voices[0];
 }
 
-function buildSystemPrompt(ariaData: ReturnType<typeof useARIAData>, displayName: string, pageCtx: { name: string; focus: string; suggested_actions: string[] }, memories: Array<{ memory_type: string; key: string; value: string }>, messageCount: number, lastMessage?: string): string {
+function buildSystemPrompt(ariaData: ReturnType<typeof useARIAData>, displayName: string, pageCtx: { name: string; focus: string; suggested_actions: string[] }, memories: Array<{ memory_type: string; key: string; value: string }>, messageCount: number, lastMessage?: string, knowledge?: Array<{ title: string; content: string; category: string; priority: number; source_type: string }>): string {
   if (!ariaData) return 'Du bist ARIA. Daten werden gerade geladen...';
 
   const memoryBlock = memories.length > 0
