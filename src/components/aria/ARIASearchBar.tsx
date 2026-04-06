@@ -69,6 +69,7 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
       setListening(false);
       setStatus('idle');
       recognitionRef.current = null;
+      document.documentElement.classList.remove('aria-listening');
     };
     recognition.onerror = (e: any) => {
       setListening(false);
