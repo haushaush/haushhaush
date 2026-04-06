@@ -466,27 +466,27 @@ export function ARIAPanel({ embedded }: { embedded?: boolean } = {}) {
   return (
     <div className={embedded ? 'aria-hero-chat' : 'aria-jarvis-panel'}>
       {/* Header */}
-      <div className="aria-jarvis-panel-header">
-        <ARIAAvatar size={32} />
-        <span className="text-[15px] font-bold" style={{ letterSpacing: '-0.02em', color: 'var(--foreground)' }}>ARIA</span>
+      <div className={embedded ? 'flex items-center gap-2 px-4 py-2.5 border-b border-border' : 'aria-jarvis-panel-header'}>
+        <ARIAAvatar size={embedded ? 24 : 32} />
+        <span className={`font-bold ${embedded ? 'text-[13px] text-foreground' : 'text-[15px]'}`} style={{ letterSpacing: '-0.02em', ...(!embedded ? { color: 'var(--foreground)' } : {}) }}>ARIA</span>
         {statusDot()}
         <div className="flex-1" />
 
-        <button onClick={toggleMute} className="aria-jarvis-header-btn" title={isMutedRef.current ? 'Ton an' : 'Ton aus'}>
-          {isMutedRef.current ? <VolumeX className="h-3.5 w-3.5 text-red-400/70" /> : <Volume2 className="h-3.5 w-3.5 aria-header-icon-color" />}
+        <button onClick={toggleMute} className={embedded ? 'p-1.5 rounded-md hover:bg-muted transition-colors' : 'aria-jarvis-header-btn'} title={isMutedRef.current ? 'Ton an' : 'Ton aus'}>
+          {isMutedRef.current ? <VolumeX className="h-3.5 w-3.5 text-destructive/70" /> : <Volume2 className={`h-3.5 w-3.5 ${embedded ? 'text-muted-foreground' : 'aria-header-icon-color'}`} />}
         </button>
         {(isSpeaking || isLoading) && (
-          <button onClick={stopEverything} className="aria-jarvis-header-btn" title="Stoppen">
-            <Square className="h-3 w-3 text-red-400/80" />
+          <button onClick={stopEverything} className={embedded ? 'p-1.5 rounded-md hover:bg-muted transition-colors' : 'aria-jarvis-header-btn'} title="Stoppen">
+            <Square className="h-3 w-3 text-destructive/80" />
           </button>
         )}
-        <button onClick={() => { closeARIA(); speechSynthesis.cancel(); }} className="aria-jarvis-header-btn">
-          <X className="h-4 w-4 aria-header-icon-color" />
+        <button onClick={() => { closeARIA(); speechSynthesis.cancel(); }} className={embedded ? 'p-1.5 rounded-md hover:bg-muted transition-colors' : 'aria-jarvis-header-btn'}>
+          <X className={`h-4 w-4 ${embedded ? 'text-muted-foreground' : 'aria-header-icon-color'}`} />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+      <div className={`flex-1 overflow-y-auto space-y-3 min-h-0 ${embedded ? 'p-4 px-5' : 'p-4'}`}>
         {messages.map(m => {
           const { cleanText, actions: parsedActions } = m.role === 'assistant' ? parseResponse(m.content) : { cleanText: m.content, actions: [] };
           const meta = messageMeta[m.id];
