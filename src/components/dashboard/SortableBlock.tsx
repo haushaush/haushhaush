@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { GripHorizontal } from 'lucide-react';
 
 interface SortableBlockProps {
   id: string;
@@ -31,16 +31,17 @@ export function SortableBlock({ id, children, disabled }: SortableBlockProps) {
       className={`sortable-block relative ${isDragging ? 'opacity-40 outline-2 outline-dashed outline-primary rounded-xl' : ''}`}
       {...attributes}
     >
+      {/* Handle strip — in normal flow ABOVE content, not absolute */}
       {!disabled && (
         <div
           {...listeners}
-          className="drag-handle absolute top-1.5 left-1.5 z-50 w-[22px] h-[22px] rounded-[5px] bg-card border border-border flex items-center justify-center cursor-grab opacity-0 transition-all duration-150 shadow-sm select-none pointer-events-auto hidden md:flex"
-          aria-label="Block verschieben"
+          className="drag-handle hidden md:flex items-center justify-center gap-1.5 w-full h-6 mb-1.5 cursor-grab opacity-0 transition-all duration-150 rounded-md select-none"
         >
-          <GripVertical className="h-3 w-3 text-muted-foreground" />
+          <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
       )}
-      {children}
+      {/* Block content — completely separate from handle */}
+      <div className="w-full">{children}</div>
     </div>
   );
 }
