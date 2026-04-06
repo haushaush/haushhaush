@@ -487,9 +487,20 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
       const text = (e as CustomEvent).detail;
       if (text) handleSend(text);
     };
+    const abortHandler = () => {
+      abortRef.current?.abort();
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+      setIsLoading(false);
+      setStatus('idle');
+    };
     window.addEventListener('aria-send', handler);
-    return () => window.removeEventListener('aria-send', handler);
-  }, [handleSend]);
+    window.addEventListener('aria-abort', abortHandler);
+    return () => {
+      window.removeEventListener('aria-send', handler);
+      window.removeEventListener('aria-abort', abortHandler);
+    };
+  }, [handleSend, setIsLoading, setStatus]);
 
   useEffect(() => {
     messages.forEach(m => {
