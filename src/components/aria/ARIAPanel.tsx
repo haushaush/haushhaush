@@ -496,7 +496,7 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
   return (
     <div className={embedded ? 'aria-hero-chat' : 'aria-jarvis-panel'}>
       {/* Header */}
-      <div className={embedded ? 'flex items-center gap-2 px-4 py-2.5 border-b border-border' : 'aria-jarvis-panel-header'}>
+      <div className={embedded ? 'aria-hero-chat-header' : 'aria-jarvis-panel-header'}>
         <ARIAAvatar size={embedded ? 24 : 32} />
         <span className={`font-bold ${embedded ? 'text-[13px] text-foreground' : 'text-[15px]'}`} style={{ letterSpacing: '-0.02em', ...(!embedded ? { color: 'var(--foreground)' } : {}) }}>ARIA</span>
         {statusDot()}
@@ -516,7 +516,7 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
       </div>
 
       {/* Messages */}
-      <div className={`flex-1 overflow-y-auto space-y-3 min-h-0 ${embedded ? 'p-4 px-5' : 'p-4'}`}>
+      <div ref={scrollContainerRef} onScroll={handleMessagesScroll} className={`${embedded ? 'aria-hero-chat-messages' : 'flex-1 overflow-y-auto min-h-0'} space-y-3 ${embedded ? 'p-4 px-5' : 'p-4'}`}>
         {messages.map(m => {
           const { cleanText, actions: parsedActions } = m.role === 'assistant' ? parseResponse(m.content) : { cleanText: m.content, actions: [] };
           const meta = messageMeta[m.id];
