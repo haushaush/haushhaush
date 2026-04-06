@@ -17,26 +17,33 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
 
   const isProcessing = status === 'processing' || status === 'executing';
 
-  // Cleanup on unmount — always stop mic
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-        recognitionRef.current = null;
-      }
-      setListening(false);
-      document.documentElement.classList.remove('aria-listening');
-    };
-  }, []);
-
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try { recognitionRef.current.abort(); } catch {}
       recognitionRef.current = null;
     }
     setListening(false);
     setStatus('idle');
+    document.documentElement.classList.remove('aria-listening');
   }, [setStatus]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
+        recognitionRef.current = null;
+      }
+      document.documentElement.classList.remove('aria-listening');
+    };
+  }, []);
+
+  // Listen for external stop requests (panel close, Escape, navigation)
+  useEffect(() => {
+    const handler = () => stopListening();
+    window.addEventListener('aria-stop-listening', handler);
+    return () => window.removeEventListener('aria-stop-listening', handler);
+  }, [stopListening]);
 
   const startListening = useCallback(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
