@@ -96,7 +96,7 @@ function selectBestVoice() {
   return voices.find(v => v.lang.startsWith('de')) || voices[0];
 }
 
-function buildSystemPrompt(ariaData: ReturnType<typeof useARIAData>, displayName: string, pageName: string, memories: Array<{ memory_type: string; key: string; value: string }>): string {
+function buildSystemPrompt(ariaData: ReturnType<typeof useARIAData>, displayName: string, pageCtx: { name: string; focus: string; suggested_actions: string[] }, memories: Array<{ memory_type: string; key: string; value: string }>, messageCount: number, lastMessage?: string): string {
   if (!ariaData) return 'Du bist ARIA. Daten werden gerade geladen...';
 
   const memoryBlock = memories.length > 0
@@ -151,8 +151,17 @@ SPRACHE:
   Wenn der Nutzer sachlich schreibt → sachlich bleiben.
 
 Aktueller Nutzer: ${displayName}
-Aktuelle Seite: ${pageName}
+Aktuelle Seite: ${pageCtx.name}
 Uhrzeit: ${new Date().toLocaleString('de-DE')}
+
+═══ AKTUELLE SEITE — KONTEXT ═══
+Du befindest dich aktuell auf: ${pageCtx.name}
+Fokus dieser Seite: ${pageCtx.focus}
+Typische Anfragen hier: ${pageCtx.suggested_actions.join(', ')}
+
+Passe deine Antworten und Aktions-Buttons auf diesen Kontext an.
+Wenn der Nutzer eine unklare Anfrage stellt, interpretiere sie im Kontext von "${pageCtx.name}".
+Beispiel: "zeig mir die offenen" auf Rechnungen → offene Rechnungen, nicht Aufgaben.
 
 ═══ LIVE DATEN ═══
 
@@ -178,6 +187,11 @@ SALES (diese Woche):
 - Abschlüsse: ${ariaData.thisWeekCloses}
 - Revenue: €${fmt(ariaData.thisWeekRevenue)}
 ${memoryBlock}
+
+═══ ERINNERUNGEN (diese Session) ═══
+Wir sind bereits im Gespräch seit ${messageCount} Nachrichten.
+${lastMessage ? `Zuletzt besprochen: "${lastMessage.slice(0, 100)}"` : 'Gespräch gerade gestartet.'}
+
 ═══ VERFÜGBARE AKTIONEN ═══
 - navigate: {"action":"navigate","params":{"path":"/kunden"}}
 - search_client: {"action":"search_client","params":{"name":"..."}}
@@ -221,6 +235,7 @@ NAVIGATION →
 
 Maximal 3 Buttons pro Antwort.
 Kein [ACTIONS] Block NUR bei: Begrüßungen, einfachen Wissensfragen ohne Portal-Bezug.
+Aktions-Links sollen immer auf die AKTUELLE Seite oder direkt relevante Unterseite zeigen.
 
 ═══ SELBST-LERNEN ═══
 [LEARN] {"type": "user_preference|fact|workflow", "key": "...", "value": "..."} [/LEARN]
