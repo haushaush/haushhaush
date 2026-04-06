@@ -55,11 +55,10 @@ const NAV_TILES = [
 
 const RANK_COLORS = ['#F5A623', '#9B9B9B', '#8B6347'];
 
-const DEFAULT_ORDER = ['search', 'widgets', 'kpi-slider', 'quicknav', 'handlungsbedarf', 'bottom-row', 'revenue-chart'];
+const DEFAULT_ORDER = ['widgets', 'kpi-slider', 'quicknav', 'handlungsbedarf', 'bottom-row', 'revenue-chart'];
 
 const BLOCK_LABELS: Record<string, string> = {
   'hero': 'Begrüßung',
-  'search': 'Suche',
   'widgets': 'Learning & Zeiterfassung',
   'kpi-slider': 'KPI Dashboard',
   'quicknav': 'Schnellnavigation',
@@ -90,7 +89,7 @@ export default function Dashboard() {
     try {
       const saved = localStorage.getItem('dashboard-layout');
       if (saved) {
-        const parsed = JSON.parse(saved).filter((id: string) => id !== 'hero');
+        const parsed = JSON.parse(saved).filter((id: string) => id !== 'hero' && id !== 'search');
         const missing = DEFAULT_ORDER.filter(id => !parsed.includes(id));
         return [...parsed, ...missing];
       }
@@ -564,9 +563,10 @@ export default function Dashboard() {
 
       <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      {/* Hero — locked at top, never draggable */}
-      <div className="mb-8">
+      {/* Hero + ARIA bar — locked at top, never draggable */}
+      <div className="mb-8 space-y-6">
         {renderBlock('hero')}
+        {renderBlock('search')}
       </div>
 
       <DndContext
