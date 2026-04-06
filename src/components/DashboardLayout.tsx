@@ -56,8 +56,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             onSend={handleAriaSend}
             input={ariaInput}
             setInput={setAriaInput}
-            variant="slim"
-            routePath={location.pathname}
           />
         </div>
       </div>
