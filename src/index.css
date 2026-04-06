@@ -753,7 +753,7 @@
   cursor: default;
 }
 
-/* ═══ ARIA Bottom Bar ═══ */
+/* ═══ ARIA Bottom Bar (wrapper) ═══ */
 .aria-bottom-bar {
   position: fixed;
   bottom: 28px;
@@ -761,8 +761,16 @@
   transform: translateX(-50%);
   z-index: 9000;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  align-items: stretch;
+  width: auto;
+  min-width: 300px;
+  max-width: 520px;
+}
+.aria-bottom-bar--open {
+  width: 400px;
+  min-width: 400px;
+  max-width: 400px;
 }
 @media (max-width: 768px) {
   .aria-bottom-bar {
