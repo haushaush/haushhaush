@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug } from 'lucide-react';
-import { useState as useStateSidebar } from 'react';
+
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
