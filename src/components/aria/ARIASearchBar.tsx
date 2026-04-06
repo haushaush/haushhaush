@@ -5,12 +5,27 @@ import { useProfile } from '@/hooks/useProfile';
 import { useARIAData } from '@/hooks/useARIAData';
 import { toast } from 'sonner';
 
-const PLACEHOLDERS = [
+const PLACEHOLDERS_FULL = [
   'Frag ARIA etwas...',
   'Was möchtest du wissen?',
   'Aufgabe erstellen, navigieren, analysieren...',
   'Sag mir was du brauchst...',
 ];
+
+const ROUTE_PLACEHOLDERS: Record<string, string[]> = {
+  '/kunden': ['Frag ARIA nach einem Kunden...', 'Ampelstatus prüfen...', 'Kundendaten abfragen...'],
+  '/sales': ['KPIs abfragen, Calls loggen...', 'Sales Performance checken...', 'Abschlüsse diese Woche?'],
+  '/finanzen': ['Rechnungen, MRR, Cashflow...', 'Offene Rechnungen prüfen...', 'ARR berechnen...'],
+  '/hr': ['Team, Verträge, Akademie...', 'Urlaubsanträge prüfen...', 'Gehälter übersicht...'],
+  '/projekte': ['Aufgaben, Projekte, Deadlines...', 'Überfällige Aufgaben?', 'Projektfortschritt prüfen...'],
+};
+
+function getRoutePlaceholders(path: string): string[] {
+  for (const [route, placeholders] of Object.entries(ROUTE_PLACEHOLDERS)) {
+    if (path.startsWith(route)) return placeholders;
+  }
+  return ['Frag ARIA etwas... (⌘J)', 'Wie kann ich helfen?', 'Aufgabe erstellen, navigieren...'];
+}
 
 function getGreeting(name: string): string {
   const h = new Date().getHours();
@@ -34,9 +49,10 @@ interface ARIASearchBarProps {
   input: string;
   setInput: (v: string) => void;
   variant?: 'full' | 'slim';
+  routePath?: string;
 }
 
-export function ARIASearchBar({ onSend, input, setInput, variant = 'full' }: ARIASearchBarProps) {
+export function ARIASearchBar({ onSend, input, setInput, variant = 'full', routePath = '/' }: ARIASearchBarProps) {
   const { isOpen, openARIA, status, setStatus, isLoading } = useARIA();
   const { displayName } = useProfile();
   const ariaData = useARIAData();
@@ -53,16 +69,15 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full' }: ARI
 
   // Cycle placeholders
   useEffect(() => {
-    if (!isFull) return;
     const interval = setInterval(() => {
       setPlaceholderVisible(false);
       setTimeout(() => {
-        setPlaceholderIdx(i => (i + 1) % PLACEHOLDERS.length);
+        setPlaceholderIdx(i => (i + 1) % (isFull ? PLACEHOLDERS_FULL.length : getRoutePlaceholders(routePath).length));
         setPlaceholderVisible(true);
       }, 400);
-    }, 5000);
+    }, 6000);
     return () => clearInterval(interval);
-  }, [isFull]);
+  }, [isFull, routePath]);
 
   // Proactive suggestion from data
   const proactiveSuggestion = ariaData && ariaData.overdueInvoicesCount > 0
@@ -70,8 +85,8 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full' }: ARI
     : null;
 
   const currentPlaceholder = isFull
-    ? (proactiveSuggestion || (placeholderIdx === 0 ? getGreeting(displayName) : PLACEHOLDERS[placeholderIdx]))
-    : 'Frag ARIA...';
+    ? (proactiveSuggestion || (placeholderIdx === 0 ? getGreeting(displayName) : PLACEHOLDERS_FULL[placeholderIdx]))
+    : (proactiveSuggestion || getRoutePlaceholders(routePath)[placeholderIdx % getRoutePlaceholders(routePath).length]);
 
   const handleSubmit = () => {
     const text = input.trim();
@@ -130,6 +145,7 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full' }: ARI
       <div
         className={`aria-avatar ${listening ? 'aria-avatar--listening' : ''} ${status === 'processing' || status === 'executing' ? 'aria-avatar--processing' : ''}`}
         style={{ width: avatarSize, height: avatarSize }}
+        onClick={handleFocus}
       >
         <Sparkles style={{ width: avatarSize * 0.5, height: avatarSize * 0.5 }} className="text-white" />
         {listening && (
@@ -180,7 +196,10 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full' }: ARI
           {listening ? <MicOff style={{ width: isFull ? 18 : 14, height: isFull ? 18 : 14 }} /> : <Mic style={{ width: isFull ? 18 : 14, height: isFull ? 18 : 14 }} />}
         </button>
 
-        {/* ⌘K hint (full only, desktop) */}
+        {/* ⌘J hint */}
+        {!isFull && (
+          <kbd className="hidden sm:inline-flex items-center text-[10px] text-muted-foreground border border-border rounded px-1 py-0.5">⌘J</kbd>
+        )}
         {isFull && (
           <kbd className="hidden sm:inline-flex items-center text-[11px] text-muted-foreground border border-border rounded px-1.5 py-0.5">⌘K</kbd>
         )}
