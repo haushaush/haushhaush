@@ -13,7 +13,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const isMobile = useIsMobile();
   const location = useLocation();
-  const isOverview = location.pathname === '/';
   const [ariaInput, setAriaInput] = useState('');
 
   const handleAriaSend = (text: string) => {
@@ -41,7 +40,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <TimerBar />
           <main
             id="main-content"
-            className={`flex-1 p-4 sm:p-6 lg:p-10 overflow-auto min-w-0 ${isOverview ? 'pb-6 md:pb-6' : 'pb-20 md:pb-16'}`}
+            className="flex-1 p-4 sm:p-6 lg:p-10 overflow-auto min-w-0 pb-20 md:pb-16"
             role="main"
             aria-label="Hauptinhalt"
           >
@@ -51,17 +50,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {isMobile && <MobileTabBar />}
         <BugReportWidget />
 
-        {/* Persistent ARIA bottom bar on non-overview pages */}
-        {!isOverview && !isMobile && (
-          <div className="aria-bottom-bar">
-            <ARIASearchBar
-              onSend={handleAriaSend}
-              input={ariaInput}
-              setInput={setAriaInput}
-              variant="slim"
-            />
-          </div>
-        )}
+        {/* Persistent ARIA bottom bar on ALL pages */}
+        <div className="aria-bottom-bar">
+          <ARIASearchBar
+            onSend={handleAriaSend}
+            input={ariaInput}
+            setInput={setAriaInput}
+            variant="slim"
+            routePath={location.pathname}
+          />
+        </div>
       </div>
     </SidebarProvider>
   );

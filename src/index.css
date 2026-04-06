@@ -556,13 +556,17 @@
 }
 .aria-chat-panel--overview {
   bottom: 64px;
-  left: 240px;
+  left: var(--sidebar-width, 240px);
   right: 0;
 }
 .aria-chat-panel--bar {
-  bottom: 48px;
-  left: 240px;
+  bottom: 52px;
+  left: var(--sidebar-width, 240px);
   right: 0;
+}
+[data-sidebar="collapsed"] ~ .aria-chat-panel--overview,
+[data-sidebar="collapsed"] ~ .aria-chat-panel--bar {
+  left: 56px;
 }
 @media (max-width: 768px) {
   .aria-chat-panel--overview,
@@ -581,20 +585,26 @@
   flex-shrink: 0;
 }
 
-/* ═══ ARIA Bottom Bar (non-overview) ═══ */
+/* ═══ ARIA Bottom Bar — persistent on ALL pages ═══ */
 .aria-bottom-bar {
   position: fixed;
   bottom: 0;
-  left: 240px;
+  left: var(--sidebar-width, 240px);
   right: 0;
-  height: 48px;
+  height: 52px;
   background: hsl(var(--card));
   border-top: 1px solid hsl(var(--border));
   z-index: 200;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 20px;
+  padding: 0 16px;
+  transition: left 200ms ease;
+}
+/* Sidebar collapsed */
+[data-sidebar="collapsed"] ~ .aria-bottom-bar,
+.aria-bottom-bar.sidebar-collapsed {
+  left: 56px;
 }
 @media (max-width: 768px) {
   .aria-bottom-bar { left: 0; bottom: 64px; }
