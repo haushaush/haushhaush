@@ -408,60 +408,63 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 11px;
   width: auto;
   min-width: 300px;
   max-width: 520px;
-  height: 80px;
-  border-radius: 20px;
+  height: 56px;
+  border-radius: 14px;
   background: hsla(240, 20%, 4%, 0.85);
   backdrop-filter: blur(40px) saturate(200%);
   -webkit-backdrop-filter: blur(40px) saturate(200%);
-  border: 1.5px solid hsla(174, 90%, 31%, 0.45);
+  border: 2px solid hsla(174, 90%, 31%, 0.50);
   box-shadow:
-    0 0 0 0.5px hsla(174, 90%, 31%, 0.15),
-    0 8px 32px hsla(0, 0%, 0%, 0.40),
-    inset 0 1px 0 hsla(0, 0%, 100%, 0.06);
-  padding: 0 14px 0 26px;
+    0 0 0 1px hsla(174, 90%, 31%, 0.12),
+    0 0 20px hsla(174, 90%, 31%, 0.15),
+    0 8px 32px hsla(0, 0%, 0%, 0.40);
+  padding: 0 10px 0 18px;
   transition: border-color 200ms ease, box-shadow 200ms ease, border-radius 200ms ease;
 }
 .aria-jarvis-pill--open {
-  border-radius: 0 0 20px 20px;
+  border-radius: 0 0 14px 14px;
   border-top: 1px solid hsla(0, 0%, 100%, 0.05);
   box-shadow: none;
 }
 :root:not(.dark) .aria-jarvis-pill {
   background: hsla(240, 10%, 96%, 0.92);
-  border-color: hsla(174, 90%, 31%, 0.25);
-  box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.12), 0 0 0 1px hsla(174, 90%, 31%, 0.08);
+  border: 2px solid hsla(174, 90%, 31%, 0.40);
+  box-shadow: 0 0 20px hsla(174, 90%, 31%, 0.10), 0 8px 32px hsla(0, 0%, 0%, 0.12);
 }
 :root:not(.dark) .aria-jarvis-pill--open {
   border-top-color: hsla(0, 0%, 0%, 0.05);
   box-shadow: none;
 }
 .aria-jarvis-pill:hover {
-  border-color: hsla(174, 90%, 31%, 0.70);
+  border-color: hsla(174, 90%, 31%, 0.75);
   box-shadow:
-    0 0 0 1px hsla(174, 90%, 31%, 0.20),
-    0 8px 32px hsla(0, 0%, 0%, 0.40),
-    inset 0 1px 0 hsla(0, 0%, 100%, 0.06);
+    0 0 0 3px hsla(174, 90%, 31%, 0.15),
+    0 0 30px hsla(174, 90%, 31%, 0.20),
+    0 8px 32px hsla(0, 0%, 0%, 0.40);
 }
 .aria-jarvis-pill--open:hover { box-shadow: none; }
 :root:not(.dark) .aria-jarvis-pill:hover {
-  box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.15), 0 0 20px hsla(174, 90%, 31%, 0.10);
+  border-color: hsla(174, 90%, 31%, 0.65);
+  box-shadow: 0 0 30px hsla(174, 90%, 31%, 0.15), 0 8px 32px hsla(0, 0%, 0%, 0.15);
 }
 :root:not(.dark) .aria-jarvis-pill--open:hover { box-shadow: none; }
 .aria-jarvis-pill--listening {
-  border-color: hsla(174, 90%, 31%, 0.80);
+  border-color: hsla(174, 90%, 31%, 0.90);
   box-shadow:
-    0 0 0 2px hsla(174, 90%, 31%, 0.18),
+    0 0 0 4px hsla(174, 90%, 31%, 0.20),
+    0 0 40px hsla(174, 90%, 31%, 0.25),
     0 8px 32px hsla(0, 0%, 0%, 0.40);
   transform: scale(1.02);
 }
 .aria-jarvis-pill:focus-within {
-  border-color: hsla(174, 90%, 31%, 0.80);
+  border-color: hsla(174, 90%, 31%, 0.90);
   box-shadow:
-    0 0 0 2px hsla(174, 90%, 31%, 0.18),
+    0 0 0 4px hsla(174, 90%, 31%, 0.20),
+    0 0 40px hsla(174, 90%, 31%, 0.25),
     0 8px 32px hsla(0, 0%, 0%, 0.40);
 }
 
@@ -469,8 +472,8 @@
 .aria-shortcut-hint {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
-  font-size: 12px;
+  padding: 2px 7px;
+  font-size: 10px;
   font-weight: 500;
   color: hsla(0, 0%, 100%, 0.45);
   background: hsla(0, 0%, 100%, 0.08);
@@ -523,14 +526,14 @@
   outline: none !important;
   box-shadow: none !important;
   -webkit-appearance: none;
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 400;
   color: hsla(0, 0%, 100%, 0.85);
   caret-color: #0BC2C6;
 }
 .aria-jarvis-input::placeholder {
   color: hsla(0, 0%, 100%, 0.35);
-  font-size: 17px;
+  font-size: 14px;
 }
 :root:not(.dark) .aria-jarvis-input {
   color: hsl(var(--foreground));
@@ -541,9 +544,9 @@
 
 /* JARVIS dynamic right button */
 .aria-jarvis-mic {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
   background: linear-gradient(135deg, #0A9396, #0BC2C6);
   box-shadow: 0 2px 12px hsla(174, 90%, 31%, 0.40);
   display: flex;
@@ -553,7 +556,7 @@
   border: none;
   cursor: pointer;
   flex-shrink: 0;
-  margin: 10px;
+  margin: 7px;
   transition: all 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .aria-jarvis-mic:hover {
@@ -647,7 +650,7 @@
   -webkit-backdrop-filter: blur(40px);
   border: 1px solid hsla(174, 90%, 31%, 0.25);
   border-bottom: none;
-  border-radius: 20px 20px 0 0;
+  border-radius: 14px 14px 0 0;
   overflow: hidden;
   animation: ariaExpand 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
   transform-origin: bottom center;
