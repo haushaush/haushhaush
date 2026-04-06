@@ -141,7 +141,6 @@ export default function Dashboard() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const isMobile = windowWidth < 640;
   const fmtCurrency = (v: number) => formatValue(v, 'currency', isMobile);
 
   const loading = deals.loading || revenue.loading || invoices.loading || team.loading || tasks.loading;
