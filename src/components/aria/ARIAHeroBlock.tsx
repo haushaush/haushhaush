@@ -69,7 +69,7 @@ export function ARIAHeroBlock({ onSend, input, setInput }: ARIAHeroBlockProps) {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-            onFocus={() => { if (!isOpen) openARIA(); }}
+            
             placeholder="Wie kann ich helfen?"
             className="w-full bg-transparent border-none outline-none text-[15px] text-foreground placeholder:text-muted-foreground"
             style={{ minWidth: 0 }}
