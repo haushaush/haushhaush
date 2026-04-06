@@ -1,12 +1,27 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, Sparkles, Wrench, Check, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import SupportModal from '@/components/SupportModal';
+import { toast } from 'sonner';
 
 interface ErrorPageProps {
   type: '404' | 'crash' | 'unauthorized' | 'offline';
   error?: Error | null;
+}
+
+interface AutoFix {
+  label: string;
+  action: 'localStorage_clear' | 'session_reload' | 'cache_clear' | 'state_reset' | 'auth_retry';
+  description: string;
+}
+
+interface DiagnosisResult {
+  diagnosis: string;
+  likely_cause: string;
+  auto_fixes: AutoFix[];
+  manual_steps: string[];
+  severity: 'low' | 'medium' | 'high';
 }
 
 const icons = {
@@ -73,10 +88,30 @@ const textConfig = {
   },
 };
 
+const ANALYSIS_TEXTS = [
+  'Fehlercode wird ausgewertet',
+  'Mögliche Ursachen werden geprüft',
+  'Lösungsschritte werden vorbereitet',
+];
+
+const STATIC_FALLBACK_FIXES: AutoFix[] = [
+  { label: 'Cache leeren & neu laden', action: 'localStorage_clear', description: 'Löscht den lokalen Speicher und lädt die Seite neu.' },
+  { label: 'Seite neu laden', action: 'session_reload', description: 'Lädt die aktuelle Seite komplett neu.' },
+  { label: 'App zurücksetzen', action: 'state_reset', description: 'Setzt alle App-Einstellungen auf Standard zurück.' },
+];
+
 export default function ErrorPage({ type, error }: ErrorPageProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
+
+  // Diagnosis state
+  const [diagPhase, setDiagPhase] = useState<'idle' | 'loading' | 'result' | 'fallback'>('idle');
+  const [diagResult, setDiagResult] = useState<DiagnosisResult | null>(null);
+  const [analysisIdx, setAnalysisIdx] = useState(0);
+  const [executedFixes, setExecutedFixes] = useState<Set<string>>(new Set());
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [showManualSteps, setShowManualSteps] = useState(false);
 
   const c = textConfig[type];
   const now = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -103,6 +138,241 @@ export default function ErrorPage({ type, error }: ErrorPageProps) {
       window.location.href = '/auth';
     }
   }, []);
+
+  const startCountdown = useCallback(() => {
+    setCountdown(3);
+    let n = 3;
+    const iv = setInterval(() => {
+      n--;
+      if (n <= 0) {
+        clearInterval(iv);
+        window.location.reload();
+      } else {
+        setCountdown(n);
+      }
+    }, 1000);
+  }, []);
+
+  const executeFix = useCallback(async (fix: AutoFix) => {
+    setExecutedFixes(prev => new Set(prev).add(fix.action));
+
+    switch (fix.action) {
+      case 'localStorage_clear':
+        localStorage.clear();
+        sessionStorage.clear();
+        toast.success('Cache geleert');
+        startCountdown();
+        break;
+      case 'session_reload':
+        window.location.reload();
+        break;
+      case 'cache_clear':
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        toast.success('Browser Cache geleert');
+        startCountdown();
+        break;
+      case 'state_reset':
+        localStorage.removeItem('dashboard-layout');
+        localStorage.removeItem('timer-state');
+        localStorage.removeItem('microlearning-index');
+        localStorage.removeItem('microlearning-date');
+        localStorage.removeItem('sidebar-state');
+        localStorage.removeItem('theme');
+        toast.success('App-Status zurückgesetzt');
+        startCountdown();
+        break;
+      case 'auth_retry':
+        toast.success('Sitzung zurückgesetzt — Login wird geöffnet...');
+        await supabase.auth.signOut();
+        setTimeout(() => { window.location.href = '/auth'; }, 1500);
+        break;
+    }
+  }, [startCountdown]);
+
+  const startDiagnosis = useCallback(async () => {
+    setDiagPhase('loading');
+    setAnalysisIdx(0);
+
+    // Cycle analysis text
+    const textInterval = setInterval(() => {
+      setAnalysisIdx(prev => (prev + 1) % ANALYSIS_TEXTS.length);
+    }, 600);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('diagnose-error', {
+        body: {
+          errorType: type,
+          errorCode: errorDetails.code,
+          errorMessage: errorDetails.message,
+          errorStack: errorDetails.stack,
+          pageUrl: errorDetails.page_url,
+          userAgent: errorDetails.user_agent,
+        },
+      });
+
+      clearTimeout(timeout);
+      clearInterval(textInterval);
+
+      if (fnError || data?.error) {
+        console.error('Diagnosis error:', fnError || data?.error);
+        setDiagPhase('fallback');
+        return;
+      }
+
+      setDiagResult(data as DiagnosisResult);
+      setDiagPhase('result');
+    } catch (e) {
+      console.error('Diagnosis failed:', e);
+      clearTimeout(timeout);
+      clearInterval(textInterval);
+      setDiagPhase('fallback');
+    }
+  }, [type, errorDetails]);
+
+  const severityConfig = {
+    high: { label: 'Kritisch', className: 'bg-destructive/10 text-destructive border-destructive/20' },
+    medium: { label: 'Mittel', className: 'bg-warning/10 text-warning border-warning/20' },
+    low: { label: 'Niedrig', className: 'bg-success/10 text-success border-success/20' },
+  };
+
+  const renderFixList = (fixes: AutoFix[]) => (
+    <div className="flex flex-col gap-2">
+      {fixes.map((fix) => (
+        <div key={fix.action} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+          <Wrench className="h-3.5 w-3.5 text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-medium text-foreground">{fix.label}</p>
+            <p className="text-[11px] text-muted-foreground">{fix.description}</p>
+          </div>
+          <Button
+            size="sm"
+            variant={executedFixes.has(fix.action) ? 'ghost' : 'outline'}
+            className={`shrink-0 text-xs h-7 px-3 ${executedFixes.has(fix.action) ? 'text-success' : 'text-primary border-primary/30 hover:bg-primary/10'}`}
+            disabled={executedFixes.has(fix.action) || countdown !== null}
+            onClick={() => executeFix(fix)}
+          >
+            {executedFixes.has(fix.action) ? (
+              <><Check className="h-3 w-3 mr-1" /> Ausgeführt</>
+            ) : (
+              'Ausführen'
+            )}
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderDiagnosisPanel = () => {
+    if (diagPhase === 'loading') {
+      return (
+        <div className="w-full rounded-lg border-l-[3px] border-l-primary bg-accent p-4 text-left">
+          <div className="flex items-center gap-2 mb-1">
+            <Loader2 className="h-5 w-5 text-primary animate-spin" />
+            <span className="text-sm font-medium text-foreground">KI analysiert den Fehler...</span>
+          </div>
+          <p className="text-xs text-muted-foreground ml-7">{ANALYSIS_TEXTS[analysisIdx]}</p>
+        </div>
+      );
+    }
+
+    if (diagPhase === 'fallback') {
+      return (
+        <div className="w-full rounded-lg border-l-[3px] border-l-muted-foreground bg-accent p-4 text-left space-y-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Automatische Diagnose nicht verfügbar</p>
+            <p className="text-xs text-muted-foreground">KI-Analyse konnte nicht gestartet werden.</p>
+          </div>
+          {renderFixList(STATIC_FALLBACK_FIXES)}
+          <button
+            onClick={() => setSupportOpen(true)}
+            className="text-xs text-primary hover:underline bg-transparent border-none cursor-pointer"
+          >
+            Support kontaktieren →
+          </button>
+        </div>
+      );
+    }
+
+    if (diagPhase === 'result' && diagResult) {
+      const sev = severityConfig[diagResult.severity] || severityConfig.medium;
+      return (
+        <div className="w-full rounded-lg border-l-[3px] border-l-primary bg-accent p-4 text-left space-y-3">
+          {/* Header */}
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${sev.className}`}>
+              {sev.label}
+            </span>
+            <span className="text-[13px] text-muted-foreground">KI Diagnose</span>
+          </div>
+
+          {/* Diagnosis */}
+          <p className="text-sm text-foreground leading-relaxed">{diagResult.diagnosis}</p>
+          <p className="text-xs text-muted-foreground italic">Wahrscheinliche Ursache: {diagResult.likely_cause}</p>
+
+          {/* Divider */}
+          <div className="border-t border-border" />
+
+          {/* Auto fixes */}
+          {diagResult.auto_fixes.length > 0 && renderFixList(diagResult.auto_fixes)}
+
+          {/* Manual steps */}
+          {diagResult.manual_steps.length > 0 && (
+            <>
+              <div className="border-t border-border" />
+              <button
+                onClick={() => setShowManualSteps(!showManualSteps)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors bg-transparent border-none cursor-pointer"
+              >
+                <ChevronRight className={`h-3 w-3 transition-transform ${showManualSteps ? 'rotate-90' : ''}`} />
+                Manuelle Lösungsschritte anzeigen
+              </button>
+              {showManualSteps && (
+                <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground pl-1">
+                  {diagResult.manual_steps.map((step, i) => (
+                    <li key={i}>{step}</li>
+                  ))}
+                </ol>
+              )}
+            </>
+          )}
+
+          {/* Footer */}
+          <div className="border-t border-border pt-2 flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground">Problem weiterhin vorhanden?</span>
+            <button
+              onClick={() => setSupportOpen(true)}
+              className="text-[11px] text-primary hover:underline bg-transparent border-none cursor-pointer"
+            >
+              Support kontaktieren →
+            </button>
+          </div>
+
+          {/* Countdown */}
+          {countdown !== null && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground text-center">
+                Seite lädt neu in {countdown}...
+              </p>
+              <div className="h-0.5 w-full bg-border rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-1000 ease-linear"
+                  style={{ width: `${((3 - countdown) / 3) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -141,6 +411,21 @@ export default function ErrorPage({ type, error }: ErrorPageProps) {
             ← Zur Startseite
           </Button>
           <Button variant="outline" onClick={c.secondaryAction} className="w-full">{c.secondaryLabel}</Button>
+
+          {/* KI Diagnose Button */}
+          {diagPhase === 'idle' && (
+            <Button
+              onClick={startDiagnosis}
+              className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              KI Diagnose starten
+            </Button>
+          )}
+
+          {/* Diagnosis Panel */}
+          {diagPhase !== 'idle' && renderDiagnosisPanel()}
+
           <button
             onClick={() => setSupportOpen(true)}
             className="text-[11px] text-muted-foreground hover:text-foreground transition-colors mt-2 cursor-pointer bg-transparent border-none"
