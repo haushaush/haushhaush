@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Sparkles, Mic, MicOff, ArrowUp } from 'lucide-react';
+import { Mic, MicOff, ArrowUp, Square } from 'lucide-react';
 import { useARIA } from '@/contexts/ARIAContext';
+import { ARIAIcon } from './ARIAIcon';
 import { toast } from 'sonner';
 
 interface ARIASearchBarProps {
@@ -14,8 +15,17 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
   const [listening, setListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const isProcessing = status === 'processing' || status === 'executing';
+
+  // Poll speechSynthesis.speaking
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsSpeaking(speechSynthesis.speaking);
+    }, 200);
+    return () => clearInterval(interval);
+  }, []);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
@@ -38,7 +48,7 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
     };
   }, []);
 
-  // Listen for external stop requests (panel close, Escape, navigation)
+  // Listen for external stop requests
   useEffect(() => {
     const handler = () => stopListening();
     window.addEventListener('aria-stop-listening', handler);
@@ -53,7 +63,6 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
     }
     if (!isOpen) openARIA();
 
-    // Create fresh instance every time
     const recognition = new SR();
     recognitionRef.current = recognition;
     recognition.lang = 'de-DE';
@@ -95,11 +104,8 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
   }, [isOpen, openARIA, onSend, setInput, setStatus]);
 
   const toggleListening = useCallback(() => {
-    if (listening) {
-      stopListening();
-    } else {
-      startListening();
-    }
+    if (listening) stopListening();
+    else startListening();
   }, [listening, stopListening, startListening]);
 
   // Stop mic on beforeunload
@@ -120,9 +126,67 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
     if (!isOpen) openARIA();
   };
 
+  // Dynamic right button logic
+  const renderRightButton = () => {
+    // 1. Recording → stop
+    if (listening) {
+      return (
+        <button
+          onClick={stopListening}
+          className="aria-jarvis-mic aria-jarvis-mic--active"
+          aria-label="Aufnahme stoppen"
+          title="Aufnahme stoppen"
+        >
+          <MicOff className="h-[22px] w-[22px]" />
+        </button>
+      );
+    }
+
+    // 2. ARIA speaking → stop speech
+    if (isSpeaking) {
+      return (
+        <button
+          onClick={() => { speechSynthesis.cancel(); setIsSpeaking(false); }}
+          className="aria-jarvis-mic aria-jarvis-mic--speaking"
+          aria-label="Antwort stoppen"
+          title="Antwort stoppen"
+        >
+          <Square className="h-5 w-5" fill="white" />
+        </button>
+      );
+    }
+
+    // 3. Text typed → send
+    if (input.trim().length > 0) {
+      return (
+        <button
+          onClick={handleSubmit}
+          disabled={isLoading}
+          className="aria-jarvis-mic"
+          aria-label="Senden"
+          title="Senden"
+        >
+          <ArrowUp className="h-[22px] w-[22px]" />
+        </button>
+      );
+    }
+
+    // 4. Default → mic
+    return (
+      <button
+        onClick={startListening}
+        className="aria-jarvis-mic"
+        aria-label="Sprachbefehl"
+        title="Sprachbefehl"
+      >
+        <Mic className="h-[22px] w-[22px]" />
+      </button>
+    );
+  };
+
   return (
     <div className={`aria-jarvis-pill ${listening ? 'aria-jarvis-pill--listening' : ''} ${isProcessing ? 'aria-jarvis-pill--processing' : ''}`}>
-      <Sparkles className="aria-jarvis-icon" />
+      <ARIAIcon size={20} animated={isProcessing} />
 
       <div className="flex-1 min-w-0 flex items-center h-full">
         {listening ? (
@@ -149,19 +213,7 @@ export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
         )}
       </div>
 
-      {input.trim() && (
-        <button onClick={handleSubmit} disabled={isLoading} className="aria-jarvis-send">
-          <ArrowUp className="h-[18px] w-[18px]" />
-        </button>
-      )}
-
-      <button
-        onClick={toggleListening}
-        className={`aria-jarvis-mic ${listening ? 'aria-jarvis-mic--active' : ''}`}
-        aria-label={listening ? 'Aufnahme stoppen' : 'Spracheingabe'}
-      >
-        {listening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-      </button>
+      {renderRightButton()}
     </div>
   );
 }

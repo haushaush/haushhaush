@@ -1,13 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { MobileTabBar } from '@/components/MobileTabBar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { TimerBar } from '@/components/dashboard/TimerBar';
 import { BugReportWidget } from '@/components/BugReportWidget';
 import { ARIASearchBar } from '@/components/aria/ARIASearchBar';
+
+function SidebarWidthSync() {
+  const { state, isMobile } = useSidebar();
+  useEffect(() => {
+    const width = isMobile ? '0px' : state === 'expanded' ? '240px' : '48px';
+    document.documentElement.style.setProperty('--sidebar-width', width);
+    return () => { document.documentElement.style.removeProperty('--sidebar-width'); };
+  }, [state, isMobile]);
+  return null;
+}
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -31,6 +41,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
+      <SidebarWidthSync />
       <div className="min-h-screen flex w-full">
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:text-sm focus:font-medium">
           Zum Inhalt springen
