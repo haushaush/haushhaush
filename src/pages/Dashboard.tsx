@@ -53,6 +53,19 @@ const NAV_TILES = [
 
 const RANK_COLORS = ['#F5A623', '#9B9B9B', '#8B6347'];
 
+const DEFAULT_ORDER = ['hero', 'search', 'widgets', 'kpi-slider', 'quicknav', 'handlungsbedarf', 'bottom-row', 'revenue-chart'];
+
+const BLOCK_LABELS: Record<string, string> = {
+  'hero': 'Begrüßung',
+  'search': 'Suche',
+  'widgets': 'Learning & Zeiterfassung',
+  'kpi-slider': 'KPI Dashboard',
+  'quicknav': 'Schnellnavigation',
+  'handlungsbedarf': 'Handlungsbedarf',
+  'bottom-row': 'Abschlüsse, Aufgaben, Sales',
+  'revenue-chart': 'Umsatzentwicklung',
+};
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { firstName, initials, avatarUrl } = useProfile();
@@ -68,6 +81,47 @@ export default function Dashboard() {
   const effizienz = useEffizienzScore();
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const [blockOrder, setBlockOrder] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('dashboard-layout');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const missing = DEFAULT_ORDER.filter(id => !parsed.includes(id));
+        return [...parsed, ...missing];
+      }
+    } catch {}
+    return DEFAULT_ORDER;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('dashboard-layout', JSON.stringify(blockOrder));
+  }, [blockOrder]);
+
+  const isMobile = windowWidth < 768;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragStart = useCallback(({ active }: any) => setActiveId(active.id), []);
+  const handleDragEnd = useCallback(({ active, over }: any) => {
+    setActiveId(null);
+    if (!over || active.id === over.id) return;
+    setBlockOrder(prev => {
+      const oldIndex = prev.indexOf(active.id as string);
+      const newIndex = prev.indexOf(over.id as string);
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  }, []);
+
+  const resetLayout = useCallback(() => {
+    setBlockOrder(DEFAULT_ORDER);
+    localStorage.removeItem('dashboard-layout');
+    toast('Layout zurückgesetzt');
+  }, []);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
