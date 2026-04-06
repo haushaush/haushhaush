@@ -317,7 +317,7 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
         >
           {slides.map((slide) => (
             <div key={slide.id} className="w-full shrink-0">
-              <div className="kpi-grid" style={{ gridTemplateRows: '130px 130px' }}>
+              <div className="kpi-grid" style={{ gridTemplateRows: '140px 140px' }}>
                 {slide.cards.map((card, ci) => (
                   <KpiCard key={ci} card={card} isMobile={isMobile} />
                 ))}
