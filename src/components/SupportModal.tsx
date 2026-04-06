@@ -187,24 +187,24 @@ export default function SupportModal({ open, onClose, errorType, error, errorDet
             </div>
 
             {/* Auto-captured error details — always visible */}
-            <div className="bg-muted/50 border border-border rounded-lg p-3 mb-4">
+            <div className="bg-muted/50 border border-border rounded-lg p-3 mb-4 overflow-hidden w-full">
               <p className="text-[11px] font-semibold text-muted-foreground mb-2 tracking-wider">
                 WIRD AUTOMATISCH MITGESENDET
               </p>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 w-full min-w-0">
                 {errorDetails.code && (
                   <span className="text-xs text-muted-foreground">
                     Fehlercode: <code className="text-destructive font-mono">{errorDetails.code}</code>
                   </span>
                 )}
-                <span className="text-xs text-muted-foreground">
-                  Seite: <code className="font-mono text-[11px]">{errorDetails.page_url}</code>
+                <span className="text-xs text-muted-foreground break-all" style={{ overflowWrap: 'anywhere' }}>
+                  Seite: <code className="font-mono text-[11px]">{(() => { try { return new URL(errorDetails.page_url).pathname; } catch { return errorDetails.page_url?.slice(0, 60) + '...' || 'Unbekannt'; } })()}</code>
                 </span>
                 <span className="text-xs text-muted-foreground">
                   Zeitpunkt: {new Date(errorDetails.timestamp).toLocaleString('de-DE')}
                 </span>
                 {errorDetails.message && (
-                  <div className="mt-2 bg-card border border-destructive/20 rounded-md p-2 font-mono text-[11px] text-destructive break-all max-h-[80px] overflow-y-auto">
+                  <div className="mt-2 bg-card border border-destructive/20 rounded-md p-2 font-mono text-[11px] text-destructive max-h-[100px] overflow-y-auto w-full box-border" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
                     {errorDetails.message}
                   </div>
                 )}
