@@ -585,9 +585,7 @@ export default function Dashboard() {
         {/* ARIA Chat Card + Input Bar */}
         <div style={{ marginTop: 28 }}>
           <ARIAPanel embedded onClose={() => { setChatVisible(false); clearMessages(); }} />
-          <div style={{ marginTop: chatVisible && messages.length > 0 ? 12 : 0 }}>
-            <ARIAHeroBlock onSend={handleAriaSend} input={ariaInput} setInput={setAriaInput} />
-          </div>
+          <ARIAHeroBlock onSend={handleAriaSend} input={ariaInput} setInput={setAriaInput} />
         </div>
       </div>
 
