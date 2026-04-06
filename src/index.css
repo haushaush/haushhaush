@@ -343,272 +343,192 @@
   display: none !important;
 }
 
-/* ═══ ARIA Screen Glow ═══ */
-#aria-screen-glow {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 99999;
-  --glow-color-1: hsl(174 90% 31%);
-  --glow-color-2: hsl(180 80% 45%);
-  --glow-color-3: hsl(185 100% 50%);
-}
-#aria-screen-glow::before {
-  content: '';
+/* ═══ ARIA Energy Glow System ═══ */
+.aria-energy-line {
   position: absolute;
   inset: 0;
-  padding: 3px;
-  background: conic-gradient(
-    from var(--glow-angle, 0deg),
-    var(--glow-color-1),
-    var(--glow-color-2),
-    var(--glow-color-3),
-    var(--glow-color-2),
-    var(--glow-color-1)
-  );
+  border-radius: 0;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
-  animation: ariaRotate 3s linear infinite, ariaPulse 2s ease-in-out infinite;
 }
-#aria-screen-glow::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  box-shadow: inset 0 0 60px hsla(174, 90%, 31%, 0.12), inset 0 0 120px hsla(180, 80%, 45%, 0.08);
-  animation: ariaPulse 2s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes ariaRotate {
-  to { --glow-angle: 360deg; }
-}
-@keyframes ariaPulse {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-
-/* Listening: faster + brighter */
-.aria-listening #aria-screen-glow::before {
-  animation-duration: 1.2s, 0.8s;
-  padding: 4px;
-}
-.aria-listening #aria-screen-glow::after {
-  box-shadow: inset 0 0 100px hsla(174, 90%, 31%, 0.2), inset 0 0 200px hsla(180, 80%, 45%, 0.15);
-}
-/* Processing: slow calming */
-.aria-processing #aria-screen-glow::before {
-  animation-duration: 4s, 2.5s;
-}
-/* Dark mode: stronger glow */
-.dark #aria-screen-glow::after {
-  box-shadow: inset 0 0 80px hsla(174, 90%, 31%, 0.18), inset 0 0 160px hsla(180, 80%, 45%, 0.12);
-}
-
-/* ═══ ARIA Pill — Apple Intelligence Style ═══ */
-.aria-pill {
-  position: relative;
-  width: fit-content;
-  min-width: 320px;
-  max-width: 680px;
-  margin: 0 auto;
-  height: 56px;
-}
-.aria-pill--slim {
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  height: 48px;
-}
-
-/* Blob behind pill (full only) */
-.aria-blob {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(1.0);
-  width: 400px;
-  height: 120px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, hsla(174, 90%, 31%, 0.15) 0%, transparent 70%);
-  filter: blur(30px);
-  pointer-events: none;
-  z-index: -1;
-  animation: ariaBlob 4s ease-in-out infinite;
-  opacity: 0.4;
-}
-.aria-pill:hover .aria-blob { opacity: 0.6; transform: translate(-50%, -50%) scale(1.05); }
-.aria-pill--listening .aria-blob {
-  opacity: 0.9 !important;
-  transform: translate(-50%, -50%) scale(1.3) !important;
-  background: radial-gradient(ellipse, hsla(174, 90%, 31%, 0.35) 0%, transparent 70%);
-  animation: ariaBlobActive 1.5s ease-in-out infinite;
-}
-.aria-pill--processing .aria-blob {
-  opacity: 0.7 !important;
-  transform: translate(-50%, -50%) scale(1.15) !important;
-}
-@keyframes ariaBlob {
-  0%, 100% { transform: translate(-50%, -50%) scale(1.0) translateY(0); opacity: 0.4; }
-  50% { transform: translate(-50%, -50%) scale(1.08) translateY(-4px); opacity: 0.6; }
-}
-@keyframes ariaBlobActive {
-  0%, 100% { transform: translate(-50%, -50%) scale(1.2) translateY(0); opacity: 0.8; }
-  50% { transform: translate(-50%, -50%) scale(1.35) translateY(-6px); opacity: 1; }
-}
-
-/* Gradient border when listening */
-.aria-pill-glow-border {
-  position: absolute;
-  inset: -2px;
-  border-radius: 30px;
+.aria-line-1 {
   padding: 2px;
-  background: linear-gradient(var(--glow-angle, 0deg), #0A9396, #0BC2C6, #00E5FF, #0BC2C6, #0A9396);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  z-index: 1;
-  animation: ariaRotateBorder 2s linear infinite;
+  background: linear-gradient(var(--a1, 0deg), transparent 40%, hsla(174, 90%, 31%, 0.4) 50%, transparent 60%);
+  animation: ariaLine1 3s linear infinite;
 }
-.aria-pill--slim .aria-pill-glow-border { border-radius: 18px; }
-@keyframes ariaRotateBorder {
-  to { --glow-angle: 360deg; }
+.aria-line-2 {
+  padding: 4px;
+  background: linear-gradient(var(--a2, 90deg), transparent 35%, hsla(180, 80%, 45%, 0.55) 50%, transparent 65%);
+  animation: ariaLine2 2.2s linear infinite;
+  opacity: calc(0.4 + var(--aria-amplitude, 0) * 0.6);
+}
+.aria-line-3 {
+  padding: 7px;
+  background: linear-gradient(var(--a3, 180deg), transparent 40%, hsla(185, 100%, 50%, 0.35) 50%, transparent 60%);
+  animation: ariaLine3 1.7s linear infinite reverse;
+}
+.aria-line-4 {
+  padding: 11px;
+  background: linear-gradient(var(--a4, 45deg), transparent 42%, hsla(174, 90%, 31%, 0.6) 50%, transparent 58%);
+  animation: ariaLine4 1.2s linear infinite;
+  opacity: calc(0.5 + var(--aria-amplitude, 0) * 0.5);
 }
 
-/* Inner pill container */
-.aria-pill-inner {
+@property --a1 { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@property --a2 { syntax: '<angle>'; initial-value: 90deg; inherits: false; }
+@property --a3 { syntax: '<angle>'; initial-value: 180deg; inherits: false; }
+@property --a4 { syntax: '<angle>'; initial-value: 45deg; inherits: false; }
+
+@keyframes ariaLine1 { to { --a1: 360deg; } }
+@keyframes ariaLine2 { to { --a2: 450deg; } }
+@keyframes ariaLine3 { to { --a3: -180deg; } }
+@keyframes ariaLine4 { to { --a4: 405deg; } }
+
+#aria-glow-system::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 80px hsla(174, 90%, 31%, 0.08);
+  animation: ariaGlowBreath 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes ariaGlowBreath {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1.0; }
+}
+
+/* Listening: stronger glow */
+.aria-listening #aria-glow-system .aria-line-1 { animation-duration: 1.5s; }
+.aria-listening #aria-glow-system .aria-line-2 { animation-duration: 1.2s; }
+.aria-listening #aria-glow-system .aria-line-4 { animation-duration: 0.8s; }
+.aria-listening #aria-glow-system::after {
+  box-shadow: inset 0 0 100px hsla(174, 90%, 31%, 0.15);
+}
+
+/* ═══ ARIA JARVIS Pill ═══ */
+.aria-jarvis-pill {
   position: relative;
-  z-index: 2;
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  height: 100%;
-  border-radius: 28px;
-  padding: 0 8px 0 16px;
-  background: hsla(0, 0%, 100%, 0.75);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid hsla(0, 0%, 0%, 0.08);
-  box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.10), 0 2px 8px hsla(0, 0%, 0%, 0.06);
-  transition: border-color 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              box-shadow 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              transform 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  cursor: text;
+  gap: 14px;
+  width: auto;
+  min-width: 280px;
+  max-width: 480px;
+  height: 60px;
+  border-radius: 30px;
+  background: hsla(240, 20%, 4%, 0.85);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid hsla(174, 90%, 31%, 0.35);
+  box-shadow:
+    0 8px 40px hsla(0, 0%, 0%, 0.50),
+    0 0 0 1px hsla(174, 90%, 31%, 0.10),
+    inset 0 1px 0 hsla(0, 0%, 100%, 0.06);
+  padding: 0 8px 0 20px;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
 }
-.dark .aria-pill-inner {
-  background: hsla(240, 4%, 12%, 0.80);
-  border-color: hsla(0, 0%, 100%, 0.12);
-  box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.40), 0 2px 8px hsla(0, 0%, 0%, 0.20);
+.aria-jarvis-pill:hover {
+  border-color: hsla(174, 90%, 31%, 0.6);
+  box-shadow:
+    0 8px 40px hsla(0, 0%, 0%, 0.50),
+    0 0 30px hsla(174, 90%, 31%, 0.15),
+    0 0 0 1px hsla(174, 90%, 31%, 0.10),
+    inset 0 1px 0 hsla(0, 0%, 100%, 0.06);
 }
-.aria-pill-inner:hover {
-  border-color: hsla(174, 90%, 31%, 0.30);
-  box-shadow: 0 8px 32px hsla(174, 90%, 31%, 0.10), 0 2px 8px hsla(0, 0%, 0%, 0.06);
-}
-.dark .aria-pill-inner:hover { border-color: hsla(174, 90%, 31%, 0.35); }
-.aria-pill-inner:focus-within {
-  border-color: hsla(174, 90%, 31%, 0.50);
-  box-shadow: 0 0 0 4px hsla(174, 90%, 31%, 0.12), 0 8px 32px hsla(174, 90%, 31%, 0.12);
-}
-.aria-pill--listening .aria-pill-inner {
-  border-color: transparent;
+.aria-jarvis-pill--listening {
+  border-color: hsla(174, 90%, 31%, 0.8);
+  box-shadow:
+    0 8px 40px hsla(0, 0%, 0%, 0.50),
+    0 0 40px hsla(174, 90%, 31%, 0.25),
+    0 0 0 1px hsla(174, 90%, 31%, 0.20);
   transform: scale(1.02);
 }
-.aria-pill--active .aria-pill-inner {
-  border-radius: 0 0 28px 28px;
-  border-top-color: transparent;
-}
 
-/* Slim variant inner */
-.aria-pill--slim .aria-pill-inner {
-  border-radius: 16px;
-  padding: 0 12px 0 16px;
-  gap: 8px;
-}
-
-/* Sparkles icon */
-.aria-pill-icon {
-  width: 18px;
-  height: 18px;
-  color: #0A9396;
-  flex-shrink: 0;
-  animation: ariaIconPulse 3s ease-in-out infinite;
-}
-.aria-pill-icon--listening {
-  color: hsl(var(--destructive));
-  animation: none;
-}
-@keyframes ariaIconPulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
-}
-
-/* Separator */
-.aria-pill-sep {
-  width: 1px;
+/* JARVIS icon */
+.aria-jarvis-icon {
+  width: 20px;
   height: 20px;
-  background: hsla(0, 0%, 0%, 0.08);
+  color: #0BC2C6;
   flex-shrink: 0;
+  filter: drop-shadow(0 0 6px hsla(180, 80%, 45%, 0.6));
+  animation: ariaJarvisGlow 3s ease-in-out infinite;
 }
-.dark .aria-pill-sep { background: hsla(0, 0%, 100%, 0.10); }
+.aria-jarvis-pill--processing .aria-jarvis-icon {
+  animation: ariaJarvisSpin 1.5s linear infinite, ariaJarvisGlow 1s ease-in-out infinite;
+}
+@keyframes ariaJarvisGlow {
+  0%, 100% { filter: drop-shadow(0 0 4px hsla(180, 80%, 45%, 0.4)); opacity: 0.7; }
+  50% { filter: drop-shadow(0 0 8px hsla(180, 80%, 45%, 0.8)); opacity: 1; }
+}
+@keyframes ariaJarvisSpin {
+  to { transform: rotate(360deg); }
+}
 
-/* Input */
-.aria-search-input {
+/* JARVIS input */
+.aria-jarvis-input {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 14px;
   font-weight: 400;
-  letter-spacing: -0.01em;
-  caret-color: #0A9396;
+  color: hsla(0, 0%, 100%, 0.85);
+  caret-color: #0BC2C6;
 }
-.aria-search-input::placeholder {
-  color: hsl(var(--muted-foreground));
-  font-weight: 400;
-}
-.dark .aria-search-input::placeholder {
+.aria-jarvis-input::placeholder {
   color: hsla(0, 0%, 100%, 0.35);
+  font-size: 14px;
 }
 
-/* Mic button */
-.aria-mic-btn {
-  border-radius: 10px;
+/* JARVIS mic button */
+.aria-jarvis-mic {
+  width: 46px;
+  height: 46px;
+  border-radius: 23px;
+  background: linear-gradient(135deg, #0A9396, #0BC2C6);
+  box-shadow: 0 2px 16px hsla(174, 90%, 31%, 0.50);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: hsl(var(--muted-foreground));
-  background: transparent;
+  color: white;
   border: none;
-  transition: background 150ms, color 150ms;
-  flex-shrink: 0;
   cursor: pointer;
+  flex-shrink: 0;
+  margin: 7px;
+  transition: transform 200ms ease, box-shadow 200ms ease;
 }
-.aria-mic-btn:hover {
-  background: hsla(174, 90%, 31%, 0.10);
-  color: #0A9396;
+.aria-jarvis-mic:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 24px hsla(174, 90%, 31%, 0.7);
 }
-.aria-mic-btn--active {
-  background: hsla(4, 90%, 58%, 0.12);
-  color: hsl(var(--destructive));
+.aria-jarvis-mic--active {
+  background: #FF3B30;
+  box-shadow: 0 2px 16px hsla(4, 90%, 58%, 0.50);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
-/* Send button */
-.aria-send-btn {
+/* JARVIS send */
+.aria-jarvis-send {
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
+  background: linear-gradient(135deg, #0A9396, #0BC2C6);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: hsl(var(--primary-foreground));
-  background: linear-gradient(135deg, #0A9396, #0BC2C6);
-  transition: transform 150ms;
-  flex-shrink: 0;
-  cursor: pointer;
+  color: white;
   border: none;
+  cursor: pointer;
+  flex-shrink: 0;
   animation: ariaSendIn 150ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes ariaSendIn {
   from { transform: scale(0); }
   to { transform: scale(1); }
 }
-.aria-send-btn:hover { transform: scale(1.08); }
-.aria-send-btn:active { transform: scale(0.95); }
+.aria-jarvis-send:hover { transform: scale(1.08); }
 
 /* Waveform */
 .aria-waveform {
@@ -620,7 +540,7 @@
 .aria-waveform .bar {
   width: 3px;
   border-radius: 2px;
-  background: hsl(var(--primary));
+  background: #0BC2C6;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   animation-direction: alternate;
@@ -646,81 +566,129 @@
   75% { content: '...'; }
 }
 
-/* Placeholder fade */
-.placeholder-fade-in::placeholder { transition: opacity 0.4s ease; opacity: 1; }
-.placeholder-fade-out::placeholder { transition: opacity 0.4s ease; opacity: 0; }
-
-/* ═══ ARIA Chat Panel — Glass Style ═══ */
-.aria-chat-panel {
+/* ═══ ARIA JARVIS Chat Panel ═══ */
+.aria-jarvis-panel {
   position: fixed;
-  z-index: 9998;
+  bottom: calc(20px + 60px + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 380px;
+  max-width: calc(100vw - 48px);
+  max-height: 60vh;
+  z-index: 8999;
   display: flex;
   flex-direction: column;
-  background: hsla(0, 0%, 100%, 0.85);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
-  border: 1px solid hsla(0, 0%, 100%, 0.15);
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -12px 60px hsla(0, 0%, 0%, 0.12);
+  background: hsla(240, 20%, 6%, 0.92);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid hsla(174, 90%, 31%, 0.25);
+  border-radius: 20px;
+  box-shadow:
+    0 -4px 40px hsla(0, 0%, 0%, 0.40),
+    0 0 0 1px hsla(174, 90%, 31%, 0.08);
   overflow: hidden;
-  animation: slideUpFromBar 280ms cubic-bezier(0.32, 0.72, 0, 1);
-  max-height: 60vh;
+  animation: ariaExpand 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: bottom center;
 }
-.dark .aria-chat-panel {
-  background: hsla(240, 4%, 11%, 0.90);
-  border-color: hsla(0, 0%, 100%, 0.10);
-  box-shadow: 0 -12px 60px hsla(0, 0%, 0%, 0.40);
-}
-.aria-chat-panel--overview {
-  bottom: 64px;
-  left: var(--sidebar-width, 240px);
-  right: 0;
-}
-.aria-chat-panel--bar {
-  bottom: 52px;
-  left: var(--sidebar-width, 240px);
-  right: 0;
-}
-[data-sidebar="collapsed"] ~ .aria-chat-panel--overview,
-[data-sidebar="collapsed"] ~ .aria-chat-panel--bar {
-  left: 56px;
+@keyframes ariaExpand {
+  from { transform: translateX(-50%) scaleY(0.1) scaleX(0.8); opacity: 0; }
+  to { transform: translateX(-50%) scaleY(1) scaleX(1); opacity: 1; }
 }
 @media (max-width: 768px) {
-  .aria-chat-panel--overview,
-  .aria-chat-panel--bar {
-    left: 0;
+  .aria-jarvis-panel {
+    width: calc(100vw - 24px);
+    bottom: calc(20px + 60px + 8px);
   }
 }
 
-@keyframes slideUpFromBar {
-  from { transform: translateY(20px); opacity: 0; max-height: 0; }
-  to { transform: translateY(0); opacity: 1; max-height: 60vh; }
-}
-
-/* ═══ ARIA Bottom Bar — persistent on ALL pages ═══ */
-.aria-bottom-bar {
-  position: fixed;
-  bottom: 0;
-  left: var(--sidebar-width, 240px);
-  right: 0;
-  height: 52px;
-  z-index: 200;
+/* Panel header */
+.aria-jarvis-panel-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
-  transition: left 200ms ease;
+  gap: 10px;
+  padding: 0 14px;
+  height: 40px;
+  background: hsla(0, 0%, 100%, 0.03);
+  border-bottom: 1px solid hsla(0, 0%, 100%, 0.06);
+  flex-shrink: 0;
 }
-/* Sidebar collapsed */
-[data-sidebar="collapsed"] ~ .aria-bottom-bar,
-.aria-bottom-bar.sidebar-collapsed {
-  left: 56px;
+.aria-jarvis-header-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 150ms;
 }
-@media (max-width: 768px) {
-  .aria-bottom-bar { left: 0; bottom: 64px; }
+.aria-jarvis-header-btn:hover {
+  background: hsla(0, 0%, 100%, 0.06);
 }
 
-/* CSS @property for angle */
+/* Assistant message bubble */
+.aria-jarvis-msg-assistant {
+  background: hsla(0, 0%, 100%, 0.06);
+  border: 1px solid hsla(0, 0%, 100%, 0.08);
+  color: hsla(0, 0%, 100%, 0.85);
+}
+
+/* Action buttons */
+.aria-jarvis-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 8px;
+  background: hsla(0, 0%, 100%, 0.06);
+  border: 1px solid hsla(174, 90%, 31%, 0.30);
+  color: hsla(0, 0%, 100%, 0.80);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.aria-jarvis-action-btn:hover {
+  background: hsla(174, 90%, 31%, 0.15);
+  border-color: hsla(174, 90%, 31%, 0.6);
+  color: #0BC2C6;
+}
+.aria-jarvis-action-btn--primary {
+  background: hsla(174, 90%, 31%, 0.20);
+  border-color: #0A9396;
+  color: #0BC2C6;
+}
+.aria-jarvis-action-btn--done {
+  background: hsla(174, 90%, 31%, 0.10);
+  color: #0BC2C6;
+  cursor: default;
+}
+
+/* ARIA SVG avatar glow */
+.aria-avatar-svg {
+  filter: drop-shadow(0 0 4px hsla(180, 80%, 45%, 0.5));
+}
+
+/* ═══ ARIA Bottom Bar ═══ */
+.aria-bottom-bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 768px) {
+  .aria-bottom-bar {
+    bottom: 80px;
+  }
+}
+
+/* CSS @property for glow angle */
 @property --glow-angle {
   syntax: '<angle>';
   initial-value: 0deg;
