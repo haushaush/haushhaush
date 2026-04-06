@@ -56,6 +56,32 @@ async function fetchMemories(): Promise<Array<{ memory_type: string; key: string
   return (data as any[]) || [];
 }
 
+async function fetchRelevantKnowledge(pathname: string): Promise<Array<{ title: string; content: string; category: string; priority: number; source_type: string }>> {
+  const { data } = await (supabase.from('aria_knowledge' as any) as any)
+    .select('title, content, category, priority, source_type, tags')
+    .eq('is_active', true)
+    .order('priority', { ascending: false })
+    .limit(15);
+  if (!data || data.length === 0) return [];
+
+  const pageCategories: Record<string, string> = {
+    '/sales': 'Sales & Vertrieb',
+    '/finanzen': 'Finanzen',
+    '/fulfillment': 'Fulfillment & Ads',
+    '/kunden': 'Kunden & CRM',
+    '/hr': 'Agentur & Team',
+  };
+  const matchedCategory = Object.entries(pageCategories).find(([path]) => pathname.startsWith(path))?.[1];
+
+  const scored = (data as any[]).map((entry: any) => {
+    let score = entry.priority || 5;
+    if (matchedCategory && entry.category === matchedCategory) score += 3;
+    return { ...entry, score };
+  });
+
+  return scored.sort((a: any, b: any) => b.score - a.score).slice(0, 8);
+}
+
 async function saveLearn(learn: { type: string; key: string; value: string }, userId?: string) {
   await (supabase.from('aria_memory' as any) as any).insert({
     memory_type: learn.type, key: learn.key, value: learn.value, created_by: userId || null,
