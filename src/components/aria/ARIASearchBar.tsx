@@ -1,88 +1,21 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Sparkles, Mic, MicOff, ArrowUp } from 'lucide-react';
 import { useARIA } from '@/contexts/ARIAContext';
-import { useProfile } from '@/hooks/useProfile';
-import { useARIAData } from '@/hooks/useARIAData';
 import { toast } from 'sonner';
-
-const PLACEHOLDERS_FULL = [
-  'Frag ARIA etwas...',
-  'Kunden, Aufgaben, KPIs...',
-  'Navigieren, analysieren, automatisieren...',
-];
-
-const ROUTE_PLACEHOLDERS: Record<string, string[]> = {
-  '/kunden': ['Frag ARIA nach einem Kunden...', 'Ampelstatus prüfen...', 'Kundendaten abfragen...'],
-  '/sales': ['KPIs abfragen, Calls loggen...', 'Sales Performance checken...', 'Abschlüsse diese Woche?'],
-  '/finanzen': ['Rechnungen, MRR, Cashflow...', 'Offene Rechnungen prüfen...', 'ARR berechnen...'],
-  '/hr': ['Team, Verträge, Akademie...', 'Urlaubsanträge prüfen...', 'Gehälter übersicht...'],
-  '/projekte': ['Aufgaben, Projekte, Deadlines...', 'Überfällige Aufgaben?', 'Projektfortschritt prüfen...'],
-};
-
-function getRoutePlaceholders(path: string): string[] {
-  for (const [route, placeholders] of Object.entries(ROUTE_PLACEHOLDERS)) {
-    if (path.startsWith(route)) return placeholders;
-  }
-  return ['Frag ARIA etwas... (⌘J)', 'Wie kann ich helfen?', 'Aufgabe erstellen, navigieren...'];
-}
-
-function getGreeting(name: string): string {
-  const h = new Date().getHours();
-  if (h < 12) return `Guten Morgen ${name}! Was steht heute an?`;
-  if (h < 18) return `Hallo ${name}! Wie kann ich helfen?`;
-  return `Guten Abend ${name}! Noch was zu tun?`;
-}
-
-function Waveform() {
-  return (
-    <div className="aria-waveform">
-      {[1, 2, 3, 4, 5].map(i => (
-        <div key={i} className={`bar bar-${i}`} />
-      ))}
-    </div>
-  );
-}
 
 interface ARIASearchBarProps {
   onSend: (text: string) => void;
   input: string;
   setInput: (v: string) => void;
-  variant?: 'full' | 'slim';
-  routePath?: string;
 }
 
-export function ARIASearchBar({ onSend, input, setInput, variant = 'full', routePath = '/' }: ARIASearchBarProps) {
+export function ARIASearchBar({ onSend, input, setInput }: ARIASearchBarProps) {
   const { isOpen, openARIA, status, setStatus, isLoading } = useARIA();
-  const { displayName } = useProfile();
-  const ariaData = useARIAData();
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
   const [listening, setListening] = useState(false);
-  const [placeholderIdx, setPlaceholderIdx] = useState(0);
-  const [placeholderVisible, setPlaceholderVisible] = useState(true);
 
-  const isFull = variant === 'full';
-
-  // Cycle placeholders
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPlaceholderVisible(false);
-      setTimeout(() => {
-        setPlaceholderIdx(i => (i + 1) % (isFull ? PLACEHOLDERS_FULL.length : getRoutePlaceholders(routePath).length));
-        setPlaceholderVisible(true);
-      }, 400);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [isFull, routePath]);
-
-  // Proactive suggestion
-  const proactiveSuggestion = ariaData && ariaData.overdueInvoicesCount > 0
-    ? `💶 ${ariaData.overdueInvoicesCount} überfällige Rechnung${ariaData.overdueInvoicesCount > 1 ? 'en' : ''} — soll ich helfen?`
-    : null;
-
-  const currentPlaceholder = isFull
-    ? (proactiveSuggestion || (placeholderIdx === 0 ? getGreeting(displayName) : PLACEHOLDERS_FULL[placeholderIdx]))
-    : (proactiveSuggestion || getRoutePlaceholders(routePath)[placeholderIdx % getRoutePlaceholders(routePath).length]);
+  const isProcessing = status === 'processing' || status === 'executing';
 
   const handleSubmit = () => {
     const text = input.trim();
@@ -132,78 +65,56 @@ export function ARIASearchBar({ onSend, input, setInput, variant = 'full', route
     if (!isOpen) openARIA();
   };
 
-  const isProcessing = status === 'processing' || status === 'executing';
-
   return (
-    <div className={`aria-pill ${isFull ? 'aria-pill--full' : 'aria-pill--slim'} ${isOpen ? 'aria-pill--active' : ''} ${listening ? 'aria-pill--listening' : ''} ${isProcessing ? 'aria-pill--processing' : ''}`}>
-      {/* Animated blob behind pill (full variant only) */}
-      {isFull && <div className="aria-blob" aria-hidden="true" />}
+    <div className={`aria-jarvis-pill ${listening ? 'aria-jarvis-pill--listening' : ''} ${isProcessing ? 'aria-jarvis-pill--processing' : ''}`}>
+      {/* Sparkles icon */}
+      <Sparkles className="aria-jarvis-icon" />
 
-      {/* Animated gradient border when listening */}
-      {listening && <div className="aria-pill-glow-border" aria-hidden="true" />}
-
-      {/* Inner content */}
-      <div className="aria-pill-inner">
-        {/* Sparkles icon */}
-        <Sparkles className={`aria-pill-icon ${listening ? 'aria-pill-icon--listening' : ''}`} />
-
-        {/* Input area */}
-        <div className="flex-1 min-w-0 flex items-center h-full">
-          {listening ? (
-            <div className="flex items-center gap-3 h-full">
-              <Waveform />
-              {input && <span className="text-sm text-foreground truncate">{input}</span>}
+      {/* Input / waveform / processing */}
+      <div className="flex-1 min-w-0 flex items-center h-full">
+        {listening ? (
+          <div className="flex items-center gap-3 h-full">
+            <div className="aria-waveform">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className={`bar bar-${i}`} />
+              ))}
             </div>
-          ) : isProcessing ? (
-            <div className="flex items-center h-full">
-              <span className="text-sm text-muted-foreground aria-dots">Denke nach</span>
-            </div>
-          ) : (
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-              onFocus={handleFocus}
-              placeholder={currentPlaceholder}
-              className={`w-full h-full bg-transparent text-foreground outline-none aria-search-input ${!placeholderVisible ? 'placeholder-fade-out' : 'placeholder-fade-in'}`}
-              style={{ fontSize: isFull ? 15 : 14 }}
-            />
-          )}
-        </div>
-
-        {/* Separator */}
-        <div className="aria-pill-sep" />
-
-        {/* Mic */}
-        <button
-          onClick={toggleListening}
-          className={`aria-mic-btn ${listening ? 'aria-mic-btn--active' : ''}`}
-          style={{ width: 40, height: 40 }}
-          aria-label={listening ? 'Aufnahme stoppen' : 'Spracheingabe'}
-        >
-          {listening ? <MicOff className="h-[18px] w-[18px]" /> : <Mic className="h-[18px] w-[18px]" />}
-        </button>
-
-        {/* ⌘ hint */}
-        {isFull ? (
-          <kbd className="hidden sm:inline-flex items-center text-[11px] font-medium text-muted-foreground bg-background border border-border rounded-[7px] px-[7px] py-[3px] tracking-wide mr-1">⌘K</kbd>
+            {input && <span className="text-sm text-white/80 truncate">{input}</span>}
+          </div>
+        ) : isProcessing ? (
+          <span className="text-sm text-white/40 aria-dots">Denke nach</span>
         ) : (
-          <kbd className="hidden sm:inline-flex items-center text-[11px] font-medium text-muted-foreground bg-background border border-border rounded-[7px] px-[7px] py-[3px] tracking-wide">⌘J</kbd>
-        )}
-
-        {/* Send */}
-        {input.trim() && (
-          <button
-            onClick={handleSubmit}
-            disabled={isLoading}
-            className="aria-send-btn"
-            style={{ width: 40, height: 40 }}
-          >
-            <ArrowUp className="h-4 w-4" />
-          </button>
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
+            onFocus={handleFocus}
+            placeholder="Wie kann ich helfen?"
+            className="aria-jarvis-input"
+          />
         )}
       </div>
+
+      {/* Send button (only when typing) */}
+      {input.trim() && (
+        <button
+          onClick={handleSubmit}
+          disabled={isLoading}
+          className="aria-jarvis-send"
+        >
+          <ArrowUp className="h-[18px] w-[18px]" />
+        </button>
+      )}
+
+      {/* Mic button */}
+      <button
+        onClick={toggleListening}
+        className={`aria-jarvis-mic ${listening ? 'aria-jarvis-mic--active' : ''}`}
+        aria-label={listening ? 'Aufnahme stoppen' : 'Spracheingabe'}
+      >
+        {listening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+      </button>
     </div>
   );
 }

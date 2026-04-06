@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
@@ -12,7 +12,7 @@ import { ARIASearchBar } from '@/components/aria/ARIASearchBar';
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const isMobile = useIsMobile();
-  const location = useLocation();
+  
   const [ariaInput, setAriaInput] = useState('');
 
   const handleAriaSend = (text: string) => {
@@ -56,8 +56,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             onSend={handleAriaSend}
             input={ariaInput}
             setInput={setAriaInput}
-            variant="slim"
-            routePath={location.pathname}
           />
         </div>
       </div>
