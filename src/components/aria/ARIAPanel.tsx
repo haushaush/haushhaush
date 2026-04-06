@@ -290,7 +290,7 @@ interface MessageMeta {
 }
 
 export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?: () => void } = {}) {
-  const { isOpen, closeARIA, messages, addMessage, updateLastAssistant, isLoading, setIsLoading, status, setStatus } = useARIA();
+  const { isOpen, closeARIA, messages, addMessage, updateLastAssistant, isLoading, setIsLoading, status, setStatus, registerActionHandler, executeAction } = useARIA();
   const [input, setInput] = useState('');
   const isMutedRef = useRef(localStorage.getItem('aria-muted') === 'true');
   const [, forceRender] = useState(0);
