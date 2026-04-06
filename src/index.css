@@ -417,6 +417,11 @@
   padding: 0 10px 0 22px;
   transition: border-color 200ms ease, box-shadow 200ms ease;
 }
+:root:not(.dark) .aria-jarvis-pill {
+  background: hsla(240, 10%, 96%, 0.90);
+  border-color: hsla(174, 90%, 31%, 0.25);
+  box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.12), 0 0 0 1px hsla(174, 90%, 31%, 0.08);
+}
 .aria-jarvis-pill:hover {
   border-color: hsla(174, 90%, 31%, 0.6);
   box-shadow:
@@ -424,6 +429,9 @@
     0 0 30px hsla(174, 90%, 31%, 0.15),
     0 0 0 1px hsla(174, 90%, 31%, 0.10),
     inset 0 1px 0 hsla(0, 0%, 100%, 0.06);
+}
+:root:not(.dark) .aria-jarvis-pill:hover {
+  box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.15), 0 0 20px hsla(174, 90%, 31%, 0.10);
 }
 .aria-jarvis-pill--listening {
   border-color: hsla(174, 90%, 31%, 0.8);
@@ -479,6 +487,12 @@
 .aria-jarvis-input::placeholder {
   color: hsla(0, 0%, 100%, 0.35);
   font-size: 14px;
+}
+:root:not(.dark) .aria-jarvis-input {
+  color: hsl(var(--foreground));
+}
+:root:not(.dark) .aria-jarvis-input::placeholder {
+  color: hsla(0, 0%, 0%, 0.35);
 }
 
 /* JARVIS dynamic right button */
@@ -576,6 +590,11 @@
   animation: ariaExpand 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
   transform-origin: bottom center;
 }
+:root:not(.dark) .aria-jarvis-panel {
+  background: hsla(0, 0%, 100%, 0.95);
+  border-color: hsla(174, 90%, 31%, 0.15);
+  box-shadow: 0 -8px 40px hsla(0, 0%, 0%, 0.10), 0 0 0 1px hsla(174, 90%, 31%, 0.06);
+}
 @keyframes ariaExpand {
   from { transform: translateX(-50%) scaleY(0.1) scaleX(0.8); opacity: 0; }
   to { transform: translateX(-50%) scaleY(1) scaleX(1); opacity: 1; }
@@ -599,6 +618,13 @@
   border-bottom: 1px solid hsla(0, 0%, 100%, 0.08);
   flex-shrink: 0;
 }
+:root:not(.dark) .aria-jarvis-panel-header {
+  background: hsla(0, 0%, 0%, 0.02);
+  border-bottom-color: hsla(0, 0%, 0%, 0.06);
+}
+:root:not(.dark) .aria-jarvis-panel-header span {
+  color: hsl(var(--foreground));
+}
 .aria-jarvis-header-btn {
   width: 28px;
   height: 28px;
@@ -614,6 +640,9 @@
 }
 .aria-jarvis-header-btn:hover {
   background: hsla(0, 0%, 100%, 0.06);
+}
+:root:not(.dark) .aria-jarvis-header-btn:hover {
+  background: hsla(0, 0%, 0%, 0.04);
 }
 .aria-jarvis-header-btn:focus { outline: none; box-shadow: none; }
 
@@ -653,6 +682,11 @@
   border: 1px solid hsla(0, 0%, 100%, 0.08);
   color: hsla(0, 0%, 100%, 0.85);
 }
+:root:not(.dark) .aria-jarvis-msg-assistant {
+  background: hsla(0, 0%, 0%, 0.04);
+  border-color: hsla(0, 0%, 0%, 0.06);
+  color: hsl(var(--foreground));
+}
 
 /* Action buttons */
 .aria-jarvis-action-btn {
@@ -669,15 +703,26 @@
   cursor: pointer;
   transition: all 150ms ease;
 }
+:root:not(.dark) .aria-jarvis-action-btn {
+  background: hsla(174, 90%, 31%, 0.06);
+  border-color: hsla(174, 90%, 31%, 0.25);
+  color: #0A9396;
+}
 .aria-jarvis-action-btn:hover {
   background: hsla(174, 90%, 31%, 0.15);
   border-color: hsla(174, 90%, 31%, 0.6);
   color: #0BC2C6;
 }
+:root:not(.dark) .aria-jarvis-action-btn:hover {
+  color: #0A9396;
+}
 .aria-jarvis-action-btn--primary {
   background: hsla(174, 90%, 31%, 0.20);
   border-color: #0A9396;
   color: #0BC2C6;
+}
+:root:not(.dark) .aria-jarvis-action-btn--primary {
+  color: #0A9396;
 }
 .aria-jarvis-action-btn--done {
   background: hsla(174, 90%, 31%, 0.10);
@@ -709,6 +754,3 @@
   initial-value: 0deg;
   inherits: false;
 }
-  inherits: false;
-}
-
