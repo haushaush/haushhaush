@@ -544,20 +544,31 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
         }
       }
 
-      const actionMatch = assistantText.match(/\{"action"\s*:\s*"([^"]+)"\s*,\s*"params"\s*:\s*(\{[^}]+\})\}/);
-      if (actionMatch) {
+      // Auto-execute inline action JSON from response
+      const inlineActionRegex = /\{"action"\s*:\s*"([^"]+)"\s*,\s*"params"\s*:\s*(\{[^}]*\})\}/g;
+      let inlineMatch;
+      const executedResults: string[] = [];
+      const textForCleaning = assistantText;
+      while ((inlineMatch = inlineActionRegex.exec(textForCleaning)) !== null) {
         try {
-          const result = await executeAction(actionMatch[1], JSON.parse(actionMatch[2]));
-          const cleanText = assistantText.replace(actionMatch[0], '').trim();
-          updateLastAssistant((cleanText ? cleanText + '\n\n' : '') + result);
-          assistantText = cleanText + '\n\n' + result;
+          setStatus('executing');
+          const result = await executeAction(inlineMatch[1], JSON.parse(inlineMatch[2]));
+          executedResults.push(result);
         } catch {}
       }
 
       const { cleanText, actions, learns } = parseResponse(assistantText);
-      if (cleanText !== assistantText) {
-        updateLastAssistant(cleanText);
-        assistantText = cleanText;
+      // Remove inline action JSON from display text
+      let displayText = cleanText.replace(/\{"action"\s*:\s*"[^"]+"\s*,\s*"params"\s*:\s*\{[^}]*\}\}/g, '').trim();
+      
+      // Append executed action results
+      if (executedResults.length > 0) {
+        displayText = displayText + '\n\n' + executedResults.join('\n');
+      }
+      
+      if (displayText !== assistantText) {
+        updateLastAssistant(displayText);
+        assistantText = displayText;
       }
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -571,10 +582,10 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
       }, 100);
 
       if (session?.user?.id) {
-        await saveInteraction(session.user.id, msg, cleanText, actions.map(a => ({ action: a.action, params: a.params })));
+        await saveInteraction(session.user.id, msg, displayText, actions.map(a => ({ action: a.action, params: a.params })));
       }
 
-      speak(assistantText);
+      speak(displayText);
     } catch (e: any) {
       if (e.name !== 'AbortError') toast.error('ARIA Fehler: ' + e.message);
     } finally {
