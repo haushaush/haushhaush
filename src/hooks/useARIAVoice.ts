@@ -105,7 +105,7 @@ export function useARIAVoice(onTranscript: (text: string) => void) {
         document.documentElement.classList.add('aria-listening');
       };
 
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
+      recognition.onresult = (event: any) => {
         let final = '';
         let interim = '';
         for (let i = 0; i < event.results.length; i++) {
