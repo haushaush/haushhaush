@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { HardDrive, Zap, Globe, Bell, Palette, Users, CheckCircle, XCircle, Hash, RefreshCw, X, Check, Search } from 'lucide-react';
+import { HardDrive, Zap, Globe, Bell, Palette, Users, CheckCircle, XCircle, Hash, RefreshCw, X, Check, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { IntegrationCard } from '@/components/integrations/IntegrationCard';
 import { IntegrationStatusBar } from '@/components/integrations/IntegrationStatusBar';
