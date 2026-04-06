@@ -342,3 +342,10 @@
 .sortable-block > div > * .drag-handle {
   display: none !important;
 }
+
+/* ARIA Glow Animation */
+@keyframes ariaGlow {
+  0%   { background-position: 100% 100%, 0% 50%; }
+  50%  { background-position: 100% 100%, 100% 50%; }
+  100% { background-position: 100% 100%, 0% 50%; }
+}
