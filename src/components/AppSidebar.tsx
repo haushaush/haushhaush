@@ -354,7 +354,36 @@ export function AppSidebar() {
           </Tooltip>
         ) : nachrichtenLink}
 
+        {/* Bug Report */}
         {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setBugModalOpen(true)}
+                className={cn(
+                  'sidebar-nav-item flex items-center justify-center rounded-lg text-sm transition-colors min-h-[40px] px-0 py-2.5 w-full',
+                  bugModalOpen ? 'bg-destructive/10 text-destructive' : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
+                )}
+              >
+                <Bug className="h-5 w-5 shrink-0" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">Fehler melden</TooltipContent>
+          </Tooltip>
+        ) : (
+          <button
+            onClick={() => setBugModalOpen(true)}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[40px] w-full text-left',
+              bugModalOpen ? 'bg-destructive/10 text-destructive' : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
+            )}
+          >
+            <Bug className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <span className="truncate">Fehler melden</span>
+          </button>
+        )}
+
+
           <Tooltip>
             <TooltipTrigger asChild>
               <NavLink to="/einstellungen" className={cn(
