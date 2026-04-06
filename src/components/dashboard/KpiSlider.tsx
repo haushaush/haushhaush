@@ -277,7 +277,7 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
   const SLIDE_LABELS = slides.map(s => s.label);
 
   return (
-    <div className="relative px-7">
+    <div className="relative">
       {/* Slide Label Pills */}
       <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
         {SLIDE_LABELS.map((label, i) => (
