@@ -210,7 +210,7 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
   const pageName = PAGE_NAMES[location.pathname] || location.pathname;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [messages]);
 
   useEffect(() => {

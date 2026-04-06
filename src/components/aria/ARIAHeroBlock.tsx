@@ -39,9 +39,16 @@ export function ARIAHeroBlock({ onSend, input, setInput }: ARIAHeroBlockProps) {
   const handleSubmit = () => {
     const text = input.trim();
     if (!text) return;
+    const savedY = window.scrollY;
+    const savedX = window.scrollX;
     if (!isOpen) openARIA();
     onSend(text);
     setInput('');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: savedY, left: savedX, behavior: 'instant' as ScrollBehavior });
+      });
+    });
   };
 
   const isMac = typeof navigator !== 'undefined' && navigator.platform?.toUpperCase().includes('MAC');
@@ -69,10 +76,13 @@ export function ARIAHeroBlock({ onSend, input, setInput }: ARIAHeroBlockProps) {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-            
+            onFocus={() => {
+              const y = window.scrollY;
+              requestAnimationFrame(() => window.scrollTo(0, y));
+            }}
             placeholder="Wie kann ich helfen?"
             className="w-full bg-transparent border-none outline-none text-[15px] text-foreground placeholder:text-muted-foreground"
-            style={{ minWidth: 0 }}
+            style={{ minWidth: 0, scrollMargin: 0 }}
           />
         )}
       </div>
