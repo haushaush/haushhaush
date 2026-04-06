@@ -218,6 +218,13 @@ ${memoryBlock}
 Wir sind bereits im Gespräch seit ${messageCount} Nachrichten.
 ${lastMessage ? `Zuletzt besprochen: "${lastMessage.slice(0, 100)}"` : 'Gespräch gerade gestartet.'}
 
+${knowledge && knowledge.length > 0 ? `═══ WISSENSBANK (manuell eingepflegte Daten) ═══
+${knowledge.map(k => `[${k.category} | Prio ${k.priority} | ${k.source_type}] ${k.title}:\n${k.content.slice(0, 500)}`).join('\n\n---\n\n')}
+
+Nutze dieses Wissen bei relevanten Anfragen.
+Skripte und Einwände: nutze sie wörtlich wenn nach Formulierungen gefragt wird.
+SOPs: folge den Schritten exakt wenn nach Prozessen gefragt wird.` : ''}
+
 ═══ VERFÜGBARE AKTIONEN ═══
 - navigate: {"action":"navigate","params":{"path":"/kunden"}}
 - search_client: {"action":"search_client","params":{"name":"..."}}
