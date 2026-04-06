@@ -3,6 +3,7 @@ import { Sparkles, X, Mic, MicOff, ArrowUp, Volume2, VolumeX } from 'lucide-reac
 import { useARIA } from '@/contexts/ARIAContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
+import { useARIAData } from '@/hooks/useARIAData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
@@ -29,6 +30,57 @@ const SUGGESTIONS = [
   '🔍 Suche Kunde Kehlenbach',
 ];
 
+const fmt = (n: number) => n.toLocaleString('de-DE');
+
+function buildSystemPrompt(ariaData: ReturnType<typeof useARIAData>, displayName: string, pageName: string): string {
+  if (!ariaData) return 'Du bist ARIA, der KI-Assistent von Agency Hub. Daten werden gerade geladen...';
+
+  return `Du bist ARIA, der KI-Assistent von Agency Hub — dem internen Dashboard von Viral Connect GmbH & Haush Haush Digital UG.
+
+Aktueller Nutzer: ${displayName}
+Aktuelle Seite: ${pageName}
+Uhrzeit: ${new Date().toLocaleString('de-DE')}
+
+═══ LIVE DATEN (gerade aus der Datenbank) ═══
+
+KUNDEN:
+- Aktive Kunden: ${ariaData.activeDealsCount}
+- Kunden mit Ampel ROT: ${ariaData.redAmpelCount} (${ariaData.redAmpelClients || 'keine'})
+- Kundenliste: ${JSON.stringify(ariaData.allClients)}
+
+FINANZEN:
+- MRR: €${fmt(ariaData.mrr)}
+- ARR: €${fmt(ariaData.mrr * 12)}
+- Offene Rechnungen: ${ariaData.openInvoicesCount} Stück = €${fmt(ariaData.openInvoicesTotal)}
+- Überfällige Rechnungen: ${ariaData.overdueInvoicesCount} Stück = €${fmt(ariaData.overdueInvoicesTotal)}
+- Rechnungsliste: ${JSON.stringify(ariaData.invoicesList)}
+
+AUFGABEN:
+- Offene Aufgaben: ${ariaData.openTasksCount}
+- Überfällige Aufgaben: ${ariaData.overdueTasksCount}
+- Aufgabenliste: ${JSON.stringify(ariaData.allTasks)}
+
+SALES (diese Woche):
+- Calls: ${ariaData.thisWeekCalls}
+- Abschlüsse: ${ariaData.thisWeekCloses}
+- Revenue: €${fmt(ariaData.thisWeekRevenue)}
+
+═══ VERFÜGBARE AKTIONEN ═══
+Du kannst Aktionen ausführen indem du JSON zurückgibst:
+- navigate: {"action":"navigate","params":{"path":"/kunden"}}
+- search_client: {"action":"search_client","params":{"name":"Kehlenbach"}}
+- show_kpi: {"action":"show_kpi","params":{"section":"sales"}}
+- create_task: {"action":"create_task","params":{"title":"...","due_date":"..."}}
+- mark_task_done: {"action":"mark_task_done","params":{"task_id":"..."}}
+- update_ampel: {"action":"update_ampel","params":{"client_id":"...","status":"Grün|Gelb|Rot"}}
+
+VERHALTEN:
+- Antworte immer auf Deutsch, kurz und direkt
+- Du hast ECHTE Daten — nutze sie. Nie sagen "ich habe keinen Zugriff".
+- Wenn der Nutzer nach einem Kunden fragt, suche in der Kundenliste (case-insensitive).
+- Formatiere Antworten mit Markdown wenn sinnvoll.`;
+}
+
 export function ARIAPanel() {
   const { isOpen, closeARIA, messages, addMessage, updateLastAssistant, isLoading, setIsLoading, status, setStatus } = useARIA();
   const [input, setInput] = useState('');
@@ -40,8 +92,10 @@ export function ARIAPanel() {
   const location = useLocation();
   const navigate = useNavigate();
   const { displayName } = useProfile();
+  const ariaData = useARIAData();
 
   const pageName = PAGE_NAMES[location.pathname] || location.pathname;
+  const dataLoaded = ariaData !== null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -63,13 +117,21 @@ export function ARIAPanel() {
           navigate(params.path);
           return `✓ Navigiert zu ${params.path}`;
         case 'search_client': {
+          if (ariaData) {
+            const found = ariaData.allClients.filter(c =>
+              c.name.toLowerCase().includes((params.name || '').toLowerCase())
+            );
+            if (found.length > 0) {
+              return `Gefunden:\n${found.map(c => `• **${c.name}** — ${c.art || '–'} · ${c.ampel || '–'} · €${fmt(c.wert || 0)}`).join('\n')}`;
+            }
+          }
           const { data } = await supabase
             .from('close_deals')
             .select('id, client_name, art, wert_eur, ampelstatus')
             .ilike('client_name', `%${params.name}%`)
             .limit(5);
           if (!data?.length) return `Keine Kunden gefunden für "${params.name}"`;
-          return `Gefunden:\n${data.map(c => `• **${c.client_name}** — ${c.art || '–'} · ${c.ampelstatus || '–'} · €${(c.wert_eur || 0).toLocaleString('de-DE')}`).join('\n')}`;
+          return `Gefunden:\n${data.map(c => `• **${c.client_name}** — ${c.art || '–'} · ${c.ampelstatus || '–'} · €${fmt(c.wert_eur || 0)}`).join('\n')}`;
         }
         case 'show_kpi':
           navigate(params.section === 'sales' ? '/sales/kpis' : params.section === 'finanzen' ? '/finanzen' : '/');
@@ -92,7 +154,7 @@ export function ARIAPanel() {
     } finally {
       setStatus('idle');
     }
-  }, [navigate, setStatus]);
+  }, [navigate, setStatus, ariaData]);
 
   const speak = useCallback((text: string) => {
     if (!speakEnabled) return;
@@ -117,6 +179,7 @@ export function ARIAPanel() {
 
     try {
       const history = [...messages.map(m => ({ role: m.role, content: m.content })), { role: 'user' as const, content: msg }];
+      const systemPrompt = buildSystemPrompt(ariaData, displayName, pageName);
 
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
@@ -124,7 +187,7 @@ export function ARIAPanel() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, systemPrompt }),
       });
 
       if (!resp.ok) {
@@ -184,7 +247,7 @@ export function ARIAPanel() {
       setIsLoading(false);
       setStatus('idle');
     }
-  }, [input, isLoading, messages, addMessage, updateLastAssistant, setIsLoading, setStatus, executeAction, speak]);
+  }, [input, isLoading, messages, addMessage, updateLastAssistant, setIsLoading, setStatus, executeAction, speak, ariaData, displayName, pageName]);
 
   const toggleListening = useCallback(() => {
     if (listening) {
@@ -256,8 +319,10 @@ export function ARIAPanel() {
       </div>
 
       {/* Context chip */}
-      <div className="px-4 py-2 text-[11px] text-muted-foreground border-b border-border" style={{ background: 'hsla(174, 90%, 31%, 0.05)' }}>
-        📍 {pageName} · {displayName} · {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+      <div className="px-4 py-2 text-[11px] text-muted-foreground border-b border-border flex items-center gap-2" style={{ background: 'hsla(174, 90%, 31%, 0.05)' }}>
+        <span>📍 {pageName} · {displayName} · {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</span>
+        {dataLoaded && <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" title="Live-Daten geladen" />}
+        {!dataLoaded && <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse shrink-0" title="Daten laden..." />}
       </div>
 
       {/* Messages */}
@@ -265,9 +330,15 @@ export function ARIAPanel() {
         {messages.length === 0 && (
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground text-center mb-4">Hallo {displayName}! Wie kann ich dir helfen?</p>
+            {!dataLoaded && (
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-2">
+                <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                Lade aktuelle Daten...
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 justify-center">
               {SUGGESTIONS.map(s => (
-                <button key={s} onClick={() => handleSend(s)} className="text-xs px-3 py-1.5 rounded-full border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-colors">
+                <button key={s} onClick={() => handleSend(s)} disabled={!dataLoaded} className="text-xs px-3 py-1.5 rounded-full border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-40">
                   {s}
                 </button>
               ))}
@@ -310,12 +381,13 @@ export function ARIAPanel() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-          placeholder="Frag ARIA etwas..."
-          className="flex-1 h-10 rounded-full border border-input bg-background px-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          placeholder={dataLoaded ? 'Frag ARIA etwas...' : 'Daten werden geladen...'}
+          disabled={!dataLoaded}
+          className="flex-1 h-10 rounded-full border border-input bg-background px-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
         />
         <button
           onClick={() => handleSend()}
-          disabled={!input.trim() || isLoading}
+          disabled={!input.trim() || isLoading || !dataLoaded}
           className="w-10 h-10 rounded-full flex items-center justify-center text-white disabled:opacity-40 transition-all hover:scale-105 active:scale-95"
           style={{ background: 'hsl(var(--primary))' }}
         >

@@ -10,29 +10,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages } = await req.json();
+    const { messages, systemPrompt } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `Du bist ARIA, der KI-Assistent von Agency Hub — dem internen Dashboard von Viral Connect GmbH & Haush Haush Digital UG in Paderborn.
-
-VERHALTEN:
-- Antworte immer auf Deutsch, kurz und direkt
-- Wenn du eine Aktion ausführst, erkläre kurz was du tust
-- Bei unklaren Anfragen: nachfragen, nicht raten
-- Du kennst die Versicherungsbranche (PKV, BU, TKV, Beihilfe)
-- Du kannst Portal-Aktionen ausführen indem du JSON zurückgibst: {"action": "ACTION_NAME", "params": {...}}
-
-VERFÜGBARE AKTIONEN:
-- navigate: {"action":"navigate","params":{"path":"/kunden"}} — Navigiert zu einer Seite
-- search_client: {"action":"search_client","params":{"name":"Kehlenbach"}} — Sucht einen Kunden
-- show_kpi: {"action":"show_kpi","params":{"section":"sales"}} — Zeigt KPI Dashboard
-- create_task: {"action":"create_task","params":{"title":"...","client_id":"...","due_date":"..."}} — Erstellt Aufgabe
-- mark_task_done: {"action":"mark_task_done","params":{"task_id":"..."}} — Aufgabe erledigen
-- update_ampel: {"action":"update_ampel","params":{"client_id":"...","status":"Grün|Gelb|Rot"}} — Ampelstatus ändern
-
-Wenn der Nutzer nach Daten fragt die du nicht hast, schlage vor die entsprechende Seite zu öffnen.
-Formatiere Antworten mit Markdown wenn sinnvoll.`;
+    const finalSystemPrompt = systemPrompt || `Du bist ARIA, der KI-Assistent von Agency Hub. Antworte auf Deutsch, kurz und direkt.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -43,7 +25,7 @@ Formatiere Antworten mit Markdown wenn sinnvoll.`;
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: finalSystemPrompt },
           ...messages,
         ],
         stream: true,
