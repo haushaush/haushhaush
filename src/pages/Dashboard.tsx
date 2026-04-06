@@ -280,292 +280,306 @@ export default function Dashboard() {
     );
   }
 
-  return (
-    <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10 space-y-8">
-      {/* 1. Hero — Centered greeting with avatar */}
-      <div className="flex flex-col items-center text-center pt-2 pb-2 w-full">
-        <Avatar className="h-24 w-24 border-[3px] border-card mb-4">
-          {avatarUrl ? (
-            <AvatarImage src={avatarUrl} alt={firstName} />
-          ) : null}
-          <AvatarFallback className="bg-primary text-primary-foreground text-[36px] font-semibold">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-        <h1 className="text-[32px] font-bold text-foreground leading-tight tracking-[-0.02em]">
-          Herzlich Willkommen, {firstName}! 👋
-        </h1>
-        <p className="text-[15px] text-muted-foreground mt-1.5">{formatDateLong()}</p>
-        <div className="w-full mt-3 mb-5">
-          <SearchBar onClick={() => setSearchOpen(true)} />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch mb-5">
-          <MicroLearning />
-          <TimeTracker />
-        </div>
-      </div>
-
-      <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
-
-      {/* 2. KPI Slider */}
-      <KpiSlider
-        deals={deals.data}
-        invoices={invoices.data}
-        revenue={revenue.data}
-        salesPerf={salesPerf.data}
-        salesPerfMonth={salesPerfMonth.data}
-        team={team.data}
-        tasks={tasks.data}
-        effizienz={effizienz}
-        isMobile={isMobile}
-      />
-
-      {/* 3. Quick Navigation */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
-        {NAV_TILES.map(tile => (
-          <Card
-            key={tile.href}
-            className="cursor-pointer card-interactive group rounded-xl overflow-hidden min-w-0"
-            onClick={() => navigate(tile.href)}
-          >
-            <CardContent className="px-4 py-5 flex flex-col items-center text-center gap-2">
-              <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-              <p className="text-[14px] font-medium text-foreground leading-tight truncate w-full">{tile.label}</p>
-              <p className="text-xs text-muted-foreground hidden sm:block truncate w-full">{tile.sub}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* 4. Alerts — wrapped container */}
-      {alerts.length > 0 && (
-        <div className="bg-card border border-border rounded-[14px] p-5 px-6">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.06em] mb-3 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" /> Handlungsbedarf
-          </p>
-          <div className="space-y-2">
-            {alerts.map((a, i) => (
-              <div
-                key={i}
-                className={`alert-holo ${
-                  a.severity === 'red'
-                    ? 'alert-holo-red'
-                    : a.severity === 'yellow'
-                    ? 'alert-holo-orange'
-                    : 'alert-holo-teal'
-                }`}
-                onClick={() => navigate(a.link)}
-              >
-                <span className="text-foreground">{a.message}</span>
-                <span className="text-[13px] text-muted-foreground flex items-center gap-1 shrink-0 ml-3 hover:text-primary transition-colors">
-                  Ansehen <ArrowRight className="h-3 w-3" />
-                </span>
-              </div>
+  const renderBlock = (id: string) => {
+    switch (id) {
+      case 'hero':
+        return (
+          <div className="flex flex-col items-center text-center pt-2 pb-2 w-full">
+            <Avatar className="h-24 w-24 border-[3px] border-card mb-4">
+              {avatarUrl ? <AvatarImage src={avatarUrl} alt={firstName} /> : null}
+              <AvatarFallback className="bg-primary text-primary-foreground text-[36px] font-semibold">{initials}</AvatarFallback>
+            </Avatar>
+            <h1 className="text-[32px] font-bold text-foreground leading-tight tracking-[-0.02em]">
+              Herzlich Willkommen, {firstName}! 👋
+            </h1>
+            <p className="text-[15px] text-muted-foreground mt-1.5">{formatDateLong()}</p>
+          </div>
+        );
+      case 'search':
+        return (
+          <div className="w-full">
+            <SearchBar onClick={() => setSearchOpen(true)} />
+          </div>
+        );
+      case 'widgets':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch">
+            <MicroLearning />
+            <TimeTracker />
+          </div>
+        );
+      case 'kpi-slider':
+        return (
+          <KpiSlider
+            deals={deals.data}
+            invoices={invoices.data}
+            revenue={revenue.data}
+            salesPerf={salesPerf.data}
+            salesPerfMonth={salesPerfMonth.data}
+            team={team.data}
+            tasks={tasks.data}
+            effizienz={effizienz}
+            isMobile={isMobile}
+          />
+        );
+      case 'quicknav':
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+            {NAV_TILES.map(tile => (
+              <Card key={tile.href} className="cursor-pointer card-interactive group rounded-xl overflow-hidden min-w-0" onClick={() => navigate(tile.href)}>
+                <CardContent className="px-4 py-5 flex flex-col items-center text-center gap-2">
+                  <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                  <p className="text-[14px] font-medium text-foreground leading-tight truncate w-full">{tile.label}</p>
+                  <p className="text-xs text-muted-foreground hidden sm:block truncate w-full">{tile.sub}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
+        );
+      case 'handlungsbedarf':
+        if (alerts.length === 0) return null;
+        return (
+          <div className="bg-card border border-border rounded-[14px] p-5 px-6">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.06em] mb-3 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" /> Handlungsbedarf
+            </p>
+            <div className="space-y-2">
+              {alerts.map((a, i) => (
+                <div key={i} className={`alert-holo ${a.severity === 'red' ? 'alert-holo-red' : a.severity === 'yellow' ? 'alert-holo-orange' : 'alert-holo-teal'}`} onClick={() => navigate(a.link)}>
+                  <span className="text-foreground">{a.message}</span>
+                  <span className="text-[13px] text-muted-foreground flex items-center gap-1 shrink-0 ml-3 hover:text-primary transition-colors">
+                    Ansehen <ArrowRight className="h-3 w-3" />
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case 'bottom-row':
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Letzte Abschlüsse */}
+            <Card className="rounded-[14px]">
+              <CardHeader className="p-6 pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold">Letzte Abschlüsse</CardTitle>
+                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('/kunden/abschluesse')}>
+                    Alle <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 pt-0 space-y-0">
+                {deals.data.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-muted-foreground">Noch keine Abschlüsse diese Woche.</p>
+                    <Button variant="outline" size="sm" className="mt-2" onClick={() => navigate('/kunden/abschluesse')}>Mit Close CRM synchronisieren</Button>
+                  </div>
+                ) : (
+                  deals.data.slice(0, 5).map((d, i) => {
+                    const leistungen: string[] = Array.isArray(d.leistungen) ? d.leistungen : [];
+                    return (
+                      <div key={d.id} className={`py-3 cursor-pointer hover:bg-muted/50 transition-colors px-1 -mx-1 rounded ${i < 4 ? 'border-b border-border' : ''}`} onClick={() => navigate(`/kunden/${d.id}`)}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-foreground truncate">{d.client_name}</p>
+                              {d.art && <Badge variant="secondary" className="text-[10px] shrink-0 bg-primary/10 text-primary border-0">{d.art}</Badge>}
+                            </div>
+                            <div className="flex gap-1 mt-1.5 flex-wrap">
+                              {leistungen.map((l: string) => (
+                                <span key={l} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/5 text-primary">{LEISTUNG_SHORT[l] || l}</span>
+                              ))}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-1">Start: {d.start_datum ? formatDate(d.start_datum) : '–'}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-semibold text-primary">€{formatValue(Number(d.wert_eur || 0), 'number')}</p>
+                            <Badge variant={d.deal_type === 'Neukunde' ? 'default' : 'secondary'} className={`text-[9px] mt-1 ${d.deal_type === 'Neukunde' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-0' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-0'}`}>
+                              {d.deal_type}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Tasks */}
+            <Card className="rounded-[14px]">
+              <CardHeader className="p-6 pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold">Dringendste Aufgaben</CardTitle>
+                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => navigate('/projekte/aufgaben')}>+ Neu</Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 pt-0 space-y-0">
+                {tasks.data.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">Keine offenen Aufgaben. 🎉</p>
+                ) : (
+                  tasks.data.map((t, i) => {
+                    const today = new Date().toISOString().split('T')[0];
+                    const isOverdue = t.due_date && t.due_date < today;
+                    const isToday = t.due_date === today;
+                    return (
+                      <div key={t.id} className={`flex items-center gap-3 py-2.5 leading-relaxed ${i < tasks.data.length - 1 ? 'border-b border-border' : ''}`}>
+                        <Checkbox className="shrink-0" onCheckedChange={() => completeTask(t.id)} aria-label={`Aufgabe erledigen: ${t.title}`} />
+                        <div className="flex-1 min-w-0"><p className="text-sm text-foreground truncate">{t.title}</p></div>
+                        <div className="shrink-0 text-right">
+                          {isOverdue && <span className="text-[11px] font-medium text-destructive">Überfällig</span>}
+                          {isToday && !isOverdue && <span className="text-[11px] font-medium text-warning">Heute</span>}
+                          {!isOverdue && !isToday && t.due_date && <span className="text-[11px] text-muted-foreground">{formatDate(t.due_date)}</span>}
+                          {!t.due_date && <span className="text-[11px] text-muted-foreground">–</span>}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                {tasks.data.length > 0 && (
+                  <Button variant="ghost" size="sm" className="w-full mt-2 text-xs text-muted-foreground" onClick={() => navigate('/projekte/aufgaben')}>
+                    Alle Aufgaben <ArrowRight className="h-3 w-3 ml-1" />
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Sales Top 3 */}
+            <Card className="rounded-[14px]">
+              <CardHeader className="p-6 pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold">Sales Performance</CardTitle>
+                  <div className="flex rounded-lg border border-border overflow-hidden">
+                    <button className={`text-[11px] px-2.5 py-1 transition-colors ${salesPeriod === 'week' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`} onClick={() => setSalesPeriod('week')}>Woche</button>
+                    <button className={`text-[11px] px-2.5 py-1 transition-colors ${salesPeriod === 'month' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`} onClick={() => setSalesPeriod('month')}>Monat</button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 pt-0">
+                {salesTop3.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-muted-foreground">Noch keine Performance-Daten.</p>
+                    <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => navigate('/sales/kpis')}>KPIs eintragen →</Button>
+                  </div>
+                ) : (
+                  <div className="space-y-0">
+                    {salesTop3.map((s, i) => (
+                      <div key={s.id} className={`py-3 ${i < salesTop3.length - 1 ? 'border-b border-border' : ''}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ backgroundColor: RANK_COLORS[i] }}>{i + 1}</div>
+                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">{s.initials}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
+                            <div className="grid grid-cols-2 gap-x-3 mt-1">
+                              <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{s.calls} Calls</span>
+                              <span className="text-[11px] text-muted-foreground flex items-center gap-1"><CalendarCheck className="h-3 w-3" />{s.tq}% TQ</span>
+                              <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Trophy className="h-3 w-3" />{s.closes} Abschl.</span>
+                              <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Banknote className="h-3 w-3" />{fmtCurrency(s.revenue)}</span>
+                            </div>
+                          </div>
+                          <p className="text-sm font-semibold text-primary shrink-0">{fmtCurrency(s.revenue)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {salesTop3.length > 0 && (
+                  <>
+                    <div className="mt-3" aria-label="Team Revenue Trend">
+                      <ResponsiveContainer width="100%" height={40}>
+                        <LineChart data={salesTop3.map((s) => ({ name: s.name, val: s.revenue }))}>
+                          <Line type="monotone" dataKey="val" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <Button variant="ghost" size="sm" className="w-full mt-1 text-xs text-muted-foreground" onClick={() => navigate('/sales/kpis')}>
+                      Vollständig ansehen <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        );
+      case 'revenue-chart':
+        return (
+          <Card className="rounded-[14px]">
+            <CardHeader className="p-6 pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base font-semibold">Umsatzentwicklung</CardTitle>
+                  <p className="text-xs text-muted-foreground">letzte 6 Monate</p>
+                </div>
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('/finanzen')}>
+                  Details <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={revenueChart} barCategoryGap="20%">
+                  <XAxis dataKey="name" axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={35} />
+                  <RechartsTooltip
+                    formatter={(value: number, name: string) => [formatValue(value, 'currency'), name === 'bezahlt' ? 'Bezahlt' : 'Offen']}
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
+                  />
+                  <Bar dataKey="bezahlt" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="offen" stackId="a" fill="hsl(var(--primary) / 0.2)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const orderToUse = isMobile ? DEFAULT_ORDER : blockOrder;
+
+  return (
+    <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10">
+      {/* Reset button — top right, visible on hover */}
+      {!isMobile && JSON.stringify(blockOrder) !== JSON.stringify(DEFAULT_ORDER) && (
+        <div className="flex justify-end mb-2">
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1" onClick={resetLayout}>
+            <RotateCcw className="h-3 w-3" /> Layout zurücksetzen
+          </Button>
         </div>
       )}
 
-      {/* 5. 3-Column Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Column 1: Letzte Abschlüsse */}
-        <Card className="rounded-[14px]">
-          <CardHeader className="p-6 pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">Letzte Abschlüsse</CardTitle>
-              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('/kunden/abschluesse')}>
-                Alle <ChevronRight className="h-3 w-3 ml-1" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 pt-0 space-y-0">
-            {deals.data.length === 0 ? (
-              <div className="text-center py-6">
-                <p className="text-sm text-muted-foreground">Noch keine Abschlüsse diese Woche.</p>
-                <Button variant="outline" size="sm" className="mt-2" onClick={() => navigate('/kunden/abschluesse')}>
-                  Mit Close CRM synchronisieren
-                </Button>
-              </div>
-            ) : (
-              deals.data.slice(0, 5).map((d, i) => {
-                const leistungen: string[] = Array.isArray(d.leistungen) ? d.leistungen : [];
-                return (
-                  <div
-                    key={d.id}
-                    className={`py-3 cursor-pointer hover:bg-muted/50 transition-colors px-1 -mx-1 rounded ${i < 4 ? 'border-b border-border' : ''}`}
-                    onClick={() => navigate(`/kunden/${d.id}`)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-foreground truncate">{d.client_name}</p>
-                          {d.art && <Badge variant="secondary" className="text-[10px] shrink-0 bg-primary/10 text-primary border-0">{d.art}</Badge>}
-                        </div>
-                        <div className="flex gap-1 mt-1.5 flex-wrap">
-                          {leistungen.map((l: string) => (
-                            <span key={l} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/5 text-primary">
-                              {LEISTUNG_SHORT[l] || l}
-                            </span>
-                          ))}
-                        </div>
-                        <p className="text-[11px] text-muted-foreground mt-1">Start: {d.start_datum ? formatDate(d.start_datum) : '–'}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-primary">€{formatValue(Number(d.wert_eur || 0), 'number')}</p>
-                        <Badge variant={d.deal_type === 'Neukunde' ? 'default' : 'secondary'} className={`text-[9px] mt-1 ${d.deal_type === 'Neukunde' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-0' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-0'}`}>
-                          {d.deal_type}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
+      <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-        {/* Column 2: Tasks */}
-        <Card className="rounded-[14px]">
-          <CardHeader className="p-6 pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">Dringendste Aufgaben</CardTitle>
-              <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => navigate('/projekte/aufgaben')}>
-                + Neu
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 pt-0 space-y-0">
-            {tasks.data.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">Keine offenen Aufgaben. 🎉</p>
-            ) : (
-              tasks.data.map((t, i) => {
-                const today = new Date().toISOString().split('T')[0];
-                const isOverdue = t.due_date && t.due_date < today;
-                const isToday = t.due_date === today;
-                return (
-                  <div key={t.id} className={`flex items-center gap-3 py-2.5 leading-relaxed ${i < tasks.data.length - 1 ? 'border-b border-border' : ''}`}>
-                    <Checkbox
-                      className="shrink-0"
-                      onCheckedChange={() => completeTask(t.id)}
-                      aria-label={`Aufgabe erledigen: ${t.title}`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground truncate">{t.title}</p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      {isOverdue && <span className="text-[11px] font-medium text-destructive">Überfällig</span>}
-                      {isToday && !isOverdue && <span className="text-[11px] font-medium text-warning">Heute</span>}
-                      {!isOverdue && !isToday && t.due_date && <span className="text-[11px] text-muted-foreground">{formatDate(t.due_date)}</span>}
-                      {!t.due_date && <span className="text-[11px] text-muted-foreground">–</span>}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-            {tasks.data.length > 0 && (
-              <Button variant="ghost" size="sm" className="w-full mt-2 text-xs text-muted-foreground" onClick={() => navigate('/projekte/aufgaben')}>
-                Alle Aufgaben <ArrowRight className="h-3 w-3 ml-1" />
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Column 3: Sales Top 3 */}
-        <Card className="rounded-[14px]">
-          <CardHeader className="p-6 pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">Sales Performance</CardTitle>
-              <div className="flex rounded-lg border border-border overflow-hidden">
-                <button
-                  className={`text-[11px] px-2.5 py-1 transition-colors ${salesPeriod === 'week' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
-                  onClick={() => setSalesPeriod('week')}
-                >Woche</button>
-                <button
-                  className={`text-[11px] px-2.5 py-1 transition-colors ${salesPeriod === 'month' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
-                  onClick={() => setSalesPeriod('month')}
-                >Monat</button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 pt-0">
-            {salesTop3.length === 0 ? (
-              <div className="text-center py-6">
-                <p className="text-sm text-muted-foreground">Noch keine Performance-Daten.</p>
-                <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => navigate('/sales/kpis')}>KPIs eintragen →</Button>
-              </div>
-            ) : (
-              <div className="space-y-0">
-                {salesTop3.map((s, i) => (
-                  <div key={s.id} className={`py-3 ${i < salesTop3.length - 1 ? 'border-b border-border' : ''}`}>
-                    <div className="flex items-center gap-3">
-                      <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ backgroundColor: RANK_COLORS[i] }}>
-                        {i + 1}
-                      </div>
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
-                        {s.initials}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
-                        <div className="grid grid-cols-2 gap-x-3 mt-1">
-                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{s.calls} Calls</span>
-                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><CalendarCheck className="h-3 w-3" />{s.tq}% TQ</span>
-                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Trophy className="h-3 w-3" />{s.closes} Abschl.</span>
-                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Banknote className="h-3 w-3" />{fmtCurrency(s.revenue)}</span>
-                        </div>
-                      </div>
-                      <p className="text-sm font-semibold text-primary shrink-0">{fmtCurrency(s.revenue)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {salesTop3.length > 0 && (
-              <>
-                <div className="mt-3" aria-label="Team Revenue Trend">
-                  <ResponsiveContainer width="100%" height={40}>
-                    <LineChart data={salesTop3.map((s) => ({ name: s.name, val: s.revenue }))}>
-                      <Line type="monotone" dataKey="val" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                <Button variant="ghost" size="sm" className="w-full mt-1 text-xs text-muted-foreground" onClick={() => navigate('/sales/kpis')}>
-                  Vollständig ansehen <ArrowRight className="h-3 w-3 ml-1" />
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-      </div>
-
-      {/* 6. Revenue Chart */}
-      <Card className="rounded-[14px]">
-        <CardHeader className="p-6 pb-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base font-semibold">Umsatzentwicklung</CardTitle>
-              <p className="text-xs text-muted-foreground">letzte 6 Monate</p>
-            </div>
-            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('/finanzen')}>
-              Details <ChevronRight className="h-3 w-3 ml-1" />
-            </Button>
+      <DndContext
+        sensors={isMobile ? undefined : sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={orderToUse} strategy={verticalListSortingStrategy}>
+          <div className="space-y-8">
+            {orderToUse.map(id => {
+              const block = renderBlock(id);
+              if (block === null && id === 'handlungsbedarf') return null;
+              return (
+                <SortableBlock key={id} id={id} disabled={isMobile}>
+                  {renderBlock(id)}
+                </SortableBlock>
+              );
+            })}
           </div>
-        </CardHeader>
-        <CardContent className="p-6 pt-0">
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={revenueChart} barCategoryGap="20%">
-              <XAxis dataKey="name" axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-              <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={35} />
-              <RechartsTooltip
-                formatter={(value: number, name: string) => [formatValue(value, 'currency'), name === 'bezahlt' ? 'Bezahlt' : 'Offen']}
-                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
-              />
-              <Bar dataKey="bezahlt" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="offen" stackId="a" fill="hsl(var(--primary) / 0.2)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+        </SortableContext>
+
+        <DragOverlay>
+          {activeId ? (
+            <div className="bg-card border border-primary/30 rounded-xl px-4 py-3 shadow-lg flex items-center gap-2 text-sm font-medium text-foreground">
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+              {BLOCK_LABELS[activeId] || activeId}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }
