@@ -48,7 +48,7 @@ export function ARIAHeroBlock({ onSend, input, setInput }: ARIAHeroBlockProps) {
 
   return (
     <div
-      className={`aria-hero-input-bar ${hasMessages ? 'aria-hero-input-bar--connected' : ''} ${isListening ? 'aria-hero-input-bar--listening' : ''}`}
+      className={`aria-hero-input-bar ${isListening ? 'aria-hero-input-bar--listening' : ''}`}
     >
       {isListening && (
         <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs text-muted-foreground bg-card border border-border rounded-md px-3 py-1 shadow-sm whitespace-nowrap z-10">
@@ -69,7 +69,7 @@ export function ARIAHeroBlock({ onSend, input, setInput }: ARIAHeroBlockProps) {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-            onFocus={() => { if (!isOpen) openARIA(); }}
+            
             placeholder="Wie kann ich helfen?"
             className="w-full bg-transparent border-none outline-none text-[15px] text-foreground placeholder:text-muted-foreground"
             style={{ minWidth: 0 }}

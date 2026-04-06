@@ -57,12 +57,13 @@ const NAV_TILES = [
 
 const RANK_COLORS = ['#F5A623', '#9B9B9B', '#8B6347'];
 
-const DEFAULT_ORDER = ['widgets', 'kpi-slider', 'quicknav', 'handlungsbedarf', 'bottom-row', 'revenue-chart'];
+const DEFAULT_ORDER = ['widgets', 'kpi-slider', 'search', 'quicknav', 'handlungsbedarf', 'bottom-row', 'revenue-chart'];
 
 const BLOCK_LABELS: Record<string, string> = {
   'hero': 'Begrüßung',
   'widgets': 'Learning & Zeiterfassung',
   'kpi-slider': 'KPI Dashboard',
+  'search': 'Suchleiste',
   'quicknav': 'Schnellnavigation',
   'handlungsbedarf': 'Handlungsbedarf',
   'bottom-row': 'Abschlüsse, Aufgaben, Sales',
@@ -568,15 +569,16 @@ export default function Dashboard() {
 
       <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
 
-      {/* Hero + ARIA block + search — locked at top */}
+      {/* Hero + ARIA block — locked at top */}
       <div className="mb-8 space-y-0">
         {renderBlock('hero')}
-        {/* ARIA Hero Block */}
-        <div className="relative">
-          {isOpen && messages.length > 0 && <ARIAPanel embedded />}
-          <ARIAHeroBlock onSend={handleAriaSend} input={ariaInput} setInput={setAriaInput} />
+        {/* ARIA Chat Card + Input Bar */}
+        <div style={{ marginTop: 28 }}>
+          {messages.length > 0 && <ARIAPanel embedded />}
+          <div style={{ marginTop: messages.length > 0 ? 12 : 0 }}>
+            <ARIAHeroBlock onSend={handleAriaSend} input={ariaInput} setInput={setAriaInput} />
+          </div>
         </div>
-        {renderBlock('search')}
       </div>
 
       <DndContext
