@@ -93,7 +93,7 @@ export function TimeTracker() {
   };
 
   return (
-    <div className="bg-card border border-border rounded-xl flex flex-col items-center justify-center h-[200px] min-h-[200px] max-h-[200px] overflow-hidden p-6 text-center gap-3.5">
+    <div className="bg-card border border-border rounded-xl flex flex-col justify-between h-[200px] min-h-[200px] max-h-[200px] overflow-hidden p-5 gap-3">
       {/* Row 1 — Label */}
       <span className="text-[13px] font-semibold text-muted-foreground shrink-0 text-center" style={{ letterSpacing: '0.02em' }}>Zeiterfassung</span>
 
