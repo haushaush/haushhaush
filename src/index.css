@@ -555,10 +555,10 @@
 /* ═══ ARIA JARVIS Chat Panel ═══ */
 .aria-jarvis-panel {
   position: fixed;
-  bottom: calc(20px + 60px + 8px);
-  left: 50%;
+  bottom: calc(28px + 64px + 8px);
+  left: calc(var(--sidebar-width, 240px) + (100vw - var(--sidebar-width, 240px)) / 2);
   transform: translateX(-50%);
-  width: 380px;
+  width: 420px;
   max-width: calc(100vw - 48px);
   max-height: 60vh;
   z-index: 8999;
@@ -568,7 +568,7 @@
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
   border: 1px solid hsla(174, 90%, 31%, 0.25);
-  border-radius: 20px;
+  border-radius: 24px 24px 0 0;
   box-shadow:
     0 -4px 40px hsla(0, 0%, 0%, 0.40),
     0 0 0 1px hsla(174, 90%, 31%, 0.08);
@@ -583,7 +583,8 @@
 @media (max-width: 768px) {
   .aria-jarvis-panel {
     width: calc(100vw - 24px);
-    bottom: calc(20px + 60px + 8px);
+    left: 50%;
+    bottom: calc(80px + 64px + 8px);
   }
 }
 
@@ -592,10 +593,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 14px;
-  height: 40px;
+  padding: 0 16px;
+  height: 48px;
   background: hsla(0, 0%, 100%, 0.03);
-  border-bottom: 1px solid hsla(0, 0%, 100%, 0.06);
+  border-bottom: 1px solid hsla(0, 0%, 100%, 0.08);
   flex-shrink: 0;
 }
 .aria-jarvis-header-btn {
@@ -609,9 +610,41 @@
   border: none;
   cursor: pointer;
   transition: background 150ms;
+  outline: none;
 }
 .aria-jarvis-header-btn:hover {
   background: hsla(0, 0%, 100%, 0.06);
+}
+.aria-jarvis-header-btn:focus { outline: none; box-shadow: none; }
+
+/* Status dot */
+.aria-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.aria-status-dot--idle {
+  background: hsla(174, 90%, 31%, 0.6);
+  animation: ariaStatusPulse 3s ease-in-out infinite;
+}
+.aria-status-dot--listening {
+  background: #FF3B30;
+  animation: ariaStatusPulse 0.8s ease-in-out infinite;
+}
+.aria-status-dot--processing {
+  background: #0BC2C6;
+  animation: ariaStatusSpin 1s linear infinite;
+  border: 2px solid transparent;
+  border-top-color: #0BC2C6;
+  background: transparent;
+}
+@keyframes ariaStatusPulse {
+  0%,100% { opacity: 0.5; transform: scale(0.9); }
+  50%     { opacity: 1.0; transform: scale(1.1); }
+}
+@keyframes ariaStatusSpin {
+  to { transform: rotate(360deg); }
 }
 
 /* Assistant message bubble */
@@ -652,16 +685,11 @@
   cursor: default;
 }
 
-/* ARIA SVG avatar glow */
-.aria-avatar-svg {
-  filter: drop-shadow(0 0 4px hsla(180, 80%, 45%, 0.5));
-}
-
 /* ═══ ARIA Bottom Bar ═══ */
 .aria-bottom-bar {
   position: fixed;
-  bottom: 20px;
-  left: 50%;
+  bottom: 28px;
+  left: calc(var(--sidebar-width, 240px) + (100vw - var(--sidebar-width, 240px)) / 2);
   transform: translateX(-50%);
   z-index: 9000;
   display: flex;
@@ -671,6 +699,7 @@
 @media (max-width: 768px) {
   .aria-bottom-bar {
     bottom: 80px;
+    left: 50%;
   }
 }
 
@@ -678,6 +707,8 @@
 @property --glow-angle {
   syntax: '<angle>';
   initial-value: 0deg;
+  inherits: false;
+}
   inherits: false;
 }
 
