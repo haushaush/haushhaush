@@ -589,8 +589,44 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
         </button>
       </div>
 
+      {/* Context chip */}
+      <div style={{
+        padding: '4px 14px',
+        fontSize: 10,
+        color: 'hsl(var(--muted-foreground))',
+        borderBottom: '1px solid hsl(var(--border) / 0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+      }}>
+        <MapPin size={9} style={{ color: 'hsl(174, 90%, 31%)' }} />
+        {pageCtx.name}
+        <span style={{ opacity: 0.5 }}>·</span>
+        {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+      </div>
+
       {/* Messages */}
       <div ref={scrollContainerRef} onScroll={handleMessagesScroll} className={`${embedded ? 'aria-hero-chat-messages' : 'flex-1 overflow-y-auto min-h-0'} space-y-3 ${embedded ? 'p-4 px-5' : 'p-4'}`}>
+        {/* Suggestion chips when no messages */}
+        {messages.length === 0 && pageCtx.suggested_actions.length > 0 && (
+          <div className="flex flex-wrap gap-2 py-2">
+            {pageCtx.suggested_actions.slice(0, 3).map(suggestion => (
+              <button
+                key={suggestion}
+                onClick={() => handleSend(suggestion)}
+                className="text-xs font-medium rounded-lg cursor-pointer transition-all duration-150 hover:scale-[1.03]"
+                style={{
+                  padding: '6px 12px',
+                  border: '1px solid hsla(174, 90%, 31%, 0.25)',
+                  background: 'hsla(174, 90%, 31%, 0.06)',
+                  color: 'hsl(174, 90%, 31%)',
+                }}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
         {messages.map(m => {
           const { cleanText, actions: parsedActions } = m.role === 'assistant' ? parseResponse(m.content) : { cleanText: m.content, actions: [] };
           const meta = messageMeta[m.id];
