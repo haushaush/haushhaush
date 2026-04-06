@@ -436,7 +436,7 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
     try {
       const memories = await fetchMemories();
       const history = [...messages.map(m => ({ role: m.role, content: m.content })), { role: 'user' as const, content: msg }];
-      const systemPrompt = buildSystemPrompt(ariaData, displayName, pageName, memories);
+      const systemPrompt = buildSystemPrompt(ariaData, displayName, pageCtx, memories, messages.length, messages[messages.length - 1]?.content);
 
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
