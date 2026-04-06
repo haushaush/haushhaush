@@ -284,6 +284,81 @@ export type Database = {
         }
         Relationships: []
       }
+      aria_interactions: {
+        Row: {
+          actions_executed: Json | null
+          aria_response: string
+          created_at: string | null
+          feedback: number | null
+          feedback_note: string | null
+          id: string
+          session_context: Json | null
+          user_id: string | null
+          user_message: string
+        }
+        Insert: {
+          actions_executed?: Json | null
+          aria_response: string
+          created_at?: string | null
+          feedback?: number | null
+          feedback_note?: string | null
+          id?: string
+          session_context?: Json | null
+          user_id?: string | null
+          user_message: string
+        }
+        Update: {
+          actions_executed?: Json | null
+          aria_response?: string
+          created_at?: string | null
+          feedback?: number | null
+          feedback_note?: string | null
+          id?: string
+          session_context?: Json | null
+          user_id?: string | null
+          user_message?: string
+        }
+        Relationships: []
+      }
+      aria_memory: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          key: string
+          last_reinforced_at: string | null
+          memory_type: string
+          times_confirmed: number | null
+          times_contradicted: number | null
+          value: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          key: string
+          last_reinforced_at?: string | null
+          memory_type: string
+          times_confirmed?: number | null
+          times_contradicted?: number | null
+          value: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          key?: string
+          last_reinforced_at?: string | null
+          memory_type?: string
+          times_confirmed?: number | null
+          times_contradicted?: number | null
+          value?: string
+        }
+        Relationships: []
+      }
       bug_reports: {
         Row: {
           browser_info: string | null

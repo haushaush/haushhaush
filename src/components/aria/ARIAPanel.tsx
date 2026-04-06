@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Sparkles, X, Volume2, VolumeX } from 'lucide-react';
+import { Sparkles, X, Volume2, VolumeX, FileText, Plus, Navigation, Check, Phone, Euro, User, AlertCircle, ExternalLink, ThumbsUp, ThumbsDown, Send } from 'lucide-react';
 import { useARIA } from '@/contexts/ARIAContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
@@ -26,8 +26,80 @@ const STATUS_TEXT = {
 
 const fmt = (n: number) => n.toLocaleString('de-DE');
 
-function buildSystemPrompt(ariaData: ReturnType<typeof useARIAData>, displayName: string, pageName: string): string {
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+  'file-text': FileText, plus: Plus, navigation: Navigation, check: Check,
+  phone: Phone, euro: Euro, user: User, alert: AlertCircle, external: ExternalLink,
+};
+
+interface ActionButton {
+  label: string;
+  action: string;
+  params: Record<string, any>;
+  icon?: string;
+  variant?: 'primary' | 'secondary';
+}
+
+function parseResponse(text: string): { cleanText: string; actions: ActionButton[]; learns: Array<{ type: string; key: string; value: string }> } {
+  let cleanText = text;
+  let actions: ActionButton[] = [];
+  let learns: Array<{ type: string; key: string; value: string }> = [];
+
+  // Parse [ACTIONS]...[/ACTIONS]
+  const actionsMatch = cleanText.match(/\[ACTIONS\]\s*([\s\S]*?)\s*\[\/ACTIONS\]/);
+  if (actionsMatch) {
+    try {
+      actions = JSON.parse(actionsMatch[1]);
+    } catch { /* ignore parse errors */ }
+    cleanText = cleanText.replace(actionsMatch[0], '').trim();
+  }
+
+  // Parse [LEARN]...[/LEARN] (multiple possible)
+  const learnRegex = /\[LEARN\]\s*(\{[\s\S]*?\})\s*\[\/LEARN\]/g;
+  let learnMatch;
+  while ((learnMatch = learnRegex.exec(cleanText)) !== null) {
+    try {
+      learns.push(JSON.parse(learnMatch[1]));
+    } catch { /* ignore */ }
+  }
+  cleanText = cleanText.replace(/\[LEARN\]\s*\{[\s\S]*?\}\s*\[\/LEARN\]/g, '').trim();
+
+  return { cleanText, actions, learns };
+}
+
+async function fetchMemories(): Promise<Array<{ memory_type: string; key: string; value: string; confidence: number }>> {
+  const { data } = await (supabase.from('aria_memory' as any) as any)
+    .select('memory_type, key, value, confidence')
+    .order('last_reinforced_at', { ascending: false })
+    .limit(20);
+  return (data as any[]) || [];
+}
+
+async function saveLearn(learn: { type: string; key: string; value: string }, userId?: string) {
+  await (supabase.from('aria_memory' as any) as any).insert({
+    memory_type: learn.type,
+    key: learn.key,
+    value: learn.value,
+    created_by: userId || null,
+  });
+}
+
+async function saveInteraction(userId: string, userMessage: string, ariaResponse: string, actionsExecuted: any[], feedback?: number, feedbackNote?: string) {
+  await (supabase.from('aria_interactions' as any) as any).insert({
+    user_id: userId,
+    user_message: userMessage,
+    aria_response: ariaResponse,
+    actions_executed: actionsExecuted,
+    feedback: feedback ?? null,
+    feedback_note: feedbackNote || null,
+  });
+}
+
+function buildSystemPrompt(ariaData: ReturnType<typeof useARIAData>, displayName: string, pageName: string, memories: Array<{ memory_type: string; key: string; value: string }>): string {
   if (!ariaData) return 'Du bist ARIA, der KI-Assistent von Agency Hub. Daten werden gerade geladen...';
+
+  const memoryBlock = memories.length > 0
+    ? `\n═══ ARIA GEDÄCHTNIS (aus früheren Interaktionen) ═══\n${memories.map(m => `[${m.memory_type}] ${m.key}: ${m.value}`).join('\n')}\nNutze diese gespeicherten Informationen um bessere Antworten zu geben.\n`
+    : '';
 
   return `Du bist ARIA, der KI-Assistent von Agency Hub — dem internen Dashboard von Viral Connect GmbH & Haush Haush Digital UG.
 
@@ -58,7 +130,7 @@ SALES (diese Woche):
 - Calls: ${ariaData.thisWeekCalls}
 - Abschlüsse: ${ariaData.thisWeekCloses}
 - Revenue: €${fmt(ariaData.thisWeekRevenue)}
-
+${memoryBlock}
 ═══ VERFÜGBARE AKTIONEN ═══
 Du kannst Aktionen ausführen indem du JSON zurückgibst:
 - navigate: {"action":"navigate","params":{"path":"/kunden"}}
@@ -68,17 +140,47 @@ Du kannst Aktionen ausführen indem du JSON zurückgibst:
 - mark_task_done: {"action":"mark_task_done","params":{"task_id":"..."}}
 - update_ampel: {"action":"update_ampel","params":{"client_id":"...","status":"Grün|Gelb|Rot"}}
 
+═══ ACTION BUTTONS ═══
+Nach jeder Antwort, wenn relevant, füge am Ende deiner Antwort einen JSON-Block hinzu:
+[ACTIONS]
+[
+  {"label": "Kunden öffnen", "action": "navigate", "params": {"path": "/kunden"}, "icon": "user", "variant": "primary"},
+  {"label": "Aufgabe erstellen", "action": "create_task", "params": {"title": "..."}, "icon": "plus", "variant": "secondary"}
+]
+[/ACTIONS]
+Maximal 3 Buttons. Nur wenn sie wirklich relevant sind.
+
+═══ SELBST-LERNEN ═══
+Wenn du etwas Neues über den Nutzer oder das System lernst, antworte mit:
+[LEARN] {"type": "user_preference|fact|workflow", "key": "kurzer_schlüssel", "value": "was du gelernt hast"} [/LEARN]
+Beispiele: Nutzerpräferenzen, häufige Anfragen, Korrekturen.
+
 VERHALTEN:
 - Antworte immer auf Deutsch, kurz und direkt
 - Du hast ECHTE Daten — nutze sie. Nie sagen "ich habe keinen Zugriff".
 - Wenn der Nutzer nach einem Kunden fragt, suche in der Kundenliste (case-insensitive).
-- Formatiere Antworten mit Markdown wenn sinnvoll.`;
+- Formatiere Antworten mit Markdown wenn sinnvoll.
+- Füge immer relevante Action Buttons hinzu.
+- Bei Kundenfragen: Direktlink zum Kunden vorschlagen
+- Bei Rechnungsfragen: Link zur Rechnung + "Erinnerung senden" Button
+- Bei Aufgabenfragen: Link zu Aufgaben + "Als erledigt markieren" Button`;
+}
+
+// Per-message state for actions and feedback
+interface MessageMeta {
+  actions: ActionButton[];
+  executedActions: Set<number>;
+  feedback?: number;
+  showCorrectionInput?: boolean;
+  userMessage?: string; // the user message that triggered this response
 }
 
 export function ARIAPanel() {
   const { isOpen, closeARIA, messages, addMessage, updateLastAssistant, isLoading, setIsLoading, status, setStatus } = useARIA();
   const [input, setInput] = useState('');
   const [speakEnabled, setSpeakEnabled] = useState(() => localStorage.getItem('aria-speak') === 'true');
+  const [messageMeta, setMessageMeta] = useState<Record<string, MessageMeta>>({});
+  const [correctionTexts, setCorrectionTexts] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -143,9 +245,64 @@ export function ARIAPanel() {
     }
   }, [navigate, setStatus, ariaData]);
 
+  const handleActionButton = useCallback(async (messageId: string, actionIndex: number, btn: ActionButton) => {
+    const result = await executeAction(btn.action, btn.params);
+    setMessageMeta(prev => ({
+      ...prev,
+      [messageId]: {
+        ...prev[messageId],
+        executedActions: new Set([...(prev[messageId]?.executedActions || []), actionIndex]),
+      },
+    }));
+    toast.success(result);
+  }, [executeAction]);
+
+  const handleFeedback = useCallback(async (messageId: string, feedback: number, message: any) => {
+    setMessageMeta(prev => ({
+      ...prev,
+      [messageId]: {
+        ...prev[messageId],
+        feedback,
+        showCorrectionInput: feedback === -1,
+      },
+    }));
+
+    if (feedback === 1) {
+      const meta = messageMeta[messageId];
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id && meta?.userMessage) {
+        await saveInteraction(session.user.id, meta.userMessage, message.content, [], 1);
+      }
+    }
+  }, [messageMeta]);
+
+  const handleCorrectionSubmit = useCallback(async (messageId: string, message: any) => {
+    const correctionText = correctionTexts[messageId];
+    if (!correctionText?.trim()) return;
+
+    const meta = messageMeta[messageId];
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      await saveInteraction(session.user.id, meta?.userMessage || '', message.content, [], -1, correctionText);
+      await (supabase.from('aria_memory' as any) as any).insert({
+        memory_type: 'correction',
+        key: (meta?.userMessage || '').slice(0, 80),
+        value: correctionText,
+        created_by: session.user.id,
+      });
+    }
+
+    setMessageMeta(prev => ({
+      ...prev,
+      [messageId]: { ...prev[messageId], showCorrectionInput: false },
+    }));
+    setCorrectionTexts(prev => ({ ...prev, [messageId]: '' }));
+    addMessage({ role: 'assistant', content: 'Danke für das Feedback — ich merke mir das. 🙏' });
+  }, [correctionTexts, messageMeta, addMessage]);
+
   const speak = useCallback((text: string) => {
     if (!speakEnabled) return;
-    const utterance = new SpeechSynthesisUtterance(text.replace(/[*#_`]/g, ''));
+    const utterance = new SpeechSynthesisUtterance(text.replace(/[*#_`\[\]]/g, ''));
     utterance.lang = 'de-DE';
     utterance.rate = 1.1;
     const voices = speechSynthesis.getVoices();
@@ -165,8 +322,9 @@ export function ARIAPanel() {
     let assistantText = '';
 
     try {
+      const memories = await fetchMemories();
       const history = [...messages.map(m => ({ role: m.role, content: m.content })), { role: 'user' as const, content: msg }];
-      const systemPrompt = buildSystemPrompt(ariaData, displayName, pageName);
+      const systemPrompt = buildSystemPrompt(ariaData, displayName, pageName, memories);
 
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
@@ -214,6 +372,7 @@ export function ARIAPanel() {
         }
       }
 
+      // Parse inline action JSON (legacy)
       const actionMatch = assistantText.match(/\{"action"\s*:\s*"([^"]+)"\s*,\s*"params"\s*:\s*(\{[^}]+\})\}/);
       if (actionMatch) {
         try {
@@ -224,6 +383,38 @@ export function ARIAPanel() {
           updateLastAssistant((cleanText ? cleanText + '\n\n' : '') + result);
           assistantText = cleanText + '\n\n' + result;
         } catch { /* ignore */ }
+      }
+
+      // Parse [ACTIONS] and [LEARN] blocks
+      const { cleanText, actions, learns } = parseResponse(assistantText);
+      if (cleanText !== assistantText) {
+        updateLastAssistant(cleanText);
+        assistantText = cleanText;
+      }
+
+      // Save learned items
+      const { data: { session } } = await supabase.auth.getSession();
+      for (const learn of learns) {
+        await saveLearn(learn, session?.user?.id);
+      }
+
+      // Store message meta (actions + link to user message)
+      const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+      // Find the assistant message id — it's the last message after streaming
+      setTimeout(() => {
+        // Get the latest messages from the context
+        const assistantMsgId = document.querySelector('[data-aria-msg]:last-of-type')?.getAttribute('data-aria-msg');
+        if (assistantMsgId && actions.length > 0) {
+          setMessageMeta(prev => ({
+            ...prev,
+            [assistantMsgId]: { actions, executedActions: new Set(), userMessage: msg },
+          }));
+        }
+      }, 100);
+
+      // Save interaction
+      if (session?.user?.id) {
+        await saveInteraction(session.user.id, msg, cleanText, actions.map(a => ({ action: a.action, params: a.params })));
       }
 
       speak(assistantText);
@@ -258,6 +449,21 @@ export function ARIAPanel() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // Store meta for messages with actions (when messages update)
+  useEffect(() => {
+    messages.forEach(m => {
+      if (m.role === 'assistant' && !messageMeta[m.id]) {
+        const { actions } = parseResponse(m.content);
+        if (actions.length > 0) {
+          setMessageMeta(prev => ({
+            ...prev,
+            [m.id]: { actions, executedActions: new Set() },
+          }));
+        }
+      }
+    });
+  }, [messages]);
+
   if (!isOpen || messages.length === 0) return null;
 
   return (
@@ -283,23 +489,106 @@ export function ARIAPanel() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
-          {messages.map(m => (
-            <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className={`max-w-[85%] px-3.5 py-2.5 text-sm ${
-                  m.role === 'user'
-                    ? 'bg-primary text-primary-foreground rounded-[18px_18px_4px_18px]'
-                    : 'bg-background text-foreground rounded-[18px_18px_18px_4px] border border-border'
-                }`}
-              >
-                {m.role === 'assistant' ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-1 [&_ul]:mb-1">
-                    <ReactMarkdown>{m.content}</ReactMarkdown>
+          {messages.map(m => {
+            const { cleanText, actions: parsedActions } = m.role === 'assistant' ? parseResponse(m.content) : { cleanText: m.content, actions: [] };
+            const meta = messageMeta[m.id];
+            const actions = meta?.actions || parsedActions;
+
+            return (
+              <div key={m.id} data-aria-msg={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className="max-w-[85%]">
+                  <div
+                    className={`px-3.5 py-2.5 text-sm ${
+                      m.role === 'user'
+                        ? 'bg-primary text-primary-foreground rounded-[18px_18px_4px_18px]'
+                        : 'bg-background text-foreground rounded-[18px_18px_18px_4px] border border-border'
+                    }`}
+                  >
+                    {m.role === 'assistant' ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:mb-1 [&_ul]:mb-1">
+                        <ReactMarkdown>{cleanText}</ReactMarkdown>
+                      </div>
+                    ) : m.content}
                   </div>
-                ) : m.content}
+
+                  {/* Action buttons */}
+                  {m.role === 'assistant' && actions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2 ml-1">
+                      {actions.map((btn, i) => {
+                        const executed = meta?.executedActions?.has(i);
+                        const IconComp = ICON_MAP[btn.icon || ''] || Sparkles;
+                        return (
+                          <button
+                            key={i}
+                            disabled={executed}
+                            onClick={() => handleActionButton(m.id, i, btn)}
+                            className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all duration-150 ${
+                              executed
+                                ? 'bg-primary/10 text-primary cursor-default'
+                                : btn.variant === 'primary'
+                                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                  : 'bg-background border border-border text-foreground hover:border-primary/40'
+                            }`}
+                          >
+                            {executed ? <Check className="h-3 w-3" /> : <IconComp className="h-3 w-3" />}
+                            {btn.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Feedback buttons */}
+                  {m.role === 'assistant' && !isLoading && (
+                    <div className="flex items-center gap-1 mt-1.5 ml-1 group">
+                      {meta?.feedback === 1 ? (
+                        <span className="text-primary"><Check className="h-3 w-3" /></span>
+                      ) : meta?.feedback === -1 ? (
+                        <span className="text-xs text-muted-foreground">Feedback gesendet</span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleFeedback(m.id, 1, m)}
+                            className="opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity p-1 rounded hover:bg-primary/10"
+                            title="Gute Antwort"
+                          >
+                            <ThumbsUp className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                          </button>
+                          <button
+                            onClick={() => handleFeedback(m.id, -1, m)}
+                            className="opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10"
+                            title="Schlechte Antwort"
+                          >
+                            <ThumbsDown className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Correction input */}
+                  {meta?.showCorrectionInput && (
+                    <div className="flex items-center gap-2 mt-2 ml-1">
+                      <input
+                        type="text"
+                        value={correctionTexts[m.id] || ''}
+                        onChange={e => setCorrectionTexts(prev => ({ ...prev, [m.id]: e.target.value }))}
+                        placeholder="Was hätte ARIA besser machen sollen?"
+                        className="flex-1 text-xs px-3 py-1.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        onKeyDown={e => e.key === 'Enter' && handleCorrectionSubmit(m.id, m)}
+                      />
+                      <button
+                        onClick={() => handleCorrectionSubmit(m.id, m)}
+                        className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                      >
+                        <Send className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
             <div className="flex justify-start">
               <div className="bg-background border border-border rounded-[18px_18px_18px_4px] px-4 py-3 flex gap-1">
@@ -312,11 +601,8 @@ export function ARIAPanel() {
           <div ref={messagesEndRef} />
         </div>
       </div>
-
-      {/* The search bar itself is rendered in Dashboard/DashboardLayout — not here */}
     </>
   );
 }
 
-// Export for use in Dashboard and DashboardLayout
 export { ARIASearchBar } from './ARIASearchBar';
