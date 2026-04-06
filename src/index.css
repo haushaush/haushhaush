@@ -650,19 +650,26 @@
 .placeholder-fade-in::placeholder { transition: opacity 0.4s ease; opacity: 1; }
 .placeholder-fade-out::placeholder { transition: opacity 0.4s ease; opacity: 0; }
 
-/* ═══ ARIA Chat Panel ═══ */
+/* ═══ ARIA Chat Panel — Glass Style ═══ */
 .aria-chat-panel {
   position: fixed;
   z-index: 9998;
   display: flex;
   flex-direction: column;
-  background: hsl(var(--card));
-  border: 1px solid hsla(174, 90%, 31%, 0.2);
+  background: hsla(0, 0%, 100%, 0.85);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid hsla(0, 0%, 100%, 0.15);
   border-radius: 20px 20px 0 0;
-  box-shadow: 0 -12px 60px hsla(0, 0%, 0%, 0.15);
+  box-shadow: 0 -12px 60px hsla(0, 0%, 0%, 0.12);
   overflow: hidden;
   animation: slideUpFromBar 280ms cubic-bezier(0.32, 0.72, 0, 1);
   max-height: 60vh;
+}
+.dark .aria-chat-panel {
+  background: hsla(240, 4%, 11%, 0.90);
+  border-color: hsla(0, 0%, 100%, 0.10);
+  box-shadow: 0 -12px 60px hsla(0, 0%, 0%, 0.40);
 }
 .aria-chat-panel--overview {
   bottom: 64px;
@@ -690,11 +697,6 @@
   to { transform: translateY(0); opacity: 1; max-height: 60vh; }
 }
 
-.aria-panel-header {
-  background: linear-gradient(135deg, hsl(174 90% 31%), hsl(180 80% 45%));
-  flex-shrink: 0;
-}
-
 /* ═══ ARIA Bottom Bar — persistent on ALL pages ═══ */
 .aria-bottom-bar {
   position: fixed;
@@ -702,8 +704,6 @@
   left: var(--sidebar-width, 240px);
   right: 0;
   height: 52px;
-  background: hsl(var(--card));
-  border-top: 1px solid hsl(var(--border));
   z-index: 200;
   display: flex;
   align-items: center;
