@@ -74,43 +74,39 @@ function KpiCard({ card, isMobile }: { card: KpiCardData; isMobile: boolean }) {
 
   return (
     <Card
-      className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0 h-[130px] min-h-[130px] max-h-[130px]"
+      className="cursor-pointer card-interactive group rounded-[14px] overflow-hidden min-w-0 h-[140px] min-h-[140px] max-h-[140px]"
       onClick={() => navigate(card.href)}
     >
-      <CardContent className="p-4 h-full flex flex-col justify-between">
-        <div>
-          <div className="flex items-start justify-between mb-1 gap-1">
-            <p className="kpi-label text-muted-foreground truncate">{card.label}</p>
-            <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-              <Icon className="h-3.5 w-3.5 text-primary" />
-            </div>
+      <CardContent className="px-4 py-3.5 h-full flex flex-col justify-start gap-1">
+        <div className="flex items-start justify-between gap-1">
+          <p className="kpi-label text-muted-foreground truncate">{card.label}</p>
+          <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+            <Icon className="h-3.5 w-3.5 text-primary" />
           </div>
-          <p className={cn('kpi-value', valueColor)}>{card.value}</p>
         </div>
-        <div className="overflow-hidden">
-          <p className="kpi-sub text-muted-foreground line-clamp-1">{card.subtext}</p>
-          {card.badge && (
-            <Badge variant={card.badgeColor || 'destructive'} className="text-[10px] mt-1 truncate max-w-full">
-              {card.badge}
-            </Badge>
-          )}
-          {card.trend !== undefined && card.trend !== null && (
-            <span className={cn(
-              'inline-flex items-center gap-0.5 text-[10px] font-medium mt-1 px-1.5 py-0.5 rounded-full',
-              card.trend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'
-            )}>
-              {card.trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-              {card.trend >= 0 ? '+' : ''}{card.trend.toFixed(1)}%
-            </span>
-          )}
-          {card.gauge !== undefined && (
-            <svg width="40" height="22" viewBox="0 0 48 28" className="mt-1" aria-hidden="true">
-              <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke="hsl(var(--border))" strokeWidth="3" strokeLinecap="round" />
-              <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke={card.color === 'green' ? 'hsl(var(--primary))' : card.color === 'orange' ? '#FF9F0A' : '#FF3B30'} strokeWidth="3" strokeLinecap="round"
-                strokeDasharray={`${(card.gauge / 100) * 62.8} 62.8`} />
-            </svg>
-          )}
-        </div>
+        <p className={cn('text-[clamp(16px,2vw,22px)] font-bold leading-tight', valueColor)}>{card.value}</p>
+        <p className="text-[11px] text-muted-foreground line-clamp-1">{card.subtext}</p>
+        {card.badge && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold mt-0.5 px-1.5 py-0.5 rounded bg-destructive/10 text-destructive whitespace-nowrap truncate max-w-full">
+            {card.badge}
+          </span>
+        )}
+        {card.trend !== undefined && card.trend !== null && (
+          <span className={cn(
+            'inline-flex items-center gap-0.5 text-[10px] font-medium mt-0.5 px-1.5 py-0.5 rounded-full',
+            card.trend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'
+          )}>
+            {card.trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+            {card.trend >= 0 ? '+' : ''}{card.trend.toFixed(1)}%
+          </span>
+        )}
+        {card.gauge !== undefined && (
+          <svg width="40" height="22" viewBox="0 0 48 28" className="mt-0.5" aria-hidden="true">
+            <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke="hsl(var(--border))" strokeWidth="3" strokeLinecap="round" />
+            <path d="M4 24 A20 20 0 0 1 44 24" fill="none" stroke={card.color === 'green' ? 'hsl(var(--primary))' : card.color === 'orange' ? '#FF9F0A' : '#FF3B30'} strokeWidth="3" strokeLinecap="round"
+              strokeDasharray={`${(card.gauge / 100) * 62.8} 62.8`} />
+          </svg>
+        )}
       </CardContent>
     </Card>
   );
@@ -321,7 +317,7 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
         >
           {slides.map((slide) => (
             <div key={slide.id} className="w-full shrink-0">
-              <div className="kpi-grid" style={{ gridTemplateRows: '130px 130px' }}>
+              <div className="kpi-grid" style={{ gridTemplateRows: '140px 140px' }}>
                 {slide.cards.map((card, ci) => (
                   <KpiCard key={ci} card={card} isMobile={isMobile} />
                 ))}
