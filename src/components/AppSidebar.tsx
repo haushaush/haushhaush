@@ -446,6 +446,7 @@ export function AppSidebar() {
           )}
         </div>
       </SidebarFooter>
+      <BugReportModal open={bugModalOpen} onClose={() => setBugModalOpen(false)} />
     </Sidebar>
   );
 }
