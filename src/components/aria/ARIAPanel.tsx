@@ -191,7 +191,7 @@ interface MessageMeta {
   userMessage?: string;
 }
 
-export function ARIAPanel({ embedded }: { embedded?: boolean } = {}) {
+export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?: () => void } = {}) {
   const { isOpen, closeARIA, messages, addMessage, updateLastAssistant, isLoading, setIsLoading, status, setStatus } = useARIA();
   const [input, setInput] = useState('');
   const isMutedRef = useRef(localStorage.getItem('aria-muted') === 'true');
@@ -480,7 +480,7 @@ export function ARIAPanel({ embedded }: { embedded?: boolean } = {}) {
             <Square className="h-3 w-3 text-destructive/80" />
           </button>
         )}
-        <button onClick={() => { closeARIA(); speechSynthesis.cancel(); }} className={embedded ? 'p-1.5 rounded-md hover:bg-muted transition-colors' : 'aria-jarvis-header-btn'}>
+        <button onClick={() => { if (onClose) onClose(); else closeARIA(); speechSynthesis.cancel(); }} className={embedded ? 'p-1.5 rounded-md hover:bg-muted transition-colors' : 'aria-jarvis-header-btn'}>
           <X className={`h-4 w-4 ${embedded ? 'text-muted-foreground' : 'aria-header-icon-color'}`} />
         </button>
       </div>

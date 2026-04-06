@@ -39,8 +39,10 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function formatDateLong() {
-  return new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  function formatDateLong(d: Date) {
+  const dateStr = d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const timeStr = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return `${dateStr} · ${timeStr}`;
 }
 
 
@@ -57,14 +59,12 @@ const NAV_TILES = [
 
 const RANK_COLORS = ['#F5A623', '#9B9B9B', '#8B6347'];
 
-const DEFAULT_ORDER = ['widgets', 'kpi-slider', 'search', 'quicknav', 'handlungsbedarf', 'bottom-row', 'revenue-chart'];
+const DEFAULT_ORDER = ['widgets', 'kpi-slider', 'handlungsbedarf', 'bottom-row', 'revenue-chart'];
 
 const BLOCK_LABELS: Record<string, string> = {
   'hero': 'Begrüßung',
   'widgets': 'Learning & Zeiterfassung',
   'kpi-slider': 'KPI Dashboard',
-  'search': 'Suchleiste',
-  'quicknav': 'Schnellnavigation',
   'handlungsbedarf': 'Handlungsbedarf',
   'bottom-row': 'Abschlüsse, Aufgaben, Sales',
   'revenue-chart': 'Umsatzentwicklung',
@@ -74,10 +74,20 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { firstName, initials, avatarUrl } = useProfile();
   const navigate = useNavigate();
-  const { isOpen, messages } = useARIA();
+  const { isOpen, messages, clearMessages, openARIA } = useARIA();
   const [ariaInput, setAriaInput] = useState('');
+  const [chatVisible, setChatVisible] = useState(false);
+  const [clock, setClock] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleAriaSend = (text: string) => {
+    if (!text.trim()) return;
+    setChatVisible(true);
+    if (!isOpen) openARIA();
     window.dispatchEvent(new CustomEvent('aria-send', { detail: text }));
     setAriaInput('');
   };
@@ -99,7 +109,7 @@ export default function Dashboard() {
     try {
       const saved = localStorage.getItem('dashboard-layout');
       if (saved) {
-        const parsed = JSON.parse(saved).filter((id: string) => id !== 'hero' && id !== 'search');
+        const parsed = JSON.parse(saved).filter((id: string) => id !== 'hero' && id !== 'search' && id !== 'quicknav');
         const missing = DEFAULT_ORDER.filter(id => !parsed.includes(id));
         return [...parsed, ...missing];
       }
@@ -304,7 +314,7 @@ export default function Dashboard() {
             <h1 className="text-[32px] font-bold text-foreground leading-tight tracking-[-0.02em]">
               Herzlich Willkommen, {firstName}! 👋
             </h1>
-            <p className="text-[15px] text-muted-foreground mt-1.5">{formatDateLong()}</p>
+            <p className="text-[15px] text-muted-foreground mt-1.5" style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em' }}>{formatDateLong(clock)}</p>
             {!isMobile && JSON.stringify(blockOrder) !== JSON.stringify(DEFAULT_ORDER) && (
               <button
                 onClick={resetLayout}
@@ -574,8 +584,10 @@ export default function Dashboard() {
         {renderBlock('hero')}
         {/* ARIA Chat Card + Input Bar */}
         <div style={{ marginTop: 28 }}>
-          {messages.length > 0 && <ARIAPanel embedded />}
-          <div style={{ marginTop: messages.length > 0 ? 12 : 0 }}>
+          {chatVisible && messages.length > 0 && (
+            <ARIAPanel embedded onClose={() => { setChatVisible(false); clearMessages(); }} />
+          )}
+          <div style={{ marginTop: chatVisible && messages.length > 0 ? 12 : 0 }}>
             <ARIAHeroBlock onSend={handleAriaSend} input={ariaInput} setInput={setAriaInput} />
           </div>
         </div>
@@ -610,6 +622,12 @@ export default function Dashboard() {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Fixed blocks — always after sortable content */}
+      <div className="space-y-8 mt-8">
+        {renderBlock('search')}
+        {renderBlock('quicknav')}
+      </div>
     </div>
   );
 }
