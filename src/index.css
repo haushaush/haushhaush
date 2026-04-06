@@ -415,12 +415,21 @@
     0 0 0 1px hsla(174, 90%, 31%, 0.10),
     inset 0 1px 0 hsla(0, 0%, 100%, 0.06);
   padding: 0 10px 0 22px;
-  transition: border-color 200ms ease, box-shadow 200ms ease;
+  transition: border-color 200ms ease, box-shadow 200ms ease, border-radius 200ms ease;
+}
+.aria-jarvis-pill--open {
+  border-radius: 0 0 32px 32px;
+  border-top: 1px solid hsla(0, 0%, 100%, 0.05);
+  box-shadow: none;
 }
 :root:not(.dark) .aria-jarvis-pill {
-  background: hsla(240, 10%, 96%, 0.90);
+  background: hsla(240, 10%, 96%, 0.92);
   border-color: hsla(174, 90%, 31%, 0.25);
   box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.12), 0 0 0 1px hsla(174, 90%, 31%, 0.08);
+}
+:root:not(.dark) .aria-jarvis-pill--open {
+  border-top-color: hsla(0, 0%, 0%, 0.05);
+  box-shadow: none;
 }
 .aria-jarvis-pill:hover {
   border-color: hsla(174, 90%, 31%, 0.6);
@@ -430,9 +439,11 @@
     0 0 0 1px hsla(174, 90%, 31%, 0.10),
     inset 0 1px 0 hsla(0, 0%, 100%, 0.06);
 }
+.aria-jarvis-pill--open:hover { box-shadow: none; }
 :root:not(.dark) .aria-jarvis-pill:hover {
   box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.15), 0 0 20px hsla(174, 90%, 31%, 0.10);
 }
+:root:not(.dark) .aria-jarvis-pill--open:hover { box-shadow: none; }
 .aria-jarvis-pill--listening {
   border-color: hsla(174, 90%, 31%, 0.8);
   box-shadow:
@@ -440,6 +451,27 @@
     0 0 40px hsla(174, 90%, 31%, 0.25),
     0 0 0 1px hsla(174, 90%, 31%, 0.20);
   transform: scale(1.02);
+}
+
+/* Shortcut hint */
+.aria-shortcut-hint {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: hsla(0, 0%, 100%, 0.45);
+  background: hsla(0, 0%, 100%, 0.08);
+  border: 1px solid hsla(0, 0%, 100%, 0.15);
+  border-radius: 5px;
+  margin-right: 4px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+:root:not(.dark) .aria-shortcut-hint {
+  color: hsla(0, 0%, 0%, 0.35);
+  background: hsla(0, 0%, 0%, 0.06);
+  border-color: hsla(0, 0%, 0%, 0.12);
 }
 
 /* No focus outlines inside pill */
