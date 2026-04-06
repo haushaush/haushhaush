@@ -9,7 +9,6 @@ import { useProfile } from '@/hooks/useProfile';
 import {
   Sidebar, SidebarContent, SidebarFooter, useSidebar,
 } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -83,12 +82,6 @@ function loadSidebarState(): Record<string, boolean> {
 }
 function saveSidebarState(s: Record<string, boolean>) {
   localStorage.setItem('sidebar-state', JSON.stringify(s));
-}
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return (parts[0]?.[0] || '?').toUpperCase();
 }
 
 export function AppSidebar() {
@@ -176,18 +169,22 @@ export function AppSidebar() {
   };
 
   const nachrichtenActive = location.pathname === '/nachrichten';
+  const ariaActive = location.pathname === '/aria';
+  const einstellungenActive = location.pathname === '/einstellungen';
 
+  // ─── LEVEL 1: Primary nav item renderer ───
   const renderNavItem = (item: NavItem) => {
     const parentActive = isParentActive(item);
 
     if (!item.children) {
       const link = (
         <NavLink to={item.url} end className={cn(
-          'sidebar-nav-item flex items-center gap-3 rounded-lg text-sm transition-colors min-h-[40px]',
-          collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5',
-          parentActive ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary' : 'text-muted-foreground hover:bg-muted/60'
+          'sidebar-nav-item flex items-center gap-3 rounded-lg transition-colors',
+          collapsed ? 'justify-center px-0 py-2.5 min-h-[40px]' : 'px-3 py-[9px] min-h-[40px]',
+          'text-[14px] font-medium',
+          parentActive ? 'bg-sidebar-accent text-primary border-l-[3px] border-primary' : 'text-foreground hover:bg-muted/60'
         )} aria-current={parentActive ? 'page' : undefined}>
-          <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
           {!collapsed && <span className="truncate">{item.title}</span>}
         </NavLink>
       );
@@ -210,10 +207,11 @@ export function AppSidebar() {
         <Tooltip key={item.title}>
           <TooltipTrigger asChild>
             <NavLink to={item.url} className={cn(
-              'sidebar-nav-item flex items-center justify-center rounded-lg text-sm transition-colors min-h-[40px] px-0 py-2.5',
-              parentActive ? 'text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
+              'sidebar-nav-item flex items-center justify-center rounded-lg transition-colors min-h-[40px] px-0 py-2.5',
+              'text-[14px] font-medium',
+              parentActive ? 'text-primary' : 'text-foreground hover:bg-muted/60'
             )}>
-              <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
             </NavLink>
           </TooltipTrigger>
           <TooltipContent side="right" className="text-xs">{item.title}</TooltipContent>
@@ -226,12 +224,13 @@ export function AppSidebar() {
         <button
           onClick={() => toggleGroup(item.title)}
           className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left transition-colors min-h-[40px]',
-            parentActive ? 'text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
+            'flex items-center gap-3 px-3 py-[9px] rounded-lg w-full text-left transition-colors min-h-[40px]',
+            'text-[14px] font-medium',
+            parentActive ? 'text-primary' : 'text-foreground hover:bg-muted/60'
           )}
           aria-expanded={isOpen}
         >
-          <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
           <span className="flex-1 truncate">{item.title}</span>
           <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200', isOpen && 'rotate-90')} aria-hidden="true" />
         </button>
@@ -254,27 +253,88 @@ export function AppSidebar() {
     );
   };
 
-  const nachrichtenLink = (
-    <NavLink to="/nachrichten" className={cn(
-      'sidebar-nav-item flex items-center gap-3 rounded-lg text-sm transition-colors min-h-[40px] relative',
-      collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5',
-      nachrichtenActive ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary' : 'text-muted-foreground hover:bg-muted/60'
-    )}>
-      <div className="relative shrink-0">
-        <Bell className="h-5 w-5" aria-hidden="true" />
-        {unreadNotifs > 0 && (
-          <span className="absolute -top-1.5 -right-2 inline-flex items-center justify-center h-[18px] min-w-[18px] px-1 text-[10px] font-semibold rounded-full bg-destructive text-destructive-foreground">
-            {unreadNotifs > 99 ? '99+' : unreadNotifs}
-          </span>
-        )}
-      </div>
-      {!collapsed && <span className="truncate">Nachrichten</span>}
-    </NavLink>
-  );
+  // ─── Helper: Level 2 item ───
+  const renderLevel2 = (to: string, icon: React.ReactNode, label: string, active: boolean, badge?: number) => {
+    const link = (
+      <NavLink to={to} className={cn(
+        'sidebar-nav-item flex items-center gap-3 rounded-lg transition-colors relative',
+        collapsed ? 'justify-center px-0 py-2 min-h-[36px]' : 'px-3 py-2 min-h-[36px]',
+        'text-[13px] font-normal',
+        active ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary' : 'text-muted-foreground hover:bg-muted/60'
+      )}>
+        <div className="relative shrink-0">
+          {icon}
+          {badge != null && badge > 0 && (
+            <span className="absolute -top-1.5 -right-2 inline-flex items-center justify-center h-[16px] min-w-[16px] px-1 text-[9px] font-semibold rounded-full bg-destructive text-destructive-foreground">
+              {badge > 99 ? '99+' : badge}
+            </span>
+          )}
+        </div>
+        {!collapsed && <span className="truncate">{label}</span>}
+      </NavLink>
+    );
+
+    if (collapsed) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>{link}</TooltipTrigger>
+          <TooltipContent side="right" className="text-xs">{label}{badge ? ` (${badge})` : ''}</TooltipContent>
+        </Tooltip>
+      );
+    }
+    return link;
+  };
+
+  // ─── Helper: Level 3 item ───
+  const renderLevel3 = (content: React.ReactNode, onClick?: () => void, to?: string, active?: boolean, badge?: number) => {
+    const cls = cn(
+      'flex items-center gap-2.5 rounded-lg transition-colors w-full text-left',
+      collapsed ? 'justify-center px-0 py-1.5 min-h-[32px]' : 'px-3 py-[6px] min-h-[32px]',
+      'text-[12px] font-normal',
+      active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+    );
+
+    if (to) {
+      const link = (
+        <NavLink to={to} className={cls}>
+          {content}
+        </NavLink>
+      );
+      if (collapsed) {
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>{link}</TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              {typeof content === 'string' ? content : to}
+              {badge ? ` (${badge})` : ''}
+            </TooltipContent>
+          </Tooltip>
+        );
+      }
+      return link;
+    }
+
+    const btn = (
+      <button onClick={onClick} className={cls}>
+        {content}
+      </button>
+    );
+    if (collapsed) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>{btn}</TooltipTrigger>
+          <TooltipContent side="right" className="text-xs">
+            {typeof content === 'string' ? content : 'Aktion'}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+    return btn;
+  };
 
   return (
     <Sidebar collapsible="icon" className="hidden md:flex border-r border-border">
-      <SidebarContent className="py-4">
+      <SidebarContent className="py-4 flex flex-col h-full">
         {/* User Profile Header */}
         <div className="px-3 pb-3 border-b border-border">
           {!collapsed ? (
@@ -312,134 +372,79 @@ export function AppSidebar() {
             </Tooltip>
           )}
         </div>
+
+        {/* ─── LEVEL 1: Primary Navigation ─── */}
         <nav className="flex-1 px-2 py-2 space-y-0.5" aria-label="Hauptnavigation">
           {navItems.map(renderNavItem)}
         </nav>
 
-        {/* Collapse/Expand toggle — above footer divider */}
-        <div className="px-2 pb-2">
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={toggleSidebar}
-                  className="h-9 w-full flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent transition-all duration-150"
-                  aria-label="Menü ausklappen"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="text-xs">Menü ausklappen</TooltipContent>
-            </Tooltip>
-          ) : (
-            <button
-              onClick={toggleSidebar}
-              className="h-9 w-full flex items-center gap-2 px-4 rounded-lg text-muted-foreground hover:bg-accent transition-all duration-150"
-              aria-label="Menü einklappen"
-            >
-              <ChevronLeft className="h-4 w-4 shrink-0" />
-              <span className="text-xs">Menü einklappen</span>
-            </button>
+        {/* ─── LEVEL 2: Secondary Navigation ─── */}
+        <div className="px-2 mt-2 space-y-0.5">
+          {renderLevel2('/nachrichten', <Bell className="h-4 w-4" aria-hidden="true" />, 'Nachrichten', nachrichtenActive, unreadNotifs)}
+          {renderLevel2('/aria', <Sparkles className="h-4 w-4" aria-hidden="true" />, 'ARIA & Automationen', ariaActive)}
+        </div>
+
+        {/* ─── Thin divider ─── */}
+        <div className="px-4 my-1">
+          <div className="border-t border-border/50" style={{ borderTopWidth: '0.5px' }} />
+        </div>
+
+        {/* ─── LEVEL 3: Utility ─── */}
+        <div className="px-2 space-y-[2px]">
+          {renderLevel3(
+            <>
+              <Bug className={cn('shrink-0', collapsed ? 'h-[15px] w-[15px] opacity-60' : 'h-[15px] w-[15px]')} aria-hidden="true" />
+              {!collapsed && <span className="truncate">Fehler melden</span>}
+            </>,
+            () => setBugModalOpen(true)
           )}
+          {renderLevel3(
+            <>
+              <Settings className={cn('shrink-0', collapsed ? 'h-[15px] w-[15px] opacity-60' : 'h-[15px] w-[15px]')} aria-hidden="true" />
+              {!collapsed && (
+                <span className="truncate flex-1">Einstellungen</span>
+              )}
+              {!collapsed && pendingCount > 0 && (
+                <span className="ml-auto inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold px-1 shrink-0">{pendingCount}</span>
+              )}
+            </>,
+            undefined,
+            '/einstellungen',
+            einstellungenActive,
+            pendingCount
+          )}
+          {renderLevel3(
+            <>
+              {collapsed
+                ? <ChevronRight className="h-[15px] w-[15px] opacity-60 shrink-0" />
+                : <ChevronLeft className="h-[15px] w-[15px] shrink-0" />
+              }
+              {!collapsed && <span className="truncate">Menü einklappen</span>}
+            </>,
+            toggleSidebar
+          )}
+        </div>
+
+        {/* ─── Thin divider ─── */}
+        <div className="px-4 my-1">
+          <div className="border-t border-border/50" style={{ borderTopWidth: '0.5px' }} />
         </div>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-border p-3 space-y-2">
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>{nachrichtenLink}</TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">
-              Nachrichten{unreadNotifs > 0 ? ` (${unreadNotifs})` : ''}
-            </TooltipContent>
-          </Tooltip>
-        ) : nachrichtenLink}
-
-        {/* Bug Report */}
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setBugModalOpen(true)}
-                className={cn(
-                  'sidebar-nav-item flex items-center justify-center rounded-lg text-sm transition-colors min-h-[40px] px-0 py-2.5 w-full',
-                  bugModalOpen ? 'bg-destructive/10 text-destructive' : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
-                )}
-              >
-                <Bug className="h-5 w-5 shrink-0" aria-hidden="true" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">Fehler melden</TooltipContent>
-          </Tooltip>
-        ) : (
-          <button
-            onClick={() => setBugModalOpen(true)}
-            className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[40px] w-full text-left',
-              bugModalOpen ? 'bg-destructive/10 text-destructive' : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
-            )}
-          >
-            <Bug className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className="truncate">Fehler melden</span>
-          </button>
-        )}
-
-        {/* ARIA & Automationen */}
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <NavLink to="/aria" className={cn(
-                'sidebar-nav-item flex items-center justify-center rounded-lg text-sm transition-colors min-h-[40px] px-0 py-2.5',
-                location.pathname === '/aria' ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-              )}>
-                <Sparkles className="h-5 w-5 shrink-0" aria-hidden="true" />
-              </NavLink>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">ARIA & Automationen</TooltipContent>
-          </Tooltip>
-        ) : (
-          <NavLink to="/aria" className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[40px]',
-            location.pathname === '/aria' ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-          )}>
-            <Sparkles className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className="truncate">ARIA & Automationen</span>
-          </NavLink>
-        )}
-
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <NavLink to="/einstellungen" className={cn(
-                'sidebar-nav-item flex items-center justify-center rounded-lg text-sm transition-colors min-h-[40px] px-0 py-2.5',
-                location.pathname === '/einstellungen' ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
-              )}>
-                <Settings className="h-5 w-5 shrink-0" aria-hidden="true" />
-              </NavLink>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">Einstellungen</TooltipContent>
-          </Tooltip>
-        ) : (
-          <NavLink to="/einstellungen" className={cn(
-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[40px]',
-            location.pathname === '/einstellungen' ? 'bg-sidebar-accent text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
-          )}>
-            <Settings className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className="truncate">Einstellungen</span>
-            {pendingCount > 0 && (
-              <span className="ml-auto inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 shrink-0">{pendingCount}</span>
-            )}
-          </NavLink>
-        )}
-
-        <div className={cn('flex items-center gap-2', collapsed ? 'flex-col px-0' : 'px-3')}>
+      <SidebarFooter className="p-2">
+        <div className={cn('flex items-center gap-1', collapsed ? 'flex-col' : 'px-1')}>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={toggleTheme}
-                className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 transition-colors shrink-0"
+                className={cn(
+                  'flex items-center justify-center rounded-lg transition-colors shrink-0',
+                  collapsed ? 'h-8 w-8' : 'h-7 w-7',
+                  'text-[12px] text-muted-foreground hover:text-foreground'
+                )}
                 aria-label={theme === 'light' ? 'Dark Mode aktivieren' : 'Light Mode aktivieren'}
               >
-                {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                {theme === 'light' ? <Moon className="h-[15px] w-[15px]" /> : <Sun className="h-[15px] w-[15px]" />}
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="text-xs">
@@ -454,18 +459,20 @@ export function AppSidebar() {
                   className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive transition-colors shrink-0"
                   aria-label="Abmelden"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-[15px] w-[15px]" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" className="text-xs">Abmelden</TooltipContent>
             </Tooltip>
           ) : (
-            <Button variant="ghost" size="sm" onClick={signOut}
-              className="flex-1 justify-start text-muted-foreground hover:text-destructive min-h-[40px] px-3"
-              aria-label="Abmelden">
-              <LogOut className="h-4 w-4 mr-2" aria-hidden="true" />
-              Abmelden
-            </Button>
+            <button
+              onClick={signOut}
+              className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded-lg text-[12px] text-muted-foreground hover:text-destructive transition-colors text-left"
+              aria-label="Abmelden"
+            >
+              <LogOut className="h-[15px] w-[15px] shrink-0" aria-hidden="true" />
+              <span>Abmelden</span>
+            </button>
           )}
         </div>
       </SidebarFooter>
