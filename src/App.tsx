@@ -33,6 +33,7 @@ import Nachrichten from "./pages/Nachrichten.tsx";
 import ApiDocs from "./pages/ApiDocs.tsx";
 import ErrorPage from "./pages/ErrorPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import AriaPage from "./pages/Aria.tsx";
 
 const queryClient = new QueryClient();
 
