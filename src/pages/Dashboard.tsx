@@ -74,13 +74,13 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { firstName, initials, avatarUrl } = useProfile();
   const navigate = useNavigate();
-  const { isOpen, messages, setMessages, openARIA } = useARIA();
+  const { isOpen, messages, clearMessages, openARIA } = useARIA();
   const [ariaInput, setAriaInput] = useState('');
   const [chatVisible, setChatVisible] = useState(false);
-  const [now, setNow] = useState(new Date());
+  const [clock, setClock] = useState(new Date());
 
   useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 1000);
+    const interval = setInterval(() => setClock(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -314,7 +314,7 @@ export default function Dashboard() {
             <h1 className="text-[32px] font-bold text-foreground leading-tight tracking-[-0.02em]">
               Herzlich Willkommen, {firstName}! 👋
             </h1>
-            <p className="text-[15px] text-muted-foreground mt-1.5" style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em' }}>{formatDateLong(now)}</p>
+            <p className="text-[15px] text-muted-foreground mt-1.5" style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em' }}>{formatDateLong(clock)}</p>
             {!isMobile && JSON.stringify(blockOrder) !== JSON.stringify(DEFAULT_ORDER) && (
               <button
                 onClick={resetLayout}
@@ -585,7 +585,7 @@ export default function Dashboard() {
         {/* ARIA Chat Card + Input Bar */}
         <div style={{ marginTop: 28 }}>
           {chatVisible && messages.length > 0 && (
-            <ARIAPanel embedded onClose={() => { setChatVisible(false); setMessages([]); }} />
+            <ARIAPanel embedded onClose={() => { setChatVisible(false); clearMessages(); }} />
           )}
           <div style={{ marginTop: chatVisible && messages.length > 0 ? 12 : 0 }}>
             <ARIAHeroBlock onSend={handleAriaSend} input={ariaInput} setInput={setAriaInput} />
