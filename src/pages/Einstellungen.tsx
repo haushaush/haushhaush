@@ -401,9 +401,12 @@ export default function Einstellungen() {
         </TabsContent>
 
         {/* ═══════ BENACHRICHTIGUNGEN TAB ═══════ */}
-        <TabsContent value="benachrichtigungen" className="mt-4">
+        <TabsContent value="benachrichtigungen" className="mt-4 space-y-6">
+          {/* Slack Webhook Config */}
+          {isAdminOrManager && <SlackWebhookConfig />}
+
           <Card>
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Bell className="h-4 w-4 text-[var(--color-teal)]" />Benachrichtigungen</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Bell className="h-4 w-4 text-primary" />Benachrichtigungen</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               {[
                 { label: 'Neuer Abschluss', desc: 'Admin + Customer Success', channels: ['In-App', 'Email'] },
@@ -412,10 +415,10 @@ export default function Einstellungen() {
                 { label: 'Setter KPI Alert', desc: 'Management', channels: ['Email'] },
               ].map(n => (
                 <div key={n.label} className="flex items-center justify-between">
-                  <div><p className="text-sm font-medium text-[var(--text-primary)]">{n.label}</p><p className="text-xs text-[var(--text-muted)]">{n.desc}</p></div>
+                  <div><p className="text-sm font-medium text-foreground">{n.label}</p><p className="text-xs text-muted-foreground">{n.desc}</p></div>
                   <div className="flex gap-3">
                     {n.channels.map(c => (
-                      <div key={c} className="flex items-center gap-1.5"><Switch /><span className="text-xs text-[var(--text-muted)]">{c}</span></div>
+                      <div key={c} className="flex items-center gap-1.5"><Switch /><span className="text-xs text-muted-foreground">{c}</span></div>
                     ))}
                   </div>
                 </div>
