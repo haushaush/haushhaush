@@ -77,21 +77,53 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
         screenshotUrl = urlData.publicUrl;
       }
 
-      const { error: fnError } = await supabase.functions.invoke('report-bug', {
-        body: {
-          user_id: user?.id || null,
-          user_name: displayName || user?.email || null,
-          user_email: user?.email || null,
-          page_url: window.location.pathname,
-          problem_type: problemType,
-          description: description.trim(),
-          screenshot_url: screenshotUrl,
-          browser_info: `${shortBrowser()} – ${navigator.platform}`,
-          channel: 'tech-support',
-        },
+      // 1. Save to database
+      const { error: dbError } = await supabase.from('bug_reports').insert({
+        user_id: user?.id || null,
+        user_name: displayName || user?.email || null,
+        user_email: user?.email || null,
+        page_url: window.location.pathname,
+        problem_type: problemType,
+        description: description.trim(),
+        screenshot_url: screenshotUrl,
+        browser_info: `${shortBrowser()} – ${navigator.platform}`,
       });
 
-      if (fnError) throw fnError;
+      if (dbError) throw dbError;
+
+      // 2. Send Slack notification (non-blocking)
+      try {
+        const { data: setting } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'slack_tech_support_webhook')
+          .maybeSingle();
+
+        if (setting?.value) {
+          const webhookUrl = typeof setting.value === 'string' ? setting.value : (setting.value as any)?.url || String(setting.value);
+          const typeEmoji: Record<string, string> = { Bug: '🐛', Darstellungsfehler: '🎨', 'Funktion fehlt': '➕', 'Falscher Text': '✏️', Sonstiges: '📝' };
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: `${typeEmoji[problemType] || '🐛'} Bug-Report: ${problemType} von ${displayName || user?.email || 'Unbekannt'}`,
+              blocks: [
+                { type: 'header', text: { type: 'plain_text', text: `${typeEmoji[problemType] || '🐛'} Bug-Report: ${problemType}`, emoji: true } },
+                { type: 'section', fields: [
+                  { type: 'mrkdwn', text: `*Gemeldet von:*\n${displayName || user?.email || 'Unbekannt'}` },
+                  { type: 'mrkdwn', text: `*Seite:*\n\`${window.location.pathname}\`` },
+                ]},
+                { type: 'section', text: { type: 'mrkdwn', text: `*Beschreibung:*\n${description.trim().slice(0, 500)}` } },
+                ...(screenshotUrl ? [{ type: 'image', image_url: screenshotUrl, alt_text: 'Screenshot' } as any] : []),
+                { type: 'divider' },
+                { type: 'context', elements: [{ type: 'mrkdwn', text: `Browser: ${shortBrowser()} · ${new Date().toLocaleDateString('de-DE')}` }] },
+              ],
+            }),
+          });
+        }
+      } catch {
+        // Slack failure is non-blocking
+      }
 
       setSuccess(true);
       toast.success('Bug Report gesendet!');
