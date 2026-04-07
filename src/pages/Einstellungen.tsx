@@ -55,6 +55,13 @@ interface IntegrationSetting {
   last_sync_error: string | null;
 }
 
+interface CloseDeal {
+  id: string;
+  client_name: string;
+  art: string | null;
+  wert_eur: number | null;
+}
+
 function SlackWebhookConfig() {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [loading, setLoading] = useState(true);
@@ -171,18 +178,28 @@ export default function Einstellungen() {
   const [testingAll, setTestingAll] = useState(false);
   const [testingProvider, setTestingProvider] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, HealthResult[]>>({});
+  const [closeDeals, setCloseDeals] = useState<CloseDeal[]>([]);
+  const [dynamicConfigs, setDynamicConfigs] = useState<Record<string, Record<string, any>>>({});
 
   const fetchData = async () => {
-    const [driveRes, teamRes, reqRes, intRes] = await Promise.all([
+    const [driveRes, teamRes, reqRes, intRes, dealsRes] = await Promise.all([
       user ? supabase.from('drive_connection').select('*').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
       supabase.from('team').select('*').order('name'),
       isAdminOrManager ? supabase.from('employee_requests').select('*').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
       user ? supabase.from('integration_settings').select('*').eq('user_id', user.id) : Promise.resolve({ data: [] }),
+      supabase.from('close_deals').select('id, client_name, art, wert_eur').order('client_name'),
     ]);
     if (driveRes.data) { setDriveConnected(true); setDriveEmail(driveRes.data.google_email); }
     setTeam(teamRes.data || []);
     setRequests((reqRes.data || []) as EmployeeRequest[]);
     setIntegrationSettings((intRes.data || []) as any[]);
+    setCloseDeals((dealsRes.data || []) as CloseDeal[]);
+    // Extract dynamic configs from integration settings
+    const dynConfigs: Record<string, Record<string, any>> = {};
+    ((intRes.data || []) as any[]).forEach((s: any) => {
+      if (s.config?.dynamic_data) dynConfigs[s.provider] = s.config.dynamic_data;
+    });
+    setDynamicConfigs(dynConfigs);
     setLoading(false);
   };
 
@@ -214,6 +231,19 @@ export default function Einstellungen() {
     }
     toast.success('Integration gespeichert');
     fetchData();
+  };
+
+  const handleDynamicUpdate = async (providerId: string, dynamicData: Record<string, any>) => {
+    if (!user) return;
+    setDynamicConfigs(prev => ({ ...prev, [providerId]: dynamicData }));
+    const existing = getSettingForProvider(providerId);
+    if (existing) {
+      const updatedConfig = { ...existing.config, dynamic_data: dynamicData };
+      await supabase.from('integration_settings').update({
+        config: updatedConfig as any,
+        updated_at: new Date().toISOString(),
+      }).eq('id', existing.id);
+    }
   };
 
   const handleIntegrationAction = async (providerId: string, action: string) => {
@@ -471,11 +501,14 @@ export default function Einstellungen() {
                   lastSyncStatus={setting?.last_sync_status}
                   lastSyncError={setting?.last_sync_error}
                   config={setting?.config || {}}
+                  dynamicConfig={dynamicConfigs[provider.id] || {}}
                   onSave={handleIntegrationSave}
                   onAction={handleIntegrationAction}
                   onTest={runHealthTest}
+                  onDynamicUpdate={handleDynamicUpdate}
                   testResults={testResults[provider.id]}
                   testing={testingProvider === provider.id}
+                  closeDeals={closeDeals}
                 />
               );
             })}
