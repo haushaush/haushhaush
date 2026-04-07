@@ -177,6 +177,7 @@ export default function Einstellungen() {
   const [activeCategory, setActiveCategory] = useState('Alle');
   const [testingAll, setTestingAll] = useState(false);
   const [testingProvider, setTestingProvider] = useState<string | null>(null);
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, HealthResult[]>>({});
   const [closeDeals, setCloseDeals] = useState<CloseDeal[]>([]);
   const [dynamicConfigs, setDynamicConfigs] = useState<Record<string, Record<string, any>>>({});
@@ -497,6 +498,8 @@ export default function Einstellungen() {
                   key={provider.id}
                   provider={provider}
                   connected={setting?.connected || isSlackConnected || isDriveConnected}
+                  expanded={expandedCard === provider.id}
+                  onToggle={() => setExpandedCard(prev => prev === provider.id ? null : provider.id)}
                   lastSyncAt={setting?.last_sync_at}
                   lastSyncStatus={setting?.last_sync_status}
                   lastSyncError={setting?.last_sync_error}
