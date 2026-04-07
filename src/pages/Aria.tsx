@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Play, Clock, CheckCircle2, XCircle, Zap, RefreshCw, Brain, Trash2, Pencil, X, BookOpen } from 'lucide-react';
+import { Sparkles, Play, Clock, CheckCircle2, XCircle, Zap, RefreshCw, Brain, Trash2, Pencil, X, BookOpen, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import Wissensbank from '@/components/aria/Wissensbank';
+import AutomationBuilder from '@/components/aria/AutomationBuilder';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -74,6 +75,8 @@ export default function Aria() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingMemory, setEditingMemory] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null);
 
   const fetchData = async () => {
     const [{ data: autos }, { data: logData }, { data: memData }, { count: intCount }, { count: corrCount }] = await Promise.all([
@@ -213,6 +216,14 @@ export default function Aria() {
 
         {/* Automations Tab */}
         <TabsContent value="automations" className="mt-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Meine Automationen</h2>
+            {isAdminOrManager && (
+              <Button size="sm" onClick={() => { setEditingAutomation(null); setBuilderOpen(true); }} className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> Neue Automation
+              </Button>
+            )}
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-3">
               {automations.length === 0 ? (
@@ -253,6 +264,11 @@ export default function Aria() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                             {isAdminOrManager && <Switch checked={auto.active} onCheckedChange={v => toggleActive(auto.id, v)} />}
+                            {isAdminOrManager && (
+                              <Button size="sm" variant="outline" onClick={() => { setEditingAutomation(auto); setBuilderOpen(true); }} className="gap-1">
+                                <Pencil className="h-3 w-3" /> Bearbeiten
+                              </Button>
+                            )}
                             <Button
                               size="sm" variant={isRunning ? 'secondary' : 'default'}
                               disabled={isRunning || !auto.active || !isAdminOrManager}
@@ -410,6 +426,15 @@ export default function Aria() {
           <Wissensbank />
         </TabsContent>
       </Tabs>
+
+      {/* Automation Builder Overlay */}
+      {builderOpen && (
+        <AutomationBuilder
+          automation={editingAutomation}
+          onClose={() => { setBuilderOpen(false); setEditingAutomation(null); }}
+          onSaved={fetchData}
+        />
+      )}
     </div>
   );
 }
