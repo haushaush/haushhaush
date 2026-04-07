@@ -71,6 +71,8 @@ interface MetaAdAccount {
 interface IntegrationCardProps {
   provider: IntegrationProvider;
   connected: boolean;
+  expanded: boolean;
+  onToggle: () => void;
   lastSyncAt?: string | null;
   lastSyncStatus?: string | null;
   lastSyncError?: string | null;
@@ -87,11 +89,10 @@ interface IntegrationCardProps {
 }
 
 export function IntegrationCard({
-  provider, connected, lastSyncAt, lastSyncStatus, lastSyncError,
+  provider, connected, expanded, onToggle, lastSyncAt, lastSyncStatus, lastSyncError,
   config = {}, dynamicConfig = {}, onSave, onAction, onTest,
   onDynamicUpdate, syncing, testResults, testing, closeDeals = [],
 }: IntegrationCardProps) {
-  const [expanded, setExpanded] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>(() => {
     const init: Record<string, any> = {};
     provider.fields.forEach(f => { init[f.key] = config[f.key] || f.defaultValue || ''; });
@@ -305,7 +306,7 @@ export function IntegrationCard({
       {/* Collapsed header */}
       <button
         className="w-full text-left p-[18px] flex items-center gap-3.5 focus:outline-none"
-        onClick={() => !provider.comingSoon && setExpanded(!expanded)}
+        onClick={() => !provider.comingSoon && onToggle()}
         disabled={provider.comingSoon}
       >
         <div
