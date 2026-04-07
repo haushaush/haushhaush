@@ -216,6 +216,14 @@ export default function Aria() {
 
         {/* Automations Tab */}
         <TabsContent value="automations" className="mt-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Meine Automationen</h2>
+            {isAdminOrManager && (
+              <Button size="sm" onClick={() => { setEditingAutomation(null); setBuilderOpen(true); }} className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> Neue Automation
+              </Button>
+            )}
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-3">
               {automations.length === 0 ? (
