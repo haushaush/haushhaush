@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -538,6 +539,34 @@ export function IntegrationCard({
                       </div>
                     </div>
                   )}
+                  {/* Meta Test & Sync button */}
+                  <div className="pt-3 border-t border-border">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs h-8 gap-1.5"
+                      disabled={loadingDynamic || !formData.access_token}
+                      onClick={async () => {
+                        setLoadingDynamic(true);
+                        toast.info('Syncing Meta data...');
+                        try {
+                          const { data: result, error } = await supabase.functions.invoke('sync-meta', {
+                            body: { date_preset: 'last_7d' },
+                          });
+                          if (error) throw error;
+                          if (result?.error) throw new Error(result.error);
+                          toast.success(`✓ ${result?.synced || 0} Kampagnen synchronisiert`);
+                          onTest(provider.id);
+                        } catch (e: any) {
+                          toast.error(`Meta Sync fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`);
+                        }
+                        setLoadingDynamic(false);
+                      }}
+                    >
+                      {loadingDynamic ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                      Test & Sync (letzte 7 Tage)
+                    </Button>
+                  </div>
                 </div>
               )}
 
