@@ -271,10 +271,12 @@ export function ApiPlatform() {
                   { method: 'GET', path: '/deals', desc: 'Alle Deals abrufen', color: 'text-blue-400' },
                   { method: 'POST', path: '/deals', desc: 'Deal erstellen', color: 'text-green-400' },
                   { method: 'GET', path: '/tasks', desc: 'Alle Aufgaben', color: 'text-blue-400' },
-                  { method: 'POST', path: '/tasks', desc: 'Aufgabe erstellen', color: 'text-green-400' },
                   { method: 'GET', path: '/invoices', desc: 'Alle Rechnungen', color: 'text-blue-400' },
+                  { method: 'GET', path: '/ad-budgets', desc: 'Werbebudgets', color: 'text-blue-400' },
+                  { method: 'POST', path: '/aria/message', desc: 'ARIA steuern', color: 'text-green-400' },
+                  { method: 'GET', path: '/team', desc: 'Teammitglieder', color: 'text-blue-400' },
+                  { method: 'GET', path: '/sales-performance', desc: 'Sales KPIs', color: 'text-blue-400' },
                   { method: 'POST', path: '/notifications', desc: 'Notification senden', color: 'text-green-400' },
-                  { method: 'POST', path: '/webhooks', desc: 'Webhook registrieren', color: 'text-green-400' },
                 ].map((ep, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <span className={`${ep.color} font-bold w-12 text-right`}>{ep.method}</span>
