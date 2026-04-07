@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
-import { AlertTriangle, TrendingUp, Users, Briefcase, Mail, Clock, Target, ChevronLeft } from 'lucide-react';
+import { AlertTriangle, TrendingUp, Users, Briefcase, Mail, Clock, Target, ChevronLeft, Loader2, RefreshCw } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSearchParams } from 'react-router-dom';
+import { useMetaInsights } from '@/hooks/useMetaInsights';
+import { toast } from 'sonner';
 
 const tooltipStyle = { backgroundColor: 'hsl(216, 35%, 11%)', border: '1px solid hsl(216, 25%, 18%)', borderRadius: '8px', color: 'hsl(210, 40%, 92%)' };
 
@@ -37,7 +39,20 @@ export default function Performance() {
   const [salesFilter, setSalesFilter] = useState<TimeFilter>('all');
   const [adFilter, setAdFilter] = useState<TimeFilter>('all');
   const [selectedSetter, setSelectedSetter] = useState<string | null>(null);
+  const [adSource, setAdSource] = useState<'meta' | 'manual'>('meta');
+  const [metaPreset, setMetaPreset] = useState<'last_7d' | 'last_30d' | 'last_90d'>('last_30d');
   const isMobile = useIsMobile();
+
+  // Meta date range computation
+  const metaDateRange = useMemo(() => {
+    const now = new Date();
+    const days = metaPreset === 'last_7d' ? 7 : metaPreset === 'last_30d' ? 30 : 90;
+    const from = new Date(now);
+    from.setDate(from.getDate() - days);
+    return { dateFrom: from.toISOString().split('T')[0], dateTo: now.toISOString().split('T')[0] };
+  }, [metaPreset]);
+
+  const { data: metaData, loading: metaLoading, syncing: metaSyncing, sync: metaSync, totals: metaTotals, byCampaign: metaCampaigns, byDate: metaByDate, lastSyncedAt } = useMetaInsights(metaDateRange);
 
   useEffect(() => {
     const load = async () => {
