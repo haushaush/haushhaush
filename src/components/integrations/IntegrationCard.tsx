@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { CheckCircle, XCircle, AlertCircle, Loader2, ChevronDown, ChevronUp, Copy, ExternalLink, Play, RotateCw } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp, Copy, ExternalLink, Play, RotateCw, Plus, Trash2, RefreshCw } from 'lucide-react';
 import { ARIAIcon } from '@/components/aria/ARIAIcon';
 import { toast } from 'sonner';
 import { useARIA } from '@/contexts/ARIAContext';
@@ -46,6 +47,27 @@ export interface HealthResult {
   detail?: string;
 }
 
+interface SlackChannel {
+  id: string;
+  name: string;
+}
+
+interface SlackWebhookRow {
+  label: string;
+  channel_id: string;
+  channel_name: string;
+  url: string;
+}
+
+interface MetaAdAccount {
+  id: string;
+  name: string;
+  account_id: string;
+  account_status: number;
+  currency: string;
+  amount_spent?: string;
+}
+
 interface IntegrationCardProps {
   provider: IntegrationProvider;
   connected: boolean;
@@ -53,17 +75,21 @@ interface IntegrationCardProps {
   lastSyncStatus?: string | null;
   lastSyncError?: string | null;
   config?: Record<string, any>;
+  dynamicConfig?: Record<string, any>;
   onSave: (providerId: string, data: Record<string, any>) => void;
   onAction: (providerId: string, action: string) => void;
   onTest: (providerId: string) => Promise<HealthResult[]>;
+  onDynamicUpdate?: (providerId: string, dynamicData: Record<string, any>) => void;
   syncing?: boolean;
   testResults?: HealthResult[];
   testing?: boolean;
+  closeDeals?: Array<{ id: string; client_name: string; art?: string; wert_eur?: number }>;
 }
 
 export function IntegrationCard({
   provider, connected, lastSyncAt, lastSyncStatus, lastSyncError,
-  config = {}, onSave, onAction, onTest, syncing, testResults, testing,
+  config = {}, dynamicConfig = {}, onSave, onAction, onTest,
+  onDynamicUpdate, syncing, testResults, testing, closeDeals = [],
 }: IntegrationCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>(() => {
@@ -72,6 +98,17 @@ export function IntegrationCard({
     provider.toggles?.forEach(t => { init[t.key] = config[t.key] || false; });
     return init;
   });
+
+  // Dynamic state
+  const [loadingDynamic, setLoadingDynamic] = useState(false);
+  const [slackChannels, setSlackChannels] = useState<SlackChannel[]>(dynamicConfig?.channels || []);
+  const [slackWebhooks, setSlackWebhooks] = useState<SlackWebhookRow[]>(config?.webhooks || []);
+  const [defaultChannels, setDefaultChannels] = useState<Record<string, string>>(config?.default_channels || {});
+  const [metaAccounts, setMetaAccounts] = useState<MetaAdAccount[]>(dynamicConfig?.ad_accounts || []);
+  const [accountMappings, setAccountMappings] = useState<Record<string, string>>(config?.account_mappings || {});
+  const [qontoInfo, setQontoInfo] = useState<any>(dynamicConfig?.qonto_info || null);
+  const [n8nWorkflows, setN8nWorkflows] = useState<any[]>(dynamicConfig?.workflows || []);
+  const [closePipelines, setClosePipelines] = useState<any[]>(dynamicConfig?.pipelines || []);
 
   let ariaContext: ReturnType<typeof useARIA> | null = null;
   try { ariaContext = useARIA(); } catch { /* not in provider */ }
@@ -82,7 +119,7 @@ export function IntegrationCard({
 
   const statusDot = () => {
     if (provider.comingSoon) return <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />;
-    if (syncing || testing) return <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />;
+    if (syncing || testing || loadingDynamic) return <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />;
     if (lastSyncStatus === 'error') return <span className="w-2.5 h-2.5 rounded-full bg-destructive" />;
     if (connected) return <span className="w-2.5 h-2.5 rounded-full bg-success" />;
     return <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />;
@@ -90,6 +127,7 @@ export function IntegrationCard({
 
   const statusText = () => {
     if (provider.comingSoon) return <span className="text-muted-foreground italic">Demnächst verfügbar</span>;
+    if (loadingDynamic) return <span className="text-primary">Lade Daten...</span>;
     if (syncing) return <span className="text-primary">Synchronisiert...</span>;
     if (testing) return <span className="text-primary">Wird getestet...</span>;
     if (lastSyncStatus === 'error') return <span className="text-destructive">Fehler: {lastSyncError || 'Unbekannt'}</span>;
@@ -122,15 +160,154 @@ export function IntegrationCard({
         : 'border-l-[3px] border-l-success border-border'
       : 'border-border hover:border-primary/30';
 
+  // ══ Dynamic data loaders ══
+  const loadSlackChannels = async () => {
+    const token = formData.bot_token || config?.bot_token;
+    if (!token) { toast.error('Bot Token erforderlich'); return; }
+    setLoadingDynamic(true);
+    try {
+      const res = await fetch('https://slack.com/api/conversations.list?types=public_channel,private_channel&limit=200', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!data.ok) { toast.error(`Slack: ${data.error}`); setLoadingDynamic(false); return; }
+      const channels = (data.channels || []).map((c: any) => ({ id: c.id, name: c.name }));
+      setSlackChannels(channels);
+      onDynamicUpdate?.(provider.id, { channels, loaded_at: new Date().toISOString() });
+      toast.success(`${channels.length} Channels geladen`);
+    } catch { toast.error('Slack API nicht erreichbar'); }
+    setLoadingDynamic(false);
+  };
+
+  const loadMetaAccounts = async () => {
+    const token = formData.access_token || config?.access_token;
+    if (!token) { toast.error('Access Token erforderlich'); return; }
+    setLoadingDynamic(true);
+    try {
+      const res = await fetch(
+        `https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_id,account_status,currency,amount_spent&limit=100&access_token=${token}`
+      );
+      const data = await res.json();
+      if (data.error) { toast.error(`Meta: ${data.error.message}`); setLoadingDynamic(false); return; }
+      const accounts = data.data || [];
+      setMetaAccounts(accounts);
+      onDynamicUpdate?.(provider.id, { ad_accounts: accounts, loaded_at: new Date().toISOString() });
+      toast.success(`${accounts.length} Ad Accounts geladen`);
+    } catch { toast.error('Meta API nicht erreichbar'); }
+    setLoadingDynamic(false);
+  };
+
+  const loadQontoInfo = async () => {
+    const slug = formData.org_slug || config?.org_slug;
+    const key = formData.api_key || config?.api_key;
+    if (!slug || !key) { toast.error('Slug und API Key erforderlich'); return; }
+    setLoadingDynamic(true);
+    try {
+      const res = await fetch(`https://thirdparty.qonto.com/v2/organizations/${slug}`, {
+        headers: { Authorization: `${slug}:${key}` },
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error('Qonto: Zugangsdaten ungültig'); setLoadingDynamic(false); return; }
+      const info = {
+        balance: (data.organization?.bank_accounts?.[0]?.balance_cents || 0) / 100,
+        iban: data.organization?.bank_accounts?.[0]?.iban,
+        currency: data.organization?.bank_accounts?.[0]?.currency || 'EUR',
+        org_name: data.organization?.slug,
+      };
+      setQontoInfo(info);
+      onDynamicUpdate?.(provider.id, { qonto_info: info, loaded_at: new Date().toISOString() });
+      toast.success('Qonto verbunden');
+    } catch { toast.error('Qonto API nicht erreichbar'); }
+    setLoadingDynamic(false);
+  };
+
+  const loadClosePipelines = async () => {
+    const key = formData.api_key || config?.api_key;
+    if (!key) { toast.error('API Key erforderlich'); return; }
+    setLoadingDynamic(true);
+    try {
+      const res = await fetch('https://api.close.com/api/v1/pipeline/', {
+        headers: { Authorization: `Basic ${btoa(key + ':')}` },
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error('Close CRM: API Key ungültig'); setLoadingDynamic(false); return; }
+      const pipelines = data.data || [];
+      setClosePipelines(pipelines);
+      onDynamicUpdate?.(provider.id, { pipelines, loaded_at: new Date().toISOString() });
+      toast.success(`${pipelines.length} Pipelines geladen`);
+    } catch { toast.error('Close CRM API nicht erreichbar'); }
+    setLoadingDynamic(false);
+  };
+
+  const loadN8nWorkflows = async () => {
+    const url = formData.instance_url || config?.instance_url;
+    const key = formData.api_key || config?.api_key;
+    if (!url || !key) { toast.error('URL und API Key erforderlich'); return; }
+    setLoadingDynamic(true);
+    try {
+      const res = await fetch(`${url}/api/v1/workflows`, {
+        headers: { 'X-N8N-API-KEY': key },
+      });
+      const data = await res.json();
+      const workflows = data.data || data || [];
+      setN8nWorkflows(Array.isArray(workflows) ? workflows : []);
+      onDynamicUpdate?.(provider.id, { workflows: Array.isArray(workflows) ? workflows : [], loaded_at: new Date().toISOString() });
+      toast.success(`${Array.isArray(workflows) ? workflows.length : 0} Workflows geladen`);
+    } catch { toast.error('n8n nicht erreichbar'); }
+    setLoadingDynamic(false);
+  };
+
+  // Slack webhook management
+  const addWebhookRow = () => {
+    setSlackWebhooks(prev => [...prev, { label: '', channel_id: '', channel_name: '', url: '' }]);
+  };
+
+  const updateWebhookRow = (index: number, field: keyof SlackWebhookRow, value: string) => {
+    setSlackWebhooks(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      if (field === 'channel_id') {
+        const ch = slackChannels.find(c => c.id === value);
+        if (ch) updated[index].channel_name = ch.name;
+      }
+      return updated;
+    });
+  };
+
+  const removeWebhookRow = (index: number) => {
+    setSlackWebhooks(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Enhanced save that includes dynamic data
+  const handleSave = () => {
+    const saveData = { ...formData };
+    if (provider.id === 'slack') {
+      saveData.webhooks = slackWebhooks;
+      saveData.default_channels = defaultChannels;
+    }
+    if (provider.id === 'meta_ads') {
+      saveData.account_mappings = accountMappings;
+    }
+    onSave(provider.id, saveData);
+  };
+
+  const metaAccountStatus = (status: number) => {
+    if (status === 1) return <Badge className="bg-success/15 text-success border-0 text-[10px]">Aktiv</Badge>;
+    if (status === 2) return <Badge className="bg-destructive/15 text-destructive border-0 text-[10px]">Deaktiviert</Badge>;
+    return <Badge variant="secondary" className="text-[10px]">Unbekannt</Badge>;
+  };
+
   return (
-    <div className={`rounded-[14px] border bg-card overflow-hidden transition-all duration-200 ${borderClass}`}>
+    <div
+      className={`rounded-[14px] border bg-card transition-all duration-200 ${borderClass}`}
+      style={{ overflow: 'visible' }}
+    >
       {/* Collapsed header */}
       <button
         className="w-full text-left p-[18px] flex items-center gap-3.5 focus:outline-none"
         onClick={() => !provider.comingSoon && setExpanded(!expanded)}
         disabled={provider.comingSoon}
       >
-        {/* Icon */}
         <div
           className="w-10 h-10 rounded-[10px] flex items-center justify-center font-bold text-[15px] flex-shrink-0"
           style={{
@@ -141,8 +318,6 @@ export function IntegrationCard({
         >
           {provider.iconLetter}
         </div>
-
-        {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[15px] font-semibold text-foreground">{provider.name}</span>
@@ -150,18 +325,14 @@ export function IntegrationCard({
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             {statusDot()}
-            <span className="text-xs">{statusText()}</span>
+            <span className="text-xs truncate">{statusText()}</span>
           </div>
         </div>
-
-        {/* Health score badge */}
         {connected && healthScore !== null && !provider.comingSoon && (
           <Badge className={`text-xs font-bold px-2 py-0.5 border ${healthScoreColor(healthScore)}`}>
             {healthScore}%
           </Badge>
         )}
-
-        {/* Chevron */}
         {!provider.comingSoon && (
           <div className="flex-shrink-0 text-muted-foreground">
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -169,15 +340,15 @@ export function IntegrationCard({
         )}
       </button>
 
-      {/* Expanded content */}
+      {/* Expanded content — never clipped */}
       {expanded && !provider.comingSoon && (
-        <div className="border-t border-border px-[18px] pb-[18px] pt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5">
+        <div className="border-t border-border p-5" style={{ overflow: 'visible' }}>
+          <div className="flex flex-col xl:flex-row gap-5">
             {/* LEFT — Config */}
-            <div className="space-y-4">
-              {/* Fields */}
+            <div className="flex-1 min-w-0 space-y-4">
+              {/* Credential fields */}
               {provider.fields.map(f => (
-                <div key={f.key}>
+                <div key={f.key} className="w-full">
                   <Label className="text-xs text-muted-foreground">{f.label}</Label>
                   <Input
                     type={f.type === 'password' ? 'password' : 'text'}
@@ -185,7 +356,7 @@ export function IntegrationCard({
                     value={formData[f.key] || ''}
                     readOnly={f.type === 'readonly'}
                     onChange={e => setFormData(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    className={`mt-1 ${f.type === 'readonly' ? 'bg-muted cursor-default' : ''}`}
+                    className={`mt-1 w-full ${f.type === 'readonly' ? 'bg-muted cursor-default' : ''}`}
                   />
                 </div>
               ))}
@@ -201,12 +372,12 @@ export function IntegrationCard({
                 </div>
               ))}
 
-              {/* Webhook */}
+              {/* Webhook endpoint */}
               {provider.webhookUrl && (
                 <div>
                   <Label className="text-xs text-muted-foreground">Webhook Endpoint</Label>
                   <div className="flex gap-2 mt-1">
-                    <Input value={provider.webhookUrl} readOnly className="bg-muted font-mono text-xs" />
+                    <Input value={provider.webhookUrl} readOnly className="bg-muted font-mono text-xs w-full" />
                     <Button variant="outline" size="icon" onClick={copyWebhook} className="flex-shrink-0">
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
@@ -214,33 +385,269 @@ export function IntegrationCard({
                 </div>
               )}
 
-              {/* Last sync */}
+              {/* ══ SLACK DYNAMIC ══ */}
+              {provider.id === 'slack' && (
+                <div className="space-y-4 pt-2 border-t border-border">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-foreground">Channels & Webhooks</h4>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={loadSlackChannels}
+                      disabled={loadingDynamic}
+                    >
+                      {loadingDynamic ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                      Channels laden
+                    </Button>
+                  </div>
+
+                  {slackChannels.length > 0 && (
+                    <>
+                      <p className="text-[11px] text-muted-foreground">{slackChannels.length} Channels geladen</p>
+
+                      {/* Standard channels */}
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-foreground">Standard-Channels</p>
+                        {['kpi', 'abschluesse', 'alerts', 'fulfillment'].map(key => (
+                          <div key={key} className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground w-24 flex-shrink-0 capitalize">{key}</span>
+                            <Select
+                              value={defaultChannels[key] || ''}
+                              onValueChange={v => setDefaultChannels(prev => ({ ...prev, [key]: v }))}
+                            >
+                              <SelectTrigger className="h-8 text-xs flex-1">
+                                <SelectValue placeholder="Channel wählen..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {slackChannels.map(c => (
+                                  <SelectItem key={c.id} value={c.id} className="text-xs">#{c.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Webhook URLs */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-foreground">Webhook URLs</p>
+                          <Button variant="ghost" size="sm" className="text-xs h-7" onClick={addWebhookRow}>
+                            <Plus className="h-3 w-3 mr-1" /> Hinzufügen
+                          </Button>
+                        </div>
+                        {slackWebhooks.map((wh, i) => (
+                          <div key={i} className="rounded-lg border border-border p-3 space-y-2 bg-muted/20">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={wh.label}
+                                onChange={e => updateWebhookRow(i, 'label', e.target.value)}
+                                placeholder="z.B. Tech Support"
+                                className="h-7 text-xs flex-1"
+                              />
+                              <Select
+                                value={wh.channel_id}
+                                onValueChange={v => updateWebhookRow(i, 'channel_id', v)}
+                              >
+                                <SelectTrigger className="h-7 text-xs w-40">
+                                  <SelectValue placeholder="Channel" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {slackChannels.map(c => (
+                                    <SelectItem key={c.id} value={c.id} className="text-xs">#{c.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeWebhookRow(i)}>
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </div>
+                            <Input
+                              value={wh.url}
+                              onChange={e => updateWebhookRow(i, 'url', e.target.value)}
+                              placeholder="https://hooks.slack.com/services/..."
+                              className="h-7 text-xs font-mono w-full"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ══ META ADS DYNAMIC ══ */}
+              {provider.id === 'meta_ads' && (
+                <div className="space-y-4 pt-2 border-t border-border">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-foreground">Ad Accounts</h4>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={loadMetaAccounts}
+                      disabled={loadingDynamic}
+                    >
+                      {loadingDynamic ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                      Accounts laden
+                    </Button>
+                  </div>
+
+                  {metaAccounts.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-foreground">📊 Kundenkonten zuordnen</p>
+                      <div className="rounded-lg border border-border overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-border bg-muted/30">
+                              <th className="text-left p-2 font-medium text-muted-foreground">Account</th>
+                              <th className="text-left p-2 font-medium text-muted-foreground">ID</th>
+                              <th className="text-left p-2 font-medium text-muted-foreground">Status</th>
+                              <th className="text-left p-2 font-medium text-muted-foreground">Zugeordnet zu</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {metaAccounts.map(acc => (
+                              <tr key={acc.id} className="border-b border-border last:border-0">
+                                <td className="p-2 font-medium text-foreground">{acc.name}</td>
+                                <td className="p-2 text-muted-foreground font-mono">{acc.account_id || acc.id}</td>
+                                <td className="p-2">{metaAccountStatus(acc.account_status)}</td>
+                                <td className="p-2">
+                                  <Select
+                                    value={accountMappings[acc.account_id || acc.id] || ''}
+                                    onValueChange={v => setAccountMappings(prev => ({ ...prev, [acc.account_id || acc.id]: v }))}
+                                  >
+                                    <SelectTrigger className="h-7 text-xs">
+                                      <SelectValue placeholder="Kunde wählen..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {closeDeals.map(d => (
+                                        <SelectItem key={d.id} value={d.id} className="text-xs">
+                                          {d.client_name} {d.art ? `· ${d.art}` : ''}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ══ CLOSE CRM DYNAMIC ══ */}
+              {provider.id === 'close_crm' && (
+                <div className="space-y-3 pt-2 border-t border-border">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-foreground">Pipelines & Felder</h4>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={loadClosePipelines} disabled={loadingDynamic}>
+                      {loadingDynamic ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                      Laden
+                    </Button>
+                  </div>
+                  {closePipelines.length > 0 && (
+                    <div className="space-y-2">
+                      {closePipelines.map((p: any) => (
+                        <div key={p.id} className="flex items-center gap-2 text-xs p-2 rounded-lg bg-muted/30 border border-border">
+                          <span className="font-medium text-foreground">{p.name}</span>
+                          <Badge variant="secondary" className="text-[10px]">{p.statuses?.length || 0} Status</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ══ QONTO DYNAMIC ══ */}
+              {provider.id === 'qonto' && (
+                <div className="space-y-3 pt-2 border-t border-border">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-foreground">Kontoinformationen</h4>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={loadQontoInfo} disabled={loadingDynamic}>
+                      {loadingDynamic ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                      Laden
+                    </Button>
+                  </div>
+                  {qontoInfo && (
+                    <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-muted/30 border border-border">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">Kontostand</p>
+                        <p className="text-sm font-bold text-foreground">€{qontoInfo.balance?.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">IBAN</p>
+                        <p className="text-xs font-mono text-foreground">{qontoInfo.iban || '–'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">Organisation</p>
+                        <p className="text-xs text-foreground">{qontoInfo.org_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">Währung</p>
+                        <p className="text-xs text-foreground">{qontoInfo.currency}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ══ n8n DYNAMIC ══ */}
+              {provider.id === 'n8n' && (
+                <div className="space-y-3 pt-2 border-t border-border">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-foreground">Workflows</h4>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={loadN8nWorkflows} disabled={loadingDynamic}>
+                      {loadingDynamic ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                      Laden
+                    </Button>
+                  </div>
+                  {n8nWorkflows.length > 0 && (
+                    <div className="space-y-1.5">
+                      {n8nWorkflows.slice(0, 10).map((wf: any) => (
+                        <div key={wf.id} className="flex items-center justify-between text-xs p-2 rounded-lg bg-muted/30 border border-border">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${wf.active ? 'bg-success' : 'bg-muted-foreground/40'}`} />
+                            <span className="font-medium text-foreground truncate">{wf.name}</span>
+                          </div>
+                          <Badge variant="secondary" className="text-[10px]">{wf.active ? 'Aktiv' : 'Inaktiv'}</Badge>
+                        </div>
+                      ))}
+                      {n8nWorkflows.length > 10 && (
+                        <p className="text-[11px] text-muted-foreground">+{n8nWorkflows.length - 10} weitere</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Last sync info */}
               {lastSyncAt && (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground pt-1">
                   Zuletzt synchronisiert: {new Date(lastSyncAt).toLocaleString('de-DE')}
+                </p>
+              )}
+              {dynamicConfig?.loaded_at && (
+                <p className="text-[11px] text-muted-foreground">
+                  Daten geladen: {getRelativeTime(dynamicConfig.loaded_at)}
                 </p>
               )}
 
               {/* Actions row */}
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
                 <div className="flex items-center gap-3">
                   {provider.docUrl && (
-                    <a
-                      href={provider.docUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
-                    >
-                      Dokumentation <ExternalLink className="h-3 w-3" />
+                    <a href={provider.docUrl} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors">
+                      Docs <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs h-8 text-primary"
-                    onClick={() => onTest(provider.id)}
-                    disabled={testing}
-                  >
+                  <Button variant="ghost" size="sm" className="text-xs h-8 text-primary"
+                    onClick={() => onTest(provider.id)} disabled={testing}>
                     {testing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Play className="h-3 w-3 mr-1" />}
                     Testen
                   </Button>
@@ -253,7 +660,7 @@ export function IntegrationCard({
                       size="sm"
                       className="text-xs h-8"
                       onClick={() => {
-                        if (a.action === 'save') onSave(provider.id, formData);
+                        if (a.action === 'save') handleSave();
                         else onAction(provider.id, a.action);
                       }}
                     >
@@ -289,13 +696,8 @@ export function IntegrationCard({
                       </div>
                     ))}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs h-7 w-full mt-1"
-                    onClick={() => onTest(provider.id)}
-                    disabled={testing}
-                  >
+                  <Button variant="ghost" size="sm" className="text-xs h-7 w-full mt-1"
+                    onClick={() => onTest(provider.id)} disabled={testing}>
                     <RotateCw className="h-3 w-3 mr-1" /> Nochmal testen
                   </Button>
                 </div>
@@ -304,7 +706,7 @@ export function IntegrationCard({
 
             {/* RIGHT — ARIA Guide */}
             {provider.ariaGuide && provider.ariaGuide.length > 0 && (
-              <div className="rounded-[10px] border border-border bg-muted/40 p-4 h-fit space-y-3">
+              <div className="xl:w-[260px] flex-shrink-0 rounded-[10px] border border-border bg-muted/40 p-4 h-fit space-y-3">
                 <div className="flex items-center gap-2">
                   <ARIAIcon size={14} />
                   <span className="text-xs font-semibold text-primary">ARIA Einrichtungshilfe</span>
