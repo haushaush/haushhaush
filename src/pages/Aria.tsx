@@ -426,6 +426,15 @@ export default function Aria() {
           <Wissensbank />
         </TabsContent>
       </Tabs>
+
+      {/* Automation Builder Overlay */}
+      {builderOpen && (
+        <AutomationBuilder
+          automation={editingAutomation}
+          onClose={() => { setBuilderOpen(false); setEditingAutomation(null); }}
+          onSaved={fetchData}
+        />
+      )}
     </div>
   );
 }
