@@ -25,7 +25,6 @@ interface StepDef {
   type: string;
   label: string;
   icon: any;
-  category: string;
   config: Record<string, any>;
   description?: string;
 }
