@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Progress } from '@/components/ui/progress';
 import { DriveBrowser } from '@/components/DriveBrowser';
+import { KundenBudgetCard } from '@/components/finanzen/KundenBudgetCard';
 import { ChevronLeft, ChevronDown, ExternalLink, Plus, CalendarPlus, AlertTriangle, BarChart3, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'react-router-dom';
@@ -355,6 +356,9 @@ export default function KundenDetail() {
               </TableBody>
             </Table>
           </div></CardContent></Card>
+
+          {/* Werbebudget Card */}
+          <KundenBudgetCard dealId={id!} clientName={deal.client_name} />
         </TabsContent>
 
         {/* TAB 7: META ADS */}
