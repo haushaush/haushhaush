@@ -296,8 +296,9 @@ export default function Einstellungen() {
     const score = results.length > 0 ? Math.round((passed / results.length) * 100) : 0;
     
     if (user && setting) {
+      const serializedResults = results.map(r => ({ id: r.id, label: r.label, ok: r.ok, detail: r.detail || null }));
       await supabase.from('integration_settings').update({
-        config: { ...config, health_score: score, last_test: new Date().toISOString(), test_results: results },
+        config: { ...config, health_score: score, last_test: new Date().toISOString(), test_results: serializedResults } as any,
         last_sync_at: new Date().toISOString(),
         last_sync_status: score > 50 ? 'success' : 'error',
       }).eq('id', setting.id);
