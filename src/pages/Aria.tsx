@@ -264,6 +264,11 @@ export default function Aria() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                             {isAdminOrManager && <Switch checked={auto.active} onCheckedChange={v => toggleActive(auto.id, v)} />}
+                            {isAdminOrManager && (
+                              <Button size="sm" variant="outline" onClick={() => { setEditingAutomation(auto); setBuilderOpen(true); }} className="gap-1">
+                                <Pencil className="h-3 w-3" /> Bearbeiten
+                              </Button>
+                            )}
                             <Button
                               size="sm" variant={isRunning ? 'secondary' : 'default'}
                               disabled={isRunning || !auto.active || !isAdminOrManager}
