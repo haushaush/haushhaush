@@ -501,11 +501,14 @@ export default function Einstellungen() {
                   lastSyncStatus={setting?.last_sync_status}
                   lastSyncError={setting?.last_sync_error}
                   config={setting?.config || {}}
+                  dynamicConfig={dynamicConfigs[provider.id] || {}}
                   onSave={handleIntegrationSave}
                   onAction={handleIntegrationAction}
                   onTest={runHealthTest}
+                  onDynamicUpdate={handleDynamicUpdate}
                   testResults={testResults[provider.id]}
                   testing={testingProvider === provider.id}
+                  closeDeals={closeDeals}
                 />
               );
             })}
