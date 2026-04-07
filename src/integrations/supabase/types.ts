@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_budgets: {
+        Row: {
+          account_id: string | null
+          alert: boolean | null
+          alert_200_sent_at: string | null
+          alert_ueberschritten_sent_at: string | null
+          ausgegeben: number | null
+          campaign_ids: Json | null
+          client_id: string | null
+          created_at: string | null
+          fixes_budget: boolean | null
+          id: string
+          invoice_ticket_created: boolean | null
+          invoice_ticket_id: string | null
+          last_synced_at: string | null
+          laufzeit: string | null
+          mail_gesendet: boolean | null
+          name: string
+          pausiert: boolean | null
+          remaining: number | null
+          startdatum: string | null
+          sync_status: string | null
+          updated_at: string | null
+          werbeaccount_name: string
+          werbebudget: number
+        }
+        Insert: {
+          account_id?: string | null
+          alert?: boolean | null
+          alert_200_sent_at?: string | null
+          alert_ueberschritten_sent_at?: string | null
+          ausgegeben?: number | null
+          campaign_ids?: Json | null
+          client_id?: string | null
+          created_at?: string | null
+          fixes_budget?: boolean | null
+          id?: string
+          invoice_ticket_created?: boolean | null
+          invoice_ticket_id?: string | null
+          last_synced_at?: string | null
+          laufzeit?: string | null
+          mail_gesendet?: boolean | null
+          name: string
+          pausiert?: boolean | null
+          remaining?: number | null
+          startdatum?: string | null
+          sync_status?: string | null
+          updated_at?: string | null
+          werbeaccount_name: string
+          werbebudget: number
+        }
+        Update: {
+          account_id?: string | null
+          alert?: boolean | null
+          alert_200_sent_at?: string | null
+          alert_ueberschritten_sent_at?: string | null
+          ausgegeben?: number | null
+          campaign_ids?: Json | null
+          client_id?: string | null
+          created_at?: string | null
+          fixes_budget?: boolean | null
+          id?: string
+          invoice_ticket_created?: boolean | null
+          invoice_ticket_id?: string | null
+          last_synced_at?: string | null
+          laufzeit?: string | null
+          mail_gesendet?: boolean | null
+          name?: string
+          pausiert?: boolean | null
+          remaining?: number | null
+          startdatum?: string | null
+          sync_status?: string | null
+          updated_at?: string | null
+          werbeaccount_name?: string
+          werbebudget?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_budgets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_budgets_invoice_ticket_id_fkey"
+            columns: ["invoice_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_performance_intern: {
         Row: {
           appointments: number | null
