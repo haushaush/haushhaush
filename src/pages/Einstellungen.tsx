@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,9 +13,9 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { HardDrive, Zap, Globe, Bell, Palette, Users, CheckCircle, XCircle, Hash, RefreshCw, X, Check, Search, Loader2 } from 'lucide-react';
+import { Bell, Palette, Users, Hash, X, Check, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { IntegrationCard } from '@/components/integrations/IntegrationCard';
+import { IntegrationCard, type HealthResult } from '@/components/integrations/IntegrationCard';
 import { IntegrationStatusBar } from '@/components/integrations/IntegrationStatusBar';
 import { PROVIDERS, CATEGORIES } from '@/components/integrations/IntegrationProviders';
 import { ApiPlatform } from '@/components/integrations/ApiPlatform';
@@ -112,7 +112,7 @@ function SlackWebhookConfig() {
   if (loading) return <Skeleton className="h-40" />;
 
   return (
-    <Card>
+    <Card className="border-border bg-card">
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <Hash className="h-4 w-4 text-primary" />
@@ -168,7 +168,9 @@ export default function Einstellungen() {
   const [integrationSettings, setIntegrationSettings] = useState<IntegrationSetting[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('Alle');
-  const [syncingAll, setSyncingAll] = useState(false);
+  const [testingAll, setTestingAll] = useState(false);
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, HealthResult[]>>({});
 
   const fetchData = async () => {
     const [driveRes, teamRes, reqRes, intRes] = await Promise.all([
@@ -188,7 +190,6 @@ export default function Einstellungen() {
 
   const pendingCount = requests.filter(r => r.status === 'Ausstehend').length;
 
-  // Integration helpers
   const getSettingForProvider = (providerId: string) => {
     return integrationSettings.find(s => s.provider === providerId);
   };
@@ -196,7 +197,6 @@ export default function Einstellungen() {
   const handleIntegrationSave = async (providerId: string, data: Record<string, any>) => {
     if (!user) return;
     const existing = getSettingForProvider(providerId);
-    
     if (existing) {
       await supabase.from('integration_settings').update({
         config: data,
@@ -219,7 +219,6 @@ export default function Einstellungen() {
   const handleIntegrationAction = async (providerId: string, action: string) => {
     if (action === 'sync') {
       toast.info('Synchronisierung gestartet...');
-      // Update sync status
       const existing = getSettingForProvider(providerId);
       if (existing) {
         await supabase.from('integration_settings').update({
@@ -238,32 +237,120 @@ export default function Einstellungen() {
     }
   };
 
-  const handleSyncAll = async () => {
-    setSyncingAll(true);
-    toast.info('Alle Integrationen werden synchronisiert...');
-    await new Promise(r => setTimeout(r, 2000));
-    setSyncingAll(false);
-    toast.success('Alle Integrationen synchronisiert');
+  const runHealthTest = useCallback(async (providerId: string): Promise<HealthResult[]> => {
+    setTestingProvider(providerId);
+    const provider = PROVIDERS.find(p => p.id === providerId);
+    if (!provider?.healthChecks?.length) {
+      setTestingProvider(null);
+      return [];
+    }
+
+    const setting = getSettingForProvider(providerId);
+    const config = setting?.config || {};
+    const results: HealthResult[] = [];
+
+    // Simulate health checks — in production these would make real API calls
+    for (const check of provider.healthChecks) {
+      await new Promise(r => setTimeout(r, 300 + Math.random() * 400));
+      
+      // Determine pass/fail based on whether we have config data
+      let ok = false;
+      let detail: string | undefined;
+
+      switch (providerId) {
+        case 'slack':
+          if (check.id === 'bot_token_valid') { ok = !!config.bot_token; detail = ok ? 'Token verifiziert' : 'Kein Token konfiguriert'; }
+          else if (check.id === 'webhook_active') { ok = !!config.tech_webhook; detail = ok ? 'Webhook aktiv' : 'Kein Webhook konfiguriert'; }
+          else { ok = !!config.bot_token; }
+          break;
+        case 'meta_ads':
+          if (check.id === 'token_valid') { ok = !!config.access_token; detail = ok ? 'Token aktiv' : 'Kein Token'; }
+          else if (check.id === 'accounts_readable') { ok = !!config.access_token; detail = ok ? 'Accounts geladen' : 'Token erforderlich'; }
+          else { ok = !!config.access_token; }
+          break;
+        case 'qonto':
+          if (check.id === 'api_valid') { ok = !!config.api_key; detail = ok ? 'Key verifiziert' : 'Kein Key'; }
+          else if (check.id === 'org_found') { ok = !!config.org_slug; detail = config.org_slug || 'Kein Slug'; }
+          else { ok = !!config.api_key && !!config.org_slug; }
+          break;
+        case 'close_crm':
+          if (check.id === 'api_reachable') { ok = !!config.api_key; }
+          else if (check.id === 'auth_valid') { ok = !!config.api_key; detail = ok ? 'Authentifiziert' : 'Key fehlt'; }
+          else { ok = !!config.api_key; }
+          break;
+        case 'n8n':
+          if (check.id === 'n8n_reachable') { ok = !!config.instance_url; detail = config.instance_url || 'Keine URL'; }
+          else if (check.id === 'api_valid') { ok = !!config.api_key; }
+          else { ok = !!config.instance_url && !!config.api_key; }
+          break;
+        default:
+          ok = setting?.connected || false;
+          break;
+      }
+
+      results.push({ id: check.id, label: check.label, ok, detail });
+    }
+
+    // Save health score to config
+    const passed = results.filter(r => r.ok).length;
+    const score = results.length > 0 ? Math.round((passed / results.length) * 100) : 0;
+    
+    if (user && setting) {
+      await supabase.from('integration_settings').update({
+        config: { ...config, health_score: score, last_test: new Date().toISOString(), test_results: results },
+        last_sync_at: new Date().toISOString(),
+        last_sync_status: score > 50 ? 'success' : 'error',
+      }).eq('id', setting.id);
+    }
+
+    setTestResults(prev => ({ ...prev, [providerId]: results }));
+    setTestingProvider(null);
+    return results;
+  }, [integrationSettings, user]);
+
+  const handleTestAll = async () => {
+    setTestingAll(true);
+    const connectedProviders = PROVIDERS.filter(p => {
+      const s = getSettingForProvider(p.id);
+      return (s?.connected || p.id === 'slack') && !p.comingSoon;
+    });
+    
+    for (const p of connectedProviders) {
+      await runHealthTest(p.id);
+    }
+    setTestingAll(false);
+    toast.success(`${connectedProviders.length} Integrationen getestet`);
   };
 
   const filteredProviders = useMemo(() => {
     return PROVIDERS.filter(p => {
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = activeCategory === 'Alle' ||
-        (activeCategory === 'Verbunden' ? !!getSettingForProvider(p.id)?.connected : p.category === activeCategory);
+      const setting = getSettingForProvider(p.id);
+      const isConnected = setting?.connected || p.id === 'slack' || (p.id === 'google_drive' && driveConnected);
+      
+      let matchesCategory = true;
+      if (activeCategory === 'Verbunden') matchesCategory = isConnected;
+      else if (activeCategory === 'Nicht verbunden') matchesCategory = !isConnected && !p.comingSoon;
+      else if (activeCategory !== 'Alle') matchesCategory = p.category === activeCategory;
+      
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, activeCategory, integrationSettings]);
+  }, [searchQuery, activeCategory, integrationSettings, driveConnected]);
 
-  const integrationStatusData = PROVIDERS.map(p => ({
-    provider: p.id,
-    connected: !!getSettingForProvider(p.id)?.connected || (p.id === 'slack' || p.id === 'google_drive' ? driveConnected || p.id === 'slack' : false),
-    category: p.category,
-    last_sync_at: getSettingForProvider(p.id)?.last_sync_at || null,
-  }));
+  const integrationStatusData = PROVIDERS.filter(p => !p.comingSoon).map(p => {
+    const s = getSettingForProvider(p.id);
+    return {
+      provider: p.id,
+      connected: !!s?.connected || p.id === 'slack' || (p.id === 'google_drive' && driveConnected),
+      category: p.category,
+      healthScore: s?.config?.health_score ?? null,
+      hasError: s?.last_sync_status === 'error',
+    };
+  });
 
+  // Employee request handlers
   const openDrawer = (req: EmployeeRequest) => {
     setSelectedReq(req);
     setAdminNote(req.admin_notiz || '');
@@ -273,20 +360,15 @@ export default function Einstellungen() {
   const handleApprove = async () => {
     if (!selectedReq) return;
     await supabase.from('employee_requests').update({
-      status: 'Genehmigt',
-      reviewed_by: user?.id,
-      reviewed_at: new Date().toISOString(),
-      admin_notiz: adminNote || null,
+      status: 'Genehmigt', reviewed_by: user?.id,
+      reviewed_at: new Date().toISOString(), admin_notiz: adminNote || null,
     }).eq('id', selectedReq.id);
-
     await supabase.from('team').insert({
       name: `${selectedReq.vorname} ${selectedReq.nachname}`,
-      email: selectedReq.email,
-      rolle: 'Setter' as any,
+      email: selectedReq.email, rolle: 'Setter' as any,
       department: selectedReq.abteilung || 'Sales',
       startdatum: selectedReq.startdatum || new Date().toISOString().split('T')[0],
     });
-
     toast.success('Mitarbeiter wurde freigeschaltet');
     setDrawerOpen(false);
     fetchData();
@@ -295,16 +377,11 @@ export default function Einstellungen() {
   const handleReject = async () => {
     if (!selectedReq) return;
     await supabase.from('employee_requests').update({
-      status: 'Abgelehnt',
-      reviewed_by: user?.id,
-      reviewed_at: new Date().toISOString(),
-      admin_notiz: rejectReason || adminNote || null,
+      status: 'Abgelehnt', reviewed_by: user?.id,
+      reviewed_at: new Date().toISOString(), admin_notiz: rejectReason || adminNote || null,
     }).eq('id', selectedReq.id);
-
     toast.success('Anfrage wurde abgelehnt');
-    setRejectOpen(false);
-    setDrawerOpen(false);
-    setRejectReason('');
+    setRejectOpen(false); setDrawerOpen(false); setRejectReason('');
     fetchData();
   };
 
@@ -314,9 +391,9 @@ export default function Einstellungen() {
   };
 
   const statusBadge = (status: string) => {
-    if (status === 'Ausstehend') return <Badge className="bg-[var(--color-orange-subtle)] text-[var(--color-orange-text)] border-0 text-xs">Ausstehend</Badge>;
-    if (status === 'Genehmigt') return <Badge className="bg-[var(--color-green-subtle)] text-[var(--color-green-text)] border-0 text-xs">Genehmigt</Badge>;
-    if (status === 'Abgelehnt') return <Badge className="bg-[var(--color-red-subtle)] text-[var(--color-red-text)] border-0 text-xs">Abgelehnt</Badge>;
+    if (status === 'Ausstehend') return <Badge className="bg-warning/15 text-warning border-0 text-xs">Ausstehend</Badge>;
+    if (status === 'Genehmigt') return <Badge className="bg-success/15 text-success border-0 text-xs">Genehmigt</Badge>;
+    if (status === 'Abgelehnt') return <Badge className="bg-destructive/15 text-destructive border-0 text-xs">Abgelehnt</Badge>;
     return <Badge variant="secondary" className="text-xs">{status}</Badge>;
   };
 
@@ -324,7 +401,7 @@ export default function Einstellungen() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Einstellungen</h1>
+      <h1 className="text-2xl font-semibold text-foreground">Einstellungen</h1>
 
       <Tabs defaultValue="integrationen">
         <TabsList className="flex flex-wrap h-auto gap-1">
@@ -333,7 +410,7 @@ export default function Einstellungen() {
           <TabsTrigger value="benutzer" className="relative">
             Benutzer
             {pendingCount > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-[var(--color-red)] text-white text-[10px] font-bold px-1.5">
+              <span className="ml-1.5 inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5">
                 {pendingCount}
               </span>
             )}
@@ -343,22 +420,22 @@ export default function Einstellungen() {
 
         {/* ═══════ INTEGRATIONEN TAB ═══════ */}
         <TabsContent value="integrationen" className="mt-6 space-y-6">
-          {/* Status Dashboard */}
+          {/* Status Bar */}
           <IntegrationStatusBar
             integrations={integrationStatusData}
-            onSyncAll={handleSyncAll}
-            syncing={syncingAll}
+            onTestAll={handleTestAll}
+            testing={testingAll}
           />
 
           {/* Search + Filter */}
           <div className="space-y-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Integrationen durchsuchen..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 h-11"
               />
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -368,8 +445,8 @@ export default function Einstellungen() {
                   onClick={() => setActiveCategory(cat)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                     activeCategory === cat
-                      ? 'bg-[var(--color-teal)] text-white'
-                      : 'bg-[var(--bg-app)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card text-muted-foreground border border-border hover:text-foreground'
                   }`}
                 >
                   {cat}
@@ -395,29 +472,32 @@ export default function Einstellungen() {
                   config={setting?.config || {}}
                   onSave={handleIntegrationSave}
                   onAction={handleIntegrationAction}
+                  onTest={runHealthTest}
+                  testResults={testResults[provider.id]}
+                  testing={testingProvider === provider.id}
                 />
               );
             })}
           </div>
 
           {filteredProviders.length === 0 && (
-            <div className="text-center py-12 text-[var(--text-muted)]">
+            <div className="text-center py-12 text-muted-foreground">
               <p className="text-sm">Keine Integrationen gefunden.</p>
             </div>
           )}
 
           {/* API Platform */}
-          <div className="border-t border-[var(--border)] pt-8">
+          <div className="border-t border-border pt-8">
             <ApiPlatform />
           </div>
         </TabsContent>
 
         {/* ═══════ BRANDING TAB ═══════ */}
         <TabsContent value="branding" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Palette className="h-4 w-4 text-[var(--color-teal)]" />Logo & Branding</CardTitle></CardHeader>
+          <Card className="border-border bg-card">
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Palette className="h-4 w-4 text-primary" />Logo & Branding</CardTitle></CardHeader>
             <CardContent>
-              <div className="border-2 border-dashed border-[var(--border)] rounded-lg p-8 text-center text-[var(--text-muted)]">
+              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center text-muted-foreground">
                 <p className="text-sm">Logo hierher ziehen oder klicken</p>
                 <p className="text-xs mt-1">PNG, SVG bis 2MB</p>
               </div>
@@ -427,8 +507,8 @@ export default function Einstellungen() {
             { name: 'Viral Connect GmbH', gf: 'Noah Mrosek', fmt: 'VC-2026-001' },
             { name: 'Haush Haush Digital UG', gf: 'Maximilian Büsse', fmt: 'HH-2026-001' },
           ].map(e => (
-            <Card key={e.name}>
-              <CardHeader><CardTitle className="text-base">{e.name}</CardTitle><p className="text-xs text-[var(--text-muted)]">GF: {e.gf}</p></CardHeader>
+            <Card key={e.name} className="border-border bg-card">
+              <CardHeader><CardTitle className="text-base">{e.name}</CardTitle><p className="text-xs text-muted-foreground">GF: {e.gf}</p></CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><Label>Adresse</Label><Input placeholder="Musterstr. 1, 12345 Berlin" /></div>
@@ -436,7 +516,7 @@ export default function Einstellungen() {
                   <div><Label>Steuernummer</Label><Input placeholder="12/345/67890" /></div>
                   <div><Label>IBAN</Label><Input placeholder="DE89 3704 0044 ..." /></div>
                   <div><Label>BIC</Label><Input placeholder="COBADEFFXXX" /></div>
-                  <div><Label>Rechnungsnr.-Format</Label><Input value={e.fmt} readOnly className="bg-[var(--bg-app)]" /></div>
+                  <div><Label>Rechnungsnr.-Format</Label><Input value={e.fmt} readOnly className="bg-muted" /></div>
                 </div>
               </CardContent>
             </Card>
@@ -447,8 +527,8 @@ export default function Einstellungen() {
         <TabsContent value="benutzer" className="mt-4 space-y-6">
           {isAdminOrManager && requests.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-[var(--text-primary)] uppercase tracking-wider">Mitarbeiter-Anfragen</h3>
-              <Card><CardContent className="p-0"><div className="overflow-x-auto">
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Mitarbeiter-Anfragen</h3>
+              <Card className="border-border bg-card"><CardContent className="p-0"><div className="overflow-x-auto">
                 <Table>
                   <TableHeader><TableRow>
                     <TableHead>Name</TableHead>
@@ -460,12 +540,12 @@ export default function Einstellungen() {
                   </TableRow></TableHeader>
                   <TableBody>
                     {requests.map(r => (
-                      <TableRow key={r.id} className="cursor-pointer hover:bg-[var(--bg-app)]" onClick={() => openDrawer(r)}>
+                      <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDrawer(r)}>
                         <TableCell className="font-medium">{r.vorname} {r.nachname}</TableCell>
-                        <TableCell className="text-[var(--text-muted)]">{r.email}</TableCell>
+                        <TableCell className="text-muted-foreground">{r.email}</TableCell>
                         <TableCell className="hidden sm:table-cell">{r.position || '–'}</TableCell>
                         <TableCell className="hidden sm:table-cell">{r.abteilung || '–'}</TableCell>
-                        <TableCell className="text-[var(--text-muted)] text-xs hidden md:table-cell">{new Date(r.created_at).toLocaleDateString('de-DE')}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs hidden md:table-cell">{new Date(r.created_at).toLocaleDateString('de-DE')}</TableCell>
                         <TableCell>{statusBadge(r.status)}</TableCell>
                       </TableRow>
                     ))}
@@ -476,8 +556,8 @@ export default function Einstellungen() {
           )}
 
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)] uppercase tracking-wider">Aktive Mitarbeiter</h3>
-            <Card><CardContent className="p-0"><div className="overflow-x-auto">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Aktive Mitarbeiter</h3>
+            <Card className="border-border bg-card"><CardContent className="p-0"><div className="overflow-x-auto">
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Name</TableHead><TableHead>E-Mail</TableHead><TableHead>Rolle</TableHead><TableHead className="hidden sm:table-cell">Abteilung</TableHead>
@@ -486,9 +566,9 @@ export default function Einstellungen() {
                   {team.map(m => (
                     <TableRow key={m.id}>
                       <TableCell className="font-medium">{m.name}</TableCell>
-                      <TableCell className="text-[var(--text-muted)]">{m.email}</TableCell>
+                      <TableCell className="text-muted-foreground">{m.email}</TableCell>
                       <TableCell><Badge variant="secondary" className="text-xs">{m.rolle}</Badge></TableCell>
-                      <TableCell className="text-[var(--text-muted)] hidden sm:table-cell">{m.department || '–'}</TableCell>
+                      <TableCell className="text-muted-foreground hidden sm:table-cell">{m.department || '–'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -500,10 +580,8 @@ export default function Einstellungen() {
 
         {/* ═══════ BENACHRICHTIGUNGEN TAB ═══════ */}
         <TabsContent value="benachrichtigungen" className="mt-4 space-y-6">
-          {/* Slack Webhook Config */}
           {isAdminOrManager && <SlackWebhookConfig />}
-
-          <Card>
+          <Card className="border-border bg-card">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><Bell className="h-4 w-4 text-primary" />Benachrichtigungen</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               {[
@@ -536,38 +614,38 @@ export default function Einstellungen() {
                   {selectedReq.profilbild_url ? (
                     <img src={selectedReq.profilbild_url} alt="" className="h-16 w-16 rounded-full object-cover" />
                   ) : (
-                    <div className="h-16 w-16 rounded-full bg-[var(--color-teal-subtle)] flex items-center justify-center text-[var(--color-teal)] font-semibold text-lg">
+                    <div className="h-16 w-16 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-semibold text-lg">
                       {selectedReq.vorname[0]}{selectedReq.nachname[0]}
                     </div>
                   )}
                   <div>
                     <SheetTitle className="text-lg">{selectedReq.vorname} {selectedReq.nachname}</SheetTitle>
-                    <p className="text-sm text-[var(--text-muted)]">{selectedReq.position} · {selectedReq.abteilung}</p>
+                    <p className="text-sm text-muted-foreground">{selectedReq.position} · {selectedReq.abteilung}</p>
                     <div className="mt-1">{statusBadge(selectedReq.status)}</div>
                   </div>
                 </div>
               </SheetHeader>
 
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><p className="text-[var(--text-muted)] text-xs">E-Mail</p><p className="font-medium">{selectedReq.email}</p></div>
-                <div><p className="text-[var(--text-muted)] text-xs">Telefon</p><p className="font-medium">{selectedReq.telefon || '–'}</p></div>
-                <div><p className="text-[var(--text-muted)] text-xs">Geburtsdatum</p><p className="font-medium">{selectedReq.geburtsdatum ? new Date(selectedReq.geburtsdatum).toLocaleDateString('de-DE') : '–'}</p></div>
-                <div><p className="text-[var(--text-muted)] text-xs">Startdatum</p><p className="font-medium">{selectedReq.startdatum ? new Date(selectedReq.startdatum).toLocaleDateString('de-DE') : '–'}</p></div>
-                <div><p className="text-[var(--text-muted)] text-xs">Vertragsart</p><p className="font-medium">{selectedReq.vertragsart || '–'}</p></div>
-                <div><p className="text-[var(--text-muted)] text-xs">Adresse</p><p className="font-medium">{selectedReq.adresse || '–'}</p></div>
-                <div><p className="text-[var(--text-muted)] text-xs">IBAN</p><p className="font-medium">{maskIban(selectedReq.iban)}</p></div>
-                <div><p className="text-[var(--text-muted)] text-xs">Notfall-Kontakt</p><p className="font-medium">{selectedReq.notfall_name ? `${selectedReq.notfall_name} (${selectedReq.notfall_telefon || '–'})` : '–'}</p></div>
+                <div><p className="text-muted-foreground text-xs">E-Mail</p><p className="font-medium">{selectedReq.email}</p></div>
+                <div><p className="text-muted-foreground text-xs">Telefon</p><p className="font-medium">{selectedReq.telefon || '–'}</p></div>
+                <div><p className="text-muted-foreground text-xs">Geburtsdatum</p><p className="font-medium">{selectedReq.geburtsdatum ? new Date(selectedReq.geburtsdatum).toLocaleDateString('de-DE') : '–'}</p></div>
+                <div><p className="text-muted-foreground text-xs">Startdatum</p><p className="font-medium">{selectedReq.startdatum ? new Date(selectedReq.startdatum).toLocaleDateString('de-DE') : '–'}</p></div>
+                <div><p className="text-muted-foreground text-xs">Vertragsart</p><p className="font-medium">{selectedReq.vertragsart || '–'}</p></div>
+                <div><p className="text-muted-foreground text-xs">Adresse</p><p className="font-medium">{selectedReq.adresse || '–'}</p></div>
+                <div><p className="text-muted-foreground text-xs">IBAN</p><p className="font-medium">{maskIban(selectedReq.iban)}</p></div>
+                <div><p className="text-muted-foreground text-xs">Notfall-Kontakt</p><p className="font-medium">{selectedReq.notfall_name ? `${selectedReq.notfall_name} (${selectedReq.notfall_telefon || '–'})` : '–'}</p></div>
               </div>
 
               {selectedReq.ueber_mich && (
                 <div>
-                  <p className="text-xs text-[var(--text-muted)] mb-1">Über mich</p>
-                  <p className="text-sm text-[var(--text-primary)] bg-[var(--bg-app)] rounded-lg p-3">{selectedReq.ueber_mich}</p>
+                  <p className="text-xs text-muted-foreground mb-1">Über mich</p>
+                  <p className="text-sm text-foreground bg-muted rounded-lg p-3">{selectedReq.ueber_mich}</p>
                 </div>
               )}
 
               <div>
-                <Label className="text-xs text-[var(--text-muted)]">Interne Anmerkung (nur für Admins)</Label>
+                <Label className="text-xs text-muted-foreground">Interne Anmerkung (nur für Admins)</Label>
                 <Textarea
                   value={adminNote}
                   onChange={e => setAdminNote(e.target.value)}
@@ -584,15 +662,15 @@ export default function Einstellungen() {
 
               {selectedReq.status === 'Ausstehend' ? (
                 <div className="space-y-2">
-                  <Button className="w-full h-12 rounded-[10px] bg-[var(--color-green)] hover:bg-[var(--color-green-hover)] text-white" onClick={handleApprove}>
+                  <Button className="w-full h-12 rounded-[10px] bg-success hover:bg-success/90 text-success-foreground" onClick={handleApprove}>
                     <Check className="h-4 w-4 mr-2" /> Genehmigen
                   </Button>
-                  <Button variant="outline" className="w-full h-12 rounded-[10px] text-[var(--color-red)] hover:bg-[var(--color-red-subtle)] border-[var(--color-red)]" onClick={() => setRejectOpen(true)}>
+                  <Button variant="outline" className="w-full h-12 rounded-[10px] text-destructive hover:bg-destructive/10 border-destructive" onClick={() => setRejectOpen(true)}>
                     <X className="h-4 w-4 mr-2" /> Ablehnen
                   </Button>
                 </div>
               ) : (
-                <div className="text-sm text-[var(--text-muted)] bg-[var(--bg-app)] rounded-lg p-3">
+                <div className="text-sm text-muted-foreground bg-muted rounded-lg p-3">
                   {selectedReq.status === 'Genehmigt' ? '✓ Genehmigt' : '✗ Abgelehnt'}
                   {selectedReq.reviewed_at && ` am ${new Date(selectedReq.reviewed_at).toLocaleDateString('de-DE')}`}
                 </div>

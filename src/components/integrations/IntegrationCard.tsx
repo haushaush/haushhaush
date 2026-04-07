@@ -320,7 +320,8 @@ export function IntegrationCard({
                     size="sm"
                     className="w-full text-xs h-8 border-primary/30 text-primary hover:bg-primary/5"
                     onClick={() => {
-                      ariaContext?.sendMessage(`Hilf mir ${provider.name} einzurichten — wo finde ich die API Keys?`);
+                      ariaContext?.addMessage({ role: 'user', content: `Hilf mir ${provider.name} einzurichten — wo finde ich die API Keys?` });
+                      ariaContext?.openARIA();
                     }}
                   >
                     <ARIAIcon size={12} />
