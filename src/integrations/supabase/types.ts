@@ -410,6 +410,50 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_runs: {
+        Row: {
+          automation_id: string | null
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          started_at: string | null
+          status: string
+          steps_log: Json | null
+          triggered_by: string | null
+        }
+        Insert: {
+          automation_id?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          steps_log?: Json | null
+          triggered_by?: string | null
+        }
+        Update: {
+          automation_id?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          steps_log?: Json | null
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_runs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "aria_automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bug_reports: {
         Row: {
           browser_info: string | null
