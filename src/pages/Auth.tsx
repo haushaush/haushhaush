@@ -5,18 +5,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
+import { Loader2, FlaskConical } from 'lucide-react';
 import { toast } from 'sonner';
 
 const logoUrl = import.meta.env.VITE_LOGO_URL || null;
 
 export default function Auth() {
-  const { user, loading } = useAuth();
+  const { user, loading, activateTestMode } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [pendingMsg, setPendingMsg] = useState('');
+  const [showTestMode, setShowTestMode] = useState(false);
+  const [testPassword, setTestPassword] = useState('');
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="text-primary animate-pulse text-2xl font-semibold">Laden...</div></div>;
   if (user) return <Navigate to="/" replace />;
@@ -136,6 +138,50 @@ export default function Auth() {
               Passwort vergessen?
             </button>
           </p>
+        </div>
+
+        {/* Test Mode */}
+        <div className="mt-4 text-center">
+          <button
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+            onClick={() => setShowTestMode(prev => !prev)}
+          >
+            <FlaskConical className="h-3 w-3" />
+            Test Mode
+          </button>
+          {showTestMode && (
+            <div className="mt-3 rounded-xl border border-border p-4" style={{ backgroundColor: 'hsl(var(--card))' }}>
+              <p className="text-xs text-muted-foreground mb-2">Passwort für Test-Zugang eingeben:</p>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  value={testPassword}
+                  onChange={e => setTestPassword(e.target.value)}
+                  placeholder="Test-Passwort"
+                  className="h-9 text-sm rounded-lg"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const ok = activateTestMode(testPassword);
+                      if (ok) toast.success('Test Mode aktiviert ✓');
+                      else toast.error('Falsches Passwort');
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-9 rounded-lg"
+                  onClick={() => {
+                    const ok = activateTestMode(testPassword);
+                    if (ok) toast.success('Test Mode aktiviert ✓');
+                    else toast.error('Falsches Passwort');
+                  }}
+                >
+                  Unlock
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
