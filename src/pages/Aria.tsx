@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import Wissensbank from '@/components/aria/Wissensbank';
+import AutomationBuilder from '@/components/aria/AutomationBuilder';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -74,6 +75,8 @@ export default function Aria() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingMemory, setEditingMemory] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null);
 
   const fetchData = async () => {
     const [{ data: autos }, { data: logData }, { data: memData }, { count: intCount }, { count: corrCount }] = await Promise.all([
