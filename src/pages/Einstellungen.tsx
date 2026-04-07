@@ -233,6 +233,19 @@ export default function Einstellungen() {
     fetchData();
   };
 
+  const handleDynamicUpdate = async (providerId: string, dynamicData: Record<string, any>) => {
+    if (!user) return;
+    setDynamicConfigs(prev => ({ ...prev, [providerId]: dynamicData }));
+    const existing = getSettingForProvider(providerId);
+    if (existing) {
+      const updatedConfig = { ...existing.config, dynamic_data: dynamicData };
+      await supabase.from('integration_settings').update({
+        config: updatedConfig as any,
+        updated_at: new Date().toISOString(),
+      }).eq('id', existing.id);
+    }
+  };
+
   const handleIntegrationAction = async (providerId: string, action: string) => {
     if (action === 'sync') {
       toast.info('Synchronisierung gestartet...');
