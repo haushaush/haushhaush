@@ -9,6 +9,7 @@ import { ExternalLink, ChevronDown, BarChart3 } from 'lucide-react';
 
 type AdBudget = {
   id: string;
+  client_id: string | null;
   werbeaccount_name: string;
   name: string;
   werbebudget: number;

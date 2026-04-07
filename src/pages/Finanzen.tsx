@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { QontoBuchhaltung } from '@/components/finanzen/QontoBuchhaltung';
+import { Werbebudgets } from '@/components/finanzen/Werbebudgets';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -100,6 +101,7 @@ export default function Finanzen() {
           <TabsTrigger value="belege">Belege</TabsTrigger>
           <TabsTrigger value="buchhaltung">Buchhaltung</TabsTrigger>
           <TabsTrigger value="laufzeiten">Laufzeiten</TabsTrigger>
+          <TabsTrigger value="werbebudgets">Werbebudgets</TabsTrigger>
         </TabsList>
 
         <TabsContent value="uebersicht" className="space-y-6 mt-4">
@@ -242,6 +244,10 @@ export default function Finanzen() {
               </TableBody>
             </Table>
           </div></CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="werbebudgets" className="space-y-4 mt-4">
+          <Werbebudgets />
         </TabsContent>
       </Tabs>
     </div>

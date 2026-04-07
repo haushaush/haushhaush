@@ -62,6 +62,7 @@ const navItems: NavItem[] = [
       { title: 'Rechnungen', url: '/finanzen/rechnungen' },
       { title: 'Belege', url: '/finanzen/belege' },
       { title: 'Buchhaltung', url: '/finanzen/buchhaltung' },
+      { title: 'Werbebudgets', url: '/finanzen/werbebudgets' },
     ],
   },
   {
