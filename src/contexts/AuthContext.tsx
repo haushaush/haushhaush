@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<AppRole[]>([]);
-  const [isTestMode, setIsTestMode] = useState(() => sessionStorage.getItem(TEST_MODE_KEY) === 'active');
+  const [isTestMode, setIsTestMode] = useState(true); // TEST MODE DAUERHAFT AN — wird manuell wieder deaktiviert
 
   const fetchRoles = async (userId: string) => {
     const { data } = await supabase
