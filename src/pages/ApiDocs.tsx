@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react';
+import { ChevronDown, ChevronRight, ArrowLeft, Bot } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Endpoint {
@@ -17,6 +17,7 @@ interface Endpoint {
 interface Section {
   id: string;
   title: string;
+  icon: string;
   endpoints: Endpoint[];
 }
 
@@ -31,6 +32,7 @@ const SECTIONS: Section[] = [
   {
     id: 'auth',
     title: 'Authentifizierung',
+    icon: '🔐',
     endpoints: [
       {
         method: 'GET',
@@ -47,6 +49,7 @@ const SECTIONS: Section[] = [
   {
     id: 'deals',
     title: 'Deals',
+    icon: '💼',
     endpoints: [
       {
         method: 'GET',
@@ -61,13 +64,11 @@ const SECTIONS: Section[] = [
   "data": [
     {
       "id": "uuid",
-      "client_name": "Musterfirma GmbH",
-      "wert_eur": 3500,
+      "client_name": "Steven Rau",
+      "art": "Beihilfe - PKV",
+      "wert_eur": 4500,
       "status": "Aktiv",
-      "art": "PKV",
-      "deal_type": "Neukunde",
-      "laufzeit_monate": 6,
-      "created_at": "2026-01-15T10:30:00Z"
+      "ampelstatus": "Grün"
     }
   ],
   "count": 17,
@@ -82,7 +83,7 @@ const SECTIONS: Section[] = [
         description: 'Einen Deal nach ID abrufen.',
         params: [{ name: 'id', type: 'uuid', required: true, desc: 'Deal ID' }],
         responseBody: `{
-  "data": { "id": "uuid", "client_name": "Musterfirma GmbH", ... },
+  "data": { "id": "uuid", "client_name": "Steven Rau", ... },
   "error": null
 }`,
       },
@@ -115,11 +116,22 @@ const SECTIONS: Section[] = [
   "error": null
 }`,
       },
+      {
+        method: 'PATCH',
+        path: '/v1/deals/:id/ampel',
+        description: 'Ampelstatus eines Deals ändern. Benötigt Scope: write:deals.',
+        requestBody: `{ "ampelstatus": "Rot" }`,
+        responseBody: `{
+  "data": { "id": "uuid", "ampelstatus": "Rot", ... },
+  "error": null
+}`,
+      },
     ],
   },
   {
     id: 'tasks',
     title: 'Aufgaben',
+    icon: '✅',
     endpoints: [
       {
         method: 'GET',
@@ -155,18 +167,28 @@ const SECTIONS: Section[] = [
         requestBody: `{ "status": "Erledigt" }`,
         responseBody: `{ "data": { "id": "uuid", ... }, "error": null }`,
       },
+      {
+        method: 'DELETE',
+        path: '/v1/tasks/:id',
+        description: 'Aufgabe löschen. Benötigt Scope: write:tasks.',
+        responseBody: `{ "success": true, "error": null }`,
+      },
     ],
   },
   {
     id: 'invoices',
     title: 'Rechnungen',
+    icon: '🧾',
     endpoints: [
       {
         method: 'GET',
         path: '/v1/invoices',
         description: 'Alle Rechnungen abrufen.',
+        params: [
+          { name: 'status', type: 'string', required: false, desc: 'Entwurf, Gesendet, Bezahlt, Überfällig' },
+        ],
         responseBody: `{
-  "data": [{ "id": "uuid", "invoice_nr": "VC-2026-001", "brutto": 4165, ... }],
+  "data": [{ "id": "uuid", "invoice_nr": "VC-2026-001", "brutto": 4165, "status": "Bezahlt", ... }],
   "count": 5,
   "page": 1,
   "per_page": 20,
@@ -185,11 +207,109 @@ const SECTIONS: Section[] = [
 }`,
         responseBody: `{ "data": { "id": "uuid", ... }, "error": null }`,
       },
+      {
+        method: 'PATCH',
+        path: '/v1/invoices/:id/status',
+        description: 'Rechnungsstatus ändern. Benötigt Scope: write:invoices.',
+        requestBody: `{ "status": "Bezahlt" }`,
+        responseBody: `{ "data": { "id": "uuid", "status": "Bezahlt", ... }, "error": null }`,
+      },
+    ],
+  },
+  {
+    id: 'ad-budgets',
+    title: 'Werbebudgets',
+    icon: '💰',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/v1/ad-budgets',
+        description: 'Alle Werbebudgets abrufen. Filtert optional nach Kundenname.',
+        params: [
+          { name: 'name', type: 'string', required: false, desc: 'Kundenname (ILIKE Suche)' },
+        ],
+        responseBody: `{
+  "data": [{
+    "id": "uuid",
+    "werbeaccount_name": "Haustierversichert",
+    "name": "Sabine Liebscher",
+    "werbebudget": 750,
+    "ausgegeben": 756.23,
+    "remaining": -6.23,
+    "laufzeit": "3 Monate",
+    "pausiert": true,
+    "account_id": "act_1452387582635654"
+  }],
+  "count": 24,
+  "error": null
+}`,
+      },
+      {
+        method: 'GET',
+        path: '/v1/ad-budgets/:id',
+        description: 'Ein Werbebudget nach ID abrufen.',
+        params: [{ name: 'id', type: 'uuid', required: true, desc: 'Budget ID' }],
+        responseBody: `{ "data": { ... }, "error": null }`,
+      },
+      {
+        method: 'PATCH',
+        path: '/v1/ad-budgets/:id/ausgegeben',
+        description: 'Ausgaben eines Budgets aktualisieren (z.B. nach Meta Sync).',
+        requestBody: `{ "ausgegeben": 812.50 }`,
+        responseBody: `{
+  "data": { "id": "uuid", "ausgegeben": 812.50, "sync_status": "synced", ... },
+  "error": null
+}`,
+      },
+      {
+        method: 'POST',
+        path: '/v1/ad-budgets/:id/sync',
+        description: 'Meta Sync für ein Budget triggern.',
+        responseBody: `{ "message": "Sync triggered", "budget_id": "uuid", "error": null }`,
+      },
+    ],
+  },
+  {
+    id: 'aria',
+    title: 'ARIA (KI-Assistent)',
+    icon: '🤖',
+    endpoints: [
+      {
+        method: 'POST',
+        path: '/v1/aria/message',
+        description: 'Nachricht an ARIA senden. Optional mit Aktionsausführung.',
+        requestBody: `{
+  "message": "Starte die Zeiterfassung für Kunde Denis Petric",
+  "execute_actions": true
+}`,
+        responseBody: `{
+  "response": "Timer gestartet für Denis Petric ✓",
+  "actions_executed": ["start_timer"],
+  "action_results": [{"action": "start_timer", "success": true}],
+  "error": null
+}`,
+      },
+      {
+        method: 'POST',
+        path: '/v1/aria/automate',
+        description: 'Eine gespeicherte ARIA-Automation per Name triggern.',
+        requestBody: `{
+  "automation_name": "Setter Tagesreport",
+  "trigger": "manual"
+}`,
+        responseBody: `{
+  "automation_id": "uuid",
+  "name": "Setter Tagesreport",
+  "triggered": true,
+  "error": null
+}`,
+      },
     ],
   },
   {
     id: 'team',
     title: 'Team',
+    icon: '👥',
     endpoints: [
       {
         method: 'GET',
@@ -198,8 +318,19 @@ const SECTIONS: Section[] = [
         responseBody: `{
   "data": [{ "id": "uuid", "name": "Noah Mrosek", "rolle": "Admin", "department": "Management" }],
   "count": 17,
-  "page": 1,
-  "per_page": 20,
+  "error": null
+}`,
+      },
+      {
+        method: 'GET',
+        path: '/v1/sales-performance',
+        description: 'Sales-Performance Daten abrufen.',
+        params: [
+          { name: 'period', type: 'string', required: false, desc: 'week | month (Standard: week)' },
+        ],
+        responseBody: `{
+  "data": [{ "setter_id": "uuid", "datum": "2026-04-07", "calls_made": 45, "appointments_set": 3, ... }],
+  "count": 7,
   "error": null
 }`,
       },
@@ -208,6 +339,7 @@ const SECTIONS: Section[] = [
   {
     id: 'notifications',
     title: 'Benachrichtigungen',
+    icon: '🔔',
     endpoints: [
       {
         method: 'POST',
@@ -215,7 +347,7 @@ const SECTIONS: Section[] = [
         description: 'Notification an einen Benutzer senden.',
         requestBody: `{
   "title": "Neuer Abschluss",
-  "preview": "Musterfirma GmbH — 3.500 €",
+  "preview": "Steven Rau — 4.500 €",
   "channel": "system",
   "user_id": "uuid",
   "action_url": "/kunden/abschluesse",
@@ -228,6 +360,7 @@ const SECTIONS: Section[] = [
   {
     id: 'webhooks',
     title: 'Webhooks',
+    icon: '🔗',
     endpoints: [
       {
         method: 'POST',
@@ -244,6 +377,7 @@ const SECTIONS: Section[] = [
   {
     id: 'errors',
     title: 'Fehler-Codes',
+    icon: '⚠️',
     endpoints: [
       {
         method: 'GET',
@@ -255,6 +389,7 @@ const SECTIONS: Section[] = [
 401 — Unauthorized (ungültiger oder abgelaufener Token)
 403 — Forbidden (fehlende Scopes)
 404 — Not Found
+405 — Method Not Allowed
 429 — Rate Limit (max. 100 Requests/Minute)
 500 — Serverfehler`,
       },
@@ -272,13 +407,15 @@ const WEBHOOK_EVENTS = [
   { event: 'invoice.created', desc: 'Neue Rechnung wurde erstellt' },
   { event: 'invoice.paid', desc: 'Rechnung wurde bezahlt' },
   { event: 'invoice.overdue', desc: 'Rechnung ist überfällig' },
+  { event: 'budget.exceeded', desc: 'Werbebudget überschritten' },
+  { event: 'budget.warning', desc: 'Werbebudget unter €200 verbleibend' },
   { event: 'client.ampel_changed', desc: 'Ampelstatus eines Kunden hat sich geändert' },
   { event: 'client.laufzeit_ending', desc: 'Kundenlaufzeit endet bald' },
   { event: 'team.member_joined', desc: 'Neues Teammitglied' },
   { event: 'team.member_approved', desc: 'Mitarbeiter wurde freigeschaltet' },
 ];
 
-function CodeBlock({ code, lang = 'json' }: { code: string; lang?: string }) {
+function CodeBlock({ code }: { code: string }) {
   return (
     <pre className="bg-[#1D1D1F] dark:bg-[#111] text-gray-300 rounded-lg p-4 text-xs font-mono overflow-x-auto whitespace-pre">
       {code}
@@ -414,12 +551,13 @@ export default function ApiDocs() {
                   setActiveSection(s.id);
                   document.getElementById(`section-${s.id}`)?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
+                className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors flex items-center gap-2 ${
                   activeSection === s.id
                     ? 'bg-[var(--color-teal-subtle)] text-[var(--color-teal)] font-medium'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-app)]'
                 }`}
               >
+                <span className="text-xs">{s.icon}</span>
                 {s.title}
               </button>
             ))}
@@ -428,12 +566,13 @@ export default function ApiDocs() {
                 setActiveSection('webhook-events');
                 document.getElementById('section-webhook-events')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors ${
+              className={`w-full text-left px-3 py-1.5 rounded-md text-sm transition-colors flex items-center gap-2 ${
                 activeSection === 'webhook-events'
                   ? 'bg-[var(--color-teal-subtle)] text-[var(--color-teal)] font-medium'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-app)]'
               }`}
             >
+              <span className="text-xs">📡</span>
               Webhook Events
             </button>
           </nav>
@@ -444,7 +583,7 @@ export default function ApiDocs() {
           <div>
             <h1 className="text-3xl font-bold text-[var(--text-primary)]">Agency Hub API</h1>
             <p className="text-[var(--text-secondary)] mt-2">
-              Verbinde jede App nahtlos mit deinem Dashboard. Nutze unsere REST API um Deals, Aufgaben, Rechnungen und mehr zu verwalten.
+              Verbinde jede App nahtlos mit deinem Dashboard. Nutze unsere REST API um Deals, Aufgaben, Rechnungen, Werbebudgets und mehr zu verwalten.
             </p>
             <Card className="mt-4 border-[var(--border)] bg-[var(--bg-surface)]">
               <CardContent className="p-4">
@@ -458,7 +597,10 @@ export default function ApiDocs() {
 
           {SECTIONS.map(section => (
             <section key={section.id} id={`section-${section.id}`} className="space-y-4">
-              <h2 className="text-xl font-bold text-[var(--text-primary)]">{section.title}</h2>
+              <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <span>{section.icon}</span>
+                {section.title}
+              </h2>
               <div className="space-y-3">
                 {section.endpoints.map((ep, i) => (
                   <EndpointBlock key={i} ep={ep} />
@@ -469,7 +611,10 @@ export default function ApiDocs() {
 
           {/* Webhook Events */}
           <section id="section-webhook-events" className="space-y-4">
-            <h2 className="text-xl font-bold text-[var(--text-primary)]">Webhook Events</h2>
+            <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <span>📡</span>
+              Webhook Events
+            </h2>
             <p className="text-sm text-[var(--text-secondary)]">
               Liste aller Events die von der API emitted werden können.
             </p>
@@ -486,12 +631,42 @@ export default function ApiDocs() {
                     <tbody>
                       {WEBHOOK_EVENTS.map(e => (
                         <tr key={e.event} className="border-b border-[var(--border)] last:border-0">
-                          <td className="px-4 py-2 font-mono text-xs text-[var(--color-teal)]">{e.event}</td>
+                          <td className="px-4 py-2 font-mono text-xs text-[var(--text-primary)]">{e.event}</td>
                           <td className="px-4 py-2 text-xs text-[var(--text-secondary)]">{e.desc}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* ARIA Guide Card */}
+          <section className="space-y-4">
+            <Card className="border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-[var(--color-teal)]/10 flex items-center justify-center">
+                    <Bot className="h-5 w-5 text-[var(--color-teal)]" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-[var(--text-primary)]">Steuere das Portal per ARIA</h3>
+                    <p className="text-xs text-[var(--text-muted)]">ARIA kann alle API-Endpunkte direkt ausführen — kein API Key nötig.</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {[
+                    { prompt: 'zeig mir alle offenen Rechnungen', api: 'GET /invoices?status=offen' },
+                    { prompt: 'erstelle eine Aufgabe für Justin: Rechnung Kehlenbach klären', api: 'POST /tasks {"title": "Rechnung Kehlenbach klären", ...}' },
+                    { prompt: 'wie viel hat Matthias Grimske ausgegeben?', api: 'GET /ad-budgets?name=Mathias+Grimske' },
+                    { prompt: 'pausiere den Timer', api: 'PATCH /timer/stop' },
+                  ].map((ex, i) => (
+                    <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 bg-[var(--bg-app)] rounded-lg px-4 py-2.5">
+                      <span className="text-sm text-[var(--text-primary)]">"{ex.prompt}"</span>
+                      <span className="text-[10px] font-mono text-[var(--text-muted)] sm:ml-auto">→ {ex.api}</span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
