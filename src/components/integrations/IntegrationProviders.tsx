@@ -94,14 +94,8 @@ export const PROVIDERS: IntegrationProvider[] = [
     description: 'Benachrichtigungen und Automatisierungen',
     fields: [
       { key: 'bot_token', label: 'Bot Token (xoxb-...)', type: 'password', placeholder: 'xoxb-...' },
-      { key: 'tech_webhook', label: 'Tech Support Webhook URL', type: 'text', placeholder: 'https://hooks.slack.com/...' },
-      { key: 'kpi_webhook', label: 'n8n Sales KPI Webhook URL', type: 'text', placeholder: 'https://n8n...' },
     ],
-    toggles: [
-      { key: 'notify_abschluesse', label: 'Benachrichtigungen #abschlüsse' },
-      { key: 'notify_laufzeiten', label: 'Benachrichtigungen #laufzeiten' },
-      { key: 'notify_buchhaltung', label: 'Benachrichtigungen #buchhaltung' },
-    ],
+    toggles: [],
     webhookUrl: `${SUPABASE_URL}/functions/v1/webhook-receiver/slack`,
     actions: [
       { label: 'Test senden', variant: 'outline', action: 'test' },
