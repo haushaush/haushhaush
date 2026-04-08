@@ -348,29 +348,43 @@ export function IntegrationCard({
     return <Badge variant="secondary" className="text-[10px]">Unbekannt</Badge>;
   };
 
-  // Auto-match: find best deal for a given ad account name
   const autoMatch = (accName: string): string | null => {
     if (!closeDeals.length) return null;
+    const STOP_WORDS = new Set([
+      'alexander', 'thomas', 'michael', 'christian', 'stefan', 'andreas', 'martin',
+      'markus', 'daniel', 'peter', 'jan', 'max', 'felix', 'julian', 'simon', 'david',
+      'pkv', 'bu', 'tkv', 'kv', 'versicherung', 'versicherungen', 'versicherungsmakler',
+      'beihilfe', 'tierkrankenversicherung', 'tierversicherung', 'krankenversicherung',
+      'unfallversicherung', 'lebensversicherung', 'sterbegeld', 'rechtsschutz',
+      'gmbh', 'ug', 'ag', 'kg', 'inc', 'ltd', 'digital', 'media', 'marketing',
+      'recruiting', 'gruppe', 'partner', 'service', 'solutions', 'consulting',
+      'und', 'der', 'die', 'das', 'von', 'van', 'de',
+    ]);
     const normalize = (s: string) =>
-      s.toLowerCase()
-        .replace(/\b(gmbh|ug|ag|kg|e\.k\.|inc|ltd|versicherungen?|versicherungsmakler|versicherungsservice|tierkrankenversicherung|tierversicherung|beihilfe|pkv|bu|tkv|unfallversicherung|krankenversicherung|lebensversicherung|recruiting|marketing|digital|media)\b/gi, '')
-        .replace(/[^a-z0-9\s]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    const accNorm = normalize(accName);
-    const accWords = accNorm.split(' ').filter(w => w.length > 2);
+      s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const getSignificantWords = (s: string) =>
+      normalize(s).split(' ').filter(w => w.length > 2 && !STOP_WORDS.has(w));
+    const accWords = getSignificantWords(accName);
+    const accSearchWords = accWords.length > 0
+      ? accWords
+      : normalize(accName).split(' ').filter(w => w.length > 3);
+    if (accSearchWords.length === 0) return null;
     let bestMatch: { id: string; score: number } | null = null;
     for (const deal of closeDeals) {
-      const dealNorm = normalize(deal.client_name);
-      const dealWords = dealNorm.split(' ').filter(w => w.length > 2);
-      const matchingWords = accWords.filter(w =>
-        dealWords.some(dw => dw.includes(w) || w.includes(dw))
+      const dealWords = getSignificantWords(deal.client_name);
+      const dealSearchWords = dealWords.length > 0
+        ? dealWords
+        : normalize(deal.client_name).split(' ').filter(w => w.length > 3);
+      if (dealSearchWords.length === 0) continue;
+      const exactMatches = accSearchWords.filter(w => dealSearchWords.includes(w));
+      const partialMatches = accSearchWords.filter(w =>
+        w.length >= 4 && dealSearchWords.some(dw => dw.length >= 4 && (dw.includes(w) || w.includes(dw)))
       );
-      const overlapScore = matchingWords.length / Math.max(accWords.length, dealWords.length, 1);
-      const substringScore = accNorm.includes(dealNorm) || dealNorm.includes(accNorm) ? 0.9 : 0;
-      const firstWordScore = accWords[0] && dealWords[0] && accWords[0] === dealWords[0] ? 0.6 : 0;
-      const score = Math.max(overlapScore, substringScore, firstWordScore);
-      if (score >= 0.4 && (!bestMatch || score > bestMatch.score)) {
+      const matchCount = exactMatches.length + partialMatches.length * 0.5;
+      const totalWords = Math.max(accSearchWords.length, dealSearchWords.length);
+      const score = matchCount / totalWords;
+      if (exactMatches.length === 0) continue;
+      if (score >= 0.6 && (!bestMatch || score > bestMatch.score)) {
         bestMatch = { id: deal.id, score };
       }
     }
