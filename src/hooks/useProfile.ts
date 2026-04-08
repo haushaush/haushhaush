@@ -56,15 +56,13 @@ export function useProfile() {
       await fetchProfile();
 
       // Step 3: subscribe ONLY after confirming session exists
+      const channelName = `profile-changes-${user.id}`;
+      await supabase.removeChannel(supabase.channel(channelName));
       channel = supabase
-        .channel(`profile-changes-${user.id}-${Date.now()}`)
+        .channel(channelName)
         .on(
           'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'team',
-          },
+          { event: 'UPDATE', schema: 'public', table: 'team' },
           () => fetchProfile()
         )
         .subscribe();
