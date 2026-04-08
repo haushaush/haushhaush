@@ -528,14 +528,13 @@ export function IntegrationCard({
                                 {metaAccountStatus(acc.account_status)}
                               </div>
                               <Select
-                                value={accountMappings[accountId] || ''}
+                                value={accountMappings[accountId] ?? undefined}
                                 onValueChange={v => setAccountMappings(prev => ({ ...prev, [accountId]: v }))}
                               >
                                 <SelectTrigger className="h-8 text-xs w-full">
                                   <SelectValue placeholder="Kunde zuordnen..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="" className="text-xs text-muted-foreground">— Kein Kunde —</SelectItem>
                                   {closeDeals.map(d => (
                                     <SelectItem key={d.id} value={d.id} className="text-xs">
                                       {d.client_name} {d.art ? `· ${d.art}` : ''}
