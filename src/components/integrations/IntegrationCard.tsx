@@ -683,6 +683,16 @@ export function IntegrationCard({
                             >
                               🤖 Auto-Match alle
                             </button>
+                            <button
+                              className="text-[10px] px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium flex items-center gap-1 disabled:opacity-50"
+                              onClick={runAiMatch}
+                              disabled={aiMatching}
+                            >
+                              {aiMatching
+                                ? <><Loader2 className="h-3 w-3 animate-spin" /> KI läuft...</>
+                                : <>✨ KI-Match alle</>
+                              }
+                            </button>
                             {autoSuggestedCount > 0 && (
                               <button
                                 className="text-[10px] px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
