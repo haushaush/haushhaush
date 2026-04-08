@@ -360,12 +360,13 @@ export function IntegrationCard({
         return !accountMappings[id] || accountMappings[id] === '__rejected__';
       });
 
-      const BATCH_SIZE = 50;
       const newMappings = { ...accountMappings };
       let totalMatched = 0;
+      const BATCH_SIZE = 60;
 
       for (let i = 0; i < unmatchedAccounts.length; i += BATCH_SIZE) {
         const batch = unmatchedAccounts.slice(i, i + BATCH_SIZE);
+
         const { data, error } = await supabase.functions.invoke('match-meta-accounts', {
           body: { adAccounts: batch, deals: closeDeals },
         });
@@ -375,15 +376,12 @@ export function IntegrationCard({
           continue;
         }
 
+        // mappings is now keyed by account_id — no index confusion
         const mappings = data.mappings as Record<string, string | null>;
-        Object.entries(mappings).forEach(([idx, dealId]) => {
-          if (dealId) {
-            const acc = batch[parseInt(idx)];
-            if (acc) {
-              const accountId = acc.account_id || acc.id;
-              newMappings[accountId] = dealId;
-              totalMatched++;
-            }
+        Object.entries(mappings).forEach(([accountId, dealId]) => {
+          if (dealId && dealId !== 'null') {
+            newMappings[accountId] = dealId;
+            totalMatched++;
           }
         });
       }
@@ -392,7 +390,6 @@ export function IntegrationCard({
       toast.success(`KI hat ${totalMatched} von ${unmatchedAccounts.length} Accounts zugeordnet`);
     } catch (e) {
       toast.error('KI-Matching fehlgeschlagen');
-      console.error(e);
     }
 
     setAiMatching(false);
