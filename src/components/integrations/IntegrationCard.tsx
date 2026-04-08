@@ -112,6 +112,7 @@ export function IntegrationCard({
 
   // Dynamic state
   const [loadingDynamic, setLoadingDynamic] = useState(false);
+  const [aiMatching, setAiMatching] = useState(false);
   const [slackChannels, setSlackChannels] = useState<SlackChannel[]>(dynamicConfig?.channels || []);
   const [slackWebhooks, setSlackWebhooks] = useState<SlackWebhookRow[]>(config?.webhooks || []);
   const [defaultChannels, setDefaultChannels] = useState<Record<string, string>>(config?.default_channels || {});
@@ -346,6 +347,55 @@ export function IntegrationCard({
     if (status === 1) return <Badge className="bg-success/15 text-success border-0 text-[10px]">Aktiv</Badge>;
     if (status === 2) return <Badge className="bg-destructive/15 text-destructive border-0 text-[10px]">Deaktiviert</Badge>;
     return <Badge variant="secondary" className="text-[10px]">Unbekannt</Badge>;
+  };
+
+  const runAiMatch = async () => {
+    if (!metaAccounts.length || !closeDeals.length) return;
+    setAiMatching(true);
+    toast.info('KI analysiert alle Accounts...');
+
+    try {
+      const unmatchedAccounts = metaAccounts.filter(acc => {
+        const id = acc.account_id || acc.id;
+        return !accountMappings[id] || accountMappings[id] === '__rejected__';
+      });
+
+      const BATCH_SIZE = 50;
+      const newMappings = { ...accountMappings };
+      let totalMatched = 0;
+
+      for (let i = 0; i < unmatchedAccounts.length; i += BATCH_SIZE) {
+        const batch = unmatchedAccounts.slice(i, i + BATCH_SIZE);
+        const { data, error } = await supabase.functions.invoke('match-meta-accounts', {
+          body: { adAccounts: batch, deals: closeDeals },
+        });
+
+        if (error || data?.error) {
+          console.error('AI match error:', error || data?.error);
+          continue;
+        }
+
+        const mappings = data.mappings as Record<string, string | null>;
+        Object.entries(mappings).forEach(([idx, dealId]) => {
+          if (dealId) {
+            const acc = batch[parseInt(idx)];
+            if (acc) {
+              const accountId = acc.account_id || acc.id;
+              newMappings[accountId] = dealId;
+              totalMatched++;
+            }
+          }
+        });
+      }
+
+      setAccountMappings(newMappings);
+      toast.success(`KI hat ${totalMatched} von ${unmatchedAccounts.length} Accounts zugeordnet`);
+    } catch (e) {
+      toast.error('KI-Matching fehlgeschlagen');
+      console.error(e);
+    }
+
+    setAiMatching(false);
   };
 
   const autoMatch = (accName: string): string | null => {
@@ -632,6 +682,16 @@ export function IntegrationCard({
                               }}
                             >
                               🤖 Auto-Match alle
+                            </button>
+                            <button
+                              className="text-[10px] px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium flex items-center gap-1 disabled:opacity-50"
+                              onClick={runAiMatch}
+                              disabled={aiMatching}
+                            >
+                              {aiMatching
+                                ? <><Loader2 className="h-3 w-3 animate-spin" /> KI läuft...</>
+                                : <>✨ KI-Match alle</>
+                              }
                             </button>
                             {autoSuggestedCount > 0 && (
                               <button
