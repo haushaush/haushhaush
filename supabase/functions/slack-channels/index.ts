@@ -12,7 +12,9 @@ serve(async (req) => {
     if (!bot_token) throw new Error("bot_token required");
 
     const allChannels: any[] = [];
-    let cursor: string | undefined;
+    let nextCursor: string | null = null;
+    let pageCount = 0;
+    const MAX_PAGES = 20; // safety limit
 
     do {
       const params = new URLSearchParams({
@@ -20,26 +22,41 @@ serve(async (req) => {
         limit: "200",
         exclude_archived: "true",
       });
-      if (cursor) params.set("cursor", cursor);
+      if (nextCursor) params.set("cursor", nextCursor);
 
-      const res = await fetch(`https://slack.com/api/conversations.list?${params}`, {
-        headers: { Authorization: `Bearer ${bot_token}` },
+      const res = await fetch(`https://slack.com/api/conversations.list?${params.toString()}`, {
+        headers: { 
+          Authorization: `Bearer ${bot_token}`,
+          "Content-Type": "application/json",
+        },
       });
+
       const data = await res.json();
+
       if (!data.ok) throw new Error(data.error || "Slack API error");
 
       allChannels.push(...(data.channels || []));
-      cursor = data.response_metadata?.next_cursor || "";
-    } while (cursor);
 
-    allChannels.sort((a, b) => a.name.localeCompare(b.name));
+      const next = data.response_metadata?.next_cursor;
+      nextCursor = (next && next.length > 0) ? next : null;
+      pageCount++;
 
-    return new Response(JSON.stringify({ channels: allChannels }), {
+    } while (nextCursor !== null && pageCount < MAX_PAGES);
+
+    allChannels.sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+    return new Response(JSON.stringify({ 
+      channels: allChannels,
+      total: allChannels.length,
+      pages: pageCount,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
