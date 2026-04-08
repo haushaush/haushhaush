@@ -112,6 +112,7 @@ export function IntegrationCard({
 
   // Dynamic state
   const [loadingDynamic, setLoadingDynamic] = useState(false);
+  const [aiMatching, setAiMatching] = useState(false);
   const [slackChannels, setSlackChannels] = useState<SlackChannel[]>(dynamicConfig?.channels || []);
   const [slackWebhooks, setSlackWebhooks] = useState<SlackWebhookRow[]>(config?.webhooks || []);
   const [defaultChannels, setDefaultChannels] = useState<Record<string, string>>(config?.default_channels || {});
