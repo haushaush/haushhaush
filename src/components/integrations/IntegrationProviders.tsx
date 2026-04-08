@@ -47,7 +47,7 @@ export const PROVIDERS: IntegrationProvider[] = [
     description: 'Ad Accounts und Kampagnen verwalten',
     fields: [
       { key: 'access_token', label: 'Access Token', type: 'password', placeholder: 'EAABsbCS...' },
-      { key: 'business_id', label: 'Business Manager ID', type: 'text', placeholder: '123456789' },
+      { key: 'business_manager_id', label: 'Business Manager ID', type: 'text', placeholder: '148696358323685' },
     ],
     docUrl: 'https://developers.facebook.com/docs/marketing-apis',
     actions: [

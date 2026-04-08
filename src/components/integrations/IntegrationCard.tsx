@@ -79,7 +79,7 @@ interface IntegrationCardProps {
   lastSyncError?: string | null;
   config?: Record<string, any>;
   dynamicConfig?: Record<string, any>;
-  onSave: (providerId: string, data: Record<string, any>) => void;
+  onSave: (providerId: string, data: Record<string, any>) => Promise<void>;
   onAction: (providerId: string, action: string) => void;
   onTest: (providerId: string) => Promise<HealthResult[]>;
   onDynamicUpdate?: (providerId: string, dynamicData: Record<string, any>) => void;
@@ -100,6 +100,15 @@ export function IntegrationCard({
     provider.toggles?.forEach(t => { init[t.key] = config[t.key] || false; });
     return init;
   });
+
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const updated: Record<string, any> = {};
+    provider.fields.forEach(f => { updated[f.key] = config[f.key] || f.defaultValue || ''; });
+    provider.toggles?.forEach(t => { updated[t.key] = config[t.key] || false; });
+    setFormData(updated);
+  }, [config]);
 
   // Dynamic state
   const [loadingDynamic, setLoadingDynamic] = useState(false);
@@ -283,7 +292,8 @@ export function IntegrationCard({
   };
 
   // Enhanced save that includes dynamic data
-  const handleSave = () => {
+  const handleSave = async () => {
+    setSaving(true);
     const saveData = { ...formData };
     if (provider.id === 'slack') {
       saveData.webhooks = slackWebhooks;
@@ -292,7 +302,11 @@ export function IntegrationCard({
     if (provider.id === 'meta_ads') {
       saveData.account_mappings = accountMappings;
     }
-    onSave(provider.id, saveData);
+    try {
+      await onSave(provider.id, saveData);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const metaAccountStatus = (status: number) => {
@@ -690,12 +704,13 @@ export function IntegrationCard({
                       variant={a.variant || 'default'}
                       size="sm"
                       className="text-xs h-8"
+                      disabled={a.action === 'save' && saving}
                       onClick={() => {
                         if (a.action === 'save') handleSave();
                         else onAction(provider.id, a.action);
                       }}
                     >
-                      {a.label}
+                      {a.action === 'save' && saving ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Speichern...</> : a.label}
                     </Button>
                   ))}
                 </div>
