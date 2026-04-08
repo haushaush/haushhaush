@@ -183,12 +183,14 @@ export function IntegrationCard({
 
   const loadMetaAccounts = async () => {
     const token = formData.access_token || config?.access_token;
+    const businessId = formData.business_manager_id || config?.business_manager_id;
     if (!token) { toast.error('Access Token erforderlich'); return; }
     setLoadingDynamic(true);
     try {
-      const res = await fetch(
-        `https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_id,account_status,currency,amount_spent&limit=100&access_token=${token}`
-      );
+      const url = businessId
+        ? `https://graph.facebook.com/v19.0/${businessId}/owned_ad_accounts?fields=id,name,account_id,account_status,currency,amount_spent&limit=100&access_token=${token}`
+        : `https://graph.facebook.com/v19.0/me/adaccounts?fields=id,name,account_id,account_status,currency,amount_spent&limit=100&access_token=${token}`;
+      const res = await fetch(url);
       const data = await res.json();
       if (data.error) { toast.error(`Meta: ${data.error.message}`); setLoadingDynamic(false); return; }
       const accounts = data.data || [];
@@ -499,44 +501,43 @@ export function IntegrationCard({
                   {metaAccounts.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-foreground">📊 Kundenkonten zuordnen</p>
-                      <div className="rounded-lg border border-border overflow-x-auto">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="border-b border-border bg-muted/30">
-                              <th className="text-left p-2 font-medium text-muted-foreground">Account</th>
-                              <th className="text-left p-2 font-medium text-muted-foreground">ID</th>
-                              <th className="text-left p-2 font-medium text-muted-foreground">Status</th>
-                              <th className="text-left p-2 font-medium text-muted-foreground">Zugeordnet zu</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {metaAccounts.map(acc => (
-                              <tr key={acc.id} className="border-b border-border last:border-0">
-                                <td className="p-2 font-medium text-foreground">{acc.name}</td>
-                                <td className="p-2 text-muted-foreground font-mono">{acc.account_id || acc.id}</td>
-                                <td className="p-2">{metaAccountStatus(acc.account_status)}</td>
-                                <td className="p-2">
-                                  <Select
-                                    value={accountMappings[acc.account_id || acc.id] || ''}
-                                    onValueChange={v => setAccountMappings(prev => ({ ...prev, [acc.account_id || acc.id]: v }))}
-                                  >
-                                    <SelectTrigger className="h-7 text-xs">
-                                      <SelectValue placeholder="Kunde wählen..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {closeDeals.map(d => (
-                                        <SelectItem key={d.id} value={d.id} className="text-xs">
-                                          {d.client_name} {d.art ? `· ${d.art}` : ''}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      <div className="space-y-2">
+                        {metaAccounts.map(acc => {
+                          const accountId = acc.account_id || acc.id;
+                          return (
+                            <div key={acc.id} className="rounded-lg border border-border p-3 space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium text-foreground truncate">{acc.name}</p>
+                                  <p className="text-[10px] text-muted-foreground font-mono">{accountId}</p>
+                                </div>
+                                {metaAccountStatus(acc.account_status)}
+                              </div>
+                              <Select
+                                value={accountMappings[accountId] || ''}
+                                onValueChange={v => setAccountMappings(prev => ({ ...prev, [accountId]: v }))}
+                              >
+                                <SelectTrigger className="h-8 text-xs w-full">
+                                  <SelectValue placeholder="Kunde zuordnen..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="" className="text-xs text-muted-foreground">— Kein Kunde —</SelectItem>
+                                  {closeDeals.map(d => (
+                                    <SelectItem key={d.id} value={d.id} className="text-xs">
+                                      {d.client_name} {d.art ? `· ${d.art}` : ''}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          );
+                        })}
                       </div>
+                      {Object.keys(accountMappings).filter(k => accountMappings[k]).length > 0 && (
+                        <p className="text-[10px] text-muted-foreground">
+                          {Object.keys(accountMappings).filter(k => accountMappings[k]).length} von {metaAccounts.length} Accounts zugeordnet
+                        </p>
+                      )}
                     </div>
                   )}
                   {/* Meta Test & Sync button */}
