@@ -13,32 +13,32 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const accountList = adAccounts.map((a: any, i: number) =>
-      `${i}: "${a.name}" (ID: ${a.account_id || a.id})`
+    const accountList = adAccounts.map((a: any) =>
+      `"${a.account_id || a.id}": "${a.name}"`
     ).join('\n');
 
     const dealList = deals.map((d: any) =>
       `"${d.id}": "${d.client_name}${d.art ? ' · ' + d.art : ''}"`
     ).join('\n');
 
-    const prompt = `You are matching Meta Ads ad account names to client records for a German insurance marketing agency.
+    const prompt = `You are matching Meta Ads account names to client records for a German insurance marketing agency.
 
-Ad Accounts (index: name):
+Ad Accounts (account_id: name):
 ${accountList}
 
-Client records (id: name):
+Clients (client_id: name):
 ${dealList}
 
-Task: For each ad account, find the best matching client record based on name similarity. Consider:
-- Last names are the strongest signal
-- Ignore generic words: PKV, BU, TKV, Versicherung, GmbH, UG, Digital, Marketing, Recruiting
-- One ad account can be matched to one client only if confident (>70% sure)
-- If unsure, return null for that account
+Rules:
+- Match by last name primarily — last names are the strongest signal
+- Ignore these generic words when matching: PKV, BU, TKV, KV, Versicherung, Versicherungen, GmbH, UG, AG, Digital, Marketing, Recruiting, Beihilfe, Tierkrankenversicherung, Hanse, Merkur, Allianz, AXA, Signal, Iduna
+- An account like "Henrik Johannsen Versicherungen" matches client "Henrik Johannsen · PKV" because "Johannsen" is the key word
+- An account like "Alexander Lichtner Hanse Merkur" matches "Alexander Lichtner · PKV" 
+- Only match if you are confident (>70%). Return null if unsure.
+- Each client_id can be used multiple times (one client can have multiple ad accounts)
 
-Respond ONLY with a valid JSON object mapping account index (as string) to deal id or null:
-{"0": "deal-uuid-here", "1": null, "2": "deal-uuid-here", ...}
-
-No explanation, no markdown, just the JSON object.`;
+Respond ONLY with a JSON object mapping each account_id to a client_id or null. No markdown, no explanation:
+{"account_id_1": "client_id_or_null", "account_id_2": "client_id_or_null"}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -47,32 +47,17 @@ No explanation, no markdown, just the JSON object.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash-preview",
         messages: [{ role: "user", content: prompt }],
         stream: false,
+        max_tokens: 4000,
       }),
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit erreicht, bitte später erneut versuchen." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI-Credits aufgebraucht. Bitte Credits aufladen." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI gateway error: ${err}`);
-    }
+    if (!response.ok) throw new Error(`Gateway error: ${response.status}`);
 
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content || '{}';
-
     const clean = text.replace(/```json\n?|\n?```/g, '').trim();
     const mappings = JSON.parse(clean);
 
