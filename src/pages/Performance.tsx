@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
-import { AlertTriangle, TrendingUp, Users, Briefcase, Mail, Clock, Target, ChevronLeft } from 'lucide-react';
+import { AlertTriangle, TrendingUp, Users, Briefcase, Mail, Clock, Target, ChevronLeft, Loader2, RefreshCw } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSearchParams } from 'react-router-dom';
+import { useMetaInsights } from '@/hooks/useMetaInsights';
+import { toast } from 'sonner';
 
 const tooltipStyle = { backgroundColor: 'hsl(216, 35%, 11%)', border: '1px solid hsl(216, 25%, 18%)', borderRadius: '8px', color: 'hsl(210, 40%, 92%)' };
 
@@ -37,7 +39,20 @@ export default function Performance() {
   const [salesFilter, setSalesFilter] = useState<TimeFilter>('all');
   const [adFilter, setAdFilter] = useState<TimeFilter>('all');
   const [selectedSetter, setSelectedSetter] = useState<string | null>(null);
+  const [adSource, setAdSource] = useState<'meta' | 'manual'>('meta');
+  const [metaPreset, setMetaPreset] = useState<'last_7d' | 'last_30d' | 'last_90d'>('last_30d');
   const isMobile = useIsMobile();
+
+  // Meta date range computation
+  const metaDateRange = useMemo(() => {
+    const now = new Date();
+    const days = metaPreset === 'last_7d' ? 7 : metaPreset === 'last_30d' ? 30 : 90;
+    const from = new Date(now);
+    from.setDate(from.getDate() - days);
+    return { dateFrom: from.toISOString().split('T')[0], dateTo: now.toISOString().split('T')[0] };
+  }, [metaPreset]);
+
+  const { data: metaData, loading: metaLoading, syncing: metaSyncing, sync: metaSync, totals: metaTotals, byCampaign: metaCampaigns, byDate: metaByDate, lastSyncedAt } = useMetaInsights(metaDateRange);
 
   useEffect(() => {
     const load = async () => {
@@ -259,73 +274,219 @@ export default function Performance() {
 
         {/* ═══ TAB 2: AD PERFORMANCE ═══ */}
         <TabsContent value="ads" className="space-y-4 mt-4">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <h2 className="text-lg font-heading font-semibold flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" aria-hidden="true" /> Ad Performance
             </h2>
-            <Select value={adFilter} onValueChange={(v) => setAdFilter(v as TimeFilter)}>
-              <SelectTrigger className="w-[160px] min-h-[44px] text-xs" aria-label="Zeitraum filtern"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">Letzte Woche</SelectItem>
-                <SelectItem value="month">Letzter Monat</SelectItem>
-                <SelectItem value="all">Insgesamt</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Source toggle */}
+              <div className="flex items-center rounded-lg border border-border overflow-hidden">
+                <button
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${adSource === 'meta' ? 'bg-primary text-primary-foreground' : 'bg-muted/30 text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => setAdSource('meta')}
+                >
+                  Meta Live
+                </button>
+                <button
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${adSource === 'manual' ? 'bg-primary text-primary-foreground' : 'bg-muted/30 text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => setAdSource('manual')}
+                >
+                  Manual
+                </button>
+              </div>
+              {adSource === 'meta' ? (
+                <>
+                  <Select value={metaPreset} onValueChange={(v) => setMetaPreset(v as any)}>
+                    <SelectTrigger className="w-[130px] min-h-[36px] text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="last_7d">Letzte 7 Tage</SelectItem>
+                      <SelectItem value="last_30d">Letzte 30 Tage</SelectItem>
+                      <SelectItem value="last_90d">Letzte 90 Tage</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-9 gap-1.5"
+                    onClick={async () => {
+                      toast.info('Syncing Meta data...');
+                      try {
+                        const result = await metaSync(metaPreset);
+                        toast.success(`✓ ${result?.synced || 0} Datenpunkte synchronisiert`);
+                      } catch (e: any) {
+                        toast.error(`Meta Sync fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`);
+                      }
+                    }}
+                    disabled={metaSyncing}
+                  >
+                    {metaSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    Sync with Meta
+                  </Button>
+                </>
+              ) : (
+                <Select value={adFilter} onValueChange={(v) => setAdFilter(v as TimeFilter)}>
+                  <SelectTrigger className="w-[160px] min-h-[36px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">Letzte Woche</SelectItem>
+                    <SelectItem value="month">Letzter Monat</SelectItem>
+                    <SelectItem value="all">Insgesamt</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
-            {[
-              { label: 'Spend', value: `€${adTotals.spend.toLocaleString('de-DE')}` },
-              { label: 'Leads', value: adTotals.leads },
-              { label: 'CPL', value: `€${adTotals.cpl.toFixed(2)}` },
-              { label: 'Termine', value: adTotals.appts },
-              { label: 'Cost/Termin', value: `€${adTotals.cpa.toFixed(2)}` },
-            ].map(m => (
-              <Card key={m.label}><CardContent className="p-3 sm:p-4 text-center">
-                <p className="text-lg sm:text-xl font-heading font-bold">{m.value}</p>
-                <p className="text-xs text-muted-foreground">{m.label}</p>
+          {lastSyncedAt && adSource === 'meta' && (
+            <p className="text-[11px] text-muted-foreground">Letzte Synchronisierung: {new Date(lastSyncedAt).toLocaleString('de-DE')}</p>
+          )}
+
+          {adSource === 'meta' ? (
+            /* ── META LIVE VIEW ── */
+            metaLoading ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+                  {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
+                </div>
+                <Skeleton className="h-64" />
+              </div>
+            ) : metaData.length === 0 ? (
+              <Card><CardContent className="py-12 text-center text-muted-foreground">
+                <Target className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+                <p className="font-medium">Noch keine Meta-Daten vorhanden</p>
+                <p className="text-sm mt-1">Klicke auf "Sync with Meta" um deine Kampagnendaten zu laden.</p>
+                <Button
+                  variant="outline"
+                  className="mt-4 text-xs"
+                  onClick={async () => {
+                    toast.info('Syncing Meta data...');
+                    try { const r = await metaSync(metaPreset); toast.success(`✓ ${r?.synced || 0} Datenpunkte synchronisiert`); }
+                    catch (e: any) { toast.error(`Sync fehlgeschlagen: ${e?.message || 'Fehler'}`); }
+                  }}
+                  disabled={metaSyncing}
+                >
+                  {metaSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+                  Jetzt synchronisieren
+                </Button>
               </CardContent></Card>
-            ))}
-          </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+                  {[
+                    { label: 'Total Spend', value: `€${metaTotals.spend.toLocaleString('de-DE', { minimumFractionDigits: 2 })}` },
+                    { label: 'Total Leads', value: metaTotals.leads },
+                    { label: 'Avg CPL', value: `€${metaTotals.cpl.toFixed(2)}` },
+                    { label: 'Avg CTR', value: `${metaTotals.ctr.toFixed(2)}%` },
+                    { label: 'Reach', value: metaTotals.reach.toLocaleString('de-DE') },
+                  ].map(m => (
+                    <Card key={m.label}><CardContent className="p-3 sm:p-4 text-center">
+                      <p className="text-lg sm:text-xl font-heading font-bold">{m.value}</p>
+                      <p className="text-xs text-muted-foreground">{m.label}</p>
+                    </CardContent></Card>
+                  ))}
+                </div>
 
-          <Card>
-            <CardHeader><CardTitle className="text-base">Spend vs. Leads</CardTitle></CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={chartHeight}>
-                <LineChart data={adChartData}>
-                  <XAxis dataKey="datum" stroke="hsl(215, 20%, 55%)" fontSize={isMobile ? 8 : 10} />
-                  <YAxis yAxisId="left" stroke="hsl(43, 56%, 52%)" fontSize={10} />
-                  <YAxis yAxisId="right" orientation="right" stroke="hsl(142, 71%, 45%)" fontSize={10} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend />
-                  <Line yAxisId="left" type="monotone" dataKey="Spend" stroke="hsl(43, 56%, 52%)" strokeWidth={2} dot={false} />
-                  <Line yAxisId="right" type="monotone" dataKey="Leads" stroke="hsl(142, 71%, 45%)" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Spend vs. Leads</CardTitle></CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={chartHeight}>
+                      <BarChart data={metaByDate}>
+                        <XAxis dataKey="datum" stroke="hsl(215, 20%, 55%)" fontSize={isMobile ? 8 : 10} />
+                        <YAxis yAxisId="left" stroke="hsl(43, 56%, 52%)" fontSize={10} />
+                        <YAxis yAxisId="right" orientation="right" stroke="hsl(142, 71%, 45%)" fontSize={10} />
+                        <Tooltip contentStyle={tooltipStyle} />
+                        <Legend />
+                        <Bar yAxisId="left" dataKey="Spend" fill="hsl(43, 56%, 52%)" name="Spend (€)" radius={[3,3,0,0]} />
+                        <Bar yAxisId="right" dataKey="Leads" fill="hsl(142, 71%, 45%)" name="Leads" radius={[3,3,0,0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
 
-          <Card><CardContent className="p-0"><div className="overflow-x-auto">
-            <Table>
-              <caption className="sr-only">Ad Performance Daten</caption>
-              <TableHeader><TableRow>
-                <TableHead scope="col">Datum</TableHead><TableHead scope="col">Spend</TableHead><TableHead scope="col">Leads</TableHead>
-                <TableHead scope="col">CPL</TableHead><TableHead scope="col" className="hidden sm:table-cell">Termine</TableHead><TableHead scope="col" className="hidden sm:table-cell">Cost/Termin</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {filteredAds.map(r => (
-                  <TableRow key={r.id}>
-                    <TableCell className="text-muted-foreground">{r.datum}</TableCell>
-                    <TableCell>€{Number(r.spend || 0).toLocaleString('de-DE')}</TableCell>
-                    <TableCell>{r.leads}</TableCell>
-                    <TableCell>€{Number(r.cpl || 0).toFixed(2)}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{r.appointments}</TableCell>
-                    <TableCell className="hidden sm:table-cell">€{Number(r.cost_per_appointment || 0).toFixed(2)}</TableCell>
-                  </TableRow>
+                <Card><CardContent className="p-0"><div className="overflow-x-auto">
+                  <Table>
+                    <caption className="sr-only">Kampagnen Breakdown</caption>
+                    <TableHeader><TableRow>
+                      <TableHead scope="col">Kampagne</TableHead>
+                      <TableHead scope="col">Spend</TableHead>
+                      <TableHead scope="col">Leads</TableHead>
+                      <TableHead scope="col">CPL</TableHead>
+                      <TableHead scope="col" className="hidden sm:table-cell">CTR</TableHead>
+                      <TableHead scope="col" className="hidden sm:table-cell">Impressions</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>
+                      {metaCampaigns.map(c => (
+                        <TableRow key={c.id}>
+                          <TableCell className="font-medium max-w-[200px] truncate">{c.name}</TableCell>
+                          <TableCell>€{c.spend.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</TableCell>
+                          <TableCell>{c.leads}</TableCell>
+                          <TableCell>€{c.cpl.toFixed(2)}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{c.ctr.toFixed(2)}%</TableCell>
+                          <TableCell className="hidden sm:table-cell">{c.impressions.toLocaleString('de-DE')}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div></CardContent></Card>
+              </>
+            )
+          ) : (
+            /* ── MANUAL FALLBACK VIEW ── */
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+                {[
+                  { label: 'Spend', value: `€${adTotals.spend.toLocaleString('de-DE')}` },
+                  { label: 'Leads', value: adTotals.leads },
+                  { label: 'CPL', value: `€${adTotals.cpl.toFixed(2)}` },
+                  { label: 'Termine', value: adTotals.appts },
+                  { label: 'Cost/Termin', value: `€${adTotals.cpa.toFixed(2)}` },
+                ].map(m => (
+                  <Card key={m.label}><CardContent className="p-3 sm:p-4 text-center">
+                    <p className="text-lg sm:text-xl font-heading font-bold">{m.value}</p>
+                    <p className="text-xs text-muted-foreground">{m.label}</p>
+                  </CardContent></Card>
                 ))}
-              </TableBody>
-            </Table>
-          </div></CardContent></Card>
+              </div>
+
+              <Card>
+                <CardHeader><CardTitle className="text-base">Spend vs. Leads</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={chartHeight}>
+                    <LineChart data={adChartData}>
+                      <XAxis dataKey="datum" stroke="hsl(215, 20%, 55%)" fontSize={isMobile ? 8 : 10} />
+                      <YAxis yAxisId="left" stroke="hsl(43, 56%, 52%)" fontSize={10} />
+                      <YAxis yAxisId="right" orientation="right" stroke="hsl(142, 71%, 45%)" fontSize={10} />
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Legend />
+                      <Line yAxisId="left" type="monotone" dataKey="Spend" stroke="hsl(43, 56%, 52%)" strokeWidth={2} dot={false} />
+                      <Line yAxisId="right" type="monotone" dataKey="Leads" stroke="hsl(142, 71%, 45%)" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card><CardContent className="p-0"><div className="overflow-x-auto">
+                <Table>
+                  <caption className="sr-only">Ad Performance Daten</caption>
+                  <TableHeader><TableRow>
+                    <TableHead scope="col">Datum</TableHead><TableHead scope="col">Spend</TableHead><TableHead scope="col">Leads</TableHead>
+                    <TableHead scope="col">CPL</TableHead><TableHead scope="col" className="hidden sm:table-cell">Termine</TableHead><TableHead scope="col" className="hidden sm:table-cell">Cost/Termin</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {filteredAds.map(r => (
+                      <TableRow key={r.id}>
+                        <TableCell className="text-muted-foreground">{r.datum}</TableCell>
+                        <TableCell>€{Number(r.spend || 0).toLocaleString('de-DE')}</TableCell>
+                        <TableCell>{r.leads}</TableCell>
+                        <TableCell>€{Number(r.cpl || 0).toFixed(2)}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{r.appointments}</TableCell>
+                        <TableCell className="hidden sm:table-cell">€{Number(r.cost_per_appointment || 0).toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div></CardContent></Card>
+            </>
+          )}
         </TabsContent>
 
         {/* ═══ TAB 3: META KAI ═══ */}

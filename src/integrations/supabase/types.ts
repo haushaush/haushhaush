@@ -1376,6 +1376,66 @@ export type Database = {
           },
         ]
       }
+      meta_insights: {
+        Row: {
+          ad_account_id: string
+          ad_account_name: string | null
+          campaign_id: string | null
+          campaign_name: string | null
+          clicks: number | null
+          cpl: number | null
+          cpm: number | null
+          created_at: string | null
+          ctr: number | null
+          date_start: string
+          date_stop: string
+          id: string
+          impressions: number | null
+          leads: number | null
+          reach: number | null
+          spend: number | null
+          synced_at: string | null
+        }
+        Insert: {
+          ad_account_id: string
+          ad_account_name?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          clicks?: number | null
+          cpl?: number | null
+          cpm?: number | null
+          created_at?: string | null
+          ctr?: number | null
+          date_start: string
+          date_stop: string
+          id?: string
+          impressions?: number | null
+          leads?: number | null
+          reach?: number | null
+          spend?: number | null
+          synced_at?: string | null
+        }
+        Update: {
+          ad_account_id?: string
+          ad_account_name?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          clicks?: number | null
+          cpl?: number | null
+          cpm?: number | null
+          created_at?: string | null
+          ctr?: number | null
+          date_start?: string
+          date_stop?: string
+          id?: string
+          impressions?: number | null
+          leads?: number | null
+          reach?: number | null
+          spend?: number | null
+          synced_at?: string | null
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           desktop_push_enabled: boolean | null
