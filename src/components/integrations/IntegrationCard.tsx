@@ -197,24 +197,49 @@ export function IntegrationCard({
     setLoadingDynamic(true);
     try {
       const allAccounts: any[] = [];
-      let url: string | null = businessId
-        ? `https://graph.facebook.com/v19.0/${businessId}/owned_ad_accounts?fields=id,name,account_id,account_status,currency,amount_spent&limit=200&access_token=${token}`
-        : `https://graph.facebook.com/v19.0/me/adaccounts?fields=id,name,account_id,account_status,currency,amount_spent&limit=200&access_token=${token}`;
-      while (url) {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.error) {
-          toast.error(`Meta: ${data.error.message}`);
-          setLoadingDynamic(false);
-          return;
+      const seenIds = new Set<string>();
+      const fetchAllPages = async (startUrl: string) => {
+        let url: string | null = startUrl;
+        while (url) {
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.error) {
+            toast.error(`Meta: ${data.error.message}`);
+            return false;
+          }
+          for (const acc of (data.data || [])) {
+            const id = acc.account_id || acc.id;
+            if (!seenIds.has(id)) {
+              seenIds.add(id);
+              allAccounts.push(acc);
+            }
+          }
+          url = data.paging?.next || null;
         }
-        allAccounts.push(...(data.data || []));
-        url = data.paging?.next || null;
+        return true;
+      };
+      const fields = 'id,name,account_id,account_status,currency,amount_spent';
+      if (businessId) {
+        const ownedOk = await fetchAllPages(
+          `https://graph.facebook.com/v19.0/${businessId}/owned_ad_accounts?fields=${fields}&limit=200&access_token=${token}`
+        );
+        if (!ownedOk) { setLoadingDynamic(false); return; }
+        const clientOk = await fetchAllPages(
+          `https://graph.facebook.com/v19.0/${businessId}/client_ad_accounts?fields=${fields}&limit=200&access_token=${token}`
+        );
+        if (!clientOk) { setLoadingDynamic(false); return; }
+      } else {
+        const ok = await fetchAllPages(
+          `https://graph.facebook.com/v19.0/me/adaccounts?fields=${fields}&limit=200&access_token=${token}`
+        );
+        if (!ok) { setLoadingDynamic(false); return; }
       }
       setMetaAccounts(allAccounts);
       onDynamicUpdate?.(provider.id, { ad_accounts: allAccounts, loaded_at: new Date().toISOString() });
       toast.success(`${allAccounts.length} Ad Accounts geladen`);
-    } catch { toast.error('Meta API nicht erreichbar'); }
+    } catch (e) {
+      toast.error('Meta API nicht erreichbar');
+    }
     setLoadingDynamic(false);
   };
 
