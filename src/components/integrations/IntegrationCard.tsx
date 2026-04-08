@@ -348,6 +348,29 @@ export function IntegrationCard({
     return <Badge variant="secondary" className="text-[10px]">Unbekannt</Badge>;
   };
 
+  // Auto-match: find best deal for a given ad account name
+  const autoMatch = (accName: string): string | null => {
+    if (!closeDeals.length) return null;
+    const normalize = (s: string) =>
+      s.toLowerCase()
+        .replace(/gmbh|ug|ag|kg|e\.k\.|versicherungen?|versicherungsmakler|tierkrankenversicherung|beihilfe|pkv|bu|tkv|unfallversicherung/gi, '')
+        .replace(/[^a-z0-9\s]/g, '')
+        .trim();
+    const accNorm = normalize(accName);
+    const accWords = accNorm.split(/\s+/).filter(w => w.length > 2);
+    let bestMatch: { id: string; score: number } | null = null;
+    for (const deal of closeDeals) {
+      const dealNorm = normalize(deal.client_name);
+      const dealWords = dealNorm.split(/\s+/).filter(w => w.length > 2);
+      const matchingWords = accWords.filter(w => dealWords.some(dw => dw.includes(w) || w.includes(dw)));
+      const score = matchingWords.length / Math.max(accWords.length, dealWords.length, 1);
+      if (score > 0.5 && (!bestMatch || score > bestMatch.score)) {
+        bestMatch = { id: deal.id, score };
+      }
+    }
+    return bestMatch && bestMatch.score > 0.5 ? bestMatch.id : null;
+  };
+
   return (
     <div
       className={`rounded-[14px] border bg-card transition-all duration-200 ${borderClass}`}
@@ -545,47 +568,126 @@ export function IntegrationCard({
                     </Button>
                   </div>
 
-                  {metaAccounts.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-foreground">📊 Kundenkonten zuordnen</p>
+                  {metaAccounts.length > 0 && (() => {
+                    const withSuggestions = metaAccounts.map(acc => {
+                      const accountId = acc.account_id || acc.id;
+                      const currentMapping = accountMappings[accountId];
+                      const suggestion = !currentMapping ? autoMatch(acc.name) : null;
+                      const isMatched = !!currentMapping && currentMapping !== '__rejected__';
+                      const isAutoSuggested = !currentMapping && !!suggestion;
+                      return { acc, accountId, currentMapping, suggestion, isMatched, isAutoSuggested };
+                    });
+                    const sorted = [...withSuggestions].sort((a, b) => {
+                      const scoreA = a.isMatched ? 2 : a.isAutoSuggested ? 1 : 0;
+                      const scoreB = b.isMatched ? 2 : b.isAutoSuggested ? 1 : 0;
+                      return scoreA - scoreB;
+                    });
+                    const unmatchedCount = sorted.filter(x => !x.isMatched && !x.isAutoSuggested).length;
+                    const autoSuggestedCount = sorted.filter(x => x.isAutoSuggested).length;
+                    const matchedCount = sorted.filter(x => x.isMatched).length;
+                    return (
                       <div className="space-y-2">
-                        {metaAccounts.map(acc => {
-                          const accountId = acc.account_id || acc.id;
-                          return (
-                            <div key={acc.id} className="rounded-lg border border-border p-3 space-y-2">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="text-xs font-medium text-foreground truncate">{acc.name}</p>
-                                  <p className="text-[10px] text-muted-foreground font-mono">{accountId}</p>
-                                </div>
-                                {metaAccountStatus(acc.account_status)}
-                              </div>
-                              <Select
-                                value={accountMappings[accountId] ?? undefined}
-                                onValueChange={v => setAccountMappings(prev => ({ ...prev, [accountId]: v }))}
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium text-foreground">📊 Kundenkonten zuordnen</p>
+                          <div className="flex items-center gap-2">
+                            {autoSuggestedCount > 0 && (
+                              <button
+                                className="text-[10px] px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                                onClick={() => {
+                                  const newMappings = { ...accountMappings };
+                                  sorted.filter(x => x.isAutoSuggested).forEach(({ accountId, suggestion }) => {
+                                    if (suggestion) newMappings[accountId] = suggestion;
+                                  });
+                                  setAccountMappings(newMappings);
+                                }}
                               >
-                                <SelectTrigger className="h-8 text-xs w-full">
-                                  <SelectValue placeholder="Kunde zuordnen..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {closeDeals.map(d => (
-                                    <SelectItem key={d.id} value={d.id} className="text-xs">
-                                      {d.client_name} {d.art ? `· ${d.art}` : ''}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          );
-                        })}
+                                ✓ Alle {autoSuggestedCount} Vorschläge übernehmen
+                              </button>
+                            )}
+                            <span className="text-[10px] text-muted-foreground">
+                              {matchedCount}/{metaAccounts.length} zugeordnet
+                            </span>
+                          </div>
+                        </div>
+                        {unmatchedCount > 0 && (
+                          <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-warning/10 border border-warning/20">
+                            <span className="text-[10px] text-warning font-medium">⚠ {unmatchedCount} Account{unmatchedCount > 1 ? 's' : ''} ohne Zuordnung</span>
+                          </div>
+                        )}
+                        <div className="space-y-1.5">
+                          {sorted.map(({ acc, accountId, currentMapping, suggestion, isMatched, isAutoSuggested }) => {
+                            const effectiveValue = currentMapping ?? undefined;
+                            const suggestedDeal = suggestion ? closeDeals.find(d => d.id === suggestion) : null;
+                            return (
+                              <div
+                                key={acc.id}
+                                className={`rounded-lg border p-3 space-y-2 transition-colors ${
+                                  isMatched
+                                    ? 'border-border bg-card'
+                                    : isAutoSuggested
+                                    ? 'border-primary/25 bg-primary/5'
+                                    : 'border-warning/40 bg-warning/5'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                      {!isMatched && !isAutoSuggested && (
+                                        <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-warning/20 text-warning">OFFEN</span>
+                                      )}
+                                      {isAutoSuggested && (
+                                        <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-primary/15 text-primary">VORSCHLAG</span>
+                                      )}
+                                      {isMatched && (
+                                        <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-success/15 text-success">✓</span>
+                                      )}
+                                      <p className="text-xs font-medium text-foreground truncate">{acc.name}</p>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{accountId}</p>
+                                  </div>
+                                  {metaAccountStatus(acc.account_status)}
+                                </div>
+                                {isAutoSuggested && suggestedDeal && (
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1 text-[11px] text-primary bg-primary/10 rounded-md px-2.5 py-1.5">
+                                      🤖 Vorschlag: <span className="font-medium">{suggestedDeal.client_name}{suggestedDeal.art ? ` · ${suggestedDeal.art}` : ''}</span>
+                                    </div>
+                                    <button
+                                      className="shrink-0 text-[10px] px-2 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+                                      onClick={() => setAccountMappings(prev => ({ ...prev, [accountId]: suggestion! }))}
+                                    >
+                                      ✓
+                                    </button>
+                                    <button
+                                      className="shrink-0 text-[10px] px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors"
+                                      onClick={() => setAccountMappings(prev => ({ ...prev, [accountId]: '__rejected__' }))}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                )}
+                                <Select
+                                  value={effectiveValue === '__rejected__' ? undefined : effectiveValue}
+                                  onValueChange={v => setAccountMappings(prev => ({ ...prev, [accountId]: v }))}
+                                >
+                                  <SelectTrigger className="h-8 text-xs w-full">
+                                    <SelectValue placeholder={isAutoSuggested ? 'Vorschlag ablehnen & manuell wählen...' : 'Kunde zuordnen...'} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {closeDeals.map(d => (
+                                      <SelectItem key={d.id} value={d.id} className="text-xs">
+                                        {d.client_name}{d.art ? ` · ${d.art}` : ''}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                      {Object.keys(accountMappings).filter(k => accountMappings[k]).length > 0 && (
-                        <p className="text-[10px] text-muted-foreground">
-                          {Object.keys(accountMappings).filter(k => accountMappings[k]).length} von {metaAccounts.length} Accounts zugeordnet
-                        </p>
-                      )}
-                    </div>
-                  )}
+                    );
+                  })()}
                   {/* Meta Test & Sync button */}
                   <div className="pt-3 border-t border-border">
                     <Button
