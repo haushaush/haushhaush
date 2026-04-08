@@ -545,34 +545,49 @@ export function IntegrationCard({
                       onClick={loadSlackChannels}
                       disabled={loadingDynamic}
                     >
-                      {loadingDynamic ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
-                      Channels laden
+                      {loadingDynamic
+                        ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Laden...</>
+                        : <><RefreshCw className="h-3 w-3 mr-1" />{slackChannels.length > 0 ? `${slackChannels.length} Channels` : 'Channels laden'}</>
+                      }
                     </Button>
                   </div>
 
                   {slackChannels.length > 0 && (
                     <>
-                      <p className="text-[11px] text-muted-foreground">{slackChannels.length} Channels geladen</p>
-
-                      {/* Standard channels */}
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium text-foreground">Standard-Channels</p>
-                        {['kpi', 'abschluesse', 'alerts', 'fulfillment'].map(key => (
-                          <div key={key} className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground w-24 flex-shrink-0 capitalize">{key}</span>
-                            <Select
-                              value={defaultChannels[key] || ''}
-                              onValueChange={v => setDefaultChannels(prev => ({ ...prev, [key]: v }))}
-                            >
-                              <SelectTrigger className="h-8 text-xs flex-1">
-                                <SelectValue placeholder="Channel wählen..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {slackChannels.map(c => (
-                                  <SelectItem key={c.id} value={c.id} className="text-xs">#{c.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                      {/* Notification channels */}
+                      <div className="space-y-3">
+                        <h5 className="text-xs font-medium text-foreground">Benachrichtigungen</h5>
+                        <p className="text-[10px] text-muted-foreground">Wähle für jede Benachrichtigungsart den Ziel-Channel.</p>
+                        {[
+                          { key: 'notify_abschluesse', label: '🏆 Neue Abschlüsse' },
+                          { key: 'notify_laufzeiten', label: '📅 Laufzeit-Erinnerungen' },
+                          { key: 'notify_buchhaltung', label: '💶 Buchhaltung & Rechnungen' },
+                          { key: 'notify_kpi', label: '📊 Sales KPI Updates' },
+                          { key: 'notify_alerts', label: '🚨 System Alerts' },
+                          { key: 'notify_fulfillment', label: '🎯 Fulfillment Updates' },
+                        ].map(({ key, label }) => (
+                          <div key={key} className="flex items-center gap-3">
+                            <Switch
+                              checked={!!formData[key]}
+                              onCheckedChange={v => setFormData(prev => ({ ...prev, [key]: v }))}
+                              className="shrink-0"
+                            />
+                            <span className="text-xs text-foreground min-w-[160px]">{label}</span>
+                            {formData[key] && (
+                              <Select
+                                value={defaultChannels[key] || undefined}
+                                onValueChange={v => setDefaultChannels(prev => ({ ...prev, [key]: v }))}
+                              >
+                                <SelectTrigger className="h-7 text-xs flex-1">
+                                  <SelectValue placeholder="Channel wählen..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {slackChannels.map(c => (
+                                    <SelectItem key={c.id} value={c.id} className="text-xs">#{c.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -580,22 +595,26 @@ export function IntegrationCard({
                       {/* Webhook URLs */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <p className="text-xs font-medium text-foreground">Webhook URLs</p>
+                          <h5 className="text-xs font-medium text-foreground">Incoming Webhooks</h5>
                           <Button variant="ghost" size="sm" className="text-xs h-7" onClick={addWebhookRow}>
                             <Plus className="h-3 w-3 mr-1" /> Hinzufügen
                           </Button>
                         </div>
+                        <p className="text-[10px] text-muted-foreground">Erstelle in Slack unter Apps → Incoming Webhooks einen Webhook pro Channel.</p>
+                        {slackWebhooks.length === 0 && (
+                          <p className="text-[10px] text-muted-foreground/60 italic">Noch keine Webhooks hinzugefügt.</p>
+                        )}
                         {slackWebhooks.map((wh, i) => (
                           <div key={i} className="rounded-lg border border-border p-3 space-y-2 bg-muted/20">
                             <div className="flex items-center gap-2">
                               <Input
                                 value={wh.label}
                                 onChange={e => updateWebhookRow(i, 'label', e.target.value)}
-                                placeholder="z.B. Tech Support"
+                                placeholder="Name (z.B. Allgemein, Tech Support)"
                                 className="h-7 text-xs flex-1"
                               />
                               <Select
-                                value={wh.channel_id}
+                                value={wh.channel_id || undefined}
                                 onValueChange={v => updateWebhookRow(i, 'channel_id', v)}
                               >
                                 <SelectTrigger className="h-7 text-xs w-40">
