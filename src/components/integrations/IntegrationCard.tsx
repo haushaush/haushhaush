@@ -178,16 +178,21 @@ export function IntegrationCard({
     if (!token) { toast.error('Bot Token erforderlich'); return; }
     setLoadingDynamic(true);
     try {
-      const res = await fetch('https://slack.com/api/conversations.list?types=public_channel,private_channel&limit=200', {
-        headers: { Authorization: `Bearer ${token}` },
+      const { data, error } = await supabase.functions.invoke('slack-channels', {
+        body: { bot_token: token },
       });
-      const data = await res.json();
-      if (!data.ok) { toast.error(`Slack: ${data.error}`); setLoadingDynamic(false); return; }
-      const channels = (data.channels || []).map((c: any) => ({ id: c.id, name: c.name }));
+      if (error || data?.error) {
+        toast.error(`Slack: ${data?.error || error?.message}`);
+        setLoadingDynamic(false);
+        return;
+      }
+      const channels = data.channels || [];
       setSlackChannels(channels);
       onDynamicUpdate?.(provider.id, { channels, loaded_at: new Date().toISOString() });
       toast.success(`${channels.length} Channels geladen`);
-    } catch { toast.error('Slack API nicht erreichbar'); }
+    } catch {
+      toast.error('Slack API nicht erreichbar');
+    }
     setLoadingDynamic(false);
   };
 
