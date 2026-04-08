@@ -353,23 +353,31 @@ export function IntegrationCard({
     if (!closeDeals.length) return null;
     const normalize = (s: string) =>
       s.toLowerCase()
-        .replace(/gmbh|ug|ag|kg|e\.k\.|versicherungen?|versicherungsmakler|tierkrankenversicherung|beihilfe|pkv|bu|tkv|unfallversicherung/gi, '')
-        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\b(gmbh|ug|ag|kg|e\.k\.|inc|ltd|versicherungen?|versicherungsmakler|versicherungsservice|tierkrankenversicherung|tierversicherung|beihilfe|pkv|bu|tkv|unfallversicherung|krankenversicherung|lebensversicherung|recruiting|marketing|digital|media)\b/gi, '')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
         .trim();
     const accNorm = normalize(accName);
-    const accWords = accNorm.split(/\s+/).filter(w => w.length > 2);
+    const accWords = accNorm.split(' ').filter(w => w.length > 2);
     let bestMatch: { id: string; score: number } | null = null;
     for (const deal of closeDeals) {
       const dealNorm = normalize(deal.client_name);
-      const dealWords = dealNorm.split(/\s+/).filter(w => w.length > 2);
-      const matchingWords = accWords.filter(w => dealWords.some(dw => dw.includes(w) || w.includes(dw)));
-      const score = matchingWords.length / Math.max(accWords.length, dealWords.length, 1);
-      if (score > 0.5 && (!bestMatch || score > bestMatch.score)) {
+      const dealWords = dealNorm.split(' ').filter(w => w.length > 2);
+      const matchingWords = accWords.filter(w =>
+        dealWords.some(dw => dw.includes(w) || w.includes(dw))
+      );
+      const overlapScore = matchingWords.length / Math.max(accWords.length, dealWords.length, 1);
+      const substringScore = accNorm.includes(dealNorm) || dealNorm.includes(accNorm) ? 0.9 : 0;
+      const firstWordScore = accWords[0] && dealWords[0] && accWords[0] === dealWords[0] ? 0.6 : 0;
+      const score = Math.max(overlapScore, substringScore, firstWordScore);
+      if (score >= 0.4 && (!bestMatch || score > bestMatch.score)) {
         bestMatch = { id: deal.id, score };
       }
     }
-    return bestMatch && bestMatch.score > 0.5 ? bestMatch.id : null;
+    return bestMatch ? bestMatch.id : null;
   };
+
+  const [mappingSearch, setMappingSearch] = useState('');
 
   return (
     <div
@@ -587,9 +595,30 @@ export function IntegrationCard({
                     const matchedCount = sorted.filter(x => x.isMatched).length;
                     return (
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
                           <p className="text-xs font-medium text-foreground">📊 Kundenkonten zuordnen</p>
                           <div className="flex items-center gap-2">
+                            <button
+                              className="text-[10px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors font-medium"
+                              onClick={() => {
+                                const newMappings = { ...accountMappings };
+                                let matched = 0;
+                                metaAccounts.forEach(acc => {
+                                  const accountId = acc.account_id || acc.id;
+                                  if (!newMappings[accountId] || newMappings[accountId] === '__rejected__') {
+                                    const suggestion = autoMatch(acc.name);
+                                    if (suggestion) {
+                                      newMappings[accountId] = suggestion;
+                                      matched++;
+                                    }
+                                  }
+                                });
+                                setAccountMappings(newMappings);
+                                toast.success(`${matched} Accounts automatisch zugeordnet`);
+                              }}
+                            >
+                              🤖 Auto-Match alle
+                            </button>
                             {autoSuggestedCount > 0 && (
                               <button
                                 className="text-[10px] px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
@@ -601,7 +630,7 @@ export function IntegrationCard({
                                   setAccountMappings(newMappings);
                                 }}
                               >
-                                ✓ Alle {autoSuggestedCount} Vorschläge übernehmen
+                                ✓ {autoSuggestedCount} Vorschläge übernehmen
                               </button>
                             )}
                             <span className="text-[10px] text-muted-foreground">
@@ -614,76 +643,94 @@ export function IntegrationCard({
                             <span className="text-[10px] text-warning font-medium">⚠ {unmatchedCount} Account{unmatchedCount > 1 ? 's' : ''} ohne Zuordnung</span>
                           </div>
                         )}
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="Accounts durchsuchen..."
+                            value={mappingSearch}
+                            onChange={e => setMappingSearch(e.target.value)}
+                            className="w-full h-8 pl-8 pr-3 text-xs rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                          <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </div>
                         <div className="space-y-1.5">
-                          {sorted.map(({ acc, accountId, currentMapping, suggestion, isMatched, isAutoSuggested }) => {
-                            const effectiveValue = currentMapping ?? undefined;
-                            const suggestedDeal = suggestion ? closeDeals.find(d => d.id === suggestion) : null;
-                            return (
-                              <div
-                                key={acc.id}
-                                className={`rounded-lg border p-3 space-y-2 transition-colors ${
-                                  isMatched
-                                    ? 'border-border bg-card'
-                                    : isAutoSuggested
-                                    ? 'border-primary/25 bg-primary/5'
-                                    : 'border-warning/40 bg-warning/5'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5">
-                                      {!isMatched && !isAutoSuggested && (
-                                        <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-warning/20 text-warning">OFFEN</span>
-                                      )}
-                                      {isAutoSuggested && (
-                                        <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-primary/15 text-primary">VORSCHLAG</span>
-                                      )}
-                                      {isMatched && (
-                                        <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-success/15 text-success">✓</span>
-                                      )}
-                                      <p className="text-xs font-medium text-foreground truncate">{acc.name}</p>
-                                    </div>
-                                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{accountId}</p>
-                                  </div>
-                                  {metaAccountStatus(acc.account_status)}
-                                </div>
-                                {isAutoSuggested && suggestedDeal && (
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex-1 text-[11px] text-primary bg-primary/10 rounded-md px-2.5 py-1.5">
-                                      🤖 Vorschlag: <span className="font-medium">{suggestedDeal.client_name}{suggestedDeal.art ? ` · ${suggestedDeal.art}` : ''}</span>
-                                    </div>
-                                    <button
-                                      className="shrink-0 text-[10px] px-2 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
-                                      onClick={() => setAccountMappings(prev => ({ ...prev, [accountId]: suggestion! }))}
-                                    >
-                                      ✓
-                                    </button>
-                                    <button
-                                      className="shrink-0 text-[10px] px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors"
-                                      onClick={() => setAccountMappings(prev => ({ ...prev, [accountId]: '__rejected__' }))}
-                                    >
-                                      ✕
-                                    </button>
-                                  </div>
-                                )}
-                                <Select
-                                  value={effectiveValue === '__rejected__' ? undefined : effectiveValue}
-                                  onValueChange={v => setAccountMappings(prev => ({ ...prev, [accountId]: v }))}
+                          {(() => {
+                            const visibleAccounts = mappingSearch.trim()
+                              ? sorted.filter(({ acc }) =>
+                                  acc.name.toLowerCase().includes(mappingSearch.toLowerCase()) ||
+                                  (acc.account_id || acc.id).includes(mappingSearch)
+                                )
+                              : sorted;
+                            return visibleAccounts.map(({ acc, accountId, currentMapping, suggestion, isMatched, isAutoSuggested }) => {
+                              const effectiveValue = currentMapping ?? undefined;
+                              const suggestedDeal = suggestion ? closeDeals.find(d => d.id === suggestion) : null;
+                              return (
+                                <div
+                                  key={acc.id}
+                                  className={`rounded-lg border p-3 space-y-2 transition-colors ${
+                                    isMatched
+                                      ? 'border-border bg-card'
+                                      : isAutoSuggested
+                                      ? 'border-primary/25 bg-primary/5'
+                                      : 'border-warning/40 bg-warning/5'
+                                  }`}
                                 >
-                                  <SelectTrigger className="h-8 text-xs w-full">
-                                    <SelectValue placeholder={isAutoSuggested ? 'Vorschlag ablehnen & manuell wählen...' : 'Kunde zuordnen...'} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {closeDeals.map(d => (
-                                      <SelectItem key={d.id} value={d.id} className="text-xs">
-                                        {d.client_name}{d.art ? ` · ${d.art}` : ''}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            );
-                          })}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5">
+                                        {!isMatched && !isAutoSuggested && (
+                                          <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-warning/20 text-warning">OFFEN</span>
+                                        )}
+                                        {isAutoSuggested && (
+                                          <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-primary/15 text-primary">VORSCHLAG</span>
+                                        )}
+                                        {isMatched && (
+                                          <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-success/15 text-success">✓</span>
+                                        )}
+                                        <p className="text-xs font-medium text-foreground truncate">{acc.name}</p>
+                                      </div>
+                                      <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{accountId}</p>
+                                    </div>
+                                    {metaAccountStatus(acc.account_status)}
+                                  </div>
+                                  {isAutoSuggested && suggestedDeal && (
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex-1 text-[11px] text-primary bg-primary/10 rounded-md px-2.5 py-1.5">
+                                        🤖 Vorschlag: <span className="font-medium">{suggestedDeal.client_name}{suggestedDeal.art ? ` · ${suggestedDeal.art}` : ''}</span>
+                                      </div>
+                                      <button
+                                        className="shrink-0 text-[10px] px-2 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+                                        onClick={() => setAccountMappings(prev => ({ ...prev, [accountId]: suggestion! }))}
+                                      >
+                                        ✓
+                                      </button>
+                                      <button
+                                        className="shrink-0 text-[10px] px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors"
+                                        onClick={() => setAccountMappings(prev => ({ ...prev, [accountId]: '__rejected__' }))}
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  )}
+                                  <Select
+                                    value={effectiveValue === '__rejected__' ? undefined : effectiveValue}
+                                    onValueChange={v => setAccountMappings(prev => ({ ...prev, [accountId]: v }))}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs w-full">
+                                      <SelectValue placeholder={isAutoSuggested ? 'Vorschlag ablehnen & manuell wählen...' : 'Kunde zuordnen...'} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {closeDeals.map(d => (
+                                        <SelectItem key={d.id} value={d.id} className="text-xs">
+                                          {d.client_name}{d.art ? ` · ${d.art}` : ''}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              );
+                            });
+                          })()}
                         </div>
                       </div>
                     );
