@@ -192,20 +192,28 @@ export function IntegrationCard({
 
   const loadMetaAccounts = async () => {
     const token = formData.access_token || config?.access_token;
-    const businessId = formData.business_manager_id || config?.business_manager_id;
+    const businessId = formData.business_manager_id || config?.business_manager_id || formData.business_id || config?.business_id;
     if (!token) { toast.error('Access Token erforderlich'); return; }
     setLoadingDynamic(true);
     try {
-      const url = businessId
-        ? `https://graph.facebook.com/v19.0/${businessId}/owned_ad_accounts?fields=id,name,account_id,account_status,currency,amount_spent&limit=100&access_token=${token}`
-        : `https://graph.facebook.com/v19.0/me/adaccounts?fields=id,name,account_id,account_status,currency,amount_spent&limit=100&access_token=${token}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.error) { toast.error(`Meta: ${data.error.message}`); setLoadingDynamic(false); return; }
-      const accounts = data.data || [];
-      setMetaAccounts(accounts);
-      onDynamicUpdate?.(provider.id, { ad_accounts: accounts, loaded_at: new Date().toISOString() });
-      toast.success(`${accounts.length} Ad Accounts geladen`);
+      const allAccounts: any[] = [];
+      let url: string | null = businessId
+        ? `https://graph.facebook.com/v19.0/${businessId}/owned_ad_accounts?fields=id,name,account_id,account_status,currency,amount_spent&limit=200&access_token=${token}`
+        : `https://graph.facebook.com/v19.0/me/adaccounts?fields=id,name,account_id,account_status,currency,amount_spent&limit=200&access_token=${token}`;
+      while (url) {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.error) {
+          toast.error(`Meta: ${data.error.message}`);
+          setLoadingDynamic(false);
+          return;
+        }
+        allAccounts.push(...(data.data || []));
+        url = data.paging?.next || null;
+      }
+      setMetaAccounts(allAccounts);
+      onDynamicUpdate?.(provider.id, { ad_accounts: allAccounts, loaded_at: new Date().toISOString() });
+      toast.success(`${allAccounts.length} Ad Accounts geladen`);
     } catch { toast.error('Meta API nicht erreichbar'); }
     setLoadingDynamic(false);
   };
