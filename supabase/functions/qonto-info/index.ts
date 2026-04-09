@@ -13,11 +13,9 @@ serve(async (req) => {
 
     // Qonto uses "login:secret-key" format — login is the org_slug (Kennung)
     // secret is the Geheimschlüssel (not the full API key string)
-    const auth = btoa(`${org_slug}:${api_key}`);
-
     const res = await fetch(`https://thirdparty.qonto.com/v2/organizations/${org_slug}`, {
       headers: {
-        "Authorization": `Basic ${auth}`,
+        "Authorization": `${org_slug}:${api_key}`,
         "Accept": "application/json",
       },
     });

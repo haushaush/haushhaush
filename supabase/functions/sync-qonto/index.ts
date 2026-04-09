@@ -60,7 +60,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const qontoAuth = btoa(`${orgSlug}:${apiKey}`);
     const qontoBase = "https://thirdparty.qonto.com/v2";
 
     // 1. Fetch organization info
