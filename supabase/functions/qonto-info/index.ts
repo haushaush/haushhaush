@@ -11,28 +11,39 @@ serve(async (req) => {
     const { org_slug, api_key } = await req.json();
     if (!org_slug || !api_key) throw new Error("org_slug and api_key required");
 
+    // Qonto uses "login:secret-key" format — login is the org_slug (Kennung)
+    // secret is the Geheimschlüssel (not the full API key string)
     const auth = btoa(`${org_slug}:${api_key}`);
+
     const res = await fetch(`https://thirdparty.qonto.com/v2/organizations/${org_slug}`, {
-      headers: { 
-        Authorization: `Basic ${auth}`,
-        "Content-Type": "application/json",
+      headers: {
+        "Authorization": `Basic ${auth}`,
+        "Accept": "application/json",
       },
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || data.error || "Qonto API error");
 
-    const account = data.organization?.bank_accounts?.[0];
+    if (!res.ok) {
+      // Qonto returns { errors: [{ code, detail }] }
+      const errDetail = data?.errors?.[0]?.detail || data?.errors?.[0]?.code || data?.message || `HTTP ${res.status}`;
+      throw new Error(errDetail);
+    }
+
+    const accounts = data.organization?.bank_accounts || [];
+    const primary = accounts[0];
+
     const info = {
-      balance: (account?.balance_cents || 0) / 100,
-      iban: account?.iban || null,
-      currency: account?.currency || "EUR",
       org_name: data.organization?.legal_name || data.organization?.slug,
-      accounts: (data.organization?.bank_accounts || []).map((a: any) => ({
+      balance: (primary?.balance_cents || 0) / 100,
+      iban: primary?.iban || null,
+      currency: primary?.currency || "EUR",
+      accounts: accounts.map((a: any) => ({
         name: a.name,
         iban: a.iban,
         balance: (a.balance_cents || 0) / 100,
         currency: a.currency,
+        status: a.status,
       })),
     };
 
@@ -40,7 +51,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), {
+    return new Response(JSON.stringify({ error: String(e).replace("Error: ", "") }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
