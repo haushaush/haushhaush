@@ -168,8 +168,8 @@ export const PROVIDERS: IntegrationProvider[] = [
     iconBg: 'hsl(var(--color-teal))',
     description: 'Banking & Transaktionen',
     fields: [
-      { key: 'org_slug', label: 'Organisation Slug', type: 'text', placeholder: 'haush-haush-digital' },
-      { key: 'api_key', label: 'API Key', type: 'password' },
+      { key: 'org_slug', label: 'Kennung (Login)', type: 'text', placeholder: 'viral-connect-gmbh-8234' },
+      { key: 'api_key', label: 'Geheimschlüssel', type: 'password', placeholder: 'Dein Qonto Geheimschlüssel' },
     ],
     toggles: [{ key: 'auto_sync', label: 'Automatisch synchronisieren' }],
     docUrl: 'https://api-doc.qonto.com/',
