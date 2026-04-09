@@ -435,6 +435,27 @@ export default function Einstellungen() {
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-foreground">Einstellungen</h1>
 
+      {window.location.hostname.includes('lovableproject.com') && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-warning/10 border border-warning/30 text-sm">
+          <span className="text-warning text-lg shrink-0">⚠</span>
+          <div className="min-w-0">
+            <p className="font-medium text-foreground text-xs">Du befindest dich in der Lovable Preview</p>
+            <p className="text-muted-foreground text-[11px] mt-0.5">
+              Einstellungen und Verbindungen hier nicht speichern — nutze die{' '}
+              <a
+                href="https://haushhaush.lovable.app/einstellungen"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline font-medium"
+              >
+                Live-App
+              </a>
+              {' '}um Integrationen dauerhaft zu konfigurieren.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Tabs defaultValue="integrationen">
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="integrationen">Integrationen</TabsTrigger>
