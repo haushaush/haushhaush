@@ -337,3 +337,72 @@ export function useAlerts(deals: any[], invoices: any[], salesData: any[], team:
 
   return alerts.slice(0, 8);
 }
+
+// === QONTO LIVE ===
+export function useQontoAccounts(): DataResult<{ accounts: any[]; total_balance: number; org_name: string }> {
+  const [data, setData] = useState<any>({ accounts: [], total_balance: 0, org_name: '' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const { data: setting } = await supabase
+      .from('integration_settings')
+      .select('config, connected')
+      .eq('provider', 'qonto')
+      .maybeSingle();
+
+    if (!setting?.connected || !setting?.config?.org_slug) {
+      setError('Qonto nicht verbunden');
+      setLoading(false);
+      return;
+    }
+
+    const { data: result, error: fnError } = await supabase.functions.invoke('qonto-info', {
+      body: { org_slug: (setting.config as any).org_slug, api_key: (setting.config as any).api_key },
+    });
+
+    if (fnError || result?.error) {
+      setError(result?.error || fnError?.message);
+    } else {
+      setData(result.info);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { refetch(); }, [refetch]);
+  useAutoRefresh(refetch, 10 * 60 * 1000);
+  return { data, loading, error, refetch };
+}
+
+// === META LIVE TOTALS ===
+export function useMetaLiveTotals(): DataResult<{ spend: number; leads: number; cpl: number; lastSync: string | null }> {
+  const [data, setData] = useState({ spend: 0, leads: 0, cpl: 0, lastSync: null as string | null });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dateFrom = thirtyDaysAgo.toISOString().split('T')[0];
+
+    const { data: rows, error: e } = await supabase
+      .from('meta_insights')
+      .select('spend, leads, cpl, synced_at')
+      .gte('date_start', dateFrom);
+
+    if (e) { setError(e.message); setLoading(false); return; }
+
+    const spend = (rows || []).reduce((s, r) => s + Number(r.spend || 0), 0);
+    const leads = (rows || []).reduce((s, r) => s + Number(r.leads || 0), 0);
+    const cpl = leads > 0 ? spend / leads : 0;
+    const lastSync = rows?.[0]?.synced_at || null;
+
+    setData({ spend, leads, cpl, lastSync });
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { refetch(); }, [refetch]);
+  return { data, loading, error, refetch };
+}
