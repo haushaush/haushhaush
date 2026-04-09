@@ -14,7 +14,6 @@ serve(async (req) => {
     const allChannels: any[] = [];
     let nextCursor: string | null = null;
     let pageCount = 0;
-    const MAX_PAGES = 20; // safety limit
 
     do {
       const params = new URLSearchParams({
@@ -25,38 +24,26 @@ serve(async (req) => {
       if (nextCursor) params.set("cursor", nextCursor);
 
       const res = await fetch(`https://slack.com/api/conversations.list?${params.toString()}`, {
-        headers: { 
-          Authorization: `Bearer ${bot_token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${bot_token}` },
       });
-
       const data = await res.json();
-
       if (!data.ok) throw new Error(data.error || "Slack API error");
 
-      allChannels.push(...(data.channels || []));
+      allChannels.push(...(data.channels || []).map((c: any) => ({ id: c.id, name: c.name })));
 
       const next = data.response_metadata?.next_cursor;
-      nextCursor = (next && next.length > 0) ? next : null;
+      nextCursor = next && next.length > 0 ? next : null;
       pageCount++;
-
-    } while (nextCursor !== null && pageCount < MAX_PAGES);
+    } while (nextCursor !== null && pageCount < 20);
 
     allChannels.sort((a: any, b: any) => a.name.localeCompare(b.name));
 
-    return new Response(JSON.stringify({ 
-      channels: allChannels,
-      total: allChannels.length,
-      pages: pageCount,
-    }), {
+    return new Response(JSON.stringify({ channels: allChannels, total: allChannels.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
