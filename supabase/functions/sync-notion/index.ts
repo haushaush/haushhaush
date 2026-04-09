@@ -53,7 +53,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
     const key = Deno.env.get("NOTION_API_KEY");
-    if (!key) throw new Error("NOTION_API_KEY not set in Supabase secrets");
+    if (!key) {
+      return new Response(
+        JSON.stringify({ 
+          error: "NOTION_API_KEY not configured", 
+          hint: "Go to Supabase Dashboard → Edge Functions → Secrets → Add NOTION_API_KEY" 
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const body = await req.json().catch(() => ({}));
     const target = body.target || "all";
