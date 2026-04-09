@@ -255,21 +255,21 @@ export function IntegrationCard({
     if (!slug || !key) { toast.error('Slug und API Key erforderlich'); return; }
     setLoadingDynamic(true);
     try {
-      const res = await fetch(`https://thirdparty.qonto.com/v2/organizations/${slug}`, {
-        headers: { Authorization: `${slug}:${key}` },
+      const { data, error } = await supabase.functions.invoke('qonto-info', {
+        body: { org_slug: slug, api_key: key },
       });
-      const data = await res.json();
-      if (!res.ok) { toast.error('Qonto: Zugangsdaten ungültig'); setLoadingDynamic(false); return; }
-      const info = {
-        balance: (data.organization?.bank_accounts?.[0]?.balance_cents || 0) / 100,
-        iban: data.organization?.bank_accounts?.[0]?.iban,
-        currency: data.organization?.bank_accounts?.[0]?.currency || 'EUR',
-        org_name: data.organization?.slug,
-      };
+      if (error || data?.error) {
+        toast.error(`Qonto: ${data?.error || error?.message}`);
+        setLoadingDynamic(false);
+        return;
+      }
+      const info = data.info;
       setQontoInfo(info);
       onDynamicUpdate?.(provider.id, { qonto_info: info, loaded_at: new Date().toISOString() });
       toast.success('Qonto verbunden');
-    } catch { toast.error('Qonto API nicht erreichbar'); }
+    } catch { 
+      toast.error('Qonto nicht erreichbar'); 
+    }
     setLoadingDynamic(false);
   };
 
