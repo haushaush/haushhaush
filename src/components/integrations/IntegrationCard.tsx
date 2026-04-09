@@ -815,6 +815,21 @@ export function IntegrationCard({
                                       <SelectValue placeholder={isAutoSuggested ? 'Vorschlag ablehnen & manuell wählen...' : 'Kunde zuordnen...'} />
                                     </SelectTrigger>
                                     <SelectContent>
+                                      <div className="px-2 pb-1 pt-1">
+                                        <input
+                                          type="text"
+                                          placeholder="Kunde suchen..."
+                                          className="w-full h-7 px-2 text-xs rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                          onClick={e => e.stopPropagation()}
+                                          onChange={e => {
+                                            const val = e.target.value.toLowerCase();
+                                            const items = e.currentTarget.closest('[role="listbox"]')?.querySelectorAll('[role="option"]');
+                                            items?.forEach((item: any) => {
+                                              item.style.display = item.textContent.toLowerCase().includes(val) ? '' : 'none';
+                                            });
+                                          }}
+                                        />
+                                      </div>
                                       {closeDeals.map(d => (
                                         <SelectItem key={d.id} value={d.id} className="text-xs">
                                           {d.client_name}{d.art ? ` · ${d.art}` : ''}
