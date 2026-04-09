@@ -35,6 +35,8 @@ interface KpiSliderProps {
   tasks: any[];
   effizienz: { score: number; scoreA: number; scoreB: number; scoreC: number; avgDaysOpen: number; loading: boolean };
   isMobile: boolean;
+  qonto?: { accounts: any[]; total_balance: number; org_name: string };
+  metaTotals?: { spend: number; leads: number; cpl: number; lastSync: string | null };
 }
 
 function getMonthStart() {

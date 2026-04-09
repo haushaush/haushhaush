@@ -104,6 +104,8 @@ export default function Dashboard() {
   const salesPerf = useSalesPerformance(salesPeriod);
   const salesPerfMonth = useSalesPerformance('month');
   const effizienz = useEffizienzScore();
+  const qonto = useQontoAccounts();
+  const metaTotals = useMetaLiveTotals();
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [searchOpen, setSearchOpen] = useState(false);
   
