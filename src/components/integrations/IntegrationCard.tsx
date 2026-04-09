@@ -259,7 +259,9 @@ export function IntegrationCard({
         body: { org_slug: slug, api_key: key },
       });
       if (error || data?.error) {
-        toast.error(`Qonto: ${data?.error || error?.message}`);
+        const errMsg = data?.error || error?.message || 'Unbekannter Fehler';
+        toast.error(`Qonto: ${errMsg}`, { duration: 8000 });
+        console.error('Qonto error details:', { error, data });
         setLoadingDynamic(false);
         return;
       }
