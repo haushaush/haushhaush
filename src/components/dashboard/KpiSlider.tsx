@@ -35,6 +35,8 @@ interface KpiSliderProps {
   tasks: any[];
   effizienz: { score: number; scoreA: number; scoreB: number; scoreC: number; avgDaysOpen: number; loading: boolean };
   isMobile: boolean;
+  qonto?: { accounts: any[]; total_balance: number; org_name: string };
+  metaTotals?: { spend: number; leads: number; cpl: number; lastSync: string | null };
 }
 
 function getMonthStart() {
@@ -112,7 +114,7 @@ function KpiCard({ card, isMobile }: { card: KpiCardData; isMobile: boolean }) {
   );
 }
 
-export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth, team, tasks, effizienz, isMobile }: KpiSliderProps) {
+export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth, team, tasks, effizienz, isMobile, qonto, metaTotals }: KpiSliderProps) {
   const [activeSlide, setActiveSlide] = useState(0);
   const autoAdvanceRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [progressKey, setProgressKey] = useState(0);
@@ -169,6 +171,42 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
 
     const openTasks = tasks.filter(t => t.status === 'Offen').length;
     const overdueTasks = tasks.filter(t => t.due_date && t.due_date < today && t.status !== 'Erledigt').length;
+
+    // === SLIDE 0: FINANCE LIVE ===
+    const slideLive: SlideData = {
+      id: 'finance-live', label: '💶 Finance Live',
+      cards: [
+        {
+          label: 'Kontostand Gesamt',
+          value: `€${(qonto?.total_balance || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}`,
+          subtext: `${qonto?.accounts?.length || 0} Qonto-Konten`,
+          icon: Wallet,
+          href: '/finanzen',
+          color: (qonto?.total_balance || 0) > 5000 ? 'green' : (qonto?.total_balance || 0) > 1000 ? 'orange' : 'red',
+        },
+        {
+          label: 'Meta Spend (30d)',
+          value: `€${(metaTotals?.spend || 0).toLocaleString('de-DE', { minimumFractionDigits: 0 })}`,
+          subtext: `${metaTotals?.leads || 0} Leads generiert`,
+          icon: Target,
+          href: '/fulfillment/ads',
+          color: 'default',
+        },
+        {
+          label: 'Ø CPL (30d)',
+          value: `€${(metaTotals?.cpl || 0).toFixed(2)}`,
+          subtext: 'Cost per Lead Meta',
+          icon: TrendingUp,
+          href: '/fulfillment/ads',
+          color: (metaTotals?.cpl || 0) === 0 ? 'default' : (metaTotals?.cpl || 0) < 20 ? 'green' : (metaTotals?.cpl || 0) < 40 ? 'orange' : 'red',
+        },
+        { label: 'UMSATZ', value: fmtC(umsatzThisMonth), subtext: `Bezahlt im ${monthName}`, icon: TrendingUp, href: '/finanzen', trend: umsatzTrend },
+        { label: 'OFFENE RECHNUNGEN', value: fmtC(openTotal), subtext: `${openInvs.length} Rechnungen offen`, icon: Clock, href: '/finanzen/rechnungen', badge: overdueCount > 0 ? `⚠ ${overdueCount} überfällig` : undefined, badgeColor: 'destructive' },
+        { label: 'MRR', value: fmtC(revenue.mrr), subtext: `${revenue.recurring.length} aktive Verträge`, icon: DollarSign, href: '/finanzen/laufzeiten' },
+        { label: 'CASH COLLECT', value: fmtC(cashCollectTotal), subtext: 'Erwartet diesen Monat', icon: Receipt, href: '/finanzen/rechnungen' },
+        { label: 'EFFIZIENZ', value: String(effizienz.score), subtext: `Deadlines ${effizienz.scoreA}%`, icon: Zap, href: '/projekte', gauge: effizienz.score, color: effizienz.score >= 80 ? 'green' : effizienz.score >= 60 ? 'orange' : 'red' },
+      ],
+    };
 
     const slide1: SlideData = {
       id: 'uebersicht', label: 'Übersicht',
@@ -270,8 +308,8 @@ export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth,
       ],
     };
 
-    return [slide1, slide2, slide3, slide4, slide5];
-  }, [deals, invoices, revenue, salesPerf, salesPerfMonth, team, tasks, effizienz, isMobile, currentMonth, currentYear]);
+    return [slideLive, slide1, slide2, slide3, slide4, slide5];
+  }, [deals, invoices, revenue, salesPerf, salesPerfMonth, team, tasks, effizienz, isMobile, currentMonth, currentYear, qonto, metaTotals]);
 
   const SLIDE_LABELS = slides.map(s => s.label);
   const totalSlides = slides.length;
