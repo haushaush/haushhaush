@@ -86,6 +86,42 @@ export function Werbebudgets() {
 
   useEffect(() => { loadBudgets(); }, [loadBudgets]);
 
+  // Auto-sync Meta spend into ad_budgets
+  const syncMetaSpendToWerbebudgets = useCallback(async () => {
+    const { data: setting } = await supabase
+      .from('integration_settings')
+      .select('config')
+      .eq('provider', 'meta_ads')
+      .maybeSingle();
+    
+    const cfg = setting?.config as any;
+    if (!cfg?.account_mappings) return;
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const { data: insights } = await supabase
+      .from('meta_insights')
+      .select('ad_account_id, spend')
+      .gte('date_start', thirtyDaysAgo.toISOString().split('T')[0]);
+
+    if (!insights?.length) return;
+
+    const spendByAccount: Record<string, number> = {};
+    insights.forEach(row => {
+      spendByAccount[row.ad_account_id] = (spendByAccount[row.ad_account_id] || 0) + Number(row.spend || 0);
+    });
+
+    for (const [accountId, spend] of Object.entries(spendByAccount)) {
+      await supabase
+        .from('ad_budgets')
+        .update({ ausgegeben: spend, last_synced_at: new Date().toISOString(), sync_status: 'success' })
+        .eq('account_id', accountId);
+    }
+  }, []);
+
+  useEffect(() => { syncMetaSpendToWerbebudgets(); }, [syncMetaSpendToWerbebudgets]);
+
   // Alert check on load
   useEffect(() => {
     if (budgets.length === 0) return;
