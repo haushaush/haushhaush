@@ -692,68 +692,116 @@ export type Database = {
       }
       close_deals: {
         Row: {
+          ads_budget: number | null
+          ampel: string | null
           ampelstatus: string | null
           art: string | null
           assigned_to: string | null
+          branche: string[] | null
+          cash_collect_offen: number | null
           client_name: string
           close_lead_id: string | null
           close_opportunity_url: string | null
+          clv: number | null
           created_at: string
           deal_type: string | null
+          email: string | null
+          gesamt_saldo: number | null
           health_score: number | null
           id: string
+          kundenstatus: string | null
+          laufzeit_in_14t: boolean | null
           laufzeit_monate: number | null
           leistungen: Json | null
           meta_ad_account_id: string | null
+          meta_kosten: number | null
           notes: Json | null
+          notion_id: string | null
+          notion_url: string | null
           onepage_url: string | null
           start_datum: string | null
           status: string | null
+          telefon: string | null
+          unternehmen: string | null
           updated_at: string
+          vor_nachname: string | null
+          website_url: string | null
           wert_eur: number | null
           zahlstatus: string | null
         }
         Insert: {
+          ads_budget?: number | null
+          ampel?: string | null
           ampelstatus?: string | null
           art?: string | null
           assigned_to?: string | null
+          branche?: string[] | null
+          cash_collect_offen?: number | null
           client_name: string
           close_lead_id?: string | null
           close_opportunity_url?: string | null
+          clv?: number | null
           created_at?: string
           deal_type?: string | null
+          email?: string | null
+          gesamt_saldo?: number | null
           health_score?: number | null
           id?: string
+          kundenstatus?: string | null
+          laufzeit_in_14t?: boolean | null
           laufzeit_monate?: number | null
           leistungen?: Json | null
           meta_ad_account_id?: string | null
+          meta_kosten?: number | null
           notes?: Json | null
+          notion_id?: string | null
+          notion_url?: string | null
           onepage_url?: string | null
           start_datum?: string | null
           status?: string | null
+          telefon?: string | null
+          unternehmen?: string | null
           updated_at?: string
+          vor_nachname?: string | null
+          website_url?: string | null
           wert_eur?: number | null
           zahlstatus?: string | null
         }
         Update: {
+          ads_budget?: number | null
+          ampel?: string | null
           ampelstatus?: string | null
           art?: string | null
           assigned_to?: string | null
+          branche?: string[] | null
+          cash_collect_offen?: number | null
           client_name?: string
           close_lead_id?: string | null
           close_opportunity_url?: string | null
+          clv?: number | null
           created_at?: string
           deal_type?: string | null
+          email?: string | null
+          gesamt_saldo?: number | null
           health_score?: number | null
           id?: string
+          kundenstatus?: string | null
+          laufzeit_in_14t?: boolean | null
           laufzeit_monate?: number | null
           leistungen?: Json | null
           meta_ad_account_id?: string | null
+          meta_kosten?: number | null
           notes?: Json | null
+          notion_id?: string | null
+          notion_url?: string | null
           onepage_url?: string | null
           start_datum?: string | null
           status?: string | null
+          telefon?: string | null
+          unternehmen?: string | null
           updated_at?: string
+          vor_nachname?: string | null
+          website_url?: string | null
           wert_eur?: number | null
           zahlstatus?: string | null
         }
@@ -1313,6 +1361,9 @@ export type Database = {
       }
       invoices: {
         Row: {
+          anteil_hhs: number | null
+          anteil_vc: number | null
+          art_des_projekts: string | null
           billing_entity: string | null
           brutto: number | null
           client_name: string | null
@@ -1326,11 +1377,21 @@ export type Database = {
           mwst_betrag: number | null
           mwst_rate: number | null
           netto: number | null
+          notion_id: string | null
+          notion_url: string | null
           pdf_url: string | null
+          projekt_typ: string | null
+          re_gesendet_am: string | null
+          rechnungsnummer: string | null
           status: string | null
           updated_at: string
+          zahldatum: string | null
+          zahlstatus_notion: string | null
         }
         Insert: {
+          anteil_hhs?: number | null
+          anteil_vc?: number | null
+          art_des_projekts?: string | null
           billing_entity?: string | null
           brutto?: number | null
           client_name?: string | null
@@ -1344,11 +1405,21 @@ export type Database = {
           mwst_betrag?: number | null
           mwst_rate?: number | null
           netto?: number | null
+          notion_id?: string | null
+          notion_url?: string | null
           pdf_url?: string | null
+          projekt_typ?: string | null
+          re_gesendet_am?: string | null
+          rechnungsnummer?: string | null
           status?: string | null
           updated_at?: string
+          zahldatum?: string | null
+          zahlstatus_notion?: string | null
         }
         Update: {
+          anteil_hhs?: number | null
+          anteil_vc?: number | null
+          art_des_projekts?: string | null
           billing_entity?: string | null
           brutto?: number | null
           client_name?: string | null
@@ -1362,9 +1433,16 @@ export type Database = {
           mwst_betrag?: number | null
           mwst_rate?: number | null
           netto?: number | null
+          notion_id?: string | null
+          notion_url?: string | null
           pdf_url?: string | null
+          projekt_typ?: string | null
+          re_gesendet_am?: string | null
+          rechnungsnummer?: string | null
           status?: string | null
           updated_at?: string
+          zahldatum?: string | null
+          zahlstatus_notion?: string | null
         }
         Relationships: [
           {
@@ -1597,42 +1675,81 @@ export type Database = {
       projects: {
         Row: {
           ads_budget: number | null
+          aktuelle_rate: number | null
+          cash_collect: number | null
           client_id: string
           created_at: string
           enddatum: string | null
           gesamt_saldo: number | null
           id: string
+          laufzeit: string | null
           name: string
+          notion_id: string | null
+          notion_url: string | null
+          offener_cash_collect: number | null
+          prioritaet: string | null
+          projektstatus: string | null
           projekttyp: string | null
+          rate_1: number | null
+          rate_2: number | null
+          rate_3: number | null
           startdatum: string | null
           status: string
+          typ: string[] | null
           updated_at: string
+          zahlstatus: string | null
         }
         Insert: {
           ads_budget?: number | null
+          aktuelle_rate?: number | null
+          cash_collect?: number | null
           client_id: string
           created_at?: string
           enddatum?: string | null
           gesamt_saldo?: number | null
           id?: string
+          laufzeit?: string | null
           name: string
+          notion_id?: string | null
+          notion_url?: string | null
+          offener_cash_collect?: number | null
+          prioritaet?: string | null
+          projektstatus?: string | null
           projekttyp?: string | null
+          rate_1?: number | null
+          rate_2?: number | null
+          rate_3?: number | null
           startdatum?: string | null
           status?: string
+          typ?: string[] | null
           updated_at?: string
+          zahlstatus?: string | null
         }
         Update: {
           ads_budget?: number | null
+          aktuelle_rate?: number | null
+          cash_collect?: number | null
           client_id?: string
           created_at?: string
           enddatum?: string | null
           gesamt_saldo?: number | null
           id?: string
+          laufzeit?: string | null
           name?: string
+          notion_id?: string | null
+          notion_url?: string | null
+          offener_cash_collect?: number | null
+          prioritaet?: string | null
+          projektstatus?: string | null
           projekttyp?: string | null
+          rate_1?: number | null
+          rate_2?: number | null
+          rate_3?: number | null
           startdatum?: string | null
           status?: string
+          typ?: string[] | null
           updated_at?: string
+          zahlstatus?: string | null
         }
         Relationships: [
           {
@@ -1899,6 +2016,7 @@ export type Database = {
           geplante_zeit: number | null
           id: string
           ist_zeit: number | null
+          notion_id: string | null
           project_id: string | null
           status: string
           title: string
@@ -1912,6 +2030,7 @@ export type Database = {
           geplante_zeit?: number | null
           id?: string
           ist_zeit?: number | null
+          notion_id?: string | null
           project_id?: string | null
           status?: string
           title: string
@@ -1925,6 +2044,7 @@ export type Database = {
           geplante_zeit?: number | null
           id?: string
           ist_zeit?: number | null
+          notion_id?: string | null
           project_id?: string | null
           status?: string
           title?: string
@@ -1956,34 +2076,67 @@ export type Database = {
       }
       team: {
         Row: {
+          abteilung: string[] | null
           created_at: string
           department: string | null
+          einstiegsdatum: string | null
           email: string
           id: string
+          mitarbeiter_status: string | null
+          mitarbeiter_typ: string | null
           name: string
+          nda_unterschrieben: boolean | null
+          notion_id: string | null
+          notion_url: string | null
+          onboarding_abgeschlossen: boolean | null
           rolle: Database["public"]["Enums"]["team_rolle"]
           startdatum: string | null
+          telefonnummer: string | null
           updated_at: string
+          verfuegbarkeit_h_woche: number | null
+          zugaenge: string[] | null
         }
         Insert: {
+          abteilung?: string[] | null
           created_at?: string
           department?: string | null
+          einstiegsdatum?: string | null
           email: string
           id?: string
+          mitarbeiter_status?: string | null
+          mitarbeiter_typ?: string | null
           name: string
+          nda_unterschrieben?: boolean | null
+          notion_id?: string | null
+          notion_url?: string | null
+          onboarding_abgeschlossen?: boolean | null
           rolle?: Database["public"]["Enums"]["team_rolle"]
           startdatum?: string | null
+          telefonnummer?: string | null
           updated_at?: string
+          verfuegbarkeit_h_woche?: number | null
+          zugaenge?: string[] | null
         }
         Update: {
+          abteilung?: string[] | null
           created_at?: string
           department?: string | null
+          einstiegsdatum?: string | null
           email?: string
           id?: string
+          mitarbeiter_status?: string | null
+          mitarbeiter_typ?: string | null
           name?: string
+          nda_unterschrieben?: boolean | null
+          notion_id?: string | null
+          notion_url?: string | null
+          onboarding_abgeschlossen?: boolean | null
           rolle?: Database["public"]["Enums"]["team_rolle"]
           startdatum?: string | null
+          telefonnummer?: string | null
           updated_at?: string
+          verfuegbarkeit_h_woche?: number | null
+          zugaenge?: string[] | null
         }
         Relationships: []
       }
