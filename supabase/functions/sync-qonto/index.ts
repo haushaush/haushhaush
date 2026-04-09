@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     let orgData: any = null;
     try {
       const orgRes = await fetch(`${qontoBase}/organizations/${orgSlug}`, {
-        headers: { Authorization: `Basic ${qontoAuth}` },
+        headers: { Authorization: `${orgSlug}:${apiKey}` },
       });
       if (orgRes.ok) {
         const orgJson = await orgRes.json();
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       try {
         const txRes = await fetch(
           `${qontoBase}/transactions?status=completed&current_page=${currentPage}&per_page=100`,
-          { headers: { Authorization: `Basic ${qontoAuth}` } }
+          { headers: { Authorization: `${orgSlug}:${apiKey}` } }
         );
         if (!txRes.ok) break;
         const txJson = await txRes.json();
