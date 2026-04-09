@@ -352,14 +352,15 @@ export function useQontoAccounts(): DataResult<{ accounts: any[]; total_balance:
       .eq('provider', 'qonto')
       .maybeSingle();
 
-    if (!setting?.connected || !setting?.config?.org_slug) {
+    const cfg = setting?.config as any;
+    if (!setting?.connected || !cfg?.org_slug) {
       setError('Qonto nicht verbunden');
       setLoading(false);
       return;
     }
 
     const { data: result, error: fnError } = await supabase.functions.invoke('qonto-info', {
-      body: { org_slug: (setting.config as any).org_slug, api_key: (setting.config as any).api_key },
+      body: { org_slug: cfg.org_slug, api_key: cfg.api_key },
     });
 
     if (fnError || result?.error) {
