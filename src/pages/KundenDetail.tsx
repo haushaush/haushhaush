@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +14,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Progress } from '@/components/ui/progress';
 import { DriveBrowser } from '@/components/DriveBrowser';
 import { KundenBudgetCard } from '@/components/finanzen/KundenBudgetCard';
-import { ChevronLeft, ChevronDown, ExternalLink, Plus, CalendarPlus, AlertTriangle, BarChart3, Star } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ExternalLink, Plus, CalendarPlus, AlertTriangle, BarChart3, Star, Target } from 'lucide-react';
+import { useMetaInsights } from '@/hooks/useMetaInsights';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'react-router-dom';
 
@@ -40,6 +41,7 @@ export default function KundenDetail() {
   const [team, setTeam] = useState<any[]>([]);
   const [updates, setUpdates] = useState<{ text: string; ts: string }[]>([]);
   const [newUpdate, setNewUpdate] = useState('');
+  const [metaAccountId, setMetaAccountId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -68,6 +70,32 @@ export default function KundenDetail() {
     };
     load();
   }, [id]);
+
+  // Load Meta account mapping for this deal
+  useEffect(() => {
+    const loadMetaMapping = async () => {
+      const { data: setting } = await supabase
+        .from('integration_settings')
+        .select('config')
+        .eq('provider', 'meta_ads')
+        .maybeSingle();
+      
+      if (setting?.config) {
+        const cfg = setting.config as any;
+        if (cfg.account_mappings) {
+          const mappings = cfg.account_mappings as Record<string, string>;
+          const accountId = Object.entries(mappings).find(([, dealId]) => dealId === id)?.[0];
+          if (accountId) setMetaAccountId(accountId);
+        }
+      }
+    };
+    if (id) loadMetaMapping();
+  }, [id]);
+
+  const metaInsights = useMetaInsights({ adAccountId: metaAccountId || undefined });
+  const metaSpend = metaInsights.data.reduce((s: number, r: any) => s + Number(r.spend || 0), 0);
+  const metaLeads = metaInsights.data.reduce((s: number, r: any) => s + Number(r.leads || 0), 0);
+  const metaCpl = metaLeads > 0 ? metaSpend / metaLeads : 0;
 
   const getName = (tid: string | null) => team.find(t => t.id === tid)?.name || '–';
   const totalInvoiced = invoices.reduce((s, i) => s + Number(i.brutto || 0), 0);
