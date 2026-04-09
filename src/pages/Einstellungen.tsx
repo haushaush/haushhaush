@@ -253,7 +253,7 @@ export default function Einstellungen() {
       const { data, error } = await supabase.functions.invoke('sync-notion', { body: { target: 'all' } });
       toast.dismiss(toastId);
       if (error || data?.error) {
-        toast.error(`Migration fehlgeschlagen: ${data?.error || error?.message}`);
+        toast.error(`Migration fehlgeschlagen: ${data?.error || error?.message}${data?.hint ? ' — ' + data.hint : ''}`);
       } else {
         const s = data.synced;
         toast.success(`✓ Migration abgeschlossen: ${s.kunden || 0} Kunden · ${s.projekte || 0} Projekte · ${s.mitarbeiter || 0} Mitarbeiter · ${s.finanzen || 0} Rechnungen`);
