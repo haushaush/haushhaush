@@ -300,9 +300,20 @@ export default function Einstellungen() {
           else { ok = !!config.access_token; }
           break;
         case 'qonto':
-          if (check.id === 'api_valid') { ok = !!config.api_key; detail = ok ? 'Key verifiziert' : 'Kein Key'; }
-          else if (check.id === 'org_found') { ok = !!config.org_slug; detail = config.org_slug || 'Kein Slug'; }
-          else { ok = !!config.api_key && !!config.org_slug; }
+          if (check.id === 'api_valid') {
+            try {
+              const { data: qData, error: qError } = await supabase.functions.invoke('qonto-info', {
+                body: { org_slug: config.org_slug, api_key: config.api_key },
+              });
+              ok = !qError && !qData?.error;
+              detail = ok ? 'Key verifiziert' : (qData?.error || qError?.message || 'Ungültig');
+            } catch { ok = false; detail = 'Nicht erreichbar'; }
+          } else if (check.id === 'org_found') {
+            ok = !!config.org_slug;
+            detail = config.org_slug || 'Kein Slug';
+          } else {
+            ok = !!config.api_key && !!config.org_slug;
+          }
           break;
         case 'close_crm':
           if (check.id === 'api_reachable') { ok = !!config.api_key; }
