@@ -253,6 +253,36 @@ export default function KundenDetail() {
             </Card>
           </Collapsible>
 
+          {metaAccountId && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  Meta Ads Performance (30d)
+                  {metaInsights.loading && <span className="text-xs text-muted-foreground font-normal ml-2">lädt...</span>}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {metaInsights.data.length === 0 && !metaInsights.loading ? (
+                  <p className="text-sm text-muted-foreground">Noch keine Sync-Daten. Sync in Einstellungen → Meta Ads starten.</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-4">
+                    {[
+                      { label: 'Spend', value: `€${metaSpend.toLocaleString('de-DE', { minimumFractionDigits: 0 })}` },
+                      { label: 'Leads', value: metaLeads.toString() },
+                      { label: 'Ø CPL', value: `€${metaCpl.toFixed(2)}` },
+                    ].map(m => (
+                      <div key={m.label} className="text-center">
+                        <p className="text-xl font-bold text-foreground">{m.value}</p>
+                        <p className="text-xs text-muted-foreground">{m.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader><CardTitle className="text-base">Wichtige Updates</CardTitle></CardHeader>
             <CardContent className="space-y-3">
