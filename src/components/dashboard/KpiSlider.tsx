@@ -114,7 +114,7 @@ function KpiCard({ card, isMobile }: { card: KpiCardData; isMobile: boolean }) {
   );
 }
 
-export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth, team, tasks, effizienz, isMobile }: KpiSliderProps) {
+export function KpiSlider({ deals, invoices, revenue, salesPerf, salesPerfMonth, team, tasks, effizienz, isMobile, qonto, metaTotals }: KpiSliderProps) {
   const [activeSlide, setActiveSlide] = useState(0);
   const autoAdvanceRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [progressKey, setProgressKey] = useState(0);
