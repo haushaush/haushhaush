@@ -29,19 +29,20 @@ serve(async (req) => {
     }
 
     const accounts = data.organization?.bank_accounts || [];
-    const primary = accounts[0];
 
     const info = {
       org_name: data.organization?.legal_name || data.organization?.slug,
-      balance: (primary?.balance_cents || 0) / 100,
-      iban: primary?.iban || null,
-      currency: primary?.currency || "EUR",
+      total_balance: accounts.reduce((sum: number, a: any) => sum + (a.balance_cents || 0), 0) / 100,
+      currency: "EUR",
       accounts: accounts.map((a: any) => ({
         name: a.name,
         iban: a.iban,
+        bic: a.bic,
         balance: (a.balance_cents || 0) / 100,
+        authorized_balance: (a.authorized_balance_cents || 0) / 100,
         currency: a.currency,
         status: a.status,
+        main: a.main,
       })),
     };
 

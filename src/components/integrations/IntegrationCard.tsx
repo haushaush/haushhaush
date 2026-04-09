@@ -912,22 +912,28 @@ export function IntegrationCard({
                     </Button>
                   </div>
                   {qontoInfo && (
-                    <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-muted/30 border border-border">
-                      <div>
-                        <p className="text-[10px] text-muted-foreground">Kontostand</p>
-                        <p className="text-sm font-bold text-foreground">€{qontoInfo.balance?.toLocaleString('de-DE', { minimumFractionDigits: 2 })}</p>
+                    <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-foreground">{qontoInfo.org_name}</p>
+                        <p className="text-sm font-bold text-primary">
+                          Gesamt: €{qontoInfo.total_balance?.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                        </p>
                       </div>
-                      <div>
-                        <p className="text-[10px] text-muted-foreground">IBAN</p>
-                        <p className="text-xs font-mono text-foreground">{qontoInfo.iban || '–'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-muted-foreground">Organisation</p>
-                        <p className="text-xs text-foreground">{qontoInfo.org_name}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-muted-foreground">Währung</p>
-                        <p className="text-xs text-foreground">{qontoInfo.currency}</p>
+                      <div className="space-y-2">
+                        {(qontoInfo.accounts || []).map((acc: any, i: number) => (
+                          <div key={i} className="flex items-center justify-between py-2 border-t border-border first:border-0">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                {acc.main && <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-semibold">HAUPT</span>}
+                                <p className="text-xs font-medium text-foreground">{acc.name}</p>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{acc.iban}</p>
+                            </div>
+                            <p className={`text-sm font-semibold shrink-0 ml-3 ${acc.balance < 100 ? 'text-warning' : 'text-foreground'}`}>
+                              €{acc.balance.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
