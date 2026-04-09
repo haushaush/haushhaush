@@ -353,6 +353,35 @@ export const PROVIDERS: IntegrationProvider[] = [
     ],
   },
   {
+    id: 'notion',
+    name: 'Notion',
+    category: 'CRM',
+    iconLetter: 'N',
+    iconBg: 'linear-gradient(135deg, #1a1a1a 0%, #404040 100%)',
+    iconColor: '#fff',
+    description: 'Einmalige Migration: Kunden, Projekte, Mitarbeiter & Rechnungen',
+    fields: [
+      { key: 'api_key', label: 'Integration Token', type: 'password', placeholder: 'secret_...' },
+    ],
+    docUrl: 'https://www.notion.so/my-integrations',
+    actions: [
+      { label: 'Jetzt migrieren', variant: 'outline', action: 'sync' },
+      { label: 'Verbinden', action: 'save' },
+    ],
+    ariaGuide: [
+      'notion.so/my-integrations → "New integration" erstellen',
+      'Internal Integration Token (secret_...) kopieren',
+      'In jeder DB: "..." → Connections → Integration hinzufügen',
+      'Gilt für: Kunden, Projekte, Mitarbeiter, Finanzen',
+      'Nach der Migration: Notion kündigen — Portal ist Source of Truth',
+    ],
+    healthChecks: [
+      { id: 'token_valid', label: 'Token gültig' },
+      { id: 'kunden_db', label: 'Kunden-DB erreichbar' },
+      { id: 'projekte_db', label: 'Projekte-DB erreichbar' },
+    ],
+  },
+  {
     id: 'superchat',
     name: 'Superchat',
     category: 'CRM/Chat',

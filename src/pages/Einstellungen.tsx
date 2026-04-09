@@ -248,6 +248,19 @@ export default function Einstellungen() {
   };
 
   const handleIntegrationAction = async (providerId: string, action: string) => {
+    if (providerId === 'notion' && action === 'sync') {
+      const toastId = toast.loading('Notion wird migriert — Kunden, Projekte, Mitarbeiter, Rechnungen...');
+      const { data, error } = await supabase.functions.invoke('sync-notion', { body: { target: 'all' } });
+      toast.dismiss(toastId);
+      if (error || data?.error) {
+        toast.error(`Migration fehlgeschlagen: ${data?.error || error?.message}`);
+      } else {
+        const s = data.synced;
+        toast.success(`✓ Migration abgeschlossen: ${s.kunden || 0} Kunden · ${s.projekte || 0} Projekte · ${s.mitarbeiter || 0} Mitarbeiter · ${s.finanzen || 0} Rechnungen`);
+        fetchData();
+      }
+      return;
+    }
     if (action === 'sync') {
       toast.info('Synchronisierung gestartet...');
       const existing = getSettingForProvider(providerId);
