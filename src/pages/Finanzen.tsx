@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { QontoBuchhaltung } from '@/components/finanzen/QontoBuchhaltung';
 import { Werbebudgets } from '@/components/finanzen/Werbebudgets';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -15,7 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
-import { Plus, Upload, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { Plus, Upload, TrendingUp, TrendingDown, AlertTriangle, RefreshCw, Wallet } from 'lucide-react';
+import { useQontoAccounts } from '@/hooks/useDataSources';
 import { StatCard } from '@/components/StatCard';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +39,7 @@ export default function Finanzen() {
   const { isAdminOrManager } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const qonto = useQontoAccounts();
 
   useEffect(() => {
     Promise.all([
@@ -105,6 +107,39 @@ export default function Finanzen() {
         </TabsList>
 
         <TabsContent value="uebersicht" className="space-y-6 mt-4">
+          {/* Qonto Live Konten */}
+          {!qonto.loading && qonto.data.accounts.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold flex items-center gap-2"><Wallet className="h-4 w-4 text-primary" />Qonto Live</h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-primary">
+                    Gesamt: €{qonto.data.total_balance.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                  </span>
+                  <button onClick={qonto.refetch} className="p-1 rounded hover:bg-muted transition-colors">
+                    <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                {qonto.data.accounts.map((acc: any, i: number) => (
+                  <Card key={i}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-medium text-foreground">{acc.name}</p>
+                        {acc.main && <Badge variant="secondary" className="text-[9px]">HAUPT</Badge>}
+                      </div>
+                      <p className={`text-xl font-bold ${acc.balance < 100 ? 'text-warning' : 'text-foreground'}`}>
+                        €{acc.balance.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-mono mt-1">{acc.iban}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <StatCard title="MRR" value={`€${mrr.toLocaleString('de-DE')}`} icon={TrendingUp} />
             <StatCard title="ARR" value={`€${(mrr * 12).toLocaleString('de-DE')}`} icon={TrendingUp} />
