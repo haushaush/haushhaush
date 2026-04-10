@@ -15,6 +15,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsToolti
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatValue } from '@/lib/utils';
 import { MicroLearning } from '@/components/dashboard/MicroLearning';
+import MusicPlayer from '@/components/dashboard/MusicPlayer';
 import { TimeTracker } from '@/components/dashboard/TimeTracker';
 import { GlobalSearchModal } from '@/components/dashboard/GlobalSearch';
 import { Search } from 'lucide-react';
@@ -340,7 +341,12 @@ export default function Dashboard() {
       case 'search':
         return null; // search is now part of quicknav block
       case 'mitteilungen':
-        return <MitteilungenCard />;
+        return (
+          <div className="space-y-4">
+            <MitteilungenCard />
+            <MusicPlayer />
+          </div>
+        );
       case 'widgets':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch">
