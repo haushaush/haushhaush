@@ -24,17 +24,18 @@ const ROLLE_COLORS: Record<string, string> = {
 };
 
 const DEPT_GROUPS = [
-  { label: 'Management', departments: ['Management'] },
-  { label: 'Sales', departments: ['Setter', 'Closer', 'Sales'] },
-  { label: 'Fulfillment', departments: ['Fulfillment', 'Account-Manager', 'Tech', 'Websites', 'Media Buying', 'Backoffice', 'Operation'] },
+  { label: 'MANAGEMENT', departments: ['Management'] },
+  { label: 'SALES', departments: ['Setter', 'Closer', 'Sales'] },
+  { label: 'FULFILLMENT', departments: ['Fulfillment', 'Account-Manager', 'Tech', 'Websites', 'Media Buying', 'Backoffice', 'Operation'] },
 ];
 const ALL_DEPTS = DEPT_GROUPS.flatMap(g => g.departments);
 const ABTEILUNGEN = ['Management', 'Sales', 'Setter', 'Closer', 'Fulfillment', 'Tech', 'Websites', 'Backoffice', 'Media Buying'];
 
-const getSeit = (d: string | null) => {
+const getSeit = (m: any) => {
+  const d = m.startdatum || m.einstiegsdatum;
   if (!d) return '—';
-  const m = Math.floor((Date.now() - new Date(d).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-  return m >= 12 ? `${Math.floor(m / 12)} J. ${m % 12} M.` : `${m} Mon.`;
+  const months = Math.floor((Date.now() - new Date(d).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+  return months >= 12 ? `${Math.floor(months / 12)} J. ${months % 12} M.` : `${months} Mon.`;
 };
 
 export default function Mitarbeiter() {
@@ -49,8 +50,17 @@ export default function Mitarbeiter() {
   const [form, setForm] = useState({ name: '', email: '', rolle: 'Setter' as string, startdatum: '' });
 
   const fetchData = async () => {
-    const { data } = await supabase.from('team').select('*').order('name');
-    if (data) setMembers(data);
+    setLoading(true);
+    const { data: existing } = await supabase.from('team').select('*').order('name');
+    if (existing && existing.length > 0) {
+      setMembers(existing);
+      setLoading(false);
+      return;
+    }
+    // DB is empty — seed once via edge function
+    await supabase.functions.invoke('seed-team');
+    const { data: seeded } = await supabase.from('team').select('*').order('name');
+    if (seeded) setMembers(seeded);
     setLoading(false);
   };
 
@@ -107,17 +117,6 @@ export default function Mitarbeiter() {
             <DialogTrigger asChild>
               <Button className="min-h-[44px]"><Plus className="h-4 w-4 mr-2" />Neuer Mitarbeiter</Button>
             </DialogTrigger>
-            <button
-              type="button"
-              onClick={async () => {
-                const { error } = await supabase.functions.invoke('seed-team');
-                if (error) toast({ title: 'Seed fehlgeschlagen', variant: 'destructive' });
-                else { toast({ title: 'Team geseedet!' }); fetchData(); }
-              }}
-              className="text-xs px-3 py-1.5 border rounded-lg text-muted-foreground hover:text-primary transition-colors"
-            >
-              🔄 Team sync
-            </button>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-h-none">
               <DialogHeader><DialogTitle>Mitarbeiter hinzufügen</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-3">
@@ -193,7 +192,7 @@ export default function Mitarbeiter() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{getSeit(m.einstiegsdatum)}</span>
+                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{getSeit(m)}</span>
                       {(m.abteilung || []).slice(0, 2).map((a: string) => (
                         <Badge key={a} variant="outline" className="text-[10px] px-1 py-0">{a}</Badge>
                       ))}
