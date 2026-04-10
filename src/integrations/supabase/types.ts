@@ -2081,7 +2081,7 @@ export type Database = {
           created_at: string
           department: string | null
           einstiegsdatum: string | null
-          email: string
+          email: string | null
           gehalt: number | null
           gehalt_typ: string | null
           id: string
@@ -2113,7 +2113,7 @@ export type Database = {
           created_at?: string
           department?: string | null
           einstiegsdatum?: string | null
-          email: string
+          email?: string | null
           gehalt?: number | null
           gehalt_typ?: string | null
           id?: string
@@ -2145,7 +2145,7 @@ export type Database = {
           created_at?: string
           department?: string | null
           einstiegsdatum?: string | null
-          email?: string
+          email?: string | null
           gehalt?: number | null
           gehalt_typ?: string | null
           id?: string
