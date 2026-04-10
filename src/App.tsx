@@ -76,6 +76,7 @@ const App = () => (
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/registrierung" element={<Registrierung />} />
+                <Route path="/register" element={<Register />} />
                 <Route path="/" element={<DL><Dashboard /></DL>} />
                 <Route path="/kunden" element={<DL><Kunden /></DL>} />
                 <Route path="/kunden/pipeline" element={<DL><KundenPipeline /></DL>} />
