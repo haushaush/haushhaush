@@ -23,13 +23,42 @@ const ROLLE_COLORS: Record<string, string> = {
   'Fulfillment': 'bg-teal-500/20 text-teal-400',
 };
 
+const TEAM_SEED = [
+  // MANAGEMENT
+  { name: "Maximilian Büsse",   email: "maximilian@haushhaush.de",      rolle: "Admin", department: "Management", position: "CEO · Head of Fulfillment",  startdatum: "2023-02-23" },
+  { name: "Noah Mrosek",        email: "info@viral-connect.de",          rolle: "Admin", department: "Management", position: "CEO · Head of Sales",         startdatum: "2025-02-01" },
+  { name: "Dennis Öztürk",      email: "dennis@haushhaush.de",           rolle: "Admin", department: "Management", position: "Head of Development",         startdatum: "2023-09-01" },
+  { name: "Max Driesner",       email: "max.driesner@viralconnect.de",   rolle: "Admin", department: "Management", position: "Business Strategy",           startdatum: "2024-02-01" },
+  // INTERN
+  { name: "Justin Jackstell",   email: "justin@viralconnect.de",         rolle: "Account-Manager", department: "Intern", position: "Customer Success",      startdatum: "2024-02-01" },
+  { name: "Antonia Götte",      email: "antonia@viralconnect.de",        rolle: "Account-Manager", department: "Intern", position: "Buchhaltung",            startdatum: "2024-02-01" },
+  { name: "Olga Malachowski",   email: "buchhaltung@haushaush.de",       rolle: "Account-Manager", department: "Intern", position: "Buchhaltung",            startdatum: "2024-02-01" },
+  // FULFILLMENT
+  { name: "Jelle Altmiks",      email: "jelle@viralconnect.de",          rolle: "Account-Manager", department: "Fulfillment", position: "Foto & Video",     startdatum: "2025-09-04" },
+  { name: "Khalifa Ben Ameur",  email: "khalifa@viralconnect.de",        rolle: "Account-Manager", department: "Fulfillment", position: "Development",       startdatum: "2025-09-04" },
+  { name: "Lara Peter",         email: "lara@viralconnect.de",           rolle: "Account-Manager", department: "Fulfillment", position: "Account Setup",     startdatum: "2024-02-01" },
+  { name: "Lilly Matejcek",     email: "lilly@viralconnect.de",          rolle: "Account-Manager", department: "Fulfillment", position: "Grafikdesign",      startdatum: "2024-02-01" },
+  { name: "Lucian Ciocea",      email: "lucian@viralconnect.de",         rolle: "Account-Manager", department: "Fulfillment", position: "Webdesign",         startdatum: "2024-02-01" },
+  { name: "Mohammed Arkbawi",   email: "mohammed@viralconnect.de",       rolle: "Account-Manager", department: "Fulfillment", position: "Development",       startdatum: "2024-02-01" },
+  { name: "Osman Hanci",        email: "osman@viralconnect.de",          rolle: "Account-Manager", department: "Fulfillment", position: "Webdesign",         startdatum: "2025-08-06" },
+  { name: "Samet Karayel",      email: "samet@viralconnect.de",          rolle: "Account-Manager", department: "Fulfillment", position: "Media Buying",      startdatum: "2024-02-01" },
+  { name: "Thalia Schiedeck",   email: "thalia@viralconnect.de",         rolle: "Account-Manager", department: "Fulfillment", position: "Account Setup",     startdatum: "2025-09-04" },
+  // SALES
+  { name: "Lleyton Puls",       email: "lleyton@viralconnect.de",        rolle: "Setter", department: "Sales", position: "Setting · Mail Marketing",        startdatum: "2024-02-01" },
+  { name: "Manis Achami",       email: "manis@viralconnect.de",          rolle: "Setter", department: "Sales", position: "Vorqualifikation",                startdatum: "2025-09-04" },
+  { name: "Marc Hammer",        email: "marc@viralconnect.de",           rolle: "Setter", department: "Sales", position: "Cold Calling",                    startdatum: "2024-02-01" },
+  { name: "Marcel Veit",        email: "marcel@viralconnect.de",         rolle: "Closer", department: "Sales", position: "Cold Calling",                    startdatum: "2024-02-01" },
+  { name: "Nico von Engelmann", email: "nico@viralconnect.de",           rolle: "Setter", department: "Sales", position: "Setting",                         startdatum: "2024-02-01" },
+];
+
 const DEPT_GROUPS = [
   { label: 'MANAGEMENT', departments: ['Management'] },
-  { label: 'SALES', departments: ['Setter', 'Closer', 'Sales'] },
-  { label: 'FULFILLMENT', departments: ['Fulfillment', 'Account-Manager', 'Tech', 'Websites', 'Media Buying', 'Backoffice', 'Operation'] },
+  { label: 'SALES',      departments: ['Sales'] },
+  { label: 'FULFILLMENT',departments: ['Fulfillment'] },
+  { label: 'INTERN',     departments: ['Intern'] },
 ];
 const ALL_DEPTS = DEPT_GROUPS.flatMap(g => g.departments);
-const ABTEILUNGEN = ['Management', 'Sales', 'Setter', 'Closer', 'Fulfillment', 'Tech', 'Websites', 'Backoffice', 'Media Buying'];
+const ABTEILUNGEN = ['Management', 'Sales', 'Fulfillment', 'Intern'];
 
 const getSeit = (m: any) => {
   const d = m.startdatum || m.einstiegsdatum;
@@ -58,7 +87,7 @@ export default function Mitarbeiter() {
       return;
     }
     // DB is empty — seed once via edge function
-    await supabase.functions.invoke('seed-team');
+    await supabase.functions.invoke('seed-team', { body: { members: TEAM_SEED } });
     const { data: seeded } = await supabase.from('team').select('*').order('name');
     if (seeded) setMembers(seeded);
     setLoading(false);

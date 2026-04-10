@@ -19,8 +19,9 @@ import { useToast } from '@/hooks/use-toast';
 
 const DEPT_GROUPS = [
   { label: 'MANAGEMENT', departments: ['Management'] },
-  { label: 'SALES', departments: ['Setter', 'Closer', 'Sales'] },
-  { label: 'FULFILLMENT', departments: ['Fulfillment', 'Account-Manager', 'Tech', 'Websites', 'Media Buying', 'Backoffice', 'Operation'] },
+  { label: 'SALES',      departments: ['Sales'] },
+  { label: 'FULFILLMENT',departments: ['Fulfillment'] },
+  { label: 'INTERN',     departments: ['Intern'] },
 ];
 const ALL_DEPTS = DEPT_GROUPS.flatMap(g => g.departments);
 const AKADEMIE_KAPITEL = ['Mindset', 'Cold Calling', 'Sales', 'Setting', 'Closing', 'Einwandbehandlung', 'Deep Dive', 'Lead Scraping', 'Prüfung'];
@@ -147,6 +148,7 @@ export default function TeamPage() {
                         </Avatar>
                         <div className="min-w-0">
                           <p className="font-medium truncate">{m.name}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{m.position || '–'}</p>
                           <Badge variant="secondary" className="text-xs mt-1">{m.rolle}</Badge>
                           <p className="text-xs text-muted-foreground mt-1">{m.email}</p>
                           {months !== null && <p className="text-xs text-muted-foreground">Seit {months} Monaten</p>}
