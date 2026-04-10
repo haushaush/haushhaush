@@ -6,7 +6,7 @@ import { useMusicPlayer, PLAYLISTS, type SearchResult } from "@/contexts/MusicPl
 export default function MusicPlayer() {
   const {
     activePlaylist, trackIndex, playing, volume, muted, currentTrack,
-    togglePlay, skipNext, skipPrev, changeVolume, toggleMute, switchPlaylist, jumpToTrack, playSearchResult,
+    togglePlay, skipNext, skipPrev, changeVolume, toggleMute, switchPlaylist, jumpToAbsolute, playSearchResult,
   } = useMusicPlayer();
 
   const [expanded, setExpanded] = useState(false);
@@ -43,14 +43,31 @@ export default function MusicPlayer() {
     setSearchQuery("");
   };
 
-  // Build upcoming queue
-  const vids = activePlaylist.videos;
-  const queueSize = Math.min(5, vids.length);
-  const upcomingQueue: Array<{ id: string; title: string; artist: string; _idx: number }> = [];
-  for (let i = 0; i < queueSize; i++) {
-    const idx = (trackIndex + i) % vids.length;
-    upcomingQueue.push({ ...vids[idx], _idx: idx });
-  }
+  // Build upcoming queue across all playlists
+  const getUpcomingTracks = () => {
+    const result: Array<{ id: string; title: string; artist: string; playlistId: string; absolutePlaylistIndex: number; absoluteTrackIndex: number }> = [];
+    let pIdx = PLAYLISTS.findIndex(p => p.id === activePlaylist.id);
+    if (pIdx === -1) pIdx = 0;
+    let tIdx = trackIndex;
+    for (let i = 0; i < 5; i++) {
+      const pl = PLAYLISTS[pIdx];
+      if (pl.videos[tIdx]) {
+        result.push({
+          ...pl.videos[tIdx],
+          playlistId: pl.id,
+          absolutePlaylistIndex: pIdx,
+          absoluteTrackIndex: tIdx,
+        });
+      }
+      tIdx++;
+      if (tIdx >= PLAYLISTS[pIdx].videos.length) {
+        tIdx = 0;
+        pIdx = (pIdx + 1) % PLAYLISTS.length;
+      }
+    }
+    return result;
+  };
+  const upcomingQueue = getUpcomingTracks();
 
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -168,27 +185,30 @@ export default function MusicPlayer() {
           {/* Queue */}
           <div className="space-y-0.5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Queue</p>
-            {upcomingQueue.map((v) => (
-              <button
-                key={`${v.id}-${v._idx}`}
-                onClick={() => jumpToTrack(v._idx)}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors ${
-                  v._idx === trackIndex ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground'
-                }`}
-              >
-                {v._idx === trackIndex && playing ? (
-                  <div className="flex items-center gap-[2px] h-3.5 w-3.5 flex-shrink-0">
-                    <span className="w-[3px] h-2 bg-primary rounded-full animate-pulse" />
-                    <span className="w-[3px] h-3 bg-primary rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                    <span className="w-[3px] h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                  </div>
-                ) : (
-                  <Music className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                )}
-                <span className="text-sm truncate">{v.title}</span>
-                <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">{v.artist}</span>
-              </button>
-            ))}
+            {upcomingQueue.map((v, i) => {
+              const isCurrent = i === 0 && v.playlistId === activePlaylist.id && v.absoluteTrackIndex === trackIndex;
+              return (
+                <button
+                  key={`${v.id}-${v.absolutePlaylistIndex}-${v.absoluteTrackIndex}`}
+                  onClick={() => jumpToAbsolute(v.absolutePlaylistIndex, v.absoluteTrackIndex)}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors ${
+                    isCurrent ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground'
+                  }`}
+                >
+                  {isCurrent && playing ? (
+                    <div className="flex items-center gap-[2px] h-3.5 w-3.5 flex-shrink-0">
+                      <span className="w-[3px] h-2 bg-primary rounded-full animate-pulse" />
+                      <span className="w-[3px] h-3 bg-primary rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                      <span className="w-[3px] h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  ) : (
+                    <Music className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                  )}
+                  <span className="text-sm truncate">{v.title}</span>
+                  <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">{v.artist}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

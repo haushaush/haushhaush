@@ -81,6 +81,7 @@ interface MusicPlayerContextType {
   toggleMute: () => void;
   switchPlaylist: (pl: Playlist) => void;
   jumpToTrack: (idx: number) => void;
+  jumpToAbsolute: (playlistIndex: number, trackIdx: number) => void;
   playSearchResult: (result: SearchResult) => void;
   stopAndReset: () => void;
 }
@@ -104,9 +105,11 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const playerRef = useRef<any>(null);
   const playingRef = useRef(false);
   const activePlaylistRef = useRef(activePlaylist);
+  const trackIndexRef = useRef(trackIndex);
 
   useEffect(() => { playingRef.current = playing; }, [playing]);
   useEffect(() => { activePlaylistRef.current = activePlaylist; }, [activePlaylist]);
+  useEffect(() => { trackIndexRef.current = trackIndex; }, [trackIndex]);
   useEffect(() => { if (playing) setHasEverPlayed(true); }, [playing]);
 
   // Listen for logout event to stop playback
@@ -142,7 +145,17 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
             if (e.data === 1) setPlaying(true);
             if (e.data === 2) setPlaying(false);
             if (e.data === 0) {
-              setTrackIndex(prev => (prev + 1) % activePlaylistRef.current.videos.length);
+              // Cross-playlist advance
+              const curPl = activePlaylistRef.current;
+              const curIdx = trackIndexRef.current;
+              if (curIdx + 1 < curPl.videos.length) {
+                setTrackIndex(curIdx + 1);
+              } else {
+                const pIdx = PLAYLISTS.findIndex(p => p.id === curPl.id);
+                const nextPIdx = (pIdx + 1) % PLAYLISTS.length;
+                setActivePlaylist(PLAYLISTS[nextPIdx]);
+                setTrackIndex(0);
+              }
             }
           }
         }
@@ -167,7 +180,16 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const skipNext = useCallback(() => {
-    setTrackIndex(prev => (prev + 1) % activePlaylistRef.current.videos.length);
+    const curPl = activePlaylistRef.current;
+    const curIdx = trackIndexRef.current;
+    if (curIdx + 1 < curPl.videos.length) {
+      setTrackIndex(curIdx + 1);
+    } else {
+      const pIdx = PLAYLISTS.findIndex(p => p.id === curPl.id);
+      const nextPIdx = (pIdx + 1) % PLAYLISTS.length;
+      setActivePlaylist(PLAYLISTS[nextPIdx]);
+      setTrackIndex(0);
+    }
   }, []);
 
   const skipPrev = useCallback(() => {
@@ -202,6 +224,11 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   const jumpToTrack = useCallback((idx: number) => { setTrackIndex(idx); }, []);
 
+  const jumpToAbsolute = useCallback((playlistIndex: number, trackIdx: number) => {
+    setActivePlaylist(PLAYLISTS[playlistIndex]);
+    setTrackIndex(trackIdx);
+  }, []);
+
   const playSearchResult = useCallback((result: SearchResult) => {
     const newVideo: Video = { id: result.videoId, title: result.title, artist: result.channel };
     setActivePlaylist(prev => {
@@ -228,7 +255,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   return (
     <MusicPlayerContext.Provider value={{
       activePlaylist, trackIndex, playing, volume, muted, playerReady, hasEverPlayed, currentTrack,
-      togglePlay, skipNext, skipPrev, changeVolume, toggleMute, switchPlaylist, jumpToTrack, playSearchResult, stopAndReset,
+      togglePlay, skipNext, skipPrev, changeVolume, toggleMute, switchPlaylist, jumpToTrack, jumpToAbsolute, playSearchResult, stopAndReset,
     }}>
       <div id="yt-player-global" style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }} />
       {children}
