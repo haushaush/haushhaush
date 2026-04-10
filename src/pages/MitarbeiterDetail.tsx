@@ -155,12 +155,21 @@ export default function MitarbeiterDetail() {
                 {member.telefonnummer && (
                   <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{member.telefonnummer}</span>
                 )}
-                {member.startdatum && (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5" />
-                    Seit {new Date(member.startdatum).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}
-                  </span>
-                )}
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {member.einstiegsdatum ? (() => {
+                    const start = new Date(member.einstiegsdatum);
+                    const now = new Date();
+                    const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+                    if (months < 1) return 'Neu';
+                    if (months >= 12) {
+                      const years = Math.floor(months / 12);
+                      const rem = months % 12;
+                      return rem > 0 ? `${years} Jahre ${rem} Monate` : `${years} Jahre`;
+                    }
+                    return `${months} Monate`;
+                  })() : '—'}
+                </span>
               </div>
 
               <div className="flex flex-wrap gap-1.5 mt-3">
