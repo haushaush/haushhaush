@@ -23,7 +23,12 @@ const ROLLE_COLORS: Record<string, string> = {
   'Fulfillment': 'bg-teal-500/20 text-teal-400',
 };
 
-const GROUP_ORDER = ['Management', 'Sales', 'Fulfillment'];
+const DEPT_GROUPS = [
+  { label: 'Management', departments: ['Management'] },
+  { label: 'Sales', departments: ['Setter', 'Closer', 'Sales'] },
+  { label: 'Fulfillment', departments: ['Fulfillment', 'Account-Manager', 'Tech', 'Websites', 'Media Buying', 'Backoffice', 'Operation'] },
+];
+const ALL_DEPTS = DEPT_GROUPS.flatMap(g => g.departments);
 const ABTEILUNGEN = ['Management', 'Sales', 'Setter', 'Closer', 'Fulfillment', 'Tech', 'Websites', 'Backoffice', 'Media Buying'];
 
 const getSeit = (d: string | null) => {
