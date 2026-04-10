@@ -25,16 +25,18 @@ const ROLLE_COLORS: Record<string, string> = {
 
 const GROUP_ORDER = ['Management', 'Sales', 'Fulfillment'];
 
-function monthsSince(dateStr: string | null): string {
-  if (!dateStr) return '';
+function tenureDisplay(dateStr: string | null): string {
+  if (!dateStr) return '—';
   const start = new Date(dateStr);
   const now = new Date();
   const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
   if (months < 1) return 'Neu';
-  if (months < 12) return `Seit ${months} Mon.`;
-  const years = Math.floor(months / 12);
-  const rem = months % 12;
-  return rem > 0 ? `Seit ${years}J ${rem}M` : `Seit ${years}J`;
+  if (months >= 12) {
+    const years = Math.floor(months / 12);
+    const rem = months % 12;
+    return rem > 0 ? `${years} Jahre ${rem} Monate` : `${years} Jahre`;
+  }
+  return `${months} Monate`;
 }
 
 export default function Mitarbeiter() {
@@ -157,9 +159,7 @@ export default function Mitarbeiter() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
-                      {m.startdatum && (
-                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{monthsSince(m.startdatum)}</span>
-                      )}
+                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{tenureDisplay(m.einstiegsdatum)}</span>
                       {(m.abteilung || []).slice(0, 2).map((a: string) => (
                         <Badge key={a} variant="outline" className="text-[10px] px-1 py-0">{a}</Badge>
                       ))}
