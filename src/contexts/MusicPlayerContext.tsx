@@ -255,7 +255,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   return (
     <MusicPlayerContext.Provider value={{
       activePlaylist, trackIndex, playing, volume, muted, playerReady, hasEverPlayed, currentTrack,
-      togglePlay, skipNext, skipPrev, changeVolume, toggleMute, switchPlaylist, jumpToTrack, playSearchResult, stopAndReset,
+      togglePlay, skipNext, skipPrev, changeVolume, toggleMute, switchPlaylist, jumpToTrack, jumpToAbsolute, playSearchResult, stopAndReset,
     }}>
       <div id="yt-player-global" style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }} />
       {children}
