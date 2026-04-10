@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, ChevronDown, ChevronUp, Music, Search, Loader2, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const PLAYLISTS = [
   {
@@ -63,8 +64,6 @@ declare global {
   interface Window { YT: any; onYouTubeIframeAPIReady: () => void; }
 }
 
-const YT_API_KEY_STORAGE = "yt-music-player-api-key";
-
 export default function MusicPlayer() {
   const [expanded, setExpanded] = useState(false);
   const [activePlaylist, setActivePlaylist] = useState(PLAYLISTS[0]);
@@ -82,8 +81,6 @@ export default function MusicPlayer() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem(YT_API_KEY_STORAGE) || "");
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   const currentTrack = activePlaylist.videos[trackIndex];
   const thumbUrl = `https://img.youtube.com/vi/${currentTrack.id}/hqdefault.jpg`;
@@ -160,24 +157,20 @@ export default function MusicPlayer() {
 
   const jumpToTrack = (absoluteIndex: number) => { setTrackIndex(absoluteIndex); };
 
-  // --- YouTube Search ---
+  // --- YouTube Search via edge function ---
   const doSearch = async () => {
     const q = searchQuery.trim();
     if (!q) return;
-    if (!apiKey) { setShowApiKeyInput(true); setSearchError("API Key benötigt"); return; }
     setSearching(true);
     setSearchError("");
     setSearchResults([]);
     try {
-      const res = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(q)}&key=${apiKey}`
-      );
-      if (!res.ok) { setSearchError(res.status === 403 ? "Ungültiger API Key" : "Suche fehlgeschlagen"); return; }
-      const data = await res.json();
-      const items: SearchResult[] = (data.items || []).map((item: any) => ({
-        videoId: item.id.videoId,
-        title: item.snippet.title.replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"'),
-        channel: item.snippet.channelTitle,
+      const { data, error } = await supabase.functions.invoke('youtube-search', { body: { query: q } });
+      if (error) { setSearchError("Suche fehlgeschlagen"); return; }
+      const items: SearchResult[] = (data.results || []).map((r: any) => ({
+        videoId: r.videoId,
+        title: r.title,
+        channel: r.channelTitle,
       }));
       setSearchResults(items);
       if (items.length === 0) setSearchError("Keine Ergebnisse");
@@ -193,15 +186,7 @@ export default function MusicPlayer() {
     setTrackIndex(insertIdx);
     setSearchResults([]);
     setSearchQuery("");
-    // Force play
     setTimeout(() => { playerRef.current?.loadVideoById(result.videoId); }, 100);
-  };
-
-  const saveApiKey = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem(YT_API_KEY_STORAGE, key);
-    setShowApiKeyInput(false);
-    if (key && searchQuery.trim()) doSearch();
   };
 
   // Build upcoming queue
@@ -304,27 +289,6 @@ export default function MusicPlayer() {
               </button>
             </div>
 
-            {!apiKey && (
-              <p className="text-[11px] text-muted-foreground/70">
-                YouTube API Key benötigt —{" "}
-                <button onClick={() => setShowApiKeyInput(true)} className="underline hover:text-foreground">
-                  Key eingeben
-                </button>
-              </p>
-            )}
-
-            {showApiKeyInput && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="password"
-                  placeholder="YouTube API Key einfügen…"
-                  className="flex-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs outline-none"
-                  onKeyDown={e => { if (e.key === "Enter") saveApiKey((e.target as HTMLInputElement).value); }}
-                  onClick={e => e.stopPropagation()}
-                />
-                <button onClick={() => setShowApiKeyInput(false)} className="text-xs text-muted-foreground hover:text-foreground">Abbrechen</button>
-              </div>
-            )}
 
             {searchError && <p className="text-xs text-destructive">{searchError}</p>}
 
