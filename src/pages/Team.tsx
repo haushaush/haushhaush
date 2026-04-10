@@ -17,7 +17,12 @@ import { DriveBrowser } from '@/components/DriveBrowser';
 import { Plus, Users, GraduationCap, BookOpen, FolderOpen, Star, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const DEPT_ORDER = ['Management', 'Customer Success', 'Sales', 'Fulfillment', 'Intern'];
+const DEPT_GROUPS = [
+  { label: 'MANAGEMENT', departments: ['Management'] },
+  { label: 'SALES', departments: ['Setter', 'Closer', 'Sales'] },
+  { label: 'FULFILLMENT', departments: ['Fulfillment', 'Account-Manager', 'Tech', 'Websites', 'Media Buying', 'Backoffice', 'Operation'] },
+];
+const ALL_DEPTS = DEPT_GROUPS.flatMap(g => g.departments);
 const AKADEMIE_KAPITEL = ['Mindset', 'Cold Calling', 'Sales', 'Setting', 'Closing', 'Einwandbehandlung', 'Deep Dive', 'Lead Scraping', 'Prüfung'];
 
 export default function TeamPage() {
@@ -71,9 +76,12 @@ export default function TeamPage() {
     return months;
   };
 
-  const grouped = DEPT_ORDER.map(dept => ({
-    dept, members: members.filter(m => m.department === dept),
+  const grouped = DEPT_GROUPS.map(group => ({
+    label: group.label,
+    members: members.filter(m => group.departments.includes(m.department || '')),
   })).filter(g => g.members.length > 0);
+  const ungrouped = members.filter(m => !ALL_DEPTS.includes(m.department || ''));
+  if (ungrouped.length > 0) grouped.push({ label: 'SONSTIGE', members: ungrouped });
 
   if (loading) return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64" /></div>;
 
@@ -101,7 +109,7 @@ export default function TeamPage() {
                 <div><Label>Abteilung</Label>
                   <Select value={form.department} onValueChange={v => setForm({...form, department: v})}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{DEPT_ORDER.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                    <SelectContent>{ALL_DEPTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div><Label>Startdatum</Label><Input type="date" value={form.startdatum} onChange={e => setForm({...form, startdatum: e.target.value})} /></div>
@@ -126,13 +134,13 @@ export default function TeamPage() {
         {/* MITARBEITER */}
         <TabsContent value="mitarbeiter" className="mt-4 space-y-6">
           {grouped.map(g => (
-            <div key={g.dept}>
-              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">{g.dept}</p>
+            <div key={g.label}>
+              <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">{g.label}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {g.members.map(m => {
                   const months = monthsSince(m.startdatum);
                   return (
-                    <Card key={m.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                    <Card key={m.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/hr/mitarbeiter/${m.id}`)}>
                       <CardContent className="p-5 flex items-start gap-4">
                         <Avatar className="h-12 w-12">
                           <AvatarFallback className="bg-[hsl(174,40%,95%)] text-primary font-semibold">{getInitials(m.name)}</AvatarFallback>
@@ -273,7 +281,7 @@ export default function TeamPage() {
                 {AKADEMIE_KAPITEL.map(k => <TableHead key={k} className="text-center text-xs">{k}</TableHead>)}
               </TableRow></TableHeader>
               <TableBody>
-                {members.filter(m => ['Sales','Customer Success'].includes(m.department)).map(m => (
+                {members.filter(m => ['Sales','Setter','Closer'].includes(m.department || '')).map(m => (
                   <TableRow key={m.id}>
                     <TableCell className="font-medium">{m.name}</TableCell>
                     {AKADEMIE_KAPITEL.map(k => (
