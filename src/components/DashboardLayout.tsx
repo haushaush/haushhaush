@@ -7,6 +7,7 @@ import { MobileTabBar } from '@/components/MobileTabBar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { TimerBar } from '@/components/dashboard/TimerBar';
 import { BugReportWidget } from '@/components/BugReportWidget';
+import { MiniPlayerBar } from '@/components/layout/MiniPlayerBar';
 import { ARIASearchBar } from '@/components/aria/ARIASearchBar';
 import { ARIAPanel } from '@/components/aria/ARIAPanel';
 import { useARIA } from '@/contexts/ARIAContext';
@@ -53,6 +54,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {!isMobile && <AppSidebar />}
         <div className="flex-1 flex flex-col min-w-0">
           <TimerBar />
+          <MiniPlayerBar />
           <main
             id="main-content"
             className="flex-1 p-4 sm:p-6 lg:p-10 overflow-auto min-w-0 pb-24 md:pb-24"

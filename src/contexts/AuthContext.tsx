@@ -99,6 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdminOrManager = roles.includes('admin') || roles.includes('account-manager');
 
   const signOut = async () => {
+    // Signal music player to stop before clearing auth
+    window.dispatchEvent(new Event('app-logout'));
     if (isTestMode) {
       sessionStorage.removeItem(TEST_MODE_KEY);
       setIsTestMode(false);
