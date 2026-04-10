@@ -49,6 +49,30 @@ const TEAM_SEED = [
   { name: "Nico von Engelmann", email: "nico@viralconnect.de",           rolle: "Setter", department: "Sales", position: "Setting",                         startdatum: "2024-02-01" },
 ];
 
+const POSITION_MAP: Record<string, string> = {
+  "maximilian@haushhaush.de":    "CEO · Head of Fulfillment",
+  "info@viral-connect.de":       "CEO · Head of Sales",
+  "dennis@haushhaush.de":        "Head of Development",
+  "max.driesner@viralconnect.de":"Business Strategy",
+  "justin@viralconnect.de":      "Customer Success",
+  "jelle@viralconnect.de":       "Foto & Video",
+  "khalifa@viralconnect.de":     "Development",
+  "lara@viralconnect.de":        "Account Setup",
+  "lilly@viralconnect.de":       "Grafikdesign",
+  "lleyton@viralconnect.de":     "Setting · Mail Marketing",
+  "lucian@viralconnect.de":      "Webdesign",
+  "manis@viralconnect.de":       "Vorqualifikation",
+  "marc@viralconnect.de":        "Cold Calling",
+  "marcel@viralconnect.de":      "Cold Calling",
+  "mohammed@viralconnect.de":    "Development",
+  "nico@viralconnect.de":        "Setting",
+  "osman@viralconnect.de":       "Webdesign",
+  "samet@viralconnect.de":       "Media Buying",
+  "thalia@viralconnect.de":      "Account Setup",
+  "antonia@viralconnect.de":     "Buchhaltung",
+  "buchhaltung@haushaush.de":    "Buchhaltung",
+};
+
 const DEPT_GROUPS = [
   { label: 'MANAGEMENT', departments: ['Management'] },
   { label: 'MITARBEITER SALES', departments: ['Sales'] },
@@ -210,7 +234,7 @@ export default function Mitarbeiter() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{m.name}</p>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">{m.position || '–'}</p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{POSITION_MAP[m.email] || m.position || '–'}</p>
                     <p className="text-[11px] text-muted-foreground/70 mt-0.5">{DEPT_DISPLAY[m.department] || m.department || '–'}</p>
                     <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{getSeit(m)}</span>
