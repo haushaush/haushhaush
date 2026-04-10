@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,31 +7,45 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Plus, Mail, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import type { Database } from '@/integrations/supabase/types';
-
-type Team = Database['public']['Tables']['team']['Row'];
 
 const ROLLE_COLORS: Record<string, string> = {
   'Admin': 'bg-primary/20 text-primary',
   'Account-Manager': 'bg-success/20 text-success',
   'Setter': 'bg-warning/20 text-warning',
   'Closer': 'bg-purple-500/20 text-purple-400',
+  'Management': 'bg-blue-500/20 text-blue-400',
+  'Fulfillment': 'bg-teal-500/20 text-teal-400',
 };
 
+const GROUP_ORDER = ['Management', 'Sales', 'Fulfillment'];
+
+function monthsSince(dateStr: string | null): string {
+  if (!dateStr) return '';
+  const start = new Date(dateStr);
+  const now = new Date();
+  const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+  if (months < 1) return 'Neu';
+  if (months < 12) return `Seit ${months} Mon.`;
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  return rem > 0 ? `Seit ${years}J ${rem}M` : `Seit ${years}J`;
+}
+
 export default function Mitarbeiter() {
-  const [members, setMembers] = useState<Team[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
   const { toast } = useToast();
-  const [form, setForm] = useState({ name: '', email: '', rolle: 'Setter' as Team['rolle'], startdatum: '' });
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ name: '', email: '', rolle: 'Setter' as string, startdatum: '' });
 
   const fetchData = async () => {
     const { data } = await supabase.from('team').select('*').order('name');
@@ -50,11 +65,26 @@ export default function Mitarbeiter() {
     fetchData();
   };
 
+  const initials = (name: string) => name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '??';
+
+  // Group by mitarbeiter_typ
+  const grouped = GROUP_ORDER.map(group => ({
+    label: group,
+    members: members.filter(m => (m.mitarbeiter_typ || 'Fulfillment') === group),
+  })).filter(g => g.members.length > 0);
+
+  // Catch any ungrouped
+  const groupedIds = new Set(grouped.flatMap(g => g.members.map((m: any) => m.id)));
+  const ungrouped = members.filter(m => !groupedIds.has(m.id));
+  if (ungrouped.length > 0) grouped.push({ label: 'Sonstige', members: ungrouped });
+
   if (loading) {
     return (
-      <div className="space-y-6" role="status" aria-busy="true" aria-label="Mitarbeiter werden geladen">
+      <div className="space-y-6" role="status" aria-busy="true">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-[14px]" />)}
+        </div>
       </div>
     );
   }
@@ -68,14 +98,16 @@ export default function Mitarbeiter() {
         </div>
         {isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button className="min-h-[44px]"><Plus className="h-4 w-4 mr-2" aria-hidden="true" />Neuer Mitarbeiter</Button></DialogTrigger>
+            <DialogTrigger asChild>
+              <Button className="min-h-[44px]"><Plus className="h-4 w-4 mr-2" />Neuer Mitarbeiter</Button>
+            </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-h-none">
               <DialogHeader><DialogTitle>Mitarbeiter hinzufügen</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div><Label htmlFor="team-name">Name *</Label><Input id="team-name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required /></div>
                 <div><Label htmlFor="team-email">E-Mail *</Label><Input id="team-email" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required /></div>
                 <div><Label htmlFor="team-rolle">Rolle</Label>
-                  <Select value={form.rolle} onValueChange={v => setForm({...form, rolle: v as Team['rolle']})}>
+                  <Select value={form.rolle} onValueChange={v => setForm({...form, rolle: v})}>
                     <SelectTrigger id="team-rolle"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {['Admin', 'Account-Manager', 'Setter', 'Closer'].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
@@ -89,28 +121,55 @@ export default function Mitarbeiter() {
           </Dialog>
         )}
       </div>
-      <Card><CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <Table>
-            <caption className="sr-only">Teammitglieder</caption>
-            <TableHeader><TableRow>
-              <TableHead scope="col">Name</TableHead><TableHead scope="col">E-Mail</TableHead><TableHead scope="col">Rolle</TableHead><TableHead scope="col" className="hidden sm:table-cell">Startdatum</TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {members.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Keine Mitarbeiter</TableCell></TableRow>
-              ) : members.map(m => (
-                <TableRow key={m.id}>
-                  <TableCell className="font-medium">{m.name}</TableCell>
-                  <TableCell className="text-muted-foreground text-xs sm:text-sm">{m.email}</TableCell>
-                  <TableCell><Badge variant="secondary" className={ROLLE_COLORS[m.rolle]}>{m.rolle}</Badge></TableCell>
-                  <TableCell className="text-muted-foreground hidden sm:table-cell">{m.startdatum || '–'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+
+      {grouped.map(group => (
+        <div key={group.label} className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            {group.label}
+            <Badge variant="secondary" className="text-xs font-normal">{group.members.length}</Badge>
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {group.members.map((m: any) => (
+              <Card
+                key={m.id}
+                className="rounded-[14px] cursor-pointer hover:border-primary/40 transition-colors group"
+                onClick={() => navigate(`/hr/mitarbeiter/${m.id}`)}
+              >
+                <CardContent className="p-4 flex items-start gap-3">
+                  <Avatar className="h-11 w-11 mt-0.5">
+                    {m.avatar_url && <AvatarImage src={m.avatar_url} />}
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                      {initials(m.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{m.name}</p>
+                      <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${ROLLE_COLORS[m.rolle] || ''}`}>
+                        {m.rolle}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{m.position || '–'}</p>
+                    <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
+                      {m.email && (
+                        <span className="flex items-center gap-1 truncate"><Mail className="h-3 w-3 shrink-0" />{m.email}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
+                      {m.startdatum && (
+                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{monthsSince(m.startdatum)}</span>
+                      )}
+                      {(m.abteilung || []).slice(0, 2).map((a: string) => (
+                        <Badge key={a} variant="outline" className="text-[10px] px-1 py-0">{a}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
-      </CardContent></Card>
+      ))}
     </div>
   );
 }
