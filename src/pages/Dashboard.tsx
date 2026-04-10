@@ -15,6 +15,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsToolti
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatValue } from '@/lib/utils';
 import { MicroLearning } from '@/components/dashboard/MicroLearning';
+import MusicPlayer from '@/components/dashboard/MusicPlayer';
 import { TimeTracker } from '@/components/dashboard/TimeTracker';
 import { GlobalSearchModal } from '@/components/dashboard/GlobalSearch';
 import { Search } from 'lucide-react';
