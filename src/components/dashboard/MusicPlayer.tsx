@@ -3,10 +3,18 @@ import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, ChevronDown, Chev
 import { supabase } from "@/integrations/supabase/client";
 import { useMusicPlayer, PLAYLISTS, type SearchResult } from "@/contexts/MusicPlayerContext";
 
+function formatTime(s: number) {
+  if (!s || !isFinite(s)) return "0:00";
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, "0")}`;
+}
+
 export default function MusicPlayer() {
   const {
     activePlaylist, trackIndex, playing, volume, muted, currentTrack,
     togglePlay, skipNext, skipPrev, changeVolume, toggleMute, switchPlaylist, jumpToAbsolute, playSearchResult,
+    currentTime, duration, seekTo,
   } = useMusicPlayer();
 
   const [expanded, setExpanded] = useState(false);
@@ -17,6 +25,7 @@ export default function MusicPlayer() {
   const [searchError, setSearchError] = useState("");
 
   const thumbUrl = `https://img.youtube.com/vi/${currentTrack.id}/hqdefault.jpg`;
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const doSearch = async () => {
     const q = searchQuery.trim();
@@ -41,6 +50,13 @@ export default function MusicPlayer() {
     playSearchResult(result);
     setSearchResults([]);
     setSearchQuery("");
+  };
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (duration <= 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    seekTo(pct * duration);
   };
 
   // Build upcoming queue across all playlists
@@ -97,6 +113,23 @@ export default function MusicPlayer() {
           <SkipForward className="h-4 w-4" />
         </button>
         {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground ml-1" /> : <ChevronDown className="h-4 w-4 text-muted-foreground ml-1" />}
+      </div>
+
+      {/* Progress bar */}
+      <div className="px-3 pb-1">
+        <div
+          className="w-full h-1.5 bg-muted rounded-full cursor-pointer overflow-hidden"
+          onClick={handleProgressClick}
+        >
+          <div
+            className="h-full bg-teal-500 rounded-full transition-[width] duration-700 ease-linear"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-0.5">
+          <span className="text-[10px] text-muted-foreground tabular-nums">{formatTime(currentTime)}</span>
+          <span className="text-[10px] text-muted-foreground tabular-nums">{formatTime(duration)}</span>
+        </div>
       </div>
 
       {/* Expanded panel */}

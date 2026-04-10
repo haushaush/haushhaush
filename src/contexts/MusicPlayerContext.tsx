@@ -74,6 +74,8 @@ interface MusicPlayerContextType {
   playerReady: boolean;
   hasEverPlayed: boolean;
   currentTrack: Video;
+  currentTime: number;
+  duration: number;
   togglePlay: () => void;
   skipNext: () => void;
   skipPrev: () => void;
@@ -84,6 +86,7 @@ interface MusicPlayerContextType {
   jumpToAbsolute: (playlistIndex: number, trackIdx: number) => void;
   playSearchResult: (result: SearchResult) => void;
   stopAndReset: () => void;
+  seekTo: (seconds: number) => void;
 }
 
 const MusicPlayerContext = createContext<MusicPlayerContextType | null>(null);
@@ -94,6 +97,24 @@ export function useMusicPlayer() {
   return ctx;
 }
 
+function doSkipNext(
+  activePlaylistRef: React.MutableRefObject<Playlist>,
+  trackIndexRef: React.MutableRefObject<number>,
+  setActivePlaylist: React.Dispatch<React.SetStateAction<Playlist>>,
+  setTrackIndex: React.Dispatch<React.SetStateAction<number>>,
+) {
+  const curPl = activePlaylistRef.current;
+  const curIdx = trackIndexRef.current;
+  if (curIdx + 1 < curPl.videos.length) {
+    setTrackIndex(curIdx + 1);
+  } else {
+    const pIdx = PLAYLISTS.findIndex(p => p.id === curPl.id);
+    const nextPIdx = (pIdx + 1) % PLAYLISTS.length;
+    setActivePlaylist(PLAYLISTS[nextPIdx]);
+    setTrackIndex(0);
+  }
+}
+
 export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [activePlaylist, setActivePlaylist] = useState<Playlist>(PLAYLISTS[0]);
   const [trackIndex, setTrackIndex] = useState(0);
@@ -102,6 +123,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [muted, setMuted] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
   const [hasEverPlayed, setHasEverPlayed] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const playerRef = useRef<any>(null);
   const playingRef = useRef(false);
   const activePlaylistRef = useRef(activePlaylist);
@@ -112,7 +135,24 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => { trackIndexRef.current = trackIndex; }, [trackIndex]);
   useEffect(() => { if (playing) setHasEverPlayed(true); }, [playing]);
 
-  // Listen for logout event to stop playback
+  // Progress polling
+  useEffect(() => {
+    if (!playing || !playerRef.current) return;
+    const id = setInterval(() => {
+      try {
+        const t = playerRef.current?.getCurrentTime?.() ?? 0;
+        const d = playerRef.current?.getDuration?.() ?? 0;
+        setCurrentTime(t);
+        setDuration(d);
+      } catch {}
+    }, 1000);
+    return () => clearInterval(id);
+  }, [playing]);
+
+  // Reset time on track change
+  useEffect(() => { setCurrentTime(0); setDuration(0); }, [trackIndex, activePlaylist]);
+
+  // Logout listener
   useEffect(() => {
     const handler = () => {
       if (playerRef.current) { try { playerRef.current.stopVideo(); } catch {} }
@@ -120,6 +160,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       setActivePlaylist(PLAYLISTS[0]);
       setTrackIndex(0);
       setHasEverPlayed(false);
+      setCurrentTime(0);
+      setDuration(0);
     };
     window.addEventListener('app-logout', handler);
     return () => window.removeEventListener('app-logout', handler);
@@ -145,17 +187,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
             if (e.data === 1) setPlaying(true);
             if (e.data === 2) setPlaying(false);
             if (e.data === 0) {
-              // Cross-playlist advance
-              const curPl = activePlaylistRef.current;
-              const curIdx = trackIndexRef.current;
-              if (curIdx + 1 < curPl.videos.length) {
-                setTrackIndex(curIdx + 1);
-              } else {
-                const pIdx = PLAYLISTS.findIndex(p => p.id === curPl.id);
-                const nextPIdx = (pIdx + 1) % PLAYLISTS.length;
-                setActivePlaylist(PLAYLISTS[nextPIdx]);
-                setTrackIndex(0);
-              }
+              // Track ended — auto-advance and play
+              doSkipNext(activePlaylistRef, trackIndexRef, setActivePlaylist, setTrackIndex);
             }
           }
         }
@@ -169,6 +202,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     if (!playerReady || !playerRef.current) return;
     const vid = activePlaylist.videos[trackIndex]?.id;
     if (!vid) return;
+    // Always loadVideoById so auto-advance plays automatically
     if (playingRef.current) playerRef.current.loadVideoById(vid);
     else playerRef.current.cueVideoById(vid);
   }, [trackIndex, playerReady, activePlaylist]);
@@ -180,16 +214,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const skipNext = useCallback(() => {
-    const curPl = activePlaylistRef.current;
-    const curIdx = trackIndexRef.current;
-    if (curIdx + 1 < curPl.videos.length) {
-      setTrackIndex(curIdx + 1);
-    } else {
-      const pIdx = PLAYLISTS.findIndex(p => p.id === curPl.id);
-      const nextPIdx = (pIdx + 1) % PLAYLISTS.length;
-      setActivePlaylist(PLAYLISTS[nextPIdx]);
-      setTrackIndex(0);
-    }
+    doSkipNext(activePlaylistRef, trackIndexRef, setActivePlaylist, setTrackIndex);
+    // Force play after skip
+    setTimeout(() => { if (playerRef.current && !playingRef.current) playerRef.current.playVideo(); }, 200);
   }, []);
 
   const skipPrev = useCallback(() => {
@@ -243,19 +270,27 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, [trackIndex]);
 
   const stopAndReset = useCallback(() => {
-    if (playerRef.current) {
-      try { playerRef.current.stopVideo(); } catch { }
-    }
+    if (playerRef.current) { try { playerRef.current.stopVideo(); } catch {} }
     setPlaying(false);
     setActivePlaylist(PLAYLISTS[0]);
     setTrackIndex(0);
     setHasEverPlayed(false);
+    setCurrentTime(0);
+    setDuration(0);
+  }, []);
+
+  const seekTo = useCallback((seconds: number) => {
+    if (playerRef.current) {
+      playerRef.current.seekTo(seconds, true);
+      setCurrentTime(seconds);
+    }
   }, []);
 
   return (
     <MusicPlayerContext.Provider value={{
       activePlaylist, trackIndex, playing, volume, muted, playerReady, hasEverPlayed, currentTrack,
-      togglePlay, skipNext, skipPrev, changeVolume, toggleMute, switchPlaylist, jumpToTrack, jumpToAbsolute, playSearchResult, stopAndReset,
+      currentTime, duration,
+      togglePlay, skipNext, skipPrev, changeVolume, toggleMute, switchPlaylist, jumpToTrack, jumpToAbsolute, playSearchResult, stopAndReset, seekTo,
     }}>
       <div id="yt-player-global" style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }} />
       {children}
