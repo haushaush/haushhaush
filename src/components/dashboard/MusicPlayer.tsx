@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, ChevronDown, ChevronUp, Music } from "lucide-react";
+import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, ChevronDown, ChevronUp, Music, Search, Loader2, X } from "lucide-react";
 
 const PLAYLISTS = [
   {
@@ -57,9 +57,13 @@ const PLAYLISTS = [
   },
 ];
 
+type SearchResult = { videoId: string; title: string; channel: string };
+
 declare global {
   interface Window { YT: any; onYouTubeIframeAPIReady: () => void; }
 }
+
+const YT_API_KEY_STORAGE = "yt-music-player-api-key";
 
 export default function MusicPlayer() {
   const [expanded, setExpanded] = useState(false);
@@ -73,13 +77,18 @@ export default function MusicPlayer() {
   const playerRef = useRef<any>(null);
   const playingRef = useRef(false);
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem(YT_API_KEY_STORAGE) || "");
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+
   const currentTrack = activePlaylist.videos[trackIndex];
   const thumbUrl = `https://img.youtube.com/vi/${currentTrack.id}/hqdefault.jpg`;
 
-  // Keep ref in sync
   useEffect(() => { playingRef.current = playing; }, [playing]);
-
-  // Reset thumb error on track/playlist change
   useEffect(() => { setThumbError(false); }, [currentTrack.id, activePlaylist.id]);
 
   const skipNext = useCallback(() => {
@@ -96,47 +105,33 @@ export default function MusicPlayer() {
       tag.src = "https://www.youtube.com/iframe_api";
       document.head.appendChild(tag);
     }
-
     const init = () => {
       if (playerRef.current) return;
       playerRef.current = new window.YT.Player("yt-player-hidden", {
-        height: "1",
-        width: "1",
+        height: "1", width: "1",
         videoId: activePlaylist.videos[0].id,
         playerVars: { autoplay: 0, controls: 0 },
         events: {
-          onReady: (e: any) => {
-            setPlayerReady(true);
-            e.target.setVolume(70);
-            // Do NOT play — wait for user click
-          },
+          onReady: (e: any) => { setPlayerReady(true); e.target.setVolume(70); },
           onStateChange: (e: any) => {
             if (e.data === 1) setPlaying(true);
             if (e.data === 2) setPlaying(false);
-            if (e.data === 0) {
-              // ended → next track
-              setTrackIndex(prev => (prev + 1) % activePlaylist.videos.length);
-            }
+            if (e.data === 0) setTrackIndex(prev => (prev + 1) % activePlaylist.videos.length);
           }
         }
       });
     };
-
     window.onYouTubeIframeAPIReady = init;
     if (window.YT?.Player) init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load video when trackIndex changes
   useEffect(() => {
     if (!playerReady || !playerRef.current) return;
     const vid = activePlaylist.videos[trackIndex]?.id;
     if (!vid) return;
-    if (playingRef.current) {
-      playerRef.current.loadVideoById(vid);
-    } else {
-      playerRef.current.cueVideoById(vid);
-    }
+    if (playingRef.current) playerRef.current.loadVideoById(vid);
+    else playerRef.current.cueVideoById(vid);
   }, [trackIndex, playerReady, activePlaylist]);
 
   const togglePlay = () => {
@@ -160,17 +155,57 @@ export default function MusicPlayer() {
     setActivePlaylist(pl);
     setTrackIndex(0);
     setPlaying(false);
-    if (playerRef.current) {
-      playerRef.current.cueVideoById(pl.videos[0].id);
-    }
+    if (playerRef.current) playerRef.current.cueVideoById(pl.videos[0].id);
   };
 
-  const jumpToTrack = (absoluteIndex: number) => {
-    setTrackIndex(absoluteIndex);
+  const jumpToTrack = (absoluteIndex: number) => { setTrackIndex(absoluteIndex); };
+
+  // --- YouTube Search ---
+  const doSearch = async () => {
+    const q = searchQuery.trim();
+    if (!q) return;
+    if (!apiKey) { setShowApiKeyInput(true); setSearchError("API Key benötigt"); return; }
+    setSearching(true);
+    setSearchError("");
+    setSearchResults([]);
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(q)}&key=${apiKey}`
+      );
+      if (!res.ok) { setSearchError(res.status === 403 ? "Ungültiger API Key" : "Suche fehlgeschlagen"); return; }
+      const data = await res.json();
+      const items: SearchResult[] = (data.items || []).map((item: any) => ({
+        videoId: item.id.videoId,
+        title: item.snippet.title.replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"'),
+        channel: item.snippet.channelTitle,
+      }));
+      setSearchResults(items);
+      if (items.length === 0) setSearchError("Keine Ergebnisse");
+    } catch { setSearchError("Netzwerkfehler"); } finally { setSearching(false); }
   };
 
-  // Build upcoming queue: next 5 tracks cycling infinitely
-  const upcomingQueue = [];
+  const playSearchResult = (result: SearchResult) => {
+    const newVideo = { id: result.videoId, title: result.title, artist: result.channel };
+    const newVideos = [...activePlaylist.videos];
+    const insertIdx = trackIndex + 1;
+    newVideos.splice(insertIdx, 0, newVideo);
+    setActivePlaylist({ ...activePlaylist, videos: newVideos });
+    setTrackIndex(insertIdx);
+    setSearchResults([]);
+    setSearchQuery("");
+    // Force play
+    setTimeout(() => { playerRef.current?.loadVideoById(result.videoId); }, 100);
+  };
+
+  const saveApiKey = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem(YT_API_KEY_STORAGE, key);
+    setShowApiKeyInput(false);
+    if (key && searchQuery.trim()) doSearch();
+  };
+
+  // Build upcoming queue
+  const upcomingQueue: Array<{ id: string; title: string; artist: string; _idx: number }> = [];
   const vids = activePlaylist.videos;
   const queueSize = Math.min(5, vids.length);
   for (let i = 0; i < queueSize; i++) {
@@ -180,7 +215,6 @@ export default function MusicPlayer() {
 
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden">
-      {/* Hidden YouTube player */}
       <div id="yt-player-hidden" style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }} />
 
       {/* Collapsed bar */}
@@ -188,25 +222,17 @@ export default function MusicPlayer() {
         className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/30 transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
-        {/* Thumbnail */}
         <div className="w-10 h-10 rounded-lg flex-shrink-0 overflow-hidden">
           {!thumbError ? (
-            <img
-              src={thumbUrl}
-              alt={currentTrack.title}
-              className="w-full h-full object-cover rounded-lg"
-              onError={() => setThumbError(true)}
-            />
+            <img src={thumbUrl} alt={currentTrack.title} className="w-full h-full object-cover rounded-lg" onError={() => setThumbError(true)} />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg" />
           )}
         </div>
-
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{currentTrack.title}</p>
           <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
         </div>
-
         <button onClick={e => { e.stopPropagation(); skipPrev(); }} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
           <SkipBack className="h-4 w-4" />
         </button>
@@ -227,15 +253,11 @@ export default function MusicPlayer() {
             <button onClick={toggleMute} className="text-muted-foreground hover:text-foreground transition-colors">
               {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </button>
-            <input
-              type="range" min={0} max={100} value={muted ? 0 : volume}
-              onChange={e => changeVolume(Number(e.target.value))}
-              className="flex-1 h-1.5 rounded-full accent-primary cursor-pointer"
-            />
+            <input type="range" min={0} max={100} value={muted ? 0 : volume} onChange={e => changeVolume(Number(e.target.value))} className="flex-1 h-1.5 rounded-full accent-primary cursor-pointer" />
             <span className="text-xs text-muted-foreground w-7 text-right">{muted ? 0 : volume}%</span>
           </div>
 
-          {/* Category pills — single row, clean style */}
+          {/* Category pills */}
           <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
             {PLAYLISTS.map(pl => (
               <button
@@ -253,17 +275,90 @@ export default function MusicPlayer() {
             ))}
           </div>
 
-          {/* Upcoming queue — next 5 tracks, cycling */}
+          {/* YouTube Search */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
+                <Search className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && doSearch()}
+                  placeholder="Song suchen…"
+                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+                  onClick={e => e.stopPropagation()}
+                />
+                {searchQuery && (
+                  <button onClick={() => { setSearchQuery(""); setSearchResults([]); }} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={doSearch}
+                disabled={searching || !searchQuery.trim()}
+                className="px-3 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+              >
+                {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Suchen"}
+              </button>
+            </div>
+
+            {!apiKey && (
+              <p className="text-[11px] text-muted-foreground/70">
+                YouTube API Key benötigt —{" "}
+                <button onClick={() => setShowApiKeyInput(true)} className="underline hover:text-foreground">
+                  Key eingeben
+                </button>
+              </p>
+            )}
+
+            {showApiKeyInput && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="password"
+                  placeholder="YouTube API Key einfügen…"
+                  className="flex-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs outline-none"
+                  onKeyDown={e => { if (e.key === "Enter") saveApiKey((e.target as HTMLInputElement).value); }}
+                  onClick={e => e.stopPropagation()}
+                />
+                <button onClick={() => setShowApiKeyInput(false)} className="text-xs text-muted-foreground hover:text-foreground">Abbrechen</button>
+              </div>
+            )}
+
+            {searchError && <p className="text-xs text-destructive">{searchError}</p>}
+
+            {searchResults.length > 0 && (
+              <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                {searchResults.map(r => (
+                  <button
+                    key={r.videoId}
+                    onClick={() => playSearchResult(r)}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left hover:bg-muted transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                      <img src={`https://img.youtube.com/vi/${r.videoId}/default.jpg`} alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate">{r.title}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{r.channel}</p>
+                    </div>
+                    <Play className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Queue */}
           <div className="space-y-0.5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Queue</p>
-            {upcomingQueue.map((v, i) => (
+            {upcomingQueue.map((v) => (
               <button
                 key={`${v.id}-${v._idx}`}
                 onClick={() => jumpToTrack(v._idx)}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors ${
-                  v._idx === trackIndex
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-muted text-foreground'
+                  v._idx === trackIndex ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground'
                 }`}
               >
                 {v._idx === trackIndex && playing ? (
