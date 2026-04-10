@@ -3,13 +3,39 @@ import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, ChevronDown, Chev
 
 const PLAYLISTS = [
   {
+    id: "hits",
+    name: "Top Hits",
+    emoji: "🔥",
+    color: "from-rose-500 to-pink-600",
+    videos: [
+      { id: "4NRXx6U8BzM", title: "Blinding Lights", artist: "The Weeknd" },
+      { id: "JGwWNGJdvx8", title: "Shape of You", artist: "Ed Sheeran" },
+      { id: "kTJczUoc26U", title: "Starboy", artist: "The Weeknd ft. Daft Punk" },
+      { id: "SlPhMPnQ58k", title: "Levitating", artist: "Dua Lipa" },
+      { id: "h--P8HzYZ_4", title: "As It Was", artist: "Harry Styles" },
+    ]
+  },
+  {
+    id: "vibe",
+    name: "Vibe / Trap",
+    emoji: "🌊",
+    color: "from-violet-500 to-purple-700",
+    videos: [
+      { id: "S-kBwIgvFSQ", title: "SICKO MODE", artist: "Travis Scott" },
+      { id: "I4DjHHVHWAE", title: "Dark Knight Dummo", artist: "Trippie Redd" },
+      { id: "flq0dKSeqZ8", title: "Goosebumps", artist: "Travis Scott" },
+      { id: "mgBF1bL1O_Q", title: "EARFQUAKE", artist: "Tyler the Creator" },
+      { id: "1l7qcQz2jxY", title: "Nights", artist: "Frank Ocean" },
+    ]
+  },
+  {
     id: "lofi",
     name: "Lo-Fi Focus",
     emoji: "🎧",
-    color: "from-purple-500 to-indigo-600",
+    color: "from-teal-500 to-cyan-600",
     videos: [
       { id: "jfKfPfyJRdk", title: "lofi hip hop radio", artist: "Lofi Girl" },
-      { id: "5qap5aO4i9A", title: "lofi hip hop - beats to relax", artist: "Lofi Girl" },
+      { id: "5qap5aO4i9A", title: "beats to relax/study to", artist: "Lofi Girl" },
       { id: "DWcJFNfaw9c", title: "Chillhop Essentials", artist: "Chillhop Music" },
     ]
   },
@@ -17,7 +43,7 @@ const PLAYLISTS = [
     id: "deepwork",
     name: "Deep Work",
     emoji: "⚡",
-    color: "from-orange-500 to-red-600",
+    color: "from-orange-500 to-amber-600",
     videos: [
       { id: "QtlEHc5_xGI", title: "Deep Focus - Music For Coding", artist: "Greenred Productions" },
       { id: "jJiMQP8VNCM", title: "Study Music Alpha Waves", artist: "YellowBrickCinema" },
@@ -26,13 +52,14 @@ const PLAYLISTS = [
   },
   {
     id: "hiphop",
-    name: "Hip Hop Vibes",
-    emoji: "🔥",
-    color: "from-yellow-500 to-orange-600",
+    name: "Hip Hop",
+    emoji: "🎤",
+    color: "from-yellow-500 to-orange-500",
     videos: [
-      { id: "t3NGduGpnVI", title: "Hip Hop Instrumentals", artist: "Chillhop Music" },
-      { id: "pId_8OYFNCI", title: "Trap Beats Mix", artist: "Trap Nation" },
-      { id: "7NOSDKb0HlU", title: "Chill Hip Hop Mix", artist: "NoCopyrightSounds" },
+      { id: "w-Zl2yiR9mQ", title: "God's Plan", artist: "Drake" },
+      { id: "RGaGZDlKHlA", title: "HUMBLE.", artist: "Kendrick Lamar" },
+      { id: "ZAEROei7T80", title: "Money Longer", artist: "Lil Uzi Vert" },
+      { id: "7wtfhZwyrcc", title: "XO Tour Llif3", artist: "Lil Uzi Vert" },
     ]
   },
   {
@@ -41,20 +68,9 @@ const PLAYLISTS = [
     emoji: "🎛️",
     color: "from-cyan-500 to-blue-600",
     videos: [
-      { id: "4m1EFMoRFvY", title: "Techno Mix 2024", artist: "Techno Select" },
       { id: "h_D3VFfhvs4", title: "Progressive House Mix", artist: "The Anjunafamily" },
       { id: "rgnM09h8lPQ", title: "Electronic Music Mix", artist: "Proximity" },
-    ]
-  },
-  {
-    id: "jazz",
-    name: "Jazz & Soul",
-    emoji: "🎷",
-    color: "from-amber-600 to-yellow-700",
-    videos: [
-      { id: "Dx5qFachd3A", title: "Jazz Cafe Music", artist: "Cafe Music BGM" },
-      { id: "neV3EPgvZ3g", title: "Smooth Jazz Radio", artist: "Smooth Jazz" },
-      { id: "VMAPTo7RVCo", title: "Relaxing Jazz & Bossa Nova", artist: "Cafe Music" },
+      { id: "4m1EFMoRFvY", title: "Techno Mix 2024", artist: "Techno Select" },
     ]
   },
 ];
@@ -71,10 +87,15 @@ export default function MusicPlayer() {
   const [volume, setVolume] = useState(70);
   const [muted, setMuted] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
+  const [thumbError, setThumbError] = useState(false);
   const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const currentTrack = activePlaylist.videos[trackIndex];
+  const thumbUrl = `https://img.youtube.com/vi/${currentTrack.id}/mqdefault.jpg`;
+
+  // Reset thumb error on track/playlist change
+  useEffect(() => { setThumbError(false); }, [currentTrack.id, activePlaylist.id]);
 
   useEffect(() => {
     if (!window.YT) {
@@ -87,13 +108,13 @@ export default function MusicPlayer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Load video when trackIndex changes
   useEffect(() => {
-    if (playerReady && playerRef.current) {
-      playerRef.current.loadVideoById(currentTrack.id);
-      if (playing) playerRef.current.playVideo();
-    }
+    if (!playerReady || !playerRef.current) return;
+    playerRef.current.loadVideoById(activePlaylist.videos[trackIndex].id);
+    if (playing) playerRef.current.playVideo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTrack.id, playerReady]);
+  }, [trackIndex, playerReady]);
 
   const initPlayer = () => {
     if (playerRef.current) return;
@@ -103,22 +124,28 @@ export default function MusicPlayer() {
       videoId: currentTrack.id,
       playerVars: { autoplay: 0, controls: 0 },
       events: {
-        onReady: () => { setPlayerReady(true); playerRef.current.setVolume(70); },
-        onStateChange: (e: any) => { if (e.data === 0) skipNext(); }
+        onReady: (e: any) => {
+          setPlayerReady(true);
+          e.target.setVolume(70);
+        },
+        onStateChange: (e: any) => {
+          if (e.data === 1) setPlaying(true);
+          if (e.data === 2) setPlaying(false);
+          if (e.data === 0) skipNext();
+        }
       }
     });
   };
 
   const togglePlay = () => {
     if (!playerRef.current) return;
-    if (playing) { playerRef.current.pauseVideo(); setPlaying(false); }
-    else { playerRef.current.playVideo(); setPlaying(true); }
+    if (playing) { playerRef.current.pauseVideo(); }
+    else { playerRef.current.playVideo(); }
   };
 
   const skipNext = () => {
     const next = (trackIndex + 1) % activePlaylist.videos.length;
     setTrackIndex(next);
-    setTimeout(() => { if (playing && playerRef.current) playerRef.current.playVideo(); }, 300);
   };
 
   const skipPrev = () => {
@@ -141,7 +168,10 @@ export default function MusicPlayer() {
     setActivePlaylist(pl);
     setTrackIndex(0);
     setPlaying(false);
-    setTimeout(() => { if (playerRef.current) playerRef.current.loadVideoById(pl.videos[0].id); }, 100);
+    if (playerRef.current) {
+      playerRef.current.loadVideoById(pl.videos[0].id);
+      playerRef.current.pauseVideo();
+    }
   };
 
   return (
@@ -154,8 +184,19 @@ export default function MusicPlayer() {
         className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/30 transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${activePlaylist.color} flex items-center justify-center text-lg flex-shrink-0`}>
-          {activePlaylist.emoji}
+        <div className={`w-10 h-10 rounded-lg flex-shrink-0 overflow-hidden ${thumbError ? `bg-gradient-to-br ${activePlaylist.color}` : ''}`}>
+          {!thumbError ? (
+            <img
+              src={thumbUrl}
+              alt={currentTrack.title}
+              className="w-full h-full object-cover"
+              onError={() => setThumbError(true)}
+            />
+          ) : (
+            <div className={`w-full h-full bg-gradient-to-br ${activePlaylist.color} flex items-center justify-center text-lg`}>
+              {activePlaylist.emoji}
+            </div>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">{currentTrack.title}</p>
@@ -195,7 +236,7 @@ export default function MusicPlayer() {
             {activePlaylist.videos.map((v, i) => (
               <button
                 key={v.id}
-                onClick={() => { setTrackIndex(i); setTimeout(() => { if (playing && playerRef.current) playerRef.current.playVideo(); }, 200); }}
+                onClick={() => setTrackIndex(i)}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors ${i === trackIndex ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground'}`}
               >
                 <Music className="h-3.5 w-3.5 flex-shrink-0" />
