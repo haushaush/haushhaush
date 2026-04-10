@@ -81,6 +81,7 @@ interface MusicPlayerContextType {
   toggleMute: () => void;
   switchPlaylist: (pl: Playlist) => void;
   jumpToTrack: (idx: number) => void;
+  jumpToAbsolute: (playlistIndex: number, trackIdx: number) => void;
   playSearchResult: (result: SearchResult) => void;
   stopAndReset: () => void;
 }
