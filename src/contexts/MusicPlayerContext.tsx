@@ -105,9 +105,11 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const playerRef = useRef<any>(null);
   const playingRef = useRef(false);
   const activePlaylistRef = useRef(activePlaylist);
+  const trackIndexRef = useRef(trackIndex);
 
   useEffect(() => { playingRef.current = playing; }, [playing]);
   useEffect(() => { activePlaylistRef.current = activePlaylist; }, [activePlaylist]);
+  useEffect(() => { trackIndexRef.current = trackIndex; }, [trackIndex]);
   useEffect(() => { if (playing) setHasEverPlayed(true); }, [playing]);
 
   // Listen for logout event to stop playback
