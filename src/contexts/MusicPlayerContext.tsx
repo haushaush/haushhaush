@@ -109,6 +109,13 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => { activePlaylistRef.current = activePlaylist; }, [activePlaylist]);
   useEffect(() => { if (playing) setHasEverPlayed(true); }, [playing]);
 
+  // Listen for logout event to stop playback
+  useEffect(() => {
+    const handler = () => stopAndResetInternal();
+    window.addEventListener('app-logout', handler);
+    return () => window.removeEventListener('app-logout', handler);
+  }, []);
+
   const currentTrack = activePlaylist.videos[trackIndex] || activePlaylist.videos[0];
 
   useEffect(() => {
