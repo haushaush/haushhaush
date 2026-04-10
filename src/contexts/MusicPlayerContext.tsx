@@ -145,7 +145,17 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
             if (e.data === 1) setPlaying(true);
             if (e.data === 2) setPlaying(false);
             if (e.data === 0) {
-              setTrackIndex(prev => (prev + 1) % activePlaylistRef.current.videos.length);
+              // Cross-playlist advance
+              const curPl = activePlaylistRef.current;
+              const curIdx = trackIndexRef.current;
+              if (curIdx + 1 < curPl.videos.length) {
+                setTrackIndex(curIdx + 1);
+              } else {
+                const pIdx = PLAYLISTS.findIndex(p => p.id === curPl.id);
+                const nextPIdx = (pIdx + 1) % PLAYLISTS.length;
+                setActivePlaylist(PLAYLISTS[nextPIdx]);
+                setTrackIndex(0);
+              }
             }
           }
         }
@@ -170,7 +180,16 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const skipNext = useCallback(() => {
-    setTrackIndex(prev => (prev + 1) % activePlaylistRef.current.videos.length);
+    const curPl = activePlaylistRef.current;
+    const curIdx = trackIndexRef.current;
+    if (curIdx + 1 < curPl.videos.length) {
+      setTrackIndex(curIdx + 1);
+    } else {
+      const pIdx = PLAYLISTS.findIndex(p => p.id === curPl.id);
+      const nextPIdx = (pIdx + 1) % PLAYLISTS.length;
+      setActivePlaylist(PLAYLISTS[nextPIdx]);
+      setTrackIndex(0);
+    }
   }, []);
 
   const skipPrev = useCallback(() => {
