@@ -3,33 +3,27 @@ import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, ChevronDown, Chev
 
 const PLAYLISTS = [
   {
-    id: "hits",
-    name: "Top Hits",
-    emoji: "🔥",
+    id: "hits", name: "Top Hits", emoji: "🔥",
     videos: [
-      { id: "4NRXx6U8BzM", title: "Blinding Lights", artist: "The Weeknd" },
+      { id: "fHI8X4OXluQ", title: "Blinding Lights", artist: "The Weeknd" },
       { id: "JGwWNGJdvx8", title: "Shape of You", artist: "Ed Sheeran" },
-      { id: "kTJczUoc26U", title: "Starboy", artist: "The Weeknd ft. Daft Punk" },
-      { id: "SlPhMPnQ58k", title: "Levitating", artist: "Dua Lipa" },
-      { id: "h--P8HzYZ_4", title: "As It Was", artist: "Harry Styles" },
+      { id: "CvBfHwUxHIk", title: "Starboy", artist: "The Weeknd ft. Daft Punk" },
+      { id: "DkeiKbqa02g", title: "Levitating", artist: "Dua Lipa" },
+      { id: "H5v3kku4y6Q", title: "As It Was", artist: "Harry Styles" },
     ]
   },
   {
-    id: "vibe",
-    name: "Vibe",
-    emoji: "🌊",
+    id: "vibe", name: "Vibe", emoji: "🌊",
     videos: [
-      { id: "S-kBwIgvFSQ", title: "SICKO MODE", artist: "Travis Scott" },
-      { id: "I4DjHHVHWAE", title: "Dark Knight Dummo", artist: "Trippie Redd" },
+      { id: "6ONRf7h3Mdk", title: "SICKO MODE", artist: "Travis Scott" },
       { id: "flq0dKSeqZ8", title: "Goosebumps", artist: "Travis Scott" },
       { id: "mgBF1bL1O_Q", title: "EARFQUAKE", artist: "Tyler the Creator" },
-      { id: "1l7qcQz2jxY", title: "Nights", artist: "Frank Ocean" },
+      { id: "ZbZSe6N_BXs", title: "Happy", artist: "Pharrell Williams" },
+      { id: "kffacxfA7G4", title: "Bad Guy", artist: "Billie Eilish" },
     ]
   },
   {
-    id: "lofi",
-    name: "Lo-Fi",
-    emoji: "🎧",
+    id: "lofi", name: "Lo-Fi", emoji: "🎧",
     videos: [
       { id: "jfKfPfyJRdk", title: "lofi hip hop radio", artist: "Lofi Girl" },
       { id: "5qap5aO4i9A", title: "beats to relax/study to", artist: "Lofi Girl" },
@@ -37,34 +31,28 @@ const PLAYLISTS = [
     ]
   },
   {
-    id: "deepwork",
-    name: "Deep Work",
-    emoji: "⚡",
+    id: "deepwork", name: "Deep Work", emoji: "⚡",
     videos: [
-      { id: "QtlEHc5_xGI", title: "Deep Focus - Music For Coding", artist: "Greenred Productions" },
+      { id: "QtlEHc5_xGI", title: "Deep Focus", artist: "Greenred Productions" },
       { id: "jJiMQP8VNCM", title: "Study Music Alpha Waves", artist: "YellowBrickCinema" },
       { id: "WPni755-Krg", title: "Focus Music for Work", artist: "Productivity Music" },
     ]
   },
   {
-    id: "hiphop",
-    name: "Hip Hop",
-    emoji: "🎤",
+    id: "hiphop", name: "Hip Hop", emoji: "🎤",
     videos: [
-      { id: "w-Zl2yiR9mQ", title: "God's Plan", artist: "Drake" },
-      { id: "RGaGZDlKHlA", title: "HUMBLE.", artist: "Kendrick Lamar" },
-      { id: "ZAEROei7T80", title: "Money Longer", artist: "Lil Uzi Vert" },
-      { id: "7wtfhZwyrcc", title: "XO Tour Llif3", artist: "Lil Uzi Vert" },
+      { id: "zhY_0DoQCQs", title: "God's Plan", artist: "Drake" },
+      { id: "tvTRZJ-4EyI", title: "HUMBLE.", artist: "Kendrick Lamar" },
+      { id: "C2TemF5bvJo", title: "Hotline Bling", artist: "Drake" },
+      { id: "09R8_2nJtjg", title: "Sugar", artist: "BROCKHAMPTON" },
     ]
   },
   {
-    id: "edm",
-    name: "EDM",
-    emoji: "🎛️",
+    id: "edm", name: "EDM", emoji: "🎛️",
     videos: [
-      { id: "h_D3VFfhvs4", title: "Progressive House Mix", artist: "The Anjunafamily" },
-      { id: "rgnM09h8lPQ", title: "Electronic Music Mix", artist: "Proximity" },
-      { id: "4m1EFMoRFvY", title: "Techno Mix 2024", artist: "Techno Select" },
+      { id: "gCYcHz2k5x0", title: "Clarity", artist: "Zedd ft. Foxes" },
+      { id: "IcrbM1l_BoI", title: "Animals", artist: "Martin Garrix" },
+      { id: "60ItHLz5WEA", title: "Wake Me Up", artist: "Avicii" },
     ]
   },
 ];
