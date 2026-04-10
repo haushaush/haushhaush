@@ -38,9 +38,11 @@ export function MiniPlayerBar() {
     seekTo(pct * duration);
   };
 
+  if (isOnDashboard) return null;
+
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[195] flex flex-col flex-shrink-0"
+      className="flex flex-col flex-shrink-0"
       style={{
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
