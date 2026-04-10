@@ -111,7 +111,13 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   // Listen for logout event to stop playback
   useEffect(() => {
-    const handler = () => stopAndResetInternal();
+    const handler = () => {
+      if (playerRef.current) { try { playerRef.current.stopVideo(); } catch {} }
+      setPlaying(false);
+      setActivePlaylist(PLAYLISTS[0]);
+      setTrackIndex(0);
+      setHasEverPlayed(false);
+    };
     window.addEventListener('app-logout', handler);
     return () => window.removeEventListener('app-logout', handler);
   }, []);
