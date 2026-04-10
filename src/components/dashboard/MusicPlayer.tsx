@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, ChevronDown, ChevronUp, Music, Search, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useMusicPlayer, PLAYLISTS, type SearchResult } from "@/contexts/MusicPlayerContext";
+import { useMusicPlayer, CATEGORIES, type SearchResult } from "@/contexts/MusicPlayerContext";
 
 function formatTime(s: number) {
   if (!s || !isFinite(s)) return "0:00";
@@ -12,9 +12,9 @@ function formatTime(s: number) {
 
 export default function MusicPlayer() {
   const {
-    activePlaylist, trackIndex, playing, volume, muted, currentTrack,
-    togglePlay, skipNext, skipPrev, changeVolume, toggleMute, switchPlaylist, jumpToAbsolute, playSearchResult,
-    currentTime, duration, seekTo,
+    activeCategory, tracks, trackIndex, playing, volume, muted, currentTrack,
+    togglePlay, skipNext, skipPrev, changeVolume, toggleMute, switchCategory, jumpToTrack, playSearchResult,
+    currentTime, duration, seekTo, loadingCategory,
   } = useMusicPlayer();
 
   const [expanded, setExpanded] = useState(false);
@@ -59,31 +59,18 @@ export default function MusicPlayer() {
     seekTo(pct * duration);
   };
 
-  // Build upcoming queue across all playlists
+  // Build upcoming queue from current tracks list
   const getUpcomingTracks = () => {
-    const result: Array<{ id: string; title: string; artist: string; playlistId: string; absolutePlaylistIndex: number; absoluteTrackIndex: number }> = [];
-    let pIdx = PLAYLISTS.findIndex(p => p.id === activePlaylist.id);
-    if (pIdx === -1) pIdx = 0;
-    let tIdx = trackIndex;
-    for (let i = 0; i < 5; i++) {
-      const pl = PLAYLISTS[pIdx];
-      if (pl.videos[tIdx]) {
-        result.push({
-          ...pl.videos[tIdx],
-          playlistId: pl.id,
-          absolutePlaylistIndex: pIdx,
-          absoluteTrackIndex: tIdx,
-        });
-      }
-      tIdx++;
-      if (tIdx >= PLAYLISTS[pIdx].videos.length) {
-        tIdx = 0;
-        pIdx = (pIdx + 1) % PLAYLISTS.length;
-      }
+    const result: Array<Video & { idx: number }> = [];
+    for (let i = 0; i < Math.min(5, tracks.length); i++) {
+      const idx = (trackIndex + i) % tracks.length;
+      result.push({ ...tracks[idx], idx });
     }
     return result;
   };
   const upcomingQueue = getUpcomingTracks();
+
+  type Video = { id: string; title: string; artist: string };
 
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -117,14 +104,8 @@ export default function MusicPlayer() {
 
       {/* Progress bar */}
       <div className="px-3 pb-1">
-        <div
-          className="w-full h-1.5 bg-muted rounded-full cursor-pointer overflow-hidden"
-          onClick={handleProgressClick}
-        >
-          <div
-            className="h-full bg-teal-500 rounded-full transition-[width] duration-700 ease-linear"
-            style={{ width: `${progress}%` }}
-          />
+        <div className="w-full h-1.5 bg-muted rounded-full cursor-pointer overflow-hidden" onClick={handleProgressClick}>
+          <div className="h-full bg-teal-500 rounded-full transition-[width] duration-700 ease-linear" style={{ width: `${progress}%` }} />
         </div>
         <div className="flex justify-between mt-0.5">
           <span className="text-[10px] text-muted-foreground tabular-nums">{formatTime(currentTime)}</span>
@@ -146,18 +127,22 @@ export default function MusicPlayer() {
 
           {/* Category pills */}
           <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
-            {PLAYLISTS.map(pl => (
+            {CATEGORIES.map(cat => (
               <button
-                key={pl.id}
-                onClick={() => switchPlaylist(pl)}
+                key={cat.id}
+                onClick={() => switchCategory(cat)}
                 className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all border ${
-                  activePlaylist.id === pl.id
+                  activeCategory.id === cat.id
                     ? 'bg-muted border-border text-foreground'
                     : 'bg-transparent border-border/50 text-muted-foreground hover:border-border hover:text-foreground'
                 }`}
               >
-                <span>{pl.emoji}</span>
-                <span>{pl.name}</span>
+                {loadingCategory === cat.id ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <span>{cat.emoji}</span>
+                )}
+                <span>{cat.name}</span>
               </button>
             ))}
           </div>
@@ -219,11 +204,11 @@ export default function MusicPlayer() {
           <div className="space-y-0.5">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Queue</p>
             {upcomingQueue.map((v, i) => {
-              const isCurrent = i === 0 && v.playlistId === activePlaylist.id && v.absoluteTrackIndex === trackIndex;
+              const isCurrent = v.idx === trackIndex;
               return (
                 <button
-                  key={`${v.id}-${v.absolutePlaylistIndex}-${v.absoluteTrackIndex}`}
-                  onClick={() => jumpToAbsolute(v.absolutePlaylistIndex, v.absoluteTrackIndex)}
+                  key={`${v.id}-${v.idx}-${i}`}
+                  onClick={() => jumpToTrack(v.idx)}
                   className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors ${
                     isCurrent ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground'
                   }`}
