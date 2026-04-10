@@ -234,10 +234,13 @@ export default function Mitarbeiter() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{m.name}</p>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">{POSITION_MAP[m.email] || m.position || '–'}</p>
-                    <p className="text-[11px] text-muted-foreground/70 mt-0.5">{DEPT_DISPLAY[m.department] || m.department || '–'}</p>
+                    <Badge variant="secondary" className="mt-1 text-[11px] font-normal truncate max-w-full">
+                      {POSITION_MAP[m.email] || m.position || '–'}
+                    </Badge>
+                    <p className="text-[11px] text-muted-foreground/70 mt-1">{DEPT_DISPLAY[m.department] || m.department || '–'}</p>
                     <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{getSeit(m)}</span>
+                      <span className="truncate">{m.email}</span>
+                      <span className="flex items-center gap-1 shrink-0"><Calendar className="h-3 w-3" />{getSeit(m)}</span>
                     </div>
                   </div>
                 </CardContent>
