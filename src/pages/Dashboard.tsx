@@ -341,7 +341,12 @@ export default function Dashboard() {
       case 'search':
         return null; // search is now part of quicknav block
       case 'mitteilungen':
-        return <MitteilungenCard />;
+        return (
+          <div className="space-y-4">
+            <MitteilungenCard />
+            <MusicPlayer />
+          </div>
+        );
       case 'widgets':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch">
