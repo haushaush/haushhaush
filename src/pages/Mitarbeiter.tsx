@@ -57,7 +57,8 @@ export default function Mitarbeiter() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from('team').insert({ ...form, startdatum: form.startdatum || null });
+    const insertData: any = { name: form.name, email: form.email, rolle: form.rolle, startdatum: form.startdatum || null };
+    const { error } = await supabase.from('team').insert(insertData);
     if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Mitarbeiter hinzugefügt' });
     setDialogOpen(false);
