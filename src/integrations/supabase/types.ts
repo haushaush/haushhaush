@@ -2077,10 +2077,13 @@ export type Database = {
       team: {
         Row: {
           abteilung: string[] | null
+          avatar_url: string | null
           created_at: string
           department: string | null
           einstiegsdatum: string | null
           email: string
+          gehalt: number | null
+          gehalt_typ: string | null
           id: string
           mitarbeiter_status: string | null
           mitarbeiter_typ: string | null
@@ -2088,20 +2091,31 @@ export type Database = {
           nda_unterschrieben: boolean | null
           notion_id: string | null
           notion_url: string | null
+          notizen: string | null
           onboarding_abgeschlossen: boolean | null
+          portal_rolle: string | null
+          position: string | null
+          probezeit_ende: string | null
           rolle: Database["public"]["Enums"]["team_rolle"]
           startdatum: string | null
           telefonnummer: string | null
           updated_at: string
           verfuegbarkeit_h_woche: number | null
+          vertrag_beginn: string | null
+          vertrag_ende: string | null
+          vertrag_typ: string | null
+          wochenstunden: number | null
           zugaenge: string[] | null
         }
         Insert: {
           abteilung?: string[] | null
+          avatar_url?: string | null
           created_at?: string
           department?: string | null
           einstiegsdatum?: string | null
           email: string
+          gehalt?: number | null
+          gehalt_typ?: string | null
           id?: string
           mitarbeiter_status?: string | null
           mitarbeiter_typ?: string | null
@@ -2109,20 +2123,31 @@ export type Database = {
           nda_unterschrieben?: boolean | null
           notion_id?: string | null
           notion_url?: string | null
+          notizen?: string | null
           onboarding_abgeschlossen?: boolean | null
+          portal_rolle?: string | null
+          position?: string | null
+          probezeit_ende?: string | null
           rolle?: Database["public"]["Enums"]["team_rolle"]
           startdatum?: string | null
           telefonnummer?: string | null
           updated_at?: string
           verfuegbarkeit_h_woche?: number | null
+          vertrag_beginn?: string | null
+          vertrag_ende?: string | null
+          vertrag_typ?: string | null
+          wochenstunden?: number | null
           zugaenge?: string[] | null
         }
         Update: {
           abteilung?: string[] | null
+          avatar_url?: string | null
           created_at?: string
           department?: string | null
           einstiegsdatum?: string | null
           email?: string
+          gehalt?: number | null
+          gehalt_typ?: string | null
           id?: string
           mitarbeiter_status?: string | null
           mitarbeiter_typ?: string | null
@@ -2130,12 +2155,20 @@ export type Database = {
           nda_unterschrieben?: boolean | null
           notion_id?: string | null
           notion_url?: string | null
+          notizen?: string | null
           onboarding_abgeschlossen?: boolean | null
+          portal_rolle?: string | null
+          position?: string | null
+          probezeit_ende?: string | null
           rolle?: Database["public"]["Enums"]["team_rolle"]
           startdatum?: string | null
           telefonnummer?: string | null
           updated_at?: string
           verfuegbarkeit_h_woche?: number | null
+          vertrag_beginn?: string | null
+          vertrag_ende?: string | null
+          vertrag_typ?: string | null
+          wochenstunden?: number | null
           zugaenge?: string[] | null
         }
         Relationships: []
@@ -2418,7 +2451,13 @@ export type Database = {
         | "Sonstiges"
       finanz_typ: "Einnahme" | "Ausgabe"
       kundenstatus: "In Betreuung" | "Pausiert" | "Churned" | "Lead"
-      team_rolle: "Admin" | "Account-Manager" | "Setter" | "Closer"
+      team_rolle:
+        | "Admin"
+        | "Account-Manager"
+        | "Setter"
+        | "Closer"
+        | "Management"
+        | "Fulfillment"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2578,7 +2617,14 @@ export const Constants = {
       ],
       finanz_typ: ["Einnahme", "Ausgabe"],
       kundenstatus: ["In Betreuung", "Pausiert", "Churned", "Lead"],
-      team_rolle: ["Admin", "Account-Manager", "Setter", "Closer"],
+      team_rolle: [
+        "Admin",
+        "Account-Manager",
+        "Setter",
+        "Closer",
+        "Management",
+        "Fulfillment",
+      ],
     },
   },
 } as const

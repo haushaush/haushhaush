@@ -36,6 +36,7 @@ import ApiDocs from "./pages/ApiDocs.tsx";
 import ErrorPage from "./pages/ErrorPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import AriaPage from "./pages/Aria.tsx";
+import MitarbeiterDetail from "./pages/MitarbeiterDetail.tsx";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,7 @@ const App = () => (
                 <Route path="/finanzen" element={<DL><Finanzen /></DL>} />
                 <Route path="/finanzen/:tab" element={<DL><Finanzen /></DL>} />
                 <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
+                <Route path="/hr/mitarbeiter/:id" element={<DL><MitarbeiterDetail /></DL>} />
                 <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
                 <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
                 <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
