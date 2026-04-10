@@ -61,11 +61,12 @@ const NAV_TILES = [
 
 const RANK_COLORS = ['#F5A623', '#9B9B9B', '#8B6347'];
 
-const DEFAULT_ORDER = ['mitteilungen', 'widgets', 'kpi-slider', 'quicknav', 'handlungsbedarf', 'schnellaktionen', 'bottom-row', 'revenue-chart'];
+const DEFAULT_ORDER = ['mitteilungen', 'music', 'widgets', 'kpi-slider', 'quicknav', 'handlungsbedarf', 'schnellaktionen', 'bottom-row', 'revenue-chart'];
 
 const BLOCK_LABELS: Record<string, string> = {
   'hero': 'Begrüßung',
   'mitteilungen': 'Neueste Mitteilungen',
+  'music': 'Music Player',
   'widgets': 'Learning & Zeiterfassung',
   'kpi-slider': 'KPI Dashboard',
   'quicknav': 'Schnellnavigation',
@@ -341,12 +342,9 @@ export default function Dashboard() {
       case 'search':
         return null; // search is now part of quicknav block
       case 'mitteilungen':
-        return (
-          <div className="space-y-4">
-            <MitteilungenCard />
-            <MusicPlayer />
-          </div>
-        );
+        return <MitteilungenCard />;
+      case 'music':
+        return <MusicPlayer />;
       case 'widgets':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch">
