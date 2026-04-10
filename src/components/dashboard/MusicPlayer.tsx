@@ -1,163 +1,23 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState } from "react";
 import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX, ChevronDown, ChevronUp, Music, Search, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-
-const PLAYLISTS = [
-  {
-    id: "hits", name: "Top Hits", emoji: "🔥",
-    videos: [
-      { id: "fHI8X4OXluQ", title: "Blinding Lights", artist: "The Weeknd" },
-      { id: "JGwWNGJdvx8", title: "Shape of You", artist: "Ed Sheeran" },
-      { id: "CvBfHwUxHIk", title: "Starboy", artist: "The Weeknd ft. Daft Punk" },
-      { id: "DkeiKbqa02g", title: "Levitating", artist: "Dua Lipa" },
-      { id: "H5v3kku4y6Q", title: "As It Was", artist: "Harry Styles" },
-    ]
-  },
-  {
-    id: "vibe", name: "Vibe", emoji: "🌊",
-    videos: [
-      { id: "6ONRf7h3Mdk", title: "SICKO MODE", artist: "Travis Scott" },
-      { id: "flq0dKSeqZ8", title: "Goosebumps", artist: "Travis Scott" },
-      { id: "mgBF1bL1O_Q", title: "EARFQUAKE", artist: "Tyler the Creator" },
-      { id: "ZbZSe6N_BXs", title: "Happy", artist: "Pharrell Williams" },
-      { id: "kffacxfA7G4", title: "Bad Guy", artist: "Billie Eilish" },
-    ]
-  },
-  {
-    id: "lofi", name: "Lo-Fi", emoji: "🎧",
-    videos: [
-      { id: "jfKfPfyJRdk", title: "lofi hip hop radio", artist: "Lofi Girl" },
-      { id: "5qap5aO4i9A", title: "beats to relax/study to", artist: "Lofi Girl" },
-      { id: "DWcJFNfaw9c", title: "Chillhop Essentials", artist: "Chillhop Music" },
-    ]
-  },
-  {
-    id: "deepwork", name: "Deep Work", emoji: "⚡",
-    videos: [
-      { id: "QtlEHc5_xGI", title: "Deep Focus", artist: "Greenred Productions" },
-      { id: "jJiMQP8VNCM", title: "Study Music Alpha Waves", artist: "YellowBrickCinema" },
-      { id: "WPni755-Krg", title: "Focus Music for Work", artist: "Productivity Music" },
-    ]
-  },
-  {
-    id: "hiphop", name: "Hip Hop", emoji: "🎤",
-    videos: [
-      { id: "zhY_0DoQCQs", title: "God's Plan", artist: "Drake" },
-      { id: "tvTRZJ-4EyI", title: "HUMBLE.", artist: "Kendrick Lamar" },
-      { id: "C2TemF5bvJo", title: "Hotline Bling", artist: "Drake" },
-      { id: "09R8_2nJtjg", title: "Sugar", artist: "BROCKHAMPTON" },
-    ]
-  },
-  {
-    id: "edm", name: "EDM", emoji: "🎛️",
-    videos: [
-      { id: "gCYcHz2k5x0", title: "Clarity", artist: "Zedd ft. Foxes" },
-      { id: "IcrbM1l_BoI", title: "Animals", artist: "Martin Garrix" },
-      { id: "60ItHLz5WEA", title: "Wake Me Up", artist: "Avicii" },
-    ]
-  },
-];
-
-type SearchResult = { videoId: string; title: string; channel: string };
-
-declare global {
-  interface Window { YT: any; onYouTubeIframeAPIReady: () => void; }
-}
+import { useMusicPlayer, PLAYLISTS, type SearchResult } from "@/contexts/MusicPlayerContext";
 
 export default function MusicPlayer() {
-  const [expanded, setExpanded] = useState(false);
-  const [activePlaylist, setActivePlaylist] = useState(PLAYLISTS[0]);
-  const [trackIndex, setTrackIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [volume, setVolume] = useState(70);
-  const [muted, setMuted] = useState(false);
-  const [playerReady, setPlayerReady] = useState(false);
-  const [thumbError, setThumbError] = useState(false);
-  const playerRef = useRef<any>(null);
-  const playingRef = useRef(false);
+  const {
+    activePlaylist, trackIndex, playing, volume, muted, currentTrack,
+    togglePlay, skipNext, skipPrev, changeVolume, toggleMute, switchPlaylist, jumpToTrack, playSearchResult,
+  } = useMusicPlayer();
 
-  // Search state
+  const [expanded, setExpanded] = useState(false);
+  const [thumbError, setThumbError] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
 
-  const currentTrack = activePlaylist.videos[trackIndex];
   const thumbUrl = `https://img.youtube.com/vi/${currentTrack.id}/hqdefault.jpg`;
 
-  useEffect(() => { playingRef.current = playing; }, [playing]);
-  useEffect(() => { setThumbError(false); }, [currentTrack.id, activePlaylist.id]);
-
-  const skipNext = useCallback(() => {
-    setTrackIndex(prev => (prev + 1) % activePlaylist.videos.length);
-  }, [activePlaylist.videos.length]);
-
-  const skipPrev = useCallback(() => {
-    setTrackIndex(prev => (prev - 1 + activePlaylist.videos.length) % activePlaylist.videos.length);
-  }, [activePlaylist.videos.length]);
-
-  useEffect(() => {
-    if (!window.YT) {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      document.head.appendChild(tag);
-    }
-    const init = () => {
-      if (playerRef.current) return;
-      playerRef.current = new window.YT.Player("yt-player-hidden", {
-        height: "1", width: "1",
-        videoId: activePlaylist.videos[0].id,
-        playerVars: { autoplay: 0, controls: 0 },
-        events: {
-          onReady: (e: any) => { setPlayerReady(true); e.target.setVolume(70); },
-          onStateChange: (e: any) => {
-            if (e.data === 1) setPlaying(true);
-            if (e.data === 2) setPlaying(false);
-            if (e.data === 0) setTrackIndex(prev => (prev + 1) % activePlaylist.videos.length);
-          }
-        }
-      });
-    };
-    window.onYouTubeIframeAPIReady = init;
-    if (window.YT?.Player) init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!playerReady || !playerRef.current) return;
-    const vid = activePlaylist.videos[trackIndex]?.id;
-    if (!vid) return;
-    if (playingRef.current) playerRef.current.loadVideoById(vid);
-    else playerRef.current.cueVideoById(vid);
-  }, [trackIndex, playerReady, activePlaylist]);
-
-  const togglePlay = () => {
-    if (!playerRef.current) return;
-    if (playing) playerRef.current.pauseVideo();
-    else playerRef.current.playVideo();
-  };
-
-  const changeVolume = (v: number) => {
-    setVolume(v);
-    if (playerRef.current) playerRef.current.setVolume(v);
-    setMuted(v === 0);
-  };
-
-  const toggleMute = () => {
-    if (muted) { changeVolume(volume || 70); setMuted(false); }
-    else { playerRef.current?.setVolume(0); setMuted(true); }
-  };
-
-  const switchPlaylist = (pl: typeof PLAYLISTS[0]) => {
-    setActivePlaylist(pl);
-    setTrackIndex(0);
-    setPlaying(false);
-    if (playerRef.current) playerRef.current.cueVideoById(pl.videos[0].id);
-  };
-
-  const jumpToTrack = (absoluteIndex: number) => { setTrackIndex(absoluteIndex); };
-
-  // --- YouTube Search via edge function ---
   const doSearch = async () => {
     const q = searchQuery.trim();
     if (!q) return;
@@ -177,22 +37,16 @@ export default function MusicPlayer() {
     } catch { setSearchError("Netzwerkfehler"); } finally { setSearching(false); }
   };
 
-  const playSearchResult = (result: SearchResult) => {
-    const newVideo = { id: result.videoId, title: result.title, artist: result.channel };
-    const newVideos = [...activePlaylist.videos];
-    const insertIdx = trackIndex + 1;
-    newVideos.splice(insertIdx, 0, newVideo);
-    setActivePlaylist({ ...activePlaylist, videos: newVideos });
-    setTrackIndex(insertIdx);
+  const handlePlayResult = (result: SearchResult) => {
+    playSearchResult(result);
     setSearchResults([]);
     setSearchQuery("");
-    setTimeout(() => { playerRef.current?.loadVideoById(result.videoId); }, 100);
   };
 
   // Build upcoming queue
-  const upcomingQueue: Array<{ id: string; title: string; artist: string; _idx: number }> = [];
   const vids = activePlaylist.videos;
   const queueSize = Math.min(5, vids.length);
+  const upcomingQueue: Array<{ id: string; title: string; artist: string; _idx: number }> = [];
   for (let i = 0; i < queueSize; i++) {
     const idx = (trackIndex + i) % vids.length;
     upcomingQueue.push({ ...vids[idx], _idx: idx });
@@ -200,8 +54,6 @@ export default function MusicPlayer() {
 
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden">
-      <div id="yt-player-hidden" style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }} />
-
       {/* Collapsed bar */}
       <div
         className="flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/30 transition-colors"
@@ -289,7 +141,6 @@ export default function MusicPlayer() {
               </button>
             </div>
 
-
             {searchError && <p className="text-xs text-destructive">{searchError}</p>}
 
             {searchResults.length > 0 && (
@@ -297,7 +148,7 @@ export default function MusicPlayer() {
                 {searchResults.map(r => (
                   <button
                     key={r.videoId}
-                    onClick={() => playSearchResult(r)}
+                    onClick={() => handlePlayResult(r)}
                     className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left hover:bg-muted transition-colors"
                   >
                     <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
