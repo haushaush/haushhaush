@@ -11,16 +11,14 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Plus, Mail, Calendar } from 'lucide-react';
+import { Plus, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const ROLLE_COLORS: Record<string, string> = {
-  'Admin': 'bg-primary/20 text-primary',
-  'Account-Manager': 'bg-success/20 text-success',
-  'Setter': 'bg-warning/20 text-warning',
-  'Closer': 'bg-purple-500/20 text-purple-400',
-  'Management': 'bg-blue-500/20 text-blue-400',
-  'Fulfillment': 'bg-teal-500/20 text-teal-400',
+const DEPT_DISPLAY: Record<string, string> = {
+  'Management': 'Management',
+  'Sales': 'Mitarbeiter Sales',
+  'Fulfillment': 'Mitarbeiter Fulfillment',
+  'Intern': 'Mitarbeiter Intern',
 };
 
 const TEAM_SEED = [
@@ -53,12 +51,12 @@ const TEAM_SEED = [
 
 const DEPT_GROUPS = [
   { label: 'MANAGEMENT', departments: ['Management'] },
-  { label: 'SALES',      departments: ['Sales'] },
-  { label: 'FULFILLMENT',departments: ['Fulfillment'] },
-  { label: 'INTERN',     departments: ['Intern'] },
+  { label: 'MITARBEITER SALES', departments: ['Sales'] },
+  { label: 'MITARBEITER FULFILLMENT', departments: ['Fulfillment'] },
+  { label: 'MITARBEITER INTERN', departments: ['Intern'] },
 ];
 const ALL_DEPTS = DEPT_GROUPS.flatMap(g => g.departments);
-const ABTEILUNGEN = ['Management', 'Sales', 'Fulfillment', 'Intern'];
+const ABTEILUNGEN = DEPT_GROUPS.map(g => g.label);
 
 const getSeit = (m: any) => {
   const d = m.startdatum || m.einstiegsdatum;
@@ -112,7 +110,10 @@ export default function Mitarbeiter() {
   const initials = (name: string) => name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '??';
 
   const filteredMembers = filterAbteilung
-    ? members.filter((m: any) => m.department === filterAbteilung || (m.abteilung && m.abteilung.includes(filterAbteilung)))
+    ? members.filter((m: any) => {
+        const group = DEPT_GROUPS.find(g => g.label === filterAbteilung);
+        return group ? group.departments.includes(m.department || '') : false;
+      })
     : members;
 
   const grouped = DEPT_GROUPS.map((group) => ({
@@ -208,23 +209,11 @@ export default function Mitarbeiter() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{m.name}</p>
-                      <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${ROLLE_COLORS[m.rolle] || ''}`}>
-                        {m.rolle}
-                      </Badge>
-                    </div>
+                    <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{m.name}</p>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">{m.position || '–'}</p>
-                    <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
-                      {m.email && (
-                        <span className="flex items-center gap-1 truncate"><Mail className="h-3 w-3 shrink-0" />{m.email}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground/70 mt-0.5">{DEPT_DISPLAY[m.department] || m.department || '–'}</p>
+                    <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{getSeit(m)}</span>
-                      {(m.abteilung || []).slice(0, 2).map((a: string) => (
-                        <Badge key={a} variant="outline" className="text-[10px] px-1 py-0">{a}</Badge>
-                      ))}
                     </div>
                   </div>
                 </CardContent>
