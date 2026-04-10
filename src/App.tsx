@@ -37,6 +37,7 @@ import ErrorPage from "./pages/ErrorPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import AriaPage from "./pages/Aria.tsx";
 import MitarbeiterDetail from "./pages/MitarbeiterDetail.tsx";
+import Register from "./pages/Register.tsx";
 
 const queryClient = new QueryClient();
 
