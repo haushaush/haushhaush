@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Plus, Mail, Calendar } from 'lucide-react';
+import { Plus, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const DEPT_DISPLAY: Record<string, string> = {
