@@ -86,7 +86,7 @@ export default function MusicPlayer() {
   const playingRef = useRef(false);
 
   const currentTrack = activePlaylist.videos[trackIndex];
-  const thumbUrl = `https://img.youtube.com/vi/${currentTrack.id}/mqdefault.jpg`;
+  const thumbUrl = `https://img.youtube.com/vi/${currentTrack.id}/hqdefault.jpg`;
 
   // Keep ref in sync
   useEffect(() => { playingRef.current = playing; }, [playing]);
@@ -193,7 +193,7 @@ export default function MusicPlayer() {
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden">
       {/* Hidden YouTube player */}
-      <div id="yt-player-hidden" className="hidden" />
+      <div id="yt-player-hidden" style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }} />
 
       {/* Collapsed bar */}
       <div
