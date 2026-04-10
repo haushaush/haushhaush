@@ -224,6 +224,11 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   const jumpToTrack = useCallback((idx: number) => { setTrackIndex(idx); }, []);
 
+  const jumpToAbsolute = useCallback((playlistIndex: number, trackIdx: number) => {
+    setActivePlaylist(PLAYLISTS[playlistIndex]);
+    setTrackIndex(trackIdx);
+  }, []);
+
   const playSearchResult = useCallback((result: SearchResult) => {
     const newVideo: Video = { id: result.videoId, title: result.title, artist: result.channel };
     setActivePlaylist(prev => {
