@@ -107,6 +107,17 @@ export default function Mitarbeiter() {
             <DialogTrigger asChild>
               <Button className="min-h-[44px]"><Plus className="h-4 w-4 mr-2" />Neuer Mitarbeiter</Button>
             </DialogTrigger>
+            <button
+              type="button"
+              onClick={async () => {
+                const { error } = await supabase.functions.invoke('seed-team');
+                if (error) toast({ title: 'Seed fehlgeschlagen', variant: 'destructive' });
+                else { toast({ title: 'Team geseedet!' }); fetchData(); }
+              }}
+              className="text-xs px-3 py-1.5 border rounded-lg text-muted-foreground hover:text-primary transition-colors"
+            >
+              🔄 Team sync
+            </button>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-h-none">
               <DialogHeader><DialogTitle>Mitarbeiter hinzufügen</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-3">
