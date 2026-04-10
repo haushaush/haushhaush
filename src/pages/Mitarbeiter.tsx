@@ -24,25 +24,19 @@ const ROLLE_COLORS: Record<string, string> = {
 };
 
 const GROUP_ORDER = ['Management', 'Sales', 'Fulfillment'];
+const ABTEILUNGEN = ['Management', 'Sales', 'Setter', 'Closer', 'Fulfillment', 'Tech', 'Websites', 'Backoffice', 'Media Buying'];
 
-function tenureDisplay(dateStr: string | null): string {
-  if (!dateStr) return '—';
-  const start = new Date(dateStr);
-  const now = new Date();
-  const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
-  if (months < 1) return 'Neu';
-  if (months >= 12) {
-    const years = Math.floor(months / 12);
-    const rem = months % 12;
-    return rem > 0 ? `${years} Jahre ${rem} Monate` : `${years} Jahre`;
-  }
-  return `${months} Monate`;
-}
+const getSeit = (d: string | null) => {
+  if (!d) return '—';
+  const m = Math.floor((Date.now() - new Date(d).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+  return m >= 12 ? `${Math.floor(m / 12)} J. ${m % 12} M.` : `${m} Mon.`;
+};
 
 export default function Mitarbeiter() {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [filterAbteilung, setFilterAbteilung] = useState<string | null>(null);
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
   const { toast } = useToast();
@@ -61,24 +55,29 @@ export default function Mitarbeiter() {
     e.preventDefault();
     const insertData: any = { name: form.name, email: form.email, rolle: form.rolle, startdatum: form.startdatum || null };
     const { error } = await supabase.from('team').insert(insertData);
-    if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
+    if (error) {
+      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+      return;
+    }
     toast({ title: 'Mitarbeiter hinzugefügt' });
     setDialogOpen(false);
     setForm({ name: '', email: '', rolle: 'Setter', startdatum: '' });
     fetchData();
   };
 
-  const initials = (name: string) => name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '??';
+  const initials = (name: string) => name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '??';
 
-  // Group by mitarbeiter_typ
-  const grouped = GROUP_ORDER.map(group => ({
+  const filteredMembers = filterAbteilung
+    ? members.filter((m: any) => m.department === filterAbteilung || (m.abteilung && m.abteilung.includes(filterAbteilung)))
+    : members;
+
+  const grouped = GROUP_ORDER.map((group) => ({
     label: group,
-    members: members.filter(m => (m.mitarbeiter_typ || 'Fulfillment') === group),
-  })).filter(g => g.members.length > 0);
+    members: filteredMembers.filter((m: any) => (m.mitarbeiter_typ || 'Fulfillment') === group),
+  })).filter((g) => g.members.length > 0);
 
-  // Catch any ungrouped
-  const groupedIds = new Set(grouped.flatMap(g => g.members.map((m: any) => m.id)));
-  const ungrouped = members.filter(m => !groupedIds.has(m.id));
+  const groupedIds = new Set(grouped.flatMap((g) => g.members.map((m: any) => m.id)));
+  const ungrouped = filteredMembers.filter((m) => !groupedIds.has(m.id));
   if (ungrouped.length > 0) grouped.push({ label: 'Sonstige', members: ungrouped });
 
   if (loading) {
@@ -97,7 +96,7 @@ export default function Mitarbeiter() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-heading font-bold">Mitarbeiter</h1>
-          <p className="text-muted-foreground text-sm">{members.length} Teammitglieder</p>
+          <p className="text-muted-foreground text-sm">{filteredMembers.length} Teammitglieder</p>
         </div>
         {isAdmin && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -107,17 +106,17 @@ export default function Mitarbeiter() {
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-h-none">
               <DialogHeader><DialogTitle>Mitarbeiter hinzufügen</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-3">
-                <div><Label htmlFor="team-name">Name *</Label><Input id="team-name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required /></div>
-                <div><Label htmlFor="team-email">E-Mail *</Label><Input id="team-email" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required /></div>
+                <div><Label htmlFor="team-name">Name *</Label><Input id="team-name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
+                <div><Label htmlFor="team-email">E-Mail *</Label><Input id="team-email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required /></div>
                 <div><Label htmlFor="team-rolle">Rolle</Label>
-                  <Select value={form.rolle} onValueChange={v => setForm({...form, rolle: v})}>
+                  <Select value={form.rolle} onValueChange={v => setForm({ ...form, rolle: v })}>
                     <SelectTrigger id="team-rolle"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {['Admin', 'Account-Manager', 'Setter', 'Closer'].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                      {['Admin', 'Account-Manager', 'Setter', 'Closer'].map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label htmlFor="team-start">Startdatum</Label><Input id="team-start" type="date" value={form.startdatum} onChange={e => setForm({...form, startdatum: e.target.value})} /></div>
+                <div><Label htmlFor="team-start">Startdatum</Label><Input id="team-start" type="date" value={form.startdatum} onChange={e => setForm({ ...form, startdatum: e.target.value })} /></div>
                 <Button type="submit" className="w-full min-h-[44px]">Hinzufügen</Button>
               </form>
             </DialogContent>
@@ -125,7 +124,27 @@ export default function Mitarbeiter() {
         )}
       </div>
 
-      {grouped.map(group => (
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setFilterAbteilung(null)}
+          className={`px-3 py-1 rounded-full text-xs border transition-colors ${!filterAbteilung ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/40'}`}
+        >
+          Alle
+        </button>
+        {ABTEILUNGEN.map((a) => (
+          <button
+            key={a}
+            type="button"
+            onClick={() => setFilterAbteilung(a)}
+            className={`px-3 py-1 rounded-full text-xs border transition-colors ${filterAbteilung === a ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/40'}`}
+          >
+            {a}
+          </button>
+        ))}
+      </div>
+
+      {grouped.map((group) => (
         <div key={group.label} className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
             {group.label}
@@ -159,7 +178,7 @@ export default function Mitarbeiter() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{tenureDisplay(m.einstiegsdatum)}</span>
+                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{getSeit(m.einstiegsdatum)}</span>
                       {(m.abteilung || []).slice(0, 2).map((a: string) => (
                         <Badge key={a} variant="outline" className="text-[10px] px-1 py-0">{a}</Badge>
                       ))}
