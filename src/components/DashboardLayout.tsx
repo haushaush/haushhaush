@@ -55,6 +55,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <div className="flex-1 flex flex-col min-w-0">
           <TimerBar />
           <MiniPlayerBar />
+          {/* Spacer for fixed mini player bar */}
+          <div id="mini-player-spacer" className="flex-shrink-0" />
           <main
             id="main-content"
             className="flex-1 p-4 sm:p-6 lg:p-10 overflow-auto min-w-0 pb-24 md:pb-24"
