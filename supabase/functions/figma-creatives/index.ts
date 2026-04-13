@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 const FIGMA_FILE_KEY = "9JmO2Q35aHgCxmxzaKw8xi";
-const FIGMA_NODE_ID = "266:11";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
