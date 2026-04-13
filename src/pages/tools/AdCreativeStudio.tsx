@@ -67,6 +67,7 @@ interface GeneratedBrief {
 function ReferenzBibliothek({ onSelectFrame }: { onSelectFrame?: (f: FigmaFrame) => void }) {
   const [frames, setFrames] = useState<FigmaFrame[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [brancheFilter, setBrancheFilter] = useState<string>("all");
   const [formatFilter, setFormatFilter] = useState<string>("all");
   const [typFilter, setTypFilter] = useState<string>("all");
@@ -78,15 +79,20 @@ function ReferenzBibliothek({ onSelectFrame }: { onSelectFrame?: (f: FigmaFrame)
 
   const fetchFrames = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("figma-creatives", {
+      const { data, error: fnError } = await supabase.functions.invoke("figma-creatives", {
         body: { action: "list_frames" },
       });
-      if (error) throw error;
+      if (fnError) throw fnError;
+      if (data?.error) {
+        setError(data.error);
+        return;
+      }
       setFrames(data?.frames || []);
     } catch (e: any) {
       console.error("Figma fetch error:", e);
-      toast.error("Referenzen konnten nicht geladen werden");
+      setError("Figma Token fehlt — bitte in Einstellungen → Figma eintragen");
     } finally {
       setLoading(false);
     }
