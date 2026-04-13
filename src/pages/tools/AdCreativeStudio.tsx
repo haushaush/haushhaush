@@ -25,6 +25,8 @@ interface FigmaFrame {
   id: string;
   name: string;
   thumbnailUrl: string;
+  figmaUrl?: string;
+  pageName?: string;
 }
 
 interface AdCreative {
@@ -65,6 +67,7 @@ interface GeneratedBrief {
 function ReferenzBibliothek({ onSelectFrame }: { onSelectFrame?: (f: FigmaFrame) => void }) {
   const [frames, setFrames] = useState<FigmaFrame[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [brancheFilter, setBrancheFilter] = useState<string>("all");
   const [formatFilter, setFormatFilter] = useState<string>("all");
   const [typFilter, setTypFilter] = useState<string>("all");
@@ -76,15 +79,20 @@ function ReferenzBibliothek({ onSelectFrame }: { onSelectFrame?: (f: FigmaFrame)
 
   const fetchFrames = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("figma-creatives", {
+      const { data, error: fnError } = await supabase.functions.invoke("figma-creatives", {
         body: { action: "list_frames" },
       });
-      if (error) throw error;
+      if (fnError) throw fnError;
+      if (data?.error) {
+        setError(data.error);
+        return;
+      }
       setFrames(data?.frames || []);
     } catch (e: any) {
       console.error("Figma fetch error:", e);
-      toast.error("Referenzen konnten nicht geladen werden");
+      setError("Figma Token fehlt — bitte in Einstellungen → Figma eintragen");
     } finally {
       setLoading(false);
     }
@@ -139,11 +147,17 @@ function ReferenzBibliothek({ onSelectFrame }: { onSelectFrame?: (f: FigmaFrame)
             <Skeleton key={i} className="h-64 rounded-xl" />
           ))}
         </div>
+      ) : error ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <Image className="h-12 w-12 mx-auto mb-3 opacity-40" />
+          <p className="font-medium text-destructive">{error}</p>
+          <a href="/einstellungen" className="text-sm text-primary underline mt-2 inline-block">Zu den Einstellungen →</a>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Image className="h-12 w-12 mx-auto mb-3 opacity-40" />
           <p className="font-medium">Keine Referenzen gefunden</p>
-          <p className="text-sm mt-1">Stelle sicher, dass der Figma-Token konfiguriert ist.</p>
+          <p className="text-sm mt-1">Passe deine Filter an oder überprüfe den Figma-Token.</p>
         </div>
       ) : (
         <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
@@ -158,6 +172,7 @@ function ReferenzBibliothek({ onSelectFrame }: { onSelectFrame?: (f: FigmaFrame)
               )}
               <div className="p-3 space-y-2">
                 <p className="text-sm font-medium truncate">{frame.name}</p>
+                {frame.pageName && <p className="text-xs text-muted-foreground truncate">{frame.pageName}</p>}
                 <div className="flex gap-1 flex-wrap">
                   {BRANCHEN.filter((b) => frame.name.toLowerCase().includes(b.toLowerCase())).map((b) => (
                     <Badge key={b} variant="secondary" className="text-[10px]">{b}</Badge>
@@ -166,7 +181,7 @@ function ReferenzBibliothek({ onSelectFrame }: { onSelectFrame?: (f: FigmaFrame)
               </div>
               {/* Hover overlay */}
               <div className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-4">
-                <Button size="sm" variant="outline" className="w-full" onClick={() => window.open(`https://www.figma.com/file/9JmO2Q35aHgCxmxzaKw8xi?node-id=${frame.id}`, "_blank")}>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => window.open(frame.figmaUrl || `https://www.figma.com/design/9JmO2Q35aHgCxmxzaKw8xi?node-id=${encodeURIComponent(frame.id)}`, "_blank")}>
                   <ExternalLink className="h-3.5 w-3.5 mr-1.5" />In Figma öffnen
                 </Button>
                 {onSelectFrame && (
