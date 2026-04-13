@@ -9,6 +9,22 @@ const corsHeaders = {
 
 const FIGMA_FILE_KEY = "9JmO2Q35aHgCxmxzaKw8xi";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function figmaFetch(url: string, token: string, retries = 3): Promise<Response> {
+  for (let i = 0; i < retries; i++) {
+    const resp = await fetch(url, { headers: { "X-Figma-Token": token } });
+    if (resp.status === 429) {
+      const wait = Math.min(2000 * Math.pow(2, i), 15000);
+      console.log(`Figma 429, retrying in ${wait}ms (attempt ${i + 1}/${retries})`);
+      await sleep(wait);
+      continue;
+    }
+    return resp;
+  }
+  return await fetch(url, { headers: { "X-Figma-Token": token } });
+}
+
 function determineFormat(w: number, h: number): string {
   if (w === h) return "1:1";
   if (h > w * 1.5) return "9:16";
@@ -37,30 +53,39 @@ serve(async (req) => {
         );
       }
 
-      // Get file structure (depth=1 for pages)
-      const fileResp = await fetch(
+      // Get file structure (depth=1 for pages) with retry
+      const fileResp = await figmaFetch(
         `https://api.figma.com/v1/files/${FIGMA_FILE_KEY}?depth=1`,
-        { headers: { "X-Figma-Token": FIGMA_TOKEN } }
+        FIGMA_TOKEN
       );
       if (!fileResp.ok) {
         const t = await fileResp.text();
         console.error("Figma file error:", fileResp.status, t);
+        if (fileResp.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "Figma Rate Limit erreicht. Bitte warte 1-2 Minuten und versuche es erneut.", fallback: true }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         return new Response(
           JSON.stringify({ error: "Figma API Fehler", details: t }),
-          { status: fileResp.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       const fileData = await fileResp.json();
       const pages = fileData.document?.children ?? [];
 
-      // Collect frames from each page
+      // Collect frames from each page with delay between requests
       const frames: { figma_node_id: string; name: string; width: number; height: number; format: string; figma_url: string }[] = [];
 
-      for (const page of pages) {
-        const nodeResp = await fetch(
+      for (let pi = 0; pi < pages.length; pi++) {
+        const page = pages[pi];
+        if (pi > 0) await sleep(1000); // 1s delay between page requests
+
+        const nodeResp = await figmaFetch(
           `https://api.figma.com/v1/files/${FIGMA_FILE_KEY}/nodes?ids=${encodeURIComponent(page.id)}&depth=1`,
-          { headers: { "X-Figma-Token": FIGMA_TOKEN } }
+          FIGMA_TOKEN
         );
         if (!nodeResp.ok) continue;
         const nodeData = await nodeResp.json();
@@ -83,14 +108,15 @@ serve(async (req) => {
         }
       }
 
-      // Fetch thumbnails in batches of 50
-      for (let i = 0; i < frames.length; i += 50) {
-        const batch = frames.slice(i, i + 50);
+      // Fetch thumbnails in batches of 30 with delay
+      for (let i = 0; i < frames.length; i += 30) {
+        if (i > 0) await sleep(1500);
+        const batch = frames.slice(i, i + 30);
         const ids = batch.map((f) => f.figma_node_id).join(",");
         try {
-          const imgResp = await fetch(
+          const imgResp = await figmaFetch(
             `https://api.figma.com/v1/images/${FIGMA_FILE_KEY}?ids=${ids}&format=png&scale=0.5`,
-            { headers: { "X-Figma-Token": FIGMA_TOKEN } }
+            FIGMA_TOKEN
           );
           if (imgResp.ok) {
             const imgData = await imgResp.json();
