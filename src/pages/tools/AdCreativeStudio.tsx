@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,27 +6,38 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Search, ExternalLink, Copy, Sparkles, Loader2, Image, Wand2, Filter } from "lucide-react";
+import { Search, ExternalLink, Copy, Sparkles, Loader2, Image, Wand2, RefreshCw, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 
 // ─── Constants ───
-const BRANCHEN = ["Versicherung PKV", "BU", "Rechtsschutz", "TKV", "Automotive", "Handwerk", "Allfinanz"];
-const FORMATE = ["1:1", "9:16", "16:9", "Story"];
-const TYPEN = ["Hook", "Offer", "Social Proof", "UGC", "Testimonial"];
+const BRANCHEN_FILTER = ["PKV", "BU", "Rechtsschutz", "TKV", "Unfallversicherung", "Automotive", "Handwerk", "Allfinanz", "Immobilien", "Andere"];
+const FORMATE = ["1:1", "9:16", "16:9", "Andere"];
+const TYPEN = ["Hook", "Offer", "Social Proof", "UGC", "Testimonial", "Branding"];
 const PLATTFORMEN = ["Meta", "TikTok", "Google Display"];
 const HOOK_TYPEN = ["Frage", "Aussage", "Statistik", "Testimonial"];
+const BRANCHEN_BRIEF = ["Versicherung PKV", "BU", "Rechtsschutz", "TKV", "Automotive", "Handwerk", "Allfinanz"];
 
-interface FigmaFrame {
+interface LibraryCreative {
   id: string;
-  name: string;
-  thumbnailUrl: string;
-  figmaUrl?: string;
-  pageName?: string;
+  figma_node_id: string;
+  name: string | null;
+  branche: string | null;
+  format: string | null;
+  typ: string | null;
+  hook_art: string | null;
+  farben: any;
+  thumbnail_url: string | null;
+  figma_url: string | null;
+  width: number | null;
+  height: number | null;
+  analyzed: boolean;
+  created_at: string;
 }
 
 interface AdCreative {
@@ -51,7 +62,7 @@ interface BriefForm {
   plattform: string;
   format: string;
   hookTyp: string;
-  referenzFrame: FigmaFrame | null;
+  referenzCreative: LibraryCreative | null;
 }
 
 interface GeneratedBrief {
@@ -64,51 +75,116 @@ interface GeneratedBrief {
 }
 
 // ─── Tab 1: Referenz-Bibliothek ───
-function ReferenzBibliothek({ onSelectFrame }: { onSelectFrame?: (f: FigmaFrame) => void }) {
-  const [frames, setFrames] = useState<FigmaFrame[]>([]);
+function ReferenzBibliothek({ onSelectCreative }: { onSelectCreative?: (c: LibraryCreative) => void }) {
+  const [creatives, setCreatives] = useState<LibraryCreative[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [brancheFilter, setBrancheFilter] = useState<string>("all");
-  const [formatFilter, setFormatFilter] = useState<string>("all");
-  const [typFilter, setTypFilter] = useState<string>("all");
+  const [totalCount, setTotalCount] = useState(0);
+  const [analyzedCount, setAnalyzedCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [syncPhase, setSyncPhase] = useState<"idle" | "fetching" | "analyzing">("idle");
+  const [analyzeProgress, setAnalyzeProgress] = useState(0);
+
+  const [brancheFilter, setBrancheFilter] = useState("all");
+  const [formatFilter, setFormatFilter] = useState("all");
+  const [typFilter, setTypFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    fetchFrames();
+  const fetchCreatives = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("creative_library" as any)
+      .select("*")
+      .eq("analyzed", true)
+      .order("created_at", { ascending: false });
+    if (!error) setCreatives((data as any[]) || []);
+
+    // Counts
+    const { count: total } = await supabase.from("creative_library" as any).select("*", { count: "exact", head: true });
+    const { count: analyzed } = await supabase.from("creative_library" as any).select("*", { count: "exact", head: true }).eq("analyzed", true);
+    setTotalCount(total || 0);
+    setAnalyzedCount(analyzed || 0);
+    setLoading(false);
   }, []);
 
-  const fetchFrames = async () => {
-    setLoading(true);
-    setError(null);
+  useEffect(() => { fetchCreatives(); }, [fetchCreatives]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncPhase("fetching");
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("figma-creatives", {
-        body: { action: "list_frames" },
+      // Phase 1: Fetch from Figma
+      const { data: fetchResult, error: fetchErr } = await supabase.functions.invoke("sync-creative-library", {
+        body: { action: "fetch" },
       });
-      if (fnError) throw fnError;
-      if (data?.error) {
-        setError(data.error);
-        return;
+      if (fetchErr) throw fetchErr;
+      if (fetchResult?.error) throw new Error(fetchResult.error);
+
+      toast.success(`${fetchResult.total} Frames aus Figma geladen (${fetchResult.inserted} gespeichert)`);
+
+      // Phase 2: Analyze loop
+      setSyncPhase("analyzing");
+      let remaining = fetchResult.total;
+      let totalToAnalyze = fetchResult.total;
+      setAnalyzeProgress(0);
+
+      while (remaining > 0) {
+        const { data: analyzeResult, error: analyzeErr } = await supabase.functions.invoke("sync-creative-library", {
+          body: { action: "analyze" },
+        });
+        if (analyzeErr) throw analyzeErr;
+        if (analyzeResult?.error) throw new Error(analyzeResult.error);
+
+        remaining = analyzeResult.remaining || 0;
+        const done = totalToAnalyze - remaining;
+        setAnalyzeProgress(totalToAnalyze > 0 ? Math.round((done / totalToAnalyze) * 100) : 100);
+
+        if (analyzeResult.analyzed === 0 && remaining === 0) break;
       }
-      setFrames(data?.frames || []);
+
+      toast.success("Bibliothek vollständig synchronisiert & analysiert!");
+      await fetchCreatives();
     } catch (e: any) {
-      console.error("Figma fetch error:", e);
-      setError("Figma Token fehlt — bitte in Einstellungen → Figma eintragen");
+      console.error("Sync error:", e);
+      toast.error(e.message || "Sync fehlgeschlagen");
     } finally {
-      setLoading(false);
+      setSyncing(false);
+      setSyncPhase("idle");
     }
   };
 
-  const filtered = frames.filter((f) => {
-    const name = f.name.toLowerCase();
-    if (search && !name.includes(search.toLowerCase())) return false;
-    if (brancheFilter !== "all" && !name.includes(brancheFilter.toLowerCase())) return false;
-    if (formatFilter !== "all" && !name.includes(formatFilter.toLowerCase())) return false;
-    if (typFilter !== "all" && !name.includes(typFilter.toLowerCase())) return false;
+  const filtered = creatives.filter((c) => {
+    if (search && !(c.name || "").toLowerCase().includes(search.toLowerCase())) return false;
+    if (brancheFilter !== "all" && c.branche !== brancheFilter) return false;
+    if (formatFilter !== "all" && c.format !== formatFilter) return false;
+    if (typFilter !== "all" && c.typ !== typFilter) return false;
     return true;
   });
 
   return (
     <div className="space-y-4">
+      {/* Sync status bar */}
+      <Card className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-muted/30">
+        <div className="flex-1 space-y-1">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-medium">{totalCount} Creatives in Bibliothek</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-muted-foreground">{analyzedCount} analysiert</span>
+          </div>
+          {syncing && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                {syncPhase === "fetching" ? "Lade Frames aus Figma..." : "KI analysiert Creatives..."}
+              </p>
+              {syncPhase === "analyzing" && <Progress value={analyzeProgress} className="h-1.5" />}
+            </div>
+          )}
+        </div>
+        <Button size="sm" onClick={handleSync} disabled={syncing}>
+          {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+          {syncing ? "Synchronisiert..." : "Bibliothek synchronisieren"}
+        </Button>
+      </Card>
+
       {/* Filter bar */}
       <div className="flex flex-wrap gap-3 items-end">
         <div className="flex-1 min-w-[200px]">
@@ -121,7 +197,7 @@ function ReferenzBibliothek({ onSelectFrame }: { onSelectFrame?: (f: FigmaFrame)
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="Branche" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Alle Branchen</SelectItem>
-            {BRANCHEN.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+            {BRANCHEN_FILTER.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={formatFilter} onValueChange={setFormatFilter}>
@@ -143,49 +219,49 @@ function ReferenzBibliothek({ onSelectFrame }: { onSelectFrame?: (f: FigmaFrame)
       {/* Grid */}
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-64 rounded-xl" />
-          ))}
-        </div>
-      ) : error ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Image className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p className="font-medium text-destructive">{error}</p>
-          <a href="/einstellungen" className="text-sm text-primary underline mt-2 inline-block">Zu den Einstellungen →</a>
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-xl" />)}
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Image className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p className="font-medium">Keine Referenzen gefunden</p>
-          <p className="text-sm mt-1">Passe deine Filter an oder überprüfe den Figma-Token.</p>
+          {totalCount === 0 ? (
+            <>
+              <p className="font-medium">Noch keine Creatives analysiert</p>
+              <p className="text-sm mt-1">Klicke "Bibliothek synchronisieren" um zu starten.</p>
+            </>
+          ) : (
+            <>
+              <p className="font-medium">Keine Creatives für diese Filter</p>
+              <p className="text-sm mt-1">Passe deine Filter an.</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-          {filtered.map((frame) => (
-            <Card key={frame.id} className="group relative overflow-hidden break-inside-avoid border-border/50 hover:border-primary/30 transition-all duration-200">
-              {frame.thumbnailUrl ? (
-                <img src={frame.thumbnailUrl} alt={frame.name} className="w-full object-cover" loading="lazy" />
+          {filtered.map((c) => (
+            <Card key={c.id} className="group relative overflow-hidden break-inside-avoid border-border/50 hover:border-primary/30 transition-all duration-200">
+              {c.thumbnail_url ? (
+                <img src={c.thumbnail_url} alt={c.name || ""} className="w-full object-cover" loading="lazy" />
               ) : (
                 <div className="h-40 bg-muted flex items-center justify-center">
                   <Image className="h-8 w-8 text-muted-foreground/40" />
                 </div>
               )}
               <div className="p-3 space-y-2">
-                <p className="text-sm font-medium truncate">{frame.name}</p>
-                {frame.pageName && <p className="text-xs text-muted-foreground truncate">{frame.pageName}</p>}
+                <p className="text-sm font-medium truncate">{c.name}</p>
                 <div className="flex gap-1 flex-wrap">
-                  {BRANCHEN.filter((b) => frame.name.toLowerCase().includes(b.toLowerCase())).map((b) => (
-                    <Badge key={b} variant="secondary" className="text-[10px]">{b}</Badge>
-                  ))}
+                  {c.branche && <Badge variant="secondary" className="text-[10px]">{c.branche}</Badge>}
+                  {c.format && <Badge variant="outline" className="text-[10px]">{c.format}</Badge>}
+                  {c.typ && <Badge variant="outline" className="text-[10px]">{c.typ}</Badge>}
                 </div>
               </div>
               {/* Hover overlay */}
               <div className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-4">
-                <Button size="sm" variant="outline" className="w-full" onClick={() => window.open(frame.figmaUrl || `https://www.figma.com/design/9JmO2Q35aHgCxmxzaKw8xi?node-id=${encodeURIComponent(frame.id)}`, "_blank")}>
+                <Button size="sm" variant="outline" className="w-full" onClick={() => c.figma_url && window.open(c.figma_url, "_blank")}>
                   <ExternalLink className="h-3.5 w-3.5 mr-1.5" />In Figma öffnen
                 </Button>
-                {onSelectFrame && (
-                  <Button size="sm" className="w-full" onClick={() => onSelectFrame(frame)}>
+                {onSelectCreative && (
+                  <Button size="sm" className="w-full" onClick={() => onSelectCreative(c)}>
                     <Copy className="h-3.5 w-3.5 mr-1.5" />Als Vorlage nutzen
                   </Button>
                 )}
@@ -209,7 +285,7 @@ function CreativeErstellen() {
   const [clientSearch, setClientSearch] = useState("");
   const [brief, setBrief] = useState<BriefForm>({
     kunde: "", kundeId: "", branche: "", produkt: "", zielgruppe: "",
-    plattform: "", format: "", hookTyp: "", referenzFrame: null,
+    plattform: "", format: "", hookTyp: "", referenzCreative: null,
   });
   const [generated, setGenerated] = useState<GeneratedBrief | null>(null);
 
@@ -228,6 +304,7 @@ function CreativeErstellen() {
     }
     setGenerating(true);
     try {
+      const ref = brief.referenzCreative;
       const { data, error } = await supabase.functions.invoke("figma-creatives", {
         body: {
           action: "generate_brief",
@@ -239,6 +316,10 @@ function CreativeErstellen() {
             plattform: brief.plattform,
             format: brief.format,
             hookTyp: brief.hookTyp,
+            // Include reference context if available
+            referenzBranche: ref?.branche || undefined,
+            referenzTyp: ref?.typ || undefined,
+            referenzHookArt: ref?.hook_art || undefined,
           },
         },
       });
@@ -254,7 +335,7 @@ function CreativeErstellen() {
   };
 
   const handleCreateInFigma = async () => {
-    if (!generated || !brief.referenzFrame) {
+    if (!generated || !brief.referenzCreative) {
       toast.error("Bitte wähle eine Referenz-Vorlage");
       return;
     }
@@ -263,7 +344,7 @@ function CreativeErstellen() {
       const { data, error } = await supabase.functions.invoke("figma-creatives", {
         body: {
           action: "duplicate_and_fill",
-          nodeId: brief.referenzFrame.id,
+          nodeId: brief.referenzCreative.figma_node_id,
           textReplacements: {
             headline: generated.headlines[0],
             hook: generated.hookText,
@@ -274,7 +355,6 @@ function CreativeErstellen() {
       });
       if (error) throw error;
 
-      // Save to ad_creatives
       if (user?.id) {
         await supabase.from("ad_creatives" as any).insert({
           user_id: user.id,
@@ -285,8 +365,8 @@ function CreativeErstellen() {
           body_copy: generated.bodyCopy,
           cta: generated.cta,
           figma_url: data?.figmaUrl || null,
-          thumbnail_url: data?.thumbnailUrl || null,
-          reference_frame_id: brief.referenzFrame.id,
+          thumbnail_url: brief.referenzCreative.thumbnail_url || null,
+          reference_frame_id: brief.referenzCreative.figma_node_id,
           platform: brief.plattform,
           zielgruppe: brief.zielgruppe,
           produkt: brief.produkt,
@@ -324,6 +404,25 @@ function CreativeErstellen() {
 
       {step === 1 && (
         <Card className="p-6 space-y-5">
+          {/* Selected reference preview */}
+          {brief.referenzCreative && (
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border/50">
+              {brief.referenzCreative.thumbnail_url ? (
+                <img src={brief.referenzCreative.thumbnail_url} alt="" className="h-16 w-16 object-cover rounded" />
+              ) : (
+                <div className="h-16 w-16 bg-muted rounded flex items-center justify-center"><Image className="h-6 w-6 text-muted-foreground/40" /></div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{brief.referenzCreative.name}</p>
+                <div className="flex gap-1 mt-1">
+                  {brief.referenzCreative.branche && <Badge variant="secondary" className="text-[10px]">{brief.referenzCreative.branche}</Badge>}
+                  {brief.referenzCreative.typ && <Badge variant="outline" className="text-[10px]">{brief.referenzCreative.typ}</Badge>}
+                </div>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => setBrief((p) => ({ ...p, referenzCreative: null }))}>Andere wählen</Button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Kunde</Label>
@@ -344,7 +443,7 @@ function CreativeErstellen() {
               <Label>Branche</Label>
               <Select value={brief.branche} onValueChange={(v) => setBrief((p) => ({ ...p, branche: v }))}>
                 <SelectTrigger><SelectValue placeholder="Wählen..." /></SelectTrigger>
-                <SelectContent>{BRANCHEN.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+                <SelectContent>{BRANCHEN_BRIEF.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
@@ -379,7 +478,7 @@ function CreativeErstellen() {
             <div className="space-y-2">
               <Label>Referenz-Creative</Label>
               <Button variant="outline" className="w-full justify-start" onClick={() => setShowRefModal(true)}>
-                {brief.referenzFrame ? brief.referenzFrame.name : "Vorlage wählen..."}
+                {brief.referenzCreative ? brief.referenzCreative.name : "Vorlage wählen..."}
               </Button>
             </div>
           </div>
@@ -431,7 +530,7 @@ function CreativeErstellen() {
           </div>
           <div className="flex gap-3 justify-end pt-2">
             <Button variant="outline" onClick={() => setStep(1)}>Zurück</Button>
-            <Button onClick={handleCreateInFigma} disabled={creating || !brief.referenzFrame}>
+            <Button onClick={handleCreateInFigma} disabled={creating || !brief.referenzCreative}>
               {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
               In Figma erstellen
             </Button>
@@ -442,7 +541,7 @@ function CreativeErstellen() {
       {step === 3 && (
         <Card className="p-8 text-center space-y-4">
           <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-            <Sparkles className="h-8 w-8 text-primary" />
+            <CheckCircle2 className="h-8 w-8 text-primary" />
           </div>
           <h3 className="text-lg font-semibold">Creative erstellt!</h3>
           <p className="text-muted-foreground text-sm">Dein Creative wurde erfolgreich in Figma angelegt.</p>
@@ -456,7 +555,7 @@ function CreativeErstellen() {
           <DialogHeader>
             <DialogTitle>Referenz-Creative wählen</DialogTitle>
           </DialogHeader>
-          <ReferenzBibliothek onSelectFrame={(f) => { setBrief((p) => ({ ...p, referenzFrame: f })); setShowRefModal(false); }} />
+          <ReferenzBibliothek onSelectCreative={(c) => { setBrief((p) => ({ ...p, referenzCreative: c })); setShowRefModal(false); }} />
         </DialogContent>
       </Dialog>
     </div>
@@ -471,7 +570,7 @@ function MeineCreatives() {
 
   useEffect(() => {
     if (!user?.id) return;
-    const fetch = async () => {
+    const load = async () => {
       const { data } = await supabase
         .from("ad_creatives" as any)
         .select("*")
@@ -480,7 +579,7 @@ function MeineCreatives() {
       setCreatives((data as any[]) || []);
       setLoading(false);
     };
-    fetch();
+    load();
   }, [user?.id]);
 
   if (loading) return <div className="grid grid-cols-2 md:grid-cols-3 gap-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}</div>;
