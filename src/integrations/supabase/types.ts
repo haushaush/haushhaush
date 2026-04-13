@@ -1011,6 +1011,66 @@ export type Database = {
           },
         ]
       }
+      creative_library: {
+        Row: {
+          analyzed: boolean | null
+          analyzed_at: string | null
+          branche: string | null
+          created_at: string | null
+          farben: Json | null
+          figma_file_key: string
+          figma_node_id: string
+          figma_url: string | null
+          format: string | null
+          height: number | null
+          hook_art: string | null
+          id: string
+          name: string | null
+          performance_score: number | null
+          thumbnail_url: string | null
+          typ: string | null
+          width: number | null
+        }
+        Insert: {
+          analyzed?: boolean | null
+          analyzed_at?: string | null
+          branche?: string | null
+          created_at?: string | null
+          farben?: Json | null
+          figma_file_key?: string
+          figma_node_id: string
+          figma_url?: string | null
+          format?: string | null
+          height?: number | null
+          hook_art?: string | null
+          id?: string
+          name?: string | null
+          performance_score?: number | null
+          thumbnail_url?: string | null
+          typ?: string | null
+          width?: number | null
+        }
+        Update: {
+          analyzed?: boolean | null
+          analyzed_at?: string | null
+          branche?: string | null
+          created_at?: string | null
+          farben?: Json | null
+          figma_file_key?: string
+          figma_node_id?: string
+          figma_url?: string | null
+          format?: string | null
+          height?: number | null
+          hook_art?: string | null
+          id?: string
+          name?: string | null
+          performance_score?: number | null
+          thumbnail_url?: string | null
+          typ?: string | null
+          width?: number | null
+        }
+        Relationships: []
+      }
       creative_projects: {
         Row: {
           assigned_designer: string | null
