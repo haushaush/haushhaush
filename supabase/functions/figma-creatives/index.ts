@@ -26,8 +26,8 @@ serve(async (req) => {
 
     // ─── List frames from Figma file ───
     if (action === "list_frames") {
-      // Fetch full file structure (depth=2 to keep response small)
-      const url = `https://api.figma.com/v1/files/${FIGMA_FILE_KEY}?depth=2`;
+      // Use depth=1 to only get pages, then we know page IDs
+      const url = `https://api.figma.com/v1/files/${FIGMA_FILE_KEY}?depth=1`;
       const resp = await fetch(url, {
         headers: { "X-Figma-Token": FIGMA_TOKEN },
       });
@@ -41,12 +41,23 @@ serve(async (req) => {
         );
       }
 
-      const data = await resp.json();
+      const fileData = await resp.json();
+      const pages = fileData.document?.children ?? [];
 
-      // Extract all frames from all pages
+      // Now fetch each page's children using the nodes endpoint
       const frames: { id: string; name: string; pageId: string; pageName: string; thumbnailUrl: string; figmaUrl: string }[] = [];
-      for (const page of data.document?.children ?? []) {
-        for (const node of page.children ?? []) {
+
+      for (const page of pages) {
+        const nodeResp = await fetch(
+          `https://api.figma.com/v1/files/${FIGMA_FILE_KEY}/nodes?ids=${encodeURIComponent(page.id)}&depth=1`,
+          { headers: { "X-Figma-Token": FIGMA_TOKEN } }
+        );
+        if (!nodeResp.ok) continue;
+        const nodeData = await nodeResp.json();
+        const pageNode = nodeData.nodes?.[page.id]?.document;
+        if (!pageNode?.children) continue;
+
+        for (const node of pageNode.children) {
           if (node.type === "FRAME" || node.type === "COMPONENT") {
             frames.push({
               id: node.id,
@@ -60,8 +71,8 @@ serve(async (req) => {
         }
       }
 
-      // Fetch real thumbnails for first 50 frames
-      const toFetch = frames.slice(0, 50);
+      // Fetch thumbnails for first 30 frames
+      const toFetch = frames.slice(0, 30);
       if (toFetch.length > 0) {
         const nodeIds = toFetch.map(f => f.id).join(",");
         const imgUrl = `https://api.figma.com/v1/images/${FIGMA_FILE_KEY}?ids=${nodeIds}&format=png&scale=0.5`;
