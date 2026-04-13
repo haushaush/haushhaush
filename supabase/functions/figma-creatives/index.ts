@@ -26,7 +26,8 @@ serve(async (req) => {
 
     // ─── List frames from Figma file ───
     if (action === "list_frames") {
-      const url = `https://api.figma.com/v1/files/${FIGMA_FILE_KEY}/nodes?ids=${encodeURIComponent(FIGMA_NODE_ID)}`;
+      // Fetch full file structure (depth=2 to keep response small)
+      const url = `https://api.figma.com/v1/files/${FIGMA_FILE_KEY}?depth=2`;
       const resp = await fetch(url, {
         headers: { "X-Figma-Token": FIGMA_TOKEN },
       });
@@ -41,38 +42,40 @@ serve(async (req) => {
       }
 
       const data = await resp.json();
-      const node = data.nodes?.[FIGMA_NODE_ID]?.document;
-      if (!node) {
-        return new Response(
-          JSON.stringify({ frames: [] }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+
+      // Extract all frames from all pages
+      const frames: { id: string; name: string; pageId: string; pageName: string; thumbnailUrl: string; figmaUrl: string }[] = [];
+      for (const page of data.document?.children ?? []) {
+        for (const node of page.children ?? []) {
+          if (node.type === "FRAME" || node.type === "COMPONENT") {
+            frames.push({
+              id: node.id,
+              name: node.name,
+              pageId: page.id,
+              pageName: page.name,
+              thumbnailUrl: "",
+              figmaUrl: `https://www.figma.com/design/${FIGMA_FILE_KEY}?node-id=${encodeURIComponent(node.id)}`,
+            });
+          }
+        }
       }
 
-      // Collect child frames
-      const childIds = (node.children || [])
-        .filter((c: any) => c.type === "FRAME" || c.type === "COMPONENT")
-        .map((c: any) => c.id);
-
-      let thumbnails: Record<string, string> = {};
-      if (childIds.length > 0) {
-        const imgUrl = `https://api.figma.com/v1/images/${FIGMA_FILE_KEY}?ids=${childIds.join(",")}&format=png&scale=2`;
+      // Fetch real thumbnails for first 50 frames
+      const toFetch = frames.slice(0, 50);
+      if (toFetch.length > 0) {
+        const nodeIds = toFetch.map(f => f.id).join(",");
+        const imgUrl = `https://api.figma.com/v1/images/${FIGMA_FILE_KEY}?ids=${nodeIds}&format=png&scale=0.5`;
         const imgResp = await fetch(imgUrl, {
           headers: { "X-Figma-Token": FIGMA_TOKEN },
         });
         if (imgResp.ok) {
           const imgData = await imgResp.json();
-          thumbnails = imgData.images || {};
+          const images = imgData.images || {};
+          frames.forEach(f => {
+            if (images[f.id]) f.thumbnailUrl = images[f.id];
+          });
         }
       }
-
-      const frames = (node.children || [])
-        .filter((c: any) => c.type === "FRAME" || c.type === "COMPONENT")
-        .map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          thumbnailUrl: thumbnails[c.id] || null,
-        }));
 
       return new Response(
         JSON.stringify({ frames }),

@@ -25,6 +25,8 @@ interface FigmaFrame {
   id: string;
   name: string;
   thumbnailUrl: string;
+  figmaUrl?: string;
+  pageName?: string;
 }
 
 interface AdCreative {
