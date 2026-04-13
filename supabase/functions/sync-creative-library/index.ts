@@ -9,6 +9,22 @@ const corsHeaders = {
 
 const FIGMA_FILE_KEY = "9JmO2Q35aHgCxmxzaKw8xi";
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function figmaFetch(url: string, token: string, retries = 3): Promise<Response> {
+  for (let i = 0; i < retries; i++) {
+    const resp = await fetch(url, { headers: { "X-Figma-Token": token } });
+    if (resp.status === 429) {
+      const wait = Math.min(2000 * Math.pow(2, i), 15000);
+      console.log(`Figma 429, retrying in ${wait}ms (attempt ${i + 1}/${retries})`);
+      await sleep(wait);
+      continue;
+    }
+    return resp;
+  }
+  return await fetch(url, { headers: { "X-Figma-Token": token } });
+}
+
 function determineFormat(w: number, h: number): string {
   if (w === h) return "1:1";
   if (h > w * 1.5) return "9:16";
