@@ -39,6 +39,7 @@ import NotFound from "./pages/NotFound.tsx";
 import AriaPage from "./pages/Aria.tsx";
 import MitarbeiterDetail from "./pages/MitarbeiterDetail.tsx";
 import Register from "./pages/Register.tsx";
+import AdCreativeStudio from "./pages/tools/AdCreativeStudio.tsx";
 
 const queryClient = new QueryClient();
 
@@ -104,6 +105,7 @@ const App = () => (
                 <Route path="/creatives" element={<DL><Creatives /></DL>} />
                 <Route path="/creatives/:id" element={<DL><CreativeDetail /></DL>} />
                 <Route path="/review/:token" element={<CreativeReview />} />
+                <Route path="/tools/ad-creative-studio" element={<DL><AdCreativeStudio /></DL>} />
 
                 {/* Redirects */}
                 <Route path="/performance" element={<Navigate to="/sales/kpis" replace />} />
