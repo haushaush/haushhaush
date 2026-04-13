@@ -117,6 +117,12 @@ function ReferenzBibliothek({ onSelectCreative }: { onSelectCreative?: (c: Libra
         body: { action: "fetch" },
       });
       if (fetchErr) throw fetchErr;
+      if (fetchResult?.fallback) {
+        toast.error(fetchResult.error || "Figma Rate Limit — bitte warte 1-2 Minuten.");
+        setSyncing(false);
+        setSyncPhase("idle");
+        return;
+      }
       if (fetchResult?.error) throw new Error(fetchResult.error);
 
       toast.success(`${fetchResult.total} Frames aus Figma geladen (${fetchResult.inserted} gespeichert)`);
