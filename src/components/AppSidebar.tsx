@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -53,6 +53,12 @@ const navItems: NavItem[] = [
       { title: 'Ad Performance', url: '/fulfillment/ads' },
       { title: 'Mediabuying', url: '/fulfillment/mediabuying' },
       { title: 'Customer Success', url: '/fulfillment/customer-success' },
+    ],
+  },
+  {
+    title: 'Tools', url: '/tools/ad-creative-studio', icon: Wand2,
+    children: [
+      { title: 'Ad Creative Studio', url: '/tools/ad-creative-studio' },
     ],
   },
   {

@@ -107,6 +107,63 @@ export type Database = {
           },
         ]
       }
+      ad_creatives: {
+        Row: {
+          body_copy: string | null
+          branche: string | null
+          created_at: string
+          cta: string | null
+          figma_url: string | null
+          format: string | null
+          headline: string | null
+          hook_type: string | null
+          id: string
+          kunde: string | null
+          platform: string | null
+          produkt: string | null
+          reference_frame_id: string | null
+          thumbnail_url: string | null
+          user_id: string
+          zielgruppe: string | null
+        }
+        Insert: {
+          body_copy?: string | null
+          branche?: string | null
+          created_at?: string
+          cta?: string | null
+          figma_url?: string | null
+          format?: string | null
+          headline?: string | null
+          hook_type?: string | null
+          id?: string
+          kunde?: string | null
+          platform?: string | null
+          produkt?: string | null
+          reference_frame_id?: string | null
+          thumbnail_url?: string | null
+          user_id: string
+          zielgruppe?: string | null
+        }
+        Update: {
+          body_copy?: string | null
+          branche?: string | null
+          created_at?: string
+          cta?: string | null
+          figma_url?: string | null
+          format?: string | null
+          headline?: string | null
+          hook_type?: string | null
+          id?: string
+          kunde?: string | null
+          platform?: string | null
+          produkt?: string | null
+          reference_frame_id?: string | null
+          thumbnail_url?: string | null
+          user_id?: string
+          zielgruppe?: string | null
+        }
+        Relationships: []
+      }
       ad_performance_intern: {
         Row: {
           appointments: number | null
