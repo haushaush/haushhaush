@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
+import { Plus, Search, RefreshCw, ExternalLink, Loader2, Database } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -19,9 +19,7 @@ const STATUS_STYLES: Record<string, string> = {
   'Onboarding': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   'Follow Up': 'bg-warning/20 text-warning',
   'Done': 'bg-muted text-muted-foreground',
-  'Aktiv': 'bg-success/20 text-success',
-  'Pausiert': 'bg-warning/20 text-warning',
-  'Churned': 'bg-destructive/20 text-destructive',
+  'Offen': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
 };
 
 const ART_STYLES: Record<string, string> = {
@@ -30,8 +28,11 @@ const ART_STYLES: Record<string, string> = {
   'BU': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   'Sterbegeld': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
   'Tierkrankenversicherung': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  'TKV': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   'Erbschaftssteuer': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
   'Dienstleister': 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  'Rechtsschutz': 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
+  'Unfallversicherung': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
 };
 
 const AMPEL_MAP: Record<string, { dot: string; label: string }> = {
@@ -46,12 +47,23 @@ const AMPEL_MAP: Record<string, { dot: string; label: string }> = {
   'Rot': { dot: 'bg-destructive', label: 'C' },
 };
 
-const LEISTUNG_SHORT: Record<string, string> = {
-  'Meta Werbeanzeigen': 'Meta Ads', 'Ads Landing Page - Onepage': 'OnePage',
-  'CRM Setup & Anbindung': 'CRM', 'Vorqualifizierung': 'Vorquali', 'Superchat': 'Superchat',
+const TABS = [
+  { label: 'Alle Kunden', value: 'all' },
+  { label: 'Aktive Kunden', value: 'In Betreuung' },
+  { label: 'Onboarding', value: 'Onboarding' },
+  { label: 'Follow Up', value: 'Follow Up' },
+  { label: 'Abschlüsse', value: 'Done' },
+];
+
+const fmt = (v: number | null | undefined) => {
+  if (v == null) return '–';
+  return `€${Number(v).toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 };
 
-const ART_OPTIONS = ['PKV', 'BU', 'Beihilfe - PKV', 'Sterbegeld', 'Tierkrankenversicherung', 'Erbschaftssteuer', 'Dienstleister', 'Sonstiges'];
+const fmtDate = (d: string | null) => {
+  if (!d) return null;
+  try { return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { return d; }
+};
 
 export default function Kunden() {
   const [deals, setDeals] = useState<any[]>([]);
@@ -59,10 +71,8 @@ export default function Kunden() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [activeTab, setActiveTab] = useState('all');
   const [filterArt, setFilterArt] = useState('all');
-  const [filterAmpel, setFilterAmpel] = useState('all');
-  const [filterAssigned, setFilterAssigned] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const { isAdminOrManager } = useAuth();
   const navigate = useNavigate();
@@ -86,16 +96,16 @@ export default function Kunden() {
 
   const handleNotionSync = async () => {
     setSyncing(true);
-    const toastId = toast.loading('Notion-Sync läuft...');
+    const toastId = toast.loading('Notion-Import läuft...');
     try {
       const { data, error } = await supabase.functions.invoke('sync-notion', {
         body: { target: 'kunden' },
       });
       if (error) throw error;
-      toast.success(`${data?.synced?.kunden || 0} Kunden synchronisiert`, { id: toastId });
+      toast.success(`${data?.synced?.kunden || 0} Kunden importiert`, { id: toastId });
       await fetchData();
     } catch (err: any) {
-      toast.error('Notion-Sync fehlgeschlagen', { id: toastId, description: err.message });
+      toast.error('Import fehlgeschlagen', { id: toastId, description: err.message });
     } finally {
       setSyncing(false);
     }
@@ -120,53 +130,29 @@ export default function Kunden() {
     fetchData();
   };
 
-  const handleCloseSync = () => {
-    toast.info('Close Sync wird via n8n angestoßen...');
-  };
-
   const getName = (id: string | null) => team.find(t => t.id === id)?.name || '–';
-
-  const getDisplayArt = (d: any) => d.art || (Array.isArray(d.branche) && d.branche[0]) || '–';
-  const getDisplayWert = (d: any) => {
-    const v = d.wert_eur ?? d.gesamt_saldo ?? 0;
-    return `€${Number(v).toLocaleString('de-DE')}`;
-  };
-  const getDisplayStatus = (d: any) => d.kundenstatus || d.status || '–';
-  const getDisplayAmpel = (d: any) => d.ampel || d.ampelstatus || '–';
 
   const filtered = useMemo(() => deals.filter(d => {
     const matchSearch = d.client_name?.toLowerCase().includes(search.toLowerCase());
-    const st = getDisplayStatus(d);
-    const matchStatus = filterStatus === 'all' || st === filterStatus || d.status === filterStatus;
-    const art = getDisplayArt(d);
-    const matchArt = filterArt === 'all' || art === filterArt;
-    const ampel = getDisplayAmpel(d);
-    const matchAmpel = filterAmpel === 'all' || ampel === filterAmpel;
-    const matchAssigned = filterAssigned === 'all' || d.assigned_to === filterAssigned;
-    return matchSearch && matchStatus && matchArt && matchAmpel && matchAssigned;
-  }), [deals, search, filterStatus, filterArt, filterAmpel, filterAssigned]);
+    const ks = d.kundenstatus || '';
+    const matchTab = activeTab === 'all' || ks === activeTab;
+    const branche0 = Array.isArray(d.branche) ? d.branche[0] : d.art;
+    const matchArt = filterArt === 'all' || branche0 === filterArt;
+    return matchSearch && matchTab && matchArt;
+  }), [deals, search, activeTab, filterArt]);
 
-  const uniqueStatuses = useMemo(() => {
+  const uniqueBranchen = useMemo(() => {
     const set = new Set<string>();
-    deals.forEach(d => { const s = getDisplayStatus(d); if (s && s !== '–') set.add(s); });
-    return Array.from(set).sort();
-  }, [deals]);
-
-  const uniqueArts = useMemo(() => {
-    const set = new Set<string>();
-    deals.forEach(d => { const a = getDisplayArt(d); if (a && a !== '–') set.add(a); });
-    return Array.from(set).sort();
-  }, [deals]);
-
-  const uniqueAmpels = useMemo(() => {
-    const set = new Set<string>();
-    deals.forEach(d => { const a = getDisplayAmpel(d); if (a && a !== '–') set.add(a); });
+    deals.forEach(d => {
+      const b = Array.isArray(d.branche) ? d.branche[0] : d.art;
+      if (b) set.add(b);
+    });
     return Array.from(set).sort();
   }, [deals]);
 
   if (loading) {
     return (
-      <div className="space-y-6" role="status" aria-busy="true" aria-label="Kunden werden geladen">
+      <div className="space-y-6" role="status" aria-busy="true">
         <Skeleton className="h-8 w-48" /><Skeleton className="h-10 w-64" /><Skeleton className="h-96" />
       </div>
     );
@@ -174,51 +160,41 @@ export default function Kunden() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-heading font-bold">Kunden</h1>
-          <p className="text-muted-foreground text-sm">{deals.length} Kunden</p>
+          <div className="flex items-center gap-2 text-muted-foreground text-sm mt-0.5">
+            <Database className="h-3.5 w-3.5" />
+            <span>Importiert aus Notion · {deals.length} Kunden</span>
+            {syncing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="min-h-[44px]" onClick={handleNotionSync} disabled={syncing}>
-            {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />}
-            Notion Sync
-          </Button>
-          <Button variant="outline" className="min-h-[44px]" onClick={handleCloseSync}>
-            <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />Close Sync
+          <Button variant="outline" size="sm" className="min-h-[40px]" onClick={handleNotionSync} disabled={syncing}>
+            {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Erneut importieren
           </Button>
           {isAdminOrManager && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="min-h-[44px]"><Plus className="h-4 w-4 mr-2" aria-hidden="true" />Manuell hinzufügen</Button>
+                <Button size="sm" className="min-h-[40px]"><Plus className="h-4 w-4 mr-2" />Hinzufügen</Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto sm:max-h-none">
-                <DialogHeader><DialogTitle>Deal manuell anlegen</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>Kunde manuell anlegen</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div><Label htmlFor="deal-name">Kundenname *</Label><Input id="deal-name" value={form.client_name} onChange={e => setForm({ ...form, client_name: e.target.value })} required /></div>
                     <div><Label>Art</Label>
                       <Select value={form.art} onValueChange={v => setForm({ ...form, art: v })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{ART_OPTIONS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                        <SelectContent>{uniqueBranchen.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div><Label htmlFor="deal-wert">Wert (€)</Label><Input id="deal-wert" type="number" step="0.01" value={form.wert_eur} onChange={e => setForm({ ...form, wert_eur: +e.target.value })} /></div>
                     <div><Label htmlFor="deal-laufzeit">Laufzeit (Monate)</Label><Input id="deal-laufzeit" type="number" value={form.laufzeit_monate} onChange={e => setForm({ ...form, laufzeit_monate: +e.target.value })} /></div>
-                    <div><Label>Typ</Label>
-                      <Select value={form.deal_type} onValueChange={v => setForm({ ...form, deal_type: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent><SelectItem value="Neukunde">Neukunde</SelectItem><SelectItem value="Upsell">Upsell</SelectItem></SelectContent>
-                      </Select>
-                    </div>
-                    <div><Label>Ampelstatus</Label>
-                      <Select value={form.ampelstatus} onValueChange={v => setForm({ ...form, ampelstatus: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{['Grün', 'Gelb', 'Rot'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
                   </div>
-                  <Button type="submit" className="w-full min-h-[44px]">Deal anlegen</Button>
+                  <Button type="submit" className="w-full min-h-[44px]">Anlegen</Button>
                 </form>
               </DialogContent>
             </Dialog>
@@ -226,36 +202,38 @@ export default function Kunden() {
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex flex-wrap gap-2 sm:gap-3">
+      {/* Tabs */}
+      <div className="flex gap-1 overflow-x-auto border-b border-border pb-px">
+        {TABS.map(tab => (
+          <button
+            key={tab.value}
+            onClick={() => setActiveTab(tab.value)}
+            className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+              activeTab === tab.value
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab.label}
+            <span className="ml-1.5 text-xs text-muted-foreground">
+              {tab.value === 'all' ? deals.length : deals.filter(d => d.kundenstatus === tab.value).length}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Search + filter */}
+      <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[180px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-          <Input className="pl-9 min-h-[44px]" placeholder="Kundenname suchen..." value={search} onChange={e => setSearch(e.target.value)} aria-label="Kunden suchen" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-9 min-h-[44px]" placeholder="Kundenname suchen..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[150px] min-h-[44px]" aria-label="Status filtern"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Alle Status</SelectItem>
-            {uniqueStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <Select value={filterArt} onValueChange={setFilterArt}>
-          <SelectTrigger className="w-[120px] min-h-[44px]" aria-label="Art filtern"><SelectValue placeholder="Art" /></SelectTrigger>
+          <SelectTrigger className="w-[150px] min-h-[44px]"><SelectValue placeholder="Branche" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Alle Arten</SelectItem>
-            {uniqueArts.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+            <SelectItem value="all">Alle Branchen</SelectItem>
+            {uniqueBranchen.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
-        </Select>
-        <Select value={filterAmpel} onValueChange={setFilterAmpel}>
-          <SelectTrigger className="w-[120px] min-h-[44px]" aria-label="Ampel filtern"><SelectValue placeholder="Ampel" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Alle</SelectItem>
-            {uniqueAmpels.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterAssigned} onValueChange={setFilterAssigned}>
-          <SelectTrigger className="w-[140px] min-h-[44px] hidden sm:flex" aria-label="Assigned filtern"><SelectValue placeholder="Zugewiesen" /></SelectTrigger>
-          <SelectContent><SelectItem value="all">Alle</SelectItem>{team.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
         </Select>
       </div>
 
@@ -267,57 +245,65 @@ export default function Kunden() {
               <caption className="sr-only">Kundenliste</caption>
               <TableHeader>
                 <TableRow>
-                  <TableHead scope="col">Kunde</TableHead>
-                  <TableHead scope="col">Art</TableHead>
-                  <TableHead scope="col">Wert</TableHead>
-                  <TableHead scope="col" className="hidden md:table-cell">Laufzeit</TableHead>
-                  <TableHead scope="col">Status</TableHead>
-                  <TableHead scope="col">Ampel</TableHead>
-                  <TableHead scope="col" className="hidden sm:table-cell">Leistungen</TableHead>
-                  <TableHead scope="col" className="hidden lg:table-cell">Zugewiesen</TableHead>
-                  <TableHead scope="col" className="hidden md:table-cell">Aktionen</TableHead>
+                  <TableHead>Kunde</TableHead>
+                  <TableHead>Branche</TableHead>
+                  <TableHead>Kundenstatus</TableHead>
+                  <TableHead>Ampel</TableHead>
+                  <TableHead className="text-right">Gesamt-Saldo</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Ads-Budget</TableHead>
+                  <TableHead className="hidden lg:table-cell">Zeitraum</TableHead>
+                  <TableHead className="hidden md:table-cell">Zahlstatus</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                    {syncing ? 'Daten werden synchronisiert...' : 'Keine Kunden gefunden'}
-                  </TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-12">
+                      {syncing ? 'Daten werden importiert...' : 'Keine Kunden gefunden'}
+                    </TableCell>
+                  </TableRow>
                 ) : filtered.map(d => {
-                  const displayArt = getDisplayArt(d);
-                  const displayStatus = getDisplayStatus(d);
-                  const displayAmpel = getDisplayAmpel(d);
-                  const ampelInfo = AMPEL_MAP[displayAmpel] || { dot: 'bg-muted', label: displayAmpel };
+                  const branche0 = Array.isArray(d.branche) ? d.branche[0] : d.art;
+                  const ks = d.kundenstatus || '–';
+                  const ampelRaw = d.ampel || d.ampelstatus || '';
+                  const ampel = AMPEL_MAP[ampelRaw] || { dot: 'bg-muted', label: ampelRaw || '–' };
+                  const dateRange = [fmtDate(d.start_datum), fmtDate(d.end_datum)].filter(Boolean).join(' – ') || '–';
 
                   return (
-                    <TableRow key={d.id} className="cursor-pointer hover:bg-primary/5 min-h-[44px]" onClick={() => navigate(`/kunden/${d.id}`)} tabIndex={0} onKeyDown={e => e.key === 'Enter' && navigate(`/kunden/${d.id}`)} role="link" aria-label={`Kunde ${d.client_name} öffnen`}>
-                      <TableCell className="font-medium">{d.client_name}</TableCell>
-                      <TableCell><Badge variant="secondary" className={`text-[10px] border-0 ${ART_STYLES[displayArt] || 'bg-muted text-muted-foreground'}`}>{displayArt}</Badge></TableCell>
-                      <TableCell className="font-medium">{getDisplayWert(d)}</TableCell>
-                      <TableCell className="text-muted-foreground hidden md:table-cell">
-                        {d.laufzeit_monate ? `${d.laufzeit_monate} M` : d.start_datum || '–'}
-                      </TableCell>
-                      <TableCell><Badge variant="secondary" className={`text-xs ${STATUS_STYLES[displayStatus] || 'bg-muted text-muted-foreground'}`}>{displayStatus}</Badge></TableCell>
+                    <TableRow
+                      key={d.id}
+                      className="cursor-pointer hover:bg-primary/5"
+                      onClick={() => navigate(`/kunden/${d.id}`)}
+                      tabIndex={0}
+                      onKeyDown={e => e.key === 'Enter' && navigate(`/kunden/${d.id}`)}
+                      role="link"
+                    >
+                      <TableCell className="font-medium max-w-[200px] truncate">{d.client_name}</TableCell>
                       <TableCell>
-                        <span className="flex items-center gap-1.5" aria-label={`Ampel: ${displayAmpel}`}>
-                          <span className={`h-2.5 w-2.5 rounded-full ${ampelInfo.dot}`} aria-hidden="true" />
-                          <span className="text-xs font-medium text-muted-foreground">{ampelInfo.label}</span>
+                        {branche0 ? (
+                          <Badge variant="secondary" className={`text-[10px] border-0 ${ART_STYLES[branche0] || 'bg-muted text-muted-foreground'}`}>
+                            {branche0}
+                          </Badge>
+                        ) : <span className="text-muted-foreground text-xs">–</span>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={`text-xs ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>
+                          {ks}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1.5">
+                          <span className={`h-2.5 w-2.5 rounded-full ${ampel.dot}`} />
+                          <span className="text-xs font-medium text-muted-foreground">{ampel.label}</span>
                         </span>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <div className="flex gap-1 flex-wrap">
-                          {Array.isArray(d.leistungen) && d.leistungen.map((l: string, i: number) => (
-                            <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0">{LEISTUNG_SHORT[l] || l}</Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground hidden lg:table-cell">{getName(d.assigned_to)}</TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">{fmt(d.gesamt_saldo ?? d.wert_eur)}</TableCell>
+                      <TableCell className="text-right tabular-nums hidden md:table-cell">{fmt(d.ads_budget)}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs hidden lg:table-cell">{dateRange}</TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {(d.close_opportunity_url || d.notion_url) && (
-                          <Button variant="ghost" size="sm" className="h-8 px-2" onClick={e => { e.stopPropagation(); window.open(d.close_opportunity_url || d.notion_url, '_blank'); }}>
-                            <ExternalLink className="h-3 w-3" aria-hidden="true" /><span className="sr-only">Öffnen</span>
-                          </Button>
-                        )}
+                        {d.zahlstatus ? (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">{d.zahlstatus}</Badge>
+                        ) : <span className="text-muted-foreground text-xs">–</span>}
                       </TableCell>
                     </TableRow>
                   );
