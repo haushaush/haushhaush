@@ -140,13 +140,6 @@ export default function Auth() {
           </p>
         </div>
 
-        {/* Register link */}
-        <p className="text-center text-sm text-muted-foreground">
-          Neu im Team?{' '}
-          <button onClick={() => navigate('/register')} className="text-primary hover:underline font-medium">
-            Als Mitarbeiter registrieren
-          </button>
-        </p>
 
         {/* Test Mode */}
         <div className="mt-4 text-center">
