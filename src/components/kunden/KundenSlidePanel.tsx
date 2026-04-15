@@ -389,7 +389,7 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
               </FieldRow>
               <FieldRow label="Branche">
                 {isEditing ? (
-                  <CheckboxMultiSelect value={editData.branche || []} options={BRANCHE_OPTIONS} onChange={v => upd('branche', v)} />
+                  <SearchableMultiSelect value={editData.branche || []} options={BRANCHE_OPTIONS} onChange={v => upd('branche', v)} placeholder="Branche suchen…" />
                 ) : (
                   <div className="flex flex-wrap gap-1">
                     {(d.branche || []).length > 0 ? (d.branche as string[]).map((b: string) => (
@@ -401,7 +401,7 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
               <div className="col-span-2">
                 <FieldRow label="Projekttyp">
                   {isEditing ? (
-                    <CheckboxMultiSelect value={editData.projekttyp || []} options={PROJEKTTYP_OPTIONS} onChange={v => upd('projekttyp', v)} />
+                    <SearchableMultiSelect value={editData.projekttyp || []} options={PROJEKTTYP_OPTIONS} onChange={v => upd('projekttyp', v)} placeholder="Projekttyp suchen…" />
                   ) : (
                     <div className="flex flex-wrap gap-1">
                       {(d.projekttyp || []).length > 0 ? (d.projekttyp as string[]).map((b: string) => (
