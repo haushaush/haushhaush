@@ -320,81 +320,86 @@ export default function Kunden() {
       {viewMode === 'cards' ? (
         <KundenCardView deals={filtered} onSelect={setSelectedDeal} />
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <caption className="sr-only">Kundenliste</caption>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Kunde</TableHead>
-                    <TableHead>Branche</TableHead>
-                    <TableHead>Kundenstatus</TableHead>
-                    <TableHead>Ampel</TableHead>
-                    <TableHead className="text-right">Gesamt-Saldo</TableHead>
-                    <TableHead className="text-right hidden md:table-cell">Ads-Budget</TableHead>
-                    <TableHead className="hidden lg:table-cell">Zeitraum</TableHead>
-                    <TableHead className="hidden md:table-cell">Zahlstatus</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground py-12">
-                        {syncing ? 'Daten werden importiert...' : 'Keine Kunden gefunden'}
-                      </TableCell>
-                    </TableRow>
-                  ) : filtered.map(d => {
-                    const branche0 = Array.isArray(d.branche) ? d.branche[0] : d.art;
-                    const ks = d.kundenstatus || '–';
-                    const ampelRaw = d.ampel || d.ampelstatus || '';
-                    const ampel = AMPEL_MAP[ampelRaw] || { dot: 'bg-muted', label: ampelRaw || '–' };
-                    const dateRange = [fmtDate(d.start_datum), fmtDate(d.end_datum)].filter(Boolean).join(' – ') || '–';
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr>
+                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 pl-2">Kunde</th>
+                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3">Branche</th>
+                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3">Kundenstatus</th>
+                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3">Ampel</th>
+                <th className="text-right text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3">Gesamt-Saldo</th>
+                <th className="text-right text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 hidden md:table-cell">Ads-Budget</th>
+                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 hidden lg:table-cell">Zeitraum</th>
+                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 hidden md:table-cell">Zahlstatus</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="text-center text-muted-foreground py-12">
+                    {syncing ? 'Daten werden importiert...' : 'Keine Kunden gefunden'}
+                  </td>
+                </tr>
+              ) : filtered.map(d => {
+                const branche0 = Array.isArray(d.branche) ? d.branche[0] : d.art;
+                const ks = d.kundenstatus || '–';
+                const ampelRaw = d.ampel || d.ampelstatus || '';
+                const ampel = AMPEL_MAP[ampelRaw] || { dot: 'bg-muted', label: ampelRaw || '–' };
+                const dateRange = [fmtDate(d.start_datum), fmtDate(d.end_datum)].filter(Boolean).join(' – ') || '–';
+                const initials = (d.client_name || '??').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
 
-                    return (
-                      <TableRow
-                        key={d.id}
-                        className="cursor-pointer hover:bg-primary/5"
-                        onClick={() => setSelectedDeal(d)}
-                        tabIndex={0}
-                        onKeyDown={e => e.key === 'Enter' && setSelectedDeal(d)}
-                        role="button"
-                      >
-                        <TableCell className="font-medium max-w-[200px] truncate">{d.client_name}</TableCell>
-                        <TableCell>
-                          {branche0 ? (
-                            <Badge variant="secondary" className={`text-[10px] border-0 ${ART_STYLES[branche0] || 'bg-muted text-muted-foreground'}`}>
-                              {branche0}
-                            </Badge>
-                          ) : <span className="text-muted-foreground text-xs">–</span>}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className={`text-xs ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>
-                            {ks}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className="flex items-center gap-1.5">
-                            <span className={`h-2.5 w-2.5 rounded-full ${ampel.dot}`} />
-                            <span className="text-xs font-medium text-muted-foreground">{ampel.label}</span>
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right font-medium tabular-nums">{fmt(d.gesamt_saldo ?? d.wert_eur)}</TableCell>
-                        <TableCell className="text-right tabular-nums hidden md:table-cell">{fmt(d.ads_budget)}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs hidden lg:table-cell">{dateRange}</TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {d.zahlstatus ? (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">{d.zahlstatus}</Badge>
-                          ) : <span className="text-muted-foreground text-xs">–</span>}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                return (
+                  <tr
+                    key={d.id}
+                    className="h-14 border-b border-[#F3F4F6] dark:border-border/40 cursor-pointer hover:bg-muted/40 transition-colors"
+                    onClick={() => setSelectedDeal(d)}
+                    tabIndex={0}
+                    onKeyDown={e => e.key === 'Enter' && setSelectedDeal(d)}
+                    role="button"
+                  >
+                    <td className="pl-2 pr-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
+                          {initials}
+                        </div>
+                        <span className="font-semibold text-sm truncate max-w-[180px]">{d.client_name}</span>
+                      </div>
+                    </td>
+                    <td className="pr-3">
+                      {branche0 ? (
+                        <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
+                          {branche0}
+                        </span>
+                      ) : <span className="text-muted-foreground text-xs">–</span>}
+                    </td>
+                    <td className="pr-3">
+                      <span className={`inline-block text-[11px] font-medium px-2 py-0.5 rounded-[4px] ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>
+                        {ks}
+                      </span>
+                    </td>
+                    <td className="pr-3">
+                      <span className="flex items-center gap-1.5">
+                        <span className={`h-2.5 w-2.5 rounded-full ${ampel.dot}`} />
+                        <span className="text-xs font-medium">{ampel.label}</span>
+                      </span>
+                    </td>
+                    <td className="text-right pr-3 font-bold tabular-nums font-mono text-sm">{fmt(d.gesamt_saldo ?? d.wert_eur)}</td>
+                    <td className="text-right pr-3 tabular-nums font-mono text-sm font-bold hidden md:table-cell">{fmt(d.ads_budget)}</td>
+                    <td className="text-muted-foreground text-xs pr-3 hidden lg:table-cell">{dateRange}</td>
+                    <td className="hidden md:table-cell pr-3">
+                      {d.zahlstatus ? (
+                        <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded border border-border text-muted-foreground">
+                          {d.zahlstatus}
+                        </span>
+                      ) : <span className="text-muted-foreground text-xs">–</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* Slide-in panel */}
