@@ -1,7 +1,8 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { X, ExternalLink, Mail, Phone, Globe, AlertTriangle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const STATUS_STYLES: Record<string, string> = {
   'In Betreuung': 'bg-success/20 text-success',
@@ -23,16 +24,16 @@ const AMPEL_MAP: Record<string, { dot: string; label: string }> = {
   'Rot': { dot: 'bg-destructive', label: 'Rot' },
 };
 
-const COMPANY_COLORS: Record<string, string> = {
-  'Allianz': 'bg-[#003781]',
-  'Hanse Merkur': 'bg-[#006847]',
-  'HanseMerkur': 'bg-[#006847]',
-  'AXA': 'bg-[#00008f]',
-  'Barmenia Gothaer': 'bg-[#1a1a1a]',
-  'Barmenia': 'bg-[#1a1a1a]',
-  'Signal Iduna': 'bg-[#003d6a]',
-  'Versicherungsmakler': 'bg-[#0a1929]',
-  'Individuell': 'bg-[#374151]',
+const FALLBACK_BG: Record<string, string> = {
+  'Allianz': '#003781',
+  'Hanse Merkur': '#004B2D',
+  'HanseMerkur': '#004B2D',
+  'AXA': '#00208C',
+  'Barmenia Gothaer': '#1a1a1a',
+  'Barmenia': '#1a1a1a',
+  'Signal Iduna': '#E20028',
+  'Versicherungsmakler': '#0A3055',
+  'Individuell': '#374151',
 };
 
 const fmt = (v: number | null | undefined) => {
@@ -69,6 +70,8 @@ function FinanceRow({ label, value }: { label: string; value: number | null | un
 }
 
 export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelProps) {
+  const [companyLogo, setCompanyLogo] = useState<{ logo_url: string | null; bg_color: string | null } | null>(null);
+
   const handleEsc = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') onClose();
   }, [onClose]);
@@ -82,11 +85,19 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
     };
   }, [handleEsc]);
 
+  useEffect(() => {
+    const company = d.unternehmen;
+    if (!company) return;
+    supabase.from('company_logos').select('logo_url, bg_color').eq('unternehmen', company).maybeSingle()
+      .then(({ data }) => { if (data) setCompanyLogo(data as any); });
+  }, [d.unternehmen]);
+
   const ks = d.kundenstatus || '–';
   const ampelRaw = d.ampel || d.ampelstatus || '';
   const ampel = AMPEL_MAP[ampelRaw] || { dot: 'bg-muted', label: ampelRaw || '–' };
   const company = d.unternehmen || '';
-  const bgClass = COMPANY_COLORS[company] || 'bg-muted';
+  const bgColor = companyLogo?.bg_color || FALLBACK_BG[company] || '#374151';
+  const logoUrl = companyLogo?.logo_url;
   const branche = Array.isArray(d.branche) ? d.branche : d.art ? [d.art] : [];
   const projekttyp = Array.isArray(d.projekttyp) ? d.projekttyp : Array.isArray(d.leistungen) ? d.leistungen : [];
   const dateRange = [fmtDate(d.start_datum), fmtDate(d.end_datum)].filter(Boolean).join(' – ') || '–';
@@ -101,43 +112,52 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
 
       {/* Panel */}
       <div className="relative w-full sm:w-[50vw] sm:min-w-[420px] bg-background shadow-2xl animate-slide-in-right overflow-y-auto">
-        {/* Header with company color */}
-        <div className={`${bgClass} px-6 pt-6 pb-8 relative`}>
-          <div className="flex items-start justify-between">
-            <span className="text-white/70 text-xs font-medium tracking-wide uppercase">
-              {company || 'Unbekannt'}
-            </span>
-            <div className="flex gap-2">
-              {d.notion_url && (
-                <a
-                  href={d.notion_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={e => e.stopPropagation()}
-                >
-                  <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10 h-8">
-                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                    In Notion öffnen
-                  </Button>
-                </a>
-              )}
-              <button
-                onClick={onClose}
-                className="text-white/80 hover:text-white p-1.5 rounded-md hover:bg-white/10 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
+        {/* Header with company logo/color */}
+        <div className="relative h-[120px] overflow-hidden" style={{ background: bgColor }}>
+          {logoUrl && (
+            <img
+              src={logoUrl}
+              alt={company}
+              className="absolute inset-0 w-full h-full object-cover object-center"
+            />
+          )}
+          {/* Dark gradient overlay */}
+          <div
+            className="absolute inset-0"
+            style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 100%)' }}
+          />
+          {/* Content on top */}
+          <div className="relative h-full flex flex-col justify-between px-6 pt-4 pb-4">
+            <div className="flex items-start justify-between">
+              <span className="text-white/70 text-xs font-medium tracking-wide uppercase">
+                {company || 'Unbekannt'}
+              </span>
+              <div className="flex gap-2">
+                {d.notion_url && (
+                  <a href={d.notion_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10 h-8">
+                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                      In Notion öffnen
+                    </Button>
+                  </a>
+                )}
+                <button onClick={onClose} className="text-white/80 hover:text-white p-1.5 rounded-md hover:bg-white/10 transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
-          </div>
-          <h2 className="text-xl font-heading font-bold text-white mt-3">{d.client_name}</h2>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant="secondary" className={`text-xs ${STATUS_STYLES[ks] || 'bg-white/20 text-white'}`}>
-              {ks}
-            </Badge>
-            <span className="flex items-center gap-1.5">
-              <span className={`h-2.5 w-2.5 rounded-full ${ampel.dot}`} />
-              <span className="text-xs font-medium text-white/80">{ampel.label}</span>
-            </span>
+            <div>
+              <h2 className="text-xl font-heading font-bold text-white">{d.client_name}</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="secondary" className={`text-xs ${STATUS_STYLES[ks] || 'bg-white/20 text-white'}`}>
+                  {ks}
+                </Badge>
+                <span className="flex items-center gap-1.5">
+                  <span className={`h-2.5 w-2.5 rounded-full ${ampel.dot}`} />
+                  <span className="text-xs font-medium text-white/80">{ampel.label}</span>
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
