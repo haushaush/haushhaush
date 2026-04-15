@@ -141,16 +141,12 @@ export default function Kunden() {
     return Array.from(companies).sort();
   }, [deals]);
 
-  const TABS = useMemo(() => {
-    const base = [
-      { label: 'Alle Kunden', value: 'all' },
-      { label: 'Aktive Kunden', value: 'aktiv' },
-    ];
-    dynamicCompanyTabs.forEach(c => base.push({ label: c, value: `company:${c}` }));
-    base.push({ label: 'Follow Up', value: 'followup' });
-    base.push({ label: 'Abschlüsse', value: 'done' });
-    return base;
-  }, [dynamicCompanyTabs]);
+  const TABS = [
+    { label: 'Alle Kunden', value: 'all' },
+    { label: 'Aktive Kunden', value: 'aktiv' },
+    { label: 'Follow Up', value: 'followup' },
+    { label: 'Abschlüsse', value: 'done' },
+  ];
 
   const filtered = useMemo(() => deals.filter(d => {
     const matchSearch = d.client_name?.toLowerCase().includes(search.toLowerCase());
@@ -161,17 +157,17 @@ export default function Kunden() {
       matchTab = true;
     } else if (activeTab === 'aktiv') {
       matchTab = isAktiv(d);
+      if (matchTab && activeSubTab !== 'all') {
+        matchTab = d.unternehmen === activeSubTab;
+      }
     } else if (activeTab === 'followup') {
       matchTab = d.kundenstatus === 'Follow Up';
     } else if (activeTab === 'done') {
       matchTab = d.zahlstatus === 'DONE';
-    } else if (activeTab.startsWith('company:')) {
-      const company = activeTab.slice(8);
-      matchTab = isAktiv(d) && d.unternehmen === company;
     }
 
     return matchSearch && matchTab && matchArt;
-  }), [deals, search, activeTab, filterArt]);
+  }), [deals, search, activeTab, activeSubTab, filterArt]);
 
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = { all: deals.length };
