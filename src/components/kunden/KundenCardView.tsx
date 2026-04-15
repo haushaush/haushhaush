@@ -112,7 +112,7 @@ export default function KundenCardView({ deals, onSelect }: KundenCardViewProps)
             <CompanyHeader company={company} clientName={d.client_name} logos={logos} />
             <div className="px-3 py-2.5 space-y-1.5">
               <p className="font-semibold text-sm truncate">{d.client_name}</p>
-              <Badge variant="secondary" className={`text-[10px] ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>
+              <Badge variant="secondary" className={`text-[10px] rounded-[4px] ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>
                 {ks}
               </Badge>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
