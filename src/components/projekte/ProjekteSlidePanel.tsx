@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, ExternalLink, Save } from 'lucide-react';
+import { X, ExternalLink, Save, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
