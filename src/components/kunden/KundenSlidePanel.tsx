@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -130,61 +130,69 @@ function NativeSelect({ value, options, onChange, placeholder = '-- Auswählen -
   );
 }
 
-/* Checkbox list for multi-select */
-function CheckboxMultiSelect({ value, options, onChange }: {
+/* Searchable multi-select */
+function SearchableMultiSelect({ value, options, onChange, placeholder = 'Suchen…' }: {
   value: string[];
   options: string[];
   onChange: (v: string[]) => void;
+  placeholder?: string;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const toggle = (item: string) => {
-    onChange(value.includes(item) ? value.filter(x => x !== item) : [...value, item]);
-  };
-  const visible = expanded ? options : options.slice(0, 8);
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = options.filter(o =>
+    o.toLowerCase().includes(search.toLowerCase()) && !value.includes(o)
+  );
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   return (
-    <div onClick={e => e.stopPropagation()}>
-      {value.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-1.5">
-          {value.map(b => (
-            <Badge key={b} variant="secondary" className="text-[10px] rounded-[4px] cursor-pointer" onClick={() => toggle(b)}>
-              {b} ×
-            </Badge>
+    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
+      <div
+        className="min-h-[38px] border border-input rounded-md px-2 py-1 flex flex-wrap gap-1 cursor-text bg-background"
+        onClick={() => setOpen(true)}
+      >
+        {value.map(v => (
+          <span key={v} className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-[4px] flex items-center gap-1">
+            {v}
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); onChange(value.filter(x => x !== v)); }}
+              className="hover:text-destructive font-medium"
+            >×</button>
+          </span>
+        ))}
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          onFocus={() => setOpen(true)}
+          placeholder={value.length === 0 ? placeholder : ''}
+          className="outline-none text-sm flex-1 min-w-[100px] bg-transparent text-foreground placeholder:text-muted-foreground"
+        />
+      </div>
+      {open && filtered.length > 0 && (
+        <div className="absolute z-[200] w-full bg-background border border-input rounded-md shadow-lg mt-1 max-h-[200px] overflow-y-auto">
+          {filtered.map(o => (
+            <div
+              key={o}
+              onClick={() => { onChange([...value, o]); setSearch(''); }}
+              className="px-3 py-1.5 text-sm hover:bg-muted cursor-pointer transition-colors"
+            >
+              {o}
+            </div>
           ))}
         </div>
       )}
-      <div className="border border-input rounded-md max-h-40 overflow-y-auto">
-        {visible.map(o => (
-          <label
-            key={o}
-            className={cn(
-              "flex items-center gap-2 px-2 py-1 text-sm cursor-pointer hover:bg-muted/50 transition-colors",
-              value.includes(o) && "bg-muted/30"
-            )}
-          >
-            <input
-              type="checkbox"
-              checked={value.includes(o)}
-              onChange={() => toggle(o)}
-              className="h-3.5 w-3.5 rounded border-border accent-primary"
-            />
-            <span className="truncate">{o}</span>
-          </label>
-        ))}
-        {options.length > 8 && (
-          <button
-            type="button"
-            className="w-full text-xs text-primary py-1 hover:bg-muted/30"
-            onClick={() => setExpanded(!expanded)}
-          >
-            {expanded ? 'Weniger anzeigen' : `Alle ${options.length} anzeigen`}
-          </button>
-        )}
-      </div>
     </div>
   );
 }
-
 export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelProps) {
   const [companyLogo, setCompanyLogo] = useState<{ logo_url: string | null; bg_color: string | null } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -381,7 +389,7 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
               </FieldRow>
               <FieldRow label="Branche">
                 {isEditing ? (
-                  <CheckboxMultiSelect value={editData.branche || []} options={BRANCHE_OPTIONS} onChange={v => upd('branche', v)} />
+                  <SearchableMultiSelect value={editData.branche || []} options={BRANCHE_OPTIONS} onChange={v => upd('branche', v)} placeholder="Branche suchen…" />
                 ) : (
                   <div className="flex flex-wrap gap-1">
                     {(d.branche || []).length > 0 ? (d.branche as string[]).map((b: string) => (
@@ -393,7 +401,7 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
               <div className="col-span-2">
                 <FieldRow label="Projekttyp">
                   {isEditing ? (
-                    <CheckboxMultiSelect value={editData.projekttyp || []} options={PROJEKTTYP_OPTIONS} onChange={v => upd('projekttyp', v)} />
+                    <SearchableMultiSelect value={editData.projekttyp || []} options={PROJEKTTYP_OPTIONS} onChange={v => upd('projekttyp', v)} placeholder="Projekttyp suchen…" />
                   ) : (
                     <div className="flex flex-wrap gap-1">
                       {(d.projekttyp || []).length > 0 ? (d.projekttyp as string[]).map((b: string) => (
