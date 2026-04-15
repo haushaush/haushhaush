@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import KundenSlidePanel from '@/components/kunden/KundenSlidePanel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,9 +69,11 @@ export default function Kunden() {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const { isAdminOrManager } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const autoSyncDone = useRef(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+  const autoOpenDone = useRef(false);
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
@@ -127,6 +129,16 @@ export default function Kunden() {
       if (data.length === 0 && !autoSyncDone.current) {
         autoSyncDone.current = true;
         handleNotionSync();
+      }
+      // Auto-open customer from URL param
+      const kundeId = searchParams.get('kunde');
+      if (kundeId && !autoOpenDone.current) {
+        autoOpenDone.current = true;
+        const match = data.find((d: any) => d.id === kundeId);
+        if (match) {
+          setSelectedDeal(match);
+          setSearchParams({}, { replace: true });
+        }
       }
     });
   }, []);
