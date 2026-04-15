@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, RefreshCw, Loader2, LayoutGrid, TableIcon, ArrowUpDown, ArrowUp, ArrowDown, Users, FileX } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Plus, Search, RefreshCw, Loader2, LayoutGrid, TableIcon, ArrowUpDown, ArrowUp, ArrowDown, Users, FileX, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import KundenCardView from '@/components/kunden/KundenCardView';
 
