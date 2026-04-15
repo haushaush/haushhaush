@@ -428,7 +428,7 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
               </FieldRow>
               <FieldRow label="Unternehmen">
                 {isEditing ? (
-                  <NativeSelect value={editData.unternehmen} options={UNTERNEHMEN_OPTIONS} onChange={v => upd('unternehmen', v)} />
+                  <SearchableSingleSelect value={editData.unternehmen} options={UNTERNEHMEN_OPTIONS} onChange={v => upd('unternehmen', v)} />
                 ) : (
                   <span className="text-sm">{d.unternehmen || '–'}</span>
                 )}
@@ -459,7 +459,7 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
               </div>
               <FieldRow label="Laufzeit">
                 {isEditing ? (
-                  <NativeSelect value={editData.laufzeit} options={LAUFZEIT_OPTIONS} onChange={v => upd('laufzeit', v)} />
+                  <SearchableSingleSelect value={editData.laufzeit} options={LAUFZEIT_OPTIONS} onChange={v => upd('laufzeit', v)} />
                 ) : (
                   <span className="text-sm">{d.laufzeit || '–'}</span>
                 )}
@@ -502,14 +502,14 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
               </FieldRow>
               <FieldRow label="Kundenstatus">
                 {isEditing ? (
-                  <NativeSelect value={editData.kundenstatus} options={KUNDENSTATUS_OPTIONS} onChange={v => upd('kundenstatus', v)} />
+                  <SearchableSingleSelect value={editData.kundenstatus} options={KUNDENSTATUS_OPTIONS} onChange={v => upd('kundenstatus', v)} />
                 ) : (
                   <Badge variant="secondary" className={`text-xs rounded-[4px] w-fit ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>{ks}</Badge>
                 )}
               </FieldRow>
               <FieldRow label="Ampelstatus">
                 {isEditing ? (
-                  <NativeSelect value={editData.ampel} options={AMPEL_OPTIONS} onChange={v => upd('ampel', v)} />
+                  <SearchableSingleSelect value={editData.ampel} options={AMPEL_OPTIONS} onChange={v => upd('ampel', v)} />
                 ) : (
                   <span className="flex items-center gap-1.5">
                     <span className={`h-2.5 w-2.5 rounded-full ${ampel.dot}`} />
@@ -519,7 +519,7 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
               </FieldRow>
               <FieldRow label="Zahlstatus">
                 {isEditing ? (
-                  <NativeSelect value={editData.zahlstatus} options={ZAHLSTATUS_OPTIONS} onChange={v => upd('zahlstatus', v)} />
+                  <SearchableSingleSelect value={editData.zahlstatus} options={ZAHLSTATUS_OPTIONS} onChange={v => upd('zahlstatus', v)} />
                 ) : (
                   <span className="text-sm">{d.zahlstatus || '–'}</span>
                 )}
