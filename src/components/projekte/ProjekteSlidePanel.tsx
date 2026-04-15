@@ -52,9 +52,20 @@ function FinRow({ label, children }: { label: string; children: React.ReactNode 
 export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
+  const [linkedKunden, setLinkedKunden] = useState<{ id: string; client_name: string }[]>([]);
 
   useEffect(() => {
     setEditData({ ...p });
+  }, [p.id]);
+
+  // Resolve linked customer names via notion_id
+  useEffect(() => {
+    const ids = p.verknuepfte_kunden_ids || p.verknuepfte_kunden || [];
+    if (ids.length === 0) { setLinkedKunden([]); return; }
+    supabase.from('close_deals')
+      .select('id, client_name, notion_id')
+      .in('notion_id', ids)
+      .then(({ data }) => setLinkedKunden(data || []));
   }, [p.id]);
 
   const upd = (k: string, v: any) => setEditData(prev => ({ ...prev, [k]: v }));
