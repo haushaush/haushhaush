@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
 
 const fmt = (v: number | null | undefined) => {
   if (v == null) return '–';
@@ -19,7 +21,7 @@ const STATUS_STYLES: Record<string, string> = {
   'Offen': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
 };
 
-const COMPANY_BG: Record<string, string> = {
+const FALLBACK_BG: Record<string, string> = {
   "Allianz": "#003781",
   "Hanse Merkur": "#004B2D",
   "Barmenia Gothaer": "#1a1a1a",
@@ -31,21 +33,38 @@ const COMPANY_BG: Record<string, string> = {
   "Individuell": "#374151",
 };
 
-function CompanyHeader({ company, clientName }: { company: string; clientName: string }) {
-  const bg = COMPANY_BG[company] || '#374151';
+interface CompanyLogo {
+  unternehmen: string;
+  logo_url: string | null;
+  bg_color: string | null;
+}
+
+let cachedLogos: CompanyLogo[] | null = null;
+
+function CompanyHeader({ company, clientName, logos }: { company: string; clientName: string; logos: CompanyLogo[] }) {
+  const entry = logos.find(l => l.unternehmen === company);
+  const bg = entry?.bg_color || FALLBACK_BG[company] || '#374151';
+  const logoUrl = entry?.logo_url;
   const label = company || clientName?.charAt(0)?.toUpperCase() || '?';
+  const [imgFailed, setImgFailed] = useState(false);
 
   return (
-    <div
-      className="h-20 flex items-center justify-center px-4"
-      style={{ background: bg }}
-    >
-      <span
-        className="text-white/90 font-heading font-bold text-center leading-tight truncate"
-        style={{ fontSize: label.length > 12 ? '0.8rem' : label.length > 6 ? '0.95rem' : '1.15rem' }}
-      >
-        {label}
-      </span>
+    <div className="h-20 flex items-center justify-center px-4" style={{ background: bg }}>
+      {logoUrl && !imgFailed ? (
+        <img
+          src={logoUrl}
+          alt={company}
+          className="h-12 max-w-[80%] object-contain brightness-0 invert"
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        <span
+          className="text-white/90 font-heading font-bold text-center leading-tight truncate"
+          style={{ fontSize: label.length > 12 ? '0.8rem' : label.length > 6 ? '0.95rem' : '1.15rem' }}
+        >
+          {label}
+        </span>
+      )}
     </div>
   );
 }
@@ -56,6 +75,17 @@ interface KundenCardViewProps {
 }
 
 export default function KundenCardView({ deals, onSelect }: KundenCardViewProps) {
+  const [logos, setLogos] = useState<CompanyLogo[]>(cachedLogos || []);
+
+  useEffect(() => {
+    if (cachedLogos) return;
+    supabase.from('company_logos').select('*').then(({ data }) => {
+      const result = (data as any[] || []) as CompanyLogo[];
+      cachedLogos = result;
+      setLogos(result);
+    });
+  }, []);
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {deals.length === 0 ? (
@@ -74,7 +104,7 @@ export default function KundenCardView({ deals, onSelect }: KundenCardViewProps)
             onKeyDown={e => e.key === 'Enter' && onSelect(d)}
             role="button"
           >
-            <CompanyHeader company={company} clientName={d.client_name} />
+            <CompanyHeader company={company} clientName={d.client_name} logos={logos} />
             <CardContent className="p-4 space-y-2">
               <p className="font-semibold text-sm truncate">{d.client_name}</p>
               <Badge variant="secondary" className={`text-[10px] ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>

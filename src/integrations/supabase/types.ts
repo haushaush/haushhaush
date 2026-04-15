@@ -893,6 +893,24 @@ export type Database = {
           },
         ]
       }
+      company_logos: {
+        Row: {
+          bg_color: string | null
+          logo_url: string | null
+          unternehmen: string
+        }
+        Insert: {
+          bg_color?: string | null
+          logo_url?: string | null
+          unternehmen: string
+        }
+        Update: {
+          bg_color?: string | null
+          logo_url?: string | null
+          unternehmen?: string
+        }
+        Relationships: []
+      }
       creative_approvals: {
         Row: {
           approval_type: Database["public"]["Enums"]["creative_approval_type"]
