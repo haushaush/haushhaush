@@ -283,7 +283,7 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
   const handleSave = async () => {
     if (!hasChanges) return;
     setSaving(true);
-    const { error } = await supabase.from('close_deals').update(editData).eq('id', d.id);
+    const { error } = await supabase.from('close_deals').update(editData as any).eq('id', d.id);
     setSaving(false);
     if (error) {
       toast.error('Fehler beim Speichern');
