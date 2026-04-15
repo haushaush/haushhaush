@@ -761,12 +761,16 @@ export type Database = {
           close_opportunity_url: string | null
           clv: number | null
           created_at: string
+          crm_kosten: number | null
+          deadline: string | null
           deal_type: string | null
           email: string | null
+          end_datum: string | null
           gesamt_saldo: number | null
           health_score: number | null
           id: string
           kundenstatus: string | null
+          laufzeit: string | null
           laufzeit_in_14t: boolean | null
           laufzeit_monate: number | null
           leistungen: Json | null
@@ -776,12 +780,15 @@ export type Database = {
           notion_id: string | null
           notion_url: string | null
           onepage_url: string | null
+          projekttyp: string[] | null
           start_datum: string | null
           status: string | null
+          superchat_kosten: number | null
           telefon: string | null
           unternehmen: string | null
           updated_at: string
           vor_nachname: string | null
+          website_kosten: number | null
           website_url: string | null
           wert_eur: number | null
           zahlstatus: string | null
@@ -799,12 +806,16 @@ export type Database = {
           close_opportunity_url?: string | null
           clv?: number | null
           created_at?: string
+          crm_kosten?: number | null
+          deadline?: string | null
           deal_type?: string | null
           email?: string | null
+          end_datum?: string | null
           gesamt_saldo?: number | null
           health_score?: number | null
           id?: string
           kundenstatus?: string | null
+          laufzeit?: string | null
           laufzeit_in_14t?: boolean | null
           laufzeit_monate?: number | null
           leistungen?: Json | null
@@ -814,12 +825,15 @@ export type Database = {
           notion_id?: string | null
           notion_url?: string | null
           onepage_url?: string | null
+          projekttyp?: string[] | null
           start_datum?: string | null
           status?: string | null
+          superchat_kosten?: number | null
           telefon?: string | null
           unternehmen?: string | null
           updated_at?: string
           vor_nachname?: string | null
+          website_kosten?: number | null
           website_url?: string | null
           wert_eur?: number | null
           zahlstatus?: string | null
@@ -837,12 +851,16 @@ export type Database = {
           close_opportunity_url?: string | null
           clv?: number | null
           created_at?: string
+          crm_kosten?: number | null
+          deadline?: string | null
           deal_type?: string | null
           email?: string | null
+          end_datum?: string | null
           gesamt_saldo?: number | null
           health_score?: number | null
           id?: string
           kundenstatus?: string | null
+          laufzeit?: string | null
           laufzeit_in_14t?: boolean | null
           laufzeit_monate?: number | null
           leistungen?: Json | null
@@ -852,12 +870,15 @@ export type Database = {
           notion_id?: string | null
           notion_url?: string | null
           onepage_url?: string | null
+          projekttyp?: string[] | null
           start_datum?: string | null
           status?: string | null
+          superchat_kosten?: number | null
           telefon?: string | null
           unternehmen?: string | null
           updated_at?: string
           vor_nachname?: string | null
+          website_kosten?: number | null
           website_url?: string | null
           wert_eur?: number | null
           zahlstatus?: string | null
