@@ -18,7 +18,9 @@ async function fetchAll(key: string, dbId: string): Promise<any[]> {
   do {
     const body: any = { page_size: 100 };
     if (cursor) body.start_cursor = cursor;
-    const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+    const url = `https://api.notion.com/v1/databases/${dbId}/query`;
+    console.log(`Fetching Notion DB: ${dbId} (cursor: ${cursor || 'none'})`);
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${key}`,
@@ -27,8 +29,12 @@ async function fetchAll(key: string, dbId: string): Promise<any[]> {
       },
       body: JSON.stringify(body),
     });
+    console.log(`Notion response status: ${res.status} for DB ${dbId}`);
     const data = await res.json();
-    if (!res.ok) throw new Error(`Notion ${dbId}: ${data.message}`);
+    if (!res.ok) {
+      console.error(`Notion API error detail:`, JSON.stringify(data));
+      throw new Error(`Notion ${dbId}: ${data.message}`);
+    }
     all.push(...(data.results || []));
     cursor = data.has_more ? data.next_cursor : undefined;
   } while (cursor);
