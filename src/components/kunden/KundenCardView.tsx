@@ -50,7 +50,7 @@ function CompanyHeader({ company, clientName, logos }: { company: string; client
 
   return (
     <div
-      className="min-h-[160px] overflow-hidden"
+      className="h-[180px] overflow-hidden"
       style={{ background: logoUrl && !imgFailed ? undefined : bg }}
     >
       {logoUrl && !imgFailed ? (
@@ -92,7 +92,7 @@ export default function KundenCardView({ deals, onSelect }: KundenCardViewProps)
   }, []);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       {deals.length === 0 ? (
         <p className="col-span-full text-center text-muted-foreground py-12">Keine Kunden gefunden</p>
       ) : deals.map(d => {
@@ -103,23 +103,23 @@ export default function KundenCardView({ deals, onSelect }: KundenCardViewProps)
         return (
           <Card
             key={d.id}
-            className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all overflow-hidden"
+            className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all overflow-hidden p-0"
             onClick={() => onSelect(d)}
             tabIndex={0}
             onKeyDown={e => e.key === 'Enter' && onSelect(d)}
             role="button"
           >
             <CompanyHeader company={company} clientName={d.client_name} logos={logos} />
-            <CardContent className="p-4 space-y-2">
+            <div className="px-3 py-2.5 space-y-1.5">
               <p className="font-semibold text-sm truncate">{d.client_name}</p>
               <Badge variant="secondary" className={`text-[10px] ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>
                 {ks}
               </Badge>
-              <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{dateRange}</span>
                 <span className="font-medium text-foreground tabular-nums">{fmt(d.gesamt_saldo ?? d.wert_eur)}</span>
               </div>
-            </CardContent>
+            </div>
           </Card>
         );
       })}
