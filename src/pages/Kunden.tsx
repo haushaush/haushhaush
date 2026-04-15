@@ -324,14 +324,14 @@ export default function Kunden() {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 pl-2">Kunde</th>
-                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3">Branche</th>
-                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3">Kundenstatus</th>
-                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3">Ampel</th>
-                <th className="text-right text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3">Gesamt-Saldo</th>
-                <th className="text-right text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 hidden md:table-cell">Ads-Budget</th>
-                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 hidden lg:table-cell">Zeitraum</th>
-                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 hidden md:table-cell">Zahlstatus</th>
+                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[200px]">Kunde</th>
+                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[150px]">Branche</th>
+                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[130px]">Kundenstatus</th>
+                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[80px]">Ampel</th>
+                <th className="text-right text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[120px]">Gesamt-Saldo</th>
+                <th className="text-right text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[120px] hidden md:table-cell">Ads-Budget</th>
+                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[160px] hidden lg:table-cell">Zeitraum</th>
+                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[160px] hidden md:table-cell">Zahlstatus</th>
               </tr>
             </thead>
             <tbody>
