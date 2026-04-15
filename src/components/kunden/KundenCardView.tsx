@@ -1,6 +1,15 @@
-import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+
+const fmt = (v: number | null | undefined) => {
+  if (v == null) return '–';
+  return `€${Number(v).toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+};
+
+const fmtDate = (d: string | null) => {
+  if (!d) return null;
+  try { return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { return d; }
+};
 
 const STATUS_STYLES: Record<string, string> = {
   'In Betreuung': 'bg-success/20 text-success',
