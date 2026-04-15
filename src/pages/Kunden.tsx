@@ -69,9 +69,11 @@ export default function Kunden() {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const { isAdminOrManager } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const autoSyncDone = useRef(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+  const autoOpenDone = useRef(false);
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
