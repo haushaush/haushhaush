@@ -70,6 +70,24 @@ export default function Kunden() {
   const { isAdminOrManager } = useAuth();
   const navigate = useNavigate();
   const autoSyncDone = useRef(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase.from('close_deals').delete().eq('id', deleteTarget.id);
+    if (error) {
+      toast.error('Fehler beim Löschen', { description: error.message });
+      setDeleting(false);
+      return;
+    }
+    toast.success('Kunde wurde gelöscht');
+    setDeleteTarget(null);
+    setSelectedDeal(null);
+    setDeleting(false);
+    fetchData();
+  };
 
   const [form, setForm] = useState({
     client_name: '', art: 'PKV', wert_eur: 0, laufzeit_monate: 12,
