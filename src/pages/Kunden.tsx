@@ -130,16 +130,7 @@ export default function Kunden() {
     fetchData();
   };
 
-  // Dynamic company tabs from active deals
-  const dynamicCompanyTabs = useMemo(() => {
-    const companies = new Set<string>();
-    deals.forEach(d => {
-      if (isAktiv(d) && d.unternehmen) {
-        companies.add(d.unternehmen);
-      }
-    });
-    return Array.from(companies).sort();
-  }, [deals]);
+  const COMPANY_SUB_TABS = ['Allianz', 'Hanse Merkur', 'Barmenia Gothaer', 'Signal Iduna', 'Individuell'];
 
   const TABS = [
     { label: 'Alle Kunden', value: 'all' },
