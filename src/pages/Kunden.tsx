@@ -71,7 +71,7 @@ export default function Kunden() {
   const [activeTab, setActiveTab] = useState('all');
   const [activeSubTab, setActiveSubTab] = useState('all');
   const [filterArt, setFilterArt] = useState('all');
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<any>(null);
   const { isAdminOrManager } = useAuth();
