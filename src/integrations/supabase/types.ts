@@ -1835,14 +1835,18 @@ export type Database = {
           aktueller_monat: string | null
           branche: string[] | null
           cash_collect: number | null
+          cash_collect_uebernommen: boolean | null
           client_id: string | null
           created_at: string
           deadline: string | null
+          deadline_management: boolean | null
+          deadline_mitarbeiter: boolean | null
           enddatum: string | null
           gesamt_saldo: number | null
           id: string
           laufzeit: string | null
           letztes_update: string | null
+          mail_gesendet: boolean | null
           monat_leadanzahl: string | null
           name: string
           notion_id: string | null
@@ -1858,10 +1862,16 @@ export type Database = {
           rate_4: number | null
           rate_5: number | null
           startdatum: string | null
+          startdatum_abgehakt: boolean | null
           status: string
           typ: string[] | null
+          umsatz_geschr_am: string | null
           updated_at: string
+          verarbeitet: boolean | null
+          verknuepfte_aufgaben_ids: string[] | null
           verknuepfte_kunden: string[] | null
+          verknuepfte_kunden_ids: string[] | null
+          verknuepfte_mitarbeiter_ids: string[] | null
           zahldatum: string | null
           zahlstatus: string | null
         }
@@ -1871,14 +1881,18 @@ export type Database = {
           aktueller_monat?: string | null
           branche?: string[] | null
           cash_collect?: number | null
+          cash_collect_uebernommen?: boolean | null
           client_id?: string | null
           created_at?: string
           deadline?: string | null
+          deadline_management?: boolean | null
+          deadline_mitarbeiter?: boolean | null
           enddatum?: string | null
           gesamt_saldo?: number | null
           id?: string
           laufzeit?: string | null
           letztes_update?: string | null
+          mail_gesendet?: boolean | null
           monat_leadanzahl?: string | null
           name: string
           notion_id?: string | null
@@ -1894,10 +1908,16 @@ export type Database = {
           rate_4?: number | null
           rate_5?: number | null
           startdatum?: string | null
+          startdatum_abgehakt?: boolean | null
           status?: string
           typ?: string[] | null
+          umsatz_geschr_am?: string | null
           updated_at?: string
+          verarbeitet?: boolean | null
+          verknuepfte_aufgaben_ids?: string[] | null
           verknuepfte_kunden?: string[] | null
+          verknuepfte_kunden_ids?: string[] | null
+          verknuepfte_mitarbeiter_ids?: string[] | null
           zahldatum?: string | null
           zahlstatus?: string | null
         }
@@ -1907,14 +1927,18 @@ export type Database = {
           aktueller_monat?: string | null
           branche?: string[] | null
           cash_collect?: number | null
+          cash_collect_uebernommen?: boolean | null
           client_id?: string | null
           created_at?: string
           deadline?: string | null
+          deadline_management?: boolean | null
+          deadline_mitarbeiter?: boolean | null
           enddatum?: string | null
           gesamt_saldo?: number | null
           id?: string
           laufzeit?: string | null
           letztes_update?: string | null
+          mail_gesendet?: boolean | null
           monat_leadanzahl?: string | null
           name?: string
           notion_id?: string | null
@@ -1930,10 +1954,16 @@ export type Database = {
           rate_4?: number | null
           rate_5?: number | null
           startdatum?: string | null
+          startdatum_abgehakt?: boolean | null
           status?: string
           typ?: string[] | null
+          umsatz_geschr_am?: string | null
           updated_at?: string
+          verarbeitet?: boolean | null
+          verknuepfte_aufgaben_ids?: string[] | null
           verknuepfte_kunden?: string[] | null
+          verknuepfte_kunden_ids?: string[] | null
+          verknuepfte_mitarbeiter_ids?: string[] | null
           zahldatum?: string | null
           zahlstatus?: string | null
         }

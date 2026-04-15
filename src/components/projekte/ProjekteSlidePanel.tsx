@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, ExternalLink, Save } from 'lucide-react';
+import { X, ExternalLink, Save, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -52,9 +52,20 @@ function FinRow({ label, children }: { label: string; children: React.ReactNode 
 export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
+  const [linkedKunden, setLinkedKunden] = useState<{ id: string; client_name: string }[]>([]);
 
   useEffect(() => {
     setEditData({ ...p });
+  }, [p.id]);
+
+  // Resolve linked customer names via notion_id
+  useEffect(() => {
+    const ids = p.verknuepfte_kunden_ids || p.verknuepfte_kunden || [];
+    if (ids.length === 0) { setLinkedKunden([]); return; }
+    supabase.from('close_deals')
+      .select('id, client_name, notion_id')
+      .in('notion_id', ids)
+      .then(({ data }) => setLinkedKunden(data || []));
   }, [p.id]);
 
   const upd = (k: string, v: any) => setEditData(prev => ({ ...prev, [k]: v }));
@@ -195,6 +206,23 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
               ))}
             </div>
           </section>
+
+
+          {/* Linked Customers */}
+          {linkedKunden.length > 0 && (
+            <section className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5" /> Verknüpfte Kunden
+              </h3>
+              <div className="flex flex-wrap gap-1.5">
+                {linkedKunden.map(k => (
+                  <span key={k.id} className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-primary/10 text-primary">
+                    {k.client_name}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Extra info */}
           {(editData.aktueller_monat || editData.monat_leadanzahl) && (

@@ -132,7 +132,6 @@ Deno.serve(async (req) => {
       const pages = await fetchAll(key, DB_IDS.projekte);
       const rows = pages.map((p: any) => {
         const pr = p.properties;
-        const relKunden = (pr["Verknüpfte Kunden"]?.relation || []).map((r: any) => r.id);
         return {
           notion_id: p.id,
           notion_url: p.url,
@@ -148,6 +147,7 @@ Deno.serve(async (req) => {
           enddatum: gd(pr["Enddatum"]),
           deadline: gd(pr["Deadline"]),
           zahldatum: gd(pr["Zahldatum"]),
+          umsatz_geschr_am: gd(pr["Umsatz geschr. am"]),
           zahlstatus: gs(pr["Zahlstatus"]),
           ads_budget: gn(pr["Ads Budget"]),
           cash_collect: gn(pr["Cash Collect"]),
@@ -158,9 +158,18 @@ Deno.serve(async (req) => {
           rate_3: gn(pr["3. Rate "]),
           rate_4: gn(pr["4. Rate "]),
           rate_5: gn(pr["5. Rate "]),
-          verknuepfte_kunden: relKunden.length > 0 ? relKunden : null,
           aktueller_monat: grt(pr["Aktueller Monat"]),
           monat_leadanzahl: grt(pr["Monat + Leadanzahl"]),
+          cash_collect_uebernommen: gc(pr["Cash Collect übernommen"]),
+          mail_gesendet: gc(pr["Mail Gesendet?"]),
+          startdatum_abgehakt: gc(pr["startdatum abgehakt?"]),
+          verarbeitet: gc(pr["verarbeitet"]),
+          deadline_management: gc(pr["Deadline? (Management)"]),
+          deadline_mitarbeiter: gc(pr["Deadline? (Mitarbeiter)"]),
+          verknuepfte_kunden_ids: (pr["Verknüpfte Kunden"]?.relation || []).map((r: any) => r.id),
+          verknuepfte_mitarbeiter_ids: (pr["Verknüpfte Mitarbeiter"]?.relation || []).map((r: any) => r.id),
+          verknuepfte_aufgaben_ids: (pr["Verknüpfte Aufgaben"]?.relation || []).map((r: any) => r.id),
+          verknuepfte_kunden: (pr["Verknüpfte Kunden"]?.relation || []).map((r: any) => r.id),
           letztes_update: p.last_edited_time || null,
           updated_at: new Date().toISOString(),
         };
