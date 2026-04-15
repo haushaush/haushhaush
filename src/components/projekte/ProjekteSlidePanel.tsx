@@ -62,7 +62,7 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
   const handleSave = async () => {
     setSaving(true);
     const { id, created_at, ...rest } = editData;
-    const { error } = await supabase.from('projects').update(rest).eq('id', p.id);
+    const { error } = await supabase.from('projects').update(rest as any).eq('id', p.id);
     if (error) { toast.error('Fehler', { description: error.message }); }
     else { toast.success('Projekt gespeichert'); }
     setSaving(false);
