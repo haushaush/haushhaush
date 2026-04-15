@@ -49,10 +49,8 @@ const AMPEL_MAP: Record<string, { dot: string; label: string }> = {
   'Rot': { dot: 'bg-destructive', label: 'C' },
 };
 
-const AKTIV_STATUSES = ['In Betreuung', 'Onboarding', 'Offen'];
-
 const isAktiv = (d: any) =>
-  d.zahlstatus !== 'DONE' && d.kundenstatus !== 'Done';
+  d.kundenstatus != null && d.kundenstatus !== 'Done';
 
 const fmt = (v: number | null | undefined) => {
   if (v == null) return '–';
@@ -135,7 +133,7 @@ export default function Kunden() {
   const dynamicCompanyTabs = useMemo(() => {
     const companies = new Set<string>();
     deals.forEach(d => {
-      if (AKTIV_STATUSES.includes(d.kundenstatus) && d.unternehmen) {
+      if (isAktiv(d) && d.unternehmen) {
         companies.add(d.unternehmen);
       }
     });
@@ -161,7 +159,7 @@ export default function Kunden() {
     if (activeTab === 'all') {
       matchTab = true;
     } else if (activeTab === 'aktiv') {
-      matchTab = AKTIV_STATUSES.includes(d.kundenstatus);
+      matchTab = isAktiv(d);
     } else if (activeTab === 'followup') {
       matchTab = d.kundenstatus === 'Follow Up';
     } else if (activeTab === 'done') {
@@ -176,7 +174,7 @@ export default function Kunden() {
 
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = { all: deals.length };
-    counts['aktiv'] = deals.filter(d => AKTIV_STATUSES.includes(d.kundenstatus)).length;
+    counts['aktiv'] = deals.filter(d => isAktiv(d)).length;
     counts['followup'] = deals.filter(d => d.kundenstatus === 'Follow Up').length;
     counts['done'] = deals.filter(d => d.zahlstatus === 'DONE').length;
     dynamicCompanyTabs.forEach(c => {
