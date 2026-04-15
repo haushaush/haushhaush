@@ -2,10 +2,14 @@ import { useEffect, useCallback, useState, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, ExternalLink, AlertTriangle, Save, Check, Pencil } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { X, ExternalLink, AlertTriangle, Save, CalendarIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { format, parseISO } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 const STATUS_STYLES: Record<string, string> = {
   'In Betreuung': 'bg-success/20 text-success',
@@ -16,27 +20,18 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const AMPEL_MAP: Record<string, { dot: string; label: string }> = {
-  'AA': { dot: 'bg-success', label: 'AA' },
-  'A': { dot: 'bg-success', label: 'A' },
+  'AA': { dot: 'bg-success', label: 'AA' }, 'A': { dot: 'bg-success', label: 'A' },
   'Grün': { dot: 'bg-success', label: 'Grün' },
-  'BB': { dot: 'bg-warning', label: 'BB' },
-  'B': { dot: 'bg-warning', label: 'B' },
+  'BB': { dot: 'bg-warning', label: 'BB' }, 'B': { dot: 'bg-warning', label: 'B' },
   'Gelb': { dot: 'bg-warning', label: 'Gelb' },
-  'CC': { dot: 'bg-destructive', label: 'CC' },
-  'C': { dot: 'bg-destructive', label: 'C' },
+  'CC': { dot: 'bg-destructive', label: 'CC' }, 'C': { dot: 'bg-destructive', label: 'C' },
   'Rot': { dot: 'bg-destructive', label: 'Rot' },
 };
 
 const FALLBACK_BG: Record<string, string> = {
-  'Allianz': '#003781',
-  'Hanse Merkur': '#004B2D',
-  'HanseMerkur': '#004B2D',
-  'AXA': '#00208C',
-  'Barmenia Gothaer': '#1a1a1a',
-  'Barmenia': '#1a1a1a',
-  'Signal Iduna': '#E20028',
-  'Versicherungsmakler': '#0A3055',
-  'Individuell': '#374151',
+  'Allianz': '#003781', 'Hanse Merkur': '#004B2D', 'HanseMerkur': '#004B2D',
+  'AXA': '#00208C', 'Barmenia Gothaer': '#1a1a1a', 'Barmenia': '#1a1a1a',
+  'Signal Iduna': '#E20028', 'Versicherungsmakler': '#0A3055', 'Individuell': '#374151',
 };
 
 const KUNDENSTATUS_OPTIONS = ['Offen', 'Onboarding', 'In Betreuung', 'Done', 'Follow Up'];
@@ -63,8 +58,7 @@ const PROJEKTTYP_OPTIONS = [
   'Vorqualifikation', 'Leads kaufen', 'Leadkauf', 'Superchat', 'Ai Mail Automation',
   'Ads Betreuung & Optimierung', 'Conversion-optimierte Landing Page',
   'CRM Setup & Anbindung', 'Mehrstufiger Funnel', 'Meta Werbebudget',
-  'Google Unternehmensprofil', 'Development', 'Tech Support', 'Freebie erstellen',
-  'Sonstiges',
+  'Google Unternehmensprofil', 'Development', 'Tech Support', 'Freebie erstellen', 'Sonstiges',
 ];
 const UNTERNEHMEN_OPTIONS = [
   'Allianz', 'Hanse Merkur', 'AXA', 'Barmenia Gothaer', 'Versicherungsmakler',
@@ -82,15 +76,7 @@ const fmt = (v: number | null | undefined) => {
   return `€${Number(v).toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 };
 
-const fmtDate = (d: string | null) => {
-  if (!d) return '–';
-  try { return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); } catch { return d; }
-};
-
-interface KundenSlidePanelProps {
-  deal: any;
-  onClose: () => void;
-}
+interface KundenSlidePanelProps { deal: any; onClose: () => void; }
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -112,62 +98,37 @@ function FinRow({ label, children }: { label: string; children: React.ReactNode 
 
 /* Searchable single select */
 function SearchableSingleSelect({ value, options, onChange, placeholder = 'Suchen…' }: {
-  value: string;
-  options: string[];
-  onChange: (v: string) => void;
-  placeholder?: string;
+  value: string; options: string[]; onChange: (v: string) => void; placeholder?: string;
 }) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
-  const filtered = options.filter(o =>
-    o.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, []);
 
   return (
     <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
-      <div
-        className="min-h-[38px] border border-input rounded-md px-2 py-1 flex flex-wrap gap-1 items-center cursor-text bg-background"
-        onClick={() => setOpen(true)}
-      >
+      <div className="min-h-[34px] border border-input rounded-md px-2 py-1 flex flex-wrap gap-1 items-center cursor-text bg-background" onClick={() => setOpen(true)}>
         {value && (
           <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-[4px] flex items-center gap-1">
             {value}
-            <button
-              type="button"
-              onClick={e => { e.stopPropagation(); onChange(''); setSearch(''); }}
-              className="hover:text-destructive font-medium"
-            >×</button>
+            <button type="button" onClick={e => { e.stopPropagation(); onChange(''); setSearch(''); }} className="hover:text-destructive font-medium">×</button>
           </span>
         )}
-        <input
-          value={search}
-          onChange={e => { setSearch(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
+        <input value={search} onChange={e => { setSearch(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
           placeholder={value ? 'Suchen…' : placeholder}
-          className="outline-none text-sm flex-1 min-w-[80px] bg-transparent text-foreground placeholder:text-muted-foreground"
-        />
+          className="outline-none text-sm flex-1 min-w-[80px] bg-transparent text-foreground placeholder:text-muted-foreground" />
       </div>
       {open && filtered.length > 0 && (
         <div className="absolute z-[200] w-full bg-background border border-input rounded-md shadow-lg mt-1 max-h-[200px] overflow-y-auto">
           {filtered.map(o => (
-            <div
-              key={o}
-              onClick={() => { onChange(o); setSearch(''); setOpen(false); }}
-              className={cn(
-                "px-3 py-1.5 text-sm hover:bg-muted cursor-pointer transition-colors",
-                value === o && "bg-primary/10 text-primary font-medium"
-              )}
-            >
+            <div key={o} onClick={() => { onChange(o); setSearch(''); setOpen(false); }}
+              className={cn("px-3 py-1.5 text-sm hover:bg-muted cursor-pointer transition-colors", value === o && "bg-primary/10 text-primary font-medium")}>
               {o}
             </div>
           ))}
@@ -176,99 +137,94 @@ function SearchableSingleSelect({ value, options, onChange, placeholder = 'Suche
     </div>
   );
 }
+
 /* Searchable multi-select */
 function SearchableMultiSelect({ value, options, onChange, placeholder = 'Suchen…' }: {
-  value: string[];
-  options: string[];
-  onChange: (v: string[]) => void;
-  placeholder?: string;
+  value: string[]; options: string[]; onChange: (v: string[]) => void; placeholder?: string;
 }) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
-  const filtered = options.filter(o =>
-    o.toLowerCase().includes(search.toLowerCase()) && !value.includes(o)
-  );
+  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()) && !value.includes(o));
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, []);
 
   return (
     <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
-      <div
-        className="min-h-[38px] border border-input rounded-md px-2 py-1 flex flex-wrap gap-1 cursor-text bg-background"
-        onClick={() => setOpen(true)}
-      >
+      <div className="min-h-[34px] border border-input rounded-md px-2 py-1 flex flex-wrap gap-1 cursor-text bg-background" onClick={() => setOpen(true)}>
         {value.map(v => (
           <span key={v} className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-[4px] flex items-center gap-1">
             {v}
-            <button
-              type="button"
-              onClick={e => { e.stopPropagation(); onChange(value.filter(x => x !== v)); }}
-              className="hover:text-destructive font-medium"
-            >×</button>
+            <button type="button" onClick={e => { e.stopPropagation(); onChange(value.filter(x => x !== v)); }} className="hover:text-destructive font-medium">×</button>
           </span>
         ))}
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          onFocus={() => setOpen(true)}
+        <input value={search} onChange={e => setSearch(e.target.value)} onFocus={() => setOpen(true)}
           placeholder={value.length === 0 ? placeholder : ''}
-          className="outline-none text-sm flex-1 min-w-[100px] bg-transparent text-foreground placeholder:text-muted-foreground"
-        />
+          className="outline-none text-sm flex-1 min-w-[100px] bg-transparent text-foreground placeholder:text-muted-foreground" />
       </div>
       {open && filtered.length > 0 && (
         <div className="absolute z-[200] w-full bg-background border border-input rounded-md shadow-lg mt-1 max-h-[200px] overflow-y-auto">
           {filtered.map(o => (
-            <div
-              key={o}
-              onClick={() => { onChange([...value, o]); setSearch(''); }}
-              className="px-3 py-1.5 text-sm hover:bg-muted cursor-pointer transition-colors"
-            >
-              {o}
-            </div>
+            <div key={o} onClick={() => { onChange([...value, o]); setSearch(''); }}
+              className="px-3 py-1.5 text-sm hover:bg-muted cursor-pointer transition-colors">{o}</div>
           ))}
         </div>
       )}
     </div>
   );
 }
+
+/* Date picker field using Shadcn Calendar */
+function DatePickerField({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  const dateObj = value ? parseISO(value) : undefined;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onClick={e => e.stopPropagation()}
+          className={cn(
+            "flex items-center gap-2 w-full h-[34px] border border-input rounded-md px-2 text-sm bg-background text-left",
+            !dateObj && "text-muted-foreground"
+          )}
+        >
+          <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+          {dateObj ? format(dateObj, 'dd.MM.yyyy', { locale: de }) : 'Datum wählen…'}
+          {dateObj && (
+            <button
+              type="button"
+              className="ml-auto hover:text-destructive"
+              onClick={e => { e.stopPropagation(); onChange(null); }}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 z-[300]" align="start" onClick={e => e.stopPropagation()}>
+        <Calendar
+          mode="single"
+          selected={dateObj}
+          onSelect={d => onChange(d ? format(d, 'yyyy-MM-dd') : null)}
+          locale={de}
+          className={cn("p-3 pointer-events-auto")}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelProps) {
   const [companyLogo, setCompanyLogo] = useState<{ logo_url: string | null; bg_color: string | null } | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
 
-  const handleEsc = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      if (isEditing) { setIsEditing(false); setEditData({}); }
-      else onClose();
-    }
-  }, [onClose, isEditing]);
-
+  // Initialize editData from deal on mount
   useEffect(() => {
-    document.addEventListener('keydown', handleEsc);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = '';
-    };
-  }, [handleEsc]);
-
-  useEffect(() => {
-    const company = d.unternehmen;
-    if (!company) return;
-    supabase.from('company_logos').select('logo_url, bg_color').eq('unternehmen', company).maybeSingle()
-      .then(({ data }) => { if (data) setCompanyLogo(data as any); });
-  }, [d.unternehmen]);
-
-  const startEditing = () => {
     setEditData({
       vor_nachname: d.vor_nachname ?? '',
       email: d.email ?? '',
@@ -278,9 +234,9 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
       branche: d.branche ?? [],
       projekttyp: d.projekttyp ?? [],
       laufzeit: d.laufzeit ?? '',
-      start_datum: d.start_datum ?? '',
-      end_datum: d.end_datum ?? '',
-      deadline: d.deadline ?? '',
+      start_datum: d.start_datum ?? null,
+      end_datum: d.end_datum ?? null,
+      deadline: d.deadline ?? null,
       laufzeit_in_14t: d.laufzeit_in_14t ?? false,
       kundenstatus: d.kundenstatus ?? '',
       ampel: d.ampel ?? d.ampelstatus ?? '',
@@ -294,38 +250,39 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
       superchat_kosten: d.superchat_kosten ?? null,
       website_kosten: d.website_kosten ?? null,
     });
-    setIsEditing(true);
-  };
+  }, [d]);
 
-  const handleCancel = () => {
-    setIsEditing(false);
-    setEditData({});
-  };
+  const handleEsc = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') onClose();
+  }, [onClose]);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleEsc);
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', handleEsc); document.body.style.overflow = ''; };
+  }, [handleEsc]);
+
+  useEffect(() => {
+    const company = d.unternehmen;
+    if (!company) return;
+    supabase.from('company_logos').select('logo_url, bg_color').eq('unternehmen', company).maybeSingle()
+      .then(({ data }) => { if (data) setCompanyLogo(data as any); });
+  }, [d.unternehmen]);
 
   const handleSave = async () => {
     setSaving(true);
     const payload = { ...editData };
-    // Convert empty date strings to null
-    ['start_datum', 'end_datum', 'deadline'].forEach(f => {
-      if (payload[f] === '') payload[f] = null;
-    });
+    ['start_datum', 'end_datum', 'deadline'].forEach(f => { if (payload[f] === '') payload[f] = null; });
     const { error } = await supabase.from('close_deals').update(payload as any).eq('id', d.id);
     setSaving(false);
-    if (error) {
-      toast.error('Fehler beim Speichern');
-      console.error(error);
-    } else {
-      Object.assign(d, payload);
-      setIsEditing(false);
-      setEditData({});
-      toast.success('Gespeichert');
-    }
+    if (error) { toast.error('Fehler beim Speichern'); console.error(error); }
+    else { Object.assign(d, payload); toast.success('Gespeichert'); }
   };
 
   const upd = (field: string, value: any) => setEditData(p => ({ ...p, [field]: value }));
 
-  const ks = isEditing ? (editData.kundenstatus || '–') : (d.kundenstatus || '–');
-  const ampelRaw = isEditing ? (editData.ampel || '') : (d.ampel || d.ampelstatus || '');
+  const ks = editData.kundenstatus || '–';
+  const ampelRaw = editData.ampel || '';
   const ampel = AMPEL_MAP[ampelRaw] || { dot: 'bg-muted', label: ampelRaw || '–' };
   const company = d.unternehmen || '';
   const bgColor = companyLogo?.bg_color || FALLBACK_BG[company] || '#374151';
@@ -335,235 +292,136 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/50 animate-fade-in" onClick={onClose} />
 
-      <div
-        className="relative z-[60] w-full sm:w-[50vw] sm:min-w-[420px] bg-background shadow-2xl animate-slide-in-right overflow-y-auto"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="relative h-[140px] overflow-hidden" style={{ background: bgColor }}>
-          {logoUrl && (
-            <img src={logoUrl} alt={company} className="absolute inset-0 w-full h-full object-cover object-center" />
-          )}
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.7) 100%)' }} />
-          <div className="relative h-full flex flex-col justify-between px-6 pt-4 pb-4">
-            <div className="flex items-start justify-between">
-              <span className="text-white/70 text-xs font-medium tracking-wide uppercase">{company || 'Unbekannt'}</span>
-              <div className="flex gap-2">
-                {!isEditing && (
-                  <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10 h-8" onClick={startEditing}>
-                    <Pencil className="h-3.5 w-3.5 mr-1.5" />Bearbeiten
-                  </Button>
-                )}
-                {d.notion_url && (
-                  <a href={d.notion_url} target="_blank" rel="noopener noreferrer">
-                    <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10 h-8">
-                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" />Notion
-                    </Button>
-                  </a>
-                )}
-                <button onClick={onClose} className="text-white/80 hover:text-white p-1.5 rounded-md hover:bg-white/10 transition-colors">
-                  <X className="h-5 w-5" />
-                </button>
+      <div className="relative z-[60] w-full sm:w-[50vw] sm:min-w-[420px] bg-background shadow-2xl animate-slide-in-right flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto pb-20">
+          {/* Header */}
+          <div className="relative h-[140px] overflow-hidden" style={{ background: bgColor }}>
+            {logoUrl && <img src={logoUrl} alt={company} className="absolute inset-0 w-full h-full object-cover object-center" />}
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.7) 100%)' }} />
+            <div className="relative h-full flex flex-col justify-between px-6 pt-4 pb-4">
+              <div className="flex items-start justify-between">
+                <span className="text-white/70 text-xs font-medium tracking-wide uppercase">{company || 'Unbekannt'}</span>
+                <div className="flex gap-2">
+                  {d.notion_url && (
+                    <a href={d.notion_url} target="_blank" rel="noopener noreferrer">
+                      <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10 h-8">
+                        <ExternalLink className="h-3.5 w-3.5 mr-1.5" />Notion
+                      </Button>
+                    </a>
+                  )}
+                  <button onClick={onClose} className="text-white/80 hover:text-white p-1.5 rounded-md hover:bg-white/10 transition-colors">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <h2 className="text-xl font-heading font-bold text-white">{d.client_name}</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="secondary" className={`text-xs rounded-[4px] ${STATUS_STYLES[ks] || 'bg-white/20 text-white'}`}>{ks}</Badge>
+                  <span className="flex items-center gap-1.5">
+                    <span className={`h-2.5 w-2.5 rounded-full ${ampel.dot}`} />
+                    <span className="text-xs font-medium text-white/80">{ampel.label}</span>
+                  </span>
+                </div>
               </div>
             </div>
-            <div>
-              <h2 className="text-xl font-heading font-bold text-white">{d.client_name}</h2>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant="secondary" className={`text-xs rounded-[4px] ${STATUS_STYLES[ks] || 'bg-white/20 text-white'}`}>{ks}</Badge>
-                <span className="flex items-center gap-1.5">
-                  <span className={`h-2.5 w-2.5 rounded-full ${ampel.dot}`} />
-                  <span className="text-xs font-medium text-white/80">{ampel.label}</span>
-                </span>
+          </div>
+
+          {/* Form content */}
+          <div className="p-6 space-y-6">
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Kontakt & Info</h3>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <FieldRow label="Vor- & Nachname">
+                  <Input className="h-[34px] text-sm" value={editData.vor_nachname ?? ''} onChange={e => upd('vor_nachname', e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Email">
+                  <Input className="h-[34px] text-sm" value={editData.email ?? ''} onChange={e => upd('email', e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Telefon">
+                  <Input className="h-[34px] text-sm" value={editData.telefon ?? ''} onChange={e => upd('telefon', e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Website URL">
+                  <Input className="h-[34px] text-sm" value={editData.website_url ?? ''} onChange={e => upd('website_url', e.target.value)} />
+                </FieldRow>
+                <FieldRow label="Unternehmen">
+                  <SearchableSingleSelect value={editData.unternehmen ?? ''} options={UNTERNEHMEN_OPTIONS} onChange={v => upd('unternehmen', v)} />
+                </FieldRow>
+                <FieldRow label="Branche">
+                  <SearchableMultiSelect value={editData.branche ?? []} options={BRANCHE_OPTIONS} onChange={v => upd('branche', v)} placeholder="Branche suchen…" />
+                </FieldRow>
+                <div className="col-span-2">
+                  <FieldRow label="Projekttyp">
+                    <SearchableMultiSelect value={editData.projekttyp ?? []} options={PROJEKTTYP_OPTIONS} onChange={v => upd('projekttyp', v)} placeholder="Projekttyp suchen…" />
+                  </FieldRow>
+                </div>
+                <FieldRow label="Laufzeit">
+                  <SearchableSingleSelect value={editData.laufzeit ?? ''} options={LAUFZEIT_OPTIONS} onChange={v => upd('laufzeit', v)} />
+                </FieldRow>
+                <FieldRow label="Startdatum">
+                  <DatePickerField value={editData.start_datum} onChange={v => upd('start_datum', v)} />
+                </FieldRow>
+                <FieldRow label="Enddatum">
+                  <DatePickerField value={editData.end_datum} onChange={v => upd('end_datum', v)} />
+                </FieldRow>
+                <FieldRow label="Deadline">
+                  <DatePickerField value={editData.deadline} onChange={v => upd('deadline', v)} />
+                </FieldRow>
+                <FieldRow label="Laufzeit in 14T fällig">
+                  <label className="flex items-center gap-2 cursor-pointer h-[34px]">
+                    <input type="checkbox" checked={editData.laufzeit_in_14t ?? false} onChange={e => upd('laufzeit_in_14t', e.target.checked)}
+                      className="h-4 w-4 rounded border-border accent-primary" />
+                    <span className="text-sm">{editData.laufzeit_in_14t ? 'Ja' : 'Nein'}</span>
+                  </label>
+                </FieldRow>
+                <FieldRow label="Kundenstatus">
+                  <SearchableSingleSelect value={editData.kundenstatus ?? ''} options={KUNDENSTATUS_OPTIONS} onChange={v => upd('kundenstatus', v)} />
+                </FieldRow>
+                <FieldRow label="Ampelstatus">
+                  <SearchableSingleSelect value={editData.ampel ?? ''} options={AMPEL_OPTIONS} onChange={v => upd('ampel', v)} />
+                </FieldRow>
+                <FieldRow label="Zahlstatus">
+                  <SearchableSingleSelect value={editData.zahlstatus ?? ''} options={ZAHLSTATUS_OPTIONS} onChange={v => upd('zahlstatus', v)} />
+                </FieldRow>
               </div>
-            </div>
+            </section>
+
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Finanzen</h3>
+              <div className="bg-muted/30 rounded-lg p-4">
+                {([
+                  ['Gesamt-Saldo', 'gesamt_saldo'],
+                  ['Ads-Budget', 'ads_budget'],
+                  ['Cash Collect offen', 'cash_collect_offen'],
+                  ['CLV', 'clv'],
+                  ['Meta Kosten', 'meta_kosten'],
+                  ['CRM Kosten', 'crm_kosten'],
+                  ['Superchat Kosten', 'superchat_kosten'],
+                  ['Website Kosten', 'website_kosten'],
+                ] as [string, string][]).map(([label, field]) => (
+                  <FinRow key={field} label={label}>
+                    <Input type="number" className="h-[34px] text-sm text-right tabular-nums w-32"
+                      value={editData[field] ?? ''} onChange={e => upd(field, e.target.value === '' ? null : Number(e.target.value))} />
+                  </FinRow>
+                ))}
+              </div>
+            </section>
+
+            {editData.laufzeit_in_14t && (
+              <div className="flex items-center gap-2 bg-warning/10 text-warning rounded-md px-3 py-2">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                <span className="text-sm font-medium">Laufzeit in 14 Tagen fällig</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Edit action bar */}
-        {isEditing && (
-          <div className="sticky top-0 z-10 bg-primary/10 border-b border-primary/20 px-6 py-2 flex items-center justify-between">
-            <span className="text-sm text-primary font-medium">Bearbeitungsmodus</span>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={handleCancel}>Abbrechen</Button>
-              <Button size="sm" onClick={handleSave} disabled={saving}>
-                <Save className="h-3.5 w-3.5 mr-1.5" />{saving ? 'Speichert…' : 'Speichern'}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* KONTAKT & INFO */}
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Kontakt & Info</h3>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-              <FieldRow label="Vor- & Nachname">
-                {isEditing ? (
-                  <Input className="h-8 text-sm" value={editData.vor_nachname} onChange={e => upd('vor_nachname', e.target.value)} />
-                ) : (
-                  <span className="text-sm">{d.vor_nachname || '–'}</span>
-                )}
-              </FieldRow>
-              <FieldRow label="Email">
-                {isEditing ? (
-                  <Input className="h-8 text-sm" value={editData.email} onChange={e => upd('email', e.target.value)} />
-                ) : (
-                  <span className="text-sm">{d.email || '–'}</span>
-                )}
-              </FieldRow>
-              <FieldRow label="Telefon">
-                {isEditing ? (
-                  <Input className="h-8 text-sm" value={editData.telefon} onChange={e => upd('telefon', e.target.value)} />
-                ) : (
-                  <span className="text-sm">{d.telefon || '–'}</span>
-                )}
-              </FieldRow>
-              <FieldRow label="Website URL">
-                {isEditing ? (
-                  <Input className="h-8 text-sm" value={editData.website_url} onChange={e => upd('website_url', e.target.value)} />
-                ) : (
-                  <span className="text-sm">{d.website_url || '–'}</span>
-                )}
-              </FieldRow>
-              <FieldRow label="Unternehmen">
-                {isEditing ? (
-                  <SearchableSingleSelect value={editData.unternehmen} options={UNTERNEHMEN_OPTIONS} onChange={v => upd('unternehmen', v)} />
-                ) : (
-                  <span className="text-sm">{d.unternehmen || '–'}</span>
-                )}
-              </FieldRow>
-              <FieldRow label="Branche">
-                {isEditing ? (
-                  <SearchableMultiSelect value={editData.branche || []} options={BRANCHE_OPTIONS} onChange={v => upd('branche', v)} placeholder="Branche suchen…" />
-                ) : (
-                  <div className="flex flex-wrap gap-1">
-                    {(d.branche || []).length > 0 ? (d.branche as string[]).map((b: string) => (
-                      <Badge key={b} variant="secondary" className="text-[10px] rounded-[4px]">{b}</Badge>
-                    )) : <span className="text-sm text-muted-foreground">–</span>}
-                  </div>
-                )}
-              </FieldRow>
-              <div className="col-span-2">
-                <FieldRow label="Projekttyp">
-                  {isEditing ? (
-                    <SearchableMultiSelect value={editData.projekttyp || []} options={PROJEKTTYP_OPTIONS} onChange={v => upd('projekttyp', v)} placeholder="Projekttyp suchen…" />
-                  ) : (
-                    <div className="flex flex-wrap gap-1">
-                      {(d.projekttyp || []).length > 0 ? (d.projekttyp as string[]).map((b: string) => (
-                        <Badge key={b} variant="secondary" className="text-[10px] rounded-[4px]">{b}</Badge>
-                      )) : <span className="text-sm text-muted-foreground">–</span>}
-                    </div>
-                  )}
-                </FieldRow>
-              </div>
-              <FieldRow label="Laufzeit">
-                {isEditing ? (
-                  <SearchableSingleSelect value={editData.laufzeit} options={LAUFZEIT_OPTIONS} onChange={v => upd('laufzeit', v)} />
-                ) : (
-                  <span className="text-sm">{d.laufzeit || '–'}</span>
-                )}
-              </FieldRow>
-              <FieldRow label="Startdatum">
-                {isEditing ? (
-                  <Input type="date" className="h-8 text-sm" value={editData.start_datum || ''} onChange={e => upd('start_datum', e.target.value)} />
-                ) : (
-                  <span className="text-sm">{fmtDate(d.start_datum)}</span>
-                )}
-              </FieldRow>
-              <FieldRow label="Enddatum">
-                {isEditing ? (
-                  <Input type="date" className="h-8 text-sm" value={editData.end_datum || ''} onChange={e => upd('end_datum', e.target.value)} />
-                ) : (
-                  <span className="text-sm">{fmtDate(d.end_datum)}</span>
-                )}
-              </FieldRow>
-              <FieldRow label="Deadline">
-                {isEditing ? (
-                  <Input type="date" className="h-8 text-sm" value={editData.deadline || ''} onChange={e => upd('deadline', e.target.value)} />
-                ) : (
-                  <span className="text-sm">{fmtDate(d.deadline)}</span>
-                )}
-              </FieldRow>
-              <FieldRow label="Laufzeit in 14T fällig">
-                {isEditing ? (
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editData.laufzeit_in_14t}
-                      onChange={e => upd('laufzeit_in_14t', e.target.checked)}
-                      className="h-4 w-4 rounded border-border accent-primary"
-                    />
-                    <span className="text-sm">{editData.laufzeit_in_14t ? 'Ja' : 'Nein'}</span>
-                  </label>
-                ) : (
-                  <span className="text-sm">{d.laufzeit_in_14t ? 'Ja' : 'Nein'}</span>
-                )}
-              </FieldRow>
-              <FieldRow label="Kundenstatus">
-                {isEditing ? (
-                  <SearchableSingleSelect value={editData.kundenstatus} options={KUNDENSTATUS_OPTIONS} onChange={v => upd('kundenstatus', v)} />
-                ) : (
-                  <Badge variant="secondary" className={`text-xs rounded-[4px] w-fit ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>{ks}</Badge>
-                )}
-              </FieldRow>
-              <FieldRow label="Ampelstatus">
-                {isEditing ? (
-                  <SearchableSingleSelect value={editData.ampel} options={AMPEL_OPTIONS} onChange={v => upd('ampel', v)} />
-                ) : (
-                  <span className="flex items-center gap-1.5">
-                    <span className={`h-2.5 w-2.5 rounded-full ${ampel.dot}`} />
-                    <span className="text-sm font-medium">{ampel.label}</span>
-                  </span>
-                )}
-              </FieldRow>
-              <FieldRow label="Zahlstatus">
-                {isEditing ? (
-                  <SearchableSingleSelect value={editData.zahlstatus} options={ZAHLSTATUS_OPTIONS} onChange={v => upd('zahlstatus', v)} />
-                ) : (
-                  <span className="text-sm">{d.zahlstatus || '–'}</span>
-                )}
-              </FieldRow>
-            </div>
-          </section>
-
-          {/* FINANZEN */}
-          <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Finanzen</h3>
-            <div className="bg-muted/30 rounded-lg p-4">
-              {([
-                ['Gesamt-Saldo', 'gesamt_saldo', d.gesamt_saldo ?? d.wert_eur],
-                ['Ads-Budget', 'ads_budget', d.ads_budget],
-                ['Cash Collect offen', 'cash_collect_offen', d.cash_collect_offen],
-                ['CLV', 'clv', d.clv],
-                ['Meta Kosten', 'meta_kosten', d.meta_kosten],
-                ['CRM Kosten', 'crm_kosten', d.crm_kosten],
-                ['Superchat Kosten', 'superchat_kosten', d.superchat_kosten],
-                ['Website Kosten', 'website_kosten', d.website_kosten],
-              ] as [string, string, number | null][]).map(([label, field, fallback]) => (
-                <FinRow key={field} label={label}>
-                  {isEditing ? (
-                    <Input
-                      type="number"
-                      className="h-8 text-sm text-right tabular-nums w-32"
-                      value={editData[field] ?? ''}
-                      onChange={e => upd(field, e.target.value === '' ? null : Number(e.target.value))}
-                    />
-                  ) : (
-                    <span className="text-sm font-medium tabular-nums">{fmt(fallback)}</span>
-                  )}
-                </FinRow>
-              ))}
-            </div>
-          </section>
-
-          {/* Status alerts */}
-          {(d.laufzeit_in_14t || (isEditing && editData.laufzeit_in_14t)) && (
-            <div className="flex items-center gap-2 bg-warning/10 text-warning rounded-md px-3 py-2">
-              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-              <span className="text-sm font-medium">Laufzeit in 14 Tagen fällig</span>
-            </div>
-          )}
+        {/* Sticky save footer */}
+        <div className="sticky bottom-0 border-t border-border bg-background px-6 py-3 flex justify-end">
+          <Button onClick={handleSave} disabled={saving} className="min-w-[140px]">
+            <Save className="h-4 w-4 mr-2" />{saving ? 'Speichert…' : 'Speichern'}
+          </Button>
         </div>
       </div>
     </div>
