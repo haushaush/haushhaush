@@ -19,7 +19,8 @@ async function fetchAll(key: string, dbId: string): Promise<any[]> {
     const body: any = { page_size: 100 };
     if (cursor) body.start_cursor = cursor;
     const url = `https://api.notion.com/v1/databases/${dbId}/query`;
-    console.log(`Fetching Notion DB: ${dbId} (cursor: ${cursor || 'none'})`);
+    console.log(`[sync-notion] URL: ${url}`);
+    console.log(`[sync-notion] Token prefix: ${key.substring(0, 10)}... DB: ${dbId} cursor: ${cursor || 'none'}`);
     const res = await fetch(url, {
       method: "POST",
       headers: {
