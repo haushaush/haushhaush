@@ -263,7 +263,7 @@ export default function Kunden() {
         {TABS.map(tab => (
           <button
             key={tab.value}
-            onClick={() => setActiveTab(tab.value)}
+            onClick={() => { setActiveTab(tab.value); if (tab.value !== 'aktiv') setActiveSubTab('all'); }}
             className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
               activeTab === tab.value
                 ? 'border-primary text-primary'
@@ -277,6 +277,38 @@ export default function Kunden() {
           </button>
         ))}
       </div>
+
+      {/* Sub-tabs for Aktive Kunden */}
+      {activeTab === 'aktiv' && dynamicCompanyTabs.length > 0 && (
+        <div className="flex gap-0.5 overflow-x-auto pb-px scrollbar-none -mt-3">
+          <button
+            onClick={() => setActiveSubTab('all')}
+            className={`px-3 py-1.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
+              activeSubTab === 'all'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Alle
+          </button>
+          {dynamicCompanyTabs.map(c => (
+            <button
+              key={c}
+              onClick={() => setActiveSubTab(c)}
+              className={`px-3 py-1.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
+                activeSubTab === c
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {c}
+              <span className="ml-1 text-[10px] text-muted-foreground">
+                {tabCounts[`company:${c}`] ?? 0}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Search + filter */}
       <div className="flex flex-wrap gap-2">
