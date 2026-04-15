@@ -337,10 +337,10 @@ export default function Kunden() {
                       <TableRow
                         key={d.id}
                         className="cursor-pointer hover:bg-primary/5"
-                        onClick={() => navigate(`/kunden/${d.id}`)}
+                        onClick={() => setSelectedDeal(d)}
                         tabIndex={0}
-                        onKeyDown={e => e.key === 'Enter' && navigate(`/kunden/${d.id}`)}
-                        role="link"
+                        onKeyDown={e => e.key === 'Enter' && setSelectedDeal(d)}
+                        role="button"
                       >
                         <TableCell className="font-medium max-w-[200px] truncate">{d.client_name}</TableCell>
                         <TableCell>
@@ -377,6 +377,11 @@ export default function Kunden() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Slide-in panel */}
+      {selectedDeal && (
+        <KundenSlidePanel deal={selectedDeal} onClose={() => setSelectedDeal(null)} />
       )}
     </div>
   );
