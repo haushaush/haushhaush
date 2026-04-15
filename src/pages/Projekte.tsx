@@ -8,6 +8,20 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Search, RefreshCw, Loader2, FolderKanban, FileX, Clock, Users, LayoutGrid } from 'lucide-react';
 import { toast } from 'sonner';
 import ProjekteSlidePanel from '@/components/projekte/ProjekteSlidePanel';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+  closestCenter,
+  type DragStartEvent,
+  type DragEndEvent,
+  type DragOverEvent,
+} from '@dnd-kit/core';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 /* ── Status styles ────────────────────────────────── */
 const STATUS_STYLES: Record<string, string> = {
@@ -59,7 +73,6 @@ const fmtDate = (d: string | null | undefined) => {
   try { return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { return d; }
 };
 
-/* ── Helpers ──────────────────────────────────────── */
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
 }
@@ -72,17 +85,58 @@ function isNearDeadline(deadline: string | null | undefined) {
   return diff >= 0 && diff <= 14;
 }
 
-/* ── Project Card ─────────────────────────────────── */
-function ProjectCard({
+/* ── Draggable Project Card ───────────────────────── */
+function DraggableProjectCard({
   project: p,
   customerName,
   teamMembers,
   onClick,
+  isDragDisabled,
 }: {
   project: any;
   customerName?: string;
   teamMembers: Record<string, { name: string; avatar_url?: string }>;
   onClick: () => void;
+  isDragDisabled?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: p.id,
+    disabled: isDragDisabled,
+  });
+
+  const style = transform ? {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : undefined,
+    scale: isDragging ? '1.02' : undefined,
+  } : undefined;
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      <ProjectCardContent
+        project={p}
+        customerName={customerName}
+        teamMembers={teamMembers}
+        onClick={onClick}
+        isDragging={isDragging}
+      />
+    </div>
+  );
+}
+
+/* ── Pure card content (shared by draggable + overlay) ── */
+function ProjectCardContent({
+  project: p,
+  customerName,
+  teamMembers,
+  onClick,
+  isDragging,
+}: {
+  project: any;
+  customerName?: string;
+  teamMembers: Record<string, { name: string; avatar_url?: string }>;
+  onClick?: () => void;
+  isDragging?: boolean;
 }) {
   const name = p.projektname || p.name || 'Unbenannt';
   const status = p.projektstatus || '–';
@@ -93,32 +147,24 @@ function ProjectCard({
   const nearDeadline = isNearDeadline(p.deadline);
 
   return (
-    <button
-      onClick={onClick}
-      className="w-full text-left bg-card border border-border rounded-lg p-3.5 hover:shadow-md hover:border-primary/30 transition-all group"
+    <div
+      onClick={e => { if (!isDragging && onClick) { e.stopPropagation(); onClick(); } }}
+      className={`w-full text-left bg-card border border-border rounded-lg p-3.5 transition-all group cursor-grab active:cursor-grabbing
+        ${isDragging ? 'shadow-xl ring-2 ring-primary/30' : 'hover:shadow-md hover:border-primary/30'}`}
     >
-      {/* Title row */}
       <div className="flex items-start gap-2">
         <FolderKanban className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-        <h4 className="font-semibold text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
-          {name}
-        </h4>
+        <h4 className="font-semibold text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">{name}</h4>
       </div>
 
-      {/* Customer name */}
       {customerName && (
-        <p className="text-xs text-muted-foreground mt-1.5 truncate pl-5.5">{customerName}</p>
+        <p className="text-xs text-muted-foreground mt-1.5 truncate pl-[22px]">{customerName}</p>
       )}
 
-      {/* Status badge + Branche */}
       <div className="flex flex-wrap items-center gap-1.5 mt-2">
-        <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-[4px] ${STATUS_STYLES[status] || 'bg-muted text-muted-foreground'}`}>
-          {status}
-        </span>
+        <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-[4px] ${STATUS_STYLES[status] || 'bg-muted text-muted-foreground'}`}>{status}</span>
         {firstBranche && (
-          <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-[4px] ${BRANCHE_COLORS[firstBranche] || 'bg-muted text-muted-foreground'}`}>
-            {firstBranche}
-          </span>
+          <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-[4px] ${BRANCHE_COLORS[firstBranche] || 'bg-muted text-muted-foreground'}`}>{firstBranche}</span>
         )}
         {nearDeadline && (
           <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-[4px] bg-destructive/15 text-destructive">
@@ -127,7 +173,6 @@ function ProjectCard({
         )}
       </div>
 
-      {/* Typ tags */}
       {typArr.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
           {typArr.slice(0, 2).map((t: string) => (
@@ -137,42 +182,32 @@ function ProjectCard({
         </div>
       )}
 
-      {/* Bottom row: date + team avatars */}
       <div className="flex items-center justify-between mt-2.5">
-        {p.startdatum ? (
-          <span className="text-[10px] text-muted-foreground">{fmtDate(p.startdatum)}</span>
-        ) : <span />}
-
+        {p.startdatum ? <span className="text-[10px] text-muted-foreground">{fmtDate(p.startdatum)}</span> : <span />}
         {mitarbeiterIds.length > 0 && (
           <div className="flex -space-x-1.5">
             {mitarbeiterIds.slice(0, 3).map((nid: string) => {
               const member = teamMembers[nid];
               const initials = member ? getInitials(member.name) : '??';
               return member?.avatar_url ? (
-                <img key={nid} src={member.avatar_url} alt={member.name}
-                  className="h-5 w-5 rounded-full border-2 border-card object-cover"
-                  title={member.name} />
+                <img key={nid} src={member.avatar_url} alt={member.name} className="h-5 w-5 rounded-full border-2 border-card object-cover" title={member.name} />
               ) : (
-                <div key={nid} className="h-5 w-5 rounded-full border-2 border-card bg-primary/10 text-primary flex items-center justify-center text-[8px] font-bold"
-                  title={member?.name || nid}>
-                  {initials}
-                </div>
+                <div key={nid} className="h-5 w-5 rounded-full border-2 border-card bg-primary/10 text-primary flex items-center justify-center text-[8px] font-bold" title={member?.name || nid}>{initials}</div>
               );
             })}
             {mitarbeiterIds.length > 3 && (
-              <div className="h-5 w-5 rounded-full border-2 border-card bg-muted text-muted-foreground flex items-center justify-center text-[8px] font-bold">
-                +{mitarbeiterIds.length - 3}
-              </div>
+              <div className="h-5 w-5 rounded-full border-2 border-card bg-muted text-muted-foreground flex items-center justify-center text-[8px] font-bold">+{mitarbeiterIds.length - 3}</div>
             )}
           </div>
         )}
       </div>
-    </button>
+    </div>
   );
 }
 
-/* ── Kanban Column ────────────────────────────────── */
-function KanbanColumn({
+/* ── Droppable Kanban Column ──────────────────────── */
+function DroppableKanbanColumn({
+  columnId,
   title,
   count,
   headerClass,
@@ -180,7 +215,10 @@ function KanbanColumn({
   customerNames,
   teamMembers,
   onSelect,
+  isOverColumn,
+  isDragDisabled,
 }: {
+  columnId: string;
   title: string;
   count: number;
   headerClass?: string;
@@ -188,27 +226,35 @@ function KanbanColumn({
   customerNames: Record<string, string>;
   teamMembers: Record<string, { name: string; avatar_url?: string }>;
   onSelect: (p: any) => void;
+  isOverColumn: boolean;
+  isDragDisabled?: boolean;
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: columnId });
+  const highlighted = isOver || isOverColumn;
+
   return (
-    <div className="min-w-[280px] max-w-[320px] flex-shrink-0 flex flex-col">
-      <div className={`flex items-center gap-2 px-3 py-2 rounded-t-lg border ${headerClass || 'bg-muted/30 border-border'}`}>
+    <div className="min-w-[280px] max-w-[320px] flex-shrink-0 flex flex-col" ref={setNodeRef}>
+      <div className={`flex items-center gap-2 px-3 py-2 rounded-t-lg border transition-colors ${headerClass || 'bg-muted/30 border-border'}`}>
         <h3 className="text-xs font-semibold truncate">{title}</h3>
         <Badge variant="secondary" className="text-[10px] h-5 px-1.5 rounded-md">{count}</Badge>
       </div>
-      <div className="flex-1 bg-muted/10 border-x border-b border-border rounded-b-lg p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-260px)]">
+      <div className={`flex-1 border-x border-b rounded-b-lg p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-260px)] transition-all duration-200
+        ${highlighted ? 'bg-primary/5 border-primary/40 ring-1 ring-primary/30' : 'bg-muted/10 border-border'}`}>
         {projects.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6">Keine Projekte</p>
+          <p className={`text-xs text-center py-6 transition-colors ${highlighted ? 'text-primary/60' : 'text-muted-foreground'}`}>
+            {highlighted ? 'Hier ablegen' : 'Keine Projekte'}
+          </p>
         ) : projects.map(p => {
-          // resolve first customer name for this project
           const kundenIds: string[] = p.verknuepfte_kunden_ids || [];
           const custName = kundenIds.map(id => customerNames[id]).filter(Boolean)[0] || undefined;
           return (
-            <ProjectCard
+            <DraggableProjectCard
               key={p.id}
               project={p}
               customerName={custName}
               teamMembers={teamMembers}
               onClick={() => onSelect(p)}
+              isDragDisabled={isDragDisabled}
             />
           );
         })}
@@ -232,6 +278,16 @@ export default function Projekte() {
   const autoSyncDone = useRef(false);
   const autoOpenDone = useRef(false);
 
+  // DnD state
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overColumnId, setOverColumnId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const isDragEnabled = viewMode === 'status' || viewMode === 'typ';
+
   /* ── Data fetching ── */
   const fetchData = useCallback(async () => {
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
@@ -241,13 +297,11 @@ export default function Projekte() {
   }, []);
 
   const fetchRelations = useCallback(async () => {
-    // Fetch close_deals for customer name lookup by notion_id
     const { data: deals } = await supabase.from('close_deals').select('id, client_name, notion_id');
     const nameMap: Record<string, string> = {};
     (deals || []).forEach((d: any) => { if (d.notion_id) nameMap[d.notion_id] = d.client_name; });
     setCustomerNames(nameMap);
 
-    // Fetch team members for avatar lookup by notion_id
     const { data: team } = await supabase.from('team').select('id, name, avatar_url, notion_id');
     const tMap: Record<string, { name: string; avatar_url?: string }> = {};
     (team || []).forEach((t: any) => { if (t.notion_id) tMap[t.notion_id] = { name: t.name, avatar_url: t.avatar_url }; });
@@ -258,34 +312,24 @@ export default function Projekte() {
     setSyncing(true);
     const toastId = toast.loading('Notion-Import läuft...');
     try {
-      const { data, error } = await supabase.functions.invoke('sync-notion', {
-        body: { target: 'projekte' },
-      });
+      const { data, error } = await supabase.functions.invoke('sync-notion', { body: { target: 'projekte' } });
       if (error) throw error;
       toast.success(`${data?.synced?.projekte || 0} Projekte importiert`, { id: toastId });
       await fetchData();
     } catch (err: any) {
       toast.error('Import fehlgeschlagen', { id: toastId, description: err.message });
-    } finally {
-      setSyncing(false);
-    }
+    } finally { setSyncing(false); }
   };
 
   useEffect(() => {
     fetchRelations();
     fetchData().then((data) => {
-      if (data.length === 0 && !autoSyncDone.current) {
-        autoSyncDone.current = true;
-        handleSync();
-      }
+      if (data.length === 0 && !autoSyncDone.current) { autoSyncDone.current = true; handleSync(); }
       const projektId = searchParams.get('projekt');
       if (projektId && !autoOpenDone.current) {
         autoOpenDone.current = true;
         const match = data.find((p: any) => p.id === projektId);
-        if (match) {
-          setSelectedProject(match);
-          setSearchParams({}, { replace: true });
-        }
+        if (match) { setSelectedProject(match); setSearchParams({}, { replace: true }); }
       }
     });
   }, []);
@@ -300,7 +344,6 @@ export default function Projekte() {
   /* ── Grouping ── */
   const grouped = useMemo(() => {
     const groups: Record<string, any[]> = {};
-
     if (viewMode === 'status') {
       STATUS_ORDER.forEach(s => { groups[s] = []; });
       filtered.forEach(p => {
@@ -312,9 +355,8 @@ export default function Projekte() {
       filtered.forEach(p => {
         const kundenIds: string[] = p.verknuepfte_kunden_ids || [];
         if (kundenIds.length === 0) {
-          const key = 'Ohne Kunde';
-          if (!groups[key]) groups[key] = [];
-          groups[key].push(p);
+          if (!groups['Ohne Kunde']) groups['Ohne Kunde'] = [];
+          groups['Ohne Kunde'].push(p);
         } else {
           kundenIds.forEach(nid => {
             const name = customerNames[nid] || nid;
@@ -324,7 +366,6 @@ export default function Projekte() {
         }
       });
     } else {
-      // By typ
       filtered.forEach(p => {
         const typArr = Array.isArray(p.typ) ? p.typ : [];
         const key = typArr[0] || 'Ohne Typ';
@@ -332,12 +373,11 @@ export default function Projekte() {
         groups[key].push(p);
       });
     }
-
     return groups;
   }, [filtered, viewMode, customerNames]);
 
   const sortedGroupKeys = useMemo(() => {
-    if (viewMode === 'status') return STATUS_ORDER.filter(s => grouped[s]?.length > 0 || true);
+    if (viewMode === 'status') return STATUS_ORDER;
     return Object.keys(grouped).sort((a, b) => {
       if (a === 'Ohne Kunde' || a === 'Ohne Typ') return 1;
       if (b === 'Ohne Kunde' || b === 'Ohne Typ') return -1;
@@ -347,6 +387,80 @@ export default function Projekte() {
 
   const deadlineCount = useMemo(() => projects.filter(p => isNearDeadline(p.deadline)).length, [projects]);
 
+  /* ── DnD Handlers ──────────────────────────────── */
+  const activeProject = useMemo(() => {
+    if (!activeId) return null;
+    return projects.find(p => p.id === activeId) || null;
+  }, [activeId, projects]);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setOverColumnId(event.over?.id as string | null);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setOverColumnId(null);
+
+    if (!over || !isDragEnabled) return;
+
+    const projectId = active.id as string;
+    const targetColumn = over.id as string;
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    if (viewMode === 'status') {
+      const oldStatus = project.projektstatus || 'Noch nicht gestartet';
+      if (oldStatus === targetColumn) return;
+
+      // Optimistic update
+      setProjects(prev => prev.map(p =>
+        p.id === projectId ? { ...p, projektstatus: targetColumn } : p
+      ));
+
+      const { error } = await supabase.from('projects').update({ projektstatus: targetColumn } as any).eq('id', projectId);
+      if (error) {
+        // Revert
+        setProjects(prev => prev.map(p =>
+          p.id === projectId ? { ...p, projektstatus: oldStatus } : p
+        ));
+        toast.error('Fehler beim Aktualisieren', { description: error.message });
+      } else {
+        toast.success(`Projektstatus aktualisiert → ${targetColumn}`);
+      }
+    } else if (viewMode === 'typ') {
+      const oldTyp = Array.isArray(project.typ) ? [...project.typ] : [];
+      const oldFirst = oldTyp[0] || 'Ohne Typ';
+      if (oldFirst === targetColumn && targetColumn !== 'Ohne Typ') return;
+
+      const newTyp = targetColumn === 'Ohne Typ' ? [] : [targetColumn, ...oldTyp.slice(1)];
+
+      // Optimistic update
+      setProjects(prev => prev.map(p =>
+        p.id === projectId ? { ...p, typ: newTyp } : p
+      ));
+
+      const { error } = await supabase.from('projects').update({ typ: newTyp } as any).eq('id', projectId);
+      if (error) {
+        setProjects(prev => prev.map(p =>
+          p.id === projectId ? { ...p, typ: oldTyp } : p
+        ));
+        toast.error('Fehler beim Aktualisieren', { description: error.message });
+      } else {
+        toast.success(`Projektart aktualisiert → ${targetColumn}`);
+      }
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
+    setOverColumnId(null);
+  };
+
   /* ── Render ──────────────────────────────────────── */
   if (loading) {
     return (
@@ -355,6 +469,11 @@ export default function Projekte() {
       </div>
     );
   }
+
+  // Resolve active project customer name for overlay
+  const activeCustomerName = activeProject
+    ? (activeProject.verknuepfte_kunden_ids || []).map((id: string) => customerNames[id]).filter(Boolean)[0] || undefined
+    : undefined;
 
   return (
     <div className="space-y-5 h-full flex flex-col">
@@ -420,34 +539,60 @@ export default function Projekte() {
         </Button>
       </div>
 
-      {/* Kanban board */}
-      <div className="flex-1 overflow-x-auto pb-4">
-        <div className="flex gap-3 min-h-[400px]">
-          {sortedGroupKeys.map(key => (
-            <KanbanColumn
-              key={key}
-              title={key}
-              count={grouped[key]?.length || 0}
-              headerClass={viewMode === 'status' ? STATUS_HEADER_BG[key] : undefined}
-              projects={grouped[key] || []}
-              customerNames={customerNames}
-              teamMembers={teamMembers}
-              onSelect={p => setSelectedProject(p)}
-            />
-          ))}
-          {sortedGroupKeys.length === 0 && (
-            <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
-              <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center mb-3">
-                <FileX className="h-6 w-6 text-muted-foreground" />
+      {/* Kanban board with DnD */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <div className="flex-1 overflow-x-auto pb-4">
+          <div className="flex gap-3 min-h-[400px]">
+            {sortedGroupKeys.map(key => (
+              <DroppableKanbanColumn
+                key={key}
+                columnId={key}
+                title={key}
+                count={grouped[key]?.length || 0}
+                headerClass={viewMode === 'status' ? STATUS_HEADER_BG[key] : undefined}
+                projects={grouped[key] || []}
+                customerNames={customerNames}
+                teamMembers={teamMembers}
+                onSelect={p => setSelectedProject(p)}
+                isOverColumn={overColumnId === key}
+                isDragDisabled={!isDragEnabled}
+              />
+            ))}
+            {sortedGroupKeys.length === 0 && (
+              <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
+                <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center mb-3">
+                  <FileX className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium mb-1">Keine Projekte gefunden</p>
+                <p className="text-xs text-muted-foreground max-w-[240px]">
+                  Passe deine Filter an oder importiere Projekte aus Notion.
+                </p>
               </div>
-              <p className="text-sm font-medium mb-1">Keine Projekte gefunden</p>
-              <p className="text-xs text-muted-foreground max-w-[240px]">
-                Passe deine Filter an oder importiere Projekte aus Notion.
-              </p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+
+        {/* Drag overlay — rendered outside columns for smooth movement */}
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+          {activeProject ? (
+            <div className="w-[280px] opacity-90 scale-[1.02] rotate-[1deg]">
+              <ProjectCardContent
+                project={activeProject}
+                customerName={activeCustomerName}
+                teamMembers={teamMembers}
+                isDragging
+              />
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       {/* Slide-in panel */}
       {selectedProject && (
