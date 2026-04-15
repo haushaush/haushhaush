@@ -1,6 +1,5 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { useNavigate } from 'react-router-dom';
 
 const STATUS_STYLES: Record<string, string> = {
   'In Betreuung': 'bg-success/20 text-success',
@@ -34,11 +33,10 @@ const fmtDate = (d: string | null) => {
 
 interface KundenCardViewProps {
   deals: any[];
+  onSelect: (deal: any) => void;
 }
 
-export default function KundenCardView({ deals }: KundenCardViewProps) {
-  const navigate = useNavigate();
-
+export default function KundenCardView({ deals, onSelect }: KundenCardViewProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {deals.length === 0 ? (
@@ -53,10 +51,10 @@ export default function KundenCardView({ deals }: KundenCardViewProps) {
           <Card
             key={d.id}
             className="cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all overflow-hidden"
-            onClick={() => navigate(`/kunden/${d.id}`)}
+            onClick={() => onSelect(d)}
             tabIndex={0}
-            onKeyDown={e => e.key === 'Enter' && navigate(`/kunden/${d.id}`)}
-            role="link"
+            onKeyDown={e => e.key === 'Enter' && onSelect(d)}
+            role="button"
           >
             <div className={`h-16 ${bgClass} flex items-center justify-center`}>
               <span className="text-white/90 font-heading font-semibold text-sm tracking-wide truncate px-3">

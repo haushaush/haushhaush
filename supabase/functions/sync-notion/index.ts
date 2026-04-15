@@ -51,6 +51,7 @@ const ge = (p: any) => p?.email || null;
 const gp = (p: any) => p?.phone_number || null;
 const gu = (p: any) => p?.url || null;
 const gc = (p: any) => p?.checkbox ?? false;
+const grt = (p: any) => p?.rich_text?.[0]?.plain_text || null;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -88,27 +89,33 @@ Deno.serve(async (req) => {
         return {
           notion_id: p.id,
           notion_url: p.url,
-          client_name: gt(pr["Kunde"]) || gt(pr["Vor- & Nachname"]) || "Unbekannt",
-          status: statusMap[kundenstatus || ""] || "Pausiert",
-          kundenstatus,
-          ampel: gs(pr["Ampelstatus"]),
-          art: gm(pr["Branche"])[0] || null,
-          leistungen: gm(pr["Projekttyp"]),
-          branche: gm(pr["Branche"]),
-          start_datum: gd(pr["Startdatum"]),
-          
-          wert_eur: gn(pr["Gesamt-Saldo"]),
-          gesamt_saldo: gn(pr["Gesamt-Saldo"]),
-          clv: gn(pr["CLV (Customer Lifetime Value)"]),
-          ads_budget: gn(pr["Ads-Budget"]),
-          meta_kosten: gn(pr["Meta Werbeanzeigen Kosten"]),
-          cash_collect_offen: gn(pr["Cash Collect offen"]),
-          zahlstatus: gs(pr["Zahlstatus"]),
+          client_name: gt(pr["Kunde"]) || grt(pr["Vor- & Nachname"]) || "Unbekannt",
+          vor_nachname: grt(pr["Vor- & Nachname"]),
           email: ge(pr["Email"]),
           telefon: gp(pr["Telefon"]),
           website_url: gu(pr["Website URL"]),
           unternehmen: gs(pr["Unternehmen"]),
-          vor_nachname: pr["Vor- & Nachname"]?.rich_text?.[0]?.plain_text || null,
+          status: statusMap[kundenstatus || ""] || "Pausiert",
+          kundenstatus,
+          ampel: gs(pr["Ampelstatus"]),
+          zahlstatus: gs(pr["Zahlstatus"]),
+          branche: gm(pr["Branche"]),
+          art: gm(pr["Branche"])[0] || null,
+          projekttyp: gm(pr["Projekttyp"]),
+          leistungen: gm(pr["Projekttyp"]),
+          laufzeit: gs(pr["Laufzeit"]) || grt(pr["Laufzeit"]),
+          start_datum: gd(pr["Startdatum"]),
+          end_datum: gd(pr["Enddatum"]),
+          deadline: gd(pr["Deadline"]),
+          gesamt_saldo: gn(pr["Gesamt-Saldo"]),
+          wert_eur: gn(pr["Gesamt-Saldo"]),
+          ads_budget: gn(pr["Ads-Budget"]),
+          cash_collect_offen: gn(pr["Cash Collect offen"]),
+          clv: gn(pr["CLV (Customer Lifetime Value)"]),
+          meta_kosten: gn(pr["Meta Werbeanzeigen Kosten"]),
+          crm_kosten: gn(pr["CRM Kosten"]),
+          superchat_kosten: gn(pr["Superchat Kosten"]),
+          website_kosten: gn(pr["Website Kosten"]),
           laufzeit_in_14t: gc(pr["Laufzeit in 14T fällig"]),
           deal_type: "Neukunde",
           updated_at: new Date().toISOString(),
