@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import KundenSlidePanel from '@/components/kunden/KundenSlidePanel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -73,6 +74,7 @@ export default function Kunden() {
   const [filterArt, setFilterArt] = useState('all');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState<any>(null);
   const { isAdminOrManager } = useAuth();
   const navigate = useNavigate();
   const autoSyncDone = useRef(false);
@@ -298,7 +300,7 @@ export default function Kunden() {
 
       {/* Content */}
       {viewMode === 'cards' ? (
-        <KundenCardView deals={filtered} />
+        <KundenCardView deals={filtered} onSelect={setSelectedDeal} />
       ) : (
         <Card>
           <CardContent className="p-0">
