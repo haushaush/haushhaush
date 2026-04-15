@@ -39,6 +39,7 @@ const TABS = [
 ];
 
 export default function Projekte() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -46,6 +47,7 @@ export default function Projekte() {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const autoSyncDone = useRef(false);
+  const autoOpenDone = useRef(false);
 
   const fetchData = async () => {
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
