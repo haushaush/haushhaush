@@ -2,15 +2,10 @@ import { useEffect, useCallback, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Check, Pencil } from 'lucide-react';
+import { X, ExternalLink, AlertTriangle, Save, Check, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
-import { de } from 'date-fns/locale';
 
 const STATUS_STYLES: Record<string, string> = {
   'In Betreuung': 'bg-success/20 text-success',
@@ -115,68 +110,78 @@ function FinRow({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
-/* Multi-select for edit mode */
-function MultiSelectField({ value, options, onChange }: {
+/* Native single select */
+function NativeSelect({ value, options, onChange, placeholder = '-- Auswählen --' }: {
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      onClick={e => e.stopPropagation()}
+      className="w-full border border-input rounded-md px-2 py-1 text-sm bg-background text-foreground h-8"
+    >
+      <option value="">{placeholder}</option>
+      {options.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+}
+
+/* Checkbox list for multi-select */
+function CheckboxMultiSelect({ value, options, onChange }: {
   value: string[];
   options: string[];
   onChange: (v: string[]) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const toggle = (item: string) => {
     onChange(value.includes(item) ? value.filter(x => x !== item) : [...value, item]);
   };
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <div className="flex flex-wrap gap-1 cursor-pointer min-h-[28px] items-center border border-input rounded-md px-2 py-1">
-          {value.length > 0 ? value.map(b => (
-            <Badge key={b} variant="secondary" className="text-[10px] rounded-[4px]">{b}</Badge>
-          )) : <span className="text-sm text-muted-foreground">Auswählen…</span>}
-        </div>
-      </PopoverTrigger>
-      <PopoverContent className="w-60 max-h-64 overflow-y-auto p-2" align="start">
-        {options.map(o => (
-          <button
-            key={o}
-            type="button"
-            className={cn(
-              "flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-sm hover:bg-muted/60 transition-colors",
-              value.includes(o) && "bg-muted"
-            )}
-            onClick={() => toggle(o)}
-          >
-            <span className={cn("h-4 w-4 rounded border flex items-center justify-center", value.includes(o) ? "bg-primary border-primary" : "border-border")}>
-              {value.includes(o) && <Check className="h-3 w-3 text-primary-foreground" />}
-            </span>
-            {o}
-          </button>
-        ))}
-      </PopoverContent>
-    </Popover>
-  );
-}
+  const visible = expanded ? options : options.slice(0, 8);
 
-/* Date picker for edit mode */
-function DateField({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
-  const dateObj = value ? parseISO(value) : undefined;
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button type="button" className="flex items-center gap-1.5 text-sm border border-input rounded-md px-2 h-8 w-full">
-          <CalendarIcon className="h-3 w-3 text-muted-foreground" />
-          {dateObj ? format(dateObj, 'dd.MM.yyyy', { locale: de }) : <span className="text-muted-foreground">–</span>}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={dateObj}
-          onSelect={d => onChange(d ? format(d, 'yyyy-MM-dd') : null)}
-          className="p-3 pointer-events-auto"
-          locale={de}
-        />
-      </PopoverContent>
-    </Popover>
+    <div onClick={e => e.stopPropagation()}>
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-1.5">
+          {value.map(b => (
+            <Badge key={b} variant="secondary" className="text-[10px] rounded-[4px] cursor-pointer" onClick={() => toggle(b)}>
+              {b} ×
+            </Badge>
+          ))}
+        </div>
+      )}
+      <div className="border border-input rounded-md max-h-40 overflow-y-auto">
+        {visible.map(o => (
+          <label
+            key={o}
+            className={cn(
+              "flex items-center gap-2 px-2 py-1 text-sm cursor-pointer hover:bg-muted/50 transition-colors",
+              value.includes(o) && "bg-muted/30"
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={value.includes(o)}
+              onChange={() => toggle(o)}
+              className="h-3.5 w-3.5 rounded border-border accent-primary"
+            />
+            <span className="truncate">{o}</span>
+          </label>
+        ))}
+        {options.length > 8 && (
+          <button
+            type="button"
+            className="w-full text-xs text-primary py-1 hover:bg-muted/30"
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? 'Weniger anzeigen' : `Alle ${options.length} anzeigen`}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -219,9 +224,9 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
       branche: d.branche ?? [],
       projekttyp: d.projekttyp ?? [],
       laufzeit: d.laufzeit ?? '',
-      start_datum: d.start_datum ?? null,
-      end_datum: d.end_datum ?? null,
-      deadline: d.deadline ?? null,
+      start_datum: d.start_datum ?? '',
+      end_datum: d.end_datum ?? '',
+      deadline: d.deadline ?? '',
       laufzeit_in_14t: d.laufzeit_in_14t ?? false,
       kundenstatus: d.kundenstatus ?? '',
       ampel: d.ampel ?? d.ampelstatus ?? '',
@@ -245,13 +250,18 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from('close_deals').update(editData as any).eq('id', d.id);
+    const payload = { ...editData };
+    // Convert empty date strings to null
+    ['start_datum', 'end_datum', 'deadline'].forEach(f => {
+      if (payload[f] === '') payload[f] = null;
+    });
+    const { error } = await supabase.from('close_deals').update(payload as any).eq('id', d.id);
     setSaving(false);
     if (error) {
       toast.error('Fehler beim Speichern');
       console.error(error);
     } else {
-      Object.assign(d, editData);
+      Object.assign(d, payload);
       setIsEditing(false);
       setEditData({});
       toast.success('Gespeichert');
@@ -267,13 +277,14 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
   const bgColor = companyLogo?.bg_color || FALLBACK_BG[company] || '#374151';
   const logoUrl = companyLogo?.logo_url;
 
-  const val = (field: string) => isEditing ? editData[field] : d[field];
-
   return (
-    <div className="fixed inset-0 z-[400] flex justify-end">
+    <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/50 animate-fade-in" onClick={onClose} />
 
-      <div className="relative w-full sm:w-[50vw] sm:min-w-[420px] bg-background shadow-2xl animate-slide-in-right overflow-y-auto">
+      <div
+        className="relative z-[60] w-full sm:w-[50vw] sm:min-w-[420px] bg-background shadow-2xl animate-slide-in-right overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="relative h-[140px] overflow-hidden" style={{ background: bgColor }}>
           {logoUrl && (
@@ -290,7 +301,7 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
                   </Button>
                 )}
                 {d.notion_url && (
-                  <a href={d.notion_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                  <a href={d.notion_url} target="_blank" rel="noopener noreferrer">
                     <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10 h-8">
                       <ExternalLink className="h-3.5 w-3.5 mr-1.5" />Notion
                     </Button>
@@ -335,45 +346,42 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
               <FieldRow label="Vor- & Nachname">
                 {isEditing ? (
-                  <Input className="h-7 text-sm" value={editData.vor_nachname} onChange={e => upd('vor_nachname', e.target.value)} />
+                  <Input className="h-8 text-sm" value={editData.vor_nachname} onChange={e => upd('vor_nachname', e.target.value)} />
                 ) : (
                   <span className="text-sm">{d.vor_nachname || '–'}</span>
                 )}
               </FieldRow>
               <FieldRow label="Email">
                 {isEditing ? (
-                  <Input className="h-7 text-sm" value={editData.email} onChange={e => upd('email', e.target.value)} />
+                  <Input className="h-8 text-sm" value={editData.email} onChange={e => upd('email', e.target.value)} />
                 ) : (
                   <span className="text-sm">{d.email || '–'}</span>
                 )}
               </FieldRow>
               <FieldRow label="Telefon">
                 {isEditing ? (
-                  <Input className="h-7 text-sm" value={editData.telefon} onChange={e => upd('telefon', e.target.value)} />
+                  <Input className="h-8 text-sm" value={editData.telefon} onChange={e => upd('telefon', e.target.value)} />
                 ) : (
                   <span className="text-sm">{d.telefon || '–'}</span>
                 )}
               </FieldRow>
               <FieldRow label="Website URL">
                 {isEditing ? (
-                  <Input className="h-7 text-sm" value={editData.website_url} onChange={e => upd('website_url', e.target.value)} />
+                  <Input className="h-8 text-sm" value={editData.website_url} onChange={e => upd('website_url', e.target.value)} />
                 ) : (
                   <span className="text-sm">{d.website_url || '–'}</span>
                 )}
               </FieldRow>
               <FieldRow label="Unternehmen">
                 {isEditing ? (
-                  <Select value={editData.unternehmen} onValueChange={v => upd('unternehmen', v)}>
-                    <SelectTrigger className="h-7 text-sm"><SelectValue placeholder="–" /></SelectTrigger>
-                    <SelectContent>{UNTERNEHMEN_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <NativeSelect value={editData.unternehmen} options={UNTERNEHMEN_OPTIONS} onChange={v => upd('unternehmen', v)} />
                 ) : (
                   <span className="text-sm">{d.unternehmen || '–'}</span>
                 )}
               </FieldRow>
               <FieldRow label="Branche">
                 {isEditing ? (
-                  <MultiSelectField value={editData.branche || []} options={BRANCHE_OPTIONS} onChange={v => upd('branche', v)} />
+                  <CheckboxMultiSelect value={editData.branche || []} options={BRANCHE_OPTIONS} onChange={v => upd('branche', v)} />
                 ) : (
                   <div className="flex flex-wrap gap-1">
                     {(d.branche || []).length > 0 ? (d.branche as string[]).map((b: string) => (
@@ -385,7 +393,7 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
               <div className="col-span-2">
                 <FieldRow label="Projekttyp">
                   {isEditing ? (
-                    <MultiSelectField value={editData.projekttyp || []} options={PROJEKTTYP_OPTIONS} onChange={v => upd('projekttyp', v)} />
+                    <CheckboxMultiSelect value={editData.projekttyp || []} options={PROJEKTTYP_OPTIONS} onChange={v => upd('projekttyp', v)} />
                   ) : (
                     <div className="flex flex-wrap gap-1">
                       {(d.projekttyp || []).length > 0 ? (d.projekttyp as string[]).map((b: string) => (
@@ -397,64 +405,57 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
               </div>
               <FieldRow label="Laufzeit">
                 {isEditing ? (
-                  <Select value={editData.laufzeit} onValueChange={v => upd('laufzeit', v)}>
-                    <SelectTrigger className="h-7 text-sm"><SelectValue placeholder="–" /></SelectTrigger>
-                    <SelectContent>{LAUFZEIT_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <NativeSelect value={editData.laufzeit} options={LAUFZEIT_OPTIONS} onChange={v => upd('laufzeit', v)} />
                 ) : (
                   <span className="text-sm">{d.laufzeit || '–'}</span>
                 )}
               </FieldRow>
               <FieldRow label="Startdatum">
                 {isEditing ? (
-                  <DateField value={editData.start_datum} onChange={v => upd('start_datum', v)} />
+                  <Input type="date" className="h-8 text-sm" value={editData.start_datum || ''} onChange={e => upd('start_datum', e.target.value)} />
                 ) : (
                   <span className="text-sm">{fmtDate(d.start_datum)}</span>
                 )}
               </FieldRow>
               <FieldRow label="Enddatum">
                 {isEditing ? (
-                  <DateField value={editData.end_datum} onChange={v => upd('end_datum', v)} />
+                  <Input type="date" className="h-8 text-sm" value={editData.end_datum || ''} onChange={e => upd('end_datum', e.target.value)} />
                 ) : (
                   <span className="text-sm">{fmtDate(d.end_datum)}</span>
                 )}
               </FieldRow>
               <FieldRow label="Deadline">
                 {isEditing ? (
-                  <DateField value={editData.deadline} onChange={v => upd('deadline', v)} />
+                  <Input type="date" className="h-8 text-sm" value={editData.deadline || ''} onChange={e => upd('deadline', e.target.value)} />
                 ) : (
                   <span className="text-sm">{fmtDate(d.deadline)}</span>
                 )}
               </FieldRow>
               <FieldRow label="Laufzeit in 14T fällig">
                 {isEditing ? (
-                  <button
-                    type="button"
-                    className={cn("h-5 w-5 rounded border flex items-center justify-center transition-colors", editData.laufzeit_in_14t ? "bg-primary border-primary" : "border-border")}
-                    onClick={() => upd('laufzeit_in_14t', !editData.laufzeit_in_14t)}
-                  >
-                    {editData.laufzeit_in_14t && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
-                  </button>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editData.laufzeit_in_14t}
+                      onChange={e => upd('laufzeit_in_14t', e.target.checked)}
+                      className="h-4 w-4 rounded border-border accent-primary"
+                    />
+                    <span className="text-sm">{editData.laufzeit_in_14t ? 'Ja' : 'Nein'}</span>
+                  </label>
                 ) : (
                   <span className="text-sm">{d.laufzeit_in_14t ? 'Ja' : 'Nein'}</span>
                 )}
               </FieldRow>
               <FieldRow label="Kundenstatus">
                 {isEditing ? (
-                  <Select value={editData.kundenstatus} onValueChange={v => upd('kundenstatus', v)}>
-                    <SelectTrigger className="h-7 text-sm"><SelectValue placeholder="–" /></SelectTrigger>
-                    <SelectContent>{KUNDENSTATUS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <NativeSelect value={editData.kundenstatus} options={KUNDENSTATUS_OPTIONS} onChange={v => upd('kundenstatus', v)} />
                 ) : (
                   <Badge variant="secondary" className={`text-xs rounded-[4px] w-fit ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>{ks}</Badge>
                 )}
               </FieldRow>
               <FieldRow label="Ampelstatus">
                 {isEditing ? (
-                  <Select value={editData.ampel} onValueChange={v => upd('ampel', v)}>
-                    <SelectTrigger className="h-7 text-sm"><SelectValue placeholder="–" /></SelectTrigger>
-                    <SelectContent>{AMPEL_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <NativeSelect value={editData.ampel} options={AMPEL_OPTIONS} onChange={v => upd('ampel', v)} />
                 ) : (
                   <span className="flex items-center gap-1.5">
                     <span className={`h-2.5 w-2.5 rounded-full ${ampel.dot}`} />
@@ -464,10 +465,7 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
               </FieldRow>
               <FieldRow label="Zahlstatus">
                 {isEditing ? (
-                  <Select value={editData.zahlstatus} onValueChange={v => upd('zahlstatus', v)}>
-                    <SelectTrigger className="h-7 text-sm"><SelectValue placeholder="–" /></SelectTrigger>
-                    <SelectContent>{ZAHLSTATUS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <NativeSelect value={editData.zahlstatus} options={ZAHLSTATUS_OPTIONS} onChange={v => upd('zahlstatus', v)} />
                 ) : (
                   <span className="text-sm">{d.zahlstatus || '–'}</span>
                 )}
@@ -493,7 +491,7 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
                   {isEditing ? (
                     <Input
                       type="number"
-                      className="h-7 text-sm text-right tabular-nums w-32"
+                      className="h-8 text-sm text-right tabular-nums w-32"
                       value={editData[field] ?? ''}
                       onChange={e => upd(field, e.target.value === '' ? null : Number(e.target.value))}
                     />
