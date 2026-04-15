@@ -69,6 +69,7 @@ export default function Kunden() {
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [activeSubTab, setActiveSubTab] = useState('all');
   const [filterArt, setFilterArt] = useState('all');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [dialogOpen, setDialogOpen] = useState(false);
