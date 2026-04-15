@@ -76,7 +76,7 @@ const fmt = (v: number | null | undefined) => {
   return `€${Number(v).toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 };
 
-interface KundenSlidePanelProps { deal: any; onClose: () => void; }
+interface KundenSlidePanelProps { deal: any; onClose: () => void; onDelete?: (id: string) => void; }
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -418,11 +418,35 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
         </div>
 
         {/* Sticky save footer */}
-        <div className="sticky bottom-0 border-t border-border bg-background px-6 py-3 flex justify-end">
+        <div className="sticky bottom-0 border-t border-border bg-background px-6 py-3 flex items-center justify-between">
+          {onDelete ? (
+            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setDeleteConfirmOpen(true)}>
+              <Trash2 className="h-4 w-4 mr-1.5" />Löschen
+            </Button>
+          ) : <div />}
           <Button onClick={handleSave} disabled={saving} className="min-w-[140px]">
             <Save className="h-4 w-4 mr-2" />{saving ? 'Speichert…' : 'Speichern'}
           </Button>
         </div>
+
+        {/* Delete confirmation dialog */}
+        {deleteConfirmOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50" onClick={() => setDeleteConfirmOpen(false)}>
+            <div className="bg-background rounded-xl border border-border shadow-xl p-6 max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+              <h3 className="text-base font-semibold mb-2">Kunde löschen</h3>
+              <p className="text-sm text-muted-foreground mb-5">
+                Möchtest du <strong>{deal.client_name}</strong> wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={() => setDeleteConfirmOpen(false)}>Abbrechen</Button>
+                <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
+                  {deleting ? 'Löscht…' : 'Löschen'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
