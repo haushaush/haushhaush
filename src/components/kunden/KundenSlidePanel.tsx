@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { X, ExternalLink, AlertTriangle, Save, CalendarIcon } from 'lucide-react';
+import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -218,9 +218,27 @@ function DatePickerField({ value, onChange }: { value: string | null; onChange: 
   );
 }
 
-export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelProps) {
+export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenSlidePanelProps) {
   const [companyLogo, setCompanyLogo] = useState<{ logo_url: string | null; bg_color: string | null } | null>(null);
   const [editData, setEditData] = useState<Record<string, any>>({});
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const deal = d; // alias for template access
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    const { error } = await supabase.from('close_deals').delete().eq('id', d.id);
+    if (error) {
+      toast.error('Fehler beim Löschen', { description: error.message });
+      setDeleting(false);
+      return;
+    }
+    toast.success('Kunde wurde gelöscht');
+    setDeleteConfirmOpen(false);
+    onClose();
+    onDelete?.(d.id);
+  };
   const [saving, setSaving] = useState(false);
 
   // Initialize editData from deal on mount
