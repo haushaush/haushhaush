@@ -220,13 +220,28 @@ function DatePickerField({ value, onChange }: { value: string | null; onChange: 
   );
 }
 
+const PROJECT_STATUS_STYLES: Record<string, string> = {
+  'Noch nicht gestartet': 'bg-destructive/20 text-destructive',
+  'Onboarding / Planung': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  'In Bearbeitung': 'bg-warning/20 text-warning',
+  'Internes Review': 'bg-muted text-muted-foreground',
+  'Client Review': 'bg-muted text-muted-foreground',
+  'Laufzeitbetreuung': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  'Abgeschlossen': 'bg-success/20 text-success',
+  'Pausiert': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+};
+
 export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenSlidePanelProps) {
+  const navigate = useNavigate();
   const [companyLogo, setCompanyLogo] = useState<{ logo_url: string | null; bg_color: string | null } | null>(null);
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [linkedProjects, setLinkedProjects] = useState<any[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('uebersicht');
 
-  const deal = d; // alias for template access
+  const deal = d;
 
   const handleDelete = async () => {
     setDeleting(true);
