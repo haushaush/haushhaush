@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
           leistungen: gm(pr["Projekttyp"]),
           branche: gm(pr["Branche"]),
           start_datum: gd(pr["Startdatum"]),
-          end_datum: gd(pr["Enddatum"]),
+          
           wert_eur: gn(pr["Gesamt-Saldo"]),
           gesamt_saldo: gn(pr["Gesamt-Saldo"]),
           clv: gn(pr["CLV (Customer Lifetime Value)"]),
