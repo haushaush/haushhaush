@@ -363,7 +363,10 @@ export default function KundenSlidePanel({ deal: d, onClose }: KundenSlidePanelP
               </FieldRow>
               <FieldRow label="Unternehmen">
                 {isEditing ? (
-                  <Input className="h-7 text-sm" value={editData.unternehmen} onChange={e => upd('unternehmen', e.target.value)} />
+                  <Select value={editData.unternehmen} onValueChange={v => upd('unternehmen', v)}>
+                    <SelectTrigger className="h-7 text-sm"><SelectValue placeholder="–" /></SelectTrigger>
+                    <SelectContent>{UNTERNEHMEN_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                  </Select>
                 ) : (
                   <span className="text-sm">{d.unternehmen || '–'}</span>
                 )}
