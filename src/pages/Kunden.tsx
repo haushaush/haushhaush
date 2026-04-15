@@ -3,16 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import KundenSlidePanel from '@/components/kunden/KundenSlidePanel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, RefreshCw, Loader2, Database, LayoutGrid, TableIcon } from 'lucide-react';
+import { Plus, Search, RefreshCw, Loader2, LayoutGrid, TableIcon, ArrowUpDown, ArrowUp, ArrowDown, Users, FileX } from 'lucide-react';
 import { toast } from 'sonner';
 import KundenCardView from '@/components/kunden/KundenCardView';
 
@@ -22,19 +20,6 @@ const STATUS_STYLES: Record<string, string> = {
   'Follow Up': 'bg-warning/20 text-warning',
   'Done': 'bg-muted text-muted-foreground',
   'Offen': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-};
-
-const ART_STYLES: Record<string, string> = {
-  'Beihilfe - PKV': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-  'PKV': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-  'BU': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  'Sterbegeld': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-  'Tierkrankenversicherung': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  'TKV': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  'Erbschaftssteuer': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
-  'Dienstleister': 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-  'Rechtsschutz': 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
-  'Unfallversicherung': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
 };
 
 const AMPEL_MAP: Record<string, { dot: string; label: string }> = {
@@ -62,6 +47,11 @@ const fmtDate = (d: string | null) => {
   try { return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { return d; }
 };
 
+type SortKey = 'client_name' | 'kundenstatus' | 'gesamt_saldo' | 'ads_budget' | 'ampel';
+type SortDir = 'asc' | 'desc';
+
+const AMPEL_ORDER: Record<string, number> = { AA: 1, A: 2, Grün: 2, BB: 3, B: 4, Gelb: 4, CC: 5, C: 6, Rot: 6 };
+
 export default function Kunden() {
   const [deals, setDeals] = useState<any[]>([]);
   const [team, setTeam] = useState<any[]>([]);
@@ -74,6 +64,8 @@ export default function Kunden() {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<any>(null);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
   const { isAdminOrManager } = useAuth();
   const navigate = useNavigate();
   const autoSyncDone = useRef(false);
@@ -130,35 +122,66 @@ export default function Kunden() {
     fetchData();
   };
 
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      if (sortDir === 'asc') setSortDir('desc');
+      else { setSortKey(null); setSortDir('asc'); }
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />;
+    return sortDir === 'asc'
+      ? <ArrowUp className="h-3 w-3 text-primary" />
+      : <ArrowDown className="h-3 w-3 text-primary" />;
+  };
+
   const COMPANY_SUB_TABS = ['Allianz', 'Hanse Merkur', 'Barmenia Gothaer', 'Signal Iduna', 'Individuell'];
 
   const TABS = [
-    { label: 'Alle Kunden', value: 'all' },
-    { label: 'Aktive Kunden', value: 'aktiv' },
+    { label: 'Alle', value: 'all' },
+    { label: 'Aktiv', value: 'aktiv' },
     { label: 'Follow Up', value: 'followup' },
     { label: 'Abschlüsse', value: 'done' },
   ];
 
-  const filtered = useMemo(() => deals.filter(d => {
-    const matchSearch = d.client_name?.toLowerCase().includes(search.toLowerCase());
-    const matchArt = filterArt === 'all' || (Array.isArray(d.branche) ? d.branche[0] : d.art) === filterArt;
+  const filtered = useMemo(() => {
+    let result = deals.filter(d => {
+      const matchSearch = d.client_name?.toLowerCase().includes(search.toLowerCase());
+      const matchArt = filterArt === 'all' || (Array.isArray(d.branche) ? d.branche[0] : d.art) === filterArt;
 
-    let matchTab = true;
-    if (activeTab === 'all') {
-      matchTab = true;
-    } else if (activeTab === 'aktiv') {
-      matchTab = isAktiv(d);
-      if (matchTab && activeSubTab !== 'all') {
-        matchTab = d.unternehmen === activeSubTab;
+      let matchTab = true;
+      if (activeTab === 'aktiv') {
+        matchTab = isAktiv(d);
+        if (matchTab && activeSubTab !== 'all') matchTab = d.unternehmen === activeSubTab;
+      } else if (activeTab === 'followup') {
+        matchTab = d.kundenstatus === 'Follow Up';
+      } else if (activeTab === 'done') {
+        matchTab = d.zahlstatus === 'DONE';
       }
-    } else if (activeTab === 'followup') {
-      matchTab = d.kundenstatus === 'Follow Up';
-    } else if (activeTab === 'done') {
-      matchTab = d.zahlstatus === 'DONE';
+
+      return matchSearch && matchTab && matchArt;
+    });
+
+    if (sortKey) {
+      result = [...result].sort((a, b) => {
+        let va: any, vb: any;
+        if (sortKey === 'gesamt_saldo') { va = a.gesamt_saldo ?? a.wert_eur ?? 0; vb = b.gesamt_saldo ?? b.wert_eur ?? 0; }
+        else if (sortKey === 'ads_budget') { va = a.ads_budget ?? 0; vb = b.ads_budget ?? 0; }
+        else if (sortKey === 'ampel') { va = AMPEL_ORDER[a.ampel || a.ampelstatus || ''] ?? 99; vb = AMPEL_ORDER[b.ampel || b.ampelstatus || ''] ?? 99; }
+        else if (sortKey === 'client_name') { va = (a.client_name || '').toLowerCase(); vb = (b.client_name || '').toLowerCase(); }
+        else { va = (a[sortKey] || '').toString().toLowerCase(); vb = (b[sortKey] || '').toString().toLowerCase(); }
+        if (va < vb) return sortDir === 'asc' ? -1 : 1;
+        if (va > vb) return sortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
     }
 
-    return matchSearch && matchTab && matchArt;
-  }), [deals, search, activeTab, activeSubTab, filterArt]);
+    return result;
+  }, [deals, search, activeTab, activeSubTab, filterArt, sortKey, sortDir]);
 
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = { all: deals.length };
@@ -189,27 +212,23 @@ export default function Kunden() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-heading font-bold">Kunden</h1>
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mt-0.5">
-            <Database className="h-3.5 w-3.5" />
-            <span>Importiert aus Notion · {deals.length} Kunden</span>
-            {syncing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Users className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-heading font-bold leading-tight">Kunden</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {deals.length} Kunden {syncing && '· Synchronisiert...'}
+            </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           {/* View toggle */}
-          <div className="flex border border-border rounded-md overflow-hidden">
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 transition-colors ${viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
-              title="Tabellenansicht"
-            >
-              <TableIcon className="h-4 w-4" />
-            </button>
+          <div className="flex border border-border rounded-lg overflow-hidden">
             <button
               onClick={() => setViewMode('cards')}
               className={`p-2 transition-colors ${viewMode === 'cards' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
@@ -217,15 +236,22 @@ export default function Kunden() {
             >
               <LayoutGrid className="h-4 w-4" />
             </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 transition-colors ${viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
+              title="Tabellenansicht"
+            >
+              <TableIcon className="h-4 w-4" />
+            </button>
           </div>
-          <Button variant="outline" size="sm" className="min-h-[40px]" onClick={handleNotionSync} disabled={syncing}>
-            {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Erneut importieren
+          <Button variant="outline" size="sm" className="h-9" onClick={handleNotionSync} disabled={syncing}>
+            {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+            Sync
           </Button>
           {isAdminOrManager && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className="min-h-[40px]"><Plus className="h-4 w-4 mr-2" />Hinzufügen</Button>
+                <Button size="sm" className="h-9"><Plus className="h-3.5 w-3.5 mr-1.5" />Neu</Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto sm:max-h-none">
                 <DialogHeader><DialogTitle>Kunde manuell anlegen</DialogTitle></DialogHeader>
@@ -249,66 +275,69 @@ export default function Kunden() {
         </div>
       </div>
 
-      {/* Tabs — horizontally scrollable */}
-      <div className="flex gap-1 overflow-x-auto border-b border-border pb-px scrollbar-none">
+      {/* Tabs */}
+      <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
         {TABS.map(tab => (
           <button
             key={tab.value}
             onClick={() => { setActiveTab(tab.value); if (tab.value !== 'aktiv') setActiveSubTab('all'); }}
-            className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
+            className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
               activeTab === tab.value
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
             }`}
           >
             {tab.label}
-            <span className="ml-1.5 text-xs text-muted-foreground">
+            <span className={`ml-1.5 text-xs ${activeTab === tab.value ? 'text-primary-foreground/70' : 'text-muted-foreground/60'}`}>
               {tabCounts[tab.value] ?? 0}
             </span>
           </button>
         ))}
-      </div>
 
-      {/* Sub-tabs for Aktive Kunden */}
-      {activeTab === 'aktiv' && (
-        <div className="flex gap-0.5 overflow-x-auto pb-px scrollbar-none -mt-3">
-          <button
-            onClick={() => setActiveSubTab('all')}
-            className={`px-3 py-1.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
-              activeSubTab === 'all'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Alle
-          </button>
-          {COMPANY_SUB_TABS.map(c => (
+        {/* Sub-tabs inline for Aktiv */}
+        {activeTab === 'aktiv' && (
+          <>
+            <div className="w-px h-5 bg-border mx-1.5 shrink-0" />
             <button
-              key={c}
-              onClick={() => setActiveSubTab(c)}
-              className={`px-3 py-1.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
-                activeSubTab === c
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              onClick={() => setActiveSubTab('all')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                activeSubTab === 'all'
+                  ? 'bg-muted text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
             >
-              {c}
-              <span className="ml-1 text-[10px] text-muted-foreground">
-                {tabCounts[`company:${c}`] ?? 0}
-              </span>
+              Alle
             </button>
-          ))}
-        </div>
-      )}
+            {COMPANY_SUB_TABS.map(c => (
+              <button
+                key={c}
+                onClick={() => setActiveSubTab(c)}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                  activeSubTab === c
+                    ? 'bg-muted text-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                {c}
+                {(tabCounts[`company:${c}`] ?? 0) > 0 && (
+                  <span className="ml-1 text-[10px] text-muted-foreground/60">
+                    {tabCounts[`company:${c}`]}
+                  </span>
+                )}
+              </button>
+            ))}
+          </>
+        )}
+      </div>
 
       {/* Search + filter */}
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[180px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9 min-h-[44px]" placeholder="Kundenname suchen..." value={search} onChange={e => setSearch(e.target.value)} />
+          <Input className="pl-9 h-9" placeholder="Suchen..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <Select value={filterArt} onValueChange={setFilterArt}>
-          <SelectTrigger className="w-[150px] min-h-[44px]"><SelectValue placeholder="Branche" /></SelectTrigger>
+          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Branche" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Alle Branchen</SelectItem>
             {uniqueBranchen.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
@@ -320,25 +349,45 @@ export default function Kunden() {
       {viewMode === 'cards' ? (
         <KundenCardView deals={filtered} onSelect={setSelectedDeal} />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto -mx-2">
+          <table className="w-full min-w-[900px]">
             <thead>
               <tr>
-                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[200px]">Kunde</th>
-                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[150px]">Branche</th>
-                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[130px]">Kundenstatus</th>
-                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[80px]">Ampel</th>
-                <th className="text-right text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[120px]">Gesamt-Saldo</th>
-                <th className="text-right text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[120px] hidden md:table-cell">Ads-Budget</th>
-                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[160px] hidden lg:table-cell">Zeitraum</th>
-                <th className="text-left text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground pb-3 px-4 min-w-[160px] hidden md:table-cell">Zahlstatus</th>
+                <th className="text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 pb-3 px-4 min-w-[200px]">
+                  <button onClick={() => toggleSort('client_name')} className="group flex items-center gap-1.5 hover:text-foreground transition-colors">
+                    Kunde <SortIcon col="client_name" />
+                  </button>
+                </th>
+                <th className="text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 pb-3 px-4 min-w-[130px]">Branche</th>
+                <th className="text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 pb-3 px-4 min-w-[120px]">
+                  <button onClick={() => toggleSort('kundenstatus')} className="group flex items-center gap-1.5 hover:text-foreground transition-colors">
+                    Status <SortIcon col="kundenstatus" />
+                  </button>
+                </th>
+                <th className="text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 pb-3 px-4 min-w-[70px]">
+                  <button onClick={() => toggleSort('ampel')} className="group flex items-center gap-1.5 hover:text-foreground transition-colors">
+                    Ampel <SortIcon col="ampel" />
+                  </button>
+                </th>
+                <th className="text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 pb-3 px-4 min-w-[110px]">
+                  <button onClick={() => toggleSort('gesamt_saldo')} className="group flex items-center gap-1.5 ml-auto hover:text-foreground transition-colors">
+                    Saldo <SortIcon col="gesamt_saldo" />
+                  </button>
+                </th>
+                <th className="text-right text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 pb-3 px-4 min-w-[100px] hidden md:table-cell">
+                  <button onClick={() => toggleSort('ads_budget')} className="group flex items-center gap-1.5 ml-auto hover:text-foreground transition-colors">
+                    Ads <SortIcon col="ads_budget" />
+                  </button>
+                </th>
+                <th className="text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 pb-3 px-4 min-w-[140px] hidden lg:table-cell">Zeitraum</th>
+                <th className="text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 pb-3 px-4 min-w-[120px] hidden md:table-cell">Zahlung</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center text-muted-foreground py-12">
-                    {syncing ? 'Daten werden importiert...' : 'Keine Kunden gefunden'}
+                  <td colSpan={8} className="py-16">
+                    <EmptyState syncing={syncing} />
                   </td>
                 </tr>
               ) : filtered.map(d => {
@@ -352,7 +401,7 @@ export default function Kunden() {
                 return (
                   <tr
                     key={d.id}
-                    className="h-14 border-b border-[#F3F4F6] dark:border-border/40 cursor-pointer hover:bg-muted/40 transition-colors"
+                    className="h-14 border-b border-border/30 cursor-pointer hover:bg-muted/30 transition-colors"
                     onClick={() => setSelectedDeal(d)}
                     tabIndex={0}
                     onKeyDown={e => e.key === 'Enter' && setSelectedDeal(d)}
@@ -360,7 +409,7 @@ export default function Kunden() {
                   >
                     <td className="px-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold shrink-0">
                           {initials}
                         </div>
                         <span className="font-semibold text-sm truncate max-w-[180px]">{d.client_name}</span>
@@ -380,12 +429,12 @@ export default function Kunden() {
                     </td>
                     <td className="px-4">
                       <span className="flex items-center gap-1.5">
-                        <span className={`h-2.5 w-2.5 rounded-full ${ampel.dot}`} />
+                        <span className={`h-2 w-2 rounded-full ${ampel.dot}`} />
                         <span className="text-xs font-medium">{ampel.label}</span>
                       </span>
                     </td>
                     <td className="text-right px-4 font-bold tabular-nums font-mono text-sm">{fmt(d.gesamt_saldo ?? d.wert_eur)}</td>
-                    <td className="text-right px-4 tabular-nums font-mono text-sm font-bold hidden md:table-cell">{fmt(d.ads_budget)}</td>
+                    <td className="text-right px-4 tabular-nums font-mono text-sm text-muted-foreground hidden md:table-cell">{fmt(d.ads_budget)}</td>
                     <td className="text-muted-foreground text-xs px-4 hidden lg:table-cell">{dateRange}</td>
                     <td className="hidden md:table-cell px-4">
                       {d.zahlstatus ? (
@@ -406,6 +455,22 @@ export default function Kunden() {
       {selectedDeal && (
         <KundenSlidePanel deal={selectedDeal} onClose={() => setSelectedDeal(null)} />
       )}
+    </div>
+  );
+}
+
+function EmptyState({ syncing }: { syncing: boolean }) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center">
+      <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center mb-3">
+        <FileX className="h-6 w-6 text-muted-foreground" />
+      </div>
+      <p className="text-sm font-medium text-foreground mb-1">
+        {syncing ? 'Daten werden importiert...' : 'Keine Kunden gefunden'}
+      </p>
+      <p className="text-xs text-muted-foreground max-w-[240px]">
+        {syncing ? 'Einen Moment bitte.' : 'Passe deine Filter an oder importiere Kunden aus Notion.'}
+      </p>
     </div>
   );
 }
