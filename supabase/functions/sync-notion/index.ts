@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const DB_IDS = {
-  kunden:     "2229f181-82a0-8030-92fa-000b4323498e",
+  kunden:     "2229f181-82a0-8099-a477-d6ff96c0f59e",
   projekte:   "2229f181-82a0-80a8-bcfd-000bda0d7f5c",
   mitarbeiter:"2229f181-82a0-8068-ab42-000bee953717",
   finanzen:   "2279f181-82a0-8048-a432-000bf0306644",
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
           leistungen: gm(pr["Projekttyp"]),
           branche: gm(pr["Branche"]),
           start_datum: gd(pr["Startdatum"]),
-          end_datum: gd(pr["Enddatum"]),
+          
           wert_eur: gn(pr["Gesamt-Saldo"]),
           gesamt_saldo: gn(pr["Gesamt-Saldo"]),
           clv: gn(pr["CLV (Customer Lifetime Value)"]),
