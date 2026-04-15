@@ -130,16 +130,7 @@ export default function Kunden() {
     fetchData();
   };
 
-  // Dynamic company tabs from active deals
-  const dynamicCompanyTabs = useMemo(() => {
-    const companies = new Set<string>();
-    deals.forEach(d => {
-      if (isAktiv(d) && d.unternehmen) {
-        companies.add(d.unternehmen);
-      }
-    });
-    return Array.from(companies).sort();
-  }, [deals]);
+  const COMPANY_SUB_TABS = ['Allianz', 'Hanse Merkur', 'Barmenia Gothaer', 'Signal Iduna', 'Individuell'];
 
   const TABS = [
     { label: 'Alle Kunden', value: 'all' },
@@ -174,11 +165,11 @@ export default function Kunden() {
     counts['aktiv'] = deals.filter(d => isAktiv(d)).length;
     counts['followup'] = deals.filter(d => d.kundenstatus === 'Follow Up').length;
     counts['done'] = deals.filter(d => d.zahlstatus === 'DONE').length;
-    dynamicCompanyTabs.forEach(c => {
+    COMPANY_SUB_TABS.forEach(c => {
       counts[`company:${c}`] = deals.filter(d => isAktiv(d) && d.unternehmen === c).length;
     });
     return counts;
-  }, [deals, dynamicCompanyTabs]);
+  }, [deals]);
 
   const uniqueBranchen = useMemo(() => {
     const set = new Set<string>();
@@ -279,7 +270,7 @@ export default function Kunden() {
       </div>
 
       {/* Sub-tabs for Aktive Kunden */}
-      {activeTab === 'aktiv' && dynamicCompanyTabs.length > 0 && (
+      {activeTab === 'aktiv' && (
         <div className="flex gap-0.5 overflow-x-auto pb-px scrollbar-none -mt-3">
           <button
             onClick={() => setActiveSubTab('all')}
@@ -291,7 +282,7 @@ export default function Kunden() {
           >
             Alle
           </button>
-          {dynamicCompanyTabs.map(c => (
+          {COMPANY_SUB_TABS.map(c => (
             <button
               key={c}
               onClick={() => setActiveSubTab(c)}
