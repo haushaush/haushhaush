@@ -132,25 +132,36 @@ Deno.serve(async (req) => {
       const pages = await fetchAll(key, DB_IDS.projekte);
       const rows = pages.map((p: any) => {
         const pr = p.properties;
+        const relKunden = (pr["Verknüpfte Kunden"]?.relation || []).map((r: any) => r.id);
         return {
           notion_id: p.id,
           notion_url: p.url,
           name: gt(pr["Projektname"]) || "Unbenannt",
+          projektname: gt(pr["Projektname"]) || "Unbenannt",
           status: gs(pr["Projektstatus"]) || "In Bearbeitung",
           projektstatus: gs(pr["Projektstatus"]),
           typ: gm(pr["Typ"]),
+          branche: gm(pr["Branche"]),
           prioritaet: gs(pr["Priorität"]),
           laufzeit: gs(pr["Laufzeit"]),
-          start_date: gd(pr["Startdatum"]),
-          end_date: gd(pr["Enddatum"]),
+          startdatum: gd(pr["Startdatum"]),
+          enddatum: gd(pr["Enddatum"]),
+          deadline: gd(pr["Deadline"]),
+          zahldatum: gd(pr["Zahldatum"]),
+          zahlstatus: gs(pr["Zahlstatus"]),
+          ads_budget: gn(pr["Ads Budget"]),
           cash_collect: gn(pr["Cash Collect"]),
           offener_cash_collect: gn(pr["Offener Cash Collect"]),
           aktuelle_rate: gn(pr["Aktuelle Rate"]),
           rate_1: gn(pr["1. Rate"]),
           rate_2: gn(pr["2. Rate "]),
           rate_3: gn(pr["3. Rate "]),
-          zahlstatus: gs(pr["Zahlstatus"]),
-          ads_budget: gn(pr["Ads Budget"]),
+          rate_4: gn(pr["4. Rate "]),
+          rate_5: gn(pr["5. Rate "]),
+          verknuepfte_kunden: relKunden.length > 0 ? relKunden : null,
+          aktueller_monat: grt(pr["Aktueller Monat"]),
+          monat_leadanzahl: grt(pr["Monat + Leadanzahl"]),
+          letztes_update: p.last_edited_time || null,
           updated_at: new Date().toISOString(),
         };
       });

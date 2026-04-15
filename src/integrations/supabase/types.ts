@@ -1832,79 +1832,109 @@ export type Database = {
         Row: {
           ads_budget: number | null
           aktuelle_rate: number | null
+          aktueller_monat: string | null
+          branche: string[] | null
           cash_collect: number | null
-          client_id: string
+          client_id: string | null
           created_at: string
+          deadline: string | null
           enddatum: string | null
           gesamt_saldo: number | null
           id: string
           laufzeit: string | null
+          letztes_update: string | null
+          monat_leadanzahl: string | null
           name: string
           notion_id: string | null
           notion_url: string | null
           offener_cash_collect: number | null
           prioritaet: string | null
+          projektname: string | null
           projektstatus: string | null
           projekttyp: string | null
           rate_1: number | null
           rate_2: number | null
           rate_3: number | null
+          rate_4: number | null
+          rate_5: number | null
           startdatum: string | null
           status: string
           typ: string[] | null
           updated_at: string
+          verknuepfte_kunden: string[] | null
+          zahldatum: string | null
           zahlstatus: string | null
         }
         Insert: {
           ads_budget?: number | null
           aktuelle_rate?: number | null
+          aktueller_monat?: string | null
+          branche?: string[] | null
           cash_collect?: number | null
-          client_id: string
+          client_id?: string | null
           created_at?: string
+          deadline?: string | null
           enddatum?: string | null
           gesamt_saldo?: number | null
           id?: string
           laufzeit?: string | null
+          letztes_update?: string | null
+          monat_leadanzahl?: string | null
           name: string
           notion_id?: string | null
           notion_url?: string | null
           offener_cash_collect?: number | null
           prioritaet?: string | null
+          projektname?: string | null
           projektstatus?: string | null
           projekttyp?: string | null
           rate_1?: number | null
           rate_2?: number | null
           rate_3?: number | null
+          rate_4?: number | null
+          rate_5?: number | null
           startdatum?: string | null
           status?: string
           typ?: string[] | null
           updated_at?: string
+          verknuepfte_kunden?: string[] | null
+          zahldatum?: string | null
           zahlstatus?: string | null
         }
         Update: {
           ads_budget?: number | null
           aktuelle_rate?: number | null
+          aktueller_monat?: string | null
+          branche?: string[] | null
           cash_collect?: number | null
-          client_id?: string
+          client_id?: string | null
           created_at?: string
+          deadline?: string | null
           enddatum?: string | null
           gesamt_saldo?: number | null
           id?: string
           laufzeit?: string | null
+          letztes_update?: string | null
+          monat_leadanzahl?: string | null
           name?: string
           notion_id?: string | null
           notion_url?: string | null
           offener_cash_collect?: number | null
           prioritaet?: string | null
+          projektname?: string | null
           projektstatus?: string | null
           projekttyp?: string | null
           rate_1?: number | null
           rate_2?: number | null
           rate_3?: number | null
+          rate_4?: number | null
+          rate_5?: number | null
           startdatum?: string | null
           status?: string
           typ?: string[] | null
           updated_at?: string
+          verknuepfte_kunden?: string[] | null
+          zahldatum?: string | null
           zahlstatus?: string | null
         }
         Relationships: [
