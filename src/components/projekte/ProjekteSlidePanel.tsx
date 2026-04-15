@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { X, ExternalLink, Save, Users } from 'lucide-react';
@@ -50,6 +51,7 @@ function FinRow({ label, children }: { label: string; children: React.ReactNode 
 }
 
 export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
+  const navigate = useNavigate();
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const [linkedKunden, setLinkedKunden] = useState<{ id: string; client_name: string }[]>([]);
@@ -216,9 +218,13 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {linkedKunden.map(k => (
-                  <span key={k.id} className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-primary/10 text-primary">
+                  <button
+                    key={k.id}
+                    onClick={() => { onClose(); navigate(`/kunden?kunde=${k.id}`); }}
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer"
+                  >
                     {k.client_name}
-                  </span>
+                  </button>
                 ))}
               </div>
             </section>
