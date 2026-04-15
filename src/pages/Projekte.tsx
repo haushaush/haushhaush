@@ -79,6 +79,15 @@ export default function Projekte() {
         autoSyncDone.current = true;
         handleSync();
       }
+      const projektId = searchParams.get('projekt');
+      if (projektId && !autoOpenDone.current) {
+        autoOpenDone.current = true;
+        const match = data.find((p: any) => p.id === projektId);
+        if (match) {
+          setSelectedProject(match);
+          setSearchParams({}, { replace: true });
+        }
+      }
     });
   }, []);
 
