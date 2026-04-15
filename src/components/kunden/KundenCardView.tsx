@@ -49,21 +49,26 @@ function CompanyHeader({ company, clientName, logos }: { company: string; client
   const [imgFailed, setImgFailed] = useState(false);
 
   return (
-    <div className="h-20 flex items-center justify-center px-4" style={{ background: bg }}>
+    <div
+      className="h-20 overflow-hidden"
+      style={{ background: logoUrl && !imgFailed ? undefined : bg }}
+    >
       {logoUrl && !imgFailed ? (
         <img
           src={logoUrl}
           alt={company}
-          className="h-12 max-w-[80%] object-contain brightness-0 invert"
+          className="w-full h-full object-cover object-center"
           onError={() => setImgFailed(true)}
         />
       ) : (
-        <span
-          className="text-white/90 font-heading font-bold text-center leading-tight truncate"
-          style={{ fontSize: label.length > 12 ? '0.8rem' : label.length > 6 ? '0.95rem' : '1.15rem' }}
-        >
-          {label}
-        </span>
+        <div className="w-full h-full flex items-center justify-center px-4">
+          <span
+            className="text-white/90 font-heading font-bold text-center leading-tight truncate"
+            style={{ fontSize: label.length > 12 ? '0.8rem' : label.length > 6 ? '0.95rem' : '1.15rem' }}
+          >
+            {label}
+          </span>
+        </div>
       )}
     </div>
   );
