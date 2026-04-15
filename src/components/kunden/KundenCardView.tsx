@@ -50,7 +50,7 @@ function CompanyHeader({ company, clientName, logos }: { company: string; client
 
   return (
     <div
-      className="h-20 overflow-hidden"
+      className="min-h-[160px] overflow-hidden"
       style={{ background: logoUrl && !imgFailed ? undefined : bg }}
     >
       {logoUrl && !imgFailed ? (
