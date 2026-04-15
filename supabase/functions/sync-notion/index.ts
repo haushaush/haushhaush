@@ -7,7 +7,7 @@ const corsHeaders = {
 
 const DB_IDS = {
   kunden:     "2229f181-82a0-8099-a477-d6ff96c0f59e",
-  projekte:   "2229f181-82a0-80a8-bcfd-000bda0d7f5c",
+  projekte:   "2229f181-82a0-80af-87f2-ccb57a246b2f",
   mitarbeiter:"2229f181-82a0-8068-ab42-000bee953717",
   finanzen:   "2279f181-82a0-8048-a432-000bf0306644",
 };
