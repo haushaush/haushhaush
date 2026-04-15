@@ -130,6 +130,16 @@ export default function Kunden() {
         autoSyncDone.current = true;
         handleNotionSync();
       }
+      // Auto-open customer from URL param
+      const kundeId = searchParams.get('kunde');
+      if (kundeId && !autoOpenDone.current) {
+        autoOpenDone.current = true;
+        const match = data.find((d: any) => d.id === kundeId);
+        if (match) {
+          setSelectedDeal(match);
+          setSearchParams({}, { replace: true });
+        }
+      }
     });
   }, []);
 
