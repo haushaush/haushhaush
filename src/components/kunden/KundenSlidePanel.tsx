@@ -110,26 +110,72 @@ function FinRow({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
-/* Native single select */
-function NativeSelect({ value, options, onChange, placeholder = '-- Auswählen --' }: {
+/* Searchable single select */
+function SearchableSingleSelect({ value, options, onChange, placeholder = 'Suchen…' }: {
   value: string;
   options: string[];
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = options.filter(o =>
+    o.toLowerCase().includes(search.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
   return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      onClick={e => e.stopPropagation()}
-      className="w-full border border-input rounded-md px-2 py-1 text-sm bg-background text-foreground h-8"
-    >
-      <option value="">{placeholder}</option>
-      {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
+    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
+      <div
+        className="min-h-[38px] border border-input rounded-md px-2 py-1 flex flex-wrap gap-1 items-center cursor-text bg-background"
+        onClick={() => setOpen(true)}
+      >
+        {value && (
+          <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-[4px] flex items-center gap-1">
+            {value}
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); onChange(''); setSearch(''); }}
+              className="hover:text-destructive font-medium"
+            >×</button>
+          </span>
+        )}
+        <input
+          value={search}
+          onChange={e => { setSearch(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder={value ? 'Suchen…' : placeholder}
+          className="outline-none text-sm flex-1 min-w-[80px] bg-transparent text-foreground placeholder:text-muted-foreground"
+        />
+      </div>
+      {open && filtered.length > 0 && (
+        <div className="absolute z-[200] w-full bg-background border border-input rounded-md shadow-lg mt-1 max-h-[200px] overflow-y-auto">
+          {filtered.map(o => (
+            <div
+              key={o}
+              onClick={() => { onChange(o); setSearch(''); setOpen(false); }}
+              className={cn(
+                "px-3 py-1.5 text-sm hover:bg-muted cursor-pointer transition-colors",
+                value === o && "bg-primary/10 text-primary font-medium"
+              )}
+            >
+              {o}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
-
 /* Searchable multi-select */
 function SearchableMultiSelect({ value, options, onChange, placeholder = 'Suchen…' }: {
   value: string[];
