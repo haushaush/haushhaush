@@ -56,12 +56,30 @@ const BRANCHE_OPTIONS = [
   'PKV', 'BU', 'Rechtsschutz', 'TKV', 'Unfallversicherung', 'Automotive', 'Handwerk',
   'Allfinanz', 'Immobilien', 'Versicherung', 'Solar', 'Zahnzusatz', 'Zahnersatz',
   'Haftpflicht', 'Wohngebäude', 'Altersvorsorge', 'Sterbegeld', 'Kindervorsorge',
-  'Investment', 'Finanzen', 'Andere',
+  'Investment', 'Finanzen', 'Private Krankenversicherung', 'Beihilfe - PKV',
+  'Tierkrankenversicherung', 'Recruiting', 'Dienstleister', 'Consulting', 'Restaurant',
+  'Audio', 'Warehouse', 'Pflege', 'Umzugsunternehmen', 'Badrenovierung', 'Kunst',
+  'KFZ', 'Textil', 'IT', 'Fahrrad', 'Brandschutzlösungen', 'Aviation', 'RS', 'Andere',
 ];
 const PROJEKTTYP_OPTIONS = [
   'Meta Werbeanzeigen', 'Ads Landing Page', 'Performance Funnel', 'Onepage Website',
   'Branding Website', 'CRM', 'Videoshooting', 'Fotoshooting', 'Erklärvideo',
-  'Social Media', 'SEO', 'Google Werbeanzeigen', 'Design', 'Printdesign', 'Sonstiges',
+  'Social Media', 'SEO', 'Google Werbeanzeigen', 'Design', 'Printdesign',
+  'Vorqualifikation', 'Leads kaufen', 'Leadkauf', 'Superchat', 'Ai Mail Automation',
+  'Ads Betreuung & Optimierung', 'Conversion-optimierte Landing Page',
+  'CRM Setup & Anbindung', 'Mehrstufiger Funnel', 'Meta Werbebudget',
+  'Google Unternehmensprofil', 'Development', 'Tech Support', 'Freebie erstellen',
+  'Sonstiges',
+];
+const UNTERNEHMEN_OPTIONS = [
+  'Allianz', 'Hanse Merkur', 'AXA', 'Barmenia Gothaer', 'Versicherungsmakler',
+  'Signal Iduna', 'Individuell', 'ARAG', 'ERGO', 'Real Estates Dubai', 'Nexus 2',
+  'Lackdoktor Ralf Reller', 'Leadsharks', 'Deutsches Marklerforum AG',
+  'Private PKV Consulting', 'PraeLux Gesellschaft für Investmentberatung mbH', 'EWE',
+  'Reller Automobile GmbH', 'Von Buddenbrock Concepts GmbH', 'Senne handels Gbr',
+  'SolarMolar', 'Mocho Versicherungsmakler', 'Tecplus GmbH', 'Thie GmbH',
+  'Falkenreck & Hallau-Grüner OHG', 'Udo Brass e.K.', 'Wonka.Audio',
+  'Zaunkreisel GmbH', 'Skyhub PAD',
 ];
 
 const fmt = (v: number | null | undefined) => {
