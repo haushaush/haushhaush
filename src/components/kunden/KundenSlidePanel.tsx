@@ -1,10 +1,12 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2 } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2, FolderKanban } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -218,13 +220,28 @@ function DatePickerField({ value, onChange }: { value: string | null; onChange: 
   );
 }
 
+const PROJECT_STATUS_STYLES: Record<string, string> = {
+  'Noch nicht gestartet': 'bg-destructive/20 text-destructive',
+  'Onboarding / Planung': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  'In Bearbeitung': 'bg-warning/20 text-warning',
+  'Internes Review': 'bg-muted text-muted-foreground',
+  'Client Review': 'bg-muted text-muted-foreground',
+  'Laufzeitbetreuung': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  'Abgeschlossen': 'bg-success/20 text-success',
+  'Pausiert': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+};
+
 export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenSlidePanelProps) {
+  const navigate = useNavigate();
   const [companyLogo, setCompanyLogo] = useState<{ logo_url: string | null; bg_color: string | null } | null>(null);
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [linkedProjects, setLinkedProjects] = useState<any[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('uebersicht');
 
-  const deal = d; // alias for template access
+  const deal = d;
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -287,6 +304,19 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
       .then(({ data }) => { if (data) setCompanyLogo(data as any); });
   }, [d.unternehmen]);
 
+  // Fetch linked projects
+  useEffect(() => {
+    if (!d.notion_id) { setLinkedProjects([]); return; }
+    setProjectsLoading(true);
+    supabase.from('projects').select('*').contains('verknuepfte_kunden_ids', [d.notion_id])
+      .then(({ data }) => { setLinkedProjects(data || []); setProjectsLoading(false); });
+  }, [d.notion_id]);
+
+  const fmtProjDate = (v: string | null | undefined) => {
+    if (!v) return null;
+    try { return new Date(v).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { return v; }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     const payload = { ...editData };
@@ -346,93 +376,161 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
             </div>
           </div>
 
-          {/* Form content */}
-          <div className="p-6 space-y-6">
-            <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Kontakt & Info</h3>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                <FieldRow label="Vor- & Nachname">
-                  <Input className="h-[34px] text-sm" value={editData.vor_nachname ?? ''} onChange={e => upd('vor_nachname', e.target.value)} />
-                </FieldRow>
-                <FieldRow label="Email">
-                  <Input className="h-[34px] text-sm" value={editData.email ?? ''} onChange={e => upd('email', e.target.value)} />
-                </FieldRow>
-                <FieldRow label="Telefon">
-                  <Input className="h-[34px] text-sm" value={editData.telefon ?? ''} onChange={e => upd('telefon', e.target.value)} />
-                </FieldRow>
-                <FieldRow label="Website URL">
-                  <Input className="h-[34px] text-sm" value={editData.website_url ?? ''} onChange={e => upd('website_url', e.target.value)} />
-                </FieldRow>
-                <FieldRow label="Unternehmen">
-                  <SearchableSingleSelect value={editData.unternehmen ?? ''} options={UNTERNEHMEN_OPTIONS} onChange={v => upd('unternehmen', v)} />
-                </FieldRow>
-                <FieldRow label="Branche">
-                  <SearchableMultiSelect value={editData.branche ?? []} options={BRANCHE_OPTIONS} onChange={v => upd('branche', v)} placeholder="Branche suchen…" />
-                </FieldRow>
-                <div className="col-span-2">
-                  <FieldRow label="Projekttyp">
-                    <SearchableMultiSelect value={editData.projekttyp ?? []} options={PROJEKTTYP_OPTIONS} onChange={v => upd('projekttyp', v)} placeholder="Projekttyp suchen…" />
-                  </FieldRow>
-                </div>
-                <FieldRow label="Laufzeit">
-                  <SearchableSingleSelect value={editData.laufzeit ?? ''} options={LAUFZEIT_OPTIONS} onChange={v => upd('laufzeit', v)} />
-                </FieldRow>
-                <FieldRow label="Startdatum">
-                  <DatePickerField value={editData.start_datum} onChange={v => upd('start_datum', v)} />
-                </FieldRow>
-                <FieldRow label="Enddatum">
-                  <DatePickerField value={editData.end_datum} onChange={v => upd('end_datum', v)} />
-                </FieldRow>
-                <FieldRow label="Deadline">
-                  <DatePickerField value={editData.deadline} onChange={v => upd('deadline', v)} />
-                </FieldRow>
-                <FieldRow label="Laufzeit in 14T fällig">
-                  <label className="flex items-center gap-2 cursor-pointer h-[34px]">
-                    <input type="checkbox" checked={editData.laufzeit_in_14t ?? false} onChange={e => upd('laufzeit_in_14t', e.target.checked)}
-                      className="h-4 w-4 rounded border-border accent-primary" />
-                    <span className="text-sm">{editData.laufzeit_in_14t ? 'Ja' : 'Nein'}</span>
-                  </label>
-                </FieldRow>
-                <FieldRow label="Kundenstatus">
-                  <SearchableSingleSelect value={editData.kundenstatus ?? ''} options={KUNDENSTATUS_OPTIONS} onChange={v => upd('kundenstatus', v)} />
-                </FieldRow>
-                <FieldRow label="Ampelstatus">
-                  <SearchableSingleSelect value={editData.ampel ?? ''} options={AMPEL_OPTIONS} onChange={v => upd('ampel', v)} />
-                </FieldRow>
-                <FieldRow label="Zahlstatus">
-                  <SearchableSingleSelect value={editData.zahlstatus ?? ''} options={ZAHLSTATUS_OPTIONS} onChange={v => upd('zahlstatus', v)} />
-                </FieldRow>
-              </div>
-            </section>
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+            <div className="px-6 pt-4 pb-0">
+              <TabsList className="w-full">
+                <TabsTrigger value="uebersicht" className="flex-1">Übersicht</TabsTrigger>
+                <TabsTrigger value="projekte" className="flex-1">
+                  Projekte{!projectsLoading && linkedProjects.length > 0 ? ` (${linkedProjects.length})` : ''}
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-            <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Finanzen</h3>
-              <div className="bg-muted/30 rounded-lg p-4">
-                {([
-                  ['Gesamt-Saldo', 'gesamt_saldo'],
-                  ['Ads-Budget', 'ads_budget'],
-                  ['Cash Collect offen', 'cash_collect_offen'],
-                  ['CLV', 'clv'],
-                  ['Meta Kosten', 'meta_kosten'],
-                  ['CRM Kosten', 'crm_kosten'],
-                  ['Superchat Kosten', 'superchat_kosten'],
-                  ['Website Kosten', 'website_kosten'],
-                ] as [string, string][]).map(([label, field]) => (
-                  <FinRow key={field} label={label}>
-                    <Input type="number" className="h-[34px] text-sm text-right tabular-nums w-32"
-                      value={editData[field] ?? ''} onChange={e => upd(field, e.target.value === '' ? null : Number(e.target.value))} />
-                  </FinRow>
-                ))}
-              </div>
-            </section>
+            <TabsContent value="uebersicht" className="flex-1 m-0 overflow-y-auto">
+              <div className="p-6 space-y-6">
+                <section>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Kontakt & Info</h3>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                    <FieldRow label="Vor- & Nachname">
+                      <Input className="h-[34px] text-sm" value={editData.vor_nachname ?? ''} onChange={e => upd('vor_nachname', e.target.value)} />
+                    </FieldRow>
+                    <FieldRow label="Email">
+                      <Input className="h-[34px] text-sm" value={editData.email ?? ''} onChange={e => upd('email', e.target.value)} />
+                    </FieldRow>
+                    <FieldRow label="Telefon">
+                      <Input className="h-[34px] text-sm" value={editData.telefon ?? ''} onChange={e => upd('telefon', e.target.value)} />
+                    </FieldRow>
+                    <FieldRow label="Website URL">
+                      <Input className="h-[34px] text-sm" value={editData.website_url ?? ''} onChange={e => upd('website_url', e.target.value)} />
+                    </FieldRow>
+                    <FieldRow label="Unternehmen">
+                      <SearchableSingleSelect value={editData.unternehmen ?? ''} options={UNTERNEHMEN_OPTIONS} onChange={v => upd('unternehmen', v)} />
+                    </FieldRow>
+                    <FieldRow label="Branche">
+                      <SearchableMultiSelect value={editData.branche ?? []} options={BRANCHE_OPTIONS} onChange={v => upd('branche', v)} placeholder="Branche suchen…" />
+                    </FieldRow>
+                    <div className="col-span-2">
+                      <FieldRow label="Projekttyp">
+                        <SearchableMultiSelect value={editData.projekttyp ?? []} options={PROJEKTTYP_OPTIONS} onChange={v => upd('projekttyp', v)} placeholder="Projekttyp suchen…" />
+                      </FieldRow>
+                    </div>
+                    <FieldRow label="Laufzeit">
+                      <SearchableSingleSelect value={editData.laufzeit ?? ''} options={LAUFZEIT_OPTIONS} onChange={v => upd('laufzeit', v)} />
+                    </FieldRow>
+                    <FieldRow label="Startdatum">
+                      <DatePickerField value={editData.start_datum} onChange={v => upd('start_datum', v)} />
+                    </FieldRow>
+                    <FieldRow label="Enddatum">
+                      <DatePickerField value={editData.end_datum} onChange={v => upd('end_datum', v)} />
+                    </FieldRow>
+                    <FieldRow label="Deadline">
+                      <DatePickerField value={editData.deadline} onChange={v => upd('deadline', v)} />
+                    </FieldRow>
+                    <FieldRow label="Laufzeit in 14T fällig">
+                      <label className="flex items-center gap-2 cursor-pointer h-[34px]">
+                        <input type="checkbox" checked={editData.laufzeit_in_14t ?? false} onChange={e => upd('laufzeit_in_14t', e.target.checked)}
+                          className="h-4 w-4 rounded border-border accent-primary" />
+                        <span className="text-sm">{editData.laufzeit_in_14t ? 'Ja' : 'Nein'}</span>
+                      </label>
+                    </FieldRow>
+                    <FieldRow label="Kundenstatus">
+                      <SearchableSingleSelect value={editData.kundenstatus ?? ''} options={KUNDENSTATUS_OPTIONS} onChange={v => upd('kundenstatus', v)} />
+                    </FieldRow>
+                    <FieldRow label="Ampelstatus">
+                      <SearchableSingleSelect value={editData.ampel ?? ''} options={AMPEL_OPTIONS} onChange={v => upd('ampel', v)} />
+                    </FieldRow>
+                    <FieldRow label="Zahlstatus">
+                      <SearchableSingleSelect value={editData.zahlstatus ?? ''} options={ZAHLSTATUS_OPTIONS} onChange={v => upd('zahlstatus', v)} />
+                    </FieldRow>
+                  </div>
+                </section>
 
-            {editData.laufzeit_in_14t && (
-              <div className="flex items-center gap-2 bg-warning/10 text-warning rounded-md px-3 py-2">
-                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-                <span className="text-sm font-medium">Laufzeit in 14 Tagen fällig</span>
+                <section>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Finanzen</h3>
+                  <div className="bg-muted/30 rounded-lg p-4">
+                    {([
+                      ['Gesamt-Saldo', 'gesamt_saldo'],
+                      ['Ads-Budget', 'ads_budget'],
+                      ['Cash Collect offen', 'cash_collect_offen'],
+                      ['CLV', 'clv'],
+                      ['Meta Kosten', 'meta_kosten'],
+                      ['CRM Kosten', 'crm_kosten'],
+                      ['Superchat Kosten', 'superchat_kosten'],
+                      ['Website Kosten', 'website_kosten'],
+                    ] as [string, string][]).map(([label, field]) => (
+                      <FinRow key={field} label={label}>
+                        <Input type="number" className="h-[34px] text-sm text-right tabular-nums w-32"
+                          value={editData[field] ?? ''} onChange={e => upd(field, e.target.value === '' ? null : Number(e.target.value))} />
+                      </FinRow>
+                    ))}
+                  </div>
+                </section>
+
+                {editData.laufzeit_in_14t && (
+                  <div className="flex items-center gap-2 bg-warning/10 text-warning rounded-md px-3 py-2">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium">Laufzeit in 14 Tagen fällig</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </TabsContent>
+
+            <TabsContent value="projekte" className="flex-1 m-0 overflow-y-auto">
+              <div className="p-6">
+                {projectsLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map(i => <div key={i} className="h-24 bg-muted/30 rounded-lg animate-pulse" />)}
+                  </div>
+                ) : linkedProjects.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <FolderKanban className="h-10 w-10 mb-3 opacity-40" />
+                    <p className="text-sm">Keine Projekte verknüpft</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {linkedProjects.map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => { onClose(); navigate(`/projekte?projekt=${p.id}`); }}
+                        className="w-full text-left border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors group"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{p.projektname || p.name || '–'}</h4>
+                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                              {p.projektstatus && (
+                                <Badge variant="secondary" className={`text-[10px] rounded-[4px] ${PROJECT_STATUS_STYLES[p.projektstatus] || 'bg-muted text-muted-foreground'}`}>
+                                  {p.projektstatus}
+                                </Badge>
+                              )}
+                              {p.zahlstatus && (
+                                <Badge variant="outline" className="text-[10px] rounded-[4px]">{p.zahlstatus}</Badge>
+                              )}
+                            </div>
+                          </div>
+                          {p.cash_collect != null && (
+                            <span className="text-sm font-semibold tabular-nums whitespace-nowrap text-foreground">{fmt(p.cash_collect)}</span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {(p.typ || []).map((t: string) => (
+                            <span key={t} className="bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 rounded-[3px]">{t}</span>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          {p.laufzeit && <span>{p.laufzeit}</span>}
+                          {(p.startdatum || p.enddatum) && (
+                            <span>{fmtProjDate(p.startdatum)} → {fmtProjDate(p.enddatum) || '–'}</span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Sticky save footer */}

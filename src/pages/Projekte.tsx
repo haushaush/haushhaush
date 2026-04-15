@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +39,7 @@ const TABS = [
 ];
 
 export default function Projekte() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -45,6 +47,7 @@ export default function Projekte() {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const autoSyncDone = useRef(false);
+  const autoOpenDone = useRef(false);
 
   const fetchData = async () => {
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
@@ -75,6 +78,15 @@ export default function Projekte() {
       if (data.length === 0 && !autoSyncDone.current) {
         autoSyncDone.current = true;
         handleSync();
+      }
+      const projektId = searchParams.get('projekt');
+      if (projektId && !autoOpenDone.current) {
+        autoOpenDone.current = true;
+        const match = data.find((p: any) => p.id === projektId);
+        if (match) {
+          setSelectedProject(match);
+          setSearchParams({}, { replace: true });
+        }
       }
     });
   }, []);
