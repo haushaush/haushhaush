@@ -358,7 +358,7 @@ export default function Kunden() {
                     onKeyDown={e => e.key === 'Enter' && setSelectedDeal(d)}
                     role="button"
                   >
-                    <td className="pl-2 pr-3">
+                    <td className="px-4">
                       <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
                           {initials}
@@ -366,28 +366,28 @@ export default function Kunden() {
                         <span className="font-semibold text-sm truncate max-w-[180px]">{d.client_name}</span>
                       </div>
                     </td>
-                    <td className="pr-3">
+                    <td className="px-4">
                       {branche0 ? (
                         <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
                           {branche0}
                         </span>
                       ) : <span className="text-muted-foreground text-xs">–</span>}
                     </td>
-                    <td className="pr-3">
+                    <td className="px-4">
                       <span className={`inline-block text-[11px] font-medium px-2 py-0.5 rounded-[4px] ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>
                         {ks}
                       </span>
                     </td>
-                    <td className="pr-3">
+                    <td className="px-4">
                       <span className="flex items-center gap-1.5">
                         <span className={`h-2.5 w-2.5 rounded-full ${ampel.dot}`} />
                         <span className="text-xs font-medium">{ampel.label}</span>
                       </span>
                     </td>
-                    <td className="text-right pr-3 font-bold tabular-nums font-mono text-sm">{fmt(d.gesamt_saldo ?? d.wert_eur)}</td>
-                    <td className="text-right pr-3 tabular-nums font-mono text-sm font-bold hidden md:table-cell">{fmt(d.ads_budget)}</td>
-                    <td className="text-muted-foreground text-xs pr-3 hidden lg:table-cell">{dateRange}</td>
-                    <td className="hidden md:table-cell pr-3">
+                    <td className="text-right px-4 font-bold tabular-nums font-mono text-sm">{fmt(d.gesamt_saldo ?? d.wert_eur)}</td>
+                    <td className="text-right px-4 tabular-nums font-mono text-sm font-bold hidden md:table-cell">{fmt(d.ads_budget)}</td>
+                    <td className="text-muted-foreground text-xs px-4 hidden lg:table-cell">{dateRange}</td>
+                    <td className="hidden md:table-cell px-4">
                       {d.zahlstatus ? (
                         <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded border border-border text-muted-foreground">
                           {d.zahlstatus}
