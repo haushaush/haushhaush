@@ -53,6 +53,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
     const key = Deno.env.get("NOTION_API_KEY");
+    console.log("NOTION_API_KEY set:", !!key, key ? `prefix: ${key.substring(0, 10)}... length: ${key.length}` : "MISSING");
     if (!key) {
       return new Response(
         JSON.stringify({ 
