@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, RefreshCw, Loader2, LayoutGrid, TableIcon, ArrowUpDown, ArrowUp, ArrowDown, Users, FileX } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Plus, Search, RefreshCw, Loader2, LayoutGrid, TableIcon, ArrowUpDown, ArrowUp, ArrowDown, Users, FileX, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import KundenCardView from '@/components/kunden/KundenCardView';
 
@@ -69,6 +70,24 @@ export default function Kunden() {
   const { isAdminOrManager } = useAuth();
   const navigate = useNavigate();
   const autoSyncDone = useRef(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase.from('close_deals').delete().eq('id', deleteTarget.id);
+    if (error) {
+      toast.error('Fehler beim Löschen', { description: error.message });
+      setDeleting(false);
+      return;
+    }
+    toast.success('Kunde wurde gelöscht');
+    setDeleteTarget(null);
+    setSelectedDeal(null);
+    setDeleting(false);
+    fetchData();
+  };
 
   const [form, setForm] = useState({
     client_name: '', art: 'PKV', wert_eur: 0, laufzeit_monate: 12,
@@ -347,7 +366,7 @@ export default function Kunden() {
 
       {/* Content */}
       {viewMode === 'cards' ? (
-        <KundenCardView deals={filtered} onSelect={setSelectedDeal} />
+        <KundenCardView deals={filtered} onSelect={setSelectedDeal} onDelete={setDeleteTarget} />
       ) : (
         <div className="overflow-x-auto -mx-2">
           <table className="w-full min-w-[900px]">
@@ -381,12 +400,13 @@ export default function Kunden() {
                 </th>
                 <th className="text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 pb-3 px-4 min-w-[140px] hidden lg:table-cell">Zeitraum</th>
                 <th className="text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 pb-3 px-4 min-w-[120px] hidden md:table-cell">Zahlung</th>
+                <th className="w-10 pb-3" />
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-16">
+                  <td colSpan={9} className="py-16">
                     <EmptyState syncing={syncing} />
                   </td>
                 </tr>
@@ -401,7 +421,7 @@ export default function Kunden() {
                 return (
                   <tr
                     key={d.id}
-                    className="h-14 border-b border-border/30 cursor-pointer hover:bg-muted/30 transition-colors"
+                    className="group h-14 border-b border-border/30 cursor-pointer hover:bg-muted/30 transition-colors"
                     onClick={() => setSelectedDeal(d)}
                     tabIndex={0}
                     onKeyDown={e => e.key === 'Enter' && setSelectedDeal(d)}
@@ -443,6 +463,23 @@ export default function Kunden() {
                         </span>
                       ) : <span className="text-muted-foreground text-xs">–</span>}
                     </td>
+                    <td className="px-1" onClick={e => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted transition-all">
+                            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-36">
+                          <DropdownMenuItem onClick={() => setSelectedDeal(d)}>
+                            <Pencil className="h-3.5 w-3.5 mr-2" />Bearbeiten
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(d)}>
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />Löschen
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
                   </tr>
                 );
               })}
@@ -451,9 +488,34 @@ export default function Kunden() {
         </div>
       )}
 
+      {/* Delete confirmation dialog */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50" onClick={() => setDeleteTarget(null)}>
+          <div className="bg-background rounded-xl border border-border shadow-xl p-6 max-w-sm mx-4 animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold mb-2">Kunde löschen</h3>
+            <p className="text-sm text-muted-foreground mb-5">
+              Möchtest du <strong>{deleteTarget.client_name}</strong> wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setDeleteTarget(null)}>Abbrechen</Button>
+              <Button variant="destructive" size="sm" onClick={handleDeleteConfirm} disabled={deleting}>
+                {deleting ? 'Löscht…' : 'Löschen'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Slide-in panel */}
       {selectedDeal && (
-        <KundenSlidePanel deal={selectedDeal} onClose={() => setSelectedDeal(null)} />
+        <KundenSlidePanel
+          deal={selectedDeal}
+          onClose={() => setSelectedDeal(null)}
+          onDelete={(id) => {
+            setSelectedDeal(null);
+            fetchData();
+          }}
+        />
       )}
     </div>
   );

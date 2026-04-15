@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { FileX } from 'lucide-react';
+import { FileX, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const fmt = (v: number | null | undefined) => {
   if (v == null) return '–';
@@ -90,9 +91,10 @@ function CompanyHeader({ company, clientName, logos }: { company: string; client
 interface KundenCardViewProps {
   deals: any[];
   onSelect: (deal: any) => void;
+  onDelete?: (deal: any) => void;
 }
 
-export default function KundenCardView({ deals, onSelect }: KundenCardViewProps) {
+export default function KundenCardView({ deals, onSelect, onDelete }: KundenCardViewProps) {
   const [logos, setLogos] = useState<CompanyLogo[]>(cachedLogos || []);
 
   useEffect(() => {
@@ -129,12 +131,32 @@ export default function KundenCardView({ deals, onSelect }: KundenCardViewProps)
         return (
           <div
             key={d.id}
-            className="group bg-card border border-border/50 rounded-xl overflow-hidden cursor-pointer hover:border-primary/30 hover:shadow-md transition-all duration-200"
+            className="group relative bg-card border border-border/50 rounded-xl overflow-hidden cursor-pointer hover:border-primary/30 hover:shadow-md transition-all duration-200"
             onClick={() => onSelect(d)}
             tabIndex={0}
             onKeyDown={e => e.key === 'Enter' && onSelect(d)}
             role="button"
           >
+            {/* 3-dot menu */}
+            {onDelete && (
+              <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="p-1.5 rounded-md bg-black/40 hover:bg-black/60 backdrop-blur-sm transition-colors">
+                      <MoreHorizontal className="h-4 w-4 text-white" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-36">
+                    <DropdownMenuItem onClick={() => onSelect(d)}>
+                      <Pencil className="h-3.5 w-3.5 mr-2" />Bearbeiten
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onDelete(d)}>
+                      <Trash2 className="h-3.5 w-3.5 mr-2" />Löschen
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
             <CompanyHeader company={company} clientName={d.client_name} logos={logos} />
             <div className="px-3.5 py-3 space-y-2.5">
               {/* Name + Ampel */}
