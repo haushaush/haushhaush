@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Bell, Palette, Users, Hash, X, Check, Search, Loader2 } from 'lucide-react';
+import { Bell, Palette, Users, Hash, X, Check, Search, Loader2, Upload, Building2, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { IntegrationCard, type HealthResult } from '@/components/integrations/IntegrationCard';
 import { IntegrationStatusBar } from '@/components/integrations/IntegrationStatusBar';
@@ -155,6 +155,98 @@ function SlackWebhookConfig() {
             ⚠️ Keine Webhook URL konfiguriert — Bug-Reports und Support-Tickets werden nicht an Slack gesendet.
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function CompanyLogoManager() {
+  const [logos, setLogos] = useState<{ unternehmen: string; logo_url: string | null; bg_color: string | null }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState<string | null>(null);
+
+  const fetchLogos = async () => {
+    const { data } = await supabase.from('company_logos').select('*').order('unternehmen');
+    setLogos((data as any[]) || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchLogos(); }, []);
+
+  const handleUpload = async (unternehmen: string, file: File) => {
+    setUploading(unternehmen);
+    const ext = file.name.split('.').pop() || 'png';
+    const path = `${unternehmen.replace(/\s+/g, '_').toLowerCase()}.${ext}`;
+
+    // Remove old file if exists
+    await supabase.storage.from('company-logos').remove([path]);
+
+    const { error: upErr } = await supabase.storage.from('company-logos').upload(path, file, { upsert: true });
+    if (upErr) { toast.error('Upload fehlgeschlagen'); setUploading(null); return; }
+
+    const { data: urlData } = supabase.storage.from('company-logos').getPublicUrl(path);
+    const logoUrl = urlData.publicUrl + '?t=' + Date.now();
+
+    await supabase.from('company_logos').update({ logo_url: logoUrl } as any).eq('unternehmen', unternehmen);
+    toast.success(`Logo für ${unternehmen} gespeichert`);
+    setUploading(null);
+    fetchLogos();
+  };
+
+  if (loading) return <Skeleton className="h-40" />;
+
+  return (
+    <Card className="border-border bg-card">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-primary" />
+          Unternehmens-Logos
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">Logos werden in den Kunden-Karten angezeigt.</p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {logos.map(l => (
+          <div key={l.unternehmen} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
+            {/* Preview */}
+            <div
+              className="h-10 w-16 rounded flex items-center justify-center shrink-0 overflow-hidden"
+              style={{ background: l.bg_color || '#374151' }}
+            >
+              {l.logo_url ? (
+                <img src={l.logo_url} alt={l.unternehmen} className="h-6 object-contain brightness-0 invert" />
+              ) : (
+                <ImageIcon className="h-4 w-4 text-white/40" />
+              )}
+            </div>
+
+            {/* Name */}
+            <span className="text-sm font-medium flex-1 min-w-0 truncate">{l.unternehmen}</span>
+
+            {/* Upload */}
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) handleUpload(l.unternehmen, f);
+                  e.target.value = '';
+                }}
+                disabled={uploading === l.unternehmen}
+              />
+              <Button variant="outline" size="sm" asChild disabled={uploading === l.unternehmen}>
+                <span>
+                  {uploading === l.unternehmen ? (
+                    <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Lädt...</>
+                  ) : (
+                    <><Upload className="h-3 w-3 mr-1" /> Logo hochladen</>
+                  )}
+                </span>
+              </Button>
+            </label>
+          </div>
+        ))}
       </CardContent>
     </Card>
   );
@@ -603,6 +695,9 @@ export default function Einstellungen() {
               </CardContent>
             </Card>
           ))}
+
+          {/* Unternehmens-Logos */}
+          <CompanyLogoManager />
         </TabsContent>
 
         {/* ═══════ BENUTZER TAB ═══════ */}
