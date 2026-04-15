@@ -69,6 +69,7 @@ export default function Kunden() {
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [activeSubTab, setActiveSubTab] = useState('all');
   const [filterArt, setFilterArt] = useState('all');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -140,16 +141,12 @@ export default function Kunden() {
     return Array.from(companies).sort();
   }, [deals]);
 
-  const TABS = useMemo(() => {
-    const base = [
-      { label: 'Alle Kunden', value: 'all' },
-      { label: 'Aktive Kunden', value: 'aktiv' },
-    ];
-    dynamicCompanyTabs.forEach(c => base.push({ label: c, value: `company:${c}` }));
-    base.push({ label: 'Follow Up', value: 'followup' });
-    base.push({ label: 'Abschlüsse', value: 'done' });
-    return base;
-  }, [dynamicCompanyTabs]);
+  const TABS = [
+    { label: 'Alle Kunden', value: 'all' },
+    { label: 'Aktive Kunden', value: 'aktiv' },
+    { label: 'Follow Up', value: 'followup' },
+    { label: 'Abschlüsse', value: 'done' },
+  ];
 
   const filtered = useMemo(() => deals.filter(d => {
     const matchSearch = d.client_name?.toLowerCase().includes(search.toLowerCase());
@@ -160,17 +157,17 @@ export default function Kunden() {
       matchTab = true;
     } else if (activeTab === 'aktiv') {
       matchTab = isAktiv(d);
+      if (matchTab && activeSubTab !== 'all') {
+        matchTab = d.unternehmen === activeSubTab;
+      }
     } else if (activeTab === 'followup') {
       matchTab = d.kundenstatus === 'Follow Up';
     } else if (activeTab === 'done') {
       matchTab = d.zahlstatus === 'DONE';
-    } else if (activeTab.startsWith('company:')) {
-      const company = activeTab.slice(8);
-      matchTab = isAktiv(d) && d.unternehmen === company;
     }
 
     return matchSearch && matchTab && matchArt;
-  }), [deals, search, activeTab, filterArt]);
+  }), [deals, search, activeTab, activeSubTab, filterArt]);
 
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = { all: deals.length };
@@ -266,7 +263,7 @@ export default function Kunden() {
         {TABS.map(tab => (
           <button
             key={tab.value}
-            onClick={() => setActiveTab(tab.value)}
+            onClick={() => { setActiveTab(tab.value); if (tab.value !== 'aktiv') setActiveSubTab('all'); }}
             className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
               activeTab === tab.value
                 ? 'border-primary text-primary'
@@ -280,6 +277,38 @@ export default function Kunden() {
           </button>
         ))}
       </div>
+
+      {/* Sub-tabs for Aktive Kunden */}
+      {activeTab === 'aktiv' && dynamicCompanyTabs.length > 0 && (
+        <div className="flex gap-0.5 overflow-x-auto pb-px scrollbar-none -mt-3">
+          <button
+            onClick={() => setActiveSubTab('all')}
+            className={`px-3 py-1.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
+              activeSubTab === 'all'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Alle
+          </button>
+          {dynamicCompanyTabs.map(c => (
+            <button
+              key={c}
+              onClick={() => setActiveSubTab(c)}
+              className={`px-3 py-1.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0 ${
+                activeSubTab === c
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {c}
+              <span className="ml-1 text-[10px] text-muted-foreground">
+                {tabCounts[`company:${c}`] ?? 0}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Search + filter */}
       <div className="flex flex-wrap gap-2">
