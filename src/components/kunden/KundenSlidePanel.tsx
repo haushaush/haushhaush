@@ -304,6 +304,19 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
       .then(({ data }) => { if (data) setCompanyLogo(data as any); });
   }, [d.unternehmen]);
 
+  // Fetch linked projects
+  useEffect(() => {
+    if (!d.notion_id) { setLinkedProjects([]); return; }
+    setProjectsLoading(true);
+    supabase.from('projects').select('*').contains('verknuepfte_kunden_ids', [d.notion_id])
+      .then(({ data }) => { setLinkedProjects(data || []); setProjectsLoading(false); });
+  }, [d.notion_id]);
+
+  const fmtProjDate = (v: string | null | undefined) => {
+    if (!v) return null;
+    try { return new Date(v).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { return v; }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     const payload = { ...editData };
