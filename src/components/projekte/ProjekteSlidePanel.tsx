@@ -180,8 +180,25 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const [linkedKunden, setLinkedKunden] = useState<{ id: string; client_name: string }[]>([]);
+  const [allTeamMembers, setAllTeamMembers] = useState<{ notion_id: string; name: string; email: string; avatar_url?: string }[]>([]);
+  const [linkedTeam, setLinkedTeam] = useState<{ notion_id: string; name: string; email: string; avatar_url?: string }[]>([]);
 
   useEffect(() => { setEditData({ ...p }); }, [p.id]);
+
+  // Load all team members once
+  useEffect(() => {
+    supabase.from('team').select('notion_id, name, email, avatar_url').then(({ data }) => {
+      setAllTeamMembers((data || []).filter((m: any) => m.notion_id));
+    });
+  }, []);
+
+  // Load linked team members
+  useEffect(() => {
+    const ids: string[] = editData.verknuepfte_mitarbeiter_ids || [];
+    if (ids.length === 0) { setLinkedTeam([]); return; }
+    if (allTeamMembers.length === 0) return;
+    setLinkedTeam(allTeamMembers.filter(m => ids.includes(m.notion_id)));
+  }, [editData.verknuepfte_mitarbeiter_ids, allTeamMembers]);
 
   useEffect(() => {
     const ids = p.verknuepfte_kunden_ids || p.verknuepfte_kunden || [];
