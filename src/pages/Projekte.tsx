@@ -286,7 +286,7 @@ export default function Projekte() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
-  const isDragEnabled = viewMode === 'status' || viewMode === 'typ';
+  const isDragEnabled = viewMode === 'status' || viewMode === 'typ' || viewMode === 'mitarbeiter';
 
   /* ── KPI chart data ── */
   const kpiChartData = useMemo(() => {
