@@ -536,7 +536,8 @@ export default function Projekte() {
         })}
       </div>
 
-      {/* Search + deadline filter */}
+      {/* Search + deadline filter (hidden on KPI tab) */}
+      {viewMode !== 'kpi' && (
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative max-w-sm flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
