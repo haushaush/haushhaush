@@ -270,7 +270,7 @@ export default function Projekte() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'kunde' | 'status' | 'typ' | 'kpi'>('status');
+  const [viewMode, setViewMode] = useState<'kunde' | 'status' | 'typ' | 'mitarbeiter' | 'kpi'>('status');
   const [deadlineFilter, setDeadlineFilter] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showNewPanel, setShowNewPanel] = useState(false);
