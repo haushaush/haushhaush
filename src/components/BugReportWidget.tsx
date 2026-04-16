@@ -92,18 +92,22 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
 
       if (dbError) throw dbError;
 
-      // 2. Send Slack notification (non-blocking)
-      slackNotifyBugReport({
-        user_name: displayName || user?.email || null,
-        user_email: user?.email || null,
-        page_url: window.location.pathname,
-        problem_type: problemType,
-        description: description.trim(),
-        screenshot_url: screenshotUrl,
+      // 2. Send Slack notification via edge function (non-blocking)
+      supabase.functions.invoke('slack-notify', {
+        body: {
+          message: description.trim(),
+          type: problemType,
+          user_email: user?.email || null,
+          user_name: displayName || user?.email || null,
+          page_url: window.location.pathname,
+          screenshot_url: screenshotUrl,
+        },
+      }).then(({ error }) => {
+        if (error) console.warn('Slack notify failed:', error);
       }).catch(() => {});
 
       setSuccess(true);
-      toast.success('Bug Report gesendet!');
+      toast.success('Fehler wurde an Tech-Support gemeldet ✅');
     } catch (e) {
       console.error('Bug report failed:', e);
       toast.error('Fehler beim Senden. Bitte versuche es erneut.');
