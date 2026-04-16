@@ -646,20 +646,26 @@ export default function Projekte() {
       >
         <div className="flex-1 overflow-x-auto pb-4">
           <div className="flex gap-3 min-h-[400px]">
-            {sortedGroupKeys.map(key => (
+            {sortedGroupKeys.map(key => {
+              const mitarbeiterIcon = viewMode === 'mitarbeiter' && key !== 'Nicht zugewiesen' ? (
+                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[9px] font-bold shrink-0">{getInitials(key)}</div>
+              ) : undefined;
+              return (
               <DroppableKanbanColumn
                 key={key}
                 columnId={key}
                 title={key}
                 count={grouped[key]?.length || 0}
                 headerClass={viewMode === 'status' ? STATUS_HEADER_BG[key] : undefined}
+                headerIcon={mitarbeiterIcon}
                 projects={grouped[key] || []}
                 customerNames={customerNames}
                 onSelect={p => setSelectedProject(p)}
                 isOverColumn={overColumnId === key}
                 isDragDisabled={!isDragEnabled}
               />
-            ))}
+              );
+            })}
             {sortedGroupKeys.length === 0 && (
               <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
                 <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center mb-3">
