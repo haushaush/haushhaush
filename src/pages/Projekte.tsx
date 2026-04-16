@@ -274,7 +274,6 @@ export default function Projekte() {
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showNewPanel, setShowNewPanel] = useState(false);
   const [customerNames, setCustomerNames] = useState<Record<string, string>>({});
-  const [teamMembers, setTeamMembers] = useState<Record<string, { name: string; avatar_url?: string }>>({});
   const autoSyncDone = useRef(false);
   const autoOpenDone = useRef(false);
 
@@ -313,11 +312,6 @@ export default function Projekte() {
     const nameMap: Record<string, string> = {};
     (deals || []).forEach((d: any) => { if (d.notion_id) nameMap[d.notion_id] = d.client_name; });
     setCustomerNames(nameMap);
-
-    const { data: team } = await supabase.from('team').select('id, name, avatar_url, notion_id');
-    const tMap: Record<string, { name: string; avatar_url?: string }> = {};
-    (team || []).forEach((t: any) => { if (t.notion_id) tMap[t.notion_id] = { name: t.name, avatar_url: t.avatar_url }; });
-    setTeamMembers(tMap);
   }, []);
 
   const handleSync = async () => {
