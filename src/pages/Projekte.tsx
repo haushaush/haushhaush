@@ -68,6 +68,7 @@ const VIEW_TABS = [
   { label: 'Nach Kunde', value: 'kunde', icon: Users },
   { label: 'Nach Status', value: 'status', icon: LayoutGrid },
   { label: 'Nach Projektart', value: 'typ', icon: FolderKanban },
+  { label: 'Nach Mitarbeiter', value: 'mitarbeiter', icon: Users },
   { label: 'KPI Tracking', value: 'kpi', icon: BarChart3 },
 ];
 
@@ -213,6 +214,7 @@ function DroppableKanbanColumn({
   title,
   count,
   headerClass,
+  headerIcon,
   projects,
   customerNames,
   onSelect,
@@ -223,6 +225,7 @@ function DroppableKanbanColumn({
   title: string;
   count: number;
   headerClass?: string;
+  headerIcon?: React.ReactNode;
   projects: any[];
   customerNames: Record<string, string>;
   onSelect: (p: any) => void;
@@ -235,6 +238,7 @@ function DroppableKanbanColumn({
   return (
     <div className="min-w-[280px] max-w-[320px] flex-shrink-0 flex flex-col" ref={setNodeRef}>
       <div className={`flex items-center gap-2 px-3 py-2 rounded-t-lg border transition-colors ${headerClass || 'bg-muted/30 border-border'}`}>
+        {headerIcon}
         <h3 className="text-xs font-semibold truncate">{title}</h3>
         <Badge variant="secondary" className="text-[10px] h-5 px-1.5 rounded-md">{count}</Badge>
       </div>
@@ -269,7 +273,7 @@ export default function Projekte() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'kunde' | 'status' | 'typ' | 'kpi'>('status');
+  const [viewMode, setViewMode] = useState<'kunde' | 'status' | 'typ' | 'mitarbeiter' | 'kpi'>('status');
   const [deadlineFilter, setDeadlineFilter] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showNewPanel, setShowNewPanel] = useState(false);
@@ -285,7 +289,7 @@ export default function Projekte() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
-  const isDragEnabled = viewMode === 'status' || viewMode === 'typ';
+  const isDragEnabled = viewMode === 'status' || viewMode === 'typ' || viewMode === 'mitarbeiter';
 
   /* ── KPI chart data ── */
   const kpiChartData = useMemo(() => {
@@ -371,6 +375,19 @@ export default function Projekte() {
           });
         }
       });
+    } else if (viewMode === 'mitarbeiter') {
+      filtered.forEach(p => {
+        const members: any[] = Array.isArray(p.mitarbeiter) ? p.mitarbeiter : [];
+        if (members.length === 0) {
+          if (!groups['Nicht zugewiesen']) groups['Nicht zugewiesen'] = [];
+          groups['Nicht zugewiesen'].push(p);
+        } else {
+          const first = members[0];
+          const key = first.name || first.id || 'Nicht zugewiesen';
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(p);
+        }
+      });
     } else {
       filtered.forEach(p => {
         const typArr = Array.isArray(p.typ) ? p.typ : [];
@@ -385,8 +402,8 @@ export default function Projekte() {
   const sortedGroupKeys = useMemo(() => {
     if (viewMode === 'status') return STATUS_ORDER;
     return Object.keys(grouped).sort((a, b) => {
-      if (a === 'Ohne Kunde' || a === 'Ohne Typ') return 1;
-      if (b === 'Ohne Kunde' || b === 'Ohne Typ') return -1;
+      if (a === 'Ohne Kunde' || a === 'Ohne Typ' || a === 'Nicht zugewiesen') return 1;
+      if (b === 'Ohne Kunde' || b === 'Ohne Typ' || b === 'Nicht zugewiesen') return -1;
       return (grouped[b]?.length || 0) - (grouped[a]?.length || 0);
     });
   }, [grouped, viewMode]);
@@ -458,6 +475,34 @@ export default function Projekte() {
         toast.error('Fehler beim Aktualisieren', { description: error.message });
       } else {
         toast.success(`Projektart aktualisiert → ${targetColumn}`);
+      }
+    } else if (viewMode === 'mitarbeiter') {
+      const oldMitarbeiter: any[] = Array.isArray(project.mitarbeiter) ? [...project.mitarbeiter] : [];
+      const oldFirst = oldMitarbeiter[0]?.name || 'Nicht zugewiesen';
+      if (oldFirst === targetColumn) return;
+
+      let newMitarbeiter: any[];
+      if (targetColumn === 'Nicht zugewiesen') {
+        newMitarbeiter = [];
+      } else {
+        // Find the member info from existing grouped data
+        const targetMember = projects.flatMap((p: any) => Array.isArray(p.mitarbeiter) ? p.mitarbeiter : []).find((m: any) => m.name === targetColumn);
+        const newFirst = targetMember || { id: targetColumn, name: targetColumn };
+        newMitarbeiter = [newFirst, ...oldMitarbeiter.slice(1)];
+      }
+
+      setProjects(prev => prev.map(p =>
+        p.id === projectId ? { ...p, mitarbeiter: newMitarbeiter } : p
+      ));
+
+      const { error } = await supabase.from('projects').update({ mitarbeiter: newMitarbeiter } as any).eq('id', projectId);
+      if (error) {
+        setProjects(prev => prev.map(p =>
+          p.id === projectId ? { ...p, mitarbeiter: oldMitarbeiter } : p
+        ));
+        toast.error('Fehler beim Aktualisieren', { description: error.message });
+      } else {
+        toast.success(`Mitarbeiter aktualisiert → ${targetColumn}`);
       }
     }
   };
@@ -601,20 +646,26 @@ export default function Projekte() {
       >
         <div className="flex-1 overflow-x-auto pb-4">
           <div className="flex gap-3 min-h-[400px]">
-            {sortedGroupKeys.map(key => (
+            {sortedGroupKeys.map(key => {
+              const mitarbeiterIcon = viewMode === 'mitarbeiter' && key !== 'Nicht zugewiesen' ? (
+                <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[9px] font-bold shrink-0">{getInitials(key)}</div>
+              ) : undefined;
+              return (
               <DroppableKanbanColumn
                 key={key}
                 columnId={key}
                 title={key}
                 count={grouped[key]?.length || 0}
                 headerClass={viewMode === 'status' ? STATUS_HEADER_BG[key] : undefined}
+                headerIcon={mitarbeiterIcon}
                 projects={grouped[key] || []}
                 customerNames={customerNames}
                 onSelect={p => setSelectedProject(p)}
                 isOverColumn={overColumnId === key}
                 isDragDisabled={!isDragEnabled}
               />
-            ))}
+              );
+            })}
             {sortedGroupKeys.length === 0 && (
               <div className="flex-1 flex flex-col items-center justify-center py-16 text-center">
                 <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center mb-3">
