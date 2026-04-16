@@ -9,12 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const SLACK_WEBHOOK_URL = Deno.env.get("Fehlermeldung");
-    if (!SLACK_WEBHOOK_URL) {
-      return new Response(JSON.stringify({ error: "Fehlermeldung Secret nicht konfiguriert" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const SLACK_WEBHOOK_URL = 'https://hooks.slack.com/triggers/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';
 
     const { message, type, user_email, page_url, user_name, screenshot_url } = await req.json();
 
