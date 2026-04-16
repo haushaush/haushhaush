@@ -667,6 +667,14 @@ export default function Projekte() {
           onClose={() => setSelectedProject(null)}
         />
       )}
+
+      {/* New project panel */}
+      {showNewPanel && (
+        <NewProjectPanel
+          onClose={() => setShowNewPanel(false)}
+          onCreated={() => fetchData()}
+        />
+      )}
     </div>
   );
 }
