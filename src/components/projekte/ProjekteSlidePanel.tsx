@@ -317,6 +317,23 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 
+          {/* VERKNÜPFTE KUNDEN */}
+          {linkedKunden.length > 0 && (
+            <section className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5" /> Verknüpfte Kunden
+              </h3>
+              <div className="flex flex-wrap gap-1.5">
+                {linkedKunden.map(k => (
+                  <button key={k.id} onClick={() => { onClose(); navigate(`/kunden?kunde=${k.id}`); }}
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer">
+                    {k.client_name}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* DETAILS */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Details</h3>
@@ -429,22 +446,6 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
             </div>
           </section>
 
-          {/* Linked Customers */}
-          {linkedKunden.length > 0 && (
-            <section className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5" /> Verknüpfte Kunden
-              </h3>
-              <div className="flex flex-wrap gap-1.5">
-                {linkedKunden.map(k => (
-                  <button key={k.id} onClick={() => { onClose(); navigate(`/kunden?kunde=${k.id}`); }}
-                    className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer">
-                    {k.client_name}
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
 
           {editData.letztes_update && (
             <p className="text-[11px] text-muted-foreground/60">
