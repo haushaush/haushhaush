@@ -134,6 +134,59 @@ function SearchableMultiSelect({ value, options, onChange, placeholder = 'Suchen
   );
 }
 
+function MitarbeiterSelect({ selected, allMembers, onChange }: {
+  selected: { id: string; name: string; email: string }[];
+  allMembers: { id: string; name: string; email: string; position?: string; avatar_url?: string }[];
+  onChange: (members: { id: string; name: string; email: string }[]) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selectedIds = selected.map(s => s.id);
+  const filtered = allMembers.filter(m => !selectedIds.includes(m.id) && (m.name.toLowerCase().includes(search.toLowerCase()) || (m.position || '').toLowerCase().includes(search.toLowerCase())));
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const getInitials = (name: string) => name.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
+
+  return (
+    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
+      <div className="min-h-[34px] border border-input rounded-md px-2 py-1 flex flex-wrap gap-1 cursor-text bg-background" onClick={() => setOpen(true)}>
+        {selected.map(m => (
+          <span key={m.id} className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-[4px] flex items-center gap-1">
+            <span className="h-4 w-4 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[7px] font-bold shrink-0">{getInitials(m.name)}</span>
+            {m.name}
+            <button type="button" onClick={e => { e.stopPropagation(); onChange(selected.filter(s => s.id !== m.id)); }} className="hover:text-destructive font-medium">×</button>
+          </span>
+        ))}
+        <input value={search} onChange={e => setSearch(e.target.value)} onFocus={() => setOpen(true)}
+          placeholder={selected.length === 0 ? 'Mitarbeiter suchen…' : ''}
+          className="outline-none text-sm flex-1 min-w-[100px] bg-transparent text-foreground placeholder:text-muted-foreground" />
+      </div>
+      {open && filtered.length > 0 && (
+        <div className="absolute z-[200] w-full bg-background border border-input rounded-md shadow-lg mt-1 max-h-[200px] overflow-y-auto">
+          {filtered.map(m => (
+            <div key={m.id} onClick={() => { onChange([...selected, { id: m.id, name: m.name, email: m.email }]); setSearch(''); }}
+              className="px-3 py-1.5 text-sm hover:bg-muted cursor-pointer transition-colors flex items-center gap-2">
+              {m.avatar_url ? (
+                <img src={m.avatar_url} alt={m.name} className="h-5 w-5 rounded-full object-cover" />
+              ) : (
+                <div className="h-5 w-5 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[8px] font-bold">{getInitials(m.name)}</div>
+              )}
+              <span>{m.name}</span>
+              {m.position && <span className="text-muted-foreground text-xs ml-auto">{m.position}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DatePickerField({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
   const dateObj = value ? parseISO(value) : undefined;
   return (
@@ -162,6 +215,7 @@ function DatePickerField({ value, onChange }: { value: string | null; onChange: 
 export default function NewProjectPanel({ onClose, onCreated }: Props) {
   const [saving, setSaving] = useState(false);
   const [customers, setCustomers] = useState<{ id: string; client_name: string; notion_id: string | null }[]>([]);
+  const [allTeamMembers, setAllTeamMembers] = useState<{ id: string; name: string; email: string; position?: string; avatar_url?: string }[]>([]);
   const [form, setForm] = useState({
     projektname: '',
     projektstatus: 'Noch nicht gestartet',
@@ -171,6 +225,7 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
     laufzeit: '',
     zahlstatus: '',
     customer_id: '', // close_deals id
+    mitarbeiter: [] as { id: string; name: string; email: string }[],
     startdatum: null as string | null,
     enddatum: null as string | null,
     deadline: null as string | null,
@@ -181,6 +236,9 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
   useEffect(() => {
     supabase.from('close_deals').select('id, client_name, notion_id').order('client_name').then(({ data }) => {
       setCustomers(data || []);
+    });
+    supabase.from('team').select('id, name, email, position, avatar_url').order('name').then(({ data }) => {
+      setAllTeamMembers((data || []).filter((m: any) => m.id));
     });
   }, []);
 
@@ -212,6 +270,7 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
       if (form.deadline) insertData.deadline = form.deadline;
       if (form.ads_budget) insertData.ads_budget = parseFloat(form.ads_budget);
       if (form.cash_collect) insertData.cash_collect = parseFloat(form.cash_collect);
+      if (form.mitarbeiter.length > 0) insertData.mitarbeiter = form.mitarbeiter;
 
       // Link customer via verknuepfte_kunden_ids
       if (selectedCustomer?.notion_id) {
@@ -295,6 +354,16 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
                 />
               </FieldRow>
             </div>
+          </div>
+
+          {/* MITARBEITER */}
+          <div>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Mitarbeiter</h3>
+            <MitarbeiterSelect
+              selected={form.mitarbeiter}
+              allMembers={allTeamMembers}
+              onChange={members => set('mitarbeiter', members)}
+            />
           </div>
 
           {/* ZEITRAUM */}
