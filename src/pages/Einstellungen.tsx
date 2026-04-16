@@ -365,6 +365,36 @@ export default function Einstellungen() {
       toast.success('Synchronisierung abgeschlossen');
       fetchData();
     } else if (action === 'test') {
+      if (providerId === 'slack') {
+        const setting = getSettingForProvider('slack');
+        const botToken = setting?.config?.bot_token;
+        const defaultCh = setting?.config?.default_channels;
+        const targetChannel = defaultCh?.notify_alerts || defaultCh?.notify_abschluesse || Object.values(defaultCh || {})[0];
+        if (!botToken) { toast.error('Slack Bot Token nicht konfiguriert'); return; }
+        if (!targetChannel) { toast.error('Kein Slack Channel konfiguriert — bitte zuerst einen Channel zuweisen'); return; }
+        const toastId = toast.loading('Sende Test-Nachricht an Slack...');
+        try {
+          const res = await fetch('https://slack.com/api/chat.postMessage', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${botToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              channel: targetChannel,
+              text: '✅ Slack Integration erfolgreich verbunden mit dem Agency Hub Portal',
+            }),
+          });
+          const data = await res.json();
+          toast.dismiss(toastId);
+          if (data.ok) {
+            toast.success('Test-Nachricht erfolgreich gesendet ✓');
+          } else {
+            toast.error(`Slack Fehler: ${data.error || 'Unbekannt'}`);
+          }
+        } catch (e: any) {
+          toast.dismiss(toastId);
+          toast.error(`Slack nicht erreichbar: ${e?.message || 'Netzwerkfehler'}`);
+        }
+        return;
+      }
       toast.success('Verbindungstest erfolgreich ✓');
     } else if (action === 'connect') {
       toast.info('OAuth-Verbindung wird vorbereitet...');
