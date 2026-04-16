@@ -36,6 +36,7 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Alle Projekte', url: '/projekte' },
       { title: 'Meine Aufgaben', url: '/projekte/aufgaben' },
+      { title: 'Laufzeit Projekte', url: '/projekte/laufzeiten' },
     ],
   },
   {

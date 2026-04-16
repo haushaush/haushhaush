@@ -24,6 +24,7 @@ import KundenAbschluesse from "./pages/KundenAbschluesse.tsx";
 import KundenLaufzeiten from "./pages/KundenLaufzeiten.tsx";
 import Projekte from "./pages/Projekte.tsx";
 import ProjekteAufgaben from "./pages/ProjekteAufgaben.tsx";
+import ProjekteLaufzeiten from "./pages/ProjekteLaufzeiten.tsx";
 import Sales from "./pages/Sales.tsx";
 import Fulfillment from "./pages/Fulfillment.tsx";
 import Finanzen from "./pages/Finanzen.tsx";
@@ -88,6 +89,7 @@ const App = () => (
                 <Route path="/kunden/:id" element={<DL><KundenDetail /></DL>} />
                 <Route path="/projekte" element={<DL><Projekte /></DL>} />
                 <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
+                <Route path="/projekte/laufzeiten" element={<DL><ProjekteLaufzeiten /></DL>} />
                 <Route path="/sales" element={<Navigate to="/sales/kpis" replace />} />
                 <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
                 <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
