@@ -303,6 +303,16 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
             </div>
           </div>
 
+          {/* MITARBEITER */}
+          <div>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Mitarbeiter</h3>
+            <MitarbeiterSelect
+              selected={form.mitarbeiter}
+              allMembers={allTeamMembers}
+              onChange={members => set('mitarbeiter', members)}
+            />
+          </div>
+
           {/* ZEITRAUM */}
           <div>
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Zeitraum</h3>
