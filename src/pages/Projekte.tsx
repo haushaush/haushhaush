@@ -500,14 +500,13 @@ export default function Projekte() {
         toast.error('Fehler beim Aktualisieren', { description: error.message });
       } else {
         toast.success(`Mitarbeiter aktualisiert → ${targetColumn}`);
+      }
     }
   };
 
   const handleDragCancel = () => {
     setActiveId(null);
     setOverColumnId(null);
-  };
-    }
   };
 
   /* ── Render ──────────────────────────────────────── */
