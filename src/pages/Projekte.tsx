@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, RefreshCw, Loader2, FolderKanban, FileX, Clock, Users, LayoutGrid, BarChart3 } from 'lucide-react';
+import { Search, RefreshCw, Loader2, FolderKanban, FileX, Clock, Users, LayoutGrid, BarChart3, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from 'recharts';
 import ProjekteSlidePanel from '@/components/projekte/ProjekteSlidePanel';
+import NewProjectPanel from '@/components/projekte/NewProjectPanel';
 import {
   DndContext,
   DragOverlay,
@@ -280,6 +281,7 @@ export default function Projekte() {
   const [viewMode, setViewMode] = useState<'kunde' | 'status' | 'typ' | 'kpi'>('status');
   const [deadlineFilter, setDeadlineFilter] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [showNewPanel, setShowNewPanel] = useState(false);
   const [customerNames, setCustomerNames] = useState<Record<string, string>>({});
   const [teamMembers, setTeamMembers] = useState<Record<string, { name: string; avatar_url?: string }>>({});
   const autoSyncDone = useRef(false);
@@ -509,10 +511,16 @@ export default function Projekte() {
             </p>
           </div>
         </div>
-        <Button variant="outline" size="sm" className="h-9" onClick={handleSync} disabled={syncing}>
-          {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-          Importieren
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-9" onClick={handleSync} disabled={syncing}>
+            {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+            Importieren
+          </Button>
+          <Button size="sm" className="h-9 gap-1.5" onClick={() => setShowNewPanel(true)}>
+            <Plus className="h-3.5 w-3.5" />
+            Neues Projekt
+          </Button>
+        </div>
       </div>
 
       {/* View mode tabs */}
@@ -657,6 +665,14 @@ export default function Projekte() {
         <ProjekteSlidePanel
           project={selectedProject}
           onClose={() => setSelectedProject(null)}
+        />
+      )}
+
+      {/* New project panel */}
+      {showNewPanel && (
+        <NewProjectPanel
+          onClose={() => setShowNewPanel(false)}
+          onCreated={() => fetchData()}
         />
       )}
     </div>
