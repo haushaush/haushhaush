@@ -11,7 +11,7 @@ serve(async (req) => {
   try {
     const SLACK_WEBHOOK_URL = Deno.env.get("Fehlermeldung");
     if (!SLACK_WEBHOOK_URL) {
-      return new Response(JSON.stringify({ error: "SLACK_WEBHOOK_URL nicht konfiguriert" }), {
+      return new Response(JSON.stringify({ error: "Fehlermeldung Secret nicht konfiguriert" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
