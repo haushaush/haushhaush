@@ -473,12 +473,35 @@ export default function Projekte() {
       } else {
         toast.success(`Projektart aktualisiert → ${targetColumn}`);
       }
-    }
-  };
+    } else if (viewMode === 'mitarbeiter') {
+      const oldMitarbeiter: any[] = Array.isArray(project.mitarbeiter) ? [...project.mitarbeiter] : [];
+      const oldFirst = oldMitarbeiter[0]?.name || 'Nicht zugewiesen';
+      if (oldFirst === targetColumn) return;
 
-  const handleDragCancel = () => {
-    setActiveId(null);
-    setOverColumnId(null);
+      let newMitarbeiter: any[];
+      if (targetColumn === 'Nicht zugewiesen') {
+        newMitarbeiter = [];
+      } else {
+        // Find the member info from existing grouped data
+        const targetMember = projects.flatMap((p: any) => Array.isArray(p.mitarbeiter) ? p.mitarbeiter : []).find((m: any) => m.name === targetColumn);
+        const newFirst = targetMember || { id: targetColumn, name: targetColumn };
+        newMitarbeiter = [newFirst, ...oldMitarbeiter.slice(1)];
+      }
+
+      setProjects(prev => prev.map(p =>
+        p.id === projectId ? { ...p, mitarbeiter: newMitarbeiter } : p
+      ));
+
+      const { error } = await supabase.from('projects').update({ mitarbeiter: newMitarbeiter } as any).eq('id', projectId);
+      if (error) {
+        setProjects(prev => prev.map(p =>
+          p.id === projectId ? { ...p, mitarbeiter: oldMitarbeiter } : p
+        ));
+        toast.error('Fehler beim Aktualisieren', { description: error.message });
+      } else {
+        toast.success(`Mitarbeiter aktualisiert → ${targetColumn}`);
+      }
+    }
   };
 
   /* ── Render ──────────────────────────────────────── */
