@@ -306,29 +306,30 @@ export default function Kunden() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
-        {TABS.map(tab => (
-          <button
-            key={tab.value}
-            onClick={() => { setActiveTab(tab.value); if (tab.value !== 'aktiv') setActiveSubTab('all'); }}
-            className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-              activeTab === tab.value
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-            }`}
-          >
-            {tab.label}
-            <span className={`ml-1.5 text-xs ${activeTab === tab.value ? 'text-primary-foreground/70' : 'text-muted-foreground/60'}`}>
-              {tabCounts[tab.value] ?? 0}
-            </span>
-          </button>
-        ))}
+      {/* Main Tabs */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+          {TABS.map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => { setActiveTab(tab.value); if (tab.value !== 'aktiv') setActiveSubTab('all'); }}
+              className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                activeTab === tab.value
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              {tab.label}
+              <span className={`ml-1.5 text-xs ${activeTab === tab.value ? 'text-primary-foreground/70' : 'text-muted-foreground/60'}`}>
+                {tabCounts[tab.value] ?? 0}
+              </span>
+            </button>
+          ))}
+        </div>
 
-        {/* Sub-tabs inline for Aktiv */}
+        {/* Sub-tabs row for Aktiv */}
         {activeTab === 'aktiv' && (
-          <>
-            <div className="w-px h-5 bg-border mx-1.5 shrink-0" />
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none pl-0.5">
             <button
               onClick={() => setActiveSubTab('all')}
               className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
@@ -357,7 +358,7 @@ export default function Kunden() {
                 )}
               </button>
             ))}
-          </>
+          </div>
         )}
       </div>
 
