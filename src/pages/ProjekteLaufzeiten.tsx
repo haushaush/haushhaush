@@ -106,6 +106,7 @@ export default function ProjekteLaufzeiten() {
       .filter(p => {
         const lz = p.laufzeit;
         if (!lz || lz === 'Einmalig' || lz === 'Unbegrenzt') return false;
+        if (p.projektstatus === 'Abgeschlossen') return false;
         if (!p.startdatum) return false;
         return !!LAUFZEIT_MONTHS[lz];
       })
