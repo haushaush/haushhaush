@@ -382,10 +382,11 @@ export default function Projekte() {
           if (!groups['Nicht zugewiesen']) groups['Nicht zugewiesen'] = [];
           groups['Nicht zugewiesen'].push(p);
         } else {
-          const first = members[0];
-          const key = first.name || first.id || 'Nicht zugewiesen';
-          if (!groups[key]) groups[key] = [];
-          groups[key].push(p);
+          members.forEach(member => {
+            const key = member.name || member.id || 'Nicht zugewiesen';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(p);
+          });
         }
       });
     } else {
@@ -478,31 +479,48 @@ export default function Projekte() {
       }
     } else if (viewMode === 'mitarbeiter') {
       const oldMitarbeiter: any[] = Array.isArray(project.mitarbeiter) ? [...project.mitarbeiter] : [];
-      const oldFirst = oldMitarbeiter[0]?.name || 'Nicht zugewiesen';
-      if (oldFirst === targetColumn) return;
 
-      let newMitarbeiter: any[];
       if (targetColumn === 'Nicht zugewiesen') {
-        newMitarbeiter = [];
-      } else {
-        // Find the member info from existing grouped data
-        const targetMember = projects.flatMap((p: any) => Array.isArray(p.mitarbeiter) ? p.mitarbeiter : []).find((m: any) => m.name === targetColumn);
-        const newFirst = targetMember || { id: targetColumn, name: targetColumn };
-        newMitarbeiter = [newFirst, ...oldMitarbeiter.slice(1)];
-      }
+        // Only allow dropping to "Nicht zugewiesen" if already unassigned
+        if (oldMitarbeiter.length === 0) return;
+        const newMitarbeiter: any[] = [];
 
-      setProjects(prev => prev.map(p =>
-        p.id === projectId ? { ...p, mitarbeiter: newMitarbeiter } : p
-      ));
-
-      const { error } = await supabase.from('projects').update({ mitarbeiter: newMitarbeiter } as any).eq('id', projectId);
-      if (error) {
         setProjects(prev => prev.map(p =>
-          p.id === projectId ? { ...p, mitarbeiter: oldMitarbeiter } : p
+          p.id === projectId ? { ...p, mitarbeiter: newMitarbeiter } : p
         ));
-        toast.error('Fehler beim Aktualisieren', { description: error.message });
+
+        const { error } = await supabase.from('projects').update({ mitarbeiter: newMitarbeiter } as any).eq('id', projectId);
+        if (error) {
+          setProjects(prev => prev.map(p =>
+            p.id === projectId ? { ...p, mitarbeiter: oldMitarbeiter } : p
+          ));
+          toast.error('Fehler beim Aktualisieren', { description: error.message });
+        } else {
+          toast.success('Alle Mitarbeiter entfernt');
+        }
       } else {
-        toast.success(`Mitarbeiter aktualisiert → ${targetColumn}`);
+        // Check if already assigned to this member
+        const alreadyAssigned = oldMitarbeiter.some((m: any) => m.name === targetColumn);
+        if (alreadyAssigned) return;
+
+        // Find the member info from existing data
+        const targetMember = projects.flatMap((p: any) => Array.isArray(p.mitarbeiter) ? p.mitarbeiter : []).find((m: any) => m.name === targetColumn);
+        const newMember = targetMember || { id: targetColumn, name: targetColumn };
+        const newMitarbeiter = [...oldMitarbeiter, newMember];
+
+        setProjects(prev => prev.map(p =>
+          p.id === projectId ? { ...p, mitarbeiter: newMitarbeiter } : p
+        ));
+
+        const { error } = await supabase.from('projects').update({ mitarbeiter: newMitarbeiter } as any).eq('id', projectId);
+        if (error) {
+          setProjects(prev => prev.map(p =>
+            p.id === projectId ? { ...p, mitarbeiter: oldMitarbeiter } : p
+          ));
+          toast.error('Fehler beim Aktualisieren', { description: error.message });
+        } else {
+          toast.success(`${targetColumn} hinzugefügt`);
+        }
       }
     }
   };
