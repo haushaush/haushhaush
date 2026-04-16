@@ -616,7 +616,6 @@ export default function Projekte() {
                 headerClass={viewMode === 'status' ? STATUS_HEADER_BG[key] : undefined}
                 projects={grouped[key] || []}
                 customerNames={customerNames}
-                teamMembers={teamMembers}
                 onSelect={p => setSelectedProject(p)}
                 isOverColumn={overColumnId === key}
                 isDragDisabled={!isDragEnabled}
@@ -642,7 +641,7 @@ export default function Projekte() {
               <ProjectCardContent
                 project={activeProject}
                 customerName={activeCustomerName}
-                teamMembers={teamMembers}
+                
                 isDragging
               />
             </div>
