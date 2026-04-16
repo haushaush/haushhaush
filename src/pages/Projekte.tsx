@@ -372,6 +372,19 @@ export default function Projekte() {
           });
         }
       });
+    } else if (viewMode === 'mitarbeiter') {
+      filtered.forEach(p => {
+        const members: any[] = Array.isArray(p.mitarbeiter) ? p.mitarbeiter : [];
+        if (members.length === 0) {
+          if (!groups['Nicht zugewiesen']) groups['Nicht zugewiesen'] = [];
+          groups['Nicht zugewiesen'].push(p);
+        } else {
+          const first = members[0];
+          const key = first.name || first.id || 'Nicht zugewiesen';
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(p);
+        }
+      });
     } else {
       filtered.forEach(p => {
         const typArr = Array.isArray(p.typ) ? p.typ : [];
