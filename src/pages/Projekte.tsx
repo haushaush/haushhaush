@@ -68,6 +68,7 @@ const VIEW_TABS = [
   { label: 'Nach Kunde', value: 'kunde', icon: Users },
   { label: 'Nach Status', value: 'status', icon: LayoutGrid },
   { label: 'Nach Projektart', value: 'typ', icon: FolderKanban },
+  { label: 'Nach Mitarbeiter', value: 'mitarbeiter', icon: Users },
   { label: 'KPI Tracking', value: 'kpi', icon: BarChart3 },
 ];
 
