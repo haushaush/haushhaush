@@ -1847,6 +1847,7 @@ export type Database = {
           laufzeit: string | null
           letztes_update: string | null
           mail_gesendet: boolean | null
+          mitarbeiter: Json | null
           monat_leadanzahl: string | null
           name: string
           notion_id: string | null
@@ -1893,6 +1894,7 @@ export type Database = {
           laufzeit?: string | null
           letztes_update?: string | null
           mail_gesendet?: boolean | null
+          mitarbeiter?: Json | null
           monat_leadanzahl?: string | null
           name: string
           notion_id?: string | null
@@ -1939,6 +1941,7 @@ export type Database = {
           laufzeit?: string | null
           letztes_update?: string | null
           mail_gesendet?: boolean | null
+          mitarbeiter?: Json | null
           monat_leadanzahl?: string | null
           name?: string
           notion_id?: string | null
