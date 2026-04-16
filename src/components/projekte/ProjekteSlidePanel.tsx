@@ -151,17 +151,17 @@ function SearchableMultiSelect({ value, options, onChange, placeholder = 'Suchen
   );
 }
 
-/* Team member multi-select */
-function TeamMemberMultiSelect({ selectedIds, allMembers, onChange }: {
-  selectedIds: string[];
-  allMembers: { notion_id: string; name: string; email: string; avatar_url?: string }[];
-  onChange: (ids: string[]) => void;
+/* Team member multi-select – stores [{id, name, email}] */
+function TeamMemberMultiSelect({ selected, allMembers, onChange }: {
+  selected: { id: string; name: string; email: string }[];
+  allMembers: { id: string; name: string; email: string; position?: string; avatar_url?: string }[];
+  onChange: (members: { id: string; name: string; email: string }[]) => void;
 }) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const filtered = allMembers.filter(m => !selectedIds.includes(m.notion_id) && m.name.toLowerCase().includes(search.toLowerCase()));
-  const selected = allMembers.filter(m => selectedIds.includes(m.notion_id));
+  const selectedIds = selected.map(s => s.id);
+  const filtered = allMembers.filter(m => !selectedIds.includes(m.id) && (m.name.toLowerCase().includes(search.toLowerCase()) || (m.position || '').toLowerCase().includes(search.toLowerCase())));
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
@@ -175,10 +175,10 @@ function TeamMemberMultiSelect({ selectedIds, allMembers, onChange }: {
     <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
       <div className="min-h-[34px] border border-input rounded-md px-2 py-1 flex flex-wrap gap-1 cursor-text bg-background" onClick={() => setOpen(true)}>
         {selected.map(m => (
-          <span key={m.notion_id} className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-[4px] flex items-center gap-1">
+          <span key={m.id} className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-[4px] flex items-center gap-1">
             <span className="h-4 w-4 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[7px] font-bold shrink-0">{getInitials(m.name)}</span>
             {m.name}
-            <button type="button" onClick={e => { e.stopPropagation(); onChange(selectedIds.filter(id => id !== m.notion_id)); }} className="hover:text-destructive font-medium">×</button>
+            <button type="button" onClick={e => { e.stopPropagation(); onChange(selected.filter(s => s.id !== m.id)); }} className="hover:text-destructive font-medium">×</button>
           </span>
         ))}
         <input value={search} onChange={e => setSearch(e.target.value)} onFocus={() => setOpen(true)}
@@ -188,14 +188,15 @@ function TeamMemberMultiSelect({ selectedIds, allMembers, onChange }: {
       {open && filtered.length > 0 && (
         <div className="absolute z-[200] w-full bg-background border border-input rounded-md shadow-lg mt-1 max-h-[200px] overflow-y-auto">
           {filtered.map(m => (
-            <div key={m.notion_id} onClick={() => { onChange([...selectedIds, m.notion_id]); setSearch(''); }}
+            <div key={m.id} onClick={() => { onChange([...selected, { id: m.id, name: m.name, email: m.email }]); setSearch(''); }}
               className="px-3 py-1.5 text-sm hover:bg-muted cursor-pointer transition-colors flex items-center gap-2">
               {m.avatar_url ? (
                 <img src={m.avatar_url} alt={m.name} className="h-5 w-5 rounded-full object-cover" />
               ) : (
                 <div className="h-5 w-5 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[8px] font-bold">{getInitials(m.name)}</div>
               )}
-              {m.name}
+              <span>{m.name}</span>
+              {m.position && <span className="text-muted-foreground text-xs ml-auto">{m.position}</span>}
             </div>
           ))}
         </div>
@@ -233,25 +234,16 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const [linkedKunden, setLinkedKunden] = useState<{ id: string; client_name: string }[]>([]);
-  const [allTeamMembers, setAllTeamMembers] = useState<{ notion_id: string; name: string; email: string; avatar_url?: string }[]>([]);
-  const [linkedTeam, setLinkedTeam] = useState<{ notion_id: string; name: string; email: string; avatar_url?: string }[]>([]);
+  const [allTeamMembers, setAllTeamMembers] = useState<{ id: string; name: string; email: string; position?: string; avatar_url?: string }[]>([]);
 
   useEffect(() => { setEditData({ ...p }); }, [p.id]);
 
   // Load all team members once
   useEffect(() => {
-    supabase.from('team').select('notion_id, name, email, avatar_url').then(({ data }) => {
-      setAllTeamMembers((data || []).filter((m: any) => m.notion_id));
+    supabase.from('team').select('id, name, email, position, avatar_url').then(({ data }) => {
+      setAllTeamMembers((data || []).filter((m: any) => m.id));
     });
   }, []);
-
-  // Load linked team members
-  useEffect(() => {
-    const ids: string[] = editData.verknuepfte_mitarbeiter_ids || [];
-    if (ids.length === 0) { setLinkedTeam([]); return; }
-    if (allTeamMembers.length === 0) return;
-    setLinkedTeam(allTeamMembers.filter(m => ids.includes(m.notion_id)));
-  }, [editData.verknuepfte_mitarbeiter_ids, allTeamMembers]);
 
   useEffect(() => {
     const ids = p.verknuepfte_kunden_ids || p.verknuepfte_kunden || [];
@@ -290,7 +282,25 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
                 <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground">{editData.prioritaet}</span>
               )}
             </div>
-            <h2 className="text-lg font-heading font-bold truncate">{name}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-heading font-bold truncate">{name}</h2>
+              {/* Stacked mitarbeiter avatars in header */}
+              {(() => {
+                const members: { id: string; name: string; avatar_url?: string | null }[] = Array.isArray(editData.mitarbeiter) ? editData.mitarbeiter : [];
+                if (members.length === 0) return null;
+                const getI = (n: string) => n.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
+                return (
+                  <div className="flex -space-x-1.5 shrink-0">
+                    {members.slice(0, 3).map(m => m.avatar_url ? (
+                      <img key={m.id} src={m.avatar_url} alt={m.name} className="h-6 w-6 rounded-full border-2 border-background object-cover" title={m.name} />
+                    ) : (
+                      <div key={m.id} className="h-6 w-6 rounded-full border-2 border-background bg-primary/10 text-primary flex items-center justify-center text-[8px] font-bold" title={m.name}>{getI(m.name)}</div>
+                    ))}
+                    {members.length > 3 && <div className="h-6 w-6 rounded-full border-2 border-background bg-muted text-muted-foreground flex items-center justify-center text-[8px] font-bold">+{members.length - 3}</div>}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
           <div className="flex items-center gap-1 ml-2 shrink-0">
             {editData.notion_url && (
@@ -341,33 +351,10 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <Users className="h-3.5 w-3.5" /> Mitarbeiter
             </h3>
-            {/* Display from Notion people field */}
-            {(() => {
-              const members: { id: string; name: string; avatar_url?: string | null }[] = Array.isArray(editData.mitarbeiter) ? editData.mitarbeiter : [];
-              if (members.length === 0) return <p className="text-xs text-muted-foreground">Keine Mitarbeiter verknüpft</p>;
-              return (
-                <div className="flex flex-wrap gap-2">
-                  {members.map(m => {
-                    const initials = (m.name || '?').split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
-                    return (
-                      <div key={m.id} className="flex items-center gap-2 bg-muted/40 rounded-lg px-2.5 py-1.5">
-                        {m.avatar_url ? (
-                          <img src={m.avatar_url} alt={m.name} className="h-6 w-6 rounded-full object-cover" />
-                        ) : (
-                          <div className="h-6 w-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[9px] font-bold">{initials}</div>
-                        )}
-                        <p className="text-xs font-medium truncate">{m.name}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-            {/* Editable multi-select (maps to team table for adding) */}
             <TeamMemberMultiSelect
-              selectedIds={Array.isArray(editData.verknuepfte_mitarbeiter_ids) ? editData.verknuepfte_mitarbeiter_ids : []}
+              selected={Array.isArray(editData.mitarbeiter) ? editData.mitarbeiter : []}
               allMembers={allTeamMembers}
-              onChange={ids => upd('verknuepfte_mitarbeiter_ids', ids)}
+              onChange={members => upd('mitarbeiter', members)}
             />
           </section>
 
