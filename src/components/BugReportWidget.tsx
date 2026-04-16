@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { toast } from 'sonner';
-import { slackNotifyBugReport } from '@/lib/slack';
+
 
 const PROBLEM_TYPES = [
   'Bug',
@@ -110,7 +110,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
       toast.success('Fehler wurde an Tech-Support gemeldet ✅');
     } catch (e) {
       console.error('Bug report failed:', e);
-      toast.error('Fehler beim Senden. Bitte versuche es erneut.');
+      toast.error('Slack nicht erreichbar — bitte direkt kontaktieren');
     } finally {
       setSubmitting(false);
     }
