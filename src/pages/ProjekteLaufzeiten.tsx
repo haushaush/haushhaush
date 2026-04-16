@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Clock, AlertTriangle, CheckCircle2, Filter } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Search, Clock, AlertTriangle, CheckCircle2, PartyPopper } from 'lucide-react';
 import ProjekteSlidePanel from '@/components/projekte/ProjekteSlidePanel';
 
 const LAUFZEIT_MONTHS: Record<string, number> = {
@@ -35,7 +36,6 @@ const getLaufzeitEnd = (startDatum: string, laufzeit: string): Date | null => {
 };
 
 const isAbgelaufen = (endDate: Date) => endDate < new Date();
-
 const daysRemaining = (endDate: Date) => Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
 const fmtDate = (d: string | Date | null) => {
@@ -61,7 +61,7 @@ function getProgress(startDatum: string, endDate: Date): number {
 
 type ProjectWithEnd = {
   project: any;
-  endDate: Date;
+  endDate: Date | null;
   expired: boolean;
   days: number;
   progress: number;
@@ -91,7 +91,6 @@ export default function ProjekteLaufzeiten() {
     })();
   }, []);
 
-  // Collect all unique mitarbeiter names
   const allMitarbeiter = useMemo(() => {
     const names = new Set<string>();
     projects.forEach(p => {
@@ -101,20 +100,20 @@ export default function ProjekteLaufzeiten() {
     return Array.from(names).sort();
   }, [projects]);
 
-  const processed: ProjectWithEnd[] = useMemo(() => {
+  // All projects with a valid laufzeit
+  const allLaufzeit = useMemo(() => {
     return projects
       .filter(p => {
         const lz = p.laufzeit;
         if (!lz || lz === 'Einmalig' || lz === 'Unbegrenzt') return false;
-        if (p.projektstatus === 'Abgeschlossen') return false;
         if (!p.startdatum) return false;
         return !!LAUFZEIT_MONTHS[lz];
       })
       .map(p => {
-        const endDate = getLaufzeitEnd(p.startdatum, p.laufzeit)!;
-        const expired = isAbgelaufen(endDate);
-        const days = daysRemaining(endDate);
-        const progress = getProgress(p.startdatum, endDate);
+        const endDate = getLaufzeitEnd(p.startdatum, p.laufzeit);
+        const expired = endDate ? isAbgelaufen(endDate) : false;
+        const days = endDate ? daysRemaining(endDate) : 0;
+        const progress = endDate ? getProgress(p.startdatum, endDate) : 0;
         const customerName = p.client_id ? (customers[p.client_id] || '–') : '–';
         return { project: p, endDate, expired, days, progress, customerName };
       })
@@ -134,12 +133,16 @@ export default function ProjekteLaufzeiten() {
   }, [projects, customers, search, filterLaufzeit, filterMitarbeiter]);
 
   const abgelaufen = useMemo(() =>
-    processed.filter(i => i.expired).sort((a, b) => a.days - b.days), // most overdue first (most negative)
-  [processed]);
+    allLaufzeit.filter(i => i.expired && i.project.projektstatus !== 'Abgeschlossen').sort((a, b) => a.days - b.days),
+  [allLaufzeit]);
 
   const aktiv = useMemo(() =>
-    processed.filter(i => !i.expired).sort((a, b) => a.days - b.days), // soonest expiring first
-  [processed]);
+    allLaufzeit.filter(i => !i.expired && i.project.projektstatus !== 'Abgeschlossen').sort((a, b) => a.days - b.days),
+  [allLaufzeit]);
+
+  const abgeschlossen = useMemo(() =>
+    allLaufzeit.filter(i => i.project.projektstatus === 'Abgeschlossen').sort((a, b) => a.days - b.days),
+  [allLaufzeit]);
 
   const handleRefresh = async () => {
     setLoading(true);
@@ -148,42 +151,41 @@ export default function ProjekteLaufzeiten() {
     setLoading(false);
   };
 
+  const renderGrid = (items: ProjectWithEnd[], variant: 'expired' | 'active' | 'done') => (
+    items.length === 0 ? (
+      <div className="text-center py-16 text-muted-foreground">
+        <Clock className="h-10 w-10 mx-auto mb-3 opacity-40" />
+        <p className="font-medium">Keine Projekte in dieser Kategorie</p>
+      </div>
+    ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {items.map(item => (
+          <LaufzeitCard key={item.project.id} item={item} variant={variant} onClick={() => setSelectedProject(item.project)} />
+        ))}
+      </div>
+    )
+  );
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Laufzeit Projekte</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {processed.length} Projekte mit Laufzeit · {abgelaufen.length} abgelaufen · {aktiv.length} aktiv
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Laufzeit Projekte</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {allLaufzeit.length} Projekte mit Laufzeit
+        </p>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Projekt oder Kunde suchen..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9"
-          />
+          <Input placeholder="Projekt oder Kunde suchen..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <select
-          value={filterLaufzeit}
-          onChange={e => setFilterLaufzeit(e.target.value)}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-        >
+        <select value={filterLaufzeit} onChange={e => setFilterLaufzeit(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
           <option value="">Alle Laufzeiten</option>
           {LAUFZEIT_OPTIONS.map(l => <option key={l} value={l}>{l}</option>)}
         </select>
-        <select
-          value={filterMitarbeiter}
-          onChange={e => setFilterMitarbeiter(e.target.value)}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-        >
+        <select value={filterMitarbeiter} onChange={e => setFilterMitarbeiter(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
           <option value="">Alle Mitarbeiter</option>
           {allMitarbeiter.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
@@ -194,105 +196,78 @@ export default function ProjekteLaufzeiten() {
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-lg" />)}
         </div>
       ) : (
-        <>
-          {/* Abgelaufen */}
-          {abgelaufen.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle className="h-4.5 w-4.5 text-destructive" />
-                <h2 className="text-lg font-semibold text-destructive">Abgelaufen</h2>
-                <Badge variant="destructive" className="text-xs">{abgelaufen.length}</Badge>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {abgelaufen.map(item => (
-                  <LaufzeitCard key={item.project.id} item={item} onClick={() => setSelectedProject(item.project)} />
-                ))}
-              </div>
-            </section>
-          )}
+        <Tabs defaultValue="abgelaufen">
+          <TabsList>
+            <TabsTrigger value="abgelaufen" className="gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5" /> Abgelaufen
+              <Badge variant="destructive" className="text-[10px] ml-1 px-1.5 py-0">{abgelaufen.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="aktiv" className="gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Aktiv
+              <Badge className="bg-success/20 text-success border-0 text-[10px] ml-1 px-1.5 py-0">{aktiv.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="abgeschlossen" className="gap-1.5">
+              <PartyPopper className="h-3.5 w-3.5" /> Abgeschlossen
+              <Badge variant="secondary" className="text-[10px] ml-1 px-1.5 py-0">{abgeschlossen.length}</Badge>
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Aktiv */}
-          {aktiv.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <CheckCircle2 className="h-4.5 w-4.5 text-success" />
-                <h2 className="text-lg font-semibold text-success">Aktiv</h2>
-                <Badge className="bg-success/20 text-success border-0 text-xs">{aktiv.length}</Badge>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {aktiv.map(item => (
-                  <LaufzeitCard key={item.project.id} item={item} onClick={() => setSelectedProject(item.project)} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {processed.length === 0 && (
-            <div className="text-center py-16 text-muted-foreground">
-              <Clock className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p className="font-medium">Keine Projekte mit Laufzeit gefunden</p>
-            </div>
-          )}
-        </>
+          <TabsContent value="abgelaufen">{renderGrid(abgelaufen, 'expired')}</TabsContent>
+          <TabsContent value="aktiv">{renderGrid(aktiv, 'active')}</TabsContent>
+          <TabsContent value="abgeschlossen">{renderGrid(abgeschlossen, 'done')}</TabsContent>
+        </Tabs>
       )}
 
-      {/* Slide panel */}
       {selectedProject && (
-        <ProjekteSlidePanel
-          project={selectedProject}
-          onClose={() => { setSelectedProject(null); handleRefresh(); }}
-        />
+        <ProjekteSlidePanel project={selectedProject} onClose={() => { setSelectedProject(null); handleRefresh(); }} />
       )}
     </div>
   );
 }
 
 /* ── Card Component ── */
-function LaufzeitCard({ item, onClick }: { item: ProjectWithEnd; onClick: () => void }) {
+function LaufzeitCard({ item, variant, onClick }: { item: ProjectWithEnd; variant: 'expired' | 'active' | 'done'; onClick: () => void }) {
   const { project: p, endDate, expired, days, progress, customerName } = item;
   const name = p.projektname || p.name || 'Unbenannt';
   const status = p.projektstatus || '–';
   const members: { id: string; name: string; avatar_url?: string }[] = Array.isArray(p.mitarbeiter) ? p.mitarbeiter : [];
 
+  const borderClass = variant === 'expired'
+    ? 'bg-destructive/5 border-destructive/20 hover:border-destructive/40'
+    : variant === 'active'
+      ? 'bg-success/5 border-success/20 hover:border-success/40'
+      : 'bg-muted/30 border-border hover:border-border/60';
+
+  const progressColor = variant === 'expired' ? '[&>div]:bg-destructive' : variant === 'active' ? '[&>div]:bg-success' : '[&>div]:bg-muted-foreground';
+
   return (
-    <div
-      onClick={onClick}
-      className={`rounded-lg border p-4 cursor-pointer transition-all hover:shadow-md ${
-        expired
-          ? 'bg-destructive/5 border-destructive/20 hover:border-destructive/40'
-          : 'bg-success/5 border-success/20 hover:border-success/40'
-      }`}
-    >
-      {/* Top row */}
+    <div onClick={onClick} className={`rounded-lg border p-4 cursor-pointer transition-all hover:shadow-md ${borderClass}`}>
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-sm text-foreground truncate">{name}</p>
           <p className="text-xs text-muted-foreground truncate">{customerName}</p>
         </div>
-        <Badge className={`text-[10px] shrink-0 ${STATUS_STYLES[status] || 'bg-muted text-muted-foreground'}`}>
-          {status}
-        </Badge>
+        <Badge className={`text-[10px] shrink-0 ${STATUS_STYLES[status] || 'bg-muted text-muted-foreground'}`}>{status}</Badge>
       </div>
 
-      {/* Dates + Laufzeit */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-        <Clock className="h-3 w-3 shrink-0" />
-        <span>{fmtDate(p.startdatum)} → {fmtDate(endDate)}</span>
-        <Badge variant="outline" className="text-[10px] ml-auto">{p.laufzeit}</Badge>
-      </div>
+      {endDate && (
+        <>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+            <Clock className="h-3 w-3 shrink-0" />
+            <span>{fmtDate(p.startdatum)} → {fmtDate(endDate)}</span>
+            <Badge variant="outline" className="text-[10px] ml-auto">{p.laufzeit}</Badge>
+          </div>
+          <div className="mb-2">
+            <Progress value={progress} className={`h-1.5 ${progressColor}`} />
+          </div>
+        </>
+      )}
 
-      {/* Progress */}
-      <div className="mb-2">
-        <Progress value={progress} className={`h-1.5 ${expired ? '[&>div]:bg-destructive' : '[&>div]:bg-success'}`} />
-      </div>
-
-      {/* Status line */}
       <div className="flex items-center justify-between">
-        <span className={`text-xs font-medium ${expired ? 'text-destructive' : 'text-success'}`}>
-          {expired ? `Abgelaufen seit ${Math.abs(days)} Tagen` : `Noch ${days} Tage`}
+        <span className={`text-xs font-medium ${variant === 'expired' ? 'text-destructive' : variant === 'active' ? 'text-success' : 'text-muted-foreground'}`}>
+          {variant === 'expired' ? `Abgelaufen seit ${Math.abs(days)} Tagen` : variant === 'active' ? `Noch ${days} Tage` : 'Abgeschlossen'}
         </span>
 
-        {/* Mitarbeiter avatars */}
         {members.length > 0 && (
           <div className="flex -space-x-1.5">
             {members.slice(0, 3).map(m => (
