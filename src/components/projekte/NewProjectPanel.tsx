@@ -162,6 +162,7 @@ function DatePickerField({ value, onChange }: { value: string | null; onChange: 
 export default function NewProjectPanel({ onClose, onCreated }: Props) {
   const [saving, setSaving] = useState(false);
   const [customers, setCustomers] = useState<{ id: string; client_name: string; notion_id: string | null }[]>([]);
+  const [allTeamMembers, setAllTeamMembers] = useState<{ id: string; name: string; email: string; position?: string; avatar_url?: string }[]>([]);
   const [form, setForm] = useState({
     projektname: '',
     projektstatus: 'Noch nicht gestartet',
@@ -171,6 +172,7 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
     laufzeit: '',
     zahlstatus: '',
     customer_id: '', // close_deals id
+    mitarbeiter: [] as { id: string; name: string; email: string }[],
     startdatum: null as string | null,
     enddatum: null as string | null,
     deadline: null as string | null,
@@ -181,6 +183,9 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
   useEffect(() => {
     supabase.from('close_deals').select('id, client_name, notion_id').order('client_name').then(({ data }) => {
       setCustomers(data || []);
+    });
+    supabase.from('team').select('id, name, email, position, avatar_url').order('name').then(({ data }) => {
+      setAllTeamMembers((data || []).filter((m: any) => m.id));
     });
   }, []);
 
@@ -212,6 +217,7 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
       if (form.deadline) insertData.deadline = form.deadline;
       if (form.ads_budget) insertData.ads_budget = parseFloat(form.ads_budget);
       if (form.cash_collect) insertData.cash_collect = parseFloat(form.cash_collect);
+      if (form.mitarbeiter.length > 0) insertData.mitarbeiter = form.mitarbeiter;
 
       // Link customer via verknuepfte_kunden_ids
       if (selectedCustomer?.notion_id) {
