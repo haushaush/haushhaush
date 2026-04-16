@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, RefreshCw, Loader2, FolderKanban, FileX, Clock, Users, LayoutGrid } from 'lucide-react';
+import { Search, RefreshCw, Loader2, FolderKanban, FileX, Clock, Users, LayoutGrid, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from 'recharts';
 import ProjekteSlidePanel from '@/components/projekte/ProjekteSlidePanel';
 import {
   DndContext,
@@ -66,6 +67,12 @@ const VIEW_TABS = [
   { label: 'Nach Kunde', value: 'kunde', icon: Users },
   { label: 'Nach Status', value: 'status', icon: LayoutGrid },
   { label: 'Nach Projektart', value: 'typ', icon: FolderKanban },
+  { label: 'KPI Tracking', value: 'kpi', icon: BarChart3 },
+];
+
+const KPI_BAR_COLORS = [
+  'hsl(173, 58%, 39%)', 'hsl(142, 53%, 45%)', 'hsl(0, 72%, 51%)', 'hsl(45, 93%, 47%)',
+  'hsl(270, 50%, 55%)', 'hsl(25, 95%, 53%)', 'hsl(213, 72%, 50%)', 'hsl(330, 65%, 55%)', 'hsl(220, 9%, 55%)',
 ];
 
 const fmtDate = (d: string | null | undefined) => {
@@ -270,7 +277,7 @@ export default function Projekte() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'kunde' | 'status' | 'typ'>('status');
+  const [viewMode, setViewMode] = useState<'kunde' | 'status' | 'typ' | 'kpi'>('status');
   const [deadlineFilter, setDeadlineFilter] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [customerNames, setCustomerNames] = useState<Record<string, string>>({});
@@ -287,6 +294,18 @@ export default function Projekte() {
   );
 
   const isDragEnabled = viewMode === 'status' || viewMode === 'typ';
+
+  /* ── KPI chart data ── */
+  const kpiChartData = useMemo(() => {
+    const typCounts: Record<string, number> = {};
+    projects.forEach(p => {
+      const typ = (Array.isArray(p.typ) ? p.typ[0] : null) || 'Kein Typ';
+      typCounts[typ] = (typCounts[typ] || 0) + 1;
+    });
+    return Object.entries(typCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => (b.count as number) - (a.count as number));
+  }, [projects]);
 
   /* ── Data fetching ── */
   const fetchData = useCallback(async () => {
@@ -539,7 +558,44 @@ export default function Projekte() {
         </Button>
       </div>
 
+      {/* KPI Tracking view */}
+      {viewMode === 'kpi' && (
+        <div className="flex-1 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 p-6">
+          <div className="flex items-center gap-2 mb-6">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-heading font-bold">KPI Tracking</h2>
+            <span className="text-xs text-muted-foreground ml-1">Projekte nach Projektart</span>
+          </div>
+          {kpiChartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-12">Keine Daten vorhanden</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(360, kpiChartData.length * 22 + 80)}>
+              <BarChart data={kpiChartData} margin={{ top: 20, right: 20, left: 10, bottom: kpiChartData.some(d => d.name.length > 12) ? 80 : 40 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  angle={-45}
+                  textAnchor="end"
+                  interval={0}
+                  tickFormatter={(v: string) => v.length > 12 ? v.slice(0, 12) + '…' : v}
+                  height={80}
+                />
+                <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                  <LabelList dataKey="count" position="top" style={{ fontSize: 12, fontWeight: 600, fill: 'hsl(var(--foreground))' }} />
+                  {kpiChartData.map((_, i) => (
+                    <Cell key={i} fill={KPI_BAR_COLORS[i % KPI_BAR_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      )}
+
       {/* Kanban board with DnD */}
+      {viewMode !== 'kpi' && (
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -579,7 +635,6 @@ export default function Projekte() {
           </div>
         </div>
 
-        {/* Drag overlay — rendered outside columns for smooth movement */}
         <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
           {activeProject ? (
             <div className="w-[280px] opacity-90 scale-[1.02] rotate-[1deg]">
@@ -593,6 +648,7 @@ export default function Projekte() {
           ) : null}
         </DragOverlay>
       </DndContext>
+      )}
 
       {/* Slide-in panel */}
       {selectedProject && (
