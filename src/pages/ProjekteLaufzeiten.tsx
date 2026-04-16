@@ -239,8 +239,7 @@ export default function ProjekteLaufzeiten() {
       {selectedProject && (
         <ProjekteSlidePanel
           project={selectedProject}
-          onClose={() => setSelectedProject(null)}
-          onUpdate={handleRefresh}
+          onClose={() => { setSelectedProject(null); handleRefresh(); }}
         />
       )}
     </div>
