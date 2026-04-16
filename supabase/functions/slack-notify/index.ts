@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const SLACK_WEBHOOK_URL = Deno.env.get("SLACK_WEBHOOK_URL");
+    const SLACK_WEBHOOK_URL = Deno.env.get("Fehlermeldung");
     if (!SLACK_WEBHOOK_URL) {
       return new Response(JSON.stringify({ error: "SLACK_WEBHOOK_URL nicht konfiguriert" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
