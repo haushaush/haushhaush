@@ -214,6 +214,7 @@ function DroppableKanbanColumn({
   title,
   count,
   headerClass,
+  headerIcon,
   projects,
   customerNames,
   onSelect,
@@ -224,6 +225,7 @@ function DroppableKanbanColumn({
   title: string;
   count: number;
   headerClass?: string;
+  headerIcon?: React.ReactNode;
   projects: any[];
   customerNames: Record<string, string>;
   onSelect: (p: any) => void;
@@ -236,6 +238,7 @@ function DroppableKanbanColumn({
   return (
     <div className="min-w-[280px] max-w-[320px] flex-shrink-0 flex flex-col" ref={setNodeRef}>
       <div className={`flex items-center gap-2 px-3 py-2 rounded-t-lg border transition-colors ${headerClass || 'bg-muted/30 border-border'}`}>
+        {headerIcon}
         <h3 className="text-xs font-semibold truncate">{title}</h3>
         <Badge variant="secondary" className="text-[10px] h-5 px-1.5 rounded-md">{count}</Badge>
       </div>
