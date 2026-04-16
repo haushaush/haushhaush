@@ -399,8 +399,8 @@ export default function Projekte() {
   const sortedGroupKeys = useMemo(() => {
     if (viewMode === 'status') return STATUS_ORDER;
     return Object.keys(grouped).sort((a, b) => {
-      if (a === 'Ohne Kunde' || a === 'Ohne Typ') return 1;
-      if (b === 'Ohne Kunde' || b === 'Ohne Typ') return -1;
+      if (a === 'Ohne Kunde' || a === 'Ohne Typ' || a === 'Nicht zugewiesen') return 1;
+      if (b === 'Ohne Kunde' || b === 'Ohne Typ' || b === 'Nicht zugewiesen') return -1;
       return (grouped[b]?.length || 0) - (grouped[a]?.length || 0);
     });
   }, [grouped, viewMode]);
