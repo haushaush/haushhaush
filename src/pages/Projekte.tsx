@@ -97,13 +97,11 @@ function isNearDeadline(deadline: string | null | undefined) {
 function DraggableProjectCard({
   project: p,
   customerName,
-  teamMembers,
   onClick,
   isDragDisabled,
 }: {
   project: any;
   customerName?: string;
-  teamMembers: Record<string, { name: string; avatar_url?: string }>;
   onClick: () => void;
   isDragDisabled?: boolean;
 }) {
@@ -124,7 +122,6 @@ function DraggableProjectCard({
       <ProjectCardContent
         project={p}
         customerName={customerName}
-        teamMembers={teamMembers}
         onClick={onClick}
         isDragging={isDragging}
       />
@@ -136,13 +133,11 @@ function DraggableProjectCard({
 function ProjectCardContent({
   project: p,
   customerName,
-  teamMembers,
   onClick,
   isDragging,
 }: {
   project: any;
   customerName?: string;
-  teamMembers: Record<string, { name: string; avatar_url?: string }>;
   onClick?: () => void;
   isDragging?: boolean;
 }) {
@@ -151,7 +146,7 @@ function ProjectCardContent({
   const typArr = Array.isArray(p.typ) ? p.typ : [];
   const brancheArr = Array.isArray(p.branche) ? p.branche : [];
   const firstBranche = brancheArr[0] || null;
-  const mitarbeiterIds: string[] = p.verknuepfte_mitarbeiter_ids || [];
+  const members: { id: string; name: string; avatar_url?: string }[] = Array.isArray(p.mitarbeiter) ? p.mitarbeiter : [];
   const nearDeadline = isNearDeadline(p.deadline);
 
   return (
@@ -192,19 +187,18 @@ function ProjectCardContent({
 
       <div className="flex items-center justify-between mt-2.5">
         {p.startdatum ? <span className="text-[10px] text-muted-foreground">{fmtDate(p.startdatum)}</span> : <span />}
-        {mitarbeiterIds.length > 0 && (
+        {members.length > 0 && (
           <div className="flex -space-x-1.5">
-            {mitarbeiterIds.slice(0, 3).map((nid: string) => {
-              const member = teamMembers[nid];
-              const initials = member ? getInitials(member.name) : '??';
-              return member?.avatar_url ? (
-                <img key={nid} src={member.avatar_url} alt={member.name} className="h-5 w-5 rounded-full border-2 border-card object-cover" title={member.name} />
+            {members.slice(0, 3).map((m) => {
+              const initials = getInitials(m.name);
+              return m.avatar_url ? (
+                <img key={m.id} src={m.avatar_url} alt={m.name} className="h-5 w-5 rounded-full border-2 border-card object-cover" title={m.name} />
               ) : (
-                <div key={nid} className="h-5 w-5 rounded-full border-2 border-card bg-primary/10 text-primary flex items-center justify-center text-[8px] font-bold" title={member?.name || nid}>{initials}</div>
+                <div key={m.id} className="h-5 w-5 rounded-full border-2 border-card bg-primary/10 text-primary flex items-center justify-center text-[8px] font-bold" title={m.name}>{initials}</div>
               );
             })}
-            {mitarbeiterIds.length > 3 && (
-              <div className="h-5 w-5 rounded-full border-2 border-card bg-muted text-muted-foreground flex items-center justify-center text-[8px] font-bold">+{mitarbeiterIds.length - 3}</div>
+            {members.length > 3 && (
+              <div className="h-5 w-5 rounded-full border-2 border-card bg-muted text-muted-foreground flex items-center justify-center text-[8px] font-bold">+{members.length - 3}</div>
             )}
           </div>
         )}
