@@ -11,7 +11,7 @@ serve(async (req) => {
   try {
     const SLACK_WEBHOOK_URL = 'https://hooks.slack.com/triggers/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';
 
-    const { message, type, user_email, page_url, user_name, screenshot_url } = await req.json();
+    const { message, type, user_email, page_url } = await req.json();
 
     if (!message || !type) {
       return new Response(JSON.stringify({ error: "message und type sind erforderlich" }), {
@@ -19,52 +19,12 @@ serve(async (req) => {
       });
     }
 
-    const typeEmoji: Record<string, string> = {
-      Bug: "🐛", Darstellungsfehler: "🎨", "Funktion fehlt": "➕",
-      "Falscher Text": "✏️", Sonstiges: "📝",
-    };
-    const icon = typeEmoji[type] || "🐛";
-
-    const blocks: any[] = [
-      {
-        type: "header",
-        text: { type: "plain_text", text: `${icon} Neuer Fehler gemeldet: ${type}`, emoji: true },
-      },
-      {
-        type: "section",
-        fields: [
-          { type: "mrkdwn", text: `*Gemeldet von:*\n${user_name || user_email || "Unbekannt"}` },
-          { type: "mrkdwn", text: `*E-Mail:*\n${user_email || "–"}` },
-          { type: "mrkdwn", text: `*Seite:*\n\`${page_url || "Unbekannt"}\`` },
-          { type: "mrkdwn", text: `*Zeit:*\n${new Date().toLocaleString("de-DE")}` },
-        ],
-      },
-      {
-        type: "section",
-        text: { type: "mrkdwn", text: `*Fehlerbeschreibung:*\n${message.slice(0, 500)}` },
-      },
-    ];
-
-    if (screenshot_url) {
-      blocks.push({
-        type: "image",
-        image_url: screenshot_url,
-        alt_text: "Screenshot",
-      });
-    }
-
-    blocks.push(
-      { type: "divider" },
-      {
-        type: "context",
-        elements: [{ type: "mrkdwn", text: `Agency Hub · Bug Report` }],
-      },
-    );
-
     const slackRes = await fetch(SLACK_WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: `${icon} Neuer Fehler: ${type}`, blocks }),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        Fehlermeldung: `🐛 Fehler von ${user_email || 'Unbekannt'}\n📍 Seite: ${page_url || 'Unbekannt'}\n🕐 Zeit: ${new Date().toLocaleString('de-DE')}\n\n📝 Beschreibung:\n${message}`
+      })
     });
 
     if (!slackRes.ok) {
