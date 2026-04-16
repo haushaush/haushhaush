@@ -558,6 +558,7 @@ export default function Projekte() {
           )}
         </Button>
       </div>
+      )}
 
       {/* KPI Tracking view */}
       {viewMode === 'kpi' && (
