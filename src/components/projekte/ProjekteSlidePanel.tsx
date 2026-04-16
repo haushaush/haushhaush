@@ -336,32 +336,34 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
           </section>
 
 
-          {/* VERKNÜPFTE MITARBEITER */}
+          {/* MITARBEITER */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5" /> Verknüpfte Mitarbeiter
+              <Users className="h-3.5 w-3.5" /> Mitarbeiter
             </h3>
-            {/* Display linked members */}
-            {linkedTeam.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {linkedTeam.map(m => {
-                  const initials = m.name.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
-                  return (
-                    <div key={m.notion_id} className="flex items-center gap-2 bg-muted/40 rounded-lg px-2.5 py-1.5">
-                      {m.avatar_url ? (
-                        <img src={m.avatar_url} alt={m.name} className="h-6 w-6 rounded-full object-cover" />
-                      ) : (
-                        <div className="h-6 w-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[9px] font-bold">{initials}</div>
-                      )}
-                      <div className="min-w-0">
+            {/* Display from Notion people field */}
+            {(() => {
+              const members: { id: string; name: string; avatar_url?: string | null }[] = Array.isArray(editData.mitarbeiter) ? editData.mitarbeiter : [];
+              if (members.length === 0) return <p className="text-xs text-muted-foreground">Keine Mitarbeiter verknüpft</p>;
+              return (
+                <div className="flex flex-wrap gap-2">
+                  {members.map(m => {
+                    const initials = (m.name || '?').split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
+                    return (
+                      <div key={m.id} className="flex items-center gap-2 bg-muted/40 rounded-lg px-2.5 py-1.5">
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} alt={m.name} className="h-6 w-6 rounded-full object-cover" />
+                        ) : (
+                          <div className="h-6 w-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-[9px] font-bold">{initials}</div>
+                        )}
                         <p className="text-xs font-medium truncate">{m.name}</p>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {/* Editable multi-select */}
+                    );
+                  })}
+                </div>
+              );
+            })()}
+            {/* Editable multi-select (maps to team table for adding) */}
             <TeamMemberMultiSelect
               selectedIds={Array.isArray(editData.verknuepfte_mitarbeiter_ids) ? editData.verknuepfte_mitarbeiter_ids : []}
               allMembers={allTeamMembers}
