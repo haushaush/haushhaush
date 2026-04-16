@@ -215,7 +215,6 @@ function DroppableKanbanColumn({
   headerClass,
   projects,
   customerNames,
-  teamMembers,
   onSelect,
   isOverColumn,
   isDragDisabled,
@@ -226,7 +225,6 @@ function DroppableKanbanColumn({
   headerClass?: string;
   projects: any[];
   customerNames: Record<string, string>;
-  teamMembers: Record<string, { name: string; avatar_url?: string }>;
   onSelect: (p: any) => void;
   isOverColumn: boolean;
   isDragDisabled?: boolean;
@@ -254,7 +252,6 @@ function DroppableKanbanColumn({
               key={p.id}
               project={p}
               customerName={custName}
-              teamMembers={teamMembers}
               onClick={() => onSelect(p)}
               isDragDisabled={isDragDisabled}
             />
