@@ -167,7 +167,12 @@ Deno.serve(async (req) => {
           deadline_management: gc(pr["Deadline? (Management)"]),
           deadline_mitarbeiter: gc(pr["Deadline? (Mitarbeiter)"]),
           verknuepfte_kunden_ids: (pr["Verknüpfte Kunden"]?.relation || []).map((r: any) => r.id),
-          verknuepfte_mitarbeiter_ids: (pr["Verknüpfte Mitarbeiter"]?.relation || []).map((r: any) => r.id),
+          mitarbeiter: (pr["Mitarbeiter"]?.people || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            avatar_url: p.avatar_url || null,
+          })),
+          verknuepfte_mitarbeiter_ids: (pr["Mitarbeiter"]?.people || []).map((p: any) => p.id),
           verknuepfte_aufgaben_ids: (pr["Verknüpfte Aufgaben"]?.relation || []).map((r: any) => r.id),
           verknuepfte_kunden: (pr["Verknüpfte Kunden"]?.relation || []).map((r: any) => r.id),
           letztes_update: p.last_edited_time || null,
