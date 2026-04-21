@@ -13,12 +13,13 @@ export interface MetaAdAccount {
   owned?: boolean;
 }
 
-export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'this_month' | 'last_month';
+export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'last_90d' | 'this_month' | 'last_month';
 
 export const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'today', label: 'Heute' },
   { value: 'last_7d', label: 'Letzte 7 Tage' },
   { value: 'last_30d', label: 'Letzte 30 Tage' },
+  { value: 'last_90d', label: 'Letzte 90 Tage' },
   { value: 'this_month', label: 'Dieser Monat' },
   { value: 'last_month', label: 'Letzter Monat' },
 ];
