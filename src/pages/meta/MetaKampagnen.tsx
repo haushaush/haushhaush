@@ -4,20 +4,17 @@ import { MetaPageHeader } from '@/components/meta/MetaPageHeader';
 import { MetaKpiBar } from '@/components/meta/MetaKpiBar';
 import { MetaFilterBar, StatusFilter, matchesStatus } from '@/components/meta/MetaFilterBar';
 import { MetaAdDetailPanel } from '@/components/meta/MetaAdDetailPanel';
+import { MetaColumnPicker } from '@/components/meta/MetaColumnPicker';
 import {
-  formatCurrency,
-  formatNumber,
-  formatDecimal,
-  formatPercent,
-  entityStatusBadge,
-  flatInsights,
-  formatBudgetMinor,
-  exportCsv,
-} from '@/components/meta/metaUtils';
+  ColumnId,
+  DEFAULT_VISIBLE_ADS,
+  DEFAULT_VISIBLE_COLUMNS,
+  getColumnsForLevel,
+} from '@/components/meta/metaColumns';
+import { flatInsights, exportCsv } from '@/components/meta/metaUtils';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Breadcrumb,
@@ -31,12 +28,37 @@ import { AlertCircle, ArrowLeft, ChevronRight, ImageOff } from 'lucide-react';
 
 type Level = 'campaigns' | 'adsets' | 'ads';
 
-const CAMPAIGN_FIELDS =
-  'id,name,status,objective,daily_budget,lifetime_budget,spend_cap,insights{spend,impressions,clicks,ctr,cpc,cpp,reach,frequency}';
-const ADSET_FIELDS =
-  'id,name,status,campaign_id,daily_budget,lifetime_budget,insights{spend,impressions,clicks,ctr,cpc,cpm,reach,frequency}';
-const AD_FIELDS =
-  'id,name,status,adset_id,campaign_id,creative{id,name,thumbnail_url,title,body,call_to_action_type},insights{spend,impressions,clicks,ctr,cpc,cpm,reach,frequency}';
+const INSIGHT_FIELDS =
+  'spend,impressions,clicks,ctr,cpc,cpm,cpp,reach,frequency,unique_clicks,unique_ctr,' +
+  'actions,action_values,outbound_clicks,landing_page_views,' +
+  'video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions,' +
+  'video_play_actions,video_3_sec_watched_actions,' +
+  'purchase_roas,website_purchase_roas';
+
+const CAMPAIGN_FIELDS = `id,name,status,objective,daily_budget,lifetime_budget,spend_cap,insights{${INSIGHT_FIELDS}}`;
+const ADSET_FIELDS = `id,name,status,campaign_id,daily_budget,lifetime_budget,insights{${INSIGHT_FIELDS}}`;
+const AD_FIELDS = `id,name,status,adset_id,campaign_id,creative{id,name,thumbnail_url,title,body,call_to_action_type},insights{${INSIGHT_FIELDS}}`;
+
+const STORAGE_PREFIX = 'meta-cols-';
+
+function loadCols(level: Level): ColumnId[] | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + level);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCols(level: Level, ids: ColumnId[]) {
+  try {
+    localStorage.setItem(STORAGE_PREFIX + level, JSON.stringify(ids));
+  } catch {
+    /* ignore */
+  }
+}
 
 export default function MetaKampagnen() {
   const { selectedAccountId, accounts, datePreset, callMeta } = useMetaAds();
@@ -60,6 +82,35 @@ export default function MetaKampagnen() {
   const [adDetail, setAdDetail] = useState<any | null>(null);
 
   const level: Level = selectedAdset ? 'ads' : selectedCampaign ? 'adsets' : 'campaigns';
+  const allColumns = useMemo(() => getColumnsForLevel(level), [level]);
+  const defaults = level === 'ads' ? DEFAULT_VISIBLE_ADS : DEFAULT_VISIBLE_COLUMNS;
+
+  // Visible columns per level (persisted)
+  const [visibleByLevel, setVisibleByLevel] = useState<Record<Level, ColumnId[]>>(() => ({
+    campaigns: loadCols('campaigns') ?? DEFAULT_VISIBLE_COLUMNS,
+    adsets: loadCols('adsets') ?? DEFAULT_VISIBLE_COLUMNS,
+    ads: loadCols('ads') ?? DEFAULT_VISIBLE_ADS,
+  }));
+  const visible = visibleByLevel[level];
+
+  const setVisible = (ids: ColumnId[]) => {
+    // Always include alwaysVisible columns
+    const required = allColumns.filter((c) => c.alwaysVisible).map((c) => c.id);
+    const merged = Array.from(new Set([...required, ...ids]));
+    setVisibleByLevel((prev) => ({ ...prev, [level]: merged }));
+    saveCols(level, merged);
+  };
+
+  const resetCols = () => {
+    setVisibleByLevel((prev) => ({ ...prev, [level]: defaults }));
+    saveCols(level, defaults);
+  };
+
+  // Render only visible columns, in their defined order
+  const renderedColumns = useMemo(
+    () => allColumns.filter((c) => visible.includes(c.id) || c.alwaysVisible),
+    [allColumns, visible]
+  );
 
   const load = async () => {
     if (!selectedAccountId) return;
@@ -125,19 +176,14 @@ export default function MetaKampagnen() {
         return {
           Name: r.name,
           Status: r.status,
-          ...(level === 'campaigns' ? { Objective: r.objective } : {}),
-          ...(level !== 'ads'
-            ? {
-                DailyBudget: r.daily_budget ? parseFloat(r.daily_budget) / 100 : '',
-                LifetimeBudget: r.lifetime_budget ? parseFloat(r.lifetime_budget) / 100 : '',
-              }
-            : {}),
           Spend: ins.spend || 0,
           Impressions: ins.impressions || 0,
           Clicks: ins.clicks || 0,
           CTR: ins.ctr || 0,
           CPC: ins.cpc || 0,
+          CPM: ins.cpm || 0,
           Reach: ins.reach || 0,
+          Frequency: ins.frequency || 0,
         };
       })
     );
@@ -152,11 +198,9 @@ export default function MetaKampagnen() {
   };
 
   const title =
-    level === 'campaigns'
-      ? 'Kampagnen'
-      : level === 'adsets'
-      ? 'Anzeigengruppen'
-      : 'Anzeigen';
+    level === 'campaigns' ? 'Kampagnen' : level === 'adsets' ? 'Anzeigengruppen' : 'Anzeigen';
+
+  const colCount = renderedColumns.length + (level === 'campaigns' || level === 'adsets' ? 1 : 0); // +1 for chevron column
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto">
@@ -167,7 +211,6 @@ export default function MetaKampagnen() {
         onRefresh={load}
         refreshing={loading}
         onAccountChange={() => {
-          // Reset to Level 1 + clear filters when switching accounts
           setSelectedCampaign(null);
           setSelectedAdset(null);
           setSearch('');
@@ -182,19 +225,14 @@ export default function MetaKampagnen() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink
-                  onClick={goToCampaigns}
-                  className="cursor-pointer hover:text-foreground"
-                >
+                <BreadcrumbLink onClick={goToCampaigns} className="cursor-pointer hover:text-foreground">
                   Alle Kampagnen
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               {level === 'adsets' ? (
                 <BreadcrumbItem>
-                  <BreadcrumbPage className="max-w-[320px] truncate">
-                    {selectedCampaign?.name}
-                  </BreadcrumbPage>
+                  <BreadcrumbPage className="max-w-[320px] truncate">{selectedCampaign?.name}</BreadcrumbPage>
                 </BreadcrumbItem>
               ) : (
                 <>
@@ -208,36 +246,40 @@ export default function MetaKampagnen() {
                   </BreadcrumbItem>
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
-                    <BreadcrumbPage className="max-w-[280px] truncate">
-                      {selectedAdset?.name}
-                    </BreadcrumbPage>
+                    <BreadcrumbPage className="max-w-[280px] truncate">{selectedAdset?.name}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </>
               )}
             </BreadcrumbList>
           </Breadcrumb>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={level === 'adsets' ? goToCampaigns : goToAdsets}
-          >
+          <Button variant="outline" size="sm" onClick={level === 'adsets' ? goToCampaigns : goToAdsets}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Zurück
           </Button>
         </div>
       )}
 
-      {/* KPI bar */}
       <MetaKpiBar rows={filtered} currency={currency} loading={loading} />
 
-      {/* Filter bar */}
-      <MetaFilterBar
-        search={search}
-        onSearchChange={setSearch}
-        status={statusFilter}
-        onStatusChange={setStatusFilter}
-        count={filtered.length}
-      />
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <div className="flex-1 min-w-0">
+          <MetaFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            status={statusFilter}
+            onStatusChange={setStatusFilter}
+            count={filtered.length}
+          />
+        </div>
+        <div className="ml-auto -mt-4">
+          <MetaColumnPicker
+            columns={allColumns}
+            visible={visible}
+            onChange={setVisible}
+            onReset={resetCols}
+          />
+        </div>
+      </div>
 
       {error && (
         <Card className="p-4 mb-4 border-destructive/40 bg-destructive/5 flex items-start gap-3">
@@ -247,180 +289,90 @@ export default function MetaKampagnen() {
       )}
 
       <Card className="overflow-hidden">
-        <Table>
-          <TableHeader>
-            {level === 'campaigns' && (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableHead>Kampagnenname</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Ziel</TableHead>
-                <TableHead className="text-right">Budget</TableHead>
-                <TableHead className="text-right">Spend</TableHead>
-                <TableHead className="text-right">Impressionen</TableHead>
-                <TableHead className="text-right">Klicks</TableHead>
-                <TableHead className="text-right">CTR</TableHead>
-                <TableHead className="text-right">CPC</TableHead>
-                <TableHead className="w-[40px]" />
+                {renderedColumns.map((col) => (
+                  <TableHead
+                    key={col.id}
+                    className={`${col.align === 'right' ? 'text-right' : ''} ${col.width || ''}`}
+                  >
+                    {col.label}
+                  </TableHead>
+                ))}
+                {level !== 'ads' && <TableHead className="w-[40px]" />}
               </TableRow>
-            )}
-            {level === 'adsets' && (
-              <TableRow>
-                <TableHead>Anzeigengruppe</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Budget</TableHead>
-                <TableHead className="text-right">Spend</TableHead>
-                <TableHead className="text-right">Impressionen</TableHead>
-                <TableHead className="text-right">Klicks</TableHead>
-                <TableHead className="text-right">CTR</TableHead>
-                <TableHead className="text-right">CPC</TableHead>
-                <TableHead className="text-right">Reichweite</TableHead>
-                <TableHead className="w-[40px]" />
-              </TableRow>
-            )}
-            {level === 'ads' && (
-              <TableRow>
-                <TableHead className="w-[80px]">Vorschau</TableHead>
-                <TableHead>Anzeigenname</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Spend</TableHead>
-                <TableHead className="text-right">Impressionen</TableHead>
-                <TableHead className="text-right">Klicks</TableHead>
-                <TableHead className="text-right">CTR</TableHead>
-                <TableHead className="text-right">CPC</TableHead>
-              </TableRow>
-            )}
-          </TableHeader>
-          <TableBody>
-            {loading &&
-              Array.from({ length: 6 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell colSpan={level === 'ads' ? 8 : 10}>
-                    <Skeleton className="h-6 w-full" />
+            </TableHeader>
+            <TableBody>
+              {loading &&
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={colCount}>
+                      <Skeleton className="h-6 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+
+              {!loading &&
+                filtered.map((r) => {
+                  const isDrillable = level !== 'ads';
+                  const onRowClick = () => {
+                    if (level === 'campaigns') setSelectedCampaign(r);
+                    else if (level === 'adsets') setSelectedAdset(r);
+                    else setAdDetail(r);
+                  };
+                  return (
+                    <TableRow
+                      key={r.id}
+                      className="cursor-pointer group"
+                      onClick={onRowClick}
+                    >
+                      {renderedColumns.map((col) => {
+                        // Special-case the thumbnail (ads only)
+                        if (col.id === 'thumbnail') {
+                          const thumb = r.creative?.thumbnail_url;
+                          return (
+                            <TableCell key={col.id}>
+                              {thumb ? (
+                                <img
+                                  src={thumb}
+                                  alt=""
+                                  className="h-12 w-12 rounded object-cover border border-border"
+                                />
+                              ) : (
+                                <div className="h-12 w-12 rounded border border-border bg-muted flex items-center justify-center">
+                                  <ImageOff className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              )}
+                            </TableCell>
+                          );
+                        }
+                        return (
+                          <TableCell key={col.id} className={col.align === 'right' ? 'text-right' : ''}>
+                            {col.render(r, currency)}
+                          </TableCell>
+                        );
+                      })}
+                      {isDrillable && (
+                        <TableCell className="text-right">
+                          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+
+              {!loading && filtered.length === 0 && !error && (
+                <TableRow>
+                  <TableCell colSpan={colCount} className="text-center text-muted-foreground py-8">
+                    Keine Einträge für diese Auswahl.
                   </TableCell>
                 </TableRow>
-              ))}
-
-            {!loading &&
-              level === 'campaigns' &&
-              filtered.map((r) => {
-                const ins = flatInsights(r.insights);
-                const badge = entityStatusBadge(r.status);
-                const budget = r.daily_budget
-                  ? `${formatBudgetMinor(r.daily_budget, currency)} / Tag`
-                  : r.lifetime_budget
-                  ? `${formatBudgetMinor(r.lifetime_budget, currency)} gesamt`
-                  : '–';
-                return (
-                  <TableRow
-                    key={r.id}
-                    className="cursor-pointer group"
-                    onClick={() => setSelectedCampaign(r)}
-                  >
-                    <TableCell className="font-medium max-w-[280px] truncate">{r.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={badge.className}>
-                        {badge.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{r.objective || '–'}</TableCell>
-                    <TableCell className="text-right text-sm">{budget}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(ins.spend, currency)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatNumber(ins.impressions)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatNumber(ins.clicks)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatPercent(ins.ctr)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(ins.cpc, currency)}</TableCell>
-                    <TableCell className="text-right">
-                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-
-            {!loading &&
-              level === 'adsets' &&
-              filtered.map((r) => {
-                const ins = flatInsights(r.insights);
-                const badge = entityStatusBadge(r.status);
-                const budget = r.daily_budget
-                  ? `${formatBudgetMinor(r.daily_budget, currency)} / Tag`
-                  : r.lifetime_budget
-                  ? `${formatBudgetMinor(r.lifetime_budget, currency)} gesamt`
-                  : '–';
-                return (
-                  <TableRow
-                    key={r.id}
-                    className="cursor-pointer group"
-                    onClick={() => setSelectedAdset(r)}
-                  >
-                    <TableCell className="font-medium max-w-[300px] truncate">{r.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={badge.className}>
-                        {badge.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-sm">{budget}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(ins.spend, currency)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatNumber(ins.impressions)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatNumber(ins.clicks)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatPercent(ins.ctr)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(ins.cpc, currency)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatNumber(ins.reach)}</TableCell>
-                    <TableCell className="text-right">
-                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-
-            {!loading &&
-              level === 'ads' &&
-              filtered.map((r) => {
-                const ins = flatInsights(r.insights);
-                const badge = entityStatusBadge(r.status);
-                const thumb = r.creative?.thumbnail_url;
-                return (
-                  <TableRow
-                    key={r.id}
-                    className="cursor-pointer"
-                    onClick={() => setAdDetail(r)}
-                  >
-                    <TableCell>
-                      {thumb ? (
-                        <img
-                          src={thumb}
-                          alt=""
-                          className="h-12 w-12 rounded object-cover border border-border"
-                        />
-                      ) : (
-                        <div className="h-12 w-12 rounded border border-border bg-muted flex items-center justify-center">
-                          <ImageOff className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-medium max-w-[320px] truncate">{r.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={badge.className}>
-                        {badge.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(ins.spend, currency)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatNumber(ins.impressions)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatNumber(ins.clicks)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatPercent(ins.ctr)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(ins.cpc, currency)}</TableCell>
-                  </TableRow>
-                );
-              })}
-
-            {!loading && filtered.length === 0 && !error && (
-              <TableRow>
-                <TableCell colSpan={level === 'ads' ? 8 : 10} className="text-center text-muted-foreground py-8">
-                  Keine Einträge für diese Auswahl.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       <MetaAdDetailPanel
