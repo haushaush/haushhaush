@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -29,6 +29,13 @@ const navItems: NavItem[] = [
       { title: 'Pipeline', url: '/kunden/pipeline' },
       { title: 'Abschlüsse', url: '/kunden/abschluesse' },
       { title: 'Laufzeiten', url: '/kunden/laufzeiten' },
+    ],
+  },
+  {
+    title: 'Close', url: '/close', icon: Briefcase,
+    children: [
+      { title: 'Leads', url: '/close/leads' },
+      { title: 'Deals', url: '/close/deals' },
     ],
   },
   {
