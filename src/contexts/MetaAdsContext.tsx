@@ -32,7 +32,7 @@ interface MetaAdsContextValue {
   datePreset: DatePreset;
   setDatePreset: (p: DatePreset) => void;
   refreshAccounts: () => Promise<void>;
-  callMeta: <T = any>(endpoint: string, params?: Record<string, any>) => Promise<T>;
+  callMeta: <T = any>(endpoint: string, params?: Record<string, any>, method?: string) => Promise<T>;
   error: string | null;
 }
 
@@ -60,9 +60,9 @@ export function MetaAdsProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('meta-date-preset', p);
   };
 
-  const callMeta = useCallback(async <T = any,>(endpoint: string, params?: Record<string, any>): Promise<T> => {
+  const callMeta = useCallback(async <T = any,>(endpoint: string, params?: Record<string, any>, method?: string): Promise<T> => {
     const { data, error: invokeErr } = await supabase.functions.invoke('meta-proxy', {
-      body: { endpoint, params },
+      body: { endpoint, params, method },
     });
     if (invokeErr) throw new Error(invokeErr.message);
     if (data?.error) {
