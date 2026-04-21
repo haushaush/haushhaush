@@ -40,7 +40,7 @@ export function MetaAdDetailPanel({ open, onOpenChange, ad, currency = 'EUR', on
     const newStatus = next ? 'ACTIVE' : 'PAUSED';
     setUpdating(true);
     try {
-      await callMeta(`/${ad.id}`, { method: 'POST', status: newStatus });
+      await callMeta(`/${ad.id}`, { status: newStatus }, 'POST');
       setLocalStatus(newStatus);
       onStatusChanged?.(ad.id, newStatus);
       toast.success(next ? 'Anzeige aktiviert' : 'Anzeige pausiert');
