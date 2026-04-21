@@ -42,9 +42,11 @@ export function MetaAdsProvider({ children }: { children: ReactNode }) {
   const [selectedAccountId, setSelectedAccountIdState] = useState<string | null>(
     () => localStorage.getItem('meta-selected-account') || null
   );
-  const [datePreset, setDatePresetState] = useState<DatePreset>(
-    () => (localStorage.getItem('meta-date-preset') as DatePreset) || 'last_30d'
-  );
+  const [datePreset, setDatePresetState] = useState<DatePreset>(() => {
+    const stored = localStorage.getItem('meta-date-preset') as DatePreset | null;
+    const valid: DatePreset[] = ['last_7d', 'last_14d', 'last_30d', 'maximum'];
+    return stored && valid.includes(stored) ? stored : 'last_30d';
+  });
   const [error, setError] = useState<string | null>(null);
 
   const setSelectedAccountId = (id: string | null) => {
