@@ -41,12 +41,32 @@ export interface ColumnDef {
 }
 
 // ---------- Helpers to extract action values ----------
+// Sums all matching action types — use ONLY when types are mutually exclusive
+// (e.g. video_view aggregates). Never use for leads/purchases/atc — Meta returns
+// duplicate entries (e.g. `lead` AND `onsite_conversion.lead_grouped`) which
+// would double-count. Use `priorityActionValue` instead.
 function actionValue(actions: any[] | undefined, types: string[]): number {
   if (!Array.isArray(actions)) return 0;
   return actions
     .filter((a) => types.includes(a.action_type))
     .reduce((sum, a) => sum + (parseFloat(a.value) || 0), 0);
 }
+
+// Returns the value of the FIRST matching action_type in priority order.
+// Use this for conversion metrics where Meta sends overlapping action types.
+function priorityActionValue(actions: any[] | undefined, priority: string[]): number {
+  if (!Array.isArray(actions)) return 0;
+  for (const type of priority) {
+    const match = actions.find((a) => a.action_type === type);
+    if (match) return parseFloat(match.value) || 0;
+  }
+  return 0;
+}
+
+// Action priority orders — single source of truth
+const LEAD_PRIORITY = ['lead', 'onsite_conversion.lead_grouped', 'offsite_conversion.fb_pixel_lead', 'leadgen.other'];
+const PURCHASE_PRIORITY = ['purchase', 'omni_purchase', 'offsite_conversion.fb_pixel_purchase'];
+const ADD_TO_CART_PRIORITY = ['add_to_cart', 'omni_add_to_cart', 'offsite_conversion.fb_pixel_add_to_cart'];
 
 function videoWatched(ins: any): number {
   // Use 25% as the "video views" proxy (Meta convention) — fall back to video_play_actions
