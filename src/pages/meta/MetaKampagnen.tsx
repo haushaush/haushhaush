@@ -54,9 +54,12 @@ const INSIGHT_FIELDS = [
   'purchase_roas',
 ].join(',');
 
-const CAMPAIGN_FIELDS = `id,name,status,objective,daily_budget,lifetime_budget,spend_cap,insights{${INSIGHT_FIELDS}}`;
-const ADSET_FIELDS = `id,name,status,campaign_id,daily_budget,lifetime_budget,insights{${INSIGHT_FIELDS}}`;
-const AD_FIELDS = `id,name,status,adset_id,campaign_id,creative{id,name,thumbnail_url,title,body,call_to_action_type},insights{${INSIGHT_FIELDS}}`;
+const buildCampaignFields = (preset: string) =>
+  `id,name,status,objective,daily_budget,lifetime_budget,spend_cap,insights.date_preset(${preset}){${INSIGHT_FIELDS}}`;
+const buildAdsetFields = (preset: string) =>
+  `id,name,status,campaign_id,daily_budget,lifetime_budget,insights.date_preset(${preset}){${INSIGHT_FIELDS}}`;
+const buildAdFields = (preset: string) =>
+  `id,name,status,adset_id,campaign_id,creative{id,name,thumbnail_url,title,body,call_to_action_type},insights.date_preset(${preset}){${INSIGHT_FIELDS}}`;
 
 const STORAGE_PREFIX = 'meta-cols-';
 
@@ -139,13 +142,13 @@ export default function MetaKampagnen() {
       let data: any;
       if (level === 'campaigns') {
         data = await callMeta<any>(`/${selectedAccountId}/campaigns`, {
-          fields: CAMPAIGN_FIELDS,
+          fields: buildCampaignFields(datePreset),
           date_preset: datePreset,
           limit: 200,
         });
       } else if (level === 'adsets') {
         data = await callMeta<any>(`/${selectedAccountId}/adsets`, {
-          fields: ADSET_FIELDS,
+          fields: buildAdsetFields(datePreset),
           date_preset: datePreset,
           limit: 200,
           filtering: JSON.stringify([
@@ -154,7 +157,7 @@ export default function MetaKampagnen() {
         });
       } else {
         data = await callMeta<any>(`/${selectedAccountId}/ads`, {
-          fields: AD_FIELDS,
+          fields: buildAdFields(datePreset),
           date_preset: datePreset,
           limit: 200,
           filtering: JSON.stringify([

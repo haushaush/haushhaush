@@ -13,15 +13,12 @@ export interface MetaAdAccount {
   owned?: boolean;
 }
 
-export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'last_90d' | 'this_month' | 'last_month' | 'maximum';
+export type DatePreset = 'last_7d' | 'last_14d' | 'last_30d' | 'maximum';
 
 export const DATE_PRESETS: { value: DatePreset; label: string }[] = [
-  { value: 'today', label: 'Heute' },
   { value: 'last_7d', label: 'Letzte 7 Tage' },
+  { value: 'last_14d', label: 'Letzte 14 Tage' },
   { value: 'last_30d', label: 'Letzte 30 Tage' },
-  { value: 'last_90d', label: 'Letzte 90 Tage' },
-  { value: 'this_month', label: 'Dieser Monat' },
-  { value: 'last_month', label: 'Letzter Monat' },
   { value: 'maximum', label: 'Gesamt' },
 ];
 
@@ -45,9 +42,11 @@ export function MetaAdsProvider({ children }: { children: ReactNode }) {
   const [selectedAccountId, setSelectedAccountIdState] = useState<string | null>(
     () => localStorage.getItem('meta-selected-account') || null
   );
-  const [datePreset, setDatePresetState] = useState<DatePreset>(
-    () => (localStorage.getItem('meta-date-preset') as DatePreset) || 'last_30d'
-  );
+  const [datePreset, setDatePresetState] = useState<DatePreset>(() => {
+    const stored = localStorage.getItem('meta-date-preset') as DatePreset | null;
+    const valid: DatePreset[] = ['last_7d', 'last_14d', 'last_30d', 'maximum'];
+    return stored && valid.includes(stored) ? stored : 'last_30d';
+  });
   const [error, setError] = useState<string | null>(null);
 
   const setSelectedAccountId = (id: string | null) => {
