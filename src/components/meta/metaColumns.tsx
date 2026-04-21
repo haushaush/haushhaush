@@ -214,7 +214,7 @@ const metricCols = (): ColumnDef[] => [
     align: 'right',
     render: (r) => {
       const ins = flatInsights(r.insights);
-      const v = actionValue(ins.actions, ['landing_page_view', 'omni_landing_page_view']);
+      const v = priorityActionValue(ins.actions, ['landing_page_view', 'omni_landing_page_view']);
       return <span className="font-mono">{formatNumber(v)}</span>;
     },
   },
@@ -224,7 +224,7 @@ const metricCols = (): ColumnDef[] => [
     align: 'right',
     render: (r) => {
       const ins = flatInsights(r.insights);
-      const v = actionValue(ins.actions, ['add_to_cart', 'offsite_conversion.fb_pixel_add_to_cart']);
+      const v = priorityActionValue(ins.actions, ADD_TO_CART_PRIORITY);
       return <span className="font-mono">{formatNumber(v)}</span>;
     },
   },
@@ -234,7 +234,7 @@ const metricCols = (): ColumnDef[] => [
     align: 'right',
     render: (r) => {
       const ins = flatInsights(r.insights);
-      const v = actionValue(ins.actions, ['purchase', 'offsite_conversion.fb_pixel_purchase']);
+      const v = priorityActionValue(ins.actions, PURCHASE_PRIORITY);
       return <span className="font-mono">{formatNumber(v)}</span>;
     },
   },
@@ -254,7 +254,7 @@ const metricCols = (): ColumnDef[] => [
     align: 'right',
     render: (r) => {
       const ins = flatInsights(r.insights);
-      const v = actionValue(ins.actions, ['lead', 'offsite_conversion.fb_pixel_lead', 'leadgen.other']);
+      const v = priorityActionValue(ins.actions, LEAD_PRIORITY);
       return <span className="font-mono">{formatNumber(v)}</span>;
     },
   },
@@ -264,7 +264,10 @@ const metricCols = (): ColumnDef[] => [
     align: 'right',
     render: (r, c) => {
       const ins = flatInsights(r.insights);
-      const leads = actionValue(ins.actions, ['lead', 'offsite_conversion.fb_pixel_lead', 'leadgen.other']);
+      // Prefer Meta's reported cost_per_action_type, fall back to spend / leads
+      const cpl = priorityActionValue(ins.cost_per_action_type, LEAD_PRIORITY);
+      if (cpl > 0) return <span className="font-mono">{formatCurrency(cpl, c)}</span>;
+      const leads = priorityActionValue(ins.actions, LEAD_PRIORITY);
       const spend = parseFloat(ins.spend || '0');
       return <span className="font-mono">{leads > 0 ? formatCurrency(spend / leads, c) : '–'}</span>;
     },
