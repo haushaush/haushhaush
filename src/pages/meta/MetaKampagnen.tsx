@@ -385,11 +385,6 @@ export default function MetaKampagnen() {
           setAdDetail((prev: any) => (prev ? { ...prev, status: newStatus } : prev));
         }}
       />
-
-      {/* Quick stats helpers (unused, retained for tree-shake-friendly imports) */}
-      <span className="hidden">
-        {formatCurrency(0)} {formatNumber(0)} {formatPercent(0)}
-      </span>
     </div>
   );
 }
