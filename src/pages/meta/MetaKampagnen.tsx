@@ -142,13 +142,13 @@ export default function MetaKampagnen() {
       let data: any;
       if (level === 'campaigns') {
         data = await callMeta<any>(`/${selectedAccountId}/campaigns`, {
-          fields: CAMPAIGN_FIELDS,
+          fields: buildCampaignFields(datePreset),
           date_preset: datePreset,
           limit: 200,
         });
       } else if (level === 'adsets') {
         data = await callMeta<any>(`/${selectedAccountId}/adsets`, {
-          fields: ADSET_FIELDS,
+          fields: buildAdsetFields(datePreset),
           date_preset: datePreset,
           limit: 200,
           filtering: JSON.stringify([
@@ -157,7 +157,7 @@ export default function MetaKampagnen() {
         });
       } else {
         data = await callMeta<any>(`/${selectedAccountId}/ads`, {
-          fields: AD_FIELDS,
+          fields: buildAdFields(datePreset),
           date_preset: datePreset,
           limit: 200,
           filtering: JSON.stringify([
