@@ -43,6 +43,11 @@ import Register from "./pages/Register.tsx";
 import AdCreativeStudio from "./pages/tools/AdCreativeStudio.tsx";
 import CloseLeads from "./pages/CloseLeads.tsx";
 import CloseDeals from "./pages/CloseDeals.tsx";
+import MetaUebersicht from "./pages/meta/MetaUebersicht.tsx";
+import MetaKampagnen from "./pages/meta/MetaKampagnen.tsx";
+import MetaAnzeigengruppen from "./pages/meta/MetaAnzeigengruppen.tsx";
+import MetaAnzeigen from "./pages/meta/MetaAnzeigen.tsx";
+import { MetaAdsProvider } from "./contexts/MetaAdsContext";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +84,7 @@ const App = () => (
           <AuthProvider>
             <MusicPlayerProvider>
             <ARIAProvider>
+              <MetaAdsProvider>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/registrierung" element={<Registrierung />} />
@@ -92,6 +98,11 @@ const App = () => (
                 <Route path="/close" element={<Navigate to="/close/leads" replace />} />
                 <Route path="/close/leads" element={<DL><CloseLeads /></DL>} />
                 <Route path="/close/deals" element={<DL><CloseDeals /></DL>} />
+                <Route path="/meta" element={<Navigate to="/meta/uebersicht" replace />} />
+                <Route path="/meta/uebersicht" element={<DL><MetaUebersicht /></DL>} />
+                <Route path="/meta/kampagnen" element={<DL><MetaKampagnen /></DL>} />
+                <Route path="/meta/anzeigengruppen" element={<DL><MetaAnzeigengruppen /></DL>} />
+                <Route path="/meta/anzeigen" element={<DL><MetaAnzeigen /></DL>} />
                 <Route path="/projekte" element={<DL><Projekte /></DL>} />
                 <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
                 <Route path="/projekte/laufzeiten" element={<DL><ProjekteLaufzeiten /></DL>} />
@@ -127,6 +138,7 @@ const App = () => (
                 <Route path="*" element={<ErrorPage type="404" />} />
               </Routes>
               <ARIASystem />
+              </MetaAdsProvider>
             </ARIAProvider>
             </MusicPlayerProvider>
           </AuthProvider>
