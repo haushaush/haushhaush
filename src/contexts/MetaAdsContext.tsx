@@ -13,12 +13,13 @@ export interface MetaAdAccount {
   owned?: boolean;
 }
 
-export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'this_month' | 'last_month';
+export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'last_90d' | 'this_month' | 'last_month';
 
 export const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'today', label: 'Heute' },
   { value: 'last_7d', label: 'Letzte 7 Tage' },
   { value: 'last_30d', label: 'Letzte 30 Tage' },
+  { value: 'last_90d', label: 'Letzte 90 Tage' },
   { value: 'this_month', label: 'Dieser Monat' },
   { value: 'last_month', label: 'Letzter Monat' },
 ];
@@ -31,7 +32,7 @@ interface MetaAdsContextValue {
   datePreset: DatePreset;
   setDatePreset: (p: DatePreset) => void;
   refreshAccounts: () => Promise<void>;
-  callMeta: <T = any>(endpoint: string, params?: Record<string, any>) => Promise<T>;
+  callMeta: <T = any>(endpoint: string, params?: Record<string, any>, method?: string) => Promise<T>;
   error: string | null;
 }
 
@@ -59,9 +60,9 @@ export function MetaAdsProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('meta-date-preset', p);
   };
 
-  const callMeta = useCallback(async <T = any,>(endpoint: string, params?: Record<string, any>): Promise<T> => {
+  const callMeta = useCallback(async <T = any,>(endpoint: string, params?: Record<string, any>, method?: string): Promise<T> => {
     const { data, error: invokeErr } = await supabase.functions.invoke('meta-proxy', {
-      body: { endpoint, params },
+      body: { endpoint, params, method },
     });
     if (invokeErr) throw new Error(invokeErr.message);
     if (data?.error) {
