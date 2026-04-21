@@ -41,6 +41,8 @@ import AriaPage from "./pages/Aria.tsx";
 import MitarbeiterDetail from "./pages/MitarbeiterDetail.tsx";
 import Register from "./pages/Register.tsx";
 import AdCreativeStudio from "./pages/tools/AdCreativeStudio.tsx";
+import CloseLeads from "./pages/CloseLeads.tsx";
+import CloseDeals from "./pages/CloseDeals.tsx";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +89,9 @@ const App = () => (
                 <Route path="/kunden/abschluesse" element={<DL><KundenAbschluesse /></DL>} />
                 <Route path="/kunden/laufzeiten" element={<DL><KundenLaufzeiten /></DL>} />
                 <Route path="/kunden/:id" element={<DL><KundenDetail /></DL>} />
+                <Route path="/close" element={<Navigate to="/close/leads" replace />} />
+                <Route path="/close/leads" element={<DL><CloseLeads /></DL>} />
+                <Route path="/close/deals" element={<DL><CloseDeals /></DL>} />
                 <Route path="/projekte" element={<DL><Projekte /></DL>} />
                 <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
                 <Route path="/projekte/laufzeiten" element={<DL><ProjekteLaufzeiten /></DL>} />
