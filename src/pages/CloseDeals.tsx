@@ -3,13 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RefreshCw, ExternalLink } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { SortableTh } from '@/components/close/SortableTh';
+import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
 
 interface CloseDeal {
   id: string;
@@ -45,7 +45,7 @@ export default function CloseDeals() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selected, setSelected] = useState<CloseDeal | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [sortField, setSortField] = useState<string>('date_updated');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -238,7 +238,7 @@ export default function CloseDeals() {
               filtered.map(deal => (
                 <tr
                   key={deal.id}
-                  onClick={() => setSelected(deal)}
+                  onClick={() => setSelectedId(deal.id)}
                   className="border-t border-border hover:bg-muted/40 cursor-pointer transition-colors"
                 >
                   <td className="px-4 py-3 font-medium">{deal.raw?.note?.split('\n')[0]?.slice(0, 60) || deal.lead_name || 'Deal'}</td>
@@ -259,71 +259,11 @@ export default function CloseDeals() {
         </table>
       </div>
 
-      <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          {selected && (
-            <>
-              <SheetHeader>
-                <SheetTitle className="flex items-center justify-between">
-                  <span>{selected.lead_name || 'Deal'}</span>
-                  {selected.lead_id && (
-                    <a
-                      href={`https://app.close.com/lead/${selected.lead_id}/`}
-                      target="_blank" rel="noreferrer"
-                      className="text-primary hover:underline text-sm flex items-center gap-1"
-                    >
-                      In Close öffnen <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
-                </SheetTitle>
-              </SheetHeader>
-
-              <div className="mt-6 space-y-4 text-sm">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="text-muted-foreground text-xs">Status</div>
-                    <Badge className={STATUS_TYPE_COLORS[selected.status_type || ''] || ''}>
-                      {selected.status_label || '—'}
-                    </Badge>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">Wert</div>
-                    <div className="font-medium font-mono">{fmtMoney(selected)}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">Pipeline</div>
-                    <div className="font-medium">{selected.pipeline_name || '—'}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">Confidence</div>
-                    <div className="font-medium">{selected.raw?.confidence ?? '—'}%</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">Erstellt</div>
-                    <div className="font-medium">{fmtDate(selected.date_created)}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">Aktualisiert</div>
-                    <div className="font-medium">{fmtDate(selected.date_updated)}</div>
-                  </div>
-                </div>
-
-                {selected.raw?.note && (
-                  <div>
-                    <h3 className="text-sm font-semibold mb-2">Notizen</h3>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selected.raw.note}</p>
-                  </div>
-                )}
-
-                <details className="text-xs">
-                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Raw JSON</summary>
-                  <pre className="mt-2 p-3 bg-muted rounded text-[10px] overflow-auto max-h-96">{JSON.stringify(selected.raw, null, 2)}</pre>
-                </details>
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
+      <CloseDealDetailPanel
+        dealId={selectedId}
+        open={!!selectedId}
+        onOpenChange={(o) => !o && setSelectedId(null)}
+      />
     </div>
   );
 }
