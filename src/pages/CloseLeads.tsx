@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RefreshCw, Search, ExternalLink, UserPlus } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { SortableTh } from '@/components/close/SortableTh';
+import { CloseLeadDetailPanel } from '@/components/close/CloseLeadDetailPanel';
 
 interface CloseLead {
   id: string;
@@ -37,7 +37,7 @@ export default function CloseLeads() {
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selected, setSelected] = useState<CloseLead | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [sortField, setSortField] = useState<string>('date_updated');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -148,11 +148,10 @@ export default function CloseLeads() {
     try { return format(parseISO(d), 'dd.MM.yyyy HH:mm', { locale: de }); } catch { return '—'; }
   };
 
-  const handleAlsKunde = () => {
-    if (!selected) return;
-    const c = selected.contacts?.[0] || {};
+  const handleAlsKunde = (lead: any) => {
+    const c = lead.contacts?.[0] || {};
     const params = new URLSearchParams({
-      name: selected.display_name || '',
+      name: lead.display_name || '',
       email: c.emails?.[0]?.email || '',
       phone: c.phones?.[0]?.phone || '',
     });
@@ -224,7 +223,7 @@ export default function CloseLeads() {
               filtered.map(lead => (
                 <tr
                   key={lead.id}
-                  onClick={() => setSelected(lead)}
+                  onClick={() => setSelectedId(lead.id)}
                   className="border-t border-border hover:bg-muted/40 cursor-pointer transition-colors"
                 >
                   <td className="px-4 py-3 font-medium">{lead.display_name || '—'}</td>
@@ -241,74 +240,12 @@ export default function CloseLeads() {
         </table>
       </div>
 
-      <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          {selected && (
-            <>
-              <SheetHeader>
-                <SheetTitle className="flex items-center justify-between">
-                  <span>{selected.display_name || 'Lead'}</span>
-                  {selected.raw?.url && (
-                    <a href={selected.raw.url} target="_blank" rel="noreferrer" className="text-primary hover:underline text-sm flex items-center gap-1">
-                      Open in Close <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
-                </SheetTitle>
-              </SheetHeader>
-
-              <div className="mt-6 space-y-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <div className="text-muted-foreground text-xs">Status</div>
-                    <div className="font-medium">{selected.status_label || '—'}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs">Erstellt</div>
-                    <div className="font-medium">{fmtDate(selected.date_created)}</div>
-                  </div>
-                </div>
-
-                {selected.contacts && selected.contacts.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold mb-2">Kontakte</h3>
-                    <div className="space-y-2">
-                      {selected.contacts.map((c: any, i: number) => (
-                        <div key={i} className="border border-border rounded-lg p-3 text-sm">
-                          <div className="font-medium">{c.name || c.display_name || 'Unbenannt'}</div>
-                          {c.title && <div className="text-muted-foreground text-xs">{c.title}</div>}
-                          {c.emails?.map((e: any, j: number) => (
-                            <div key={j} className="text-muted-foreground text-xs">📧 {e.email}</div>
-                          ))}
-                          {c.phones?.map((p: any, j: number) => (
-                            <div key={j} className="text-muted-foreground text-xs">📞 {p.phone}</div>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {selected.raw?.description && (
-                  <div>
-                    <h3 className="text-sm font-semibold mb-2">Beschreibung</h3>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selected.raw.description}</p>
-                  </div>
-                )}
-
-                <Button onClick={handleAlsKunde} className="w-full">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Als Kunde anlegen
-                </Button>
-
-                <details className="text-xs">
-                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Raw JSON</summary>
-                  <pre className="mt-2 p-3 bg-muted rounded text-[10px] overflow-auto max-h-96">{JSON.stringify(selected.raw, null, 2)}</pre>
-                </details>
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
+      <CloseLeadDetailPanel
+        leadId={selectedId}
+        open={!!selectedId}
+        onOpenChange={(o) => !o && setSelectedId(null)}
+        onCreateKunde={handleAlsKunde}
+      />
     </div>
   );
 }
