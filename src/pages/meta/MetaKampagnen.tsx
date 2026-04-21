@@ -166,6 +166,14 @@ export default function MetaKampagnen() {
         onExportCsv={handleExport}
         onRefresh={load}
         refreshing={loading}
+        onAccountChange={() => {
+          // Reset to Level 1 + clear filters when switching accounts
+          setSelectedCampaign(null);
+          setSelectedAdset(null);
+          setSearch('');
+          setStatusFilter('all');
+          setAdDetail(null);
+        }}
       />
 
       {/* Breadcrumb + Back */}

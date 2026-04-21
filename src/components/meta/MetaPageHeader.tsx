@@ -2,6 +2,7 @@ import { useMetaAds, DATE_PRESETS } from '@/contexts/MetaAdsContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Download, RefreshCw } from 'lucide-react';
+import { MetaAccountSelector } from './MetaAccountSelector';
 
 interface Props {
   title: string;
@@ -10,10 +11,19 @@ interface Props {
   onExportCsv?: () => void;
   onRefresh?: () => void;
   refreshing?: boolean;
+  onAccountChange?: (accountId: string) => void;
 }
 
-export function MetaPageHeader({ title, subtitle, showAccountSelector = true, onExportCsv, onRefresh, refreshing }: Props) {
-  const { accounts, loadingAccounts, selectedAccountId, setSelectedAccountId, datePreset, setDatePreset } = useMetaAds();
+export function MetaPageHeader({
+  title,
+  subtitle,
+  showAccountSelector = true,
+  onExportCsv,
+  onRefresh,
+  refreshing,
+  onAccountChange,
+}: Props) {
+  const { datePreset, setDatePreset } = useMetaAds();
 
   return (
     <div className="flex flex-col gap-4 mb-6">
@@ -23,24 +33,7 @@ export function MetaPageHeader({ title, subtitle, showAccountSelector = true, on
           {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {showAccountSelector && (
-            <Select
-              value={selectedAccountId || ''}
-              onValueChange={(v) => setSelectedAccountId(v)}
-              disabled={loadingAccounts || accounts.length === 0}
-            >
-              <SelectTrigger className="w-[260px]">
-                <SelectValue placeholder={loadingAccounts ? 'Lade Konten…' : 'Werbekonto wählen'} />
-              </SelectTrigger>
-              <SelectContent className="max-h-[400px]">
-                {accounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.name} {a.currency ? `· ${a.currency}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          {showAccountSelector && <MetaAccountSelector onAccountChange={onAccountChange} />}
           <Select value={datePreset} onValueChange={(v) => setDatePreset(v as any)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
