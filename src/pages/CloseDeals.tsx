@@ -9,6 +9,7 @@ import { RefreshCw, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { SortableTh } from '@/components/close/SortableTh';
 
 interface CloseDeal {
   id: string;
@@ -26,6 +27,12 @@ interface CloseDeal {
   raw: any;
 }
 
+interface OppStatus {
+  id: string;
+  label: string;
+  type: string;
+}
+
 const STATUS_TYPE_COLORS: Record<string, string> = {
   active: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   won: 'bg-success/20 text-success',
@@ -34,11 +41,14 @@ const STATUS_TYPE_COLORS: Record<string, string> = {
 
 export default function CloseDeals() {
   const [deals, setDeals] = useState<CloseDeal[]>([]);
+  const [statuses, setStatuses] = useState<OppStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selected, setSelected] = useState<CloseDeal | null>(null);
   const [lastSync, setLastSync] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<string>('date_updated');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const loadFromCache = async () => {
     setLoading(true);
@@ -53,6 +63,17 @@ export default function CloseDeals() {
       if (data?.[0]) setLastSync((data[0] as any).synced_at);
     }
     setLoading(false);
+  };
+
+  const loadStatuses = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('close-proxy', {
+        body: { endpoint: '/status/opportunity/', method: 'GET' },
+      });
+      if (error || data?.error) return;
+      const items = (data?.data || []).map((s: any) => ({ id: s.id, label: s.label, type: s.type }));
+      setStatuses(items);
+    } catch {}
   };
 
   const sync = async () => {
@@ -110,12 +131,35 @@ export default function CloseDeals() {
     }
   };
 
-  useEffect(() => { loadFromCache(); }, []);
+  useEffect(() => { loadFromCache(); loadStatuses(); }, []);
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
 
   const filtered = useMemo(() => {
-    if (statusFilter === 'all') return deals;
-    return deals.filter(d => (d.status_type || '').toLowerCase() === statusFilter);
-  }, [deals, statusFilter]);
+    let result = deals;
+    if (statusFilter !== 'all') {
+      // Match by status type (active/won/lost) OR specific status id
+      result = result.filter(d =>
+        (d.status_type || '').toLowerCase() === statusFilter ||
+        (d as any).status_id === statusFilter ||
+        d.status_label === statuses.find(s => s.id === statusFilter)?.label
+      );
+    }
+    const getVal = (d: CloseDeal): any => {
+      if (sortField === 'value') return d.value ?? 0;
+      return (d as any)[sortField] ?? '';
+    };
+    return [...result].sort((a, b) => {
+      const valA = getVal(a);
+      const valB = getVal(b);
+      if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [deals, statusFilter, sortField, sortDir, statuses]);
 
   const fmtDate = (d: string | null) => {
     if (!d) return '—';
@@ -139,46 +183,55 @@ export default function CloseDeals() {
             {lastSync ? `Zuletzt synchronisiert: ${format(parseISO(lastSync), 'dd.MM.yyyy HH:mm', { locale: de })}` : 'Noch nicht synchronisiert'}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="won">Won</SelectItem>
-              <SelectItem value="lost">Lost</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={sync} disabled={syncing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Synchronisiere…' : 'Sync'}
-          </Button>
-        </div>
+        <Button onClick={sync} disabled={syncing}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+          {syncing ? 'Synchronisiere…' : 'Sync'}
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[260px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle Status</SelectItem>
+            <SelectItem value="active">Active (alle)</SelectItem>
+            <SelectItem value="won">Won (alle)</SelectItem>
+            <SelectItem value="lost">Lost (alle)</SelectItem>
+            {statuses.length > 0 && (
+              <div className="px-2 py-1 text-xs text-muted-foreground border-t border-border mt-1">Spezifische Status</div>
+            )}
+            {statuses.map(s => (
+              <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-sm text-muted-foreground">{filtered.length} Deal{filtered.length === 1 ? '' : 's'}</span>
       </div>
 
       <div className="border border-border rounded-lg overflow-hidden bg-card">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr>
-              <th className="text-left px-4 py-3 font-medium">Deal</th>
-              <th className="text-left px-4 py-3 font-medium">Status</th>
-              <th className="text-right px-4 py-3 font-medium">Wert</th>
-              <th className="text-left px-4 py-3 font-medium">Pipeline</th>
-              <th className="text-left px-4 py-3 font-medium">Lead</th>
-              <th className="text-left px-4 py-3 font-medium">Erstellt am</th>
+              <SortableTh field="lead_name" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Deal</SortableTh>
+              <SortableTh field="status_label" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Status</SortableTh>
+              <SortableTh field="value" sortField={sortField} sortDir={sortDir} onSort={toggleSort} align="right">Wert</SortableTh>
+              <SortableTh field="pipeline_name" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Pipeline</SortableTh>
+              <SortableTh field="lead_name" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Lead</SortableTh>
+              <SortableTh field="date_created" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Erstellt am</SortableTh>
+              <SortableTh field="date_updated" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Zuletzt aktualisiert</SortableTh>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i} className="border-t border-border">
-                  {Array.from({ length: 6 }).map((_, j) => (
+                  {Array.from({ length: 7 }).map((_, j) => (
                     <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
                   ))}
                 </tr>
               ))
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={6} className="text-center text-muted-foreground py-12">
+              <tr><td colSpan={7} className="text-center text-muted-foreground py-12">
                 Keine Deals gefunden. Klicke auf "Sync".
               </td></tr>
             ) : (
@@ -198,6 +251,7 @@ export default function CloseDeals() {
                   <td className="px-4 py-3 text-muted-foreground">{deal.pipeline_name || '—'}</td>
                   <td className="px-4 py-3 text-muted-foreground">{deal.lead_name || '—'}</td>
                   <td className="px-4 py-3 text-muted-foreground">{fmtDate(deal.date_created)}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{fmtDate(deal.date_updated)}</td>
                 </tr>
               ))
             )}
