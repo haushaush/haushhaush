@@ -893,6 +893,120 @@ export type Database = {
           },
         ]
       }
+      close_leads: {
+        Row: {
+          addresses: Json | null
+          contacts: Json | null
+          custom: Json | null
+          date_created: string | null
+          date_updated: string | null
+          description: string | null
+          display_name: string | null
+          id: string
+          raw: Json | null
+          status_id: string | null
+          status_label: string | null
+          synced_at: string | null
+          url: string | null
+        }
+        Insert: {
+          addresses?: Json | null
+          contacts?: Json | null
+          custom?: Json | null
+          date_created?: string | null
+          date_updated?: string | null
+          description?: string | null
+          display_name?: string | null
+          id: string
+          raw?: Json | null
+          status_id?: string | null
+          status_label?: string | null
+          synced_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          addresses?: Json | null
+          contacts?: Json | null
+          custom?: Json | null
+          date_created?: string | null
+          date_updated?: string | null
+          description?: string | null
+          display_name?: string | null
+          id?: string
+          raw?: Json | null
+          status_id?: string | null
+          status_label?: string | null
+          synced_at?: string | null
+          url?: string | null
+        }
+        Relationships: []
+      }
+      close_opportunities: {
+        Row: {
+          confidence: number | null
+          date_created: string | null
+          date_lost: string | null
+          date_updated: string | null
+          date_won: string | null
+          id: string
+          lead_id: string | null
+          lead_name: string | null
+          note: string | null
+          pipeline_id: string | null
+          pipeline_name: string | null
+          raw: Json | null
+          status_label: string | null
+          status_type: string | null
+          synced_at: string | null
+          value: number | null
+          value_currency: string | null
+          value_formatted: string | null
+          value_period: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          date_created?: string | null
+          date_lost?: string | null
+          date_updated?: string | null
+          date_won?: string | null
+          id: string
+          lead_id?: string | null
+          lead_name?: string | null
+          note?: string | null
+          pipeline_id?: string | null
+          pipeline_name?: string | null
+          raw?: Json | null
+          status_label?: string | null
+          status_type?: string | null
+          synced_at?: string | null
+          value?: number | null
+          value_currency?: string | null
+          value_formatted?: string | null
+          value_period?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          date_created?: string | null
+          date_lost?: string | null
+          date_updated?: string | null
+          date_won?: string | null
+          id?: string
+          lead_id?: string | null
+          lead_name?: string | null
+          note?: string | null
+          pipeline_id?: string | null
+          pipeline_name?: string | null
+          raw?: Json | null
+          status_label?: string | null
+          status_type?: string | null
+          synced_at?: string | null
+          value?: number | null
+          value_currency?: string | null
+          value_formatted?: string | null
+          value_period?: string | null
+        }
+        Relationships: []
+      }
       company_logos: {
         Row: {
           bg_color: string | null
