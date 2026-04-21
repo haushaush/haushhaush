@@ -42,9 +42,7 @@ const navItems: NavItem[] = [
     title: 'Meta Ads', url: '/meta', icon: Facebook,
     children: [
       { title: 'Übersicht', url: '/meta/uebersicht' },
-      { title: 'Kampagnen', url: '/meta/kampagnen' },
-      { title: 'Anzeigengruppen', url: '/meta/anzeigengruppen' },
-      { title: 'Anzeigen', url: '/meta/anzeigen' },
+      { title: 'Ads Manager', url: '/meta/kampagnen' },
     ],
   },
   {
