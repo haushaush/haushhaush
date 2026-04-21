@@ -13,7 +13,7 @@ export interface MetaAdAccount {
   owned?: boolean;
 }
 
-export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'last_90d' | 'this_month' | 'last_month';
+export type DatePreset = 'today' | 'last_7d' | 'last_30d' | 'last_90d' | 'this_month' | 'last_month' | 'maximum';
 
 export const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'today', label: 'Heute' },
@@ -22,6 +22,7 @@ export const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: 'last_90d', label: 'Letzte 90 Tage' },
   { value: 'this_month', label: 'Dieser Monat' },
   { value: 'last_month', label: 'Letzter Monat' },
+  { value: 'maximum', label: 'Gesamt' },
 ];
 
 interface MetaAdsContextValue {
