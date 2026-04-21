@@ -6,29 +6,41 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RefreshCw, Search, ExternalLink, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { SortableTh } from '@/components/close/SortableTh';
 
 interface CloseLead {
   id: string;
   display_name: string | null;
   status_label: string | null;
+  status_id: string | null;
   contacts: any[];
   date_created: string | null;
   date_updated: string | null;
   raw: any;
 }
 
+interface LeadStatus {
+  id: string;
+  label: string;
+}
+
 export default function CloseLeads() {
   const navigate = useNavigate();
   const [leads, setLeads] = useState<CloseLead[]>([]);
+  const [statuses, setStatuses] = useState<LeadStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selected, setSelected] = useState<CloseLead | null>(null);
   const [lastSync, setLastSync] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<string>('date_updated');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const loadFromCache = async () => {
     setLoading(true);
@@ -43,6 +55,17 @@ export default function CloseLeads() {
       if (data?.[0]) setLastSync((data[0] as any).synced_at);
     }
     setLoading(false);
+  };
+
+  const loadStatuses = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('close-proxy', {
+        body: { endpoint: '/status/lead/', method: 'GET' },
+      });
+      if (error || data?.error) return;
+      const items = (data?.data || []).map((s: any) => ({ id: s.id, label: s.label }));
+      setStatuses(items);
+    } catch {}
   };
 
   const sync = async () => {
@@ -83,7 +106,7 @@ export default function CloseLeads() {
 
         hasMore = data?.has_more === true;
         skip += limit;
-        if (skip > 5000) break; // safety
+        if (skip > 5000) break;
       }
       toast.success(`${total} Leads synchronisiert`);
       await loadFromCache();
@@ -94,13 +117,31 @@ export default function CloseLeads() {
     }
   };
 
-  useEffect(() => { loadFromCache(); }, []);
+  useEffect(() => { loadFromCache(); loadStatuses(); }, []);
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return leads;
-    return leads.filter(l => (l.display_name || '').toLowerCase().includes(q));
-  }, [leads, search]);
+    let result = leads;
+    if (q) result = result.filter(l => (l.display_name || '').toLowerCase().includes(q));
+    if (statusFilter !== 'all') result = result.filter(l => l.status_id === statusFilter);
+
+    const getVal = (l: CloseLead): any => {
+      if (sortField === 'contacts') return l.contacts?.length || 0;
+      return (l as any)[sortField] ?? '';
+    };
+    return [...result].sort((a, b) => {
+      const valA = getVal(a);
+      const valB = getVal(b);
+      if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [leads, search, statusFilter, sortField, sortDir]);
 
   const fmtDate = (d: string | null) => {
     if (!d) return '—';
@@ -133,25 +174,37 @@ export default function CloseLeads() {
         </Button>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Lead suchen…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative max-w-md flex-1 min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Lead suchen…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[220px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle Status</SelectItem>
+            {statuses.map(s => (
+              <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-sm text-muted-foreground">{filtered.length} Lead{filtered.length === 1 ? '' : 's'}</span>
       </div>
 
       <div className="border border-border rounded-lg overflow-hidden bg-card">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr>
-              <th className="text-left px-4 py-3 font-medium">Lead Name</th>
-              <th className="text-left px-4 py-3 font-medium">Status</th>
-              <th className="text-left px-4 py-3 font-medium">Kontakte</th>
-              <th className="text-left px-4 py-3 font-medium">Erstellt am</th>
-              <th className="text-left px-4 py-3 font-medium">Zuletzt aktualisiert</th>
+              <SortableTh field="display_name" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Lead Name</SortableTh>
+              <SortableTh field="status_label" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Status</SortableTh>
+              <SortableTh field="contacts" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Kontakte</SortableTh>
+              <SortableTh field="date_created" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Erstellt am</SortableTh>
+              <SortableTh field="date_updated" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Zuletzt aktualisiert</SortableTh>
             </tr>
           </thead>
           <tbody>
