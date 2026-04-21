@@ -194,7 +194,7 @@ const metricCols = (): ColumnDef[] => [
     align: 'right',
     render: (r) => {
       const ins = flatInsights(r.insights);
-      const v = parseFloat(ins.landing_page_views || '0') || actionValue(ins.actions, ['landing_page_view']);
+      const v = actionValue(ins.actions, ['landing_page_view', 'omni_landing_page_view']);
       return <span className="font-mono">{formatNumber(v)}</span>;
     },
   },
@@ -267,9 +267,9 @@ const metricCols = (): ColumnDef[] => [
     align: 'right',
     render: (r) => {
       const ins = flatInsights(r.insights);
-      const views3s = actionValue(ins.video_3_sec_watched_actions, ['video_3_sec_watched_actions', 'video_view']);
+      const views = actionValue(ins.actions, ['video_view']);
       const imps = parseFloat(ins.impressions || '0');
-      const rate = imps > 0 ? (views3s / imps) * 100 : 0;
+      const rate = imps > 0 ? (views / imps) * 100 : 0;
       return <span className="font-mono">{formatPercent(rate)}</span>;
     },
   },

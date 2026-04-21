@@ -28,12 +28,31 @@ import { AlertCircle, ArrowLeft, ChevronRight, ImageOff } from 'lucide-react';
 
 type Level = 'campaigns' | 'adsets' | 'ads';
 
-const INSIGHT_FIELDS =
-  'spend,impressions,clicks,ctr,cpc,cpm,cpp,reach,frequency,unique_clicks,unique_ctr,' +
-  'actions,action_values,outbound_clicks,landing_page_views,' +
-  'video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions,' +
-  'video_play_actions,video_3_sec_watched_actions,' +
-  'purchase_roas,website_purchase_roas';
+const INSIGHT_FIELDS = [
+  'spend',
+  'impressions',
+  'clicks',
+  'ctr',
+  'cpc',
+  'cpm',
+  'cpp',
+  'reach',
+  'frequency',
+  'actions',
+  'action_values',
+  'cost_per_action_type',
+  'unique_clicks',
+  'unique_ctr',
+  'outbound_clicks',
+  'outbound_clicks_ctr',
+  'video_avg_time_watched_actions',
+  'video_p25_watched_actions',
+  'video_p50_watched_actions',
+  'video_p75_watched_actions',
+  'video_p100_watched_actions',
+  'website_purchase_roas',
+  'purchase_roas',
+].join(',');
 
 const CAMPAIGN_FIELDS = `id,name,status,objective,daily_budget,lifetime_budget,spend_cap,insights{${INSIGHT_FIELDS}}`;
 const ADSET_FIELDS = `id,name,status,campaign_id,daily_budget,lifetime_budget,insights{${INSIGHT_FIELDS}}`;
