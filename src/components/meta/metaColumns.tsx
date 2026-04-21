@@ -1,4 +1,4 @@
-import { flatInsights, formatBudgetMinor, formatCurrency, formatDecimal, formatNumber, formatPercent } from './metaUtils';
+import { entityStatusBadge, flatInsights, formatBudgetMinor, formatCurrency, formatDecimal, formatNumber, formatPercent } from './metaUtils';
 
 export type ColumnId =
   | 'name'
@@ -61,8 +61,6 @@ function videoWatched(ins: any): number {
 
 // ---------- Renderers ----------
 const StatusCell = (row: any) => {
-  // Imported lazily to avoid circular deps in this metadata file
-  const { entityStatusBadge } = require('./metaUtils');
   const b = entityStatusBadge(row.status);
   return (
     <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs ${b.className}`}>
