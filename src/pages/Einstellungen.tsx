@@ -274,15 +274,23 @@ export default function Einstellungen() {
   const [closeDeals, setCloseDeals] = useState<CloseDeal[]>([]);
   const [dynamicConfigs, setDynamicConfigs] = useState<Record<string, Record<string, any>>>({});
 
+  const [googleDriveConn, setGoogleDriveConn] = useState<{ email: string; connected_at: string } | null>(null);
+
   const fetchData = async () => {
-    const [driveRes, teamRes, reqRes, intRes, dealsRes] = await Promise.all([
+    const [driveRes, googleDriveRes, teamRes, reqRes, intRes, dealsRes] = await Promise.all([
       user ? supabase.from('drive_connection').select('*').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
+      user ? supabase.from('google_drive_connections').select('google_email, connected_at').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
       supabase.from('team').select('*').order('name'),
       isAdminOrManager ? supabase.from('employee_requests').select('*').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
       user ? supabase.from('integration_settings').select('*').eq('user_id', user.id) : Promise.resolve({ data: [] }),
       supabase.from('close_deals').select('id, client_name, art, wert_eur').order('client_name'),
     ]);
     if (driveRes.data) { setDriveConnected(true); setDriveEmail(driveRes.data.google_email); }
+    if (googleDriveRes.data) {
+      setGoogleDriveConn({ email: googleDriveRes.data.google_email, connected_at: googleDriveRes.data.connected_at });
+    } else {
+      setGoogleDriveConn(null);
+    }
     setTeam(teamRes.data || []);
     setRequests((reqRes.data || []) as EmployeeRequest[]);
     setIntegrationSettings((intRes.data || []) as any[]);
@@ -297,6 +305,29 @@ export default function Einstellungen() {
   };
 
   useEffect(() => { fetchData(); }, [user, isAdminOrManager]);
+
+  // Handle Google Drive OAuth callback redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('google_drive');
+    if (status === 'connected') {
+      toast.success('Google Drive erfolgreich verbunden');
+      fetchData();
+      // Clean URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('google_drive');
+      url.searchParams.delete('message');
+      window.history.replaceState({}, '', url.toString());
+    } else if (status === 'error') {
+      const msg = params.get('message') || 'Unbekannter Fehler';
+      toast.error(`Google Drive: ${msg}`);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('google_drive');
+      url.searchParams.delete('message');
+      window.history.replaceState({}, '', url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const pendingCount = requests.filter(r => r.status === 'Ausstehend').length;
 
@@ -396,6 +427,21 @@ export default function Einstellungen() {
         return;
       }
       toast.success('Verbindungstest erfolgreich ✓');
+    } else if (action === 'connect_google_drive') {
+      const toastId = toast.loading('Google Verbindung wird vorbereitet...');
+      try {
+        const { data, error } = await supabase.functions.invoke('google-oauth-start');
+        toast.dismiss(toastId);
+        if (error || !data?.authUrl) {
+          toast.error(`Fehler beim Starten der Google Verbindung: ${data?.error || error?.message || 'Unbekannt'}`);
+          return;
+        }
+        window.location.href = data.authUrl;
+      } catch (e: any) {
+        toast.dismiss(toastId);
+        toast.error(`Google OAuth nicht erreichbar: ${e?.message || 'Netzwerkfehler'}`);
+      }
+      return;
     } else if (action === 'connect') {
       toast.info('OAuth-Verbindung wird vorbereitet...');
     } else if (action === 'build_structure') {
@@ -506,7 +552,7 @@ export default function Einstellungen() {
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category.toLowerCase().includes(searchQuery.toLowerCase());
       const setting = getSettingForProvider(p.id);
-      const isConnected = setting?.connected || p.id === 'slack' || (p.id === 'google_drive' && driveConnected);
+      const isConnected = setting?.connected || p.id === 'slack' || (p.id === 'google_drive' && (driveConnected || !!googleDriveConn));
       
       let matchesCategory = true;
       if (activeCategory === 'Verbunden') matchesCategory = isConnected;
@@ -515,13 +561,13 @@ export default function Einstellungen() {
       
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, activeCategory, integrationSettings, driveConnected]);
+  }, [searchQuery, activeCategory, integrationSettings, driveConnected, googleDriveConn]);
 
   const integrationStatusData = PROVIDERS.filter(p => !p.comingSoon).map(p => {
     const s = getSettingForProvider(p.id);
     return {
       provider: p.id,
-      connected: !!s?.connected || p.id === 'slack' || (p.id === 'google_drive' && driveConnected),
+      connected: !!s?.connected || p.id === 'slack' || (p.id === 'google_drive' && (driveConnected || !!googleDriveConn)),
       category: p.category,
       healthScore: s?.config?.health_score ?? null,
       hasError: s?.last_sync_status === 'error',
@@ -659,7 +705,7 @@ export default function Einstellungen() {
             {filteredProviders.map(provider => {
               const setting = getSettingForProvider(provider.id);
               const isSlackConnected = provider.id === 'slack';
-              const isDriveConnected = provider.id === 'google_drive' && driveConnected;
+              const isDriveConnected = provider.id === 'google_drive' && (driveConnected || !!googleDriveConn);
               return (
                 <IntegrationCard
                   key={provider.id}
@@ -679,6 +725,14 @@ export default function Einstellungen() {
                   testResults={testResults[provider.id]}
                   testing={testingProvider === provider.id}
                   closeDeals={closeDeals}
+                  driveConnection={provider.id === 'google_drive' ? googleDriveConn : null}
+                  onDriveDisconnect={provider.id === 'google_drive' ? async () => {
+                    if (!user) return;
+                    const { error } = await supabase.from('google_drive_connections').delete().eq('user_id', user.id);
+                    if (error) { toast.error('Trennen fehlgeschlagen'); return; }
+                    toast.success('Google Drive getrennt');
+                    setGoogleDriveConn(null);
+                  } : undefined}
                 />
               );
             })}
