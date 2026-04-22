@@ -561,7 +561,7 @@ export default function Einstellungen() {
       
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, activeCategory, integrationSettings, driveConnected]);
+  }, [searchQuery, activeCategory, integrationSettings, driveConnected, googleDriveConn]);
 
   const integrationStatusData = PROVIDERS.filter(p => !p.comingSoon).map(p => {
     const s = getSettingForProvider(p.id);
