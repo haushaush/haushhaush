@@ -4,7 +4,6 @@ import { MetaPageHeader } from '@/components/meta/MetaPageHeader';
 import { MetaDetailPanel } from '@/components/meta/MetaDetailPanel';
 import {
   formatAccountSpend,
-  formatCurrency,
   accountStatusBadge,
   exportCsv,
 } from '@/components/meta/metaUtils';
@@ -14,15 +13,50 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle } from 'lucide-react';
 
+const INSIGHT_FIELDS = 'spend,impressions,clicks,actions,cost_per_action_type';
+
 export default function MetaUebersicht() {
   const { accounts, loadingAccounts, datePreset, setSelectedAccountId, callMeta, refreshAccounts, error } = useMetaAds();
   const [campaignCount, setCampaignCount] = useState<number | null>(null);
   const [loadingCount, setLoadingCount] = useState(false);
   const [detail, setDetail] = useState<any>(null);
 
+  // Per-account spend for the selected date range (in major currency units)
+  const [spendByAccount, setSpendByAccount] = useState<Record<string, number>>({});
+  const [loadingSpend, setLoadingSpend] = useState(false);
+
   useEffect(() => {
-    if (accounts.length === 0) return;
+    if (accounts.length === 0) {
+      setSpendByAccount({});
+      setCampaignCount(null);
+      return;
+    }
+    setLoadingSpend(true);
     setLoadingCount(true);
+
+    // Fetch insights (spend) per account for the selected datePreset
+    Promise.all(
+      accounts.map((a) =>
+        callMeta<any>(`/${a.id}/insights`, {
+          fields: INSIGHT_FIELDS,
+          date_preset: datePreset,
+          level: 'account',
+        })
+          .then((r) => {
+            const row = r?.data?.[0];
+            const spend = row ? parseFloat(row.spend || '0') : 0;
+            return [a.id, spend] as [string, number];
+          })
+          .catch(() => [a.id, 0] as [string, number])
+      )
+    )
+      .then((entries) => {
+        const map: Record<string, number> = {};
+        entries.forEach(([id, spend]) => (map[id] = spend));
+        setSpendByAccount(map);
+      })
+      .finally(() => setLoadingSpend(false));
+
     // Fetch campaigns counts across owned accounts (cap at first 10 to limit API load)
     const owned = accounts.filter((a) => a.owned).slice(0, 10);
     Promise.all(
@@ -37,10 +71,10 @@ export default function MetaUebersicht() {
   }, [accounts, datePreset, callMeta]);
 
   const totals = useMemo(() => {
-    const totalSpentMinor = accounts.reduce((sum, a) => sum + parseFloat(a.amount_spent || '0'), 0);
+    const totalSpent = Object.values(spendByAccount).reduce((sum, v) => sum + v, 0);
     const activeCount = accounts.filter((a) => a.account_status === 1).length;
-    return { totalSpentMinor, activeCount };
-  }, [accounts]);
+    return { totalSpent, activeCount };
+  }, [accounts, spendByAccount]);
 
   const handleExport = () => {
     exportCsv(
@@ -50,11 +84,25 @@ export default function MetaUebersicht() {
         ID: a.id,
         Status: accountStatusBadge(a.account_status).label,
         Currency: a.currency || '',
-        AmountSpent: a.amount_spent ? parseFloat(a.amount_spent) / 100 : 0,
+        AmountSpent: spendByAccount[a.id] ?? 0,
         SpendCap: a.spend_cap ? parseFloat(a.spend_cap) / 100 : 0,
         Owned: a.owned ? 'Ja' : 'Nein',
+        DateRange: datePreset,
       }))
     );
+  };
+
+  // Format major-unit currency (insights returns major units already, e.g. "123.45")
+  const formatMajor = (amountMajor: number, currency = 'EUR') => {
+    try {
+      return new Intl.NumberFormat('de-DE', {
+        style: 'currency',
+        currency: currency || 'EUR',
+        maximumFractionDigits: 2,
+      }).format(amountMajor);
+    } catch {
+      return `${amountMajor.toFixed(2)} ${currency}`;
+    }
   };
 
   return (
@@ -81,10 +129,10 @@ export default function MetaUebersicht() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card className="p-5">
           <p className="text-sm text-muted-foreground">Gesamtes Ad Spend</p>
-          {loadingAccounts ? (
+          {loadingAccounts || loadingSpend ? (
             <Skeleton className="h-8 w-32 mt-2" />
           ) : (
-            <p className="text-2xl font-semibold mt-1">{formatAccountSpend(totals.totalSpentMinor, 'EUR')}</p>
+            <p className="text-2xl font-semibold mt-1">{formatMajor(totals.totalSpent, 'EUR')}</p>
           )}
         </Card>
         <Card className="p-5">
@@ -131,6 +179,7 @@ export default function MetaUebersicht() {
             {!loadingAccounts &&
               accounts.map((a) => {
                 const badge = accountStatusBadge(a.account_status);
+                const spend = spendByAccount[a.id];
                 return (
                   <TableRow
                     key={a.id}
@@ -151,7 +200,11 @@ export default function MetaUebersicht() {
                     </TableCell>
                     <TableCell>{a.currency || '–'}</TableCell>
                     <TableCell className="text-right font-mono">
-                      {formatAccountSpend(a.amount_spent, a.currency)}
+                      {loadingSpend && spend === undefined ? (
+                        <Skeleton className="h-4 w-20 ml-auto" />
+                      ) : (
+                        formatMajor(spend ?? 0, a.currency || 'EUR')
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-mono text-muted-foreground">
                       {a.spend_cap ? formatAccountSpend(a.spend_cap, a.currency) : '–'}
