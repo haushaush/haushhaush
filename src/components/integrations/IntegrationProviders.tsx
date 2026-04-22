@@ -1,4 +1,5 @@
 import type { IntegrationProvider } from './IntegrationCard';
+import { FigmaIcon } from './FigmaIcon';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 
@@ -284,6 +285,36 @@ export const PROVIDERS: IntegrationProvider[] = [
     ],
   },
   {
+    id: 'figma',
+    name: 'Figma',
+    category: 'Design',
+    iconLetter: 'F',
+    iconBg: 'hsl(0 0% 100%)',
+    customIcon: <FigmaIcon size={22} />,
+    description: 'Design-Dateien & Creative Library',
+    fields: [
+      { key: 'access_token', label: 'Personal Access Token', type: 'password', placeholder: 'figd_...' },
+      { key: 'team_id', label: 'Team ID (optional)', type: 'text', placeholder: '1234567890' },
+    ],
+    docUrl: 'https://www.figma.com/developers/api#access-tokens',
+    actions: [
+      { label: 'Verbindung testen', variant: 'outline', action: 'test' },
+      { label: 'Speichern', action: 'save' },
+    ],
+    ariaGuide: [
+      'Gehe zu figma.com → Profil → Settings → Security',
+      'Scrolle zu "Personal Access Tokens"',
+      'Klicke "Generate new token"',
+      'Name: "Agency Hub Portal"',
+      'Scopes aktivieren: File content (read), Library (read), Projects (read)',
+      'Token kopieren (wird nur einmal angezeigt!)',
+      'Hier einfügen → Speichern',
+    ],
+    healthChecks: [
+      { id: 'token_valid', label: 'Personal Access Token gültig' },
+    ],
+  },
+  {
     id: 'make',
     name: 'Make (Integromat)',
     category: 'Automatisierung',
@@ -414,5 +445,5 @@ export const PROVIDERS: IntegrationProvider[] = [
 ];
 
 export const CATEGORIES = [
-  'Alle', 'Verbunden', 'Nicht verbunden', 'CRM', 'Marketing', 'Finanzen', 'Kommunikation', 'Automatisierung', 'Storage', 'Landing Pages',
+  'Alle', 'Verbunden', 'Nicht verbunden', 'CRM', 'Marketing', 'Finanzen', 'Kommunikation', 'Automatisierung', 'Design', 'Storage', 'Landing Pages',
 ];
