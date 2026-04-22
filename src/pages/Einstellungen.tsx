@@ -506,6 +506,32 @@ export default function Einstellungen() {
           else if (check.id === 'api_valid') { ok = !!config.api_key; }
           else { ok = !!config.instance_url && !!config.api_key; }
           break;
+        case 'zapier': {
+          // Run all 4 checks in one edge function call (only on first iteration)
+          if (check.id === 'zapier_reachable') {
+            try {
+              const { data: zData, error: zError } = await supabase.functions.invoke('zapier-test-connection', {
+                body: { api_key: config.api_key, webhook_base: config.webhook_base },
+              });
+              if (zError || zData?.error) {
+                ok = false;
+                detail = zData?.error || zError?.message || 'Test fehlgeschlagen';
+                (config as any).__zapier_checks = null;
+              } else {
+                (config as any).__zapier_checks = zData.checks || [];
+                const c = (zData.checks || []).find((x: any) => x.id === check.id);
+                ok = !!c?.ok;
+                detail = c?.detail;
+              }
+            } catch { ok = false; detail = 'Nicht erreichbar'; }
+          } else {
+            const cached = (config as any).__zapier_checks;
+            const c = cached?.find((x: any) => x.id === check.id);
+            ok = !!c?.ok;
+            detail = c?.detail;
+          }
+          break;
+        }
         default:
           ok = setting?.connected || false;
           break;

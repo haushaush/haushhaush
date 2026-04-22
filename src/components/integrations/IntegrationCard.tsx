@@ -962,6 +962,18 @@ export function IntegrationCard({
                 </div>
               )}
 
+              {/* ══ Zapier: link to Zaps command center ══ */}
+              {provider.id === 'zapier' && (
+                <div className="pt-2 border-t border-border">
+                  <a
+                    href="/automationen/zapier"
+                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
+                  >
+                    Alle Zaps anzeigen <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
+
               {/* ══ GOOGLE DRIVE STATUS ══ */}
               {provider.id === 'google_drive' && driveConnection && (
                 <div className="rounded-lg border border-success/30 bg-success/5 p-4 space-y-3">
