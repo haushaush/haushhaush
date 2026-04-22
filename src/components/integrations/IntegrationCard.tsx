@@ -100,7 +100,11 @@ export function IntegrationCard({
   const [disconnecting, setDisconnecting] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>(() => {
     const init: Record<string, any> = {};
-    provider.fields.forEach(f => { init[f.key] = config[f.key] || f.defaultValue || ''; });
+    provider.fields.forEach(f => {
+      // For readonly fields, always use defaultValue (single source of truth)
+      // — ignore stored config so updates to defaultValue propagate immediately.
+      init[f.key] = f.type === 'readonly' ? (f.defaultValue || '') : (config[f.key] || f.defaultValue || '');
+    });
     provider.toggles?.forEach(t => { init[t.key] = config[t.key] || false; });
     return init;
   });
@@ -109,7 +113,9 @@ export function IntegrationCard({
 
   useEffect(() => {
     const updated: Record<string, any> = {};
-    provider.fields.forEach(f => { updated[f.key] = config[f.key] || f.defaultValue || ''; });
+    provider.fields.forEach(f => {
+      updated[f.key] = f.type === 'readonly' ? (f.defaultValue || '') : (config[f.key] || f.defaultValue || '');
+    });
     provider.toggles?.forEach(t => { updated[t.key] = config[t.key] || false; });
     setFormData(updated);
   }, [config]);
