@@ -552,7 +552,7 @@ export default function Einstellungen() {
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category.toLowerCase().includes(searchQuery.toLowerCase());
       const setting = getSettingForProvider(p.id);
-      const isConnected = setting?.connected || p.id === 'slack' || (p.id === 'google_drive' && driveConnected);
+      const isConnected = setting?.connected || p.id === 'slack' || (p.id === 'google_drive' && (driveConnected || !!googleDriveConn));
       
       let matchesCategory = true;
       if (activeCategory === 'Verbunden') matchesCategory = isConnected;
