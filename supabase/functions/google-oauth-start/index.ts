@@ -14,7 +14,7 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/google-oauth-callback`;
-const SCOPE = 'https://www.googleapis.com/auth/drive email profile';
+const SCOPE = 'https://www.googleapis.com/auth/drive.readonly email profile';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
