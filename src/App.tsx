@@ -48,6 +48,10 @@ import MetaKampagnen from "./pages/meta/MetaKampagnen.tsx";
 import MetaAnzeigengruppen from "./pages/meta/MetaAnzeigengruppen.tsx";
 import MetaAnzeigen from "./pages/meta/MetaAnzeigen.tsx";
 import { MetaAdsProvider } from "./contexts/MetaAdsContext";
+import DriveUebersicht from "./pages/drive/DriveUebersicht.tsx";
+import DriveMeineDateien from "./pages/drive/DriveMeineDateien.tsx";
+import DriveGeteilt from "./pages/drive/DriveGeteilt.tsx";
+import DrivePapierkorb from "./pages/drive/DrivePapierkorb.tsx";
 
 const queryClient = new QueryClient();
 
@@ -103,6 +107,10 @@ const App = () => (
                 <Route path="/meta/kampagnen" element={<DL><MetaKampagnen /></DL>} />
                 <Route path="/meta/anzeigengruppen" element={<DL><MetaAnzeigengruppen /></DL>} />
                 <Route path="/meta/anzeigen" element={<DL><MetaAnzeigen /></DL>} />
+                <Route path="/drive" element={<DL><DriveUebersicht /></DL>} />
+                <Route path="/drive/meine-dateien" element={<DL><DriveMeineDateien /></DL>} />
+                <Route path="/drive/geteilt" element={<DL><DriveGeteilt /></DL>} />
+                <Route path="/drive/papierkorb" element={<DL><DrivePapierkorb /></DL>} />
                 <Route path="/projekte" element={<DL><Projekte /></DL>} />
                 <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
                 <Route path="/projekte/laufzeiten" element={<DL><ProjekteLaufzeiten /></DL>} />
