@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -43,6 +43,15 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Übersicht', url: '/meta/uebersicht' },
       { title: 'Ads Manager', url: '/meta/kampagnen' },
+    ],
+  },
+  {
+    title: 'Drive', url: '/drive', icon: FolderOpen,
+    children: [
+      { title: 'Übersicht', url: '/drive' },
+      { title: 'Meine Dateien', url: '/drive/meine-dateien' },
+      { title: 'Geteilt mit mir', url: '/drive/geteilt' },
+      { title: 'Papierkorb', url: '/drive/papierkorb' },
     ],
   },
   {
