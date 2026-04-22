@@ -705,7 +705,7 @@ export default function Einstellungen() {
             {filteredProviders.map(provider => {
               const setting = getSettingForProvider(provider.id);
               const isSlackConnected = provider.id === 'slack';
-              const isDriveConnected = provider.id === 'google_drive' && driveConnected;
+              const isDriveConnected = provider.id === 'google_drive' && (driveConnected || !!googleDriveConn);
               return (
                 <IntegrationCard
                   key={provider.id}
@@ -725,6 +725,14 @@ export default function Einstellungen() {
                   testResults={testResults[provider.id]}
                   testing={testingProvider === provider.id}
                   closeDeals={closeDeals}
+                  driveConnection={provider.id === 'google_drive' ? googleDriveConn : null}
+                  onDriveDisconnect={provider.id === 'google_drive' ? async () => {
+                    if (!user) return;
+                    const { error } = await supabase.from('google_drive_connections').delete().eq('user_id', user.id);
+                    if (error) { toast.error('Trennen fehlgeschlagen'); return; }
+                    toast.success('Google Drive getrennt');
+                    setGoogleDriveConn(null);
+                  } : undefined}
                 />
               );
             })}
