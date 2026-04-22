@@ -1572,6 +1572,42 @@ export type Database = {
           },
         ]
       }
+      google_drive_connections: {
+        Row: {
+          access_token: string
+          connected_at: string
+          expires_at: string
+          google_email: string
+          id: string
+          last_refreshed_at: string | null
+          refresh_token: string
+          scope: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          connected_at?: string
+          expires_at: string
+          google_email: string
+          id?: string
+          last_refreshed_at?: string | null
+          refresh_token: string
+          scope: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          connected_at?: string
+          expires_at?: string
+          google_email?: string
+          id?: string
+          last_refreshed_at?: string | null
+          refresh_token?: string
+          scope?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       integration_settings: {
         Row: {
           access_token: string | null
@@ -1899,6 +1935,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          provider: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          provider?: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          provider?: string
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       probewoche_candidates: {
         Row: {
