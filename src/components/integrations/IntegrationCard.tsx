@@ -95,7 +95,9 @@ export function IntegrationCard({
   provider, connected, expanded, onToggle, lastSyncAt, lastSyncStatus, lastSyncError,
   config = {}, dynamicConfig = {}, onSave, onAction, onTest,
   onDynamicUpdate, syncing, testResults, testing, closeDeals = [],
+  driveConnection, onDriveDisconnect,
 }: IntegrationCardProps) {
+  const [disconnecting, setDisconnecting] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>(() => {
     const init: Record<string, any> = {};
     provider.fields.forEach(f => { init[f.key] = config[f.key] || f.defaultValue || ''; });
