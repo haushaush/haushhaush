@@ -312,6 +312,7 @@ export const PROVIDERS: IntegrationProvider[] = [
     ],
     docUrl: 'https://console.cloud.google.com',
     actions: [
+      { label: 'Speichern', variant: 'outline', action: 'save' },
       { label: 'Mit Google verbinden', action: 'connect_google_drive' },
     ],
     ariaGuide: [
