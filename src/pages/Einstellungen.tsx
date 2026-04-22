@@ -427,6 +427,21 @@ export default function Einstellungen() {
         return;
       }
       toast.success('Verbindungstest erfolgreich ✓');
+    } else if (action === 'connect_google_drive') {
+      const toastId = toast.loading('Google Verbindung wird vorbereitet...');
+      try {
+        const { data, error } = await supabase.functions.invoke('google-oauth-start');
+        toast.dismiss(toastId);
+        if (error || !data?.authUrl) {
+          toast.error(`Fehler beim Starten der Google Verbindung: ${data?.error || error?.message || 'Unbekannt'}`);
+          return;
+        }
+        window.location.href = data.authUrl;
+      } catch (e: any) {
+        toast.dismiss(toastId);
+        toast.error(`Google OAuth nicht erreichbar: ${e?.message || 'Netzwerkfehler'}`);
+      }
+      return;
     } else if (action === 'connect') {
       toast.info('OAuth-Verbindung wird vorbereitet...');
     } else if (action === 'build_structure') {
