@@ -259,18 +259,28 @@ export const PROVIDERS: IntegrationProvider[] = [
     iconBg: 'hsl(16 90% 50%)',
     description: 'Verwende unsere API um Zaps zu erstellen',
     fields: [
-      { key: 'webhook_url', label: 'Zapier Webhook URL', type: 'text', placeholder: 'https://hooks.zapier.com/...' },
+      { key: 'api_key', label: 'API Key', type: 'password', placeholder: '••••••••••••••••' },
+      { key: 'webhook_base', label: 'Webhook Base URL', type: 'text', placeholder: 'https://hooks.zapier.com/...' },
     ],
+    webhookUrl: `https://fqcueblsinjiclolubwv.supabase.co/functions/v1/zapier-webhook`,
     docUrl: 'https://zapier.com/developer',
-    actions: [{ label: 'Speichern', action: 'save' }],
+    actions: [
+      { label: 'Testen', variant: 'outline', action: 'test' },
+      { label: 'Verbindung testen', variant: 'outline', action: 'test' },
+      { label: 'Speichern', action: 'save' },
+    ],
     ariaGuide: [
       'Erstelle einen neuen Zap in Zapier',
       'Wähle "Webhooks by Zapier" als Trigger',
       'Kopiere die Webhook URL und trage sie hier ein',
-      'Konfiguriere die gewünschten Actions in Zapier',
+      'Für Portal-Zugriff: zapier.com/app/settings/developer → API Key generieren',
+      'API Key hier eintragen → Speichern → Verbindung testen',
     ],
     healthChecks: [
+      { id: 'zapier_reachable', label: 'Zapier API erreichbar' },
+      { id: 'api_key_valid', label: 'API Key gültig' },
       { id: 'webhook_reachable', label: 'Webhook URL erreichbar' },
+      { id: 'webhook_endpoint_ready', label: 'Webhook Endpoint bereit' },
     ],
   },
   {
