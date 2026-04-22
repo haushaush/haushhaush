@@ -100,6 +100,8 @@ Deno.serve(async (req) => {
     });
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    console.log('Google Auth URL:', authUrl);
+    console.log('Scope sent to Google:', SCOPE);
 
     return new Response(JSON.stringify({ authUrl }), {
       status: 200,
