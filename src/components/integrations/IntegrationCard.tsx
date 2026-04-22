@@ -23,6 +23,7 @@ export interface IntegrationProvider {
   iconLetter: string;
   iconBg: string;
   iconColor?: string;
+  customIcon?: React.ReactNode;
   description: string;
   comingSoon?: boolean;
   fields: Array<{
@@ -476,7 +477,7 @@ export function IntegrationCard({
             border: provider.iconBg.includes('100%') ? '1px solid hsl(var(--border))' : 'none',
           }}
         >
-          {provider.iconLetter}
+          {provider.customIcon || provider.iconLetter}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
