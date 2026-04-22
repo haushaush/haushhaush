@@ -950,32 +950,15 @@ export function IntegrationCard({
                 </div>
               )}
 
-              {/* ══ n8n DYNAMIC ══ */}
+              {/* ══ n8n: link to workflow command center ══ */}
               {provider.id === 'n8n' && (
-                <div className="space-y-3 pt-2 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-foreground">Workflows</h4>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={loadN8nWorkflows} disabled={loadingDynamic}>
-                      {loadingDynamic ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
-                      Laden
-                    </Button>
-                  </div>
-                  {n8nWorkflows.length > 0 && (
-                    <div className="space-y-1.5">
-                      {n8nWorkflows.slice(0, 10).map((wf: any) => (
-                        <div key={wf.id} className="flex items-center justify-between text-xs p-2 rounded-lg bg-muted/30 border border-border">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${wf.active ? 'bg-success' : 'bg-muted-foreground/40'}`} />
-                            <span className="font-medium text-foreground truncate">{wf.name}</span>
-                          </div>
-                          <Badge variant="secondary" className="text-[10px]">{wf.active ? 'Aktiv' : 'Inaktiv'}</Badge>
-                        </div>
-                      ))}
-                      {n8nWorkflows.length > 10 && (
-                        <p className="text-[11px] text-muted-foreground">+{n8nWorkflows.length - 10} weitere</p>
-                      )}
-                    </div>
-                  )}
+                <div className="pt-2 border-t border-border">
+                  <a
+                    href="/automationen/n8n"
+                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
+                  >
+                    Alle Workflows anzeigen <ExternalLink className="h-3 w-3" />
+                  </a>
                 </div>
               )}
 
