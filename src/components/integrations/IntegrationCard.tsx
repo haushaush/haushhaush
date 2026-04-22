@@ -973,7 +973,38 @@ export function IntegrationCard({
                 </div>
               )}
 
-              {/* Last sync info */}
+              {/* ══ GOOGLE DRIVE STATUS ══ */}
+              {provider.id === 'google_drive' && driveConnection && (
+                <div className="rounded-lg border border-success/30 bg-success/5 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-success" />
+                    <span className="text-xs font-semibold text-success uppercase tracking-wide">Aktiv</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{driveConnection.email}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Verbunden seit {new Date(driveConnection.connected_at).toLocaleDateString('de-DE', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                      })}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-8 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    disabled={disconnecting}
+                    onClick={async () => {
+                      if (!onDriveDisconnect) return;
+                      setDisconnecting(true);
+                      try { await onDriveDisconnect(); } finally { setDisconnecting(false); }
+                    }}
+                  >
+                    {disconnecting ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Trenne...</> : 'Trennen'}
+                  </Button>
+                </div>
+              )}
+
+
               {lastSyncAt && (
                 <p className="text-[11px] text-muted-foreground pt-1">
                   Zuletzt synchronisiert: {new Date(lastSyncAt).toLocaleString('de-DE')}
