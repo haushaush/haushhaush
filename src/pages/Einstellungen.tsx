@@ -532,6 +532,24 @@ export default function Einstellungen() {
           }
           break;
         }
+        case 'figma': {
+          if (check.id === 'token_valid') {
+            try {
+              const { data: fData, error: fError } = await supabase.functions.invoke('figma-test-connection', {
+                body: { token: config.access_token },
+              });
+              if (fError || !fData?.ok) {
+                ok = false;
+                detail = fData?.error || fError?.message || 'Token ungültig';
+              } else {
+                ok = true;
+                detail = `Verbunden als ${fData.user?.email || fData.user?.handle || 'Figma User'}`;
+                toast.success(`Figma verbunden als ${fData.user?.email || fData.user?.handle}`);
+              }
+            } catch { ok = false; detail = 'Nicht erreichbar'; }
+          }
+          break;
+        }
         default:
           ok = setting?.connected || false;
           break;
