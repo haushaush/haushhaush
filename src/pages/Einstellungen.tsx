@@ -274,15 +274,23 @@ export default function Einstellungen() {
   const [closeDeals, setCloseDeals] = useState<CloseDeal[]>([]);
   const [dynamicConfigs, setDynamicConfigs] = useState<Record<string, Record<string, any>>>({});
 
+  const [googleDriveConn, setGoogleDriveConn] = useState<{ email: string; connected_at: string } | null>(null);
+
   const fetchData = async () => {
-    const [driveRes, teamRes, reqRes, intRes, dealsRes] = await Promise.all([
+    const [driveRes, googleDriveRes, teamRes, reqRes, intRes, dealsRes] = await Promise.all([
       user ? supabase.from('drive_connection').select('*').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
+      user ? supabase.from('google_drive_connections').select('google_email, connected_at').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
       supabase.from('team').select('*').order('name'),
       isAdminOrManager ? supabase.from('employee_requests').select('*').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
       user ? supabase.from('integration_settings').select('*').eq('user_id', user.id) : Promise.resolve({ data: [] }),
       supabase.from('close_deals').select('id, client_name, art, wert_eur').order('client_name'),
     ]);
     if (driveRes.data) { setDriveConnected(true); setDriveEmail(driveRes.data.google_email); }
+    if (googleDriveRes.data) {
+      setGoogleDriveConn({ email: googleDriveRes.data.google_email, connected_at: googleDriveRes.data.connected_at });
+    } else {
+      setGoogleDriveConn(null);
+    }
     setTeam(teamRes.data || []);
     setRequests((reqRes.data || []) as EmployeeRequest[]);
     setIntegrationSettings((intRes.data || []) as any[]);
