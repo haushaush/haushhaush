@@ -87,6 +87,8 @@ interface IntegrationCardProps {
   testResults?: HealthResult[];
   testing?: boolean;
   closeDeals?: Array<{ id: string; client_name: string; art?: string; wert_eur?: number }>;
+  driveConnection?: { email: string; connected_at: string } | null;
+  onDriveDisconnect?: () => Promise<void>;
 }
 
 export function IntegrationCard({
