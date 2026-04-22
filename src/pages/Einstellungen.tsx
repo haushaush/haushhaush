@@ -306,6 +306,29 @@ export default function Einstellungen() {
 
   useEffect(() => { fetchData(); }, [user, isAdminOrManager]);
 
+  // Handle Google Drive OAuth callback redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('google_drive');
+    if (status === 'connected') {
+      toast.success('Google Drive erfolgreich verbunden');
+      fetchData();
+      // Clean URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('google_drive');
+      url.searchParams.delete('message');
+      window.history.replaceState({}, '', url.toString());
+    } else if (status === 'error') {
+      const msg = params.get('message') || 'Unbekannter Fehler';
+      toast.error(`Google Drive: ${msg}`);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('google_drive');
+      url.searchParams.delete('message');
+      window.history.replaceState({}, '', url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const pendingCount = requests.filter(r => r.status === 'Ausstehend').length;
 
   const getSettingForProvider = (providerId: string) => {
