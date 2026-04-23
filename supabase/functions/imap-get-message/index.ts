@@ -42,40 +42,51 @@ interface AttachmentMeta {
 
 function findTextParts(struct: any, path = ""): TextPart[] {
   if (!struct) return [];
-  if (Array.isArray(struct.childNodes) && struct.childNodes.length > 0) {
-    return struct.childNodes.flatMap((child: any, idx: number) => {
-      const p = path ? `${path}.${idx + 1}` : String(idx + 1);
-      return findTextParts(child, p);
+  const results: TextPart[] = [];
+
+  // imapflow may use childNodes or children
+  const children = struct.childNodes || struct.children || null;
+  if (Array.isArray(children) && children.length > 0) {
+    children.forEach((child: any, idx: number) => {
+      const newPath = path ? `${path}.${idx + 1}` : String(idx + 1);
+      results.push(...findTextParts(child, newPath));
     });
+    return results;
   }
-  const mimeType = `${(struct.type || "").toLowerCase()}/${(struct.subtype || "").toLowerCase()}`;
-  // Only treat as body part when it's NOT an attachment
+
+  const type = (struct.type || "").toLowerCase();
+  const subtype = (struct.subtype || "").toLowerCase();
+  const mimeType = `${type}/${subtype}`;
   const disposition = (struct.disposition || "").toLowerCase();
   const filename = struct.dispositionParameters?.filename || struct.parameters?.name;
-  const isAttachment = disposition === "attachment" || !!filename;
-  if (!isAttachment && (mimeType === "text/plain" || mimeType === "text/html")) {
-    return [{
+  const isAttachment = disposition === "attachment" || (!!filename && type !== "text");
+
+  // Some servers report mimeType "text/plain" or just type="text"
+  if (!isAttachment && type === "text" && (subtype === "plain" || subtype === "html")) {
+    results.push({
       type: mimeType as TextPart["type"],
       path: path || "1",
       size: struct.size || 0,
       encoding: (struct.encoding || "7bit").toLowerCase(),
-      charset: (struct.parameters?.charset || "utf-8").toLowerCase(),
-    }];
+      charset: (struct.parameters?.charset || struct.dispositionParameters?.charset || "utf-8").toLowerCase(),
+    });
   }
-  return [];
+  return results;
 }
 
 function findAttachments(struct: any, path = ""): AttachmentMeta[] {
   if (!struct) return [];
-  if (Array.isArray(struct.childNodes) && struct.childNodes.length > 0) {
-    return struct.childNodes.flatMap((child: any, idx: number) => {
+  const children = struct.childNodes || struct.children || null;
+  if (Array.isArray(children) && children.length > 0) {
+    return children.flatMap((child: any, idx: number) => {
       const p = path ? `${path}.${idx + 1}` : String(idx + 1);
       return findAttachments(child, p);
     });
   }
   const disposition = (struct.disposition || "").toLowerCase();
   const filename = struct.dispositionParameters?.filename || struct.parameters?.name;
-  if (disposition === "attachment" || filename) {
+  const type = (struct.type || "").toLowerCase();
+  if (disposition === "attachment" || (filename && type !== "text")) {
     return [{
       filename: filename || "unbenannt",
       size: struct.size || 0,
@@ -89,45 +100,83 @@ function findAttachments(struct: any, path = ""): AttachmentMeta[] {
 
 // ---------- decoders ----------
 
+function decodeWithCharset(buffer: Uint8Array, charset: string): string {
+  const cs = (charset || "utf-8").toLowerCase();
+  const normalized =
+    cs === "utf8" ? "utf-8" :
+    cs === "latin1" ? "iso-8859-1" :
+    cs === "us-ascii" || cs === "ascii" ? "utf-8" :
+    cs;
+  try {
+    return new TextDecoder(normalized, { fatal: false }).decode(buffer);
+  } catch {
+    return new TextDecoder("utf-8", { fatal: false }).decode(buffer);
+  }
+}
+
 function decodeQuotedPrintable(str: string): string {
-  return str
-    .replace(/=\r?\n/g, "")
-    .replace(/=([A-F0-9]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  // Soft line breaks
+  const noSoftBreaks = str.replace(/=\r?\n/g, "");
+  // Decode hex sequences as raw bytes, then reinterpret runs of bytes as utf-8
+  const bytes: number[] = [];
+  let i = 0;
+  while (i < noSoftBreaks.length) {
+    const ch = noSoftBreaks[i];
+    if (ch === "=" && i + 2 < noSoftBreaks.length) {
+      const hex = noSoftBreaks.substr(i + 1, 2);
+      if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+        bytes.push(parseInt(hex, 16));
+        i += 3;
+        continue;
+      }
+    }
+    bytes.push(ch.charCodeAt(0) & 0xff);
+    i++;
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: false }).decode(new Uint8Array(bytes));
+  } catch {
+    return String.fromCharCode(...bytes);
+  }
 }
 
 function decodePart(buffer: Uint8Array, encoding: string, charset: string): string {
-  // Decoder selection (only iso-8859-1 is needed beyond utf-8 in practice)
-  const useLatin1 = charset === "iso-8859-1" || charset === "latin1" || charset === "windows-1252";
-  const decoder = new TextDecoder(useLatin1 ? "iso-8859-1" : "utf-8", { fatal: false });
-  const text = decoder.decode(buffer);
+  const enc = (encoding || "7bit").toLowerCase();
 
-  if (encoding === "quoted-printable") {
-    // QP works on ASCII bytes — apply to decoded text then reinterpret hex escapes
-    const qp = decodeQuotedPrintable(text);
-    if (!useLatin1) {
-      // QP often encodes utf-8 bytes; reinterpret resulting bytes as utf-8
-      try {
-        const bytes = Uint8Array.from(qp, (c) => c.charCodeAt(0) & 0xff);
-        return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-      } catch {
-        return qp;
-      }
-    }
-    return qp;
-  }
-
-  if (encoding === "base64") {
+  if (enc === "base64") {
     try {
-      const cleaned = text.replace(/\s/g, "");
-      const binStr = atob(cleaned);
-      const bytes = Uint8Array.from(binStr, (c) => c.charCodeAt(0));
-      return new TextDecoder(useLatin1 ? "iso-8859-1" : "utf-8", { fatal: false }).decode(bytes);
+      const b64 = new TextDecoder("ascii").decode(buffer).replace(/\s/g, "");
+      const bin = atob(b64);
+      const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+      return decodeWithCharset(bytes, charset);
     } catch {
-      return text;
+      return decodeWithCharset(buffer, charset);
     }
   }
 
-  return text;
+  if (enc === "quoted-printable") {
+    // QP works on ASCII text — read raw, then decode QP (which yields utf-8 bytes for most modern mails)
+    const raw = new TextDecoder("ascii", { fatal: false }).decode(buffer);
+    return decodeQuotedPrintable(raw);
+  }
+
+  // 7bit / 8bit / binary
+  return decodeWithCharset(buffer, charset);
+}
+
+async function streamToBuffer(stream: any): Promise<Uint8Array> {
+  if (!stream) return new Uint8Array(0);
+  if (stream instanceof Uint8Array) return stream;
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
+  }
+  let total = 0;
+  for (const c of chunks) total += c.length;
+  const buf = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { buf.set(c, off); off += c.length; }
+  return buf;
 }
 
 // ---------- main ----------
@@ -178,7 +227,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
   const svc = getServiceClient();
 
-  // Cache hit — return immediately
+  // Cache hit (only if non-empty body) — return immediately
   const { data: cached } = await svc
     .from("email_messages_cache")
     .select("*")
@@ -187,7 +236,12 @@ async function handleRequest(req: Request): Promise<Response> {
     .eq("uid", Number(uid))
     .maybeSingle();
 
-  if (cached?.body_fetched_at) {
+  const cachedHasBody =
+    cached?.body_fetched_at &&
+    ((cached.body_text && cached.body_text.length >= 10) ||
+      (cached.body_html && cached.body_html.length >= 10));
+
+  if (cachedHasBody) {
     log("Cache HIT");
     return jsonResponse({ ok: true, message: cached, cached: true });
   }
@@ -201,7 +255,7 @@ async function handleRequest(req: Request): Promise<Response> {
     logger: false,
     connectTimeout: 10_000,
     greetingTimeout: 8_000,
-    socketTimeout: 20_000,
+    socketTimeout: 25_000,
   });
 
   client.on("error", (err: Error) => log(`IMAP error event: ${err.message}`));
@@ -252,43 +306,71 @@ async function handleRequest(req: Request): Promise<Response> {
           const attachMeta = findAttachments(captured.bodyStructure);
           log(`Text parts: ${textParts.length}, Attachments: ${attachMeta.length}`);
 
-          // Fallback: if no parts identified (rare — non-MIME message), grab full source as text/plain
-          if (textParts.length === 0 && attachMeta.length === 0) {
-            log("No MIME parts found — fetching '1' as plaintext fallback");
-            try {
-              const partData = await raceTimeout(
-                client.download(String(uid), "1", { uid: true }) as any,
-                12_000,
-                "fallback-download",
-              );
-              const buf = await streamToBuffer(partData?.content);
-              bodyText = decodePart(buf, "7bit", "utf-8");
-            } catch (e) {
-              log(`Fallback download failed: ${(e as Error).message}`);
-            }
-          }
-
           // ---- Step 3: download text parts ----
           for (const part of textParts) {
-            if (part.size > 1_000_000) {
+            if (part.size > 2_000_000) {
               log(`Skip part ${part.path} — too large (${part.size}b)`);
               continue;
             }
-            log(`Download part ${part.path} (${part.type}, ${part.size}b, enc=${part.encoding})`);
+            log(`Download part ${part.path} (${part.type}, ${part.size}b, enc=${part.encoding}, cs=${part.charset})`);
             try {
               const partData = await raceTimeout(
                 client.download(String(uid), part.path, { uid: true }) as any,
-                12_000,
+                15_000,
                 `part-${part.path}`,
               );
-              const buf = await streamToBuffer(partData?.content);
+              if (!partData?.content) {
+                log(`No content for part ${part.path}`);
+                continue;
+              }
+              const buf = await streamToBuffer(partData.content);
               const decoded = decodePart(buf, part.encoding, part.charset);
-              if (part.type === "text/plain") bodyText += decoded;
-              else bodyHtml += decoded;
+              if (part.type === "text/plain" && !bodyText) bodyText = decoded;
+              else if (part.type === "text/html" && !bodyHtml) bodyHtml = decoded;
+              else if (part.type === "text/plain") bodyText += decoded;
+              else if (part.type === "text/html") bodyHtml += decoded;
               log(`Part ${part.path} → ${decoded.length} chars`);
             } catch (partErr) {
               log(`Part ${part.path} failed: ${(partErr as Error).message}`);
-              // continue with other parts — never fail entire message for one bad part
+              // continue with other parts
+            }
+          }
+
+          // ---- Step 3b: fallback — full source + mailparser if structure walk missed everything ----
+          if (!bodyText && !bodyHtml) {
+            log("WARNING: No text parts found via BODYSTRUCTURE — fallback to full source + mailparser");
+            try {
+              let sourceMsg: any = null;
+              await raceTimeout(
+                (async () => {
+                  for await (const m of client.fetch(
+                    String(uid),
+                    { source: true },
+                    { uid: true },
+                  )) {
+                    sourceMsg = m;
+                    break;
+                  }
+                })(),
+                20_000,
+                "source-fetch",
+              );
+              if (sourceMsg?.source) {
+                log(`Got source (${sourceMsg.source.length}b), parsing...`);
+                const { simpleParser } = await import("npm:mailparser@3.6.5");
+                const parsed = await raceTimeout(
+                  simpleParser(sourceMsg.source) as any,
+                  10_000,
+                  "mailparser",
+                );
+                bodyText = parsed.text || "";
+                bodyHtml = parsed.html || "";
+                log(`Fallback parsed: text=${bodyText.length} html=${bodyHtml.length}`);
+              } else {
+                log("Source fetch returned empty");
+              }
+            } catch (fbErr) {
+              log(`Fallback parse failed: ${(fbErr as Error).message}`);
             }
           }
 
@@ -314,7 +396,7 @@ async function handleRequest(req: Request): Promise<Response> {
     opError = (opError ?? e) as Error;
   }
 
-  if (opError) {
+  if (opError && !bodyText && !bodyHtml) {
     const mapped = mapImapError(opError);
     log(`Returning error: ${mapped.code} ${mapped.message}`);
     return jsonResponse({ ok: false, error: mapped.code, message: mapped.message }, 200);
@@ -342,7 +424,7 @@ async function handleRequest(req: Request): Promise<Response> {
     body_text: bodyText || null,
     body_html: bodyHtml || null,
     attachments,
-    body_fetched_at: new Date().toISOString(),
+    body_fetched_at: (bodyText || bodyHtml) ? new Date().toISOString() : null,
   };
 
   let updated: any = null;
@@ -358,22 +440,6 @@ async function handleRequest(req: Request): Promise<Response> {
     log(`Cache update failed (non-fatal): ${(e as Error).message}`);
   }
 
-  log(`Done in ${Date.now() - t0}ms`);
+  log(`Done in ${Date.now() - t0}ms (text=${bodyText.length}, html=${bodyHtml.length}, attach=${attachments.length})`);
   return jsonResponse({ ok: true, message: updated ?? updateRow, cached: false });
-}
-
-async function streamToBuffer(stream: any): Promise<Uint8Array> {
-  if (!stream) return new Uint8Array(0);
-  // Already a buffer/Uint8Array
-  if (stream instanceof Uint8Array) return stream;
-  const chunks: Uint8Array[] = [];
-  for await (const chunk of stream) {
-    chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
-  }
-  let total = 0;
-  for (const c of chunks) total += c.length;
-  const buf = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) { buf.set(c, off); off += c.length; }
-  return buf;
 }
