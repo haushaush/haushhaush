@@ -666,13 +666,16 @@ export default function EmailPage() {
 
       <AddAccountModal
         open={addOpen}
-        onClose={() => setAddOpen(false)}
-        onAccountSaved={() => accountsQuery.refetch()}
-        prefill={null}
+        onClose={() => { setAddOpen(false); setAddPrefill(null); }}
+        onAccountSaved={() => { accountsQuery.refetch(); setAddPrefill(null); }}
+        prefill={addPrefill}
       />
       <AccountsModal
         open={accountsOpen}
         onClose={() => setAccountsOpen(false)}
+        accounts={accounts as any}
+        onAddNew={() => { setAccountsOpen(false); setAddPrefill(null); setAddOpen(true); }}
+        onRepair={(acc) => { setAccountsOpen(false); setAddPrefill(acc as any); setAddOpen(true); }}
         onChanged={() => accountsQuery.refetch()}
       />
       <ComposeModal
