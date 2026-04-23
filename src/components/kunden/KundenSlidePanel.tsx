@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { KundeMetaAdsTab } from './KundeMetaAdsTab';
+import { getKundeDisplayName } from '@/lib/kunde-display-name';
 
 const STATUS_STYLES: Record<string, string> = {
   'In Betreuung': 'bg-success/20 text-success',
@@ -384,7 +385,7 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
                 </div>
               </div>
               <div>
-                <h2 className="text-xl font-heading font-bold text-white">{d.client_name}</h2>
+                <h2 className="text-xl font-heading font-bold text-white">{getKundeDisplayName(d)}</h2>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="secondary" className={`text-xs rounded-[4px] ${STATUS_STYLES[ks] || 'bg-white/20 text-white'}`}>{ks}</Badge>
                   <span className="flex items-center gap-1.5">

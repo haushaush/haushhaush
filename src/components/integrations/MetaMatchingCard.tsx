@@ -7,6 +7,19 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Play, Check, X as XIcon, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { MetaActiveMatchesTable, type ActiveMatch } from "./MetaActiveMatchesTable";
+import { getKundeDisplayName } from "@/lib/kunde-display-name";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { RotateCcw } from "lucide-react";
 
 interface RunSummary {
   ran_at: string;
@@ -24,7 +37,7 @@ interface PendingRow {
   confidence: number;
   reasoning: string | null;
   source: string;
-  kunde?: { client_name: string; unternehmen: string | null };
+  kunde?: { client_name: string; unternehmen: string | null; vor_nachname: string | null };
 }
 
 export function MetaMatchingCard() {
@@ -57,7 +70,7 @@ export function MetaMatchingCard() {
       const ids = Array.from(new Set(rows.map((r) => r.kunde_id)));
       const { data: kunden } = await supabase
         .from("close_deals")
-        .select("id, client_name, unternehmen")
+        .select("id, client_name, unternehmen, vor_nachname")
         .in("id", ids);
       const map = new Map((kunden || []).map((k: any) => [k.id, k]));
       rows.forEach((r) => { r.kunde = map.get(r.kunde_id); });
@@ -93,6 +106,34 @@ export function MetaMatchingCard() {
       await load();
     } catch (e) {
       toast.error("Fehler beim Matching", { id: t, description: (e as Error).message });
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const rematchAll = async () => {
+    setRunning(true);
+    const t = toast.loading("Auto- & KI-Matches werden gelöscht und neu berechnet…");
+    try {
+      // Wipe non-manual matches and pending suggestions
+      const [{ error: delAuto }, { error: delPending }] = await Promise.all([
+        supabase.from("kunde_meta_accounts").delete().in("match_type", ["auto", "ai"]),
+        supabase.from("pending_meta_matches").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
+      ]);
+      if (delAuto) throw delAuto;
+      if (delPending) throw delPending;
+
+      const { data, error } = await supabase.functions.invoke("match-meta-accounts", {
+        body: { trigger: "manual-rematch" },
+      });
+      if (error || !data?.ok) throw new Error(error?.message || data?.error || "Matching fehlgeschlagen");
+      toast.success(
+        `Neu gematcht: ${data.auto_matched} automatisch · ${data.pending} zur Prüfung · ${data.no_match} ohne Match`,
+        { id: t },
+      );
+      await load();
+    } catch (e) {
+      toast.error("Fehler beim Neu-Matching", { id: t, description: (e as Error).message });
     } finally {
       setRunning(false);
     }
@@ -170,6 +211,32 @@ export function MetaMatchingCard() {
             {running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
             Jetzt ausführen
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={running}
+                className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                Alle neu matchen
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Alle Matches zurücksetzen?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Alle bestehenden automatischen und KI-Matches werden gelöscht und neu ausgeführt. Manuelle
+                  Verknüpfungen bleiben unberührt.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                <AlertDialogAction onClick={rematchAll}>Neu matchen</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
           <span>
@@ -221,8 +288,10 @@ export function MetaMatchingCard() {
                   {pending.map((row) => (
                     <tr key={row.id} className="border-t border-border/50 hover:bg-muted/30">
                       <td className="px-3 py-2">
-                        <p className="font-medium text-xs">{row.kunde?.unternehmen || "–"}</p>
-                        <p className="text-[10px] text-muted-foreground">{row.kunde?.client_name}</p>
+                        <p className="font-medium text-xs">{getKundeDisplayName(row.kunde)}</p>
+                        {row.kunde?.unternehmen ? (
+                          <p className="text-[10px] text-muted-foreground">{row.kunde.unternehmen}</p>
+                        ) : null}
                       </td>
                       <td className="px-3 py-2">
                         <p className="font-medium text-xs">{row.meta_account_name}</p>

@@ -27,12 +27,13 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const META_API = "https://graph.facebook.com/v19.0";
 
 // ----- string utils -----
+// Generic insurance / company stopwords. Brand names (Allianz, HanseMerkur, …)
+// are intentionally NOT in here — they are useful signal in combo matching.
 const STOPWORDS = new Set([
   "pkv", "bu", "tkv", "kv", "versicherung", "versicherungen",
   "gmbh", "ug", "ag", "ohg", "kg", "e.k.", "ek",
   "digital", "marketing", "recruiting", "beihilfe",
-  "tierkrankenversicherung", "hanse", "merkur", "allianz", "axa",
-  "signal", "iduna", "barmenia", "gothaer", "ergo", "arag",
+  "tierkrankenversicherung",
   "büro", "buero", "office",
 ]);
 
@@ -81,7 +82,7 @@ interface Kunde {
   id: string;
   client_name: string | null;
   vor_nachname: string | null;
-  unternehmen: string | null;
+  unternehmen: string | null; // brand multi-select like "Allianz", "HanseMerkur", "Individuell" — NOT a name
   branche: string[] | null;
 }
 
@@ -98,46 +99,82 @@ interface Score {
   reason: string;
 }
 
+// Returns the brand list filtered down to real, distinguishing brands.
+// "Individuell" / very short / empty entries are ignored — they are not names.
+function brandsOf(kunde: Kunde): string[] {
+  const raw = kunde.unternehmen;
+  let arr: string[] = [];
+  if (Array.isArray(raw)) arr = raw as unknown as string[];
+  else if (typeof raw === "string") arr = raw.split(/[,;]/);
+  return arr
+    .map((b) => (b || "").trim())
+    .filter((b) => b.length >= 3 && b.toLowerCase() !== "individuell");
+}
+
+// Single source of truth for the customer's display / matching name.
+// Matches the slide-in panel header: vor_nachname → client_name → "".
+function customerNameOf(kunde: Kunde): string {
+  return (kunde.vor_nachname?.trim() || kunde.client_name?.trim() || "");
+}
+
 function scoreKundeAgainstAccount(kunde: Kunde, acc: Account): Score | null {
   const accName = norm(acc.name);
   const accBiz = norm(acc.business_name || "");
   const accFull = `${accName} ${accBiz}`.trim();
+  const accFullTokens = new Set(accFull.split(" ").filter(Boolean));
 
-  const company = norm(kunde.unternehmen);
-  const person = norm(kunde.vor_nachname);
-  const cname = norm(kunde.client_name);
+  const customerName = customerNameOf(kunde);
+  const person = norm(customerName);
+  const brands = brandsOf(kunde).map(norm).filter(Boolean);
 
-  // a) Exact: company == account name
-  if (company && (accName === company || accBiz === company)) {
-    return { kunde, confidence: 100, reason: `Exact: "${company}" === account name` };
+  if (!person && brands.length === 0) return null;
+
+  // a) Exact: customer name == account name
+  if (person && (accName === person || accBiz === person)) {
+    return { kunde, confidence: 100, reason: `Exact: "${person}" === account name` };
   }
 
-  // b) Substring company ↔ account name (min 4 chars to avoid generic matches)
-  if (company && company.length >= 4) {
-    if (accFull.includes(company)) {
-      return { kunde, confidence: 90, reason: `Company "${company}" found in account name` };
-    }
-    if (company.includes(accName) && accName.length >= 4) {
-      return { kunde, confidence: 90, reason: `Account name "${accName}" found in company` };
-    }
+  // b) Substring: full customer name appears in account name (e.g. "dustin kroczynski" in "allianz dustin kroczynski")
+  if (person && person.length >= 5 && accFull.includes(person)) {
+    return { kunde, confidence: 95, reason: `Customer "${person}" found in account name` };
   }
 
-  // c) Last name match (strongest single-token signal)
+  // c) Last name only — strongest single-token signal for "Brand Person" style accounts
   if (person) {
-    const lastName = person.split(" ").pop() || "";
-    if (lastName.length >= 4 && accFull.split(" ").includes(lastName)) {
+    const parts = person.split(" ").filter((p) => p.length >= 4);
+    const lastName = parts[parts.length - 1];
+    if (lastName && accFullTokens.has(lastName)) {
+      // d) Brand + last name combo → very strong
+      const matchedBrand = brands.find((b) => accFull.includes(b));
+      if (matchedBrand) {
+        return {
+          kunde,
+          confidence: 92,
+          reason: `Brand "${matchedBrand}" + last name "${lastName}" both in account`,
+        };
+      }
       return { kunde, confidence: 85, reason: `Last name "${lastName}" matches account` };
     }
   }
 
-  // d) Full client_name substring
-  if (cname && cname.length >= 5 && accFull.includes(cname)) {
-    return { kunde, confidence: 80, reason: `client_name "${cname}" found in account` };
+  // e) First name in account too (weaker — only count when combined with brand)
+  if (person && brands.length > 0) {
+    const tokensInPerson = person.split(" ").filter((p) => p.length >= 3);
+    const personTokensInAcc = tokensInPerson.filter((t) => accFullTokens.has(t)).length;
+    const matchedBrand = brands.find((b) => accFull.includes(b));
+    if (matchedBrand && personTokensInAcc >= 1) {
+      const conf = personTokensInAcc >= 2 ? 88 : 75;
+      return {
+        kunde,
+        confidence: conf,
+        reason: `Brand "${matchedBrand}" + ${personTokensInAcc} name token(s) in account`,
+      };
+    }
   }
 
-  // e) Token-overlap fuzzy on company vs name
+  // f) Token-overlap fuzzy on customer name vs account
   const accTokens = new Set(tokens(acc.name + " " + (acc.business_name || "")));
-  const kundeTokens = tokens(`${kunde.unternehmen ?? ""} ${kunde.vor_nachname ?? ""} ${kunde.client_name ?? ""}`);
+  const kundeTokens = tokens(`${customerName} ${brands.join(" ")}`);
   if (kundeTokens.length > 0 && accTokens.size > 0) {
     const overlap = kundeTokens.filter((t) => accTokens.has(t)).length;
     const overlapRatio = overlap / Math.max(kundeTokens.length, accTokens.size);
@@ -151,9 +188,9 @@ function scoreKundeAgainstAccount(kunde: Kunde, acc: Account): Score | null {
     }
   }
 
-  // f) Levenshtein fallback on company name
-  if (company && company.length >= 4 && accName.length >= 4) {
-    const r = ratio(company, accName);
+  // g) Levenshtein fallback on customer name
+  if (person && person.length >= 5 && accName.length >= 4) {
+    const r = ratio(person, accName);
     if (r >= 0.75) {
       return { kunde, confidence: Math.round(r * 100), reason: `Fuzzy ratio ${(r * 100).toFixed(0)}%` };
     }
@@ -190,13 +227,21 @@ async function aiTiebreaker(
   reason: string,
 ): Promise<{ is_match: boolean; confidence: number; reasoning: string } | null> {
   if (!LOVABLE_API_KEY) return null;
+  const customerName = kunde.vor_nachname?.trim() || kunde.client_name?.trim() || "(unknown)";
+  const brandList = (() => {
+    const raw = kunde.unternehmen as unknown;
+    let arr: string[] = [];
+    if (Array.isArray(raw)) arr = raw as string[];
+    else if (typeof raw === "string") arr = (raw as string).split(/[,;]/);
+    return arr.map((b) => (b || "").trim()).filter((b) => b.length >= 3 && b.toLowerCase() !== "individuell");
+  })();
+
   const prompt = `You are matching a customer to a Meta Ads account for a German insurance marketing agency.
 
 Customer:
-- Person: ${kunde.vor_nachname || "(unknown)"}
-- Company: ${kunde.unternehmen || "(none)"}
+- Name: ${customerName}
+- Brand tags: ${brandList.length ? brandList.join(", ") : "(none)"}
 - Branche: ${(kunde.branche || []).join(", ") || "(none)"}
-- Client name: ${kunde.client_name || "(none)"}
 
 Meta Account:
 - Name: ${account.name}
@@ -204,7 +249,7 @@ Meta Account:
 
 Rule-based score: ${ruleConfidence} (${reason})
 
-Insurance agents often have accounts like "Allianz Max Mustermann" or "HanseMerkur - Büro Schmidt". Decide whether this is the same entity.
+Insurance agents often have accounts like "Allianz Max Mustermann" or "HanseMerkur - Büro Schmidt". The customer's actual name is what should appear in the account name (sometimes alongside a brand). Decide whether this is the same entity.
 
 Respond ONLY with JSON: {"is_match": boolean, "confidence": 0-100, "reasoning": "one short sentence"}`;
 
