@@ -33,7 +33,9 @@ export function useOnboardingGuard() {
     if (!data) return;
     if (isTestMode) return;
     const needsOnboarding = data.must_change_password === true;
-    if (needsOnboarding && location.pathname !== '/onboarding') {
+    const isAuthRoute = location.pathname.startsWith('/auth');
+    const isOnboardingRoute = location.pathname.startsWith('/onboarding');
+    if (needsOnboarding && !isOnboardingRoute && !isAuthRoute) {
       navigate('/onboarding', { replace: true });
     }
   }, [data, location.pathname, navigate, isTestMode]);
