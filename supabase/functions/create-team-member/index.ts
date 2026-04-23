@@ -190,6 +190,7 @@ Deno.serve(async (req) => {
       avatar_url: data.avatar_url,
       notizen: data.notizen,
       mitarbeiter_status: 'Aktiv',
+      must_change_password: true,
     });
 
     if (teamErr) {
