@@ -1391,6 +1391,158 @@ export type Database = {
         }
         Relationships: []
       }
+      email_accounts: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email_address: string
+          id: string
+          imap_host: string
+          imap_password_encrypted: string
+          imap_port: number
+          imap_secure: boolean
+          imap_user: string
+          is_active: boolean
+          is_default: boolean
+          last_polled_at: string | null
+          last_test_error: string | null
+          last_test_status: string | null
+          last_tested_at: string | null
+          last_user_activity_at: string | null
+          provider: string | null
+          smtp_host: string | null
+          smtp_port: number | null
+          smtp_secure: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email_address: string
+          id?: string
+          imap_host: string
+          imap_password_encrypted: string
+          imap_port?: number
+          imap_secure?: boolean
+          imap_user: string
+          is_active?: boolean
+          is_default?: boolean
+          last_polled_at?: string | null
+          last_test_error?: string | null
+          last_test_status?: string | null
+          last_tested_at?: string | null
+          last_user_activity_at?: string | null
+          provider?: string | null
+          smtp_host?: string | null
+          smtp_port?: number | null
+          smtp_secure?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email_address?: string
+          id?: string
+          imap_host?: string
+          imap_password_encrypted?: string
+          imap_port?: number
+          imap_secure?: boolean
+          imap_user?: string
+          is_active?: boolean
+          is_default?: boolean
+          last_polled_at?: string | null
+          last_test_error?: string | null
+          last_test_status?: string | null
+          last_tested_at?: string | null
+          last_user_activity_at?: string | null
+          provider?: string | null
+          smtp_host?: string | null
+          smtp_port?: number | null
+          smtp_secure?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      email_messages_cache: {
+        Row: {
+          account_id: string
+          attachments: Json | null
+          body_fetched_at: string | null
+          body_html: string | null
+          body_text: string | null
+          cc_addresses: string[] | null
+          date: string | null
+          fetched_at: string
+          flags: string[] | null
+          folder: string
+          from_address: string | null
+          from_name: string | null
+          has_attachment: boolean | null
+          id: string
+          message_id: string | null
+          size_bytes: number | null
+          snippet: string | null
+          subject: string | null
+          to_addresses: string[] | null
+          uid: number
+        }
+        Insert: {
+          account_id: string
+          attachments?: Json | null
+          body_fetched_at?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          cc_addresses?: string[] | null
+          date?: string | null
+          fetched_at?: string
+          flags?: string[] | null
+          folder: string
+          from_address?: string | null
+          from_name?: string | null
+          has_attachment?: boolean | null
+          id?: string
+          message_id?: string | null
+          size_bytes?: number | null
+          snippet?: string | null
+          subject?: string | null
+          to_addresses?: string[] | null
+          uid: number
+        }
+        Update: {
+          account_id?: string
+          attachments?: Json | null
+          body_fetched_at?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          cc_addresses?: string[] | null
+          date?: string | null
+          fetched_at?: string
+          flags?: string[] | null
+          folder?: string
+          from_address?: string | null
+          from_name?: string | null
+          has_attachment?: boolean | null
+          id?: string
+          message_id?: string | null
+          size_bytes?: number | null
+          snippet?: string | null
+          subject?: string | null
+          to_addresses?: string[] | null
+          uid?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_messages_cache_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "email_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_requests: {
         Row: {
           abteilung: string | null
@@ -3060,6 +3212,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decrypt_imap_password: {
+        Args: { encrypted: string; encryption_key: string }
+        Returns: string
+      }
+      encrypt_imap_password: {
+        Args: { encryption_key: string; password: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
