@@ -54,10 +54,17 @@ import DriveGeteilt from "./pages/drive/DriveGeteilt.tsx";
 import DrivePapierkorb from "./pages/drive/DrivePapierkorb.tsx";
 import N8nWorkflowsPage from "./pages/automationen/N8nWorkflows.tsx";
 import WebhooksPage from "./pages/automationen/Webhooks.tsx";
+import Onboarding from "./pages/Onboarding.tsx";
+import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
 
 const queryClient = new QueryClient();
 
 const DL = ({ children }: { children: React.ReactNode }) => <DashboardLayout>{children}</DashboardLayout>;
+
+function OnboardingGuardRunner() {
+  useOnboardingGuard();
+  return null;
+}
 
 function OfflineDetector() {
   useEffect(() => {
@@ -91,10 +98,12 @@ const App = () => (
             <MusicPlayerProvider>
             <ARIAProvider>
               <MetaAdsProvider>
+              <OnboardingGuardRunner />
               <Routes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/registrierung" element={<Registrierung />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/" element={<DL><Dashboard /></DL>} />
                 <Route path="/kunden" element={<DL><Kunden /></DL>} />
                 <Route path="/kunden/pipeline" element={<DL><KundenPipeline /></DL>} />

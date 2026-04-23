@@ -151,7 +151,7 @@ export default function Onboarding() {
       if (hasAnyField) {
         const { error: hrErr } = await supabase
           .from('team_hr_data')
-          .upsert(hrPayload, { onConflict: 'user_id' });
+          .upsert(hrPayload as never, { onConflict: 'user_id' });
         if (hrErr) {
           console.error('hr upsert error', hrErr);
           toast.error('HR-Daten konnten nicht gespeichert werden');
