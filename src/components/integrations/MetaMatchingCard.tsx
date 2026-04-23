@@ -70,7 +70,7 @@ export function MetaMatchingCard() {
       const ids = Array.from(new Set(rows.map((r) => r.kunde_id)));
       const { data: kunden } = await supabase
         .from("close_deals")
-        .select("id, client_name, unternehmen")
+        .select("id, client_name, unternehmen, vor_nachname")
         .in("id", ids);
       const map = new Map((kunden || []).map((k: any) => [k.id, k]));
       rows.forEach((r) => { r.kunde = map.get(r.kunde_id); });
