@@ -832,6 +832,7 @@ export default function Einstellungen() {
             <ApiPlatform />
           </div>
         </TabsContent>
+        )}
 
         {/* ═══════ BRANDING TAB ═══════ */}
         <TabsContent value="branding" className="mt-4 space-y-4">
