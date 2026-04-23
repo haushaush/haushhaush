@@ -448,12 +448,17 @@ async function handleRequest(req: Request): Promise<Response> {
       .upsert(updateRow, { onConflict: "account_id,folder,uid" })
       .select("*")
       .maybeSingle();
-    updated = upsertRes.data;
-    log("Cache updated");
+    if (upsertRes.error) {
+      log(`Cache upsert FAILED: ${upsertRes.error.message}`);
+    } else {
+      updated = upsertRes.data;
+      log(`Cache upserted with body_text=${bodyText.length} body_html=${bodyHtml.length}`);
+    }
   } catch (e) {
     log(`Cache update failed (non-fatal): ${(e as Error).message}`);
   }
 
-  log(`Done in ${Date.now() - t0}ms (text=${bodyText.length}, html=${bodyHtml.length}, attach=${attachments.length})`);
+  log(`RESPONSE: body_text=${bodyText.length} body_html=${bodyHtml.length} attachments=${attachments.length}`);
+  log(`Done in ${Date.now() - t0}ms`);
   return jsonResponse({ ok: true, message: updated ?? updateRow, cached: false });
 }
