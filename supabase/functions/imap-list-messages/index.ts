@@ -49,9 +49,37 @@ Deno.serve(async (req) => {
           await client.connect();
           const lock = await client.getMailboxLock(folder);
           try {
-            const searchQuery: any = search
-              ? { or: [{ subject: search }, { from: search }, { body: search }] }
-              : { all: true };
+            // Build IMAP SEARCH criteria.
+            // Supports: special tokens "UNSEEN" / "FLAGGED", structured object { unseen, flagged, query },
+            // or a plain text query (subject/from/body).
+            let searchQuery: any = { all: true };
+            if (search) {
+              if (typeof search === "string") {
+                const token = search.trim().toUpperCase();
+                if (token === "UNSEEN" || token === "UNREAD") {
+                  searchQuery = { seen: false };
+                } else if (token === "FLAGGED" || token === "STARRED") {
+                  searchQuery = { flagged: true };
+                } else {
+                  searchQuery = { or: [{ subject: search }, { from: search }, { body: search }] };
+                }
+              } else if (typeof search === "object") {
+                const parts: any = {};
+                if (search.unseen) parts.seen = false;
+                if (search.flagged) parts.flagged = true;
+                if (search.query) {
+                  searchQuery = {
+                    and: [
+                      parts,
+                      { or: [{ subject: search.query }, { from: search.query }, { body: search.query }] },
+                    ],
+                  };
+                } else {
+                  searchQuery = Object.keys(parts).length ? parts : { all: true };
+                }
+              }
+            }
+            console.log(`[imap-list-messages] search criteria=${JSON.stringify(searchQuery)}`);
             const uids: number[] = (await client.search(searchQuery, { uid: true })) ?? [];
             const recent = uids.slice(-Number(limit));
 
@@ -134,16 +162,50 @@ Deno.serve(async (req) => {
       .update({ last_user_activity_at: new Date().toISOString() })
       .eq("id", accountId);
 
-    const { data: cached } = await svc
+    // Determine filter intent for the cached query
+    let filterUnseen = false;
+    let filterFlagged = false;
+    let textQuery: string | null = null;
+    if (search) {
+      if (typeof search === "string") {
+        const token = search.trim().toUpperCase();
+        if (token === "UNSEEN" || token === "UNREAD") filterUnseen = true;
+        else if (token === "FLAGGED" || token === "STARRED") filterFlagged = true;
+        else textQuery = search;
+      } else if (typeof search === "object") {
+        if (search.unseen) filterUnseen = true;
+        if (search.flagged) filterFlagged = true;
+        if (search.query) textQuery = search.query;
+      }
+    }
+
+    let cacheBuilder = svc
       .from("email_messages_cache")
       .select("*")
       .eq("account_id", accountId)
-      .eq("folder", folder)
+      .eq("folder", folder);
+
+    if (filterFlagged) {
+      cacheBuilder = cacheBuilder.contains("flags", ["\\Flagged"]);
+    }
+    if (textQuery) {
+      cacheBuilder = cacheBuilder.or(
+        `subject.ilike.%${textQuery}%,from_address.ilike.%${textQuery}%,from_name.ilike.%${textQuery}%`,
+      );
+    }
+
+    const { data: cachedRaw } = await cacheBuilder
       .order("date", { ascending: false, nullsFirst: false })
       .limit(Number(limit));
 
-    console.log(`[imap-list-messages] done in ${Date.now() - start}ms (${messages.length} new, ${cached?.length ?? 0} returned)`);
-    return jsonResponse({ ok: true, messages: cached ?? [] });
+    // Filter unseen client-side (array negation isn't trivial in PostgREST)
+    let cached = cachedRaw ?? [];
+    if (filterUnseen) {
+      cached = cached.filter((m: any) => !(m.flags ?? []).includes("\\Seen"));
+    }
+
+    console.log(`[imap-list-messages] done in ${Date.now() - start}ms (${messages.length} new, ${cached.length} returned, filter=unseen:${filterUnseen} flagged:${filterFlagged})`);
+    return jsonResponse({ ok: true, messages: cached });
   } catch (err) {
     console.error(`[imap-list-messages] error after ${Date.now() - start}ms:`, (err as Error).message);
     try { await client.close(); } catch { /* */ }

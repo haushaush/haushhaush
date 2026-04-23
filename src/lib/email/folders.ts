@@ -8,35 +8,115 @@ export interface RouteConfig {
   slug: EmailRouteSlug;
   label: string;
   icon: LucideIcon;
-  // What to look for in mailbox specialUse / path; fallbacks are searched in order
+  /** Primary IMAP Special-Use flag (e.g. "\\Sent"). */
   specialUse?: string;
-  fallbackPaths?: string[];
-  filter?: 'unread';
+  /** Common name patterns (case-insensitive substring match on path AND name). */
+  namePatterns?: string[];
+  /** When true, this slug is a *filter* on the inbox, not its own folder. */
+  isInboxFilter?: boolean;
 }
 
 export const ROUTE_CONFIGS: Record<EmailRouteSlug, RouteConfig> = {
-  posteingang: { slug: 'posteingang', label: 'Posteingang', icon: Inbox, fallbackPaths: ['INBOX'] },
-  ungelesen: { slug: 'ungelesen', label: 'Ungelesen', icon: AlertCircle, fallbackPaths: ['INBOX'], filter: 'unread' },
-  gesendet: { slug: 'gesendet', label: 'Gesendet', icon: Send, specialUse: '\\Sent', fallbackPaths: ['Sent', 'INBOX.Sent', 'Gesendet', 'Sent Items'] },
-  wichtig: { slug: 'wichtig', label: 'Wichtig (markiert)', icon: Star, fallbackPaths: ['INBOX'], filter: undefined },
-  entwuerfe: { slug: 'entwuerfe', label: 'Entwürfe', icon: FileText, specialUse: '\\Drafts', fallbackPaths: ['Drafts', 'INBOX.Drafts', 'Entwürfe'] },
-  papierkorb: { slug: 'papierkorb', label: 'Papierkorb', icon: Trash2, specialUse: '\\Trash', fallbackPaths: ['Trash', 'INBOX.Trash', 'Papierkorb', 'Deleted Items'] },
+  posteingang: {
+    slug: 'posteingang',
+    label: 'Posteingang',
+    icon: Inbox,
+    specialUse: '\\Inbox',
+    namePatterns: ['inbox', 'posteingang'],
+  },
+  ungelesen: {
+    slug: 'ungelesen',
+    label: 'Ungelesen',
+    icon: AlertCircle,
+    isInboxFilter: true,
+  },
+  gesendet: {
+    slug: 'gesendet',
+    label: 'Gesendet',
+    icon: Send,
+    specialUse: '\\Sent',
+    namePatterns: [
+      'sent', 'gesendet', 'gesendete', 'gesendete elemente', 'gesendete objekte',
+      'sent items', 'sent mail', 'sent messages', 'envoyés', 'verzonden',
+    ],
+  },
+  wichtig: {
+    slug: 'wichtig',
+    label: 'Wichtig (markiert)',
+    icon: Star,
+    isInboxFilter: true,
+  },
+  entwuerfe: {
+    slug: 'entwuerfe',
+    label: 'Entwürfe',
+    icon: FileText,
+    specialUse: '\\Drafts',
+    namePatterns: ['drafts', 'draft', 'entwürfe', 'entwurf', 'entwuerfe', 'brouillons'],
+  },
+  papierkorb: {
+    slug: 'papierkorb',
+    label: 'Papierkorb',
+    icon: Trash2,
+    specialUse: '\\Trash',
+    namePatterns: [
+      'trash', 'papierkorb', 'deleted', 'deleted items', 'deleted messages',
+      'gelöscht', 'geloescht', 'gelöschte elemente', 'corbeille',
+    ],
+  },
 };
 
-export function resolveFolderPath(
-  slug: EmailRouteSlug,
-  mailboxes: Array<{ path: string; specialUse: string | null }>,
-): string {
+type MailboxLike = { path: string; name?: string; specialUse?: string | null };
+
+function findInboxPath(mailboxes: MailboxLike[]): string {
+  const bySpecial = mailboxes.find((m) => m.specialUse === '\\Inbox');
+  if (bySpecial) return bySpecial.path;
+  const byName = mailboxes.find(
+    (m) => m.path.toUpperCase() === 'INBOX' || (m.name ?? '').toLowerCase() === 'inbox',
+  );
+  return byName?.path ?? 'INBOX';
+}
+
+/**
+ * Resolve a route slug to an actual IMAP folder path on the connected account.
+ * Strategy:
+ *  1. Inbox filters (ungelesen/wichtig) → always return the inbox path.
+ *  2. Match by IMAP Special-Use flag (most reliable).
+ *  3. Fallback: case-insensitive substring match on folder name OR path tail.
+ *  4. Last resort: return inbox path so the UI doesn't break.
+ */
+export function resolveFolderPath(slug: EmailRouteSlug, mailboxes: MailboxLike[]): string {
   const cfg = ROUTE_CONFIGS[slug];
+  const inbox = findInboxPath(mailboxes);
+
+  if (cfg.isInboxFilter) return inbox;
+
   if (cfg.specialUse) {
     const m = mailboxes.find((b) => b.specialUse === cfg.specialUse);
     if (m) return m.path;
   }
-  for (const fb of cfg.fallbackPaths ?? []) {
-    const m = mailboxes.find((b) => b.path === fb);
+
+  const patterns = (cfg.namePatterns ?? []).map((p) => p.toLowerCase());
+  if (patterns.length > 0) {
+    const m = mailboxes.find((b) => {
+      const name = (b.name ?? '').toLowerCase();
+      const path = b.path.toLowerCase();
+      const tail = path.split(/[./]/).pop() ?? path;
+      return patterns.some((p) => name === p || tail === p || name.includes(p) || path.endsWith(p));
+    });
     if (m) return m.path;
   }
-  return 'INBOX';
+
+  return inbox;
+}
+
+/** True if the slug requires its own folder and that folder doesn't exist on the account. */
+export function isFolderMissing(slug: EmailRouteSlug, mailboxes: MailboxLike[]): boolean {
+  const cfg = ROUTE_CONFIGS[slug];
+  if (cfg.isInboxFilter || slug === 'posteingang') return false;
+  if (mailboxes.length === 0) return false;
+  const resolved = resolveFolderPath(slug, mailboxes);
+  // resolveFolderPath falls back to inbox when nothing matches → treat that as "missing"
+  return resolved === findInboxPath(mailboxes);
 }
 
 export function emailColorFromAddress(email: string): string {

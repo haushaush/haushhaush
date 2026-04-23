@@ -26,6 +26,7 @@ import {
   Inbox,
   Folder,
   ExternalLink,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -37,6 +38,7 @@ import {
   EmailRouteSlug,
   ROUTE_CONFIGS,
   resolveFolderPath,
+  isFolderMissing,
   emailColorFromAddress,
   senderInitials,
   formatEmailDate,
@@ -180,12 +182,17 @@ export default function EmailPage() {
     return resolveFolderPath(slug, mailboxes);
   }, [slug, mailboxes]);
 
-  const searchParam = useMemo(() => {
-    if (debouncedSearch) return debouncedSearch;
-    if (slug === 'ungelesen') return 'UNSEEN';
-    if (slug === 'wichtig') return 'FLAGGED';
+  const searchParam = useMemo<any>(() => {
+    if (debouncedSearch) return { query: debouncedSearch };
+    if (slug === 'ungelesen') return { unseen: true };
+    if (slug === 'wichtig') return { flagged: true };
     return undefined;
   }, [debouncedSearch, slug]);
+
+  const folderMissing = useMemo(
+    () => mailboxes.length > 0 && isFolderMissing(slug, mailboxes),
+    [slug, mailboxes],
+  );
 
   // Load messages
   const messagesQuery = useQuery({
@@ -361,12 +368,18 @@ export default function EmailPage() {
   // System folders for left tree
   const systemSlugs: EmailRouteSlug[] = ['posteingang', 'ungelesen', 'gesendet', 'wichtig', 'entwuerfe', 'papierkorb'];
 
-  // User folders (excluding system ones)
+  // User folders (excluding system ones — system folders are detected by special-use OR name match)
   const userFolders = useMemo(() => {
-    const systemPaths = new Set<string>();
-    systemSlugs.forEach((s) => systemPaths.add(resolveFolderPath(s, mailboxes)));
-    systemPaths.add('INBOX');
-    return mailboxes.filter((m) => !systemPaths.has(m.path) && !m.specialUse);
+    if (mailboxes.length === 0) return [];
+    const reservedPaths = new Set<string>();
+    (['posteingang', 'gesendet', 'entwuerfe', 'papierkorb'] as EmailRouteSlug[]).forEach((s) => {
+      reservedPaths.add(resolveFolderPath(s, mailboxes));
+    });
+    reservedPaths.add('INBOX');
+    const reservedSpecialUses = new Set(['\\Inbox', '\\Sent', '\\Drafts', '\\Trash', '\\Junk', '\\Archive']);
+    return mailboxes.filter(
+      (m) => !reservedPaths.has(m.path) && !reservedSpecialUses.has(m.specialUse ?? ''),
+    );
   }, [mailboxes]);
 
   // ============= LOADING / NO ACCOUNTS STATE =============
@@ -510,6 +523,17 @@ export default function EmailPage() {
 
         {/* CENTER: Message list */}
         <div className="border-r border-border overflow-y-auto">
+          {folderMissing && !messagesQuery.isLoading && (
+            <div className="m-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="font-medium text-foreground">Ordner nicht verfügbar</div>
+                <div className="text-muted-foreground mt-0.5">
+                  „{ROUTE_CONFIGS[slug].label}" existiert nicht in diesem Konto. Es werden ersatzweise Posteingang-Nachrichten angezeigt.
+                </div>
+              </div>
+            </div>
+          )}
           {messagesQuery.isLoading && (
             <div className="p-8 flex justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
