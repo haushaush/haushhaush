@@ -327,6 +327,7 @@ export default function Einstellungen() {
       setGoogleDriveConn(null);
     }
     setTeam(teamRes.data || []);
+    setAdminIds(new Set(((rolesRes.data || []) as any[]).map((r: any) => r.user_id)));
     setRequests((reqRes.data || []) as EmployeeRequest[]);
     setIntegrationSettings((intRes.data || []) as any[]);
     setCloseDeals((dealsRes.data || []) as CloseDeal[]);
