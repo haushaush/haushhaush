@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2, FolderKanban } from 'lucide-react';
+import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2, FolderKanban, Facebook } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { KundeMetaAdsTab } from './KundeMetaAdsTab';
 
 const STATUS_STYLES: Record<string, string> = {
   'In Betreuung': 'bg-success/20 text-success',
