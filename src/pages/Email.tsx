@@ -367,12 +367,18 @@ export default function EmailPage() {
   // System folders for left tree
   const systemSlugs: EmailRouteSlug[] = ['posteingang', 'ungelesen', 'gesendet', 'wichtig', 'entwuerfe', 'papierkorb'];
 
-  // User folders (excluding system ones)
+  // User folders (excluding system ones — system folders are detected by special-use OR name match)
   const userFolders = useMemo(() => {
-    const systemPaths = new Set<string>();
-    systemSlugs.forEach((s) => systemPaths.add(resolveFolderPath(s, mailboxes)));
-    systemPaths.add('INBOX');
-    return mailboxes.filter((m) => !systemPaths.has(m.path) && !m.specialUse);
+    if (mailboxes.length === 0) return [];
+    const reservedPaths = new Set<string>();
+    (['posteingang', 'gesendet', 'entwuerfe', 'papierkorb'] as EmailRouteSlug[]).forEach((s) => {
+      reservedPaths.add(resolveFolderPath(s, mailboxes));
+    });
+    reservedPaths.add('INBOX');
+    const reservedSpecialUses = new Set(['\\Inbox', '\\Sent', '\\Drafts', '\\Trash', '\\Junk', '\\Archive']);
+    return mailboxes.filter(
+      (m) => !reservedPaths.has(m.path) && !reservedSpecialUses.has(m.specialUse ?? ''),
+    );
   }, [mailboxes]);
 
   // ============= LOADING / NO ACCOUNTS STATE =============
