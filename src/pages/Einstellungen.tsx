@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -257,6 +258,32 @@ function CompanyLogoManager() {
 export default function Einstellungen() {
   const { user, isAdminOrManager, hasRole } = useAuth();
   const isAdmin = hasRole('admin');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const defaultTab = isAdmin ? 'integrationen' : 'branding';
+  const adminOnlyTabs = ['integrationen', 'mitarbeiter-erstellen'];
+  const allowedTabs = isAdmin
+    ? ['integrationen', 'branding', 'benutzer', 'mitarbeiter-erstellen', 'benachrichtigungen']
+    : ['branding', 'benutzer', 'benachrichtigungen'];
+  const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
+
+  // Redirect non-admins away from admin-only tabs
+  useEffect(() => {
+    if (!isAdmin && requestedTab && adminOnlyTabs.includes(requestedTab)) {
+      toast.error('Dieser Bereich ist nur für Administratoren');
+      const params = new URLSearchParams(searchParams);
+      params.set('tab', 'branding');
+      setSearchParams(params, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, requestedTab]);
+
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', value);
+    setSearchParams(params, { replace: true });
+  };
+
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveEmail, setDriveEmail] = useState<string | null>(null);
   const [team, setTeam] = useState<any[]>([]);
@@ -695,9 +722,9 @@ export default function Einstellungen() {
         </div>
       )}
 
-      <Tabs defaultValue="integrationen">
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="flex flex-wrap h-auto gap-1">
-          <TabsTrigger value="integrationen">Integrationen</TabsTrigger>
+          {isAdmin && <TabsTrigger value="integrationen">Integrationen</TabsTrigger>}
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="benutzer" className="relative">
             Benutzer
@@ -714,6 +741,7 @@ export default function Einstellungen() {
         </TabsList>
 
         {/* ═══════ INTEGRATIONEN TAB ═══════ */}
+        {isAdmin && (
         <TabsContent value="integrationen" className="mt-6 space-y-6">
           {/* Status Bar */}
           <IntegrationStatusBar
@@ -804,6 +832,7 @@ export default function Einstellungen() {
             <ApiPlatform />
           </div>
         </TabsContent>
+        )}
 
         {/* ═══════ BRANDING TAB ═══════ */}
         <TabsContent value="branding" className="mt-4 space-y-4">
