@@ -339,7 +339,7 @@ export function AddAccountModal({ open, onClose, onAccountSaved, prefill }: AddA
                   <div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Teste IMAP-Verbindung…</div>
                 </>
               )}
-              {testResult?.ok && (
+              {testResult?.ok === true && (
                 <>
                   <div className="flex items-center gap-2 text-emerald-500"><Check className="h-4 w-4" /> SSL-Verbindung aufgebaut</div>
                   <div className="flex items-center gap-2 text-emerald-500"><Check className="h-4 w-4" /> Login erfolgreich</div>
@@ -353,7 +353,7 @@ export function AddAccountModal({ open, onClose, onAccountSaved, prefill }: AddA
                   )}
                 </>
               )}
-              {testResult && !testResult.ok && (
+              {testResult?.ok === false && (
                 <>
                   <div className="flex items-center gap-2 text-destructive"><X className="h-4 w-4" /> Verbindung fehlgeschlagen</div>
                   <div className="flex items-start gap-2 text-foreground/80 text-xs">
@@ -370,10 +370,10 @@ export function AddAccountModal({ open, onClose, onAccountSaved, prefill }: AddA
             </div>
 
             <div className="flex justify-end gap-2">
-              {testResult && !testResult.ok && (
+              {testResult?.ok === false && (
                 <Button variant="outline" onClick={() => setStep(2)}>Daten korrigieren</Button>
               )}
-              {testResult?.ok && (
+              {testResult?.ok === true && (
                 <Button onClick={handleSave} disabled={saving}>
                   {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   Konto hinzufügen
