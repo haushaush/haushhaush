@@ -707,6 +707,9 @@ export default function Einstellungen() {
               </span>
             )}
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="mitarbeiter-erstellen">Mitarbeiter erstellen</TabsTrigger>
+          )}
           <TabsTrigger value="benachrichtigungen">Benachrichtigungen</TabsTrigger>
         </TabsList>
 
