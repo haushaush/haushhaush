@@ -8,6 +8,9 @@ import {
   loadAccountForUser,
   getServiceClient,
   mapImapError,
+  withAccountLock,
+  withTimeout,
+  IMAP_TIMEOUTS,
 } from "../_shared/imap-helpers.ts";
 
 Deno.serve(async (req) => {
@@ -22,13 +25,16 @@ Deno.serve(async (req) => {
   const { accountId, folder = "INBOX", uid } = body ?? {};
   if (!accountId || !uid) return errorResponse("Missing accountId or uid", 400);
 
+  const start = Date.now();
+  console.log(`[imap-get-message] start accountId=${accountId} folder=${folder} uid=${uid}`);
+
   const result = await loadAccountForUser(auth.userId, accountId);
   if (!result.ok) return errorResponse(result.error, result.status);
   const acc = result.account;
 
   const svc = getServiceClient();
 
-  // Cache check
+  // Cache check — return immediately if we already have the body
   const { data: cached } = await svc
     .from("email_messages_cache")
     .select("*")
@@ -38,6 +44,7 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (cached?.body_fetched_at) {
+    console.log(`[imap-get-message] cache hit in ${Date.now() - start}ms`);
     return jsonResponse({ ok: true, message: cached, cached: true });
   }
 
@@ -47,23 +54,43 @@ Deno.serve(async (req) => {
     secure: acc.imap_secure,
     auth: { user: acc.imap_user, pass: acc.password },
     logger: false,
-    socketTimeout: 30000,
+    ...IMAP_TIMEOUTS,
   });
 
   try {
-    await client.connect();
-    const lock = await client.getMailboxLock(folder);
-    let parsed: any;
-    let flags: string[] = [];
+    const fetched = await withAccountLock(accountId, () =>
+      withTimeout(
+        (async () => {
+          await client.connect();
+          const lock = await client.getMailboxLock(folder);
+          try {
+            const msg = await client.fetchOne(
+              String(uid),
+              { source: true, flags: true, envelope: true },
+              { uid: true },
+            );
+            if (!msg) throw new Error("Message not found");
+            const flags = Array.from((msg as any).flags ?? []);
+            const parsed = await simpleParser((msg as any).source);
+            return { parsed, flags };
+          } finally {
+            lock.release();
+          }
+        })(),
+        60_000,
+        "imap-get-message",
+      ),
+    );
+
+    // Always close the connection, but never let cleanup hang the response
     try {
-      const fetched = await client.fetchOne(String(uid), { source: true, flags: true, envelope: true }, { uid: true });
-      if (!fetched) throw new Error("Message not found");
-      flags = Array.from((fetched as any).flags ?? []);
-      parsed = await simpleParser((fetched as any).source);
-    } finally {
-      lock.release();
+      await withTimeout(client.logout(), 5_000, "imap-logout");
+    } catch (e) {
+      console.warn(`[imap-get-message] logout error (non-fatal):`, (e as Error).message);
+      try { await client.close(); } catch { /* ignore */ }
     }
-    await client.logout();
+
+    const { parsed, flags } = fetched;
 
     const attachments = (parsed.attachments ?? []).map((a: any, idx: number) => ({
       filename: a.filename ?? `attachment-${idx + 1}`,
@@ -99,9 +126,11 @@ Deno.serve(async (req) => {
       .select("*")
       .maybeSingle();
 
+    console.log(`[imap-get-message] done in ${Date.now() - start}ms`);
     return jsonResponse({ ok: true, message: updated ?? updateRow, cached: false });
   } catch (err) {
-    try { await client.close(); } catch { /* */ }
+    console.error(`[imap-get-message] error after ${Date.now() - start}ms:`, (err as Error).message);
+    try { await client.close(); } catch { /* ignore */ }
     const mapped = mapImapError(err);
     return jsonResponse({ ok: false, error: mapped.code, message: mapped.message }, 200);
   }

@@ -202,17 +202,32 @@ export default function EmailPage() {
   });
   const messages = messagesQuery.data ?? [];
 
-  // Load message detail
+  // Load message detail — with explicit timeout & error surfacing
   const messageQuery = useQuery({
     queryKey: ['email-message', activeAccountId, folderPath, selectedUid],
     enabled: !!activeAccountId && !!selectedUid,
+    retry: 1,
+    staleTime: Infinity, // bodies don't change, keep them cached
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('imap-get-message', {
-        body: { accountId: activeAccountId, folder: folderPath, uid: selectedUid },
-      });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.message ?? 'Nachricht konnte nicht geladen werden');
-      return data.message as FullMessage;
+      // Client-side hard timeout in case the edge function never responds
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 70_000);
+      try {
+        const invokePromise = supabase.functions.invoke('imap-get-message', {
+          body: { accountId: activeAccountId, folder: folderPath, uid: selectedUid },
+        });
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          controller.signal.addEventListener('abort', () =>
+            reject(new Error('Zeitüberschreitung – die E-Mail brauchte zu lange zum Laden.')),
+          );
+        });
+        const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as Awaited<typeof invokePromise>;
+        if (error) throw new Error(error.message ?? 'Edge function error');
+        if (!data?.ok) throw new Error(data?.message ?? 'Nachricht konnte nicht geladen werden');
+        return data.message as FullMessage;
+      } finally {
+        clearTimeout(timer);
+      }
     },
   });
   const fullMessage = messageQuery.data;
@@ -556,8 +571,23 @@ export default function EmailPage() {
             </div>
           )}
           {selectedUid && messageQuery.isLoading && (
-            <div className="h-full flex items-center justify-center">
+            <div className="h-full flex flex-col items-center justify-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">E-Mail wird geladen…</p>
+            </div>
+          )}
+          {selectedUid && messageQuery.isError && !messageQuery.isLoading && (
+            <div className="h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                <Mail className="h-6 w-6 text-destructive" />
+              </div>
+              <p className="text-sm font-medium">E-Mail konnte nicht geladen werden</p>
+              <p className="text-xs text-muted-foreground max-w-sm">
+                {(messageQuery.error as Error)?.message ?? 'Unbekannter Fehler'}
+              </p>
+              <Button size="sm" onClick={() => messageQuery.refetch()} className="gap-1">
+                <RefreshCw className="h-3.5 w-3.5" /> Erneut versuchen
+              </Button>
             </div>
           )}
           {selectedUid && fullMessage && (

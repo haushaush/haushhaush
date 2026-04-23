@@ -7,6 +7,9 @@ import {
   loadAccountForUser,
   getServiceClient,
   mapImapError,
+  withAccountLock,
+  withTimeout,
+  IMAP_TIMEOUTS,
 } from "../_shared/imap-helpers.ts";
 
 Deno.serve(async (req) => {
@@ -21,6 +24,9 @@ Deno.serve(async (req) => {
   const { accountId, folder = "INBOX", limit = 50, search } = body ?? {};
   if (!accountId) return errorResponse("Missing accountId", 400);
 
+  const start = Date.now();
+  console.log(`[imap-list-messages] start accountId=${accountId} folder=${folder} limit=${limit}`);
+
   const result = await loadAccountForUser(auth.userId, accountId);
   if (!result.ok) return errorResponse(result.error, result.status);
   const acc = result.account;
@@ -32,51 +38,71 @@ Deno.serve(async (req) => {
     secure: acc.imap_secure,
     auth: { user: acc.imap_user, pass: acc.password },
     logger: false,
-    socketTimeout: 20000,
+    ...IMAP_TIMEOUTS,
   });
 
   try {
-    await client.connect();
-    const lock = await client.getMailboxLock(folder);
-    let messages: any[] = [];
+    const messages = await withAccountLock(accountId, () =>
+      withTimeout(
+        (async () => {
+          const collected: any[] = [];
+          await client.connect();
+          const lock = await client.getMailboxLock(folder);
+          try {
+            const searchQuery: any = search
+              ? { or: [{ subject: search }, { from: search }, { body: search }] }
+              : { all: true };
+            const uids: number[] = (await client.search(searchQuery, { uid: true })) ?? [];
+            const recent = uids.slice(-Number(limit));
+
+            if (recent.length > 0) {
+              for await (const msg of client.fetch(
+                recent,
+                { envelope: true, flags: true, bodyStructure: true, size: true, internalDate: true },
+                { uid: true },
+              )) {
+                const env = (msg as any).envelope ?? {};
+                const fromArr = env.from ?? [];
+                const toArr = env.to ?? [];
+                const ccArr = env.cc ?? [];
+                const bs = (msg as any).bodyStructure;
+                const hasAttachment = bs ? hasAttachmentInStructure(bs) : false;
+
+                collected.push({
+                  uid: Number((msg as any).uid),
+                  messageId: env.messageId ?? null,
+                  subject: env.subject ?? "",
+                  from_address: fromArr[0]?.address ?? null,
+                  from_name: fromArr[0]?.name ?? null,
+                  to_addresses: toArr.map((a: any) => a.address).filter(Boolean),
+                  cc_addresses: ccArr.map((a: any) => a.address).filter(Boolean),
+                  date: env.date
+                    ? new Date(env.date).toISOString()
+                    : (msg as any).internalDate
+                      ? new Date((msg as any).internalDate).toISOString()
+                      : null,
+                  flags: Array.from((msg as any).flags ?? []),
+                  has_attachment: hasAttachment,
+                  size_bytes: (msg as any).size ?? null,
+                });
+              }
+            }
+          } finally {
+            lock.release();
+          }
+          return collected;
+        })(),
+        60_000,
+        "imap-list-messages",
+      ),
+    );
+
     try {
-      // Build search query
-      const searchQuery: any = search ? { or: [{ subject: search }, { from: search }, { body: search }] } : { all: true };
-      const uids: number[] = await client.search(searchQuery, { uid: true }) ?? [];
-      const recent = uids.slice(-Number(limit));
-
-      if (recent.length > 0) {
-        for await (const msg of client.fetch(
-          recent,
-          { envelope: true, flags: true, bodyStructure: true, size: true, internalDate: true },
-          { uid: true },
-        )) {
-          const env = (msg as any).envelope ?? {};
-          const fromArr = env.from ?? [];
-          const toArr = env.to ?? [];
-          const ccArr = env.cc ?? [];
-          const bs = (msg as any).bodyStructure;
-          const hasAttachment = bs ? hasAttachmentInStructure(bs) : false;
-
-          messages.push({
-            uid: Number((msg as any).uid),
-            messageId: env.messageId ?? null,
-            subject: env.subject ?? "",
-            from_address: fromArr[0]?.address ?? null,
-            from_name: fromArr[0]?.name ?? null,
-            to_addresses: toArr.map((a: any) => a.address).filter(Boolean),
-            cc_addresses: ccArr.map((a: any) => a.address).filter(Boolean),
-            date: env.date ? new Date(env.date).toISOString() : ((msg as any).internalDate ? new Date((msg as any).internalDate).toISOString() : null),
-            flags: Array.from((msg as any).flags ?? []),
-            has_attachment: hasAttachment,
-            size_bytes: (msg as any).size ?? null,
-          });
-        }
-      }
-    } finally {
-      lock.release();
+      await withTimeout(client.logout(), 5_000, "imap-logout");
+    } catch (e) {
+      console.warn(`[imap-list-messages] logout error (non-fatal):`, (e as Error).message);
+      try { await client.close(); } catch { /* ignore */ }
     }
-    await client.logout();
 
     // Upsert into cache
     if (messages.length > 0) {
@@ -97,13 +123,17 @@ Deno.serve(async (req) => {
         size_bytes: m.size_bytes,
         fetched_at: new Date().toISOString(),
       }));
-      await svc.from("email_messages_cache").upsert(rows, { onConflict: "account_id,folder,uid", ignoreDuplicates: false });
+      await svc.from("email_messages_cache").upsert(rows, {
+        onConflict: "account_id,folder,uid",
+        ignoreDuplicates: false,
+      });
     }
 
-    // Update last_user_activity_at
-    await svc.from("email_accounts").update({ last_user_activity_at: new Date().toISOString() }).eq("id", accountId);
+    await svc
+      .from("email_accounts")
+      .update({ last_user_activity_at: new Date().toISOString() })
+      .eq("id", accountId);
 
-    // Return cached list (newest first)
     const { data: cached } = await svc
       .from("email_messages_cache")
       .select("*")
@@ -112,8 +142,10 @@ Deno.serve(async (req) => {
       .order("date", { ascending: false, nullsFirst: false })
       .limit(Number(limit));
 
+    console.log(`[imap-list-messages] done in ${Date.now() - start}ms (${messages.length} new, ${cached?.length ?? 0} returned)`);
     return jsonResponse({ ok: true, messages: cached ?? [] });
   } catch (err) {
+    console.error(`[imap-list-messages] error after ${Date.now() - start}ms:`, (err as Error).message);
     try { await client.close(); } catch { /* */ }
     const mapped = mapImapError(err);
     return jsonResponse({ ok: false, error: mapped.code, message: mapped.message }, 200);

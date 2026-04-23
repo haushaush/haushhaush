@@ -6,6 +6,9 @@ import {
   getAuthedUser,
   loadAccountForUser,
   mapImapError,
+  withAccountLock,
+  withTimeout,
+  IMAP_TIMEOUTS,
 } from "../_shared/imap-helpers.ts";
 
 Deno.serve(async (req) => {
@@ -22,6 +25,9 @@ Deno.serve(async (req) => {
     return errorResponse("Missing accountId, uid or attachmentId", 400);
   }
 
+  const start = Date.now();
+  console.log(`[imap-download-attachment] start accountId=${accountId} uid=${uid} attachmentId=${attachmentId}`);
+
   const result = await loadAccountForUser(auth.userId, accountId);
   if (!result.ok) return errorResponse(result.error, result.status);
   const acc = result.account;
@@ -32,21 +38,34 @@ Deno.serve(async (req) => {
     secure: acc.imap_secure,
     auth: { user: acc.imap_user, pass: acc.password },
     logger: false,
-    socketTimeout: 30000,
+    ...IMAP_TIMEOUTS,
   });
 
   try {
-    await client.connect();
-    const lock = await client.getMailboxLock(folder);
-    let parsed: any;
+    const parsed = await withAccountLock(accountId, () =>
+      withTimeout(
+        (async () => {
+          await client.connect();
+          const lock = await client.getMailboxLock(folder);
+          try {
+            const fetched = await client.fetchOne(String(uid), { source: true }, { uid: true });
+            if (!fetched) throw new Error("Message not found");
+            return await simpleParser((fetched as any).source);
+          } finally {
+            lock.release();
+          }
+        })(),
+        90_000,
+        "imap-download-attachment",
+      ),
+    );
+
     try {
-      const fetched = await client.fetchOne(String(uid), { source: true }, { uid: true });
-      if (!fetched) throw new Error("Message not found");
-      parsed = await simpleParser((fetched as any).source);
-    } finally {
-      lock.release();
+      await withTimeout(client.logout(), 5_000, "imap-logout");
+    } catch (e) {
+      console.warn(`[imap-download-attachment] logout error (non-fatal):`, (e as Error).message);
+      try { await client.close(); } catch { /* ignore */ }
     }
-    await client.logout();
 
     const idx = Number(attachmentId);
     const att = (parsed.attachments ?? [])[idx];
@@ -58,6 +77,7 @@ Deno.serve(async (req) => {
       ? att.content
       : new Uint8Array(att.content);
 
+    console.log(`[imap-download-attachment] done in ${Date.now() - start}ms (${content.byteLength} bytes)`);
     return new Response(content, {
       headers: {
         ...corsHeaders,
@@ -67,6 +87,7 @@ Deno.serve(async (req) => {
       },
     });
   } catch (err) {
+    console.error(`[imap-download-attachment] error after ${Date.now() - start}ms:`, (err as Error).message);
     try { await client.close(); } catch { /* */ }
     const mapped = mapImapError(err);
     return errorResponse(mapped.message, 500);
