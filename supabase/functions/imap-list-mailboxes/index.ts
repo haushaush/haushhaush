@@ -6,6 +6,9 @@ import {
   getAuthedUser,
   loadAccountForUser,
   mapImapError,
+  withAccountLock,
+  withTimeout,
+  IMAP_TIMEOUTS,
 } from "../_shared/imap-helpers.ts";
 
 Deno.serve(async (req) => {
@@ -20,6 +23,9 @@ Deno.serve(async (req) => {
   const { accountId } = body ?? {};
   if (!accountId) return errorResponse("Missing accountId", 400);
 
+  const start = Date.now();
+  console.log(`[imap-list-mailboxes] start accountId=${accountId}`);
+
   const result = await loadAccountForUser(auth.userId, accountId);
   if (!result.ok) return errorResponse(result.error, result.status);
   const acc = result.account;
@@ -30,13 +36,27 @@ Deno.serve(async (req) => {
     secure: acc.imap_secure,
     auth: { user: acc.imap_user, pass: acc.password },
     logger: false,
-    socketTimeout: 15000,
+    ...IMAP_TIMEOUTS,
   });
 
   try {
-    await client.connect();
-    const mailboxes = await client.list({ statusQuery: { messages: true, unseen: true } });
-    await client.logout();
+    const mailboxes = await withAccountLock(accountId, () =>
+      withTimeout(
+        (async () => {
+          await client.connect();
+          return await client.list({ statusQuery: { messages: true, unseen: true } });
+        })(),
+        45_000,
+        "imap-list-mailboxes",
+      ),
+    );
+
+    try {
+      await withTimeout(client.logout(), 5_000, "imap-logout");
+    } catch (e) {
+      console.warn(`[imap-list-mailboxes] logout error (non-fatal):`, (e as Error).message);
+      try { await client.close(); } catch { /* ignore */ }
+    }
 
     const folders = mailboxes.map((m: any) => ({
       path: m.path,
@@ -46,8 +66,10 @@ Deno.serve(async (req) => {
       unreadCount: m.status?.unseen ?? null,
       delimiter: m.delimiter,
     }));
+    console.log(`[imap-list-mailboxes] done in ${Date.now() - start}ms (${folders.length} folders)`);
     return jsonResponse({ ok: true, folders });
   } catch (err) {
+    console.error(`[imap-list-mailboxes] error after ${Date.now() - start}ms:`, (err as Error).message);
     try { await client.close(); } catch { /* */ }
     const mapped = mapImapError(err);
     return jsonResponse({ ok: false, error: mapped.code, message: mapped.message }, 200);

@@ -7,6 +7,9 @@ import {
   loadAccountForUser,
   getServiceClient,
   mapImapError,
+  withAccountLock,
+  withTimeout,
+  IMAP_TIMEOUTS,
 } from "../_shared/imap-helpers.ts";
 
 Deno.serve(async (req) => {
@@ -23,6 +26,9 @@ Deno.serve(async (req) => {
     return errorResponse("Missing accountId, uid or read", 400);
   }
 
+  const start = Date.now();
+  console.log(`[imap-mark-read] start accountId=${accountId} uid=${uid} read=${read}`);
+
   const result = await loadAccountForUser(auth.userId, accountId);
   if (!result.ok) return errorResponse(result.error, result.status);
   const acc = result.account;
@@ -34,22 +40,36 @@ Deno.serve(async (req) => {
     secure: acc.imap_secure,
     auth: { user: acc.imap_user, pass: acc.password },
     logger: false,
-    socketTimeout: 15000,
+    ...IMAP_TIMEOUTS,
   });
 
   try {
-    await client.connect();
-    const lock = await client.getMailboxLock(folder);
+    await withAccountLock(accountId, () =>
+      withTimeout(
+        (async () => {
+          await client.connect();
+          const lock = await client.getMailboxLock(folder);
+          try {
+            if (read) {
+              await client.messageFlagsAdd(String(uid), ["\\Seen"], { uid: true });
+            } else {
+              await client.messageFlagsRemove(String(uid), ["\\Seen"], { uid: true });
+            }
+          } finally {
+            lock.release();
+          }
+        })(),
+        30_000,
+        "imap-mark-read",
+      ),
+    );
+
     try {
-      if (read) {
-        await client.messageFlagsAdd(String(uid), ["\\Seen"], { uid: true });
-      } else {
-        await client.messageFlagsRemove(String(uid), ["\\Seen"], { uid: true });
-      }
-    } finally {
-      lock.release();
+      await withTimeout(client.logout(), 5_000, "imap-logout");
+    } catch (e) {
+      console.warn(`[imap-mark-read] logout error (non-fatal):`, (e as Error).message);
+      try { await client.close(); } catch { /* ignore */ }
     }
-    await client.logout();
 
     // Update cached flags
     const { data: row } = await svc
@@ -72,8 +92,10 @@ Deno.serve(async (req) => {
         .eq("uid", Number(uid));
     }
 
+    console.log(`[imap-mark-read] done in ${Date.now() - start}ms`);
     return jsonResponse({ ok: true });
   } catch (err) {
+    console.error(`[imap-mark-read] error after ${Date.now() - start}ms:`, (err as Error).message);
     try { await client.close(); } catch { /* */ }
     const mapped = mapImapError(err);
     return jsonResponse({ ok: false, error: mapped.code, message: mapped.message }, 200);
