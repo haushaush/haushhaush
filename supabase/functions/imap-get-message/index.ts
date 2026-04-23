@@ -319,71 +319,72 @@ async function handleRequest(req: Request): Promise<Response> {
           const attachMeta = findAttachments(captured.bodyStructure);
           log(`Text parts: ${textParts.length}, Attachments: ${attachMeta.length}`);
 
+          if (textParts.length === 0) {
+            try {
+              const dump = JSON.stringify(captured.bodyStructure ?? null);
+              log(`bodyStructure dump (truncated 1500): ${dump.slice(0, 1500)}`);
+            } catch { /* ignore */ }
+          }
+
           // ---- Step 3: download text parts ----
+          const downloadOne = async (p: { path: string; type: "text/plain" | "text/html"; encoding: string; charset: string; size?: number }) => {
+            log(`Download part ${p.path} (${p.type}, ${p.size ?? "?"}b, enc=${p.encoding}, cs=${p.charset})`);
+            const partData = await raceTimeout(
+              client.download(String(uid), p.path, { uid: true }) as any,
+              15_000,
+              `part-${p.path}`,
+            );
+            if (!partData?.content) {
+              log(`No content for part ${p.path}`);
+              return null;
+            }
+            const buf = await streamToBuffer(partData.content);
+            const decoded = decodePart(buf, p.encoding, p.charset);
+            log(`Part ${p.path} → ${decoded.length} chars`);
+            return decoded;
+          };
+
           for (const part of textParts) {
             if (part.size > 2_000_000) {
               log(`Skip part ${part.path} — too large (${part.size}b)`);
               continue;
             }
-            log(`Download part ${part.path} (${part.type}, ${part.size}b, enc=${part.encoding}, cs=${part.charset})`);
             try {
-              const partData = await raceTimeout(
-                client.download(String(uid), part.path, { uid: true }) as any,
-                15_000,
-                `part-${part.path}`,
-              );
-              if (!partData?.content) {
-                log(`No content for part ${part.path}`);
-                continue;
-              }
-              const buf = await streamToBuffer(partData.content);
-              const decoded = decodePart(buf, part.encoding, part.charset);
-              if (part.type === "text/plain" && !bodyText) bodyText = decoded;
-              else if (part.type === "text/html" && !bodyHtml) bodyHtml = decoded;
-              else if (part.type === "text/plain") bodyText += decoded;
-              else if (part.type === "text/html") bodyHtml += decoded;
-              log(`Part ${part.path} → ${decoded.length} chars`);
+              const decoded = await downloadOne(part);
+              if (!decoded) continue;
+              if (part.type === "text/plain") bodyText = bodyText ? bodyText + decoded : decoded;
+              else if (part.type === "text/html") bodyHtml = bodyHtml ? bodyHtml + decoded : decoded;
             } catch (partErr) {
               log(`Part ${part.path} failed: ${(partErr as Error).message}`);
-              // continue with other parts
             }
           }
 
-          // ---- Step 3b: fallback — full source + mailparser if structure walk missed everything ----
+          // ---- Step 3b: probe common IMAP paths if structure walk yielded nothing ----
           if (!bodyText && !bodyHtml) {
-            log("WARNING: No text parts found via BODYSTRUCTURE — fallback to full source + mailparser");
-            try {
-              let sourceMsg: any = null;
-              await raceTimeout(
-                (async () => {
-                  for await (const m of client.fetch(
-                    String(uid),
-                    { source: true },
-                    { uid: true },
-                  )) {
-                    sourceMsg = m;
-                    break;
-                  }
-                })(),
-                20_000,
-                "source-fetch",
-              );
-              if (sourceMsg?.source) {
-                log(`Got source (${sourceMsg.source.length}b), parsing...`);
-                const { simpleParser } = await import("npm:mailparser@3.6.5");
-                const parsed = await raceTimeout(
-                  simpleParser(sourceMsg.source) as any,
-                  10_000,
-                  "mailparser",
-                );
-                bodyText = parsed.text || "";
-                bodyHtml = parsed.html || "";
-                log(`Fallback parsed: text=${bodyText.length} html=${bodyHtml.length}`);
-              } else {
-                log("Source fetch returned empty");
+            log("Structure walk returned no body — probing common IMAP paths (1, 2, 1.1, 1.2, TEXT)");
+            const probes: Array<{ path: string; type: "text/plain" | "text/html" }> = [
+              { path: "1", type: "text/plain" },
+              { path: "2", type: "text/html" },
+              { path: "1.1", type: "text/plain" },
+              { path: "1.2", type: "text/html" },
+              { path: "TEXT", type: "text/plain" },
+            ];
+            for (const probe of probes) {
+              if (bodyText && bodyHtml) break;
+              try {
+                const decoded = await downloadOne({
+                  path: probe.path,
+                  type: probe.type,
+                  encoding: "7bit",
+                  charset: "utf-8",
+                });
+                if (!decoded) continue;
+                const isHtml = /<\s*(?:!doctype|html|body|div|p|table|head|meta|span)\b/i.test(decoded.slice(0, 500));
+                if (isHtml && !bodyHtml) bodyHtml = decoded;
+                else if (!isHtml && !bodyText) bodyText = decoded;
+              } catch (probeErr) {
+                log(`Probe ${probe.path} failed: ${(probeErr as Error).message}`);
               }
-            } catch (fbErr) {
-              log(`Fallback parse failed: ${(fbErr as Error).message}`);
             }
           }
 
