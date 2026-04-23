@@ -202,17 +202,32 @@ export default function EmailPage() {
   });
   const messages = messagesQuery.data ?? [];
 
-  // Load message detail
+  // Load message detail — with explicit timeout & error surfacing
   const messageQuery = useQuery({
     queryKey: ['email-message', activeAccountId, folderPath, selectedUid],
     enabled: !!activeAccountId && !!selectedUid,
+    retry: 1,
+    staleTime: Infinity, // bodies don't change, keep them cached
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('imap-get-message', {
-        body: { accountId: activeAccountId, folder: folderPath, uid: selectedUid },
-      });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.message ?? 'Nachricht konnte nicht geladen werden');
-      return data.message as FullMessage;
+      // Client-side hard timeout in case the edge function never responds
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 70_000);
+      try {
+        const invokePromise = supabase.functions.invoke('imap-get-message', {
+          body: { accountId: activeAccountId, folder: folderPath, uid: selectedUid },
+        });
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          controller.signal.addEventListener('abort', () =>
+            reject(new Error('Zeitüberschreitung – die E-Mail brauchte zu lange zum Laden.')),
+          );
+        });
+        const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as Awaited<typeof invokePromise>;
+        if (error) throw new Error(error.message ?? 'Edge function error');
+        if (!data?.ok) throw new Error(data?.message ?? 'Nachricht konnte nicht geladen werden');
+        return data.message as FullMessage;
+      } finally {
+        clearTimeout(timer);
+      }
     },
   });
   const fullMessage = messageQuery.data;
