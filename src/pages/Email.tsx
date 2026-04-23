@@ -571,8 +571,23 @@ export default function EmailPage() {
             </div>
           )}
           {selectedUid && messageQuery.isLoading && (
-            <div className="h-full flex items-center justify-center">
+            <div className="h-full flex flex-col items-center justify-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">E-Mail wird geladen…</p>
+            </div>
+          )}
+          {selectedUid && messageQuery.isError && !messageQuery.isLoading && (
+            <div className="h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                <Mail className="h-6 w-6 text-destructive" />
+              </div>
+              <p className="text-sm font-medium">E-Mail konnte nicht geladen werden</p>
+              <p className="text-xs text-muted-foreground max-w-sm">
+                {(messageQuery.error as Error)?.message ?? 'Unbekannter Fehler'}
+              </p>
+              <Button size="sm" onClick={() => messageQuery.refetch()} className="gap-1">
+                <RefreshCw className="h-3.5 w-3.5" /> Erneut versuchen
+              </Button>
             </div>
           )}
           {selectedUid && fullMessage && (
