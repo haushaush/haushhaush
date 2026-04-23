@@ -5,6 +5,7 @@ import {
   errorResponse,
   getAuthedUser,
   loadAccountForUser,
+  withTimeout,
 } from "../_shared/imap-helpers.ts";
 
 Deno.serve(async (req) => {
@@ -21,6 +22,9 @@ Deno.serve(async (req) => {
     return errorResponse("Missing required fields", 400);
   }
 
+  const start = Date.now();
+  console.log(`[imap-send-message] start accountId=${accountId} to=${Array.isArray(to) ? to.join(",") : to}`);
+
   const result = await loadAccountForUser(auth.userId, accountId);
   if (!result.ok) return errorResponse(result.error, result.status);
   const acc = result.account;
@@ -36,28 +40,35 @@ Deno.serve(async (req) => {
       secure: acc.smtp_secure ?? true,
       auth: { user: acc.imap_user, pass: acc.password },
       connectionTimeout: 20000,
+      greetingTimeout: 10000,
       socketTimeout: 30000,
     });
 
     const fromName = acc.display_name ?? acc.email_address;
-    const info = await transporter.sendMail({
-      from: `"${fromName}" <${acc.email_address}>`,
-      to: Array.isArray(to) ? to.join(", ") : to,
-      cc: cc ? (Array.isArray(cc) ? cc.join(", ") : cc) : undefined,
-      bcc: bcc ? (Array.isArray(bcc) ? bcc.join(", ") : bcc) : undefined,
-      subject,
-      text: text ?? undefined,
-      html: html ?? undefined,
-      replyTo: replyTo ?? undefined,
-      attachments: attachments ?? undefined,
-    });
+    const info = await withTimeout(
+      transporter.sendMail({
+        from: `"${fromName}" <${acc.email_address}>`,
+        to: Array.isArray(to) ? to.join(", ") : to,
+        cc: cc ? (Array.isArray(cc) ? cc.join(", ") : cc) : undefined,
+        bcc: bcc ? (Array.isArray(bcc) ? bcc.join(", ") : bcc) : undefined,
+        subject,
+        text: text ?? undefined,
+        html: html ?? undefined,
+        replyTo: replyTo ?? undefined,
+        attachments: attachments ?? undefined,
+      }),
+      60_000,
+      "smtp-send",
+    );
 
+    console.log(`[imap-send-message] done in ${Date.now() - start}ms`);
     return jsonResponse({ ok: true, messageId: info.messageId, accepted: info.accepted, rejected: info.rejected });
   } catch (err) {
     const message = (err as Error).message ?? String(err);
+    console.error(`[imap-send-message] error after ${Date.now() - start}ms:`, message);
     let code = "send_failed";
     if (/auth|535|credentials/i.test(message)) code = "auth_failed";
-    if (/ENOTFOUND|ECONNREFUSED|ETIMEDOUT/i.test(message)) code = "connection_failed";
+    if (/ENOTFOUND|ECONNREFUSED|ETIMEDOUT|timeout/i.test(message)) code = "connection_failed";
     return jsonResponse({ ok: false, error: code, message }, 200);
   }
 });
