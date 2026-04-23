@@ -181,12 +181,17 @@ export default function EmailPage() {
     return resolveFolderPath(slug, mailboxes);
   }, [slug, mailboxes]);
 
-  const searchParam = useMemo(() => {
-    if (debouncedSearch) return debouncedSearch;
-    if (slug === 'ungelesen') return 'UNSEEN';
-    if (slug === 'wichtig') return 'FLAGGED';
+  const searchParam = useMemo<any>(() => {
+    if (debouncedSearch) return { query: debouncedSearch };
+    if (slug === 'ungelesen') return { unseen: true };
+    if (slug === 'wichtig') return { flagged: true };
     return undefined;
   }, [debouncedSearch, slug]);
+
+  const folderMissing = useMemo(
+    () => mailboxes.length > 0 && isFolderMissing(slug, mailboxes),
+    [slug, mailboxes],
+  );
 
   // Load messages
   const messagesQuery = useQuery({
