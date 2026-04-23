@@ -116,63 +116,52 @@ async function handleRequest(req: Request): Promise<Response> {
         log("Lock acquired");
 
         try {
-          // Step 1: fetch envelope + flags only (fast, lightweight)
-          log(`fetch envelope UID=${uid}...`);
-          let envMsg: any = null;
+          // Single fetch with envelope + source + bodyParts. Combining requests
+          // is more reliable than multiple sequential fetches on slow servers.
+          log(`fetch UID=${uid} (envelope+source+bodyParts)...`);
+          let captured: any = null;
           await raceTimeout(
             (async () => {
               for await (const m of client.fetch(
                 String(uid),
-                { envelope: true, flags: true },
+                { envelope: true, flags: true, source: true, bodyParts: [""] },
                 { uid: true },
               )) {
-                envMsg = m;
+                captured = m;
                 break;
               }
             })(),
-            10_000,
-            "fetch-envelope",
+            30_000,
+            "fetch-full",
           );
-          if (!envMsg) throw new Error(`Message UID ${uid} not found`);
-          log("Envelope fetched");
+          if (!captured) throw new Error(`Message UID ${uid} not found`);
 
-          // Step 2: fetch the full RFC822 source via bodyParts
-          // (more reliable than `source: true` and `download()` on kasserver/All-Inkl)
-          log("Fetching source via bodyParts...");
-          let sourceMsg: any = null;
-          await raceTimeout(
-            (async () => {
-              for await (const m of client.fetch(
-                String(uid),
-                { bodyParts: [""] },
-                { uid: true },
-              )) {
-                sourceMsg = m;
-                break;
-              }
-            })(),
-            25_000,
-            "fetch-source",
-          );
-          if (!sourceMsg) throw new Error("Source fetch returned no message");
-          // bodyParts is a Map<string, Uint8Array>
-          const bp = sourceMsg.bodyParts;
+          // Try every possible source location
           let sourceBuf: Uint8Array | null = null;
-          if (bp instanceof Map) {
-            sourceBuf = bp.get("") ?? bp.get("TEXT") ?? bp.values().next().value ?? null;
-          } else if (bp && typeof bp === "object") {
-            sourceBuf = bp[""] ?? bp["TEXT"] ?? Object.values(bp)[0] ?? null;
+          if (captured.source) {
+            sourceBuf = captured.source as Uint8Array;
+          } else if (captured.bodyParts) {
+            const bp = captured.bodyParts;
+            if (bp instanceof Map) {
+              sourceBuf = bp.get("") ?? bp.get("TEXT") ?? bp.values().next().value ?? null;
+            } else if (typeof bp === "object") {
+              sourceBuf = bp[""] ?? bp["TEXT"] ?? Object.values(bp)[0] ?? null;
+            }
           }
           if (!sourceBuf || sourceBuf.length === 0) {
-            throw new Error(`No source bytes returned (bodyParts type=${bp?.constructor?.name})`);
+            const keys = captured.bodyParts instanceof Map
+              ? Array.from(captured.bodyParts.keys()).join(",")
+              : captured.bodyParts ? Object.keys(captured.bodyParts).join(",") : "(no bodyParts)";
+            throw new Error(`No source returned. Captured keys=${Object.keys(captured).join(",")} bodyPart keys=${keys}`);
           }
-          log(`Source fetched: ${sourceBuf.length} bytes`);
+          log(`Source size=${sourceBuf.length}`);
 
           log("Parsing...");
           const parsed = await raceTimeout(simpleParser(sourceBuf), 10_000, "parse");
           log("Parsed");
 
-          fetched = { parsed, flags: Array.from(envMsg.flags ?? []) };
+          fetched = { parsed, flags: Array.from(captured.flags ?? []) };
+        } finally {
         } finally {
           try { lock.release(); log("Lock released"); } catch { /* ignore */ }
         }
