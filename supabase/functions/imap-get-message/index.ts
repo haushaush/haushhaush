@@ -1,464 +1,216 @@
 import { ImapFlow } from "npm:imapflow@1.0.151";
-import {
-  corsHeaders,
-  jsonResponse,
-  errorResponse,
-  getAuthedUser,
-  loadAccountForUser,
-  getServiceClient,
-  mapImapError,
-  withAccountLock,
-} from "../_shared/imap-helpers.ts";
+import { simpleParser } from "npm:mailparser@3.6.5";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const HARD_TIMEOUT_MS = 45_000;
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
-function raceTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
-  let timer: number | undefined;
-  const t = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms) as unknown as number;
-  });
-  return Promise.race([p, t]).finally(() => {
-    if (timer !== undefined) clearTimeout(timer);
-  }) as Promise<T>;
-}
-
-// ---------- BODYSTRUCTURE walkers ----------
-
-interface TextPart {
-  type: "text/plain" | "text/html";
-  path: string;
-  size: number;
-  encoding: string;
-  charset: string;
-}
-
-interface AttachmentMeta {
-  filename: string;
-  size: number;
-  contentType: string;
-  encoding: string;
-  path: string;
-}
-
-// Returns lowercase "type/subtype" tuple from a node — handles imapflow's
-// combined `type` ("text/plain") or split (`type`/`subtype`) forms.
-function nodeMime(struct: any): { type: string; subtype: string } {
-  const t = (struct.type || "").toString().toLowerCase();
-  if (t.includes("/")) {
-    const [a, b = ""] = t.split("/");
-    return { type: a, subtype: b };
-  }
-  return { type: t, subtype: (struct.subtype || "").toString().toLowerCase() };
-}
-
-function nodeChildren(struct: any): any[] | null {
-  const c = struct.childNodes || struct.children || struct.childParts || null;
-  return Array.isArray(c) && c.length > 0 ? c : null;
-}
-
-function findTextParts(struct: any, path = ""): TextPart[] {
-  if (!struct) return [];
-  const results: TextPart[] = [];
-
-  const children = nodeChildren(struct);
-  if (children) {
-    children.forEach((child: any, idx: number) => {
-      // imapflow nodes may already carry their own .part path — prefer it
-      const newPath = child.part || (path ? `${path}.${idx + 1}` : String(idx + 1));
-      results.push(...findTextParts(child, newPath));
-    });
-    return results;
-  }
-
-  const { type, subtype } = nodeMime(struct);
-  const disposition = (struct.disposition || "").toLowerCase();
-  const filename = struct.dispositionParameters?.filename || struct.parameters?.name;
-  const isAttachment = disposition === "attachment" || (!!filename && type !== "text");
-
-  if (!isAttachment && type === "text" && (subtype === "plain" || subtype === "html")) {
-    results.push({
-      type: `${type}/${subtype}` as TextPart["type"],
-      path: struct.part || path || "1",
-      size: struct.size || 0,
-      encoding: (struct.encoding || "7bit").toLowerCase(),
-      charset: (struct.parameters?.charset || struct.dispositionParameters?.charset || "utf-8").toLowerCase(),
-    });
-  }
-  return results;
-}
-
-function findAttachments(struct: any, path = ""): AttachmentMeta[] {
-  if (!struct) return [];
-  const children = nodeChildren(struct);
-  if (children) {
-    return children.flatMap((child: any, idx: number) => {
-      const p = child.part || (path ? `${path}.${idx + 1}` : String(idx + 1));
-      return findAttachments(child, p);
-    });
-  }
-  const disposition = (struct.disposition || "").toLowerCase();
-  const filename = struct.dispositionParameters?.filename || struct.parameters?.name;
-  const { type, subtype } = nodeMime(struct);
-  if (disposition === "attachment" || (filename && type !== "text")) {
-    return [{
-      filename: filename || "unbenannt",
-      size: struct.size || 0,
-      contentType: `${type}/${subtype}`,
-      encoding: (struct.encoding || "7bit").toLowerCase(),
-      path: struct.part || path || "1",
-    }];
-  }
-  return [];
-}
-
-// ---------- decoders ----------
-
-function decodeWithCharset(buffer: Uint8Array, charset: string): string {
-  const cs = (charset || "utf-8").toLowerCase();
-  const normalized =
-    cs === "utf8" ? "utf-8" :
-    cs === "latin1" ? "iso-8859-1" :
-    cs === "us-ascii" || cs === "ascii" ? "utf-8" :
-    cs;
-  try {
-    return new TextDecoder(normalized, { fatal: false }).decode(buffer);
-  } catch {
-    return new TextDecoder("utf-8", { fatal: false }).decode(buffer);
-  }
-}
-
-function decodeQuotedPrintable(str: string): string {
-  // Soft line breaks
-  const noSoftBreaks = str.replace(/=\r?\n/g, "");
-  // Decode hex sequences as raw bytes, then reinterpret runs of bytes as utf-8
-  const bytes: number[] = [];
-  let i = 0;
-  while (i < noSoftBreaks.length) {
-    const ch = noSoftBreaks[i];
-    if (ch === "=" && i + 2 < noSoftBreaks.length) {
-      const hex = noSoftBreaks.substr(i + 1, 2);
-      if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
-        bytes.push(parseInt(hex, 16));
-        i += 3;
-        continue;
-      }
-    }
-    bytes.push(ch.charCodeAt(0) & 0xff);
-    i++;
-  }
-  try {
-    return new TextDecoder("utf-8", { fatal: false }).decode(new Uint8Array(bytes));
-  } catch {
-    return String.fromCharCode(...bytes);
-  }
-}
-
-function decodePart(buffer: Uint8Array, encoding: string, charset: string): string {
-  const enc = (encoding || "7bit").toLowerCase();
-
-  if (enc === "base64") {
-    try {
-      const b64 = new TextDecoder("ascii").decode(buffer).replace(/\s/g, "");
-      const bin = atob(b64);
-      const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-      return decodeWithCharset(bytes, charset);
-    } catch {
-      return decodeWithCharset(buffer, charset);
-    }
-  }
-
-  if (enc === "quoted-printable") {
-    // QP works on ASCII text — read raw, then decode QP (which yields utf-8 bytes for most modern mails)
-    const raw = new TextDecoder("ascii", { fatal: false }).decode(buffer);
-    return decodeQuotedPrintable(raw);
-  }
-
-  // 7bit / 8bit / binary
-  return decodeWithCharset(buffer, charset);
-}
-
-async function streamToBuffer(stream: any): Promise<Uint8Array> {
-  if (!stream) return new Uint8Array(0);
-  if (stream instanceof Uint8Array) return stream;
-  const chunks: Uint8Array[] = [];
-  for await (const chunk of stream) {
-    chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
-  }
-  let total = 0;
-  for (const c of chunks) total += c.length;
-  const buf = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) { buf.set(c, off); off += c.length; }
-  return buf;
-}
-
-// ---------- main ----------
-
-Deno.serve((req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  return Promise.race<Response>([
-    handleRequest(req),
-    new Promise<Response>((resolve) =>
-      setTimeout(() => {
-        console.error(`[imap-get-message] HARD_TIMEOUT after ${HARD_TIMEOUT_MS}ms`);
-        resolve(jsonResponse(
-          { ok: false, error: "hard_timeout", message: `Hard timeout nach ${HARD_TIMEOUT_MS}ms` },
-          200,
-        ));
-      }, HARD_TIMEOUT_MS),
-    ),
-  ]).catch((err) => {
-    console.error("[imap-get-message] Fatal:", (err as Error).message);
-    return jsonResponse(
-      { ok: false, error: "fatal", message: String((err as Error).message ?? err) },
-      200,
-    );
-  });
-});
-
-async function handleRequest(req: Request): Promise<Response> {
+Deno.serve(async (req) => {
   const t0 = Date.now();
   const log = (msg: string) => console.log(`[imap-get-message +${Date.now() - t0}ms] ${msg}`);
 
-  const auth = await getAuthedUser(req);
-  if (!auth) return errorResponse("Unauthorized", 401);
-
-  let body: any;
-  try { body = await req.json(); } catch { return errorResponse("Invalid JSON", 400); }
-  const { accountId, folder = "INBOX", uid } = body ?? {};
-  if (!accountId || !uid) return errorResponse("Missing accountId or uid", 400);
-
-  log(`Start accountId=${accountId} folder=${folder} uid=${uid}`);
-
-  const result = await loadAccountForUser(auth.userId, accountId);
-  if (!result.ok) return errorResponse(result.error, result.status);
-  const acc = result.account;
-  log(`Account loaded ${acc.imap_host}:${acc.imap_port}`);
-
-  const svc = getServiceClient();
-
-  // Cache hit (only if non-empty body) — return immediately
-  const { data: cached } = await svc
-    .from("email_messages_cache")
-    .select("*")
-    .eq("account_id", accountId)
-    .eq("folder", folder)
-    .eq("uid", Number(uid))
-    .maybeSingle();
-
-  const cachedHasBody =
-    cached?.body_fetched_at &&
-    ((cached.body_text && cached.body_text.length >= 10) ||
-      (cached.body_html && cached.body_html.length >= 10));
-
-  if (cachedHasBody) {
-    log("Cache HIT");
-    return jsonResponse({ ok: true, message: cached, cached: true });
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
   }
-  log("Cache MISS — fetching from IMAP via BODYSTRUCTURE");
-
-  const client = new ImapFlow({
-    host: acc.imap_host,
-    port: acc.imap_port,
-    secure: acc.imap_secure,
-    auth: { user: acc.imap_user, pass: acc.password },
-    logger: false,
-    connectTimeout: 10_000,
-    greetingTimeout: 8_000,
-    socketTimeout: 25_000,
-  });
-
-  client.on("error", (err: Error) => log(`IMAP error event: ${err.message}`));
-
-  let bodyText = "";
-  let bodyHtml = "";
-  let attachments: Array<AttachmentMeta & { attachmentId: number }> = [];
-  let envelope: any = null;
-  let flags: string[] = [];
-  let opError: Error | null = null;
 
   try {
-    await withAccountLock(accountId, async () => {
-      try {
-        log("Connecting...");
-        await raceTimeout(client.connect(), 12_000, "connect");
-        log("Connected");
+    const { accountId, folder, uid } = await req.json();
+    log(`START accountId=${accountId} folder=${folder} uid=${uid}`);
 
-        log(`Acquiring lock on ${folder}...`);
-        const lock = await raceTimeout(client.getMailboxLock(folder), 10_000, "lock");
-        log("Lock acquired");
-
-        try {
-          // ---- Step 1: small & fast metadata fetch ----
-          log(`fetchOne envelope+bodyStructure UID=${uid}`);
-          let captured: any = null;
-          await raceTimeout(
-            (async () => {
-              for await (const m of client.fetch(
-                String(uid),
-                { envelope: true, bodyStructure: true, flags: true, size: true },
-                { uid: true },
-              )) {
-                captured = m;
-                break;
-              }
-            })(),
-            15_000,
-            "bodystructure",
-          );
-          if (!captured) throw new Error(`Message UID ${uid} not found`);
-          envelope = captured.envelope ?? null;
-          flags = Array.from(captured.flags ?? []);
-          log(`Got bodyStructure (msg size=${captured.size})`);
-
-          // ---- Step 2: walk structure ----
-          const textParts = findTextParts(captured.bodyStructure);
-          const attachMeta = findAttachments(captured.bodyStructure);
-          log(`Text parts: ${textParts.length}, Attachments: ${attachMeta.length}`);
-
-          if (textParts.length === 0) {
-            try {
-              const dump = JSON.stringify(captured.bodyStructure ?? null);
-              log(`bodyStructure dump (truncated 1500): ${dump.slice(0, 1500)}`);
-            } catch { /* ignore */ }
-          }
-
-          // ---- Step 3: download text parts ----
-          const downloadOne = async (p: { path: string; type: "text/plain" | "text/html"; encoding: string; charset: string; size?: number }) => {
-            log(`Download part ${p.path} (${p.type}, ${p.size ?? "?"}b, enc=${p.encoding}, cs=${p.charset})`);
-            const partData = await raceTimeout(
-              client.download(String(uid), p.path, { uid: true }) as any,
-              15_000,
-              `part-${p.path}`,
-            );
-            if (!partData?.content) {
-              log(`No content for part ${p.path}`);
-              return null;
-            }
-            const buf = await streamToBuffer(partData.content);
-            const decoded = decodePart(buf, p.encoding, p.charset);
-            log(`Part ${p.path} → ${decoded.length} chars`);
-            return decoded;
-          };
-
-          for (const part of textParts) {
-            if (part.size > 2_000_000) {
-              log(`Skip part ${part.path} — too large (${part.size}b)`);
-              continue;
-            }
-            try {
-              const decoded = await downloadOne(part);
-              if (!decoded) continue;
-              if (part.type === "text/plain") bodyText = bodyText ? bodyText + decoded : decoded;
-              else if (part.type === "text/html") bodyHtml = bodyHtml ? bodyHtml + decoded : decoded;
-            } catch (partErr) {
-              log(`Part ${part.path} failed: ${(partErr as Error).message}`);
-            }
-          }
-
-          // ---- Step 3b: probe common IMAP paths if structure walk yielded nothing ----
-          if (!bodyText && !bodyHtml) {
-            log("Structure walk returned no body — probing common IMAP paths (1, 2, 1.1, 1.2, TEXT)");
-            const probes: Array<{ path: string; type: "text/plain" | "text/html" }> = [
-              { path: "1", type: "text/plain" },
-              { path: "2", type: "text/html" },
-              { path: "1.1", type: "text/plain" },
-              { path: "1.2", type: "text/html" },
-              { path: "TEXT", type: "text/plain" },
-            ];
-            for (const probe of probes) {
-              if (bodyText && bodyHtml) break;
-              try {
-                const decoded = await downloadOne({
-                  path: probe.path,
-                  type: probe.type,
-                  encoding: "7bit",
-                  charset: "utf-8",
-                });
-                if (!decoded) continue;
-                const isHtml = /<\s*(?:!doctype|html|body|div|p|table|head|meta|span)\b/i.test(decoded.slice(0, 500));
-                if (isHtml && !bodyHtml) bodyHtml = decoded;
-                else if (!isHtml && !bodyText) bodyText = decoded;
-              } catch (probeErr) {
-                log(`Probe ${probe.path} failed: ${(probeErr as Error).message}`);
-              }
-            }
-          }
-
-          // ---- Step 4: prepare attachment metadata (NOT downloaded here) ----
-          attachments = attachMeta.map((a, idx) => ({ ...a, attachmentId: idx }));
-        } finally {
-          try { lock.release(); log("Lock released"); } catch { /* ignore */ }
-        }
-      } catch (e) {
-        opError = e as Error;
-        log(`Op error: ${(e as Error).message}`);
-      } finally {
-        try {
-          await raceTimeout(client.logout(), 2_000, "logout");
-          log("Logged out");
-        } catch (e) {
-          log(`Logout failed (forcing close): ${(e as Error).message}`);
-          try { await client.close(); } catch { /* ignore */ }
-        }
-      }
-    });
-  } catch (e) {
-    opError = (opError ?? e) as Error;
-  }
-
-  if (opError && !bodyText && !bodyHtml) {
-    const mapped = mapImapError(opError);
-    log(`Returning error: ${mapped.code} ${mapped.message}`);
-    return jsonResponse({ ok: false, error: mapped.code, message: mapped.message }, 200);
-  }
-
-  // Build snippet from text body
-  const snippet = bodyText
-    ? bodyText.slice(0, 200).replace(/\s+/g, " ").trim()
-    : (bodyHtml ? bodyHtml.replace(/<[^>]+>/g, " ").slice(0, 200).replace(/\s+/g, " ").trim() : null);
-
-  const updateRow = {
-    account_id: accountId,
-    folder,
-    uid: Number(uid),
-    message_id: envelope?.messageId ?? cached?.message_id ?? null,
-    from_address: envelope?.from?.[0]?.address ?? cached?.from_address ?? null,
-    from_name: envelope?.from?.[0]?.name ?? cached?.from_name ?? null,
-    to_addresses: (envelope?.to ?? []).map((a: any) => a.address).filter(Boolean),
-    cc_addresses: (envelope?.cc ?? []).map((a: any) => a.address).filter(Boolean),
-    subject: envelope?.subject ?? cached?.subject ?? "",
-    snippet,
-    date: envelope?.date ? new Date(envelope.date).toISOString() : cached?.date ?? null,
-    flags,
-    has_attachment: attachments.length > 0,
-    body_text: bodyText || null,
-    body_html: bodyHtml || null,
-    attachments,
-    body_fetched_at: (bodyText || bodyHtml) ? new Date().toISOString() : null,
-  };
-
-  let updated: any = null;
-  try {
-    const upsertRes = await svc
-      .from("email_messages_cache")
-      .upsert(updateRow, { onConflict: "account_id,folder,uid" })
-      .select("*")
-      .maybeSingle();
-    if (upsertRes.error) {
-      log(`Cache upsert FAILED: ${upsertRes.error.message}`);
-    } else {
-      updated = upsertRes.data;
-      log(`Cache upserted with body_text=${bodyText.length} body_html=${bodyHtml.length}`);
+    if (!accountId || !folder || uid === undefined) {
+      return json({ ok: false, error: 'missing_params' }, 400);
     }
-  } catch (e) {
-    log(`Cache update failed (non-fatal): ${(e as Error).message}`);
-  }
 
-  log(`RESPONSE: body_text=${bodyText.length} body_html=${bodyHtml.length} attachments=${attachments.length}`);
-  log(`Done in ${Date.now() - t0}ms`);
-  return jsonResponse({ ok: true, message: updated ?? updateRow, cached: false });
+    const authClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+    );
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    const { data: { user } } = await authClient.auth.getUser();
+    if (!user) return json({ ok: false, error: 'unauthorized' }, 401);
+    log(`USER ${user.id}`);
+
+    const { data: cachedRow } = await supabaseClient
+      .from('email_messages_cache')
+      .select('*')
+      .eq('account_id', accountId)
+      .eq('folder', folder)
+      .eq('uid', uid)
+      .maybeSingle();
+
+    if (cachedRow?.body_fetched_at && (cachedRow.body_text || cachedRow.body_html)) {
+      log(`CACHE HIT with body (text=${cachedRow.body_text?.length ?? 0} html=${cachedRow.body_html?.length ?? 0})`);
+      return json({ ok: true, message: cachedRow, cached: true });
+    }
+
+    log(`CACHE MISS or empty body — fetching from IMAP`);
+
+    const { data: account, error: accErr } = await supabaseClient
+      .from('email_accounts')
+      .select('id, user_id, imap_host, imap_port, imap_secure, imap_user, imap_password_encrypted')
+      .eq('id', accountId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (accErr || !account) {
+      log(`Account not found: ${accErr?.message || 'no row'}`);
+      return json({ ok: false, error: 'Account not found' }, 404);
+    }
+    log(`Account found: ${account.imap_host}`);
+
+    const { data: decryptedPw, error: decryptErr } = await supabaseClient
+      .rpc('decrypt_imap_password', {
+        encrypted: account.imap_password_encrypted,
+        encryption_key: Deno.env.get('IMAP_ENCRYPTION_KEY')!,
+      });
+    if (decryptErr || !decryptedPw) {
+      log(`Decrypt failed: ${decryptErr?.message}`);
+      return json({ ok: false, error: 'decrypt_failed' }, 500);
+    }
+    log(`Password decrypted`);
+
+    const client = new ImapFlow({
+      host: account.imap_host,
+      port: account.imap_port,
+      secure: account.imap_secure,
+      auth: { user: account.imap_user, pass: decryptedPw },
+      logger: false,
+      connectTimeout: 10_000,
+      greetingTimeout: 8_000,
+      socketTimeout: 30_000,
+    });
+
+    client.on('error', (err) => log(`IMAP error event: ${err.message}`));
+
+    let bodyText = '';
+    let bodyHtml: string | null = null;
+    let attachments: Array<any> = [];
+    let envelope: any = null;
+
+    try {
+      log(`Connecting IMAP ${account.imap_host}:${account.imap_port}...`);
+      await Promise.race([
+        client.connect(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Connect timeout 12s')), 12_000)),
+      ]);
+      log(`Connected`);
+
+      const lock = await Promise.race([
+        client.getMailboxLock(folder),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Lock timeout 10s')), 10_000)),
+      ]) as Awaited<ReturnType<typeof client.getMailboxLock>>;
+      log(`Lock acquired for ${folder}`);
+
+      try {
+        log(`Fetching UID ${uid} with source...`);
+        const msg = await Promise.race([
+          client.fetchOne(String(uid), {
+            source: true,
+            envelope: true,
+            flags: true,
+          }, { uid: true }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout 30s')), 30_000)),
+        ]) as any;
+
+        if (!msg || !msg.source) {
+          throw new Error(`UID ${uid} not found or empty source`);
+        }
+        log(`Fetched. Source size: ${msg.source.length} bytes`);
+        envelope = msg.envelope;
+
+        log(`Parsing with mailparser...`);
+        const parsed = await Promise.race([
+          simpleParser(msg.source),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Parse timeout 15s')), 15_000)),
+        ]) as any;
+        log(`Parsed: text=${parsed.text?.length ?? 0} html=${typeof parsed.html === 'string' ? parsed.html.length : 0} attachments=${parsed.attachments?.length ?? 0}`);
+
+        bodyText = parsed.text || '';
+        bodyHtml = typeof parsed.html === 'string' ? parsed.html : null;
+        attachments = (parsed.attachments || []).map((a: any, idx: number) => ({
+          attachmentId: `${uid}-${idx}`,
+          filename: a.filename || `attachment-${idx}`,
+          size: a.size || 0,
+          contentType: a.contentType || 'application/octet-stream',
+        }));
+      } finally {
+        lock.release();
+        log(`Lock released`);
+      }
+    } finally {
+      try {
+        await Promise.race([
+          client.logout(),
+          new Promise((resolve) => setTimeout(resolve, 2_000)),
+        ]);
+        log(`Logged out`);
+      } catch (e) {
+        log(`Logout error (ignored): ${e}`);
+      }
+    }
+
+    log(`UPSERTing cache...`);
+    const cacheRow: any = {
+      account_id: accountId,
+      folder,
+      uid,
+      body_text: bodyText,
+      body_html: bodyHtml,
+      attachments,
+      body_fetched_at: new Date().toISOString(),
+    };
+    if (envelope) {
+      cacheRow.from_address = envelope.from?.[0]?.address;
+      cacheRow.from_name = envelope.from?.[0]?.name;
+      cacheRow.to_addresses = envelope.to?.map((t: any) => t.address) || [];
+      cacheRow.cc_addresses = envelope.cc?.map((t: any) => t.address) || [];
+      cacheRow.subject = envelope.subject;
+      cacheRow.date = envelope.date;
+      cacheRow.message_id = envelope.messageId;
+    }
+
+    const { error: upsertErr } = await supabaseClient
+      .from('email_messages_cache')
+      .upsert(cacheRow, { onConflict: 'account_id,folder,uid' });
+
+    if (upsertErr) {
+      log(`Cache upsert FAILED: ${upsertErr.message}`);
+    } else {
+      log(`Cache upserted OK`);
+    }
+
+    const { data: finalRow } = await supabaseClient
+      .from('email_messages_cache')
+      .select('*')
+      .eq('account_id', accountId)
+      .eq('folder', folder)
+      .eq('uid', uid)
+      .single();
+
+    log(`RESPONSE body_text=${bodyText.length} body_html=${bodyHtml?.length ?? 0}`);
+    return json({ ok: true, message: finalRow || cacheRow, cached: false });
+
+  } catch (error) {
+    const errMsg = (error as any)?.message || String(error);
+    log(`FATAL ERROR: ${errMsg}`);
+    return new Response(
+      JSON.stringify({ ok: false, error: errMsg }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
+
+function json(data: any, status: number = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
 }
