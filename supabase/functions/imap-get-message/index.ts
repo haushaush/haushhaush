@@ -7,6 +7,119 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function decodeWithCharset(buffer: Uint8Array, charset: string): string {
+  const cs = (charset || 'utf-8').toLowerCase()
+    .replace('utf8', 'utf-8')
+    .replace('latin1', 'iso-8859-1');
+  try {
+    return new TextDecoder(cs, { fatal: false }).decode(buffer);
+  } catch {
+    return new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+  }
+}
+
+function decodeQuotedPrintable(str: string): string {
+  // Strip soft line breaks first
+  const result = str.replace(/=\r?\n/g, '');
+  // Decode =XX hex sequences into bytes, then UTF-8 decode them
+  const bytes: number[] = [];
+  const plainChars: string[] = [];
+  let i = 0;
+  while (i < result.length) {
+    if (result[i] === '=' && /[0-9A-Fa-f]{2}/.test(result.substr(i + 1, 2))) {
+      bytes.push(parseInt(result.substr(i + 1, 2), 16));
+      i += 3;
+    } else {
+      // Flush any pending bytes as UTF-8 first
+      if (bytes.length > 0) {
+        plainChars.push(new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes)));
+        bytes.length = 0;
+      }
+      plainChars.push(result[i]);
+      i++;
+    }
+  }
+  if (bytes.length > 0) {
+    plainChars.push(new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes)));
+  }
+  return plainChars.join('');
+}
+
+function isTextLike(struct: any): boolean {
+  const type = (struct.type || '').toLowerCase();
+  const subtype = (struct.subtype || '').toLowerCase();
+  // Some imapflow versions return combined "text/plain"
+  if (type.includes('/')) {
+    return type.startsWith('text/plain') || type.startsWith('text/html');
+  }
+  return type === 'text' && (subtype === 'plain' || subtype === 'html');
+}
+
+function nodeMime(struct: any): { type: string; subtype: string } {
+  const rawType = (struct.type || '').toLowerCase();
+  if (rawType.includes('/')) {
+    const [t, s] = rawType.split('/');
+    return { type: t, subtype: (s || '').toLowerCase() };
+  }
+  return { type: rawType, subtype: (struct.subtype || '').toLowerCase() };
+}
+
+function findTextParts(struct: any, path = ''): Array<{ type: string; path: string; size: number; encoding: string; charset: string }> {
+  if (!struct) return [];
+  const results: Array<{ type: string; path: string; size: number; encoding: string; charset: string }> = [];
+
+  const children = struct.childNodes || struct.children || struct.childParts;
+  if (Array.isArray(children) && children.length > 0) {
+    children.forEach((child: any, idx: number) => {
+      const newPath = child.part || (path ? `${path}.${idx + 1}` : String(idx + 1));
+      results.push(...findTextParts(child, newPath));
+    });
+    return results;
+  }
+
+  const { type, subtype } = nodeMime(struct);
+  const disposition = (struct.disposition || '').toLowerCase();
+
+  if (type === 'text' && (subtype === 'plain' || subtype === 'html') && disposition !== 'attachment') {
+    results.push({
+      type: `${type}/${subtype}`,
+      path: struct.part || path || '1',
+      size: struct.size || 0,
+      encoding: (struct.encoding || '7bit').toLowerCase(),
+      charset: struct.parameters?.charset || struct.dispositionParameters?.charset || 'utf-8',
+    });
+  }
+  return results;
+}
+
+function findAttachmentMeta(struct: any, path = ''): Array<{ filename: string; size: number; contentType: string; path: string }> {
+  if (!struct) return [];
+  const results: Array<{ filename: string; size: number; contentType: string; path: string }> = [];
+
+  const children = struct.childNodes || struct.children || struct.childParts;
+  if (Array.isArray(children) && children.length > 0) {
+    children.forEach((child: any, idx: number) => {
+      const newPath = child.part || (path ? `${path}.${idx + 1}` : String(idx + 1));
+      results.push(...findAttachmentMeta(child, newPath));
+    });
+    return results;
+  }
+
+  const disposition = (struct.disposition || '').toLowerCase();
+  const filename = struct.dispositionParameters?.filename || struct.parameters?.name;
+  const { type, subtype } = nodeMime(struct);
+
+  if (disposition === 'attachment' || (filename && !isTextLike(struct))) {
+    results.push({
+      filename: filename || 'unbenannt',
+      size: struct.size || 0,
+      contentType: `${type || 'application'}/${subtype || 'octet-stream'}`,
+      path: struct.part || path || '1',
+    });
+  }
+  return results;
+}
+
 Deno.serve(async (req) => {
   const t0 = Date.now();
   const log = (msg: string) => console.log(`[imap-get-message +${Date.now() - t0}ms] ${msg}`);
@@ -110,37 +223,119 @@ Deno.serve(async (req) => {
       log(`Lock acquired for ${folder}`);
 
       try {
-        log(`Fetching UID ${uid} with source...`);
+        log(`Fetching BODYSTRUCTURE for UID ${uid}...`);
+
+        // Step 1: Tiny + fast — envelope + bodyStructure metadata only
         const msg = await Promise.race([
           client.fetchOne(String(uid), {
-            source: true,
             envelope: true,
+            bodyStructure: true,
             flags: true,
+            size: true,
           }, { uid: true }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout 30s')), 30_000)),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('BodyStructure timeout 20s')), 20_000)),
         ]) as any;
 
-        if (!msg || !msg.source) {
-          throw new Error(`UID ${uid} not found or empty source`);
-        }
-        log(`Fetched. Source size: ${msg.source.length} bytes`);
+        if (!msg) throw new Error(`UID ${uid} not found`);
+        log(`BodyStructure ok. Total message size: ${msg.size} bytes`);
         envelope = msg.envelope;
 
-        log(`Parsing with mailparser...`);
-        const parsed = await Promise.race([
-          simpleParser(msg.source),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Parse timeout 15s')), 15_000)),
-        ]) as any;
-        log(`Parsed: text=${parsed.text?.length ?? 0} html=${typeof parsed.html === 'string' ? parsed.html.length : 0} attachments=${parsed.attachments?.length ?? 0}`);
+        // Step 2: Walk structure to find text parts + attachment metadata
+        const textParts = findTextParts(msg.bodyStructure);
+        const attachmentMeta = findAttachmentMeta(msg.bodyStructure);
+        log(`Found text parts: ${textParts.length}, attachments: ${attachmentMeta.length}`);
+        log(`Text parts detail: ${JSON.stringify(textParts)}`);
 
-        bodyText = parsed.text || '';
-        bodyHtml = typeof parsed.html === 'string' ? parsed.html : null;
-        attachments = (parsed.attachments || []).map((a: any, idx: number) => ({
-          attachmentId: `${uid}-${idx}`,
-          filename: a.filename || `attachment-${idx}`,
-          size: a.size || 0,
-          contentType: a.contentType || 'application/octet-stream',
-        }));
+        if (textParts.length === 0) {
+          // Step 3: Fallback to full source for unusual structures
+          log(`No text parts in BODYSTRUCTURE, falling back to full source fetch`);
+          const fallback = await Promise.race([
+            client.fetchOne(String(uid), { source: true }, { uid: true }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Fallback source fetch timeout 60s')), 60_000)),
+          ]) as any;
+
+          if (fallback?.source) {
+            log(`Fallback source fetched: ${fallback.source.length} bytes. Parsing...`);
+            const parsed = await simpleParser(fallback.source);
+            bodyText = parsed.text || '';
+            bodyHtml = typeof parsed.html === 'string' ? parsed.html : null;
+            attachments = (parsed.attachments || []).map((a: any, idx: number) => ({
+              attachmentId: `${uid}-${idx}`,
+              filename: a.filename || `attachment-${idx}`,
+              size: a.size || 0,
+              contentType: a.contentType || 'application/octet-stream',
+            }));
+            log(`Fallback parsed: text=${bodyText.length} html=${bodyHtml?.length ?? 0} attachments=${attachments.length}`);
+          }
+        } else {
+          // Step 4: Download each text part individually (fast — small parts only)
+          for (const part of textParts) {
+            if (part.size > 2_000_000) {
+              log(`Skipping part ${part.path} — too large (${part.size}b)`);
+              continue;
+            }
+
+            log(`Downloading part ${part.path} (${part.type}, ${part.size}b)...`);
+
+            try {
+              const partData = await Promise.race([
+                client.download(String(uid), part.path, { uid: true }),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Download timeout for part ${part.path}`)), 25_000)),
+              ]) as any;
+
+              if (!partData?.content) {
+                log(`No content for part ${part.path}`);
+                continue;
+              }
+
+              // Collect stream into buffer
+              const chunks: Uint8Array[] = [];
+              for await (const chunk of partData.content) {
+                chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
+              }
+              const totalSize = chunks.reduce((acc, c) => acc + c.length, 0);
+              const buffer = new Uint8Array(totalSize);
+              let offset = 0;
+              for (const chunk of chunks) {
+                buffer.set(chunk, offset);
+                offset += chunk.length;
+              }
+              log(`Downloaded ${totalSize}b for part ${part.path}`);
+
+              // Decode transfer encoding + charset
+              let decoded: string;
+              const enc = part.encoding;
+
+              if (enc === 'base64') {
+                const b64str = new TextDecoder('ascii').decode(buffer).replace(/\s/g, '');
+                const binaryStr = atob(b64str);
+                const bytes = Uint8Array.from(binaryStr, c => c.charCodeAt(0));
+                decoded = decodeWithCharset(bytes, part.charset);
+              } else if (enc === 'quoted-printable') {
+                const rawStr = decodeWithCharset(buffer, part.charset);
+                decoded = decodeQuotedPrintable(rawStr);
+              } else {
+                decoded = decodeWithCharset(buffer, part.charset);
+              }
+
+              if (part.type === 'text/plain' && !bodyText) bodyText = decoded;
+              else if (part.type === 'text/html' && !bodyHtml) bodyHtml = decoded;
+
+              log(`Decoded part ${part.path}: ${decoded.length} chars`);
+            } catch (partErr) {
+              log(`Part ${part.path} failed: ${(partErr as any)?.message || partErr}`);
+              // continue with other parts
+            }
+          }
+
+          attachments = attachmentMeta.map((a, idx) => ({
+            attachmentId: `${uid}-${idx}`,
+            filename: a.filename,
+            size: a.size,
+            contentType: a.contentType,
+            path: a.path,
+          }));
+        }
       } finally {
         lock.release();
         log(`Lock released`);
