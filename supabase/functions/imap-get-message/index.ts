@@ -148,18 +148,39 @@ async function handleRequest(req: Request): Promise<Response> {
           const stream = dl?.content ?? dl?.stream ?? null;
           if (!stream) throw new Error(`Download returned no stream (keys=${dl ? Object.keys(dl).join(",") : "null"})`);
 
-          // Read the stream into a buffer with its own timeout
+          // Read the stream — could be a Web ReadableStream or a Node Readable
           log("Reading stream...");
           const chunks: Uint8Array[] = [];
-          const reader = (dl.content as ReadableStream<Uint8Array>).getReader();
           await raceTimeout(
-            (async () => {
-              while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                if (value) chunks.push(value);
+            new Promise<void>((resolve, reject) => {
+              if (typeof (stream as any).getReader === "function") {
+                // Web ReadableStream
+                (async () => {
+                  const reader = (stream as ReadableStream<Uint8Array>).getReader();
+                  try {
+                    while (true) {
+                      const { value, done } = await reader.read();
+                      if (done) break;
+                      if (value) chunks.push(value);
+                    }
+                    resolve();
+                  } catch (e) { reject(e); }
+                })();
+              } else if (typeof (stream as any).on === "function") {
+                // Node-style Readable
+                (stream as any).on("data", (chunk: Uint8Array | string) => {
+                  if (typeof chunk === "string") {
+                    chunks.push(new TextEncoder().encode(chunk));
+                  } else {
+                    chunks.push(chunk);
+                  }
+                });
+                (stream as any).on("end", () => resolve());
+                (stream as any).on("error", (err: Error) => reject(err));
+              } else {
+                reject(new Error("Stream has neither getReader nor on()"));
               }
-            })(),
+            }),
             20_000,
             "stream-read",
           );
