@@ -20,6 +20,7 @@ import { IntegrationStatusBar } from '@/components/integrations/IntegrationStatu
 import { PROVIDERS, CATEGORIES } from '@/components/integrations/IntegrationProviders';
 import { ApiPlatform } from '@/components/integrations/ApiPlatform';
 import { MetaMatchingCard } from '@/components/integrations/MetaMatchingCard';
+import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
 
 interface EmployeeRequest {
   id: string;

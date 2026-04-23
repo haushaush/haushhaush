@@ -82,9 +82,9 @@ function passwordStrength(pwd: string): { score: 0 | 1 | 2 | 3; label: string; c
   if (pwd.length >= 12 && /[!@#$%^&*?_-]/.test(pwd)) score++;
   const map = [
     { label: 'Schwach', color: 'bg-destructive' },
-    { label: 'OK', color: 'bg-orange-500' },
-    { label: 'Gut', color: 'bg-yellow-500' },
-    { label: 'Stark', color: 'bg-emerald-500' },
+    { label: 'OK', color: 'bg-warning' },
+    { label: 'Gut', color: 'bg-warning' },
+    { label: 'Stark', color: 'bg-primary' },
   ];
   return { score: score as 0 | 1 | 2 | 3, ...map[score] };
 }
@@ -462,7 +462,7 @@ export function CreateTeamMemberTab() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Check className="h-5 w-5 text-emerald-500" /> Mitarbeiter erfolgreich angelegt
+              <Check className="h-5 w-5 text-primary" /> Mitarbeiter erfolgreich angelegt
             </DialogTitle>
           </DialogHeader>
           {successData && (
