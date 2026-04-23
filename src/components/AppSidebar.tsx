@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -60,6 +60,17 @@ const navItems: NavItem[] = [
       { title: 'Alle Projekte', url: '/projekte' },
       { title: 'Meine Aufgaben', url: '/projekte/aufgaben' },
       { title: 'Laufzeit Projekte', url: '/projekte/laufzeiten' },
+    ],
+  },
+  {
+    title: 'Email', url: '/email', icon: Mail,
+    children: [
+      { title: 'Posteingang', url: '/email' },
+      { title: 'Ungelesen', url: '/email/ungelesen' },
+      { title: 'Gesendet', url: '/email/gesendet' },
+      { title: 'Wichtig', url: '/email/wichtig' },
+      { title: 'Entwürfe', url: '/email/entwuerfe' },
+      { title: 'Papierkorb', url: '/email/papierkorb' },
     ],
   },
   {

@@ -1,1 +1,4 @@
 project_id = "fqcueblsinjiclolubwv"
+
+[functions.imap-poll-new-messages]
+verify_jwt = false
