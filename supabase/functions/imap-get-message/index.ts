@@ -23,13 +23,18 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: 'missing_params' }, 400);
     }
 
-    const supabaseClient = createClient(
+    const authClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    const { data: { user } } = await authClient.auth.getUser();
     if (!user) return json({ ok: false, error: 'unauthorized' }, 401);
     log(`USER ${user.id}`);
 
