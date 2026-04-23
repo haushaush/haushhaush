@@ -1,15 +1,55 @@
 import { ImapFlow } from "npm:imapflow@1.0.151";
-import { simpleParser } from "npm:mailparser@3.6.5";
 import {
   corsHeaders,
   errorResponse,
   getAuthedUser,
   loadAccountForUser,
+  getServiceClient,
   mapImapError,
   withAccountLock,
   withTimeout,
   IMAP_TIMEOUTS,
 } from "../_shared/imap-helpers.ts";
+
+function decodeQuotedPrintableBytes(input: Uint8Array): Uint8Array {
+  // Convert to ASCII string, decode QP escapes byte-by-byte
+  const str = new TextDecoder("latin1").decode(input).replace(/=\r?\n/g, "");
+  const out: number[] = [];
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i];
+    if (c === "=" && i + 2 < str.length) {
+      const hex = str.slice(i + 1, i + 3);
+      if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+        out.push(parseInt(hex, 16));
+        i += 2;
+        continue;
+      }
+    }
+    out.push(str.charCodeAt(i));
+  }
+  return Uint8Array.from(out);
+}
+
+function decodeBase64Bytes(input: Uint8Array): Uint8Array {
+  const cleaned = new TextDecoder("latin1").decode(input).replace(/\s/g, "");
+  const bin = atob(cleaned);
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+}
+
+async function streamToBuffer(stream: any): Promise<Uint8Array> {
+  if (!stream) return new Uint8Array(0);
+  if (stream instanceof Uint8Array) return stream;
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk));
+  }
+  let total = 0;
+  for (const c of chunks) total += c.length;
+  const buf = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { buf.set(c, off); off += c.length; }
+  return buf;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -28,6 +68,25 @@ Deno.serve(async (req) => {
   const start = Date.now();
   console.log(`[imap-download-attachment] start accountId=${accountId} uid=${uid} attachmentId=${attachmentId}`);
 
+  // Look up attachment metadata from cache (path + filename + encoding)
+  const svc = getServiceClient();
+  const { data: cached } = await svc
+    .from("email_messages_cache")
+    .select("attachments")
+    .eq("account_id", accountId)
+    .eq("folder", folder)
+    .eq("uid", Number(uid))
+    .maybeSingle();
+
+  const idx = Number(attachmentId);
+  const attMeta = (cached?.attachments as any[] | null)?.[idx];
+  if (!attMeta || !attMeta.path) {
+    return errorResponse(
+      "Attachment-Metadaten nicht gefunden — bitte E-Mail erneut öffnen und neu laden",
+      404,
+    );
+  }
+
   const result = await loadAccountForUser(auth.userId, accountId);
   if (!result.ok) return errorResponse(result.error, result.status);
   const acc = result.account;
@@ -42,48 +101,41 @@ Deno.serve(async (req) => {
   });
 
   try {
-    const parsed = await withAccountLock(accountId, () =>
+    const buffer = await withAccountLock(accountId, () =>
       withTimeout(
         (async () => {
           await client.connect();
           const lock = await client.getMailboxLock(folder);
           try {
-            const fetched = await client.fetchOne(String(uid), { source: true }, { uid: true });
-            if (!fetched) throw new Error("Message not found");
-            return await simpleParser((fetched as any).source);
+            const partData = await client.download(String(uid), attMeta.path, { uid: true });
+            const raw = await streamToBuffer((partData as any)?.content);
+            // Decode transfer-encoding
+            const enc = (attMeta.encoding || "7bit").toLowerCase();
+            if (enc === "base64") return decodeBase64Bytes(raw);
+            if (enc === "quoted-printable") return decodeQuotedPrintableBytes(raw);
+            return raw;
           } finally {
             lock.release();
           }
         })(),
-        90_000,
+        45_000,
         "imap-download-attachment",
       ),
     );
 
-    try {
-      await withTimeout(client.logout(), 5_000, "imap-logout");
-    } catch (e) {
-      console.warn(`[imap-download-attachment] logout error (non-fatal):`, (e as Error).message);
-      try { await client.close(); } catch { /* ignore */ }
-    }
+    try { await withTimeout(client.logout(), 5_000, "imap-logout"); }
+    catch { try { await client.close(); } catch { /* */ } }
 
-    const idx = Number(attachmentId);
-    const att = (parsed.attachments ?? [])[idx];
-    if (!att) return errorResponse("Attachment not found", 404);
+    const filename = attMeta.filename ?? `attachment-${idx + 1}`;
+    const contentType = attMeta.contentType ?? "application/octet-stream";
 
-    const filename = att.filename ?? `attachment-${idx + 1}`;
-    const contentType = att.contentType ?? "application/octet-stream";
-    const content: Uint8Array = att.content instanceof Uint8Array
-      ? att.content
-      : new Uint8Array(att.content);
-
-    console.log(`[imap-download-attachment] done in ${Date.now() - start}ms (${content.byteLength} bytes)`);
-    return new Response(content, {
+    console.log(`[imap-download-attachment] done in ${Date.now() - start}ms (${buffer.byteLength} bytes)`);
+    return new Response(buffer, {
       headers: {
         ...corsHeaders,
         "Content-Type": contentType,
         "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
-        "Content-Length": String(content.byteLength),
+        "Content-Length": String(buffer.byteLength),
       },
     });
   } catch (err) {

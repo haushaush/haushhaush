@@ -106,50 +106,62 @@ export function AccountsModal({ open, onClose, accounts, onAddNew, onRepair, onC
           )}
           {accounts.map((a) => {
             const ok = a.last_test_status === 'ok' || !a.last_test_status;
+            const smtpMissing = !a.smtp_host;
             return (
               <div
                 key={a.id}
-                className="flex items-start gap-3 p-3 border border-border rounded-lg hover:bg-muted/30 transition-colors"
+                className="flex flex-col gap-2 p-3 border border-border rounded-lg hover:bg-muted/30 transition-colors"
               >
-                <div className={cn(
-                  'h-2 w-2 rounded-full mt-2 shrink-0',
-                  ok ? 'bg-emerald-500' : 'bg-destructive',
-                )} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-sm truncate">{a.email_address}</span>
-                    {a.is_default && (
-                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                        <Star className="h-3 w-3 fill-current" /> Standard
-                      </span>
-                    )}
+                <div className="flex items-start gap-3">
+                  <div className={cn(
+                    'h-2 w-2 rounded-full mt-2 shrink-0',
+                    ok ? 'bg-emerald-500' : 'bg-destructive',
+                  )} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-sm truncate">{a.email_address}</span>
+                      {a.is_default && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                          <Star className="h-3 w-3 fill-current" /> Standard
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {a.provider || 'Custom'} · {ok ? 'verbunden' : (
+                        <span className="text-destructive inline-flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" /> Fehler: {a.last_test_status}
+                        </span>
+                      )}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {a.provider || 'Custom'} · {ok ? 'verbunden' : (
-                      <span className="text-destructive inline-flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" /> Fehler: {a.last_test_status}
-                      </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {!a.is_default && (
+                      <Button size="sm" variant="ghost" onClick={() => setDefault(a.id)} disabled={busyId === a.id} title="Als Standard">
+                        <Star className="h-3.5 w-3.5" />
+                      </Button>
                     )}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {!a.is_default && (
-                    <Button size="sm" variant="ghost" onClick={() => setDefault(a.id)} disabled={busyId === a.id} title="Als Standard">
-                      <Star className="h-3.5 w-3.5" />
+                    <Button size="sm" variant="ghost" onClick={() => testAccount(a.id)} disabled={busyId === a.id}>
+                      {busyId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Testen'}
                     </Button>
-                  )}
-                  <Button size="sm" variant="ghost" onClick={() => testAccount(a.id)} disabled={busyId === a.id}>
-                    {busyId === a.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Testen'}
-                  </Button>
-                  {!ok && (
-                    <Button size="sm" variant="outline" onClick={() => onRepair(a)}>
-                      <Wrench className="h-3.5 w-3.5 mr-1" /> Reparieren
+                    {(!ok || smtpMissing) && (
+                      <Button size="sm" variant="outline" onClick={() => onRepair(a)}>
+                        <Wrench className="h-3.5 w-3.5 mr-1" /> Reparieren
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => removeAccount(a.id, a.email_address)} disabled={busyId === a.id}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
-                  )}
-                  <Button size="sm" variant="ghost" onClick={() => removeAccount(a.id, a.email_address)} disabled={busyId === a.id}>
-                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                  </Button>
+                  </div>
                 </div>
+                {smtpMissing && (
+                  <div className="flex items-start gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/20 ml-5">
+                    <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-foreground/80">
+                      <strong>Versand nicht möglich:</strong> SMTP ist nicht konfiguriert.
+                      Klicke auf <em>Reparieren</em>, um SMTP-Server, -Port und -SSL zu hinterlegen.
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}
