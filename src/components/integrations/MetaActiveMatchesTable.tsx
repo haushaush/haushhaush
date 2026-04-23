@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getKundeDisplayName } from "@/lib/kunde-display-name";
 
 export interface ActiveMatch {
   id: string;
@@ -162,7 +163,7 @@ export function MetaActiveMatchesTable({ matches, loading, onChanged }: Props) {
     if (filter !== "all") rows = rows.filter((m) => m.match_type === filter);
     if (q) {
       rows = rows.filter((m) => {
-        const kundeName = (m.kunde?.unternehmen || m.kunde?.client_name || "").toLowerCase();
+        const kundeName = getKundeDisplayName(m.kunde).toLowerCase();
         const accountName = (m.meta_account_name || "").toLowerCase();
         const accountId = (m.meta_account_id || "").toLowerCase();
         return kundeName.includes(q) || accountName.includes(q) || accountId.includes(q);
@@ -173,8 +174,8 @@ export function MetaActiveMatchesTable({ matches, loading, onChanged }: Props) {
       let bv: string | number = "";
       switch (sortKey) {
         case "kunde":
-          av = (a.kunde?.unternehmen || a.kunde?.client_name || "").toLowerCase();
-          bv = (b.kunde?.unternehmen || b.kunde?.client_name || "").toLowerCase();
+          av = getKundeDisplayName(a.kunde).toLowerCase();
+          bv = getKundeDisplayName(b.kunde).toLowerCase();
           break;
         case "account":
           av = (a.meta_account_name || "").toLowerCase();
@@ -223,7 +224,7 @@ export function MetaActiveMatchesTable({ matches, loading, onChanged }: Props) {
       "Verknuepft am",
     ];
     const rows = filtered.map((m) => [
-      m.kunde?.unternehmen || m.kunde?.client_name || "",
+      getKundeDisplayName(m.kunde),
       m.kunde?.id || "",
       m.meta_account_name || "",
       m.meta_account_id,
@@ -382,7 +383,7 @@ export function MetaActiveMatchesTable({ matches, loading, onChanged }: Props) {
                             to={`/kunden?kunde=${row.kunde.id}&tab=meta-ads`}
                             className="text-xs font-medium text-teal-600 dark:text-teal-400 hover:underline"
                           >
-                            {row.kunde.unternehmen || row.kunde.client_name}
+                            {getKundeDisplayName(row.kunde)}
                           </Link>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
@@ -488,7 +489,7 @@ export function MetaActiveMatchesTable({ matches, loading, onChanged }: Props) {
             <AlertDialogDescription>
               Die Verknüpfung zwischen{" "}
               <span className="font-medium text-foreground">
-                {removeTarget?.kunde?.unternehmen || removeTarget?.kunde?.client_name}
+                {getKundeDisplayName(removeTarget?.kunde)}
               </span>{" "}
               und{" "}
               <span className="font-medium text-foreground">{removeTarget?.meta_account_name}</span> wird
