@@ -43,6 +43,12 @@ Deno.serve(async (req) => {
     return errorResponse("Password required for new accounts", 400);
   }
 
+  // SMTP fallbacks: if missing, mirror IMAP host (most providers serve both),
+  // default to port 465 + secure so sending works out of the box.
+  const effective_smtp_host = smtp_host || imap_host;
+  const effective_smtp_port = smtp_port ?? 465;
+  const effective_smtp_secure = smtp_secure !== false;
+
   const svc = getServiceClient();
   const { encryptionKey } = getEnv();
 
