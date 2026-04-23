@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Check, X, ShieldCheck, Info, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,6 +37,7 @@ const STRENGTH_LABELS = ['sehr schwach', 'schwach', 'mittel', 'stark', 'sehr sta
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [vorname, setVorname] = useState('');
@@ -115,13 +117,23 @@ export default function Onboarding() {
         return;
       }
 
-      const { error: teamErr } = await supabase
+      const passwordChangedAt = new Date().toISOString();
+      const { data: teamData, error: teamErr } = await supabase
         .from('team')
-        .update({ must_change_password: false, password_changed_at: new Date().toISOString() })
-        .eq('id', user.id);
+        .update({ must_change_password: false, password_changed_at: passwordChangedAt })
+        .eq('id', user.id)
+        .select('must_change_password, onboarding_completed_at')
+        .single();
+
       if (teamErr) {
-        console.error('team update error', teamErr);
+        toast.error(`Fehler beim Speichern: ${teamErr.message}`);
+        setSubmittingPw(false);
+        return;
       }
+
+      queryClient.setQueryData(['team-onboarding-self', user.id], teamData);
+      await queryClient.invalidateQueries({ queryKey: ['team-onboarding-self', user.id] });
+      await queryClient.refetchQueries({ queryKey: ['team-onboarding-self', user.id], type: 'active' });
 
       toast.success('Passwort erfolgreich geändert');
       setStep(2);
