@@ -1093,6 +1093,62 @@ export default function Einstellungen() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) { setDeleteTarget(null); setDeleteConfirmName(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Mitarbeiter löschen
+            </DialogTitle>
+          </DialogHeader>
+          {deleteTarget && (
+            <div className="space-y-4">
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                <p className="font-medium text-foreground">
+                  Diese Aktion ist <span className="text-destructive">unwiderruflich</span>.
+                </p>
+                <p className="text-muted-foreground mt-1">
+                  Das Konto, alle Rollen und Berechtigungen von <span className="font-medium text-foreground">{deleteTarget.name}</span> werden permanent entfernt. Der Mitarbeiter verliert sofort den Zugriff auf das Portal.
+                </p>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Name</span><span className="font-medium">{deleteTarget.name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">E-Mail</span><span className="font-mono text-xs">{deleteTarget.email}</span></div>
+                {deleteTarget.department && <div className="flex justify-between"><span className="text-muted-foreground">Abteilung</span><span>{deleteTarget.department}</span></div>}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="delete-confirm" className="text-xs">
+                  Tippe <span className="font-mono font-semibold text-foreground">{deleteTarget.name}</span> zur Bestätigung
+                </Label>
+                <Input
+                  id="delete-confirm"
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={deleteTarget.name}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDeleteTarget(null); setDeleteConfirmName(''); }} disabled={deleting}>
+              Abbrechen
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteMember}
+              disabled={
+                deleting ||
+                !deleteTarget ||
+                deleteConfirmName.trim().toLowerCase() !== String(deleteTarget?.name || '').trim().toLowerCase()
+              }
+            >
+              {deleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Lösche...</> : <><Trash2 className="h-4 w-4 mr-2" />Endgültig löschen</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
