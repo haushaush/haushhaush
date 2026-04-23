@@ -116,23 +116,36 @@ async function handleRequest(req: Request): Promise<Response> {
         log("Lock acquired");
 
         try {
-          log(`fetchOne UID=${uid}...`);
-          const msg = await raceTimeout(
-            client.fetchOne(String(uid), { source: true, flags: true, envelope: true }, { uid: true }),
+          log(`fetch UID=${uid} (iterator)...`);
+          // Use async iterator instead of fetchOne — more reliable on slow servers
+          // (fetchOne is known to hang under Deno on some IMAP servers like kasserver/All-Inkl)
+          let captured: any = null;
+          await raceTimeout(
+            (async () => {
+              for await (const m of client.fetch(
+                String(uid),
+                { source: true, flags: true, envelope: true },
+                { uid: true },
+              )) {
+                captured = m;
+                break; // only need the first (and only) message
+              }
+            })(),
             25_000,
-            "fetchOne",
+            "fetch",
           );
-          if (!msg || !(msg as any).source) {
+
+          if (!captured || !captured.source) {
             throw new Error(`Message UID ${uid} not found or has no source`);
           }
-          const sourceLen = (msg as any).source?.length ?? 0;
+          const sourceLen = captured.source?.length ?? 0;
           log(`Fetched, source size=${sourceLen}`);
 
           log("Parsing...");
-          const parsed = await raceTimeout(simpleParser((msg as any).source), 10_000, "parse");
+          const parsed = await raceTimeout(simpleParser(captured.source), 10_000, "parse");
           log("Parsed");
 
-          fetched = { parsed, flags: Array.from((msg as any).flags ?? []) };
+          fetched = { parsed, flags: Array.from(captured.flags ?? []) };
         } finally {
           try { lock.release(); log("Lock released"); } catch { /* ignore */ }
         }
