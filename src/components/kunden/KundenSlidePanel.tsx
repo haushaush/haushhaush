@@ -259,8 +259,9 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
       url.searchParams.delete('tab');
       window.history.replaceState({}, '', url.toString());
     }
-  const deal = d;
+  }, [metaMatches.length]);
 
+  const deal = d;
 
   const handleDelete = async () => {
     setDeleting(true);
