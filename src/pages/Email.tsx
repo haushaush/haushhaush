@@ -37,6 +37,7 @@ import {
   EmailRouteSlug,
   ROUTE_CONFIGS,
   resolveFolderPath,
+  isFolderMissing,
   emailColorFromAddress,
   senderInitials,
   formatEmailDate,
