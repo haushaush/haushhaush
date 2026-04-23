@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Bell, Palette, Users, Hash, X, Check, Search, Loader2, Upload, Building2, ImageIcon } from 'lucide-react';
+import { Bell, Palette, Users, Hash, X, Check, Search, Loader2, Upload, Building2, ImageIcon, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { IntegrationCard, type HealthResult } from '@/components/integrations/IntegrationCard';
 import { IntegrationStatusBar } from '@/components/integrations/IntegrationStatusBar';
@@ -305,15 +305,20 @@ export default function Einstellungen() {
   const [dynamicConfigs, setDynamicConfigs] = useState<Record<string, Record<string, any>>>({});
 
   const [googleDriveConn, setGoogleDriveConn] = useState<{ email: string; connected_at: string } | null>(null);
+  const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
-    const [driveRes, googleDriveRes, teamRes, reqRes, intRes, dealsRes] = await Promise.all([
+    const [driveRes, googleDriveRes, teamRes, reqRes, intRes, dealsRes, rolesRes] = await Promise.all([
       user ? supabase.from('drive_connection').select('*').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
       user ? supabase.from('google_drive_connections').select('google_email, connected_at').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
       supabase.from('team').select('*').order('name'),
       isAdminOrManager ? supabase.from('employee_requests').select('*').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
       user ? supabase.from('integration_settings').select('*').eq('user_id', user.id) : Promise.resolve({ data: [] }),
       supabase.from('close_deals').select('id, client_name, art, wert_eur').order('client_name'),
+      isAdmin ? supabase.from('user_roles').select('user_id').eq('role', 'admin') : Promise.resolve({ data: [] }),
     ]);
     if (driveRes.data) { setDriveConnected(true); setDriveEmail(driveRes.data.google_email); }
     if (googleDriveRes.data) {
@@ -322,6 +327,7 @@ export default function Einstellungen() {
       setGoogleDriveConn(null);
     }
     setTeam(teamRes.data || []);
+    setAdminIds(new Set(((rolesRes.data || []) as any[]).map((r: any) => r.user_id)));
     setRequests((reqRes.data || []) as EmployeeRequest[]);
     setIntegrationSettings((intRes.data || []) as any[]);
     setCloseDeals((dealsRes.data || []) as CloseDeal[]);
@@ -334,7 +340,24 @@ export default function Einstellungen() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [user, isAdminOrManager]);
+  useEffect(() => { fetchData(); }, [user, isAdminOrManager, isAdmin]);
+
+  const handleDeleteMember = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { data, error } = await supabase.functions.invoke('delete-team-member', {
+      body: { user_id: deleteTarget.id, confirm_name: deleteConfirmName },
+    });
+    setDeleting(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || 'Löschen fehlgeschlagen');
+      return;
+    }
+    toast.success(`${deleteTarget.name} wurde gelöscht`);
+    setDeleteTarget(null);
+    setDeleteConfirmName('');
+    fetchData();
+  };
 
   // Handle Google Drive OAuth callback redirect
   useEffect(() => {
@@ -906,16 +929,41 @@ export default function Einstellungen() {
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Name</TableHead><TableHead>E-Mail</TableHead><TableHead>Rolle</TableHead><TableHead className="hidden sm:table-cell">Abteilung</TableHead>
+                  {isAdmin && <TableHead className="text-right w-[120px]">Aktionen</TableHead>}
                 </TableRow></TableHeader>
                 <TableBody>
-                  {team.map(m => (
-                    <TableRow key={m.id}>
-                      <TableCell className="font-medium">{m.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{m.email}</TableCell>
-                      <TableCell><Badge variant="secondary" className="text-xs">{m.rolle}</Badge></TableCell>
-                      <TableCell className="text-muted-foreground hidden sm:table-cell">{m.department || '–'}</TableCell>
-                    </TableRow>
-                  ))}
+                  {team.map(m => {
+                    const isSelf = user?.id === m.id;
+                    const targetIsAdmin = adminIds.has(m.id);
+                    const canDelete = isAdmin && !isSelf && !targetIsAdmin;
+                    return (
+                      <TableRow key={m.id}>
+                        <TableCell className="font-medium">{m.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{m.email}</TableCell>
+                        <TableCell><Badge variant="secondary" className="text-xs">{m.rolle}</Badge></TableCell>
+                        <TableCell className="text-muted-foreground hidden sm:table-cell">{m.department || '–'}</TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-right">
+                            {isSelf ? (
+                              <span className="text-xs text-muted-foreground">Du</span>
+                            ) : targetIsAdmin ? (
+                              <span className="text-xs text-muted-foreground">Admin</span>
+                            ) : canDelete ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => { setDeleteTarget(m); setDeleteConfirmName(''); }}
+                                aria-label={`${m.name} löschen`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            ) : null}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div></CardContent></Card>
@@ -1042,6 +1090,62 @@ export default function Einstellungen() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectOpen(false)}>Abbrechen</Button>
             <Button variant="destructive" onClick={handleReject}>Ablehnen</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) { setDeleteTarget(null); setDeleteConfirmName(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Mitarbeiter löschen
+            </DialogTitle>
+          </DialogHeader>
+          {deleteTarget && (
+            <div className="space-y-4">
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                <p className="font-medium text-foreground">
+                  Diese Aktion ist <span className="text-destructive">unwiderruflich</span>.
+                </p>
+                <p className="text-muted-foreground mt-1">
+                  Das Konto, alle Rollen und Berechtigungen von <span className="font-medium text-foreground">{deleteTarget.name}</span> werden permanent entfernt. Der Mitarbeiter verliert sofort den Zugriff auf das Portal.
+                </p>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-muted-foreground">Name</span><span className="font-medium">{deleteTarget.name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">E-Mail</span><span className="font-mono text-xs">{deleteTarget.email}</span></div>
+                {deleteTarget.department && <div className="flex justify-between"><span className="text-muted-foreground">Abteilung</span><span>{deleteTarget.department}</span></div>}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="delete-confirm" className="text-xs">
+                  Tippe <span className="font-mono font-semibold text-foreground">{deleteTarget.name}</span> zur Bestätigung
+                </Label>
+                <Input
+                  id="delete-confirm"
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={deleteTarget.name}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDeleteTarget(null); setDeleteConfirmName(''); }} disabled={deleting}>
+              Abbrechen
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteMember}
+              disabled={
+                deleting ||
+                !deleteTarget ||
+                deleteConfirmName.trim().toLowerCase() !== String(deleteTarget?.name || '').trim().toLowerCase()
+              }
+            >
+              {deleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Lösche...</> : <><Trash2 className="h-4 w-4 mr-2" />Endgültig löschen</>}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
