@@ -49,9 +49,37 @@ Deno.serve(async (req) => {
           await client.connect();
           const lock = await client.getMailboxLock(folder);
           try {
-            const searchQuery: any = search
-              ? { or: [{ subject: search }, { from: search }, { body: search }] }
-              : { all: true };
+            // Build IMAP SEARCH criteria.
+            // Supports: special tokens "UNSEEN" / "FLAGGED", structured object { unseen, flagged, query },
+            // or a plain text query (subject/from/body).
+            let searchQuery: any = { all: true };
+            if (search) {
+              if (typeof search === "string") {
+                const token = search.trim().toUpperCase();
+                if (token === "UNSEEN" || token === "UNREAD") {
+                  searchQuery = { seen: false };
+                } else if (token === "FLAGGED" || token === "STARRED") {
+                  searchQuery = { flagged: true };
+                } else {
+                  searchQuery = { or: [{ subject: search }, { from: search }, { body: search }] };
+                }
+              } else if (typeof search === "object") {
+                const parts: any = {};
+                if (search.unseen) parts.seen = false;
+                if (search.flagged) parts.flagged = true;
+                if (search.query) {
+                  searchQuery = {
+                    and: [
+                      parts,
+                      { or: [{ subject: search.query }, { from: search.query }, { body: search.query }] },
+                    ],
+                  };
+                } else {
+                  searchQuery = Object.keys(parts).length ? parts : { all: true };
+                }
+              }
+            }
+            console.log(`[imap-list-messages] search criteria=${JSON.stringify(searchQuery)}`);
             const uids: number[] = (await client.search(searchQuery, { uid: true })) ?? [];
             const recent = uids.slice(-Number(limit));
 
