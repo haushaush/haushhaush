@@ -340,7 +340,24 @@ export default function Einstellungen() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [user, isAdminOrManager]);
+  useEffect(() => { fetchData(); }, [user, isAdminOrManager, isAdmin]);
+
+  const handleDeleteMember = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { data, error } = await supabase.functions.invoke('delete-team-member', {
+      body: { user_id: deleteTarget.id, confirm_name: deleteConfirmName },
+    });
+    setDeleting(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || 'Löschen fehlgeschlagen');
+      return;
+    }
+    toast.success(`${deleteTarget.name} wurde gelöscht`);
+    setDeleteTarget(null);
+    setDeleteConfirmName('');
+    fetchData();
+  };
 
   // Handle Google Drive OAuth callback redirect
   useEffect(() => {
