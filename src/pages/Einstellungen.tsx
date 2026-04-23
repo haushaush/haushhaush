@@ -305,6 +305,10 @@ export default function Einstellungen() {
   const [dynamicConfigs, setDynamicConfigs] = useState<Record<string, Record<string, any>>>({});
 
   const [googleDriveConn, setGoogleDriveConn] = useState<{ email: string; connected_at: string } | null>(null);
+  const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
     const [driveRes, googleDriveRes, teamRes, reqRes, intRes, dealsRes] = await Promise.all([
