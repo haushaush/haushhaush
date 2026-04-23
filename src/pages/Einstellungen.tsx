@@ -722,9 +722,9 @@ export default function Einstellungen() {
         </div>
       )}
 
-      <Tabs defaultValue="integrationen">
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="flex flex-wrap h-auto gap-1">
-          <TabsTrigger value="integrationen">Integrationen</TabsTrigger>
+          {isAdmin && <TabsTrigger value="integrationen">Integrationen</TabsTrigger>}
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="benutzer" className="relative">
             Benutzer
@@ -741,6 +741,7 @@ export default function Einstellungen() {
         </TabsList>
 
         {/* ═══════ INTEGRATIONEN TAB ═══════ */}
+        {isAdmin && (
         <TabsContent value="integrationen" className="mt-6 space-y-6">
           {/* Status Bar */}
           <IntegrationStatusBar
