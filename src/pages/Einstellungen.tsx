@@ -255,7 +255,8 @@ function CompanyLogoManager() {
 }
 
 export default function Einstellungen() {
-  const { user, isAdminOrManager } = useAuth();
+  const { user, isAdminOrManager, hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveEmail, setDriveEmail] = useState<string | null>(null);
   const [team, setTeam] = useState<any[]>([]);
