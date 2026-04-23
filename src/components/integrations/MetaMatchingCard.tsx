@@ -37,7 +37,7 @@ interface PendingRow {
   confidence: number;
   reasoning: string | null;
   source: string;
-  kunde?: { client_name: string; unternehmen: string | null };
+  kunde?: { client_name: string; unternehmen: string | null; vor_nachname: string | null };
 }
 
 export function MetaMatchingCard() {
