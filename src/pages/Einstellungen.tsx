@@ -19,6 +19,7 @@ import { IntegrationCard, type HealthResult } from '@/components/integrations/In
 import { IntegrationStatusBar } from '@/components/integrations/IntegrationStatusBar';
 import { PROVIDERS, CATEGORIES } from '@/components/integrations/IntegrationProviders';
 import { ApiPlatform } from '@/components/integrations/ApiPlatform';
+import { MetaMatchingCard } from '@/components/integrations/MetaMatchingCard';
 
 interface EmployeeRequest {
   id: string;
@@ -787,6 +788,11 @@ export default function Einstellungen() {
               <p className="text-sm">Keine Integrationen gefunden.</p>
             </div>
           )}
+
+          {/* Meta Matching admin */}
+          <div className="border-t border-border pt-8">
+            <MetaMatchingCard />
+          </div>
 
           {/* API Platform */}
           <div className="border-t border-border pt-8">

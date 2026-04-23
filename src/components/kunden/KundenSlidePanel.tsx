@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2, FolderKanban } from 'lucide-react';
+import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2, FolderKanban, Facebook } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { KundeMetaAdsTab } from './KundeMetaAdsTab';
 
 const STATUS_STYLES: Record<string, string> = {
   'In Betreuung': 'bg-success/20 text-success',
@@ -240,6 +241,25 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
   const [linkedProjects, setLinkedProjects] = useState<any[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('uebersicht');
+  const [metaMatches, setMetaMatches] = useState<any[]>([]);
+
+  const reloadMetaMatches = useCallback(() => {
+    if (!d?.id) return;
+    supabase.from('kunde_meta_accounts').select('*').eq('kunde_id', d.id)
+      .then(({ data }) => setMetaMatches(data || []));
+  }, [d?.id]);
+
+  useEffect(() => { reloadMetaMatches(); }, [reloadMetaMatches]);
+
+  // Auto-switch to Meta Ads tab when ?tab=meta-ads is in URL on open
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('tab') === 'meta-ads' && metaMatches.length > 0) {
+      setActiveTab('meta-ads');
+      url.searchParams.delete('tab');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [metaMatches.length]);
 
   const deal = d;
 
@@ -384,6 +404,12 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
                 <TabsTrigger value="projekte" className="flex-1">
                   Projekte{!projectsLoading && linkedProjects.length > 0 ? ` (${linkedProjects.length})` : ''}
                 </TabsTrigger>
+                {metaMatches.length > 0 && (
+                  <TabsTrigger value="meta-ads" className="flex-1 gap-1.5">
+                    <Facebook className="h-3.5 w-3.5" />
+                    Meta Ads{metaMatches.length > 1 ? ` (${metaMatches.length})` : ''}
+                  </TabsTrigger>
+                )}
               </TabsList>
             </div>
 
