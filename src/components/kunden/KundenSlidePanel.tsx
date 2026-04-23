@@ -404,6 +404,12 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
                 <TabsTrigger value="projekte" className="flex-1">
                   Projekte{!projectsLoading && linkedProjects.length > 0 ? ` (${linkedProjects.length})` : ''}
                 </TabsTrigger>
+                {metaMatches.length > 0 && (
+                  <TabsTrigger value="meta-ads" className="flex-1 gap-1.5">
+                    <Facebook className="h-3.5 w-3.5" />
+                    Meta Ads{metaMatches.length > 1 ? ` (${metaMatches.length})` : ''}
+                  </TabsTrigger>
+                )}
               </TabsList>
             </div>
 
