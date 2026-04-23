@@ -9,14 +9,52 @@ import {
   getServiceClient,
   mapImapError,
   withAccountLock,
-  withTimeout,
-  IMAP_TIMEOUTS,
 } from "../_shared/imap-helpers.ts";
 
-Deno.serve(async (req) => {
+const HARD_TIMEOUT_MS = 45_000;
+
+function raceTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: number | undefined;
+  const t = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms) as unknown as number;
+  });
+  return Promise.race([p, t]).finally(() => {
+    if (timer !== undefined) clearTimeout(timer);
+  }) as Promise<T>;
+}
+
+Deno.serve((req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Top-level hard budget — guarantees a response within HARD_TIMEOUT_MS
+  return Promise.race<Response>([
+    handleRequest(req),
+    new Promise<Response>((resolve) =>
+      setTimeout(() => {
+        console.error(`[imap-get-message] HARD_TIMEOUT after ${HARD_TIMEOUT_MS}ms`);
+        resolve(
+          jsonResponse(
+            { ok: false, error: "hard_timeout", message: `Hard timeout nach ${HARD_TIMEOUT_MS}ms` },
+            200,
+          ),
+        );
+      }, HARD_TIMEOUT_MS),
+    ),
+  ]).catch((err) => {
+    console.error("[imap-get-message] Fatal:", (err as Error).message);
+    return jsonResponse(
+      { ok: false, error: "fatal", message: String((err as Error).message ?? err) },
+      200,
+    );
+  });
+});
+
+async function handleRequest(req: Request): Promise<Response> {
+  const t0 = Date.now();
+  const log = (msg: string) => console.log(`[imap-get-message +${Date.now() - t0}ms] ${msg}`);
+
   const auth = await getAuthedUser(req);
   if (!auth) return errorResponse("Unauthorized", 401);
 
@@ -25,16 +63,16 @@ Deno.serve(async (req) => {
   const { accountId, folder = "INBOX", uid } = body ?? {};
   if (!accountId || !uid) return errorResponse("Missing accountId or uid", 400);
 
-  const start = Date.now();
-  console.log(`[imap-get-message] start accountId=${accountId} folder=${folder} uid=${uid}`);
+  log(`Start accountId=${accountId} folder=${folder} uid=${uid}`);
 
   const result = await loadAccountForUser(auth.userId, accountId);
   if (!result.ok) return errorResponse(result.error, result.status);
   const acc = result.account;
+  log(`Account loaded ${acc.imap_host}:${acc.imap_port}`);
 
   const svc = getServiceClient();
 
-  // Cache check — return immediately if we already have the body
+  // Cache hit — return immediately
   const { data: cached } = await svc
     .from("email_messages_cache")
     .select("*")
@@ -44,9 +82,10 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (cached?.body_fetched_at) {
-    console.log(`[imap-get-message] cache hit in ${Date.now() - start}ms`);
+    log("Cache HIT");
     return jsonResponse({ ok: true, message: cached, cached: true });
   }
+  log("Cache MISS — fetching from IMAP");
 
   const client = new ImapFlow({
     host: acc.imap_host,
@@ -54,84 +93,117 @@ Deno.serve(async (req) => {
     secure: acc.imap_secure,
     auth: { user: acc.imap_user, pass: acc.password },
     logger: false,
-    ...IMAP_TIMEOUTS,
+    connectTimeout: 10_000,
+    greetingTimeout: 8_000,
+    socketTimeout: 20_000,
   });
 
+  // Attach error handler BEFORE connect so we never miss a socket error event
+  client.on("error", (err: Error) => log(`IMAP error event: ${err.message}`));
+
+  let fetched: { parsed: any; flags: string[] } | null = null;
+  let opError: Error | null = null;
+
   try {
-    const fetched = await withAccountLock(accountId, () =>
-      withTimeout(
-        (async () => {
-          await client.connect();
-          const lock = await client.getMailboxLock(folder);
-          try {
-            const msg = await client.fetchOne(
-              String(uid),
-              { source: true, flags: true, envelope: true },
-              { uid: true },
-            );
-            if (!msg) throw new Error("Message not found");
-            const flags = Array.from((msg as any).flags ?? []);
-            const parsed = await simpleParser((msg as any).source);
-            return { parsed, flags };
-          } finally {
-            lock.release();
+    await withAccountLock(accountId, async () => {
+      try {
+        log("Connecting...");
+        await raceTimeout(client.connect(), 12_000, "connect");
+        log("Connected");
+
+        log(`Acquiring lock on ${folder}...`);
+        const lock = await raceTimeout(client.getMailboxLock(folder), 10_000, "lock");
+        log("Lock acquired");
+
+        try {
+          log(`fetchOne UID=${uid}...`);
+          const msg = await raceTimeout(
+            client.fetchOne(String(uid), { source: true, flags: true, envelope: true }, { uid: true }),
+            25_000,
+            "fetchOne",
+          );
+          if (!msg || !(msg as any).source) {
+            throw new Error(`Message UID ${uid} not found or has no source`);
           }
-        })(),
-        60_000,
-        "imap-get-message",
-      ),
-    );
+          const sourceLen = (msg as any).source?.length ?? 0;
+          log(`Fetched, source size=${sourceLen}`);
 
-    // Always close the connection, but never let cleanup hang the response
-    try {
-      await withTimeout(client.logout(), 5_000, "imap-logout");
-    } catch (e) {
-      console.warn(`[imap-get-message] logout error (non-fatal):`, (e as Error).message);
-      try { await client.close(); } catch { /* ignore */ }
-    }
+          log("Parsing...");
+          const parsed = await raceTimeout(simpleParser((msg as any).source), 10_000, "parse");
+          log("Parsed");
 
-    const { parsed, flags } = fetched;
+          fetched = { parsed, flags: Array.from((msg as any).flags ?? []) };
+        } finally {
+          try { lock.release(); log("Lock released"); } catch { /* ignore */ }
+        }
+      } catch (e) {
+        opError = e as Error;
+        log(`Op error: ${(e as Error).message}`);
+      } finally {
+        // Force socket close — logout can hang on broken connections
+        try {
+          await raceTimeout(client.logout(), 2_000, "logout");
+          log("Logged out");
+        } catch (e) {
+          log(`Logout failed (forcing close): ${(e as Error).message}`);
+          try { await client.close(); } catch { /* ignore */ }
+        }
+      }
+    });
+  } catch (e) {
+    opError = (opError ?? e) as Error;
+  }
 
-    const attachments = (parsed.attachments ?? []).map((a: any, idx: number) => ({
-      filename: a.filename ?? `attachment-${idx + 1}`,
-      contentType: a.contentType,
-      size: a.size,
-      contentId: a.contentId ?? null,
-      attachmentId: idx,
-    }));
+  if (opError || !fetched) {
+    const mapped = mapImapError(opError ?? new Error("Unknown fetch failure"));
+    log(`Returning error: ${mapped.code} ${mapped.message}`);
+    return jsonResponse({ ok: false, error: mapped.code, message: mapped.message }, 200);
+  }
 
-    const updateRow = {
-      account_id: accountId,
-      folder,
-      uid: Number(uid),
-      message_id: parsed.messageId ?? cached?.message_id ?? null,
-      from_address: parsed.from?.value?.[0]?.address ?? cached?.from_address ?? null,
-      from_name: parsed.from?.value?.[0]?.name ?? cached?.from_name ?? null,
-      to_addresses: (parsed.to?.value ?? []).map((a: any) => a.address).filter(Boolean),
-      cc_addresses: (parsed.cc?.value ?? []).map((a: any) => a.address).filter(Boolean),
-      subject: parsed.subject ?? cached?.subject ?? "",
-      snippet: parsed.text ? parsed.text.slice(0, 200).replace(/\s+/g, " ").trim() : null,
-      date: parsed.date ? new Date(parsed.date).toISOString() : cached?.date ?? null,
-      flags,
-      has_attachment: attachments.length > 0,
-      body_text: parsed.text ?? null,
-      body_html: parsed.html || null,
-      attachments,
-      body_fetched_at: new Date().toISOString(),
-    };
+  // TS: narrow non-null after guard
+  const { parsed, flags } = fetched as { parsed: any; flags: string[] };
 
-    const { data: updated } = await svc
+  const attachments = (parsed.attachments ?? []).map((a: any, idx: number) => ({
+    filename: a.filename ?? `attachment-${idx + 1}`,
+    contentType: a.contentType,
+    size: a.size,
+    contentId: a.contentId ?? null,
+    attachmentId: idx,
+  }));
+
+  const updateRow = {
+    account_id: accountId,
+    folder,
+    uid: Number(uid),
+    message_id: parsed.messageId ?? cached?.message_id ?? null,
+    from_address: parsed.from?.value?.[0]?.address ?? cached?.from_address ?? null,
+    from_name: parsed.from?.value?.[0]?.name ?? cached?.from_name ?? null,
+    to_addresses: (parsed.to?.value ?? []).map((a: any) => a.address).filter(Boolean),
+    cc_addresses: (parsed.cc?.value ?? []).map((a: any) => a.address).filter(Boolean),
+    subject: parsed.subject ?? cached?.subject ?? "",
+    snippet: parsed.text ? parsed.text.slice(0, 200).replace(/\s+/g, " ").trim() : null,
+    date: parsed.date ? new Date(parsed.date).toISOString() : cached?.date ?? null,
+    flags,
+    has_attachment: attachments.length > 0,
+    body_text: parsed.text ?? null,
+    body_html: parsed.html || null,
+    attachments,
+    body_fetched_at: new Date().toISOString(),
+  };
+
+  let updated: any = null;
+  try {
+    const upsertRes = await svc
       .from("email_messages_cache")
       .upsert(updateRow, { onConflict: "account_id,folder,uid" })
       .select("*")
       .maybeSingle();
-
-    console.log(`[imap-get-message] done in ${Date.now() - start}ms`);
-    return jsonResponse({ ok: true, message: updated ?? updateRow, cached: false });
-  } catch (err) {
-    console.error(`[imap-get-message] error after ${Date.now() - start}ms:`, (err as Error).message);
-    try { await client.close(); } catch { /* ignore */ }
-    const mapped = mapImapError(err);
-    return jsonResponse({ ok: false, error: mapped.code, message: mapped.message }, 200);
+    updated = upsertRes.data;
+    log("Cache updated");
+  } catch (e) {
+    log(`Cache update failed (non-fatal): ${(e as Error).message}`);
   }
-});
+
+  log(`Done in ${Date.now() - t0}ms`);
+  return jsonResponse({ ok: true, message: updated ?? updateRow, cached: false });
+}
