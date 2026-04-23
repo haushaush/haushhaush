@@ -929,16 +929,41 @@ export default function Einstellungen() {
               <Table>
                 <TableHeader><TableRow>
                   <TableHead>Name</TableHead><TableHead>E-Mail</TableHead><TableHead>Rolle</TableHead><TableHead className="hidden sm:table-cell">Abteilung</TableHead>
+                  {isAdmin && <TableHead className="text-right w-[120px]">Aktionen</TableHead>}
                 </TableRow></TableHeader>
                 <TableBody>
-                  {team.map(m => (
-                    <TableRow key={m.id}>
-                      <TableCell className="font-medium">{m.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{m.email}</TableCell>
-                      <TableCell><Badge variant="secondary" className="text-xs">{m.rolle}</Badge></TableCell>
-                      <TableCell className="text-muted-foreground hidden sm:table-cell">{m.department || '–'}</TableCell>
-                    </TableRow>
-                  ))}
+                  {team.map(m => {
+                    const isSelf = user?.id === m.id;
+                    const targetIsAdmin = adminIds.has(m.id);
+                    const canDelete = isAdmin && !isSelf && !targetIsAdmin;
+                    return (
+                      <TableRow key={m.id}>
+                        <TableCell className="font-medium">{m.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{m.email}</TableCell>
+                        <TableCell><Badge variant="secondary" className="text-xs">{m.rolle}</Badge></TableCell>
+                        <TableCell className="text-muted-foreground hidden sm:table-cell">{m.department || '–'}</TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-right">
+                            {isSelf ? (
+                              <span className="text-xs text-muted-foreground">Du</span>
+                            ) : targetIsAdmin ? (
+                              <span className="text-xs text-muted-foreground">Admin</span>
+                            ) : canDelete ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => { setDeleteTarget(m); setDeleteConfirmName(''); }}
+                                aria-label={`${m.name} löschen`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            ) : null}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div></CardContent></Card>
