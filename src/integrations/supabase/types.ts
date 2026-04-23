@@ -1760,6 +1760,47 @@ export type Database = {
           },
         ]
       }
+      kunde_meta_accounts: {
+        Row: {
+          id: string
+          kunde_id: string
+          match_confidence: number | null
+          match_type: string
+          matched_at: string
+          matched_by: string | null
+          meta_account_id: string
+          meta_account_name: string | null
+        }
+        Insert: {
+          id?: string
+          kunde_id: string
+          match_confidence?: number | null
+          match_type?: string
+          matched_at?: string
+          matched_by?: string | null
+          meta_account_id: string
+          meta_account_name?: string | null
+        }
+        Update: {
+          id?: string
+          kunde_id?: string
+          match_confidence?: number | null
+          match_type?: string
+          matched_at?: string
+          matched_by?: string | null
+          meta_account_id?: string
+          meta_account_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kunde_meta_accounts_kunde_id_fkey"
+            columns: ["kunde_id"]
+            isOneToOne: false
+            referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meta_insights: {
         Row: {
           ad_account_id: string
@@ -1959,6 +2000,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      pending_meta_matches: {
+        Row: {
+          confidence: number
+          created_at: string
+          id: string
+          kunde_id: string
+          meta_account_id: string
+          meta_account_name: string | null
+          reasoning: string | null
+          source: string
+        }
+        Insert: {
+          confidence: number
+          created_at?: string
+          id?: string
+          kunde_id: string
+          meta_account_id: string
+          meta_account_name?: string | null
+          reasoning?: string | null
+          source?: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          id?: string
+          kunde_id?: string
+          meta_account_id?: string
+          meta_account_name?: string | null
+          reasoning?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_meta_matches_kunde_id_fkey"
+            columns: ["kunde_id"]
+            isOneToOne: false
+            referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       probewoche_candidates: {
         Row: {
@@ -2243,6 +2325,38 @@ export type Database = {
           {
             foreignKeyName: "recurring_revenues_close_deal_id_fkey"
             columns: ["close_deal_id"]
+            isOneToOne: false
+            referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rejected_meta_matches: {
+        Row: {
+          id: string
+          kunde_id: string
+          meta_account_id: string
+          rejected_at: string
+          rejected_by: string | null
+        }
+        Insert: {
+          id?: string
+          kunde_id: string
+          meta_account_id: string
+          rejected_at?: string
+          rejected_by?: string | null
+        }
+        Update: {
+          id?: string
+          kunde_id?: string
+          meta_account_id?: string
+          rejected_at?: string
+          rejected_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rejected_meta_matches_kunde_id_fkey"
+            columns: ["kunde_id"]
             isOneToOne: false
             referencedRelation: "close_deals"
             referencedColumns: ["id"]
