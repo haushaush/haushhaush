@@ -136,62 +136,40 @@ async function handleRequest(req: Request): Promise<Response> {
           if (!envMsg) throw new Error(`Message UID ${uid} not found`);
           log("Envelope fetched");
 
-          // Step 2: download the full message source via streaming download()
-          // Pass empty string as `part` for the entire message (docs vary by version).
-          log("Downloading source...");
-          const dl: any = await raceTimeout(
-            client.download(String(uid), "", { uid: true }),
-            25_000,
-            "download",
-          );
-          log(`download returned keys=${dl ? Object.keys(dl).join(",") : "null"}`);
-          const stream = dl?.content ?? dl?.stream ?? null;
-          if (!stream) throw new Error(`Download returned no stream (keys=${dl ? Object.keys(dl).join(",") : "null"})`);
-
-          // Read the stream — could be a Web ReadableStream or a Node Readable
-          log("Reading stream...");
-          const chunks: Uint8Array[] = [];
+          // Step 2: fetch the full RFC822 source via bodyParts
+          // (more reliable than `source: true` and `download()` on kasserver/All-Inkl)
+          log("Fetching source via bodyParts...");
+          let sourceMsg: any = null;
           await raceTimeout(
-            new Promise<void>((resolve, reject) => {
-              if (typeof (stream as any).getReader === "function") {
-                // Web ReadableStream
-                (async () => {
-                  const reader = (stream as ReadableStream<Uint8Array>).getReader();
-                  try {
-                    while (true) {
-                      const { value, done } = await reader.read();
-                      if (done) break;
-                      if (value) chunks.push(value);
-                    }
-                    resolve();
-                  } catch (e) { reject(e); }
-                })();
-              } else if (typeof (stream as any).on === "function") {
-                // Node-style Readable
-                (stream as any).on("data", (chunk: Uint8Array | string) => {
-                  if (typeof chunk === "string") {
-                    chunks.push(new TextEncoder().encode(chunk));
-                  } else {
-                    chunks.push(chunk);
-                  }
-                });
-                (stream as any).on("end", () => resolve());
-                (stream as any).on("error", (err: Error) => reject(err));
-              } else {
-                reject(new Error("Stream has neither getReader nor on()"));
+            (async () => {
+              for await (const m of client.fetch(
+                String(uid),
+                { bodyParts: [""] },
+                { uid: true },
+              )) {
+                sourceMsg = m;
+                break;
               }
-            }),
-            20_000,
-            "stream-read",
+            })(),
+            25_000,
+            "fetch-source",
           );
-          const totalLen = chunks.reduce((sum, c) => sum + c.length, 0);
-          const source = new Uint8Array(totalLen);
-          let offset = 0;
-          for (const c of chunks) { source.set(c, offset); offset += c.length; }
-          log(`Source downloaded: ${totalLen} bytes`);
+          if (!sourceMsg) throw new Error("Source fetch returned no message");
+          // bodyParts is a Map<string, Uint8Array>
+          const bp = sourceMsg.bodyParts;
+          let sourceBuf: Uint8Array | null = null;
+          if (bp instanceof Map) {
+            sourceBuf = bp.get("") ?? bp.get("TEXT") ?? bp.values().next().value ?? null;
+          } else if (bp && typeof bp === "object") {
+            sourceBuf = bp[""] ?? bp["TEXT"] ?? Object.values(bp)[0] ?? null;
+          }
+          if (!sourceBuf || sourceBuf.length === 0) {
+            throw new Error(`No source bytes returned (bodyParts type=${bp?.constructor?.name})`);
+          }
+          log(`Source fetched: ${sourceBuf.length} bytes`);
 
           log("Parsing...");
-          const parsed = await raceTimeout(simpleParser(source), 10_000, "parse");
+          const parsed = await raceTimeout(simpleParser(sourceBuf), 10_000, "parse");
           log("Parsed");
 
           fetched = { parsed, flags: Array.from(envMsg.flags ?? []) };
