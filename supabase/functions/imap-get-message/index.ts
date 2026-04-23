@@ -137,14 +137,16 @@ async function handleRequest(req: Request): Promise<Response> {
           log("Envelope fetched");
 
           // Step 2: download the full message source via streaming download()
-          // This works around fetchOne hangs on slow servers (kasserver/All-Inkl).
+          // Pass empty string as `part` for the entire message (docs vary by version).
           log("Downloading source...");
           const dl: any = await raceTimeout(
-            client.download(String(uid), undefined, { uid: true }),
+            client.download(String(uid), "", { uid: true }),
             25_000,
             "download",
           );
-          if (!dl?.content) throw new Error("Download returned no content stream");
+          log(`download returned keys=${dl ? Object.keys(dl).join(",") : "null"}`);
+          const stream = dl?.content ?? dl?.stream ?? null;
+          if (!stream) throw new Error(`Download returned no stream (keys=${dl ? Object.keys(dl).join(",") : "null"})`);
 
           // Read the stream into a buffer with its own timeout
           log("Reading stream...");
