@@ -2595,12 +2595,15 @@ export type Database = {
           id: string
           mitarbeiter_status: string | null
           mitarbeiter_typ: string | null
+          must_change_password: boolean | null
           name: string
           nda_unterschrieben: boolean | null
           notion_id: string | null
           notion_url: string | null
           notizen: string | null
           onboarding_abgeschlossen: boolean | null
+          onboarding_completed_at: string | null
+          password_changed_at: string | null
           portal_rolle: string | null
           position: string | null
           probezeit_ende: string | null
@@ -2628,12 +2631,15 @@ export type Database = {
           id?: string
           mitarbeiter_status?: string | null
           mitarbeiter_typ?: string | null
+          must_change_password?: boolean | null
           name: string
           nda_unterschrieben?: boolean | null
           notion_id?: string | null
           notion_url?: string | null
           notizen?: string | null
           onboarding_abgeschlossen?: boolean | null
+          onboarding_completed_at?: string | null
+          password_changed_at?: string | null
           portal_rolle?: string | null
           position?: string | null
           probezeit_ende?: string | null
@@ -2661,12 +2667,15 @@ export type Database = {
           id?: string
           mitarbeiter_status?: string | null
           mitarbeiter_typ?: string | null
+          must_change_password?: boolean | null
           name?: string
           nda_unterschrieben?: boolean | null
           notion_id?: string | null
           notion_url?: string | null
           notizen?: string | null
           onboarding_abgeschlossen?: boolean | null
+          onboarding_completed_at?: string | null
+          password_changed_at?: string | null
           portal_rolle?: string | null
           position?: string | null
           probezeit_ende?: string | null
@@ -2680,6 +2689,93 @@ export type Database = {
           vertrag_typ?: string | null
           wochenstunden?: number | null
           zugaenge?: string[] | null
+        }
+        Relationships: []
+      }
+      team_hr_data: {
+        Row: {
+          adresse_land: string | null
+          adresse_ort: string | null
+          adresse_plz: string | null
+          adresse_strasse: string | null
+          bank_name: string | null
+          bic: string | null
+          created_at: string
+          familienstand: string | null
+          geburtsdatum: string | null
+          geburtsort: string | null
+          iban: string | null
+          kinder_anzahl: number | null
+          konfession: string | null
+          krankenkasse: string | null
+          krankenversicherung_nummer: string | null
+          notfallkontakt_beziehung: string | null
+          notfallkontakt_name: string | null
+          notfallkontakt_telefon: string | null
+          rentenversicherungsnummer: string | null
+          sozialversicherungsnummer: string | null
+          staatsangehoerigkeit: string | null
+          steuer_id: string | null
+          steuerklasse: number | null
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          adresse_land?: string | null
+          adresse_ort?: string | null
+          adresse_plz?: string | null
+          adresse_strasse?: string | null
+          bank_name?: string | null
+          bic?: string | null
+          created_at?: string
+          familienstand?: string | null
+          geburtsdatum?: string | null
+          geburtsort?: string | null
+          iban?: string | null
+          kinder_anzahl?: number | null
+          konfession?: string | null
+          krankenkasse?: string | null
+          krankenversicherung_nummer?: string | null
+          notfallkontakt_beziehung?: string | null
+          notfallkontakt_name?: string | null
+          notfallkontakt_telefon?: string | null
+          rentenversicherungsnummer?: string | null
+          sozialversicherungsnummer?: string | null
+          staatsangehoerigkeit?: string | null
+          steuer_id?: string | null
+          steuerklasse?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          adresse_land?: string | null
+          adresse_ort?: string | null
+          adresse_plz?: string | null
+          adresse_strasse?: string | null
+          bank_name?: string | null
+          bic?: string | null
+          created_at?: string
+          familienstand?: string | null
+          geburtsdatum?: string | null
+          geburtsort?: string | null
+          iban?: string | null
+          kinder_anzahl?: number | null
+          konfession?: string | null
+          krankenkasse?: string | null
+          krankenversicherung_nummer?: string | null
+          notfallkontakt_beziehung?: string | null
+          notfallkontakt_name?: string | null
+          notfallkontakt_telefon?: string | null
+          rentenversicherungsnummer?: string | null
+          sozialversicherungsnummer?: string | null
+          staatsangehoerigkeit?: string | null
+          steuer_id?: string | null
+          steuerklasse?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
         }
         Relationships: []
       }
