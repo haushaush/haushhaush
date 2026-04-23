@@ -55,6 +55,7 @@ import DrivePapierkorb from "./pages/drive/DrivePapierkorb.tsx";
 import N8nWorkflowsPage from "./pages/automationen/N8nWorkflows.tsx";
 import WebhooksPage from "./pages/automationen/Webhooks.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
+import EmailPage from "./pages/Email.tsx";
 import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
 
 const queryClient = new QueryClient();
@@ -135,6 +136,8 @@ const App = () => (
                 <Route path="/hr/mitarbeiter/:id" element={<DL><MitarbeiterDetail /></DL>} />
                 <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
                 <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
+                <Route path="/email" element={<DL><EmailPage /></DL>} />
+                <Route path="/email/:slug" element={<DL><EmailPage /></DL>} />
                 <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
                 <Route path="/aria" element={<DL><AriaPage /></DL>} />
                 <Route path="/automationen" element={<Navigate to="/automationen/aria" replace />} />
