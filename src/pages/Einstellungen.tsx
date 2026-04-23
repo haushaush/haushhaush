@@ -20,6 +20,7 @@ import { IntegrationStatusBar } from '@/components/integrations/IntegrationStatu
 import { PROVIDERS, CATEGORIES } from '@/components/integrations/IntegrationProviders';
 import { ApiPlatform } from '@/components/integrations/ApiPlatform';
 import { MetaMatchingCard } from '@/components/integrations/MetaMatchingCard';
+import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
 
 interface EmployeeRequest {
   id: string;
@@ -254,7 +255,8 @@ function CompanyLogoManager() {
 }
 
 export default function Einstellungen() {
-  const { user, isAdminOrManager } = useAuth();
+  const { user, isAdminOrManager, hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveEmail, setDriveEmail] = useState<string | null>(null);
   const [team, setTeam] = useState<any[]>([]);
@@ -705,6 +707,9 @@ export default function Einstellungen() {
               </span>
             )}
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="mitarbeiter-erstellen">Mitarbeiter erstellen</TabsTrigger>
+          )}
           <TabsTrigger value="benachrichtigungen">Benachrichtigungen</TabsTrigger>
         </TabsList>
 
@@ -888,6 +893,13 @@ export default function Einstellungen() {
           </div>
           <Button variant="outline"><Users className="h-4 w-4 mr-2" />Per E-Mail einladen</Button>
         </TabsContent>
+
+        {/* ═══════ MITARBEITER ERSTELLEN TAB ═══════ */}
+        {isAdmin && (
+          <TabsContent value="mitarbeiter-erstellen" className="mt-6">
+            <CreateTeamMemberTab />
+          </TabsContent>
+        )}
 
         {/* ═══════ BENACHRICHTIGUNGEN TAB ═══════ */}
         <TabsContent value="benachrichtigungen" className="mt-4 space-y-6">
