@@ -7,6 +7,19 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Play, Check, X as XIcon, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { MetaActiveMatchesTable, type ActiveMatch } from "./MetaActiveMatchesTable";
+import { getKundeDisplayName } from "@/lib/kunde-display-name";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { RotateCcw } from "lucide-react";
 
 interface RunSummary {
   ran_at: string;
