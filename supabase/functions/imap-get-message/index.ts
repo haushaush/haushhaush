@@ -116,36 +116,62 @@ async function handleRequest(req: Request): Promise<Response> {
         log("Lock acquired");
 
         try {
-          log(`fetch UID=${uid} (iterator)...`);
-          // Use async iterator instead of fetchOne — more reliable on slow servers
-          // (fetchOne is known to hang under Deno on some IMAP servers like kasserver/All-Inkl)
-          let captured: any = null;
+          // Step 1: fetch envelope + flags only (fast, lightweight)
+          log(`fetch envelope UID=${uid}...`);
+          let envMsg: any = null;
           await raceTimeout(
             (async () => {
               for await (const m of client.fetch(
                 String(uid),
-                { source: true, flags: true, envelope: true },
+                { envelope: true, flags: true },
                 { uid: true },
               )) {
-                captured = m;
-                break; // only need the first (and only) message
+                envMsg = m;
+                break;
               }
             })(),
-            25_000,
-            "fetch",
+            10_000,
+            "fetch-envelope",
           );
+          if (!envMsg) throw new Error(`Message UID ${uid} not found`);
+          log("Envelope fetched");
 
-          if (!captured || !captured.source) {
-            throw new Error(`Message UID ${uid} not found or has no source`);
-          }
-          const sourceLen = captured.source?.length ?? 0;
-          log(`Fetched, source size=${sourceLen}`);
+          // Step 2: download the full message source via streaming download()
+          // This works around fetchOne hangs on slow servers (kasserver/All-Inkl).
+          log("Downloading source...");
+          const dl: any = await raceTimeout(
+            client.download(String(uid), undefined, { uid: true }),
+            25_000,
+            "download",
+          );
+          if (!dl?.content) throw new Error("Download returned no content stream");
+
+          // Read the stream into a buffer with its own timeout
+          log("Reading stream...");
+          const chunks: Uint8Array[] = [];
+          const reader = (dl.content as ReadableStream<Uint8Array>).getReader();
+          await raceTimeout(
+            (async () => {
+              while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                if (value) chunks.push(value);
+              }
+            })(),
+            20_000,
+            "stream-read",
+          );
+          const totalLen = chunks.reduce((sum, c) => sum + c.length, 0);
+          const source = new Uint8Array(totalLen);
+          let offset = 0;
+          for (const c of chunks) { source.set(c, offset); offset += c.length; }
+          log(`Source downloaded: ${totalLen} bytes`);
 
           log("Parsing...");
-          const parsed = await raceTimeout(simpleParser(captured.source), 10_000, "parse");
+          const parsed = await raceTimeout(simpleParser(source), 10_000, "parse");
           log("Parsed");
 
-          fetched = { parsed, flags: Array.from(captured.flags ?? []) };
+          fetched = { parsed, flags: Array.from(envMsg.flags ?? []) };
         } finally {
           try { lock.release(); log("Lock released"); } catch { /* ignore */ }
         }
