@@ -120,19 +120,6 @@ export default function Auth() {
             </Button>
           </form>
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-            <div className="relative flex justify-center"><span className="bg-card px-3 text-xs text-muted-foreground">oder</span></div>
-          </div>
-
-          <Button
-            variant="outline"
-            className="w-full h-12 rounded-[10px] text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-            onClick={() => navigate('/registrierung')}
-          >
-            Als Mitarbeiter registrieren →
-          </Button>
-
           <p className="text-center mt-4">
             <button className="text-xs text-muted-foreground hover:text-primary transition-colors" onClick={() => toast.info('Kontaktiere einen Admin für Passwort-Reset.')}>
               Passwort vergessen?
