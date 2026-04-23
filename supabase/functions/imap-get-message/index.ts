@@ -40,32 +40,45 @@ interface AttachmentMeta {
   path: string;
 }
 
+// Returns lowercase "type/subtype" tuple from a node — handles imapflow's
+// combined `type` ("text/plain") or split (`type`/`subtype`) forms.
+function nodeMime(struct: any): { type: string; subtype: string } {
+  const t = (struct.type || "").toString().toLowerCase();
+  if (t.includes("/")) {
+    const [a, b = ""] = t.split("/");
+    return { type: a, subtype: b };
+  }
+  return { type: t, subtype: (struct.subtype || "").toString().toLowerCase() };
+}
+
+function nodeChildren(struct: any): any[] | null {
+  const c = struct.childNodes || struct.children || struct.childParts || null;
+  return Array.isArray(c) && c.length > 0 ? c : null;
+}
+
 function findTextParts(struct: any, path = ""): TextPart[] {
   if (!struct) return [];
   const results: TextPart[] = [];
 
-  // imapflow may use childNodes or children
-  const children = struct.childNodes || struct.children || null;
-  if (Array.isArray(children) && children.length > 0) {
+  const children = nodeChildren(struct);
+  if (children) {
     children.forEach((child: any, idx: number) => {
-      const newPath = path ? `${path}.${idx + 1}` : String(idx + 1);
+      // imapflow nodes may already carry their own .part path — prefer it
+      const newPath = child.part || (path ? `${path}.${idx + 1}` : String(idx + 1));
       results.push(...findTextParts(child, newPath));
     });
     return results;
   }
 
-  const type = (struct.type || "").toLowerCase();
-  const subtype = (struct.subtype || "").toLowerCase();
-  const mimeType = `${type}/${subtype}`;
+  const { type, subtype } = nodeMime(struct);
   const disposition = (struct.disposition || "").toLowerCase();
   const filename = struct.dispositionParameters?.filename || struct.parameters?.name;
   const isAttachment = disposition === "attachment" || (!!filename && type !== "text");
 
-  // Some servers report mimeType "text/plain" or just type="text"
   if (!isAttachment && type === "text" && (subtype === "plain" || subtype === "html")) {
     results.push({
-      type: mimeType as TextPart["type"],
-      path: path || "1",
+      type: `${type}/${subtype}` as TextPart["type"],
+      path: struct.part || path || "1",
       size: struct.size || 0,
       encoding: (struct.encoding || "7bit").toLowerCase(),
       charset: (struct.parameters?.charset || struct.dispositionParameters?.charset || "utf-8").toLowerCase(),
@@ -76,23 +89,23 @@ function findTextParts(struct: any, path = ""): TextPart[] {
 
 function findAttachments(struct: any, path = ""): AttachmentMeta[] {
   if (!struct) return [];
-  const children = struct.childNodes || struct.children || null;
-  if (Array.isArray(children) && children.length > 0) {
+  const children = nodeChildren(struct);
+  if (children) {
     return children.flatMap((child: any, idx: number) => {
-      const p = path ? `${path}.${idx + 1}` : String(idx + 1);
+      const p = child.part || (path ? `${path}.${idx + 1}` : String(idx + 1));
       return findAttachments(child, p);
     });
   }
   const disposition = (struct.disposition || "").toLowerCase();
   const filename = struct.dispositionParameters?.filename || struct.parameters?.name;
-  const type = (struct.type || "").toLowerCase();
+  const { type, subtype } = nodeMime(struct);
   if (disposition === "attachment" || (filename && type !== "text")) {
     return [{
       filename: filename || "unbenannt",
       size: struct.size || 0,
-      contentType: `${struct.type}/${struct.subtype}`.toLowerCase(),
+      contentType: `${type}/${subtype}`,
       encoding: (struct.encoding || "7bit").toLowerCase(),
-      path: path || "1",
+      path: struct.part || path || "1",
     }];
   }
   return [];
