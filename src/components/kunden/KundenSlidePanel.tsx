@@ -241,8 +241,26 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
   const [linkedProjects, setLinkedProjects] = useState<any[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('uebersicht');
+  const [metaMatches, setMetaMatches] = useState<any[]>([]);
 
-  const deal = d;
+  const reloadMetaMatches = useCallback(() => {
+    if (!d?.id) return;
+    supabase.from('kunde_meta_accounts').select('*').eq('kunde_id', d.id)
+      .then(({ data }) => setMetaMatches(data || []));
+  }, [d?.id]);
+
+  useEffect(() => { reloadMetaMatches(); }, [reloadMetaMatches]);
+
+  // Auto-switch to Meta Ads tab when ?tab=meta-ads is in URL on open
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('tab') === 'meta-ads' && metaMatches.length > 0) {
+      setActiveTab('meta-ads');
+      url.searchParams.delete('tab');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [metaMatches.length]);
+
 
   const handleDelete = async () => {
     setDeleting(true);
