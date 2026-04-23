@@ -894,6 +894,13 @@ export default function Einstellungen() {
           <Button variant="outline"><Users className="h-4 w-4 mr-2" />Per E-Mail einladen</Button>
         </TabsContent>
 
+        {/* ═══════ MITARBEITER ERSTELLEN TAB ═══════ */}
+        {isAdmin && (
+          <TabsContent value="mitarbeiter-erstellen" className="mt-6">
+            <CreateTeamMemberTab />
+          </TabsContent>
+        )}
+
         {/* ═══════ BENACHRICHTIGUNGEN TAB ═══════ */}
         <TabsContent value="benachrichtigungen" className="mt-4 space-y-6">
           {isAdminOrManager && <SlackWebhookConfig />}
