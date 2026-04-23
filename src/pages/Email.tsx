@@ -525,7 +525,7 @@ export default function EmailPage() {
         <div className="border-r border-border overflow-y-auto">
           {folderMissing && !messagesQuery.isLoading && (
             <div className="m-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs flex items-start gap-2">
-              <AlertCircleIcon className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
               <div className="flex-1">
                 <div className="font-medium text-foreground">Ordner nicht verfügbar</div>
                 <div className="text-muted-foreground mt-0.5">
