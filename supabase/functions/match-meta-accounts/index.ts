@@ -27,12 +27,13 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const META_API = "https://graph.facebook.com/v19.0";
 
 // ----- string utils -----
+// Generic insurance / company stopwords. Brand names (Allianz, HanseMerkur, …)
+// are intentionally NOT in here — they are useful signal in combo matching.
 const STOPWORDS = new Set([
   "pkv", "bu", "tkv", "kv", "versicherung", "versicherungen",
   "gmbh", "ug", "ag", "ohg", "kg", "e.k.", "ek",
   "digital", "marketing", "recruiting", "beihilfe",
-  "tierkrankenversicherung", "hanse", "merkur", "allianz", "axa",
-  "signal", "iduna", "barmenia", "gothaer", "ergo", "arag",
+  "tierkrankenversicherung",
   "büro", "buero", "office",
 ]);
 
