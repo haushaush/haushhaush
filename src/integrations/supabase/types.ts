@@ -2776,6 +2776,48 @@ export type Database = {
           },
         ]
       }
+      user_permissions: {
+        Row: {
+          can_manage_settings: boolean
+          can_view_close: boolean
+          can_view_finanzen: boolean
+          can_view_fulfillment: boolean
+          can_view_kunden: boolean
+          can_view_meta_ads: boolean
+          can_view_projekte: boolean
+          can_view_sales_kpis: boolean
+          can_view_team_hr: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_manage_settings?: boolean
+          can_view_close?: boolean
+          can_view_finanzen?: boolean
+          can_view_fulfillment?: boolean
+          can_view_kunden?: boolean
+          can_view_meta_ads?: boolean
+          can_view_projekte?: boolean
+          can_view_sales_kpis?: boolean
+          can_view_team_hr?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_manage_settings?: boolean
+          can_view_close?: boolean
+          can_view_finanzen?: boolean
+          can_view_fulfillment?: boolean
+          can_view_kunden?: boolean
+          can_view_meta_ads?: boolean
+          can_view_projekte?: boolean
+          can_view_sales_kpis?: boolean
+          can_view_team_hr?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
