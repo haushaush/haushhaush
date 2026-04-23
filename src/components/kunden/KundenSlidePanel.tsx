@@ -557,6 +557,16 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
                 )}
               </div>
             </TabsContent>
+
+            {metaMatches.length > 0 && (
+              <TabsContent value="meta-ads" className="flex-1 m-0 overflow-y-auto">
+                <KundeMetaAdsTab
+                  kundeId={d.id}
+                  matches={metaMatches as any}
+                  onMatchesChange={reloadMetaMatches}
+                />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
 
