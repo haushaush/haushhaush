@@ -258,6 +258,32 @@ function CompanyLogoManager() {
 export default function Einstellungen() {
   const { user, isAdminOrManager, hasRole } = useAuth();
   const isAdmin = hasRole('admin');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const defaultTab = isAdmin ? 'integrationen' : 'branding';
+  const adminOnlyTabs = ['integrationen', 'mitarbeiter-erstellen'];
+  const allowedTabs = isAdmin
+    ? ['integrationen', 'branding', 'benutzer', 'mitarbeiter-erstellen', 'benachrichtigungen']
+    : ['branding', 'benutzer', 'benachrichtigungen'];
+  const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
+
+  // Redirect non-admins away from admin-only tabs
+  useEffect(() => {
+    if (!isAdmin && requestedTab && adminOnlyTabs.includes(requestedTab)) {
+      toast.error('Dieser Bereich ist nur für Administratoren');
+      const params = new URLSearchParams(searchParams);
+      params.set('tab', 'branding');
+      setSearchParams(params, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, requestedTab]);
+
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', value);
+    setSearchParams(params, { replace: true });
+  };
+
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveEmail, setDriveEmail] = useState<string | null>(null);
   const [team, setTeam] = useState<any[]>([]);
