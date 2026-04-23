@@ -120,6 +120,7 @@ export default function EmailPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedUid, setSelectedUid] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [addPrefill, setAddPrefill] = useState<any>(null);
   const [accountsOpen, setAccountsOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composePrefill, setComposePrefill] = useState<{ to?: string[]; subject?: string; body?: string }>({});
