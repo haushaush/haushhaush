@@ -311,13 +311,14 @@ export default function Einstellungen() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
-    const [driveRes, googleDriveRes, teamRes, reqRes, intRes, dealsRes] = await Promise.all([
+    const [driveRes, googleDriveRes, teamRes, reqRes, intRes, dealsRes, rolesRes] = await Promise.all([
       user ? supabase.from('drive_connection').select('*').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
       user ? supabase.from('google_drive_connections').select('google_email, connected_at').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
       supabase.from('team').select('*').order('name'),
       isAdminOrManager ? supabase.from('employee_requests').select('*').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
       user ? supabase.from('integration_settings').select('*').eq('user_id', user.id) : Promise.resolve({ data: [] }),
       supabase.from('close_deals').select('id, client_name, art, wert_eur').order('client_name'),
+      isAdmin ? supabase.from('user_roles').select('user_id').eq('role', 'admin') : Promise.resolve({ data: [] }),
     ]);
     if (driveRes.data) { setDriveConnected(true); setDriveEmail(driveRes.data.google_email); }
     if (googleDriveRes.data) {
