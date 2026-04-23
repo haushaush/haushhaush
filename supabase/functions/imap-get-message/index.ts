@@ -162,7 +162,6 @@ async function handleRequest(req: Request): Promise<Response> {
 
           fetched = { parsed, flags: Array.from(captured.flags ?? []) };
         } finally {
-        } finally {
           try { lock.release(); log("Lock released"); } catch { /* ignore */ }
         }
       } catch (e) {
