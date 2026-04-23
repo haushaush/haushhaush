@@ -115,6 +115,61 @@ export async function loadAccountForUser(
   };
 }
 
+// Per-instance lock map: serializes IMAP work for the same account
+// so we don't open multiple concurrent connections to the same mailbox
+// (some servers — e.g. IONOS — reject parallel sessions).
+const accountLocks = new Map<string, Promise<void>>();
+
+export async function withAccountLock<T>(
+  accountId: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  while (accountLocks.has(accountId)) {
+    try {
+      await accountLocks.get(accountId);
+    } catch {
+      /* ignore — previous holder failed, we still want to proceed */
+    }
+  }
+  let release!: () => void;
+  const lockPromise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  accountLocks.set(accountId, lockPromise);
+  try {
+    return await fn();
+  } finally {
+    accountLocks.delete(accountId);
+    release();
+  }
+}
+
+// Race a promise against a hard timeout so the function can never hang
+// past the deadline. The timer is cleared on resolve/reject either way.
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label = "operation",
+): Promise<T> {
+  let timer: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms) as unknown as number;
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+// Standard IMAP connection options with explicit timeouts so a slow or
+// dead server can never wedge an edge function forever.
+export const IMAP_TIMEOUTS = {
+  connectTimeout: 15_000,
+  greetingTimeout: 10_000,
+  socketTimeout: 30_000,
+} as const;
+
 // Map IMAP errors to friendly codes
 export function mapImapError(err: unknown): { code: string; message: string } {
   const e = err as { code?: string; responseStatus?: string; message?: string; authenticationFailed?: boolean };
