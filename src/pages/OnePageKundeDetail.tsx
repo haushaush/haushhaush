@@ -769,77 +769,61 @@ function CsvImportModal({
   async function doImport() {
     setImporting(true);
     setProgress({ done: 0, total: leads.length });
-    const res = { inserted: 0, skipped: 0, errors: [] as string[] };
 
-    for (let i = 0; i < leads.length; i++) {
-      const lead = leads[i];
-      try {
-        // Dedupe check on (project, lower(email), received_at)
-        if (lead.email) {
-          const { data: existing } = await supabase
-            .from('onepage_project_leads')
-            .select('id')
-            .eq('project_id', projectId)
-            .ilike('email', lead.email)
-            .eq('received_at', lead.received_at)
-            .maybeSingle();
-          if (existing) {
-            res.skipped++;
-            setProgress({ done: i + 1, total: leads.length });
-            continue;
-          }
-        }
-
-        const payload: Record<string, unknown> = {
+    try {
+      const payload = leads.map((lead) => ({
+        vorname: lead.vorname,
+        nachname: lead.nachname,
+        email: lead.email,
+        telefon: lead.telefon,
+        nachricht: lead.nachricht,
+        unternehmen: lead.unternehmen,
+        utm_source: lead.utm_source,
+        utm_medium: lead.utm_medium,
+        utm_campaign: lead.utm_campaign,
+        utm_content: lead.utm_content,
+        utm_term: lead.utm_term,
+        received_at: lead.received_at,
+        raw_data: {
           ...lead.raw_data,
           _parsed_unternehmen: lead.unternehmen,
           _parsed_utm_content: lead.utm_content,
           _parsed_utm_term: lead.utm_term,
-        };
+        },
+      }));
 
-        const { error } = await supabase.from('onepage_project_leads').insert({
-          project_id: projectId,
-          vorname: lead.vorname,
-          nachname: lead.nachname,
-          email: lead.email,
-          telefon: lead.telefon,
-          nachricht: lead.nachricht,
-          utm_source: lead.utm_source,
-          utm_medium: lead.utm_medium,
-          utm_campaign: lead.utm_campaign,
-          utm_content: lead.utm_content,
-          utm_term: lead.utm_term,
-          unternehmen: lead.unternehmen,
-          received_at: lead.received_at,
-          imported_via: 'csv',
-          payload,
-        } as never);
+      const { data, error } = await supabase.functions.invoke('import-onepage-leads', {
+        body: { projectId, leads: payload, testMode: isTestMode },
+        headers: isTestMode ? { 'x-test-mode': 'true' } : undefined,
+      });
 
-        if (error) {
-          if (error.code === '23505') res.skipped++;
-          else res.errors.push(`${lead.email || lead.vorname || 'Zeile ' + (i + 1)}: ${error.message}`);
-        } else {
-          res.inserted++;
-        }
-      } catch (e: any) {
-        res.errors.push(`${lead.email || 'Zeile ' + (i + 1)}: ${e.message}`);
+      if (error) throw new Error(error.message || 'Import-Funktion nicht erreichbar');
+      if (data?.error) throw new Error(data.error);
+
+      const res = {
+        inserted: data?.inserted ?? 0,
+        skipped: data?.skipped ?? 0,
+        errors: (data?.errors ?? []) as string[],
+      };
+      setProgress({ done: leads.length, total: leads.length });
+      setImporting(false);
+      setResult(res);
+
+      if (res.inserted > 0) {
+        toast.success(
+          `${res.inserted} Leads importiert${res.skipped ? `, ${res.skipped} Duplikate übersprungen` : ''}`
+        );
+        onDone();
+      } else if (res.skipped > 0 && res.errors.length === 0) {
+        toast.info(`Alle ${res.skipped} Leads waren bereits vorhanden`);
+        onDone();
+      } else {
+        toast.error('Keine Leads importiert');
       }
-      setProgress({ done: i + 1, total: leads.length });
-    }
-
-    setImporting(false);
-    setResult(res);
-
-    if (res.inserted > 0) {
-      toast.success(
-        `${res.inserted} Leads importiert${res.skipped ? `, ${res.skipped} Duplikate übersprungen` : ''}`
-      );
-      onDone();
-    } else if (res.skipped > 0 && res.errors.length === 0) {
-      toast.info(`Alle ${res.skipped} Leads waren bereits vorhanden`);
-      onDone();
-    } else {
-      toast.error('Keine Leads importiert');
+    } catch (e: any) {
+      setImporting(false);
+      setResult({ inserted: 0, skipped: 0, errors: [e.message || String(e)] });
+      toast.error(`Import fehlgeschlagen: ${e.message || e}`);
     }
   }
 
