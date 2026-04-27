@@ -27,6 +27,7 @@ import {
   Folder,
   ExternalLink,
   AlertCircle,
+  ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -34,6 +35,7 @@ import DOMPurify from 'dompurify';
 import { AddAccountModal } from '@/components/email/AddAccountModal';
 import { AccountsModal } from '@/components/email/AccountsModal';
 import { ComposeModal } from '@/components/email/ComposeModal';
+import { EmailSummaryPanel } from '@/components/email/EmailSummaryPanel';
 import {
   EmailRouteSlug,
   ROUTE_CONFIGS,
@@ -125,6 +127,7 @@ export default function EmailPage() {
   const [addPrefill, setAddPrefill] = useState<any>(null);
   const [accountsOpen, setAccountsOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [composePrefill, setComposePrefill] = useState<{ to?: string[]; subject?: string; body?: string }>({});
   const [showImages, setShowImages] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -436,6 +439,15 @@ export default function EmailPage() {
           <RefreshCw className={cn('h-4 w-4', messagesQuery.isFetching && 'animate-spin')} />
           Aktualisieren
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setSummaryOpen(true)}
+          className="gap-1 hover:text-primary hover:border-primary/50"
+        >
+          <ListChecks className="h-4 w-4" />
+          Zusammenfassen
+        </Button>
         <Button variant="default" size="sm" onClick={handleNewMail} className="gap-1">
           <Plus className="h-4 w-4" /> Neue E-Mail
         </Button>
@@ -739,6 +751,12 @@ export default function EmailPage() {
         defaultAccountId={activeAccountId ?? undefined}
         prefill={composePrefill}
         onSent={handleRefresh}
+      />
+      <EmailSummaryPanel
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        messages={messages}
+        onSelectEmail={(uid) => setSelectedUid(uid)}
       />
     </div>
   );
