@@ -2160,9 +2160,12 @@ export type Database = {
           received_at: string
           source: string | null
           telefon: string | null
+          unternehmen: string | null
           utm_campaign: string | null
+          utm_content: string | null
           utm_medium: string | null
           utm_source: string | null
+          utm_term: string | null
           vorname: string | null
         }
         Insert: {
@@ -2179,9 +2182,12 @@ export type Database = {
           received_at?: string
           source?: string | null
           telefon?: string | null
+          unternehmen?: string | null
           utm_campaign?: string | null
+          utm_content?: string | null
           utm_medium?: string | null
           utm_source?: string | null
+          utm_term?: string | null
           vorname?: string | null
         }
         Update: {
@@ -2198,9 +2204,12 @@ export type Database = {
           received_at?: string
           source?: string | null
           telefon?: string | null
+          unternehmen?: string | null
           utm_campaign?: string | null
+          utm_content?: string | null
           utm_medium?: string | null
           utm_source?: string | null
+          utm_term?: string | null
           vorname?: string | null
         }
         Relationships: [
