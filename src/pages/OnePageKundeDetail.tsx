@@ -1005,3 +1005,226 @@ function CsvImportModal({
     </Dialog>
   );
 }
+
+// ─── Webhook Logs Tab ───
+interface WebhookLog {
+  id: string;
+  project_id: string | null;
+  token: string | null;
+  content_type: string | null;
+  payload: Record<string, unknown> | null;
+  raw_body: string | null;
+  user_agent: string | null;
+  status: string;
+  error: string | null;
+  received_at: string;
+}
+
+function WebhookStatusBadge({ status }: { status: string }) {
+  const map: Record<string, { className: string; label: string }> = {
+    success: { className: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30', label: '✅ Erfolg' },
+    received: { className: 'bg-sky-500/10 text-sky-600 border-sky-500/30', label: '⏳ Empfangen' },
+    duplicate: { className: 'bg-slate-500/10 text-slate-600 border-slate-500/30', label: '↩︎ Duplikat' },
+    insert_failed: { className: 'bg-red-500/10 text-red-600 border-red-500/30', label: '❌ DB-Fehler' },
+    lookup_failed: { className: 'bg-red-500/10 text-red-600 border-red-500/30', label: '❌ Lookup' },
+    unknown_token: { className: 'bg-amber-500/10 text-amber-600 border-amber-500/30', label: '⚠️ Token unbekannt' },
+    missing_token: { className: 'bg-amber-500/10 text-amber-600 border-amber-500/30', label: '⚠️ Token fehlt' },
+  };
+  const cfg = map[status] || { className: 'bg-muted text-muted-foreground border-border', label: status };
+  return (
+    <Badge variant="outline" className={cn('rounded text-[10px] font-medium', cfg.className)}>
+      {cfg.label}
+    </Badge>
+  );
+}
+
+function WebhookLogsTab({ projectId, webhookToken }: { projectId: string; webhookToken: string }) {
+  const [logs, setLogs] = useState<WebhookLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'success' | 'failed'>('all');
+  const [selected, setSelected] = useState<WebhookLog | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function load() {
+    setRefreshing(true);
+    const { data, error } = await supabase
+      .from('onepage_webhook_logs')
+      .select('*')
+      .or(`project_id.eq.${projectId},token.eq.${webhookToken}`)
+      .order('received_at', { ascending: false })
+      .limit(100);
+    if (error) {
+      // RLS may block non-admins
+      if (!error.message.toLowerCase().includes('row-level')) {
+        toast.error(`Logs konnten nicht geladen werden: ${error.message}`);
+      }
+    }
+    setLogs((data || []) as WebhookLog[]);
+    setLoading(false);
+    setRefreshing(false);
+  }
+
+  useEffect(() => {
+    load();
+    const iv = setInterval(load, 5000);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, webhookToken]);
+
+  const filtered = logs.filter((l) => {
+    if (filter === 'success') return l.status === 'success';
+    if (filter === 'failed') return l.status !== 'success' && l.status !== 'received' && l.status !== 'duplicate';
+    return true;
+  });
+
+  const successCount = logs.filter((l) => l.status === 'success').length;
+  const failedCount = logs.filter((l) => l.status !== 'success' && l.status !== 'received' && l.status !== 'duplicate').length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant={filter === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilter('all')}
+        >
+          Alle ({logs.length})
+        </Button>
+        <Button
+          variant={filter === 'success' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilter('success')}
+        >
+          ✅ Erfolgreich ({successCount})
+        </Button>
+        <Button
+          variant={filter === 'failed' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilter('failed')}
+        >
+          ❌ Fehler ({failedCount})
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={load}
+          disabled={refreshing}
+          className="ml-auto"
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', refreshing && 'animate-spin')} />
+          Aktualisieren
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground -mt-2">
+        Auto-Refresh alle 5 Sekunden · zeigt bis zu 100 Events
+      </p>
+
+      {loading ? (
+        <div className="text-sm text-muted-foreground py-12 text-center">Lade Logs…</div>
+      ) : logs.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="py-16 text-center">
+            <div className="mx-auto w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-4">
+              <Inbox className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="font-medium">Noch keine Webhook-Events empfangen</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+              Sobald OnePage einen Lead an deinen Webhook sendet, erscheint er hier in Echtzeit.
+              Nutze den Button „Test-Webhook senden" auf dem Tab „Webhook-Einrichtung", um die Pipeline zu prüfen.
+            </p>
+          </CardContent>
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            Keine Treffer für diesen Filter.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40">
+              <tr className="text-left text-xs text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Zeitpunkt</th>
+                <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium">E-Mail</th>
+                <th className="px-3 py-2 font-medium">Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((log) => {
+                const email =
+                  (log.payload as Record<string, unknown> | null)?.email ??
+                  (log.payload as Record<string, unknown> | null)?.Email ??
+                  null;
+                return (
+                  <tr
+                    key={log.id}
+                    onClick={() => setSelected(log)}
+                    className="border-t hover:bg-muted/40 cursor-pointer"
+                  >
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                      {relativeTime(log.received_at)}
+                    </td>
+                    <td className="px-3 py-2"><WebhookStatusBadge status={log.status} /></td>
+                    <td className="px-3 py-2 truncate max-w-[260px]">
+                      {email ? String(email) : <span className="text-muted-foreground">–</span>}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground truncate max-w-[280px]">
+                      {log.error || (log.status === 'success' ? 'Lead erstellt' : log.status === 'duplicate' ? 'Bereits vorhanden' : '–')}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Webhook-Event Details</SheetTitle>
+          </SheetHeader>
+          {selected && (
+            <div className="mt-4 space-y-4 text-sm">
+              <div className="space-y-2">
+                <Field label="Zeitpunkt" value={new Date(selected.received_at).toLocaleString('de-DE')} />
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="text-xs text-muted-foreground">Status</div>
+                  <div className="col-span-2"><WebhookStatusBadge status={selected.status} /></div>
+                </div>
+                <Field label="Content-Type" value={selected.content_type} />
+                <Field label="User-Agent" value={selected.user_agent} />
+                <Field label="Token" value={selected.token ? `${selected.token.substring(0, 12)}…` : null} />
+              </div>
+
+              {selected.error && (
+                <div className="rounded border border-red-500/30 bg-red-500/5 p-3 text-xs">
+                  <div className="font-medium text-red-600 mb-1">Fehler</div>
+                  <div className="break-words">{selected.error}</div>
+                </div>
+              )}
+
+              <div>
+                <div className="text-xs text-muted-foreground mb-1.5">Payload</div>
+                <pre className="bg-muted/50 border rounded p-2 text-[10px] overflow-auto max-h-72">
+                  {JSON.stringify(selected.payload || {}, null, 2)}
+                </pre>
+              </div>
+
+              {selected.raw_body && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1.5">Raw Body</div>
+                  <pre className="bg-muted/50 border rounded p-2 text-[10px] overflow-auto max-h-48 whitespace-pre-wrap break-all">
+                    {selected.raw_body}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
