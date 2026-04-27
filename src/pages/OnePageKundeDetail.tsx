@@ -384,21 +384,31 @@ export default function OnePageKundeDetail() {
                 <li>Speichern in OnePage</li>
               </ol>
 
-              <div className="flex items-center gap-2 mt-4 pt-4 border-t">
-                {lastLead ? (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    <span className="text-sm">Zuletzt empfangen: <strong>{relativeTime(lastLead)}</strong></span>
-                  </>
-                ) : (
-                  <>
-                    <Clock className="h-4 w-4 text-amber-500" />
-                    <span className="text-sm text-muted-foreground">Noch nicht eingerichtet – warte auf ersten Lead.</span>
-                  </>
-                )}
+              <div className="flex items-center justify-between gap-4 mt-4 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  {lastLead ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      <span className="text-sm">Zuletzt empfangen: <strong>{relativeTime(lastLead)}</strong></span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="h-4 w-4 text-amber-500" />
+                      <span className="text-sm text-muted-foreground">Noch nicht eingerichtet – warte auf ersten Lead.</span>
+                    </>
+                  )}
+                </div>
+                <Button variant="outline" size="sm" onClick={sendTestWebhook}>
+                  <Send className="h-3.5 w-3.5 mr-2" /> Test-Webhook senden
+                </Button>
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* === WEBHOOK LOGS === */}
+        <TabsContent value="logs" className="mt-6">
+          <WebhookLogsTab projectId={project.id} webhookToken={project.webhook_secret} />
         </TabsContent>
 
         {/* === SETTINGS === */}
