@@ -625,26 +625,7 @@ function stripBOM(text: string): string {
   return text.replace(/^\uFEFF/, '');
 }
 
-function parseDateStr(raw: string | null): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  // ISO
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(trimmed)) {
-    const d = new Date(trimmed);
-    if (!isNaN(d.getTime())) return d.toISOString();
-  }
-  // German DD.MM.YYYY [HH:MM]
-  const de = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[\sT]+(\d{1,2}):(\d{2}))?$/);
-  if (de) {
-    const [, d, m, y, h = '0', min = '0'] = de;
-    const dt = new Date(+y, +m - 1, +d, +h, +min);
-    if (!isNaN(dt.getTime())) return dt.toISOString();
-  }
-  const fallback = new Date(trimmed);
-  if (!isNaN(fallback.getTime())) return fallback.toISOString();
-  return null;
-}
+
 
 function parseOnePageCSV(csvText: string): { leads: ParsedLead[]; stats: ParseStats } {
   const cleanText = stripBOM(csvText);
