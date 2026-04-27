@@ -335,7 +335,37 @@ Deno.serve(async (req) => {
             contentType: a.contentType,
             path: a.path,
           }));
+
+          // Fallback: HTML part existed but downloaded empty — try full source parse once
+          const htmlPartExisted = textParts.some((p) => p.type === 'text/html');
+          const htmlSucceeded = !!bodyHtml && bodyHtml.length > 50;
+
+          if (htmlPartExisted && !htmlSucceeded) {
+            log(`HTML part existed in BODYSTRUCTURE but downloaded empty — falling back to full source parse`);
+            try {
+              const fallbackMsg = await Promise.race([
+                client.fetchOne(String(uid), { source: true }, { uid: true }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Fallback source timeout 60s')), 60_000)),
+              ]) as any;
+
+              if (fallbackMsg?.source) {
+                const parsed = await simpleParser(fallbackMsg.source);
+                if (typeof parsed.html === 'string' && parsed.html.length > 50) {
+                  bodyHtml = parsed.html;
+                  log(`Fallback parse produced HTML (${parsed.html.length} chars)`);
+                }
+                if (parsed.text && parsed.text.length > (bodyText?.length ?? 0)) {
+                  bodyText = parsed.text;
+                  log(`Fallback parse produced better text (${parsed.text.length} chars)`);
+                }
+              }
+            } catch (fbErr) {
+              log(`Fallback source fetch failed: ${(fbErr as any)?.message || fbErr}`);
+            }
+          }
         }
+
+        log(`FINAL: bodyText=${bodyText?.length ?? 0} bodyHtml=${bodyHtml?.length ?? 0}`);
       } finally {
         lock.release();
         log(`Lock released`);
