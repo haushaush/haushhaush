@@ -212,6 +212,8 @@ export default function OnePageKundeDetail() {
       toast.error(`Netzwerkfehler: ${msg}`);
     }
   }
+
+  async function regenerateToken() {
     if (!project) return;
     const newSecret = crypto.getRandomValues(new Uint8Array(16))
       .reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
