@@ -361,6 +361,7 @@ export default function Einstellungen() {
   };
 
   useEffect(() => { fetchData(); }, [user, isAdminOrManager, isAdmin]);
+  useEffect(() => { loadAllUsers(); }, [loadAllUsers]);
 
   const handleDeleteMember = async () => {
     if (!deleteTarget) return;
@@ -377,6 +378,23 @@ export default function Einstellungen() {
     setDeleteTarget(null);
     setDeleteConfirmName('');
     fetchData();
+    loadAllUsers();
+  };
+
+  const handleDeleteOrphan = async () => {
+    if (!orphanDeleteTarget) return;
+    setOrphanDeleting(true);
+    const { data, error } = await supabase.functions.invoke('delete-orphan-auth-user', {
+      body: { user_id: orphanDeleteTarget.id },
+    });
+    setOrphanDeleting(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || 'Löschen fehlgeschlagen');
+      return;
+    }
+    toast.success(`Verwaister Auth-User ${orphanDeleteTarget.email} gelöscht`);
+    setOrphanDeleteTarget(null);
+    loadAllUsers();
   };
 
   // Handle Google Drive OAuth callback redirect
