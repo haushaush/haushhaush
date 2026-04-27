@@ -2145,6 +2145,89 @@ export type Database = {
         }
         Relationships: []
       }
+      onepage_project_leads: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          payload: Json
+          phone: string | null
+          project_id: string
+          received_at: string
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          payload?: Json
+          phone?: string | null
+          project_id: string
+          received_at?: string
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          payload?: Json
+          phone?: string | null
+          project_id?: string
+          received_at?: string
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onepage_project_leads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onepage_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onepage_projects: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          page_url: string | null
+          status: string
+          updated_at: string
+          webhook_secret: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          page_url?: string | null
+          status?: string
+          updated_at?: string
+          webhook_secret?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          page_url?: string | null
+          status?: string
+          updated_at?: string
+          webhook_secret?: string
+        }
+        Relationships: []
+      }
       pending_meta_matches: {
         Row: {
           confidence: number
