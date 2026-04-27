@@ -997,11 +997,39 @@ function WebhookStatusBadge({ status }: { status: string }) {
 }
 
 function WebhookLogsTab({ projectId, webhookToken }: { projectId: string; webhookToken: string }) {
+  const { isTestMode } = useAuth();
   const [logs, setLogs] = useState<WebhookLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'success' | 'failed'>('all');
   const [selected, setSelected] = useState<WebhookLog | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
+
+  async function reprocess(logId: string) {
+    setReprocessing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reprocess-onepage-webhook', {
+        body: { logId, testMode: isTestMode },
+        headers: isTestMode ? { 'x-test-mode': 'true' } : undefined,
+      });
+      if (error) {
+        toast.error(`Fehler: ${error.message}`);
+      } else if (data?.duplicate) {
+        toast.info('Lead existiert bereits — Status auf „reprocessed_duplicate" gesetzt');
+        await load();
+      } else if (data?.ok) {
+        toast.success('Lead erfolgreich neu erstellt');
+        await load();
+        setSelected(null);
+      } else {
+        toast.error(`Fehler: ${data?.error || 'unbekannt'}`);
+      }
+    } catch (e) {
+      toast.error(`Netzwerkfehler: ${(e as Error).message}`);
+    } finally {
+      setReprocessing(false);
+    }
+  }
 
   async function load() {
     setRefreshing(true);
