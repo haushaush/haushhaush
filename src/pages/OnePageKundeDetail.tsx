@@ -1192,6 +1192,58 @@ function WebhookLogsTab({ projectId, webhookToken }: { projectId: string; webhoo
                 </div>
               )}
 
+              {(() => {
+                const ex = extractLead(selected.payload || {});
+                const fields: Array<[string, string | null]> = [
+                  ['E-Mail', ex.email],
+                  ['Vorname', ex.vorname],
+                  ['Nachname', ex.nachname],
+                  ['Telefon', ex.telefon],
+                  ['Unternehmen', ex.unternehmen],
+                  ['Nachricht', ex.nachricht],
+                  ['UTM Source', ex.utm_source],
+                  ['UTM Medium', ex.utm_medium],
+                  ['UTM Campaign', ex.utm_campaign],
+                  ['Form', ex.form_name],
+                ];
+                const found = fields.filter(([, v]) => v).length;
+                return (
+                  <div className="rounded border border-teal-500/30 bg-teal-500/5 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-xs font-medium text-teal-700">
+                        Smart-Extraction Vorschau
+                      </div>
+                      <Badge variant="outline" className="text-[10px] rounded">
+                        {found}/{fields.length} Felder erkannt
+                      </Badge>
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      {fields.map(([label, val]) => (
+                        <div key={label} className="grid grid-cols-3 gap-2">
+                          <div className="text-muted-foreground">{label}</div>
+                          <div className="col-span-2 break-words">
+                            {val ?? <span className="text-muted-foreground/50">–</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {selected.status !== 'success' &&
+                      selected.status !== 'reprocessed' &&
+                      (ex.email || ex.telefon || ex.vorname) && (
+                        <Button
+                          size="sm"
+                          className="mt-3 w-full"
+                          onClick={() => reprocess(selected.id)}
+                          disabled={reprocessing}
+                        >
+                          <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', reprocessing && 'animate-spin')} />
+                          Lead aus Payload neu erstellen
+                        </Button>
+                      )}
+                  </div>
+                );
+              })()}
+
               <div>
                 <div className="text-xs text-muted-foreground mb-1.5">Payload</div>
                 <pre className="bg-muted/50 border rounded p-2 text-[10px] overflow-auto max-h-72">
