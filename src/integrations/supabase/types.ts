@@ -2268,6 +2268,60 @@ export type Database = {
         }
         Relationships: []
       }
+      onepage_webhook_logs: {
+        Row: {
+          content_type: string | null
+          error: string | null
+          id: string
+          payload: Json | null
+          project_id: string | null
+          raw_body: string | null
+          received_at: string
+          status: string
+          token: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          content_type?: string | null
+          error?: string | null
+          id?: string
+          payload?: Json | null
+          project_id?: string | null
+          raw_body?: string | null
+          received_at?: string
+          status?: string
+          token?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          content_type?: string | null
+          error?: string | null
+          id?: string
+          payload?: Json | null
+          project_id?: string | null
+          raw_body?: string | null
+          received_at?: string
+          status?: string
+          token?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onepage_webhook_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onepage_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onepage_webhook_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onepage_projects_with_stats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_meta_matches: {
         Row: {
           confidence: number
