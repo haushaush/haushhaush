@@ -241,12 +241,18 @@ Deno.serve(async (req) => {
     });
 
     if (teamErr) {
-      // Rollback Auth user
-      await admin.auth.admin.deleteUser(newUserId).catch(() => {});
+      // Rollback Auth user only when we just created it (don't delete pre-existing orphan)
+      if (!importedOrphan) {
+        await admin.auth.admin.deleteUser(newUserId).catch(() => {});
+      }
       return jsonResponse({ error: `team-Insert fehlgeschlagen: ${teamErr.message}` }, 500);
     }
 
-    // 6. user_roles
+    // 6. user_roles (upsert-style: delete + insert to avoid unique conflicts on import)
+    if (importedOrphan) {
+      await admin.from('user_roles').delete().eq('user_id', newUserId).then(() => {}, () => {});
+      await admin.from('user_permissions').delete().eq('user_id', newUserId).then(() => {}, () => {});
+    }
     await admin.from('user_roles').insert({
       user_id: newUserId,
       role: data.rolle as any,
@@ -263,6 +269,10 @@ Deno.serve(async (req) => {
       user_id: newUserId,
       email: data.email,
       name: fullName,
+      imported: importedOrphan,
+      message: importedOrphan
+        ? 'Verwaister Auth-User wurde importiert und Profil erstellt'
+        : undefined,
     });
   } catch (e) {
     console.error('create-team-member error', e);
