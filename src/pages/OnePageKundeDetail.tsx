@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Papa from 'papaparse';
+import { extractLead } from '@/lib/onepage-lead-extractor';
 import {
   ArrowLeft, ExternalLink, Copy, Upload, Download, Search,
   RefreshCw, Trash2, AlertTriangle, CheckCircle2, Clock, Send, Inbox,
