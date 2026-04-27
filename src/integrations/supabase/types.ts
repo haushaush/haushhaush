@@ -883,15 +883,7 @@ export type Database = {
           wert_eur?: number | null
           zahlstatus?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "close_deals_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "team"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       close_leads: {
         Row: {
