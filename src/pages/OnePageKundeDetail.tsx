@@ -272,10 +272,11 @@ export default function OnePageKundeDetail() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as 'leads' | 'webhook' | 'settings')}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'leads' | 'webhook' | 'logs' | 'settings')}>
         <TabsList>
           <TabsTrigger value="leads">Leads</TabsTrigger>
           <TabsTrigger value="webhook">Webhook-Einrichtung</TabsTrigger>
+          <TabsTrigger value="logs">Webhook Logs</TabsTrigger>
           <TabsTrigger value="settings">Einstellungen</TabsTrigger>
         </TabsList>
 
