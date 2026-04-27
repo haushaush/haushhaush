@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Papa from 'papaparse';
+import { extractLead } from '@/lib/onepage-lead-extractor';
 import {
   ArrowLeft, ExternalLink, Copy, Upload, Download, Search,
   RefreshCw, Trash2, AlertTriangle, CheckCircle2, Clock, Send, Inbox,
@@ -624,26 +625,7 @@ function stripBOM(text: string): string {
   return text.replace(/^\uFEFF/, '');
 }
 
-function parseDateStr(raw: string | null): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  // ISO
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(trimmed)) {
-    const d = new Date(trimmed);
-    if (!isNaN(d.getTime())) return d.toISOString();
-  }
-  // German DD.MM.YYYY [HH:MM]
-  const de = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[\sT]+(\d{1,2}):(\d{2}))?$/);
-  if (de) {
-    const [, d, m, y, h = '0', min = '0'] = de;
-    const dt = new Date(+y, +m - 1, +d, +h, +min);
-    if (!isNaN(dt.getTime())) return dt.toISOString();
-  }
-  const fallback = new Date(trimmed);
-  if (!isNaN(fallback.getTime())) return fallback.toISOString();
-  return null;
-}
+
 
 function parseOnePageCSV(csvText: string): { leads: ParsedLead[]; stats: ParseStats } {
   const cleanText = stripBOM(csvText);
@@ -666,43 +648,6 @@ function parseOnePageCSV(csvText: string): { leads: ParsedLead[]; stats: ParseSt
   const headers = result.data[0].map((h) => (h || '').toString());
   const rows = result.data.slice(1);
 
-  const fieldToIndexes: Record<string, number[]> = {
-    vorname: [], nachname: [], email: [], telefon: [], unternehmen: [],
-    nachricht: [], utm_source: [], utm_medium: [], utm_campaign: [],
-    utm_content: [], utm_term: [], date: [],
-  };
-
-  headers.forEach((rawHeader, idx) => {
-    const h = (rawHeader || '').toLowerCase().trim();
-    if (!h) return;
-    if (h === 'vorname' || h === 'first name' || h === 'name (first name)' || h === 'vor- & nachname' || h === 'firstname') {
-      fieldToIndexes.vorname.push(idx);
-    }
-    if (h === 'nachname' || h === 'last name' || h === 'name (last name)' || h === 'lastname') {
-      fieldToIndexes.nachname.push(idx);
-    }
-    if (h === 'email' || h === 'e-mail' || h === '📧 e-mail' || h === 'e-mail adresse' || h === 'mail' || h.startsWith('email ') || h.startsWith('e-mail ')) {
-      fieldToIndexes.email.push(idx);
-    }
-    if (h === 'phone' || h === 'telefon' || h === 'phone number' || h === 'tel' || h === 'mobil' || h === 'mobile' || h === 'handy') {
-      fieldToIndexes.telefon.push(idx);
-    }
-    if (h === 'unternehmen' || h === 'company' || h === 'firma') {
-      fieldToIndexes.unternehmen.push(idx);
-    }
-    if (h === 'nachricht' || h === 'message' || h === 'textarea' || h === 'anmerkungen' || h === 'kommentar' || h === 'comment' || h.includes('besondere wünsche')) {
-      fieldToIndexes.nachricht.push(idx);
-    }
-    if (h === 'utm source' || h === 'utm_source') fieldToIndexes.utm_source.push(idx);
-    if (h === 'utm medium' || h === 'utm_medium') fieldToIndexes.utm_medium.push(idx);
-    if (h === 'utm campaign' || h === 'utm_campaign') fieldToIndexes.utm_campaign.push(idx);
-    if (h === 'utm content' || h === 'utm_content') fieldToIndexes.utm_content.push(idx);
-    if (h === 'utm term' || h === 'utm_term') fieldToIndexes.utm_term.push(idx);
-    if (h === 'date' || h === 'datum' || h === 'erstellt am' || h === 'created at' || h === 'created_at' || h === 'submitted at') {
-      fieldToIndexes.date.push(idx);
-    }
-  });
-
   function isMeaningful(val: string | undefined): boolean {
     if (!val) return false;
     const t = val.trim();
@@ -711,57 +656,68 @@ function parseOnePageCSV(csvText: string): { leads: ParsedLead[]; stats: ParseSt
     return true;
   }
 
-  function firstNonEmpty(row: string[], indexes: number[]): string | null {
-    for (const idx of indexes) {
+  // Convert a CSV row into a flat key/value object that extractLead understands.
+  // Duplicate header names are preserved by appending an index suffix so no data is lost.
+  function rowToObject(row: string[]): Record<string, string> {
+    const obj: Record<string, string> = {};
+    headers.forEach((h, idx) => {
       const v = row[idx];
-      if (isMeaningful(v)) return v.trim();
-    }
-    return null;
+      if (!isMeaningful(v)) return;
+      const key = obj[h] !== undefined ? `${h}__${idx}` : h;
+      obj[key] = v.trim();
+    });
+    return obj;
   }
 
   const leads: ParsedLead[] = [];
   let skippedEmpty = 0;
+  const fieldCounts: Record<string, number> = {
+    email: 0, vorname: 0, nachname: 0, telefon: 0, unternehmen: 0,
+    nachricht: 0, utm_source: 0, utm_medium: 0, utm_campaign: 0,
+    utm_content: 0, utm_term: 0, date_parsed: 0,
+  };
 
   for (const row of rows) {
     if (!row || row.length === 0) { skippedEmpty++; continue; }
 
-    const email = firstNonEmpty(row, fieldToIndexes.email);
-    const vorname = firstNonEmpty(row, fieldToIndexes.vorname);
-    const nachname = firstNonEmpty(row, fieldToIndexes.nachname);
-    const telefon = firstNonEmpty(row, fieldToIndexes.telefon);
+    const rowObj = rowToObject(row);
+    if (Object.keys(rowObj).length === 0) { skippedEmpty++; continue; }
 
-    if (!email && !vorname && !nachname && !telefon) {
+    const extracted = extractLead(rowObj);
+
+    if (!extracted.email && !extracted.vorname && !extracted.nachname && !extracted.telefon) {
       skippedEmpty++;
       continue;
     }
 
-    const dateRaw = firstNonEmpty(row, fieldToIndexes.date);
-    const received_at = parseDateStr(dateRaw) || new Date().toISOString();
-
-    const raw_data: Record<string, string> = {};
-    headers.forEach((header, idx) => {
-      const v = row[idx];
-      if (!isMeaningful(v)) return;
-      const key = raw_data[header] !== undefined ? `${header}__${idx}` : header;
-      raw_data[key] = v.trim();
-    });
+    if (extracted.email) fieldCounts.email++;
+    if (extracted.vorname) fieldCounts.vorname++;
+    if (extracted.nachname) fieldCounts.nachname++;
+    if (extracted.telefon) fieldCounts.telefon++;
+    if (extracted.unternehmen) fieldCounts.unternehmen++;
+    if (extracted.nachricht) fieldCounts.nachricht++;
+    if (extracted.utm_source) fieldCounts.utm_source++;
+    if (extracted.utm_medium) fieldCounts.utm_medium++;
+    if (extracted.utm_campaign) fieldCounts.utm_campaign++;
+    if (extracted.utm_content) fieldCounts.utm_content++;
+    if (extracted.utm_term) fieldCounts.utm_term++;
 
     leads.push({
-      vorname, nachname, email, telefon,
-      unternehmen: firstNonEmpty(row, fieldToIndexes.unternehmen),
-      nachricht: firstNonEmpty(row, fieldToIndexes.nachricht),
-      utm_source: firstNonEmpty(row, fieldToIndexes.utm_source),
-      utm_medium: firstNonEmpty(row, fieldToIndexes.utm_medium),
-      utm_campaign: firstNonEmpty(row, fieldToIndexes.utm_campaign),
-      utm_content: firstNonEmpty(row, fieldToIndexes.utm_content),
-      utm_term: firstNonEmpty(row, fieldToIndexes.utm_term),
-      received_at,
-      raw_data,
+      vorname: extracted.vorname,
+      nachname: extracted.nachname,
+      email: extracted.email,
+      telefon: extracted.telefon,
+      unternehmen: extracted.unternehmen,
+      nachricht: extracted.nachricht,
+      utm_source: extracted.utm_source,
+      utm_medium: extracted.utm_medium,
+      utm_campaign: extracted.utm_campaign,
+      utm_content: extracted.utm_content,
+      utm_term: extracted.utm_term,
+      received_at: extracted.created_at,
+      raw_data: rowObj,
     });
   }
-
-  const fieldCounts: Record<string, number> = {};
-  Object.entries(fieldToIndexes).forEach(([k, arr]) => { fieldCounts[k] = arr.length; });
 
   return {
     leads,
@@ -1041,11 +997,39 @@ function WebhookStatusBadge({ status }: { status: string }) {
 }
 
 function WebhookLogsTab({ projectId, webhookToken }: { projectId: string; webhookToken: string }) {
+  const { isTestMode } = useAuth();
   const [logs, setLogs] = useState<WebhookLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'success' | 'failed'>('all');
   const [selected, setSelected] = useState<WebhookLog | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
+
+  async function reprocess(logId: string) {
+    setReprocessing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reprocess-onepage-webhook', {
+        body: { logId, testMode: isTestMode },
+        headers: isTestMode ? { 'x-test-mode': 'true' } : undefined,
+      });
+      if (error) {
+        toast.error(`Fehler: ${error.message}`);
+      } else if (data?.duplicate) {
+        toast.info('Lead existiert bereits — Status auf „reprocessed_duplicate" gesetzt');
+        await load();
+      } else if (data?.ok) {
+        toast.success('Lead erfolgreich neu erstellt');
+        await load();
+        setSelected(null);
+      } else {
+        toast.error(`Fehler: ${data?.error || 'unbekannt'}`);
+      }
+    } catch (e) {
+      toast.error(`Netzwerkfehler: ${(e as Error).message}`);
+    } finally {
+      setReprocessing(false);
+    }
+  }
 
   async function load() {
     setRefreshing(true);
@@ -1207,6 +1191,58 @@ function WebhookLogsTab({ projectId, webhookToken }: { projectId: string; webhoo
                   <div className="break-words">{selected.error}</div>
                 </div>
               )}
+
+              {(() => {
+                const ex = extractLead(selected.payload || {});
+                const fields: Array<[string, string | null]> = [
+                  ['E-Mail', ex.email],
+                  ['Vorname', ex.vorname],
+                  ['Nachname', ex.nachname],
+                  ['Telefon', ex.telefon],
+                  ['Unternehmen', ex.unternehmen],
+                  ['Nachricht', ex.nachricht],
+                  ['UTM Source', ex.utm_source],
+                  ['UTM Medium', ex.utm_medium],
+                  ['UTM Campaign', ex.utm_campaign],
+                  ['Form', ex.form_name],
+                ];
+                const found = fields.filter(([, v]) => v).length;
+                return (
+                  <div className="rounded border border-teal-500/30 bg-teal-500/5 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-xs font-medium text-teal-700">
+                        Smart-Extraction Vorschau
+                      </div>
+                      <Badge variant="outline" className="text-[10px] rounded">
+                        {found}/{fields.length} Felder erkannt
+                      </Badge>
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      {fields.map(([label, val]) => (
+                        <div key={label} className="grid grid-cols-3 gap-2">
+                          <div className="text-muted-foreground">{label}</div>
+                          <div className="col-span-2 break-words">
+                            {val ?? <span className="text-muted-foreground/50">–</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {selected.status !== 'success' &&
+                      selected.status !== 'reprocessed' &&
+                      (ex.email || ex.telefon || ex.vorname) && (
+                        <Button
+                          size="sm"
+                          className="mt-3 w-full"
+                          onClick={() => reprocess(selected.id)}
+                          disabled={reprocessing}
+                        >
+                          <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', reprocessing && 'animate-spin')} />
+                          Lead aus Payload neu erstellen
+                        </Button>
+                      )}
+                  </div>
+                );
+              })()}
 
               <div>
                 <div className="text-xs text-muted-foreground mb-1.5">Payload</div>
