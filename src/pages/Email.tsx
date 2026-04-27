@@ -272,6 +272,7 @@ export default function EmailPage() {
   // Reset image-blocking on message change
   useEffect(() => {
     setShowImages(false);
+    setShowRaw(false);
   }, [selectedUid]);
 
   // Determine which body to render — prefer HTML when meaningfully present
