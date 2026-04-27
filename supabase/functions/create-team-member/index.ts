@@ -164,15 +164,62 @@ Deno.serve(async (req) => {
       },
     });
 
-    if (createErr || !created.user) {
+    let newUserId: string;
+    let importedOrphan = false;
+
+    if (createErr || !created?.user) {
       const msg = createErr?.message || '';
-      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('registered')) {
+      const isDup = msg.toLowerCase().includes('already') || msg.toLowerCase().includes('registered');
+      if (!isDup) {
+        return jsonResponse({ error: msg || 'Fehler beim Anlegen des Auth-Users' }, 500);
+      }
+
+      // Look up existing auth user by email (paginated)
+      let existingAuthUser: any = null;
+      let page = 1;
+      while (page <= 20) {
+        const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (listErr || !list?.users?.length) break;
+        existingAuthUser = list.users.find((u: any) => (u.email || '').toLowerCase() === data.email.toLowerCase());
+        if (existingAuthUser) break;
+        if (list.users.length < 1000) break;
+        page++;
+      }
+
+      if (!existingAuthUser) {
         return jsonResponse({ error: 'Diese E-Mail ist bereits vergeben' }, 409);
       }
-      return jsonResponse({ error: msg || 'Fehler beim Anlegen des Auth-Users' }, 500);
-    }
 
-    const newUserId = created.user.id;
+      // Check for existing team row
+      const { data: existingTeamRow } = await admin
+        .from('team')
+        .select('id')
+        .eq('id', existingAuthUser.id)
+        .maybeSingle();
+
+      if (existingTeamRow) {
+        return jsonResponse({ error: 'Diese E-Mail ist bereits vergeben', code: 'duplicate_full' }, 409);
+      }
+
+      // Orphan auth user → import: reset password to provided one, then create team row below
+      const { error: pwErr } = await admin.auth.admin.updateUserById(existingAuthUser.id, {
+        password: data.password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: fullName,
+          position: data.position,
+          abteilung: data.abteilung,
+        },
+      });
+      if (pwErr) {
+        return jsonResponse({ error: `Passwort-Reset fehlgeschlagen: ${pwErr.message}` }, 500);
+      }
+
+      newUserId = existingAuthUser.id;
+      importedOrphan = true;
+    } else {
+      newUserId = created.user.id;
+    }
 
     // 5. team-Eintrag
     const { error: teamErr } = await admin.from('team').insert({
