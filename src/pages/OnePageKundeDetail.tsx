@@ -179,7 +179,39 @@ export default function OnePageKundeDetail() {
     loadAll();
   }
 
-  async function regenerateToken() {
+  async function sendTestWebhook() {
+    if (!project) return;
+    const testPayload = {
+      first_name: 'Test',
+      last_name: 'Webhook',
+      email: `test+${Date.now()}@beispiel.de`,
+      phone: '+491234567890',
+      message: 'Dies ist ein Test-Webhook aus dem Portal',
+      utm_source: 'manual_test',
+      utm_medium: 'portal',
+      utm_campaign: 'webhook_test',
+      date: new Date().toISOString(),
+    };
+    try {
+      toast.info('Test-Webhook wird gesendet…');
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testPayload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success('Test-Webhook erfolgreich – siehe Tab „Webhook Logs"');
+        setTab('logs');
+        setTimeout(() => loadAll(), 1500);
+      } else {
+        toast.error(`Test fehlgeschlagen: ${json.error || json.detail || res.statusText}`);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Netzwerkfehler: ${msg}`);
+    }
+  }
     if (!project) return;
     const newSecret = crypto.getRandomValues(new Uint8Array(16))
       .reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
