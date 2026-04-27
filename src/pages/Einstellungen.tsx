@@ -363,6 +363,24 @@ export default function Einstellungen() {
   useEffect(() => { fetchData(); }, [user, isAdminOrManager, isAdmin]);
   useEffect(() => { loadAllUsers(); }, [loadAllUsers]);
 
+  const showDeleteError = (raw: string, hint?: string) => {
+    const isFkError =
+      raw.includes('Database error deleting user') ||
+      raw.includes('foreign key') ||
+      raw.includes('violates') ||
+      raw.includes('23503');
+    if (isFkError) {
+      toast.error('Löschung fehlgeschlagen', {
+        description:
+          hint ||
+          'Der User hat noch verknüpfte Daten in der Datenbank. Bitte Admin kontaktieren.',
+        duration: 8000,
+      });
+    } else {
+      toast.error(raw, { description: hint, duration: 6000 });
+    }
+  };
+
   const handleDeleteMember = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -370,8 +388,9 @@ export default function Einstellungen() {
       body: { user_id: deleteTarget.id, confirm_name: deleteConfirmName },
     });
     setDeleting(false);
-    if (error || (data as any)?.error) {
-      toast.error((data as any)?.error || error?.message || 'Löschen fehlgeschlagen');
+    const errMsg = (data as any)?.error || error?.message;
+    if (errMsg) {
+      showDeleteError(errMsg, (data as any)?.hint);
       return;
     }
     toast.success(`${deleteTarget.name} wurde gelöscht`);
@@ -388,8 +407,9 @@ export default function Einstellungen() {
       body: { user_id: orphanDeleteTarget.id },
     });
     setOrphanDeleting(false);
-    if (error || (data as any)?.error) {
-      toast.error((data as any)?.error || error?.message || 'Löschen fehlgeschlagen');
+    const errMsg = (data as any)?.error || error?.message;
+    if (errMsg) {
+      showDeleteError(errMsg, (data as any)?.hint);
       return;
     }
     toast.success(`Verwaister Auth-User ${orphanDeleteTarget.email} gelöscht`);
