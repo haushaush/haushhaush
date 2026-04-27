@@ -89,6 +89,7 @@ type CachedMessage = {
 type FullMessage = CachedMessage & {
   body_text: string | null;
   body_html: string | null;
+  body_fetched_at: string | null;
   attachments: Array<{ filename: string; size: number; contentType: string; attachmentId: number }> | null;
 };
 
