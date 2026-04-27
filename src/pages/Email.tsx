@@ -130,6 +130,7 @@ export default function EmailPage() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [composePrefill, setComposePrefill] = useState<{ to?: string[]; subject?: string; body?: string }>({});
   const [showImages, setShowImages] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // Debounce search
