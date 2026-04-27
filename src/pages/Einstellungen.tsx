@@ -311,6 +311,25 @@ export default function Einstellungen() {
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [deleting, setDeleting] = useState(false);
 
+  // Unified user list (auth + team)
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [userStats, setUserStats] = useState<{ total: number; active: number; orphan: number; deleted: number } | null>(null);
+  const [importOrphanEmail, setImportOrphanEmail] = useState<string | null>(null);
+  const [orphanDeleteTarget, setOrphanDeleteTarget] = useState<{ id: string; email: string } | null>(null);
+  const [orphanDeleting, setOrphanDeleting] = useState(false);
+  const [showDeletedSection, setShowDeletedSection] = useState(false);
+
+  const loadAllUsers = useCallback(async () => {
+    if (!isAdmin) return;
+    const { data, error } = await supabase.functions.invoke('list-all-users');
+    if (error || (data as any)?.error) {
+      console.warn('[list-all-users] fehlgeschlagen', error || (data as any)?.error);
+      return;
+    }
+    setAllUsers((data as any).users || []);
+    setUserStats((data as any).stats || null);
+  }, [isAdmin]);
+
   const fetchData = async () => {
     const [driveRes, googleDriveRes, teamRes, reqRes, intRes, dealsRes, rolesRes] = await Promise.all([
       user ? supabase.from('drive_connection').select('*').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
