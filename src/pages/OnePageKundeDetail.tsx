@@ -89,7 +89,7 @@ export default function OnePageKundeDetail() {
   const [project, setProject] = useState<Project | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'leads' | 'webhook' | 'settings'>('leads');
+  const [tab, setTab] = useState<'leads' | 'webhook' | 'logs' | 'settings'>('leads');
 
   // Leads tab state
   const [search, setSearch] = useState('');
