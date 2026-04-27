@@ -961,6 +961,18 @@ export default function Einstellungen() {
             </div>
           )}
 
+          {isAdmin && userStats && (
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span><span className="text-foreground font-semibold">{userStats.active}</span> aktiv</span>
+              <span>·</span>
+              <span>
+                <span className={`font-semibold ${userStats.orphan > 0 ? 'text-warning' : 'text-foreground'}`}>{userStats.orphan}</span> verwaist
+              </span>
+              <span>·</span>
+              <span><span className="text-foreground font-semibold">{userStats.deleted}</span> gelöscht</span>
+            </div>
+          )}
+
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Aktive Mitarbeiter</h3>
             <Card className="border-border bg-card"><CardContent className="p-0"><div className="overflow-x-auto">
@@ -1006,6 +1018,94 @@ export default function Einstellungen() {
               </Table>
             </div></CardContent></Card>
           </div>
+
+          {/* Verwaiste Auth-User */}
+          {isAdmin && allUsers.filter(u => u.is_orphan).length > 0 && (
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold text-warning uppercase tracking-wider flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Verwaiste Auth-User ({allUsers.filter(u => u.is_orphan).length})
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Diese User können sich einloggen, haben aber kein Mitarbeiter-Profil. Bitte importieren oder löschen.
+                </p>
+              </div>
+              <Card className="border-warning/30 bg-card"><CardContent className="p-0"><div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>E-Mail</TableHead>
+                    <TableHead className="hidden sm:table-cell">Auth seit</TableHead>
+                    <TableHead className="text-right">Aktion</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {allUsers.filter(u => u.is_orphan).map(u => (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-mono text-xs">{u.email}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs hidden sm:table-cell">
+                          {u.auth_created_at ? new Date(u.auth_created_at).toLocaleDateString('de-DE') : '–'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => setImportOrphanEmail(u.email)}
+                            >
+                              <UserPlus className="h-3.5 w-3.5 mr-1" />
+                              Importieren
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setOrphanDeleteTarget({ id: u.id, email: u.email })}
+                              aria-label={`${u.email} löschen`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div></CardContent></Card>
+            </div>
+          )}
+
+          {/* Gelöschte Mitarbeiter */}
+          {isAdmin && allUsers.filter(u => u.is_deleted).length > 0 && (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => setShowDeletedSection(v => !v)}
+                className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+              >
+                {showDeletedSection ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                Gelöschte Mitarbeiter ({allUsers.filter(u => u.is_deleted).length})
+              </button>
+              {showDeletedSection && (
+                <Card className="border-border bg-card"><CardContent className="p-0"><div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader><TableRow>
+                      <TableHead>Name</TableHead><TableHead>E-Mail</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>
+                      {allUsers.filter(u => u.is_deleted).map(u => (
+                        <TableRow key={u.id}>
+                          <TableCell className="font-medium text-muted-foreground">{u.name || '–'}</TableCell>
+                          <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div></CardContent></Card>
+              )}
+            </div>
+          )}
+
           <Button variant="outline"><Users className="h-4 w-4 mr-2" />Per E-Mail einladen</Button>
         </TabsContent>
 
