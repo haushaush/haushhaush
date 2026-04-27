@@ -69,13 +69,62 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Best-effort cleanup of permission/role rows that may exist
-    await admin.from('user_permissions').delete().eq('user_id', targetId).then(() => {}, () => {});
-    await admin.from('user_roles').delete().eq('user_id', targetId).then(() => {}, () => {});
+    // Best-effort cleanup of any rows that reference this user
+    const userIdTables = [
+      'user_permissions',
+      'user_roles',
+      'team_hr_data',
+      'google_drive_connections',
+      'drive_connection',
+      'email_accounts',
+      'email_messages_cache',
+      'ad_creatives',
+      'aria_interactions',
+      'api_tokens',
+      'notifications',
+      'notification_settings',
+      'integration_settings',
+      'oauth_states',
+      'support_tickets',
+      'time_entries',
+    ];
+    for (const table of userIdTables) {
+      const { error } = await admin.from(table).delete().eq('user_id', targetId);
+      if (error && !error.message?.includes('does not exist') && error.code !== '42P01') {
+        console.warn(`[delete-orphan-auth-user] cleanup ${table}: ${error.message}`);
+      }
+    }
+
+    const setNullTargets = [
+      { table: 'bug_reports', column: 'user_id' },
+      { table: 'employee_requests', column: 'user_id' },
+      { table: 'employee_requests', column: 'reviewed_by' },
+      { table: 'kunde_meta_accounts', column: 'matched_by' },
+      { table: 'team_hr_data', column: 'updated_by' },
+      { table: 'aria_knowledge', column: 'created_by' },
+      { table: 'aria_knowledge', column: 'last_updated_by' },
+      { table: 'aria_memory', column: 'created_by' },
+      { table: 'aria_automations', column: 'created_by' },
+      { table: 'drive_pinned_files', column: 'pinned_by' },
+      { table: 'close_deals', column: 'assigned_to' },
+      { table: 'wiki_pages', column: 'created_by' },
+    ];
+    for (const { table, column } of setNullTargets) {
+      const { error } = await admin.from(table).update({ [column]: null }).eq(column, targetId);
+      if (error && !error.message?.includes('does not exist') && error.code !== '42P01') {
+        console.warn(`[delete-orphan-auth-user] nullify ${table}.${column}: ${error.message}`);
+      }
+    }
 
     const { error: delErr } = await admin.auth.admin.deleteUser(targetId);
     if (delErr) {
-      return jsonResponse({ error: `Auth-Löschung fehlgeschlagen: ${delErr.message}` }, 500);
+      return jsonResponse(
+        {
+          error: `Auth-Löschung fehlgeschlagen: ${delErr.message}`,
+          hint: 'Möglicherweise gibt es noch verknüpfte Daten. Prüfe die Edge-Function-Logs.',
+        },
+        500,
+      );
     }
 
     return jsonResponse({ success: true, deleted_id: targetId });
