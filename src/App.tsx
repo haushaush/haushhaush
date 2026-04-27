@@ -58,6 +58,7 @@ import Onboarding from "./pages/Onboarding.tsx";
 import EmailPage from "./pages/Email.tsx";
 import Recovery from "./pages/Recovery.tsx";
 import OnePageKunden from "./pages/OnePageKunden.tsx";
+import OnePageKundeDetail from "./pages/OnePageKundeDetail.tsx";
 import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
 
 const queryClient = new QueryClient();
@@ -124,7 +125,7 @@ const App = () => (
                 <Route path="/meta/anzeigen" element={<DL><MetaAnzeigen /></DL>} />
                 <Route path="/onepage-leads" element={<Navigate to="/onepage-leads/kunden" replace />} />
                 <Route path="/onepage-leads/kunden" element={<DL><OnePageKunden /></DL>} />
-                <Route path="/onepage-leads/kunden/:id" element={<DL><OnePageKunden /></DL>} />
+                <Route path="/onepage-leads/kunden/:id" element={<DL><OnePageKundeDetail /></DL>} />
                 <Route path="/drive" element={<DL><DriveUebersicht /></DL>} />
                 <Route path="/drive/meine-dateien" element={<DL><DriveMeineDateien /></DL>} />
                 <Route path="/drive/geteilt" element={<DL><DriveGeteilt /></DL>} />

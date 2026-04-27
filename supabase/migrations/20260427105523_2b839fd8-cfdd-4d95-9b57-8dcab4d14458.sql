@@ -1,0 +1,1 @@
+ALTER VIEW public.onepage_projects_with_stats SET (security_invoker = on);
