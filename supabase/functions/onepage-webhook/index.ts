@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { extractLead } from "../_shared/lead-extractor.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -112,43 +113,35 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'unknown_token' }, 404);
   }
 
-  // Map fields with case-insensitive fallback
-  const getField = (...keys: string[]): string | null => {
-    for (const key of keys) {
-      const v = (payload as Record<string, unknown>)[key];
-      if (v != null && String(v).trim() !== '') return String(v).trim();
-      const matchKey = Object.keys(payload).find((k) => k.toLowerCase() === key.toLowerCase());
-      if (matchKey) {
-        const mv = (payload as Record<string, unknown>)[matchKey];
-        if (mv != null && String(mv).trim() !== '') return String(mv).trim();
-      }
-    }
-    return null;
-  };
+  // Use shared extractor — same logic as CSV import
+  const extracted = extractLead(payload);
 
-  const dateRaw = getField('date', 'Date', 'created_at', 'datum', 'received_at');
-  const parsedDate = dateRaw ? new Date(dateRaw) : null;
-  const receivedAt = parsedDate && !isNaN(parsedDate.getTime())
-    ? parsedDate.toISOString()
-    : new Date().toISOString();
+  console.log(
+    `[onepage-webhook] Extracted: email=${extracted.email} vorname=${extracted.vorname} ` +
+    `nachname=${extracted.nachname} telefon=${extracted.telefon} ` +
+    `from ${Object.keys(payload).length} fields`,
+  );
 
   const lead = {
     project_id: project.id,
-    vorname: getField('first_name', 'firstname', 'vorname', 'Vorname', 'name'),
-    nachname: getField('last_name', 'lastname', 'nachname', 'Nachname'),
-    email: getField('email', 'Email', 'e-mail', 'E-Mail', 'email_address'),
-    telefon: getField('phone', 'Phone', 'telefon', 'Telefon', 'tel', 'phone_number'),
-    nachricht: getField('message', 'Message', 'nachricht', 'Nachricht', 'comment'),
-    unternehmen: getField('company', 'Company', 'unternehmen', 'Unternehmen'),
-    utm_source: getField('utm_source'),
-    utm_medium: getField('utm_medium'),
-    utm_campaign: getField('utm_campaign'),
-    utm_content: getField('utm_content'),
-    utm_term: getField('utm_term'),
-    received_at: receivedAt,
+    vorname: extracted.vorname,
+    nachname: extracted.nachname,
+    email: extracted.email,
+    telefon: extracted.telefon,
+    unternehmen: extracted.unternehmen,
+    nachricht: extracted.nachricht,
+    utm_source: extracted.utm_source,
+    utm_medium: extracted.utm_medium,
+    utm_campaign: extracted.utm_campaign,
+    utm_content: extracted.utm_content,
+    utm_term: extracted.utm_term,
+    received_at: extracted.created_at,
     imported_via: 'webhook',
     source: 'webhook',
-    payload,
+    payload: {
+      ...payload,
+      _form_name: extracted.form_name,
+    },
   };
 
   const { error: insertErr } = await admin
@@ -156,7 +149,6 @@ Deno.serve(async (req) => {
     .insert(lead);
 
   if (insertErr) {
-    // Treat duplicate-key as success-ish: webhook delivered, lead just already existed
     if (insertErr.code === '23505') {
       await updateLog('duplicate', 'Lead bereits vorhanden (Dedupe)', project.id);
       return jsonResponse({ ok: true, duplicate: true, project: project.name }, 200);
@@ -166,5 +158,13 @@ Deno.serve(async (req) => {
   }
 
   await updateLog('success', undefined, project.id);
-  return jsonResponse({ ok: true, project: project.name }, 200);
+  return jsonResponse({
+    ok: true,
+    project: project.name,
+    extracted: {
+      email: extracted.email,
+      vorname: extracted.vorname,
+      nachname: extracted.nachname,
+    },
+  }, 200);
 });
