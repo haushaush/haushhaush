@@ -89,18 +89,97 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Andere Admin-Konten können nicht gelöscht werden' }, 403);
     }
 
-    // Cleanup app rows first (best effort)
-    await admin.from('user_permissions').delete().eq('user_id', targetId).then(() => {}, () => {});
-    await admin.from('user_roles').delete().eq('user_id', targetId).then(() => {}, () => {});
-    await admin.from('team').delete().eq('id', targetId).then(() => {}, () => {});
+    // === Cleanup dependent rows BEFORE deleting auth user ===
+    // CASCADE FKs now exist for most of these, but we still clean explicitly
+    // as a safety net for tables that might be added later without CASCADE.
+    const cleanedTables: Record<string, number | string> = {};
+
+    // Tables owned by the user (CASCADE/personal data) — delete rows
+    const userIdTables = [
+      'user_permissions',
+      'user_roles',
+      'team_hr_data',
+      'google_drive_connections',
+      'drive_connection',
+      'email_accounts',
+      'email_messages_cache',
+      'ad_creatives',
+      'aria_interactions',
+      'api_tokens',
+      'notifications',
+      'notification_settings',
+      'integration_settings',
+      'oauth_states',
+      'support_tickets',
+      'time_entries',
+    ];
+    for (const table of userIdTables) {
+      const { error, count } = await admin
+        .from(table)
+        .delete({ count: 'exact' })
+        .eq('user_id', targetId);
+      if (error) {
+        if (!error.message?.includes('does not exist') && error.code !== '42P01') {
+          console.warn(`[delete-team-member] cleanup ${table}: ${error.message}`);
+          cleanedTables[table] = `error: ${error.message}`;
+        }
+      } else {
+        cleanedTables[table] = count ?? 0;
+      }
+    }
+
+    // Tables to nullify (audit/historical references)
+    const setNullTargets = [
+      { table: 'bug_reports', column: 'user_id' },
+      { table: 'employee_requests', column: 'user_id' },
+      { table: 'employee_requests', column: 'reviewed_by' },
+      { table: 'kunde_meta_accounts', column: 'matched_by' },
+      { table: 'team_hr_data', column: 'updated_by' },
+      { table: 'aria_knowledge', column: 'created_by' },
+      { table: 'aria_knowledge', column: 'last_updated_by' },
+      { table: 'aria_memory', column: 'created_by' },
+      { table: 'aria_automations', column: 'created_by' },
+      { table: 'drive_pinned_files', column: 'pinned_by' },
+      { table: 'close_deals', column: 'assigned_to' },
+      { table: 'wiki_pages', column: 'created_by' },
+    ];
+    for (const { table, column } of setNullTargets) {
+      const { error } = await admin
+        .from(table)
+        .update({ [column]: null })
+        .eq(column, targetId);
+      if (error && !error.message?.includes('does not exist') && error.code !== '42P01') {
+        console.warn(`[delete-team-member] nullify ${table}.${column}: ${error.message}`);
+      }
+    }
+
+    // Finally remove the team profile row
+    const { error: teamErr } = await admin.from('team').delete().eq('id', targetId);
+    if (teamErr) {
+      console.warn(`[delete-team-member] team delete: ${teamErr.message}`);
+    }
 
     // Delete auth user
     const { error: delErr } = await admin.auth.admin.deleteUser(targetId);
     if (delErr) {
-      return jsonResponse({ error: `Auth-Löschung fehlgeschlagen: ${delErr.message}` }, 500);
+      console.error('[delete-team-member] auth.deleteUser failed:', delErr);
+      return jsonResponse(
+        {
+          error: `Auth-Löschung fehlgeschlagen: ${delErr.message}`,
+          hint: 'Möglicherweise gibt es noch verknüpfte Daten. Prüfe die Edge-Function-Logs.',
+          cleaned: cleanedTables,
+        },
+        500,
+      );
     }
 
-    return jsonResponse({ success: true, deleted_id: targetId, deleted_name: target.name });
+    console.log(`[delete-team-member] ✓ deleted ${targetId} (${target.name})`);
+    return jsonResponse({
+      success: true,
+      deleted_id: targetId,
+      deleted_name: target.name,
+      cleaned: cleanedTables,
+    });
   } catch (e) {
     console.error('delete-team-member error', e);
     return jsonResponse({ error: e instanceof Error ? e.message : 'Unbekannter Fehler' }, 500);
