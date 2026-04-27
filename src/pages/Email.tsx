@@ -732,11 +732,24 @@ export default function EmailPage() {
               )}
 
               {/* Body */}
-              <div
-                ref={bodyRef}
-                className="prose prose-sm dark:prose-invert max-w-none email-body"
-                dangerouslySetInnerHTML={{ __html: finalHtml || `<pre class="whitespace-pre-wrap font-sans">${(fullMessage.body_text ?? '').replace(/</g, '&lt;')}</pre>` }}
-              />
+              {hasHtml ? (
+                <div
+                  ref={bodyRef}
+                  className="prose prose-sm dark:prose-invert max-w-none email-body"
+                  dangerouslySetInnerHTML={{ __html: finalHtml }}
+                />
+              ) : fullMessage.body_text && fullMessage.body_text.trim().length > 0 ? (
+                <div
+                  ref={bodyRef}
+                  className="text-sm whitespace-pre-wrap font-sans leading-relaxed text-foreground/90 break-words"
+                  dangerouslySetInnerHTML={{ __html: linkedText }}
+                />
+              ) : (
+                <div className="text-sm text-muted-foreground italic py-6 text-center">
+                  Diese Nachricht enthält keinen darstellbaren Inhalt.
+                  {fullMessage.attachments && fullMessage.attachments.length > 0 && ' Siehe Anhänge unten.'}
+                </div>
+              )}
 
               {/* Attachments */}
               {fullMessage.attachments && fullMessage.attachments.length > 0 && (
@@ -759,6 +772,25 @@ export default function EmailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Debug inspector */}
+              <details
+                className="pt-4 border-t border-border text-xs text-muted-foreground"
+                open={showRaw}
+                onToggle={(e) => setShowRaw((e.target as HTMLDetailsElement).open)}
+              >
+                <summary className="cursor-pointer select-none hover:text-foreground transition-colors">
+                  🔧 Debug
+                </summary>
+                <div className="mt-2 space-y-1 font-mono">
+                  <div>UID: {fullMessage.uid}</div>
+                  <div>Body Text: {fullMessage.body_text?.length ?? 0} chars</div>
+                  <div>Body HTML: {fullMessage.body_html?.length ?? 0} chars</div>
+                  <div>Attachments: {fullMessage.attachments?.length ?? 0}</div>
+                  <div>Fetched: {fullMessage.body_fetched_at ?? '—'}</div>
+                  <div>Rendered as: {hasHtml ? 'HTML' : fullMessage.body_text ? 'Text (auto-linked)' : 'Empty'}</div>
+                </div>
+              </details>
             </div>
           )}
         </div>
