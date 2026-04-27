@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import Papa from 'papaparse';
 import {
   ArrowLeft, ExternalLink, Copy, Upload, Download, Search,
-  RefreshCw, Trash2, AlertTriangle, CheckCircle2, Clock,
+  RefreshCw, Trash2, AlertTriangle, CheckCircle2, Clock, Send, Inbox,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
