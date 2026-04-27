@@ -273,20 +273,52 @@ export default function EmailPage() {
     setShowImages(false);
   }, [selectedUid]);
 
+  // Determine which body to render — prefer HTML when meaningfully present
+  const hasHtml = useMemo(
+    () => !!fullMessage?.body_html && fullMessage.body_html.trim().length > 50,
+    [fullMessage?.body_html],
+  );
+
+  // Debug log so we can spot rendering issues from the console
+  useEffect(() => {
+    if (!fullMessage) return;
+    // eslint-disable-next-line no-console
+    console.log(
+      `[MessageDetail] uid=${fullMessage.uid} html=${fullMessage.body_html?.length ?? 0} text=${fullMessage.body_text?.length ?? 0}`,
+    );
+  }, [fullMessage?.uid, fullMessage?.body_html, fullMessage?.body_text]);
+
   // Sanitize HTML
   const sanitizedHtml = useMemo(() => {
-    if (!fullMessage?.body_html) return '';
+    if (!hasHtml || !fullMessage?.body_html) return '';
     return DOMPurify.sanitize(fullMessage.body_html, {
       ALLOWED_TAGS: ['a', 'p', 'br', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'img', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'hr'],
       ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'style', 'target', 'rel', 'width', 'height'],
       FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
       FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
     });
-  }, [fullMessage?.body_html]);
+  }, [hasHtml, fullMessage?.body_html]);
 
   const hasExternalImages = useMemo(() => {
     return /<img[^>]+src=['"]https?:/i.test(fullMessage?.body_html ?? '');
   }, [fullMessage?.body_html]);
+
+  // Auto-linked plain-text fallback (URLs and email addresses become clickable)
+  const linkedText = useMemo(() => {
+    const raw = fullMessage?.body_text ?? '';
+    if (!raw) return '';
+    const escaped = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const withUrls = escaped.replace(
+      /(https?:\/\/[^\s<>"]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline">$1</a>',
+    );
+    const withEmails = withUrls.replace(
+      /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
+      '<a href="mailto:$1" class="text-teal-600 underline">$1</a>',
+    );
+    return withEmails;
+  }, [fullMessage?.body_text]);
+
 
   const finalHtml = useMemo(() => {
     if (showImages || !hasExternalImages) return sanitizedHtml;
