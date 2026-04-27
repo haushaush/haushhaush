@@ -667,43 +667,6 @@ function parseOnePageCSV(csvText: string): { leads: ParsedLead[]; stats: ParseSt
   const headers = result.data[0].map((h) => (h || '').toString());
   const rows = result.data.slice(1);
 
-  const fieldToIndexes: Record<string, number[]> = {
-    vorname: [], nachname: [], email: [], telefon: [], unternehmen: [],
-    nachricht: [], utm_source: [], utm_medium: [], utm_campaign: [],
-    utm_content: [], utm_term: [], date: [],
-  };
-
-  headers.forEach((rawHeader, idx) => {
-    const h = (rawHeader || '').toLowerCase().trim();
-    if (!h) return;
-    if (h === 'vorname' || h === 'first name' || h === 'name (first name)' || h === 'vor- & nachname' || h === 'firstname') {
-      fieldToIndexes.vorname.push(idx);
-    }
-    if (h === 'nachname' || h === 'last name' || h === 'name (last name)' || h === 'lastname') {
-      fieldToIndexes.nachname.push(idx);
-    }
-    if (h === 'email' || h === 'e-mail' || h === '📧 e-mail' || h === 'e-mail adresse' || h === 'mail' || h.startsWith('email ') || h.startsWith('e-mail ')) {
-      fieldToIndexes.email.push(idx);
-    }
-    if (h === 'phone' || h === 'telefon' || h === 'phone number' || h === 'tel' || h === 'mobil' || h === 'mobile' || h === 'handy') {
-      fieldToIndexes.telefon.push(idx);
-    }
-    if (h === 'unternehmen' || h === 'company' || h === 'firma') {
-      fieldToIndexes.unternehmen.push(idx);
-    }
-    if (h === 'nachricht' || h === 'message' || h === 'textarea' || h === 'anmerkungen' || h === 'kommentar' || h === 'comment' || h.includes('besondere wünsche')) {
-      fieldToIndexes.nachricht.push(idx);
-    }
-    if (h === 'utm source' || h === 'utm_source') fieldToIndexes.utm_source.push(idx);
-    if (h === 'utm medium' || h === 'utm_medium') fieldToIndexes.utm_medium.push(idx);
-    if (h === 'utm campaign' || h === 'utm_campaign') fieldToIndexes.utm_campaign.push(idx);
-    if (h === 'utm content' || h === 'utm_content') fieldToIndexes.utm_content.push(idx);
-    if (h === 'utm term' || h === 'utm_term') fieldToIndexes.utm_term.push(idx);
-    if (h === 'date' || h === 'datum' || h === 'erstellt am' || h === 'created at' || h === 'created_at' || h === 'submitted at') {
-      fieldToIndexes.date.push(idx);
-    }
-  });
-
   function isMeaningful(val: string | undefined): boolean {
     if (!val) return false;
     const t = val.trim();
@@ -712,57 +675,68 @@ function parseOnePageCSV(csvText: string): { leads: ParsedLead[]; stats: ParseSt
     return true;
   }
 
-  function firstNonEmpty(row: string[], indexes: number[]): string | null {
-    for (const idx of indexes) {
+  // Convert a CSV row into a flat key/value object that extractLead understands.
+  // Duplicate header names are preserved by appending an index suffix so no data is lost.
+  function rowToObject(row: string[]): Record<string, string> {
+    const obj: Record<string, string> = {};
+    headers.forEach((h, idx) => {
       const v = row[idx];
-      if (isMeaningful(v)) return v.trim();
-    }
-    return null;
+      if (!isMeaningful(v)) return;
+      const key = obj[h] !== undefined ? `${h}__${idx}` : h;
+      obj[key] = v.trim();
+    });
+    return obj;
   }
 
   const leads: ParsedLead[] = [];
   let skippedEmpty = 0;
+  const fieldCounts: Record<string, number> = {
+    email: 0, vorname: 0, nachname: 0, telefon: 0, unternehmen: 0,
+    nachricht: 0, utm_source: 0, utm_medium: 0, utm_campaign: 0,
+    utm_content: 0, utm_term: 0, date_parsed: 0,
+  };
 
   for (const row of rows) {
     if (!row || row.length === 0) { skippedEmpty++; continue; }
 
-    const email = firstNonEmpty(row, fieldToIndexes.email);
-    const vorname = firstNonEmpty(row, fieldToIndexes.vorname);
-    const nachname = firstNonEmpty(row, fieldToIndexes.nachname);
-    const telefon = firstNonEmpty(row, fieldToIndexes.telefon);
+    const rowObj = rowToObject(row);
+    if (Object.keys(rowObj).length === 0) { skippedEmpty++; continue; }
 
-    if (!email && !vorname && !nachname && !telefon) {
+    const extracted = extractLead(rowObj);
+
+    if (!extracted.email && !extracted.vorname && !extracted.nachname && !extracted.telefon) {
       skippedEmpty++;
       continue;
     }
 
-    const dateRaw = firstNonEmpty(row, fieldToIndexes.date);
-    const received_at = parseDateStr(dateRaw) || new Date().toISOString();
-
-    const raw_data: Record<string, string> = {};
-    headers.forEach((header, idx) => {
-      const v = row[idx];
-      if (!isMeaningful(v)) return;
-      const key = raw_data[header] !== undefined ? `${header}__${idx}` : header;
-      raw_data[key] = v.trim();
-    });
+    if (extracted.email) fieldCounts.email++;
+    if (extracted.vorname) fieldCounts.vorname++;
+    if (extracted.nachname) fieldCounts.nachname++;
+    if (extracted.telefon) fieldCounts.telefon++;
+    if (extracted.unternehmen) fieldCounts.unternehmen++;
+    if (extracted.nachricht) fieldCounts.nachricht++;
+    if (extracted.utm_source) fieldCounts.utm_source++;
+    if (extracted.utm_medium) fieldCounts.utm_medium++;
+    if (extracted.utm_campaign) fieldCounts.utm_campaign++;
+    if (extracted.utm_content) fieldCounts.utm_content++;
+    if (extracted.utm_term) fieldCounts.utm_term++;
 
     leads.push({
-      vorname, nachname, email, telefon,
-      unternehmen: firstNonEmpty(row, fieldToIndexes.unternehmen),
-      nachricht: firstNonEmpty(row, fieldToIndexes.nachricht),
-      utm_source: firstNonEmpty(row, fieldToIndexes.utm_source),
-      utm_medium: firstNonEmpty(row, fieldToIndexes.utm_medium),
-      utm_campaign: firstNonEmpty(row, fieldToIndexes.utm_campaign),
-      utm_content: firstNonEmpty(row, fieldToIndexes.utm_content),
-      utm_term: firstNonEmpty(row, fieldToIndexes.utm_term),
-      received_at,
-      raw_data,
+      vorname: extracted.vorname,
+      nachname: extracted.nachname,
+      email: extracted.email,
+      telefon: extracted.telefon,
+      unternehmen: extracted.unternehmen,
+      nachricht: extracted.nachricht,
+      utm_source: extracted.utm_source,
+      utm_medium: extracted.utm_medium,
+      utm_campaign: extracted.utm_campaign,
+      utm_content: extracted.utm_content,
+      utm_term: extracted.utm_term,
+      received_at: extracted.created_at,
+      raw_data: rowObj,
     });
   }
-
-  const fieldCounts: Record<string, number> = {};
-  Object.entries(fieldToIndexes).forEach(([k, arr]) => { fieldCounts[k] = arr.length; });
 
   return {
     leads,
