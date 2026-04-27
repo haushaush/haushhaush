@@ -732,6 +732,7 @@ function CsvImportModal({
   projectId: string;
   onDone: () => void;
 }) {
+  const { isTestMode } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
   const [leads, setLeads] = useState<ParsedLead[]>([]);
   const [stats, setStats] = useState<ParseStats | null>(null);
