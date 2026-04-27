@@ -89,6 +89,7 @@ type CachedMessage = {
 type FullMessage = CachedMessage & {
   body_text: string | null;
   body_html: string | null;
+  body_fetched_at: string | null;
   attachments: Array<{ filename: string; size: number; contentType: string; attachmentId: number }> | null;
 };
 
@@ -130,6 +131,7 @@ export default function EmailPage() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [composePrefill, setComposePrefill] = useState<{ to?: string[]; subject?: string; body?: string }>({});
   const [showImages, setShowImages] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // Debounce search
@@ -271,22 +273,55 @@ export default function EmailPage() {
   // Reset image-blocking on message change
   useEffect(() => {
     setShowImages(false);
+    setShowRaw(false);
   }, [selectedUid]);
+
+  // Determine which body to render — prefer HTML when meaningfully present
+  const hasHtml = useMemo(
+    () => !!fullMessage?.body_html && fullMessage.body_html.trim().length > 50,
+    [fullMessage?.body_html],
+  );
+
+  // Debug log so we can spot rendering issues from the console
+  useEffect(() => {
+    if (!fullMessage) return;
+    // eslint-disable-next-line no-console
+    console.log(
+      `[MessageDetail] uid=${fullMessage.uid} html=${fullMessage.body_html?.length ?? 0} text=${fullMessage.body_text?.length ?? 0}`,
+    );
+  }, [fullMessage?.uid, fullMessage?.body_html, fullMessage?.body_text]);
 
   // Sanitize HTML
   const sanitizedHtml = useMemo(() => {
-    if (!fullMessage?.body_html) return '';
+    if (!hasHtml || !fullMessage?.body_html) return '';
     return DOMPurify.sanitize(fullMessage.body_html, {
       ALLOWED_TAGS: ['a', 'p', 'br', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'img', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'hr'],
       ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'style', 'target', 'rel', 'width', 'height'],
       FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button'],
       FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover'],
     });
-  }, [fullMessage?.body_html]);
+  }, [hasHtml, fullMessage?.body_html]);
 
   const hasExternalImages = useMemo(() => {
     return /<img[^>]+src=['"]https?:/i.test(fullMessage?.body_html ?? '');
   }, [fullMessage?.body_html]);
+
+  // Auto-linked plain-text fallback (URLs and email addresses become clickable)
+  const linkedText = useMemo(() => {
+    const raw = fullMessage?.body_text ?? '';
+    if (!raw) return '';
+    const escaped = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const withUrls = escaped.replace(
+      /(https?:\/\/[^\s<>"]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-teal-600 underline">$1</a>',
+    );
+    const withEmails = withUrls.replace(
+      /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
+      '<a href="mailto:$1" class="text-teal-600 underline">$1</a>',
+    );
+    return withEmails;
+  }, [fullMessage?.body_text]);
+
 
   const finalHtml = useMemo(() => {
     if (showImages || !hasExternalImages) return sanitizedHtml;
@@ -698,11 +733,24 @@ export default function EmailPage() {
               )}
 
               {/* Body */}
-              <div
-                ref={bodyRef}
-                className="prose prose-sm dark:prose-invert max-w-none email-body"
-                dangerouslySetInnerHTML={{ __html: finalHtml || `<pre class="whitespace-pre-wrap font-sans">${(fullMessage.body_text ?? '').replace(/</g, '&lt;')}</pre>` }}
-              />
+              {hasHtml ? (
+                <div
+                  ref={bodyRef}
+                  className="prose prose-sm dark:prose-invert max-w-none email-body"
+                  dangerouslySetInnerHTML={{ __html: finalHtml }}
+                />
+              ) : fullMessage.body_text && fullMessage.body_text.trim().length > 0 ? (
+                <div
+                  ref={bodyRef}
+                  className="text-sm whitespace-pre-wrap font-sans leading-relaxed text-foreground/90 break-words"
+                  dangerouslySetInnerHTML={{ __html: linkedText }}
+                />
+              ) : (
+                <div className="text-sm text-muted-foreground italic py-6 text-center">
+                  Diese Nachricht enthält keinen darstellbaren Inhalt.
+                  {fullMessage.attachments && fullMessage.attachments.length > 0 && ' Siehe Anhänge unten.'}
+                </div>
+              )}
 
               {/* Attachments */}
               {fullMessage.attachments && fullMessage.attachments.length > 0 && (
@@ -725,6 +773,25 @@ export default function EmailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Debug inspector */}
+              <details
+                className="pt-4 border-t border-border text-xs text-muted-foreground"
+                open={showRaw}
+                onToggle={(e) => setShowRaw((e.target as HTMLDetailsElement).open)}
+              >
+                <summary className="cursor-pointer select-none hover:text-foreground transition-colors">
+                  🔧 Debug
+                </summary>
+                <div className="mt-2 space-y-1 font-mono">
+                  <div>UID: {fullMessage.uid}</div>
+                  <div>Body Text: {fullMessage.body_text?.length ?? 0} chars</div>
+                  <div>Body HTML: {fullMessage.body_html?.length ?? 0} chars</div>
+                  <div>Attachments: {fullMessage.attachments?.length ?? 0}</div>
+                  <div>Fetched: {fullMessage.body_fetched_at ?? '—'}</div>
+                  <div>Rendered as: {hasHtml ? 'HTML' : fullMessage.body_text ? 'Text (auto-linked)' : 'Empty'}</div>
+                </div>
+              </details>
             </div>
           )}
         </div>
