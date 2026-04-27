@@ -752,6 +752,12 @@ export default function EmailPage() {
         prefill={composePrefill}
         onSent={handleRefresh}
       />
+      <EmailSummaryPanel
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        messages={messages}
+        onSelectEmail={(uid) => setSelectedUid(uid)}
+      />
     </div>
   );
 }
