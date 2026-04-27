@@ -56,6 +56,7 @@ import N8nWorkflowsPage from "./pages/automationen/N8nWorkflows.tsx";
 import WebhooksPage from "./pages/automationen/Webhooks.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import EmailPage from "./pages/Email.tsx";
+import Recovery from "./pages/Recovery.tsx";
 import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
 
 const queryClient = new QueryClient();
@@ -105,6 +106,7 @@ const App = () => (
                 <Route path="/registrierung" element={<Registrierung />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/recovery" element={<Recovery />} />
                 <Route path="/" element={<DL><Dashboard /></DL>} />
                 <Route path="/kunden" element={<DL><Kunden /></DL>} />
                 <Route path="/kunden/pipeline" element={<DL><KundenPipeline /></DL>} />
