@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Bell, Palette, Users, Hash, X, Check, Search, Loader2, Upload, Building2, ImageIcon, Trash2, AlertTriangle } from 'lucide-react';
+import { Bell, Palette, Users, Hash, X, Check, Search, Loader2, Upload, Building2, ImageIcon, Trash2, AlertTriangle, UserPlus, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { IntegrationCard, type HealthResult } from '@/components/integrations/IntegrationCard';
 import { IntegrationStatusBar } from '@/components/integrations/IntegrationStatusBar';
@@ -22,6 +22,7 @@ import { PROVIDERS, CATEGORIES } from '@/components/integrations/IntegrationProv
 import { ApiPlatform } from '@/components/integrations/ApiPlatform';
 import { MetaMatchingCard } from '@/components/integrations/MetaMatchingCard';
 import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
+import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
 
 interface EmployeeRequest {
   id: string;
@@ -310,6 +311,25 @@ export default function Einstellungen() {
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [deleting, setDeleting] = useState(false);
 
+  // Unified user list (auth + team)
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [userStats, setUserStats] = useState<{ total: number; active: number; orphan: number; deleted: number } | null>(null);
+  const [importOrphanEmail, setImportOrphanEmail] = useState<string | null>(null);
+  const [orphanDeleteTarget, setOrphanDeleteTarget] = useState<{ id: string; email: string } | null>(null);
+  const [orphanDeleting, setOrphanDeleting] = useState(false);
+  const [showDeletedSection, setShowDeletedSection] = useState(false);
+
+  const loadAllUsers = useCallback(async () => {
+    if (!isAdmin) return;
+    const { data, error } = await supabase.functions.invoke('list-all-users');
+    if (error || (data as any)?.error) {
+      console.warn('[list-all-users] fehlgeschlagen', error || (data as any)?.error);
+      return;
+    }
+    setAllUsers((data as any).users || []);
+    setUserStats((data as any).stats || null);
+  }, [isAdmin]);
+
   const fetchData = async () => {
     const [driveRes, googleDriveRes, teamRes, reqRes, intRes, dealsRes, rolesRes] = await Promise.all([
       user ? supabase.from('drive_connection').select('*').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
@@ -341,6 +361,7 @@ export default function Einstellungen() {
   };
 
   useEffect(() => { fetchData(); }, [user, isAdminOrManager, isAdmin]);
+  useEffect(() => { loadAllUsers(); }, [loadAllUsers]);
 
   const handleDeleteMember = async () => {
     if (!deleteTarget) return;
@@ -357,6 +378,23 @@ export default function Einstellungen() {
     setDeleteTarget(null);
     setDeleteConfirmName('');
     fetchData();
+    loadAllUsers();
+  };
+
+  const handleDeleteOrphan = async () => {
+    if (!orphanDeleteTarget) return;
+    setOrphanDeleting(true);
+    const { data, error } = await supabase.functions.invoke('delete-orphan-auth-user', {
+      body: { user_id: orphanDeleteTarget.id },
+    });
+    setOrphanDeleting(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || 'Löschen fehlgeschlagen');
+      return;
+    }
+    toast.success(`Verwaister Auth-User ${orphanDeleteTarget.email} gelöscht`);
+    setOrphanDeleteTarget(null);
+    loadAllUsers();
   };
 
   // Handle Google Drive OAuth callback redirect
@@ -923,6 +961,18 @@ export default function Einstellungen() {
             </div>
           )}
 
+          {isAdmin && userStats && (
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span><span className="text-foreground font-semibold">{userStats.active}</span> aktiv</span>
+              <span>·</span>
+              <span>
+                <span className={`font-semibold ${userStats.orphan > 0 ? 'text-warning' : 'text-foreground'}`}>{userStats.orphan}</span> verwaist
+              </span>
+              <span>·</span>
+              <span><span className="text-foreground font-semibold">{userStats.deleted}</span> gelöscht</span>
+            </div>
+          )}
+
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Aktive Mitarbeiter</h3>
             <Card className="border-border bg-card"><CardContent className="p-0"><div className="overflow-x-auto">
@@ -968,6 +1018,94 @@ export default function Einstellungen() {
               </Table>
             </div></CardContent></Card>
           </div>
+
+          {/* Verwaiste Auth-User */}
+          {isAdmin && allUsers.filter(u => u.is_orphan).length > 0 && (
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-sm font-semibold text-warning uppercase tracking-wider flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Verwaiste Auth-User ({allUsers.filter(u => u.is_orphan).length})
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Diese User können sich einloggen, haben aber kein Mitarbeiter-Profil. Bitte importieren oder löschen.
+                </p>
+              </div>
+              <Card className="border-warning/30 bg-card"><CardContent className="p-0"><div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>E-Mail</TableHead>
+                    <TableHead className="hidden sm:table-cell">Auth seit</TableHead>
+                    <TableHead className="text-right">Aktion</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {allUsers.filter(u => u.is_orphan).map(u => (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-mono text-xs">{u.email}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs hidden sm:table-cell">
+                          {u.auth_created_at ? new Date(u.auth_created_at).toLocaleDateString('de-DE') : '–'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => setImportOrphanEmail(u.email)}
+                            >
+                              <UserPlus className="h-3.5 w-3.5 mr-1" />
+                              Importieren
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setOrphanDeleteTarget({ id: u.id, email: u.email })}
+                              aria-label={`${u.email} löschen`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div></CardContent></Card>
+            </div>
+          )}
+
+          {/* Gelöschte Mitarbeiter */}
+          {isAdmin && allUsers.filter(u => u.is_deleted).length > 0 && (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => setShowDeletedSection(v => !v)}
+                className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+              >
+                {showDeletedSection ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                Gelöschte Mitarbeiter ({allUsers.filter(u => u.is_deleted).length})
+              </button>
+              {showDeletedSection && (
+                <Card className="border-border bg-card"><CardContent className="p-0"><div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader><TableRow>
+                      <TableHead>Name</TableHead><TableHead>E-Mail</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>
+                      {allUsers.filter(u => u.is_deleted).map(u => (
+                        <TableRow key={u.id}>
+                          <TableCell className="font-medium text-muted-foreground">{u.name || '–'}</TableCell>
+                          <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div></CardContent></Card>
+              )}
+            </div>
+          )}
+
           <Button variant="outline"><Users className="h-4 w-4 mr-2" />Per E-Mail einladen</Button>
         </TabsContent>
 
@@ -1145,6 +1283,38 @@ export default function Einstellungen() {
               }
             >
               {deleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Lösche...</> : <><Trash2 className="h-4 w-4 mr-2" />Endgültig löschen</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Orphan Modal */}
+      <ImportOrphanModal
+        open={!!importOrphanEmail}
+        email={importOrphanEmail || ''}
+        onOpenChange={(o) => { if (!o) setImportOrphanEmail(null); }}
+        onImported={() => { fetchData(); loadAllUsers(); }}
+      />
+
+      {/* Orphan Delete Confirmation */}
+      <Dialog open={!!orphanDeleteTarget} onOpenChange={(o) => { if (!o) setOrphanDeleteTarget(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Verwaisten Auth-User löschen?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Der Auth-User <span className="font-mono text-foreground">{orphanDeleteTarget?.email}</span> wird
+            unwiderruflich aus dem System entfernt.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOrphanDeleteTarget(null)} disabled={orphanDeleting}>
+              Abbrechen
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteOrphan} disabled={orphanDeleting}>
+              {orphanDeleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Lösche...</> : <><Trash2 className="h-4 w-4 mr-2" />Löschen</>}
             </Button>
           </DialogFooter>
         </DialogContent>
