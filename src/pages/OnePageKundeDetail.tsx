@@ -62,18 +62,6 @@ interface Lead {
 
 const PROJECT_REF = 'fqcueblsinjiclolubwv';
 
-const HEADER_ALIAS_MAP: Record<string, string> = {
-  vorname: 'vorname', 'first name': 'vorname', firstname: 'vorname', first: 'vorname',
-  nachname: 'nachname', 'last name': 'nachname', lastname: 'nachname', last: 'nachname',
-  name: 'name', 'full name': 'name',
-  email: 'email', 'e-mail': 'email', mail: 'email', 'e mail': 'email',
-  telefon: 'telefon', phone: 'telefon', tel: 'telefon', mobile: 'telefon', mobil: 'telefon', handy: 'telefon',
-  nachricht: 'nachricht', message: 'nachricht', kommentar: 'nachricht', comment: 'nachricht',
-  'erstellt am': 'received_at', 'created at': 'received_at', datum: 'received_at', date: 'received_at',
-  utm_source: 'utm_source', utm_medium: 'utm_medium', utm_campaign: 'utm_campaign',
-  quelle: 'source', source: 'source',
-};
-
 function relativeTime(iso: string | null) {
   if (!iso) return '–';
   const diff = Date.now() - new Date(iso).getTime();
