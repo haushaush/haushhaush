@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail, Globe } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -43,6 +43,12 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Übersicht', url: '/meta/uebersicht' },
       { title: 'Ads Manager', url: '/meta/kampagnen' },
+    ],
+  },
+  {
+    title: 'OnePage Leads', url: '/onepage-leads/kunden', icon: Globe,
+    children: [
+      { title: 'Kunden', url: '/onepage-leads/kunden' },
     ],
   },
   {
