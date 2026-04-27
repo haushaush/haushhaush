@@ -2150,34 +2150,58 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          imported_via: string | null
+          nachname: string | null
+          nachricht: string | null
           name: string | null
           payload: Json
           phone: string | null
           project_id: string
           received_at: string
           source: string | null
+          telefon: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          vorname: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
           id?: string
+          imported_via?: string | null
+          nachname?: string | null
+          nachricht?: string | null
           name?: string | null
           payload?: Json
           phone?: string | null
           project_id: string
           received_at?: string
           source?: string | null
+          telefon?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          vorname?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
           id?: string
+          imported_via?: string | null
+          nachname?: string | null
+          nachricht?: string | null
           name?: string | null
           payload?: Json
           phone?: string | null
           project_id?: string
           received_at?: string
           source?: string | null
+          telefon?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          vorname?: string | null
         }
         Relationships: [
           {
@@ -2185,6 +2209,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onepage_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onepage_project_leads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onepage_projects_with_stats"
             referencedColumns: ["id"]
           },
         ]
@@ -3284,7 +3315,25 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      onepage_projects_with_stats: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string | null
+          last_lead_at: string | null
+          lead_count_30d: number | null
+          lead_count_7d: number | null
+          lead_count_total: number | null
+          name: string | null
+          notes: string | null
+          page_url: string | null
+          status: string | null
+          updated_at: string | null
+          webhook_secret: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       decrypt_imap_password: {
