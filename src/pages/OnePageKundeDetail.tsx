@@ -552,6 +552,177 @@ function Field({ label, value }: { label: string; value: string | null | undefin
 }
 
 // ─── CSV Import Modal ───
+interface ParsedLead {
+  vorname: string | null;
+  nachname: string | null;
+  email: string | null;
+  telefon: string | null;
+  unternehmen: string | null;
+  nachricht: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  utm_term: string | null;
+  received_at: string;
+  raw_data: Record<string, string>;
+}
+
+interface ParseStats {
+  totalRows: number;
+  skippedEmpty: number;
+  fieldCounts: Record<string, number>;
+}
+
+function stripBOM(text: string): string {
+  return text.replace(/^\uFEFF/, '');
+}
+
+function parseDateStr(raw: string | null): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  // ISO
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(trimmed)) {
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+  // German DD.MM.YYYY [HH:MM]
+  const de = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[\sT]+(\d{1,2}):(\d{2}))?$/);
+  if (de) {
+    const [, d, m, y, h = '0', min = '0'] = de;
+    const dt = new Date(+y, +m - 1, +d, +h, +min);
+    if (!isNaN(dt.getTime())) return dt.toISOString();
+  }
+  const fallback = new Date(trimmed);
+  if (!isNaN(fallback.getTime())) return fallback.toISOString();
+  return null;
+}
+
+function parseOnePageCSV(csvText: string): { leads: ParsedLead[]; stats: ParseStats } {
+  const cleanText = stripBOM(csvText);
+
+  // Detect delimiter (comma or semicolon)
+  const firstLine = cleanText.split(/\r?\n/, 1)[0] || '';
+  const delimiter = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
+
+  const result = Papa.parse<string[]>(cleanText, {
+    header: false,
+    skipEmptyLines: true,
+    delimiter,
+    transform: (value: string) => (typeof value === 'string' ? value.trim() : value),
+  });
+
+  if (!result.data || result.data.length < 2) {
+    return { leads: [], stats: { totalRows: 0, skippedEmpty: 0, fieldCounts: {} } };
+  }
+
+  const headers = result.data[0].map((h) => (h || '').toString());
+  const rows = result.data.slice(1);
+
+  const fieldToIndexes: Record<string, number[]> = {
+    vorname: [], nachname: [], email: [], telefon: [], unternehmen: [],
+    nachricht: [], utm_source: [], utm_medium: [], utm_campaign: [],
+    utm_content: [], utm_term: [], date: [],
+  };
+
+  headers.forEach((rawHeader, idx) => {
+    const h = (rawHeader || '').toLowerCase().trim();
+    if (!h) return;
+    if (h === 'vorname' || h === 'first name' || h === 'name (first name)' || h === 'vor- & nachname' || h === 'firstname') {
+      fieldToIndexes.vorname.push(idx);
+    }
+    if (h === 'nachname' || h === 'last name' || h === 'name (last name)' || h === 'lastname') {
+      fieldToIndexes.nachname.push(idx);
+    }
+    if (h === 'email' || h === 'e-mail' || h === '📧 e-mail' || h === 'e-mail adresse' || h === 'mail' || h.startsWith('email ') || h.startsWith('e-mail ')) {
+      fieldToIndexes.email.push(idx);
+    }
+    if (h === 'phone' || h === 'telefon' || h === 'phone number' || h === 'tel' || h === 'mobil' || h === 'mobile' || h === 'handy') {
+      fieldToIndexes.telefon.push(idx);
+    }
+    if (h === 'unternehmen' || h === 'company' || h === 'firma') {
+      fieldToIndexes.unternehmen.push(idx);
+    }
+    if (h === 'nachricht' || h === 'message' || h === 'textarea' || h === 'anmerkungen' || h === 'kommentar' || h === 'comment' || h.includes('besondere wünsche')) {
+      fieldToIndexes.nachricht.push(idx);
+    }
+    if (h === 'utm source' || h === 'utm_source') fieldToIndexes.utm_source.push(idx);
+    if (h === 'utm medium' || h === 'utm_medium') fieldToIndexes.utm_medium.push(idx);
+    if (h === 'utm campaign' || h === 'utm_campaign') fieldToIndexes.utm_campaign.push(idx);
+    if (h === 'utm content' || h === 'utm_content') fieldToIndexes.utm_content.push(idx);
+    if (h === 'utm term' || h === 'utm_term') fieldToIndexes.utm_term.push(idx);
+    if (h === 'date' || h === 'datum' || h === 'erstellt am' || h === 'created at' || h === 'created_at' || h === 'submitted at') {
+      fieldToIndexes.date.push(idx);
+    }
+  });
+
+  function isMeaningful(val: string | undefined): boolean {
+    if (!val) return false;
+    const t = val.trim();
+    if (!t) return false;
+    if (t === '+' || t === '-' || t === '–') return false;
+    return true;
+  }
+
+  function firstNonEmpty(row: string[], indexes: number[]): string | null {
+    for (const idx of indexes) {
+      const v = row[idx];
+      if (isMeaningful(v)) return v.trim();
+    }
+    return null;
+  }
+
+  const leads: ParsedLead[] = [];
+  let skippedEmpty = 0;
+
+  for (const row of rows) {
+    if (!row || row.length === 0) { skippedEmpty++; continue; }
+
+    const email = firstNonEmpty(row, fieldToIndexes.email);
+    const vorname = firstNonEmpty(row, fieldToIndexes.vorname);
+    const nachname = firstNonEmpty(row, fieldToIndexes.nachname);
+    const telefon = firstNonEmpty(row, fieldToIndexes.telefon);
+
+    if (!email && !vorname && !nachname && !telefon) {
+      skippedEmpty++;
+      continue;
+    }
+
+    const dateRaw = firstNonEmpty(row, fieldToIndexes.date);
+    const received_at = parseDateStr(dateRaw) || new Date().toISOString();
+
+    const raw_data: Record<string, string> = {};
+    headers.forEach((header, idx) => {
+      const v = row[idx];
+      if (!isMeaningful(v)) return;
+      const key = raw_data[header] !== undefined ? `${header}__${idx}` : header;
+      raw_data[key] = v.trim();
+    });
+
+    leads.push({
+      vorname, nachname, email, telefon,
+      unternehmen: firstNonEmpty(row, fieldToIndexes.unternehmen),
+      nachricht: firstNonEmpty(row, fieldToIndexes.nachricht),
+      utm_source: firstNonEmpty(row, fieldToIndexes.utm_source),
+      utm_medium: firstNonEmpty(row, fieldToIndexes.utm_medium),
+      utm_campaign: firstNonEmpty(row, fieldToIndexes.utm_campaign),
+      utm_content: firstNonEmpty(row, fieldToIndexes.utm_content),
+      utm_term: firstNonEmpty(row, fieldToIndexes.utm_term),
+      received_at,
+      raw_data,
+    });
+  }
+
+  const fieldCounts: Record<string, number> = {};
+  Object.entries(fieldToIndexes).forEach(([k, arr]) => { fieldCounts[k] = arr.length; });
+
+  return {
+    leads,
+    stats: { totalRows: rows.length, skippedEmpty, fieldCounts },
+  };
+}
+
 function CsvImportModal({
   open, onOpenChange, projectId, onDone,
 }: {
@@ -561,13 +732,14 @@ function CsvImportModal({
   onDone: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [rows, setRows] = useState<string[][]>([]);
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [leads, setLeads] = useState<ParsedLead[]>([]);
+  const [stats, setStats] = useState<ParseStats | null>(null);
   const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [result, setResult] = useState<{ inserted: number; skipped: number; errors: string[] } | null>(null);
 
   function reset() {
-    setRows([]); setHeaders([]); setMapping({});
+    setLeads([]); setStats(null); setProgress(null); setResult(null);
     if (fileRef.current) fileRef.current.value = '';
   }
 
@@ -578,86 +750,99 @@ function CsvImportModal({
     if (!f) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const parsed = parseCsv(String(reader.result || ''));
-      if (parsed.length === 0) { toast.error('Leere CSV-Datei'); return; }
-      const hdr = parsed[0].map((h) => h.trim());
-      setHeaders(hdr);
-      setRows(parsed.slice(1));
-      const map: Record<string, string> = {};
-      hdr.forEach((h) => {
-        const norm = h.toLowerCase().trim();
-        const target = HEADER_ALIAS_MAP[norm];
-        if (target) map[h] = target;
-        else map[h] = '__raw__';
-      });
-      setMapping(map);
+      try {
+        const { leads: parsedLeads, stats: parsedStats } = parseOnePageCSV(String(reader.result || ''));
+        setLeads(parsedLeads);
+        setStats(parsedStats);
+        if (parsedLeads.length === 0) {
+          toast.error(`Keine Leads gefunden (${parsedStats.totalRows} Zeilen analysiert)`);
+        }
+      } catch (err: any) {
+        toast.error(`CSV-Fehler: ${err.message}`);
+      }
     };
     reader.readAsText(f);
   }
 
-  const TARGETS = [
-    { v: '__skip__', l: 'Ignorieren' },
-    { v: '__raw__', l: '→ raw payload' },
-    { v: 'vorname', l: 'Vorname' },
-    { v: 'nachname', l: 'Nachname' },
-    { v: 'email', l: 'E-Mail' },
-    { v: 'telefon', l: 'Telefon' },
-    { v: 'nachricht', l: 'Nachricht' },
-    { v: 'utm_source', l: 'UTM Source' },
-    { v: 'utm_medium', l: 'UTM Medium' },
-    { v: 'utm_campaign', l: 'UTM Campaign' },
-    { v: 'source', l: 'Quelle' },
-    { v: 'received_at', l: 'Empfangen am' },
-  ];
-
   async function doImport() {
     setImporting(true);
-    const records = rows.map((r) => {
-      const rec: Record<string, unknown> = {
-        project_id: projectId, imported_via: 'csv',
-      };
-      const raw: Record<string, unknown> = {};
-      headers.forEach((h, idx) => {
-        const target = mapping[h] || '__raw__';
-        const v = (r[idx] ?? '').trim();
-        if (target === '__skip__' || !v) return;
-        if (target === '__raw__') { raw[h] = v; return; }
-        if (target === 'received_at') {
-          const d = new Date(v);
-          if (!isNaN(d.getTime())) rec.received_at = d.toISOString();
-          else raw[h] = v;
-          return;
-        }
-        rec[target] = v;
-      });
-      if (Object.keys(raw).length) rec.payload = raw;
-      if (!rec.received_at) rec.received_at = new Date().toISOString();
-      return rec;
-    });
+    setProgress({ done: 0, total: leads.length });
+    const res = { inserted: 0, skipped: 0, errors: [] as string[] };
 
-    let imported = 0, dupes = 0;
-    const chunkSize = 100;
-    for (let i = 0; i < records.length; i += chunkSize) {
-      const chunk = records.slice(i, i + chunkSize);
-      const { data, error } = await supabase.from('onepage_project_leads')
-        .insert(chunk as never)
-        .select('id');
-      if (error) {
-        // Insert one-by-one to count duplicates
-        for (const rec of chunk) {
-          const { error: e2 } = await supabase.from('onepage_project_leads').insert(rec as never);
-          if (!e2) imported++;
-          else if (e2.code === '23505') dupes++;
+    for (let i = 0; i < leads.length; i++) {
+      const lead = leads[i];
+      try {
+        // Dedupe check on (project, lower(email), received_at)
+        if (lead.email) {
+          const { data: existing } = await supabase
+            .from('onepage_project_leads')
+            .select('id')
+            .eq('project_id', projectId)
+            .ilike('email', lead.email)
+            .eq('received_at', lead.received_at)
+            .maybeSingle();
+          if (existing) {
+            res.skipped++;
+            setProgress({ done: i + 1, total: leads.length });
+            continue;
+          }
         }
-      } else {
-        imported += data?.length || 0;
+
+        const payload: Record<string, unknown> = {
+          ...lead.raw_data,
+          _parsed_unternehmen: lead.unternehmen,
+          _parsed_utm_content: lead.utm_content,
+          _parsed_utm_term: lead.utm_term,
+        };
+
+        const { error } = await supabase.from('onepage_project_leads').insert({
+          project_id: projectId,
+          vorname: lead.vorname,
+          nachname: lead.nachname,
+          email: lead.email,
+          telefon: lead.telefon,
+          nachricht: lead.nachricht,
+          utm_source: lead.utm_source,
+          utm_medium: lead.utm_medium,
+          utm_campaign: lead.utm_campaign,
+          utm_content: lead.utm_content,
+          utm_term: lead.utm_term,
+          unternehmen: lead.unternehmen,
+          received_at: lead.received_at,
+          imported_via: 'csv',
+          payload,
+        } as never);
+
+        if (error) {
+          if (error.code === '23505') res.skipped++;
+          else res.errors.push(`${lead.email || lead.vorname || 'Zeile ' + (i + 1)}: ${error.message}`);
+        } else {
+          res.inserted++;
+        }
+      } catch (e: any) {
+        res.errors.push(`${lead.email || 'Zeile ' + (i + 1)}: ${e.message}`);
       }
+      setProgress({ done: i + 1, total: leads.length });
     }
+
     setImporting(false);
-    toast.success(`${imported} Leads importiert${dupes ? `, ${dupes} Duplikate übersprungen` : ''}`);
-    onOpenChange(false);
-    onDone();
+    setResult(res);
+
+    if (res.inserted > 0) {
+      toast.success(
+        `${res.inserted} Leads importiert${res.skipped ? `, ${res.skipped} Duplikate übersprungen` : ''}`
+      );
+      onDone();
+    } else if (res.skipped > 0 && res.errors.length === 0) {
+      toast.info(`Alle ${res.skipped} Leads waren bereits vorhanden`);
+      onDone();
+    } else {
+      toast.error('Keine Leads importiert');
+    }
   }
+
+  const previewLeads = leads.slice(0, 5);
+  const hasData = leads.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -666,63 +851,126 @@ function CsvImportModal({
           <DialogTitle>Leads aus CSV importieren</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {rows.length === 0 ? (
+          {!hasData && !stats ? (
             <div>
               <Label>CSV-Datei wählen</Label>
               <Input ref={fileRef} type="file" accept=".csv,text/csv" onChange={handleFile} className="mt-1.5" />
               <p className="text-xs text-muted-foreground mt-2">
-                Erste Zeile muss Spaltennamen enthalten (z. B. Vorname, Nachname, E-Mail, Telefon).
-                Trennzeichen Komma oder Semikolon.
+                Unterstützt OnePage-Exports mit beliebig vielen Spalten und doppelten Spaltennamen.
+                BOM, ISO- und deutsche Datumsformate werden automatisch erkannt.
               </p>
             </div>
-          ) : (
-            <>
-              <div>
-                <p className="text-sm mb-2">
-                  <strong>{rows.length}</strong> Zeilen gefunden. Spalten zuordnen:
-                </p>
-                <div className="border rounded divide-y">
-                  {headers.map((h) => (
-                    <div key={h} className="flex items-center gap-3 px-3 py-2">
-                      <span className="text-sm font-medium flex-1 truncate">{h}</span>
-                      <span className="text-xs text-muted-foreground">→</span>
-                      <Select value={mapping[h] || '__raw__'}
-                        onValueChange={(v) => setMapping((m) => ({ ...m, [h]: v }))}>
-                        <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {TARGETS.map((t) => <SelectItem key={t.v} value={t.v}>{t.l}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ))}
+          ) : null}
+
+          {stats && !hasData && (
+            <div className="rounded border border-amber-500/40 bg-amber-500/5 p-3 text-sm space-y-2">
+              <div className="font-medium flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                Keine Leads importiert
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {stats.totalRows} Zeilen analysiert, {stats.skippedEmpty} übersprungen (leer).
+              </div>
+              <div className="text-xs space-y-0.5">
+                <div>Erkannte Spalten: Email ({stats.fieldCounts.email ?? 0}), Vorname ({stats.fieldCounts.vorname ?? 0}), Telefon ({stats.fieldCounts.telefon ?? 0})</div>
+                <div className="text-muted-foreground">
+                  Mögliche Ursachen: CSV ist leer, unbekanntes Format oder geänderte Spaltennamen.
                 </div>
               </div>
+              <Button variant="ghost" size="sm" onClick={reset}>Andere Datei wählen</Button>
+            </div>
+          )}
+
+          {hasData && !result && (
+            <>
+              <div className="rounded border bg-muted/30 p-3 text-sm space-y-1">
+                <div className="flex items-center gap-2 font-medium">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  CSV erkannt: OnePage Export
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  📊 {leads.length} Leads gefunden
+                  {stats && stats.skippedEmpty > 0 && <> · ⚠️ {stats.skippedEmpty} Zeilen ohne Daten übersprungen</>}
+                </div>
+              </div>
+
               <div>
-                <Label className="text-xs text-muted-foreground">Vorschau (erste 5 Zeilen)</Label>
+                <Label className="text-xs text-muted-foreground">Vorschau (erste 5 Leads)</Label>
                 <div className="border rounded mt-1.5 overflow-x-auto">
                   <table className="text-xs w-full">
                     <thead className="bg-muted/40">
-                      <tr>{headers.map((h) => <th key={h} className="px-2 py-1.5 text-left font-medium">{h}</th>)}</tr>
+                      <tr>
+                        <th className="px-2 py-1.5 text-left font-medium">Vorname</th>
+                        <th className="px-2 py-1.5 text-left font-medium">Nachname</th>
+                        <th className="px-2 py-1.5 text-left font-medium">Email</th>
+                        <th className="px-2 py-1.5 text-left font-medium">Telefon</th>
+                        <th className="px-2 py-1.5 text-left font-medium">Unternehmen</th>
+                        <th className="px-2 py-1.5 text-left font-medium">UTM Source</th>
+                      </tr>
                     </thead>
                     <tbody>
-                      {rows.slice(0, 5).map((r, i) => (
+                      {previewLeads.map((l, i) => (
                         <tr key={i} className="border-t">
-                          {r.map((c, j) => <td key={j} className="px-2 py-1.5 truncate max-w-[160px]">{c}</td>)}
+                          <td className="px-2 py-1.5 truncate max-w-[120px]">{l.vorname || '–'}</td>
+                          <td className="px-2 py-1.5 truncate max-w-[120px]">{l.nachname || '–'}</td>
+                          <td className="px-2 py-1.5 truncate max-w-[180px]">{l.email || '–'}</td>
+                          <td className="px-2 py-1.5 truncate max-w-[140px]">{l.telefon || '–'}</td>
+                          <td className="px-2 py-1.5 truncate max-w-[140px]">{l.unternehmen || '–'}</td>
+                          <td className="px-2 py-1.5 truncate max-w-[120px]">{l.utm_source || '–'}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               </div>
+
+              {importing && progress && (
+                <div className="text-xs text-muted-foreground">
+                  Verarbeite {progress.done} / {progress.total} Leads…
+                </div>
+              )}
             </>
+          )}
+
+          {result && (
+            <div className="rounded border bg-muted/30 p-3 text-sm space-y-2">
+              <div className="flex items-center gap-2 font-medium">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                Import abgeschlossen
+              </div>
+              <ul className="text-xs space-y-0.5">
+                <li>• {result.inserted} Leads importiert</li>
+                <li>• {result.skipped} Duplikate übersprungen</li>
+                <li>• {result.errors.length} Fehler</li>
+              </ul>
+              {result.errors.length > 0 && (
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-muted-foreground">Fehlerdetails anzeigen</summary>
+                  <ul className="mt-1 space-y-0.5 max-h-32 overflow-y-auto">
+                    {result.errors.slice(0, 5).map((e, i) => (
+                      <li key={i} className="text-destructive break-words">{e}</li>
+                    ))}
+                    {result.errors.length > 5 && <li className="text-muted-foreground">… und {result.errors.length - 5} weitere</li>}
+                  </ul>
+                </details>
+              )}
+            </div>
           )}
         </div>
         <DialogFooter>
-          {rows.length > 0 && <Button variant="ghost" onClick={reset}>Andere Datei wählen</Button>}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Abbrechen</Button>
-          <Button disabled={rows.length === 0 || importing} onClick={doImport}>
-            {importing ? 'Importiere…' : `${rows.length} Leads importieren`}
+          {hasData && !importing && !result && (
+            <Button variant="ghost" onClick={reset}>Andere Datei wählen</Button>
+          )}
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {result ? 'Schließen' : 'Abbrechen'}
           </Button>
+          {hasData && !result && (
+            <Button disabled={importing} onClick={doImport}>
+              {importing
+                ? `Importiere ${progress?.done ?? 0}/${progress?.total ?? leads.length}…`
+                : `${leads.length} Leads importieren`}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
