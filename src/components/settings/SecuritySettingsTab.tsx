@@ -22,7 +22,9 @@ interface MfaStatus {
 }
 
 export function SecuritySettingsTab() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
+  const [setupBusy, setSetupBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hasFactor, setHasFactor] = useState(false);
   const [status, setStatus] = useState<MfaStatus | null>(null);
