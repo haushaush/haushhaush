@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SLACK_GATEWAY = "https://connector-gateway.lovable.dev/slack/api";
+const SLACK_API = "https://slack.com/api";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -149,20 +149,13 @@ async function executeAction(rule: any, msg: any): Promise<{ slackMessageId?: st
   throw new Error(`Unknown action type: ${rule.action_type}`);
 }
 
-async function slackFetch(path: string, init: RequestInit = {}): Promise<any> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  const SLACK_API_KEY = Deno.env.get("SLACK_API_KEY");
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-  if (!SLACK_API_KEY) throw new Error("SLACK_API_KEY not configured (Slack connector not linked)");
-
+async function slackFetch(token: string, path: string, init: RequestInit = {}): Promise<any> {
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${LOVABLE_API_KEY}`,
-    "X-Connection-Api-Key": SLACK_API_KEY,
-    ...(init.body ? { "Content-Type": "application/json" } : {}),
+    Authorization: `Bearer ${token}`,
+    ...(init.body ? { "Content-Type": "application/json; charset=utf-8" } : {}),
     ...(init.headers as Record<string, string> || {}),
   };
-
-  const res = await fetch(`${SLACK_GATEWAY}${path}`, { ...init, headers });
+  const res = await fetch(`${SLACK_API}${path}`, { ...init, headers });
   const data = await res.json();
   if (!res.ok || !data.ok) {
     throw new Error(`Slack ${path} failed [${res.status}]: ${data.error || JSON.stringify(data)}`);
@@ -170,31 +163,67 @@ async function slackFetch(path: string, init: RequestInit = {}): Promise<any> {
   return data;
 }
 
-async function findSlackUser(name: string): Promise<any | null> {
-  const target = name.toLowerCase();
-  let cursor = "";
-  do {
-    const qs = `?limit=200${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
-    const data = await slackFetch(`/users.list${qs}`, { method: "POST" });
-    const match = data.members?.find((u: any) =>
-      u.real_name?.toLowerCase().includes(target) ||
-      u.profile?.display_name?.toLowerCase().includes(target) ||
-      u.name?.toLowerCase().includes(target)
-    );
-    if (match) return match;
-    cursor = data.response_metadata?.next_cursor || "";
-  } while (cursor);
-  return null;
+async function findSlackUserByName(slackBotToken: string, searchName: string): Promise<any | null> {
+  const usersResp = await fetch('https://slack.com/api/users.list?limit=200', {
+    headers: { 'Authorization': `Bearer ${slackBotToken}` },
+  });
+  const usersData = await usersResp.json();
+  if (!usersData.ok) {
+    throw new Error(`Slack users.list failed: ${usersData.error}`);
+  }
+
+  const search = searchName.toLowerCase().trim();
+  const searchParts = search.split(/\s+/);
+  const candidates = (usersData.members || []).filter((u: any) => !u.deleted && !u.is_bot);
+
+  // Strategy 1: Exact match
+  let match = candidates.find((u: any) =>
+    u.real_name?.toLowerCase() === search ||
+    u.profile?.display_name?.toLowerCase() === search ||
+    u.name?.toLowerCase() === search
+  );
+  if (match) return match;
+
+  // Strategy 2: Substring match
+  match = candidates.find((u: any) =>
+    u.real_name?.toLowerCase().includes(search) ||
+    u.profile?.display_name?.toLowerCase().includes(search) ||
+    u.profile?.real_name_normalized?.toLowerCase().includes(search) ||
+    u.name?.toLowerCase().includes(search)
+  );
+  if (match) return match;
+
+  // Strategy 3: All search words appear in real_name
+  match = candidates.find((u: any) => {
+    const fullName = (u.real_name || u.profile?.display_name || '').toLowerCase();
+    return searchParts.every((part) => fullName.includes(part));
+  });
+  if (match) return match;
+
+  // Strategy 4: First name match
+  match = candidates.find((u: any) => {
+    const firstName = (u.real_name || u.profile?.display_name || '').toLowerCase().split(/\s+/)[0];
+    return firstName === search || firstName === searchParts[0];
+  });
+  if (match) return match;
+
+  const availableNames = candidates.slice(0, 10).map((u: any) => u.real_name || u.name).join(', ');
+  throw new Error(`Slack user "${searchName}" not found. Available: ${availableNames}`);
 }
 
 async function sendSlackDm(config: any, msg: any): Promise<{ slackMessageId?: string }> {
+  const SLACK_BOT_TOKEN = Deno.env.get("SLACK_BOT_TOKEN");
+  if (!SLACK_BOT_TOKEN) {
+    throw new Error("SLACK_BOT_TOKEN not configured. Add it in Supabase Edge Function Secrets.");
+  }
+
   const targetUser = config.target_user || "Khalifa";
   const include = config.include || "full_email";
 
-  const slackUser = await findSlackUser(targetUser);
+  const slackUser = await findSlackUserByName(SLACK_BOT_TOKEN, targetUser);
   if (!slackUser) throw new Error(`Slack user "${targetUser}" not found`);
 
-  const im = await slackFetch("/conversations.open", {
+  const im = await slackFetch(SLACK_BOT_TOKEN, "/conversations.open", {
     method: "POST",
     body: JSON.stringify({ users: slackUser.id }),
   });
@@ -202,7 +231,7 @@ async function sendSlackDm(config: any, msg: any): Promise<{ slackMessageId?: st
   const dmChannelId = im.channel.id;
   const blocks = buildSlackBlocks(msg, include);
 
-  const sent = await slackFetch("/chat.postMessage", {
+  const sent = await slackFetch(SLACK_BOT_TOKEN, "/chat.postMessage", {
     method: "POST",
     body: JSON.stringify({
       channel: dmChannelId,
