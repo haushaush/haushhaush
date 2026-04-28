@@ -31,9 +31,9 @@ export function MfaEnrollScreen({ onComplete, required }: Props) {
     try {
       // Clean up any existing unverified factors first
       const { data: list } = await supabase.auth.mfa.listFactors();
-      const existing = list?.totp ?? [];
+      const existing = (list?.totp ?? []) as Array<{ id: string; status: string }>;
       for (const f of existing) {
-        if (f.status === 'unverified') {
+        if (f.status !== 'verified') {
           await supabase.auth.mfa.unenroll({ factorId: f.id });
         }
       }
