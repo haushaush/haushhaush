@@ -21,6 +21,7 @@ export default function Auth() {
   const [pendingMsg, setPendingMsg] = useState('');
   const [showTestMode, setShowTestMode] = useState(false);
   const [testPassword, setTestPassword] = useState('');
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="text-primary animate-pulse text-2xl font-semibold">Laden...</div></div>;
   if (user) return <Navigate to="/" replace />;
