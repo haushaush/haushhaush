@@ -28,6 +28,7 @@ import {
   ExternalLink,
   AlertCircle,
   ListChecks,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
