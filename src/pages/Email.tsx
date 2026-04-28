@@ -213,10 +213,10 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
 
   // Load messages
   const messagesQuery = useQuery({
-    queryKey: ['email-messages', activeAccountId, folderPath, searchParam],
+    queryKey: [`${queryNs}-messages`, mode, activeAccountId, folderPath, searchParam],
     enabled: !!activeAccountId && mailboxes.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('imap-list-messages', {
+      const { data, error } = await supabase.functions.invoke(`${fnPrefix}-list-messages`, {
         body: { accountId: activeAccountId, folder: folderPath, search: searchParam, limit: 50 },
       });
       if (error) throw error;
