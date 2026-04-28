@@ -9,6 +9,8 @@ import { Loader2, FlaskConical } from 'lucide-react';
 import { toast } from 'sonner';
 
 const logoUrl = import.meta.env.VITE_LOGO_URL || null;
+const TEST_EMAIL = 'test@haushhaush.de';
+const TEST_PASSWORD = 'Test1234!';
 
 export default function Auth() {
   const { user, loading, activateTestMode } = useAuth();
