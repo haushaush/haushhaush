@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ShieldCheck, ShieldAlert, Trash2, RefreshCw, Smartphone } from 'lucide-react';
+import { Loader2, ShieldCheck, ShieldAlert, Trash2, RefreshCw, Smartphone, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MfaEnrollScreen } from '@/components/mfa/MfaEnrollScreen';
