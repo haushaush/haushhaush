@@ -115,11 +115,22 @@ const SLUG_TO_ROUTE: Record<string, EmailRouteSlug> = {
   papierkorb: 'papierkorb',
 };
 
-export default function EmailPage() {
+interface EmailPageProps {
+  mode?: 'personal' | 'shared';
+}
+
+export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
   const { slug: rawSlug } = useParams<{ slug?: string }>();
   const slug: EmailRouteSlug = (rawSlug && SLUG_TO_ROUTE[rawSlug]) || 'posteingang';
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Mode-aware table & edge function names
+  const accountsTable = mode === 'shared' ? 'shared_email_accounts' : 'email_accounts';
+  const fnPrefix = mode === 'shared' ? 'shared-imap' : 'imap';
+  const basePath = mode === 'shared' ? '/email-automatisierung' : '/email';
+  const queryNs = mode === 'shared' ? 'shared-email' : 'email';
+  const downloadFnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${fnPrefix}-download-attachment`;
 
   const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
