@@ -287,6 +287,16 @@ Deno.serve(async (req) => {
       .from('shared_email_messages_cache').select('*')
       .eq('account_id', accountId).eq('folder', folder).eq('uid', uid).single();
 
+    // Fire automation processor (fire-and-forget)
+    fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-email-automations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      },
+      body: JSON.stringify({ accountId, uid }),
+    }).catch((e) => log(`Automation trigger failed: ${e.message}`));
+
     return json({ ok: true, message: finalRow || cacheRow, cached: false });
   } catch (error) {
     const errMsg = (error as any)?.message || String(error);
