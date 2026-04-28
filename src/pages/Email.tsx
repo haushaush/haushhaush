@@ -389,7 +389,7 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
     if (!activeAccountId || !selectedUid) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/imap-download-attachment`;
+      const url = downloadFnUrl;
       const res = await fetch(url, {
         method: 'POST',
         headers: {
