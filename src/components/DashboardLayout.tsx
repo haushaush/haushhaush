@@ -11,6 +11,7 @@ import { MiniPlayerBar } from '@/components/layout/MiniPlayerBar';
 import { ARIASearchBar } from '@/components/aria/ARIASearchBar';
 import { ARIAPanel } from '@/components/aria/ARIAPanel';
 import { useARIA } from '@/contexts/ARIAContext';
+import { MfaGate } from '@/components/mfa/MfaGate';
 
 function SidebarWidthSync() {
   const { state, isMobile } = useSidebar();
@@ -45,6 +46,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   if (!user) return <Navigate to="/auth" replace />;
 
   return (
+    <MfaGate>
     <SidebarProvider>
       <SidebarWidthSync />
       <div className="min-h-screen flex w-full">
@@ -92,5 +94,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         )}
       </div>
     </SidebarProvider>
+    </MfaGate>
   );
 }

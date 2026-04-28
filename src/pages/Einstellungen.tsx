@@ -23,6 +23,7 @@ import { ApiPlatform } from '@/components/integrations/ApiPlatform';
 import { MetaMatchingCard } from '@/components/integrations/MetaMatchingCard';
 import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
 import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
+import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
 
 interface EmployeeRequest {
   id: string;
@@ -819,6 +820,7 @@ export default function Einstellungen() {
             <TabsTrigger value="mitarbeiter-erstellen">Mitarbeiter erstellen</TabsTrigger>
           )}
           <TabsTrigger value="benachrichtigungen">Benachrichtigungen</TabsTrigger>
+          <TabsTrigger value="sicherheit">Sicherheit</TabsTrigger>
         </TabsList>
 
         {/* ═══════ INTEGRATIONEN TAB ═══════ */}
@@ -1159,6 +1161,11 @@ export default function Einstellungen() {
               ))}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ═══════ SICHERHEIT TAB ═══════ */}
+        <TabsContent value="sicherheit" className="mt-4 space-y-6">
+          <SecuritySettingsTab />
         </TabsContent>
       </Tabs>
 
