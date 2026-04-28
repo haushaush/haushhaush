@@ -273,11 +273,11 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
   useEffect(() => {
     const msg = messages.find((m) => m.uid === selectedUid);
     if (!msg || !activeAccountId || !isUnread(msg.flags)) return;
-    supabase.functions.invoke('imap-mark-read', {
+    supabase.functions.invoke(`${fnPrefix}-mark-read`, {
       body: { accountId: activeAccountId, folder: folderPath, uid: selectedUid, read: true },
     }).then(() => {
-      queryClient.invalidateQueries({ queryKey: ['email-messages', activeAccountId, folderPath, searchParam] });
-      queryClient.invalidateQueries({ queryKey: ['email-mailboxes', activeAccountId] });
+      queryClient.invalidateQueries({ queryKey: [`${queryNs}-messages`, mode, activeAccountId, folderPath, searchParam] });
+      queryClient.invalidateQueries({ queryKey: [`${queryNs}-mailboxes`, mode, activeAccountId] });
     });
   }, [selectedUid]); // eslint-disable-line
 
