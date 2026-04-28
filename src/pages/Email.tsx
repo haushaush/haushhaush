@@ -463,6 +463,7 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
           onClose={() => setAddOpen(false)}
           onAccountSaved={() => accountsQuery.refetch()}
           prefill={null}
+          mode={mode}
         />
       </div>
     );
