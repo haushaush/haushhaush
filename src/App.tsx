@@ -56,6 +56,7 @@ import N8nWorkflowsPage from "./pages/automationen/N8nWorkflows.tsx";
 import WebhooksPage from "./pages/automationen/Webhooks.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import EmailPage from "./pages/Email.tsx";
+import EmailAutomationRules from "./pages/EmailAutomationRules.tsx";
 import Recovery from "./pages/Recovery.tsx";
 import OnePageKunden from "./pages/OnePageKunden.tsx";
 import OnePageKundeDetail from "./pages/OnePageKundeDetail.tsx";
