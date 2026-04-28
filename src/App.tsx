@@ -56,6 +56,7 @@ import N8nWorkflowsPage from "./pages/automationen/N8nWorkflows.tsx";
 import WebhooksPage from "./pages/automationen/Webhooks.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import EmailPage from "./pages/Email.tsx";
+import EmailAutomationRules from "./pages/EmailAutomationRules.tsx";
 import Recovery from "./pages/Recovery.tsx";
 import OnePageKunden from "./pages/OnePageKunden.tsx";
 import OnePageKundeDetail from "./pages/OnePageKundeDetail.tsx";
@@ -147,6 +148,7 @@ const App = () => (
                 <Route path="/email" element={<DL><EmailPage mode="personal" /></DL>} />
                 <Route path="/email/:slug" element={<DL><EmailPage mode="personal" /></DL>} />
                 <Route path="/email-automatisierung" element={<AdminRoute><DL><EmailPage mode="shared" /></DL></AdminRoute>} />
+                <Route path="/email-automatisierung/regeln" element={<AdminRoute><DL><EmailAutomationRules /></DL></AdminRoute>} />
                 <Route path="/email-automatisierung/:slug" element={<AdminRoute><DL><EmailPage mode="shared" /></DL></AdminRoute>} />
                 <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
                 <Route path="/aria" element={<DL><AriaPage /></DL>} />

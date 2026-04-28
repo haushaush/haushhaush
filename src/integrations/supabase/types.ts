@@ -1458,6 +1458,96 @@ export type Database = {
         }
         Relationships: []
       }
+      email_automation_executions: {
+        Row: {
+          account_id: string | null
+          error: string | null
+          executed_at: string
+          id: string
+          matched_keywords: string[] | null
+          message_uid: number | null
+          rule_id: string | null
+          slack_message_id: string | null
+          status: string
+        }
+        Insert: {
+          account_id?: string | null
+          error?: string | null
+          executed_at?: string
+          id?: string
+          matched_keywords?: string[] | null
+          message_uid?: number | null
+          rule_id?: string | null
+          slack_message_id?: string | null
+          status?: string
+        }
+        Update: {
+          account_id?: string | null
+          error?: string | null
+          executed_at?: string
+          id?: string
+          matched_keywords?: string[] | null
+          message_uid?: number | null
+          rule_id?: string | null
+          slack_message_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_automation_executions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "shared_email_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_automation_executions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "email_automation_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_automation_rules: {
+        Row: {
+          action_config: Json
+          action_type: string
+          conditions: Json
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          id: string
+          name: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type: string
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          name: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          name?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_messages_cache: {
         Row: {
           account_id: string
