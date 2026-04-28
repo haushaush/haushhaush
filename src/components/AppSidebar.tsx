@@ -81,6 +81,18 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    title: 'Email Automatisierung', url: '/email-automatisierung', icon: Workflow,
+    adminOnly: true,
+    children: [
+      { title: 'Posteingang', url: '/email-automatisierung' },
+      { title: 'Ungelesen', url: '/email-automatisierung/ungelesen' },
+      { title: 'Gesendet', url: '/email-automatisierung/gesendet' },
+      { title: 'Wichtig', url: '/email-automatisierung/wichtig' },
+      { title: 'Entwürfe', url: '/email-automatisierung/entwuerfe' },
+      { title: 'Papierkorb', url: '/email-automatisierung/papierkorb' },
+    ],
+  },
+  {
     title: 'Sales', url: '/sales', icon: TrendingUp,
     children: [
       { title: 'KPIs & Leaderboard', url: '/sales/kpis' },
