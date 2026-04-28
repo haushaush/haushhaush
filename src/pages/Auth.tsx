@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +21,7 @@ export default function Auth() {
   const [pendingMsg, setPendingMsg] = useState('');
   const [showTestMode, setShowTestMode] = useState(false);
   const [testPassword, setTestPassword] = useState('');
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="text-primary animate-pulse text-2xl font-semibold">Laden...</div></div>;
   if (user) return <Navigate to="/" replace />;
@@ -105,6 +106,7 @@ export default function Auth() {
               <Label htmlFor="password" className="text-sm text-foreground">Passwort</Label>
               <Input
                 id="password"
+                ref={passwordInputRef}
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -137,27 +139,14 @@ export default function Auth() {
             size="sm"
             className="h-9 rounded-lg text-xs"
             disabled={isLoading}
-            onClick={async () => {
-              setIsLoading(true);
+            onClick={() => {
+              setEmail(TEST_EMAIL);
+              setPassword('');
               setPendingMsg('');
-              const { error } = await supabase.auth.signInWithPassword({
-                email: TEST_EMAIL,
-                password: TEST_PASSWORD,
+              setTimeout(() => passwordInputRef.current?.focus(), 50);
+              toast.info('Passwort manuell eingeben um fortzufahren', {
+                description: `E-Mail wurde vorausgefüllt (${TEST_EMAIL}).`,
               });
-              setIsLoading(false);
-              if (error) {
-                if (/invalid login/i.test(error.message)) {
-                  toast.error(
-                    'Test-Account nicht eingerichtet. Als Admin einloggen → Einstellungen → Sicherheit → Dev-Tools → "Test-Account zurücksetzen".',
-                    { duration: 8000 },
-                  );
-                } else {
-                  toast.error('Login fehlgeschlagen: ' + error.message);
-                }
-                return;
-              }
-              toast.success('Eingeloggt als Test Admin ✓');
-              navigate('/uebersicht');
             }}
           >
             <FlaskConical className="h-3 w-3 mr-1.5" />
