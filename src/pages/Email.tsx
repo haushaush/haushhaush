@@ -180,10 +180,10 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
 
   // Load mailboxes
   const mailboxesQuery = useQuery({
-    queryKey: ['email-mailboxes', activeAccountId],
+    queryKey: [`${queryNs}-mailboxes`, mode, activeAccountId],
     enabled: !!activeAccountId,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('imap-list-mailboxes', {
+      const { data, error } = await supabase.functions.invoke(`${fnPrefix}-list-mailboxes`, {
         body: { accountId: activeAccountId },
       });
       if (error) throw error;
