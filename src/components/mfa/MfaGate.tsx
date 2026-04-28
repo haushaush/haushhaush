@@ -26,6 +26,11 @@ export function MfaGate({ children }: { children: React.ReactNode }) {
       setStage('ok');
       return;
     }
+    // Dedicated dev test account — never force MFA
+    if (user.email === 'test@haushhaush.de') {
+      setStage('ok');
+      return;
+    }
     setStage('checking');
     try {
       const { data: factors } = await supabase.auth.mfa.listFactors();
@@ -65,6 +70,7 @@ export function MfaGate({ children }: { children: React.ReactNode }) {
 
   if (!user) return <>{children}</>;
   if (isTestMode) return <>{children}</>;
+  if (user.email === 'test@haushhaush.de') return <>{children}</>;
 
   if (stage === 'checking') {
     return (

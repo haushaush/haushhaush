@@ -9,6 +9,8 @@ import { Loader2, FlaskConical } from 'lucide-react';
 import { toast } from 'sonner';
 
 const logoUrl = import.meta.env.VITE_LOGO_URL || null;
+const TEST_EMAIL = 'test@haushhaush.de';
+const TEST_PASSWORD = 'Test1234!';
 
 export default function Auth() {
   const { user, loading, activateTestMode } = useAuth();
@@ -128,48 +130,73 @@ export default function Auth() {
         </div>
 
 
-        {/* Test Mode */}
-        <div className="mt-4 text-center">
-          <button
-            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-            onClick={() => setShowTestMode(prev => !prev)}
+        {/* Test-Zugang (dev) */}
+        <div className="mt-4 text-center space-y-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 rounded-lg text-xs"
+            disabled={isLoading}
+            onClick={async () => {
+              setIsLoading(true);
+              setPendingMsg('');
+              const { error } = await supabase.auth.signInWithPassword({
+                email: TEST_EMAIL,
+                password: TEST_PASSWORD,
+              });
+              setIsLoading(false);
+              if (error) {
+                if (/invalid login/i.test(error.message)) {
+                  toast.error(
+                    'Test-Account nicht eingerichtet. Als Admin einloggen → Einstellungen → Sicherheit → Dev-Tools → "Test-Account zurücksetzen".',
+                    { duration: 8000 },
+                  );
+                } else {
+                  toast.error('Login fehlgeschlagen: ' + error.message);
+                }
+                return;
+              }
+              toast.success('Eingeloggt als Test Admin ✓');
+              navigate('/uebersicht');
+            }}
           >
-            <FlaskConical className="h-3 w-3" />
-            Test Mode
-          </button>
-          {showTestMode && (
-            <div className="mt-3 rounded-xl border border-border p-4" style={{ backgroundColor: 'hsl(var(--card))' }}>
-              <p className="text-xs text-muted-foreground mb-2">Passwort für Test-Zugang eingeben:</p>
-              <div className="flex gap-2">
-                <Input
-                  type="password"
-                  value={testPassword}
-                  onChange={e => setTestPassword(e.target.value)}
-                  placeholder="Test-Passwort"
-                  className="h-9 text-sm rounded-lg"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
+            <FlaskConical className="h-3 w-3 mr-1.5" />
+            🧪 Test-Zugang
+          </Button>
+
+          <div>
+            <button
+              className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              onClick={() => setShowTestMode(prev => !prev)}
+            >
+              Legacy Test Mode
+            </button>
+            {showTestMode && (
+              <div className="mt-2 rounded-xl border border-border p-3" style={{ backgroundColor: 'hsl(var(--card))' }}>
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    value={testPassword}
+                    onChange={e => setTestPassword(e.target.value)}
+                    placeholder="Test-Passwort"
+                    className="h-8 text-xs rounded-lg"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 rounded-lg text-xs"
+                    onClick={() => {
                       const ok = activateTestMode(testPassword);
                       if (ok) toast.success('Test Mode aktiviert ✓');
                       else toast.error('Falsches Passwort');
-                    }
-                  }}
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-9 rounded-lg"
-                  onClick={() => {
-                    const ok = activateTestMode(testPassword);
-                    if (ok) toast.success('Test Mode aktiviert ✓');
-                    else toast.error('Falsches Passwort');
-                  }}
-                >
-                  Unlock
-                </Button>
+                    }}
+                  >
+                    Unlock
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
