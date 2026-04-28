@@ -152,9 +152,11 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { signOut, user, isAdminOrManager, hasRole } = useAuth();
   const isAdmin = hasRole('admin');
-  const visibleNavItems = navItems.filter(item =>
-    item.url.startsWith('/onepage-leads') ? isAdmin : true
-  );
+  const visibleNavItems = navItems.filter(item => {
+    if (item.adminOnly) return isAdmin;
+    if (item.url.startsWith('/onepage-leads')) return isAdmin;
+    return true;
+  });
   const { displayName, initials, avatarUrl } = useProfile();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [pendingCount, setPendingCount] = useState(0);
