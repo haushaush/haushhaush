@@ -2835,6 +2835,161 @@ export type Database = {
           },
         ]
       }
+      shared_email_accounts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          display_name: string | null
+          email_address: string
+          id: string
+          imap_host: string
+          imap_password_encrypted: string
+          imap_port: number
+          imap_secure: boolean
+          imap_user: string
+          is_active: boolean
+          is_default: boolean
+          last_polled_at: string | null
+          last_test_error: string | null
+          last_test_status: string | null
+          last_tested_at: string | null
+          provider: string | null
+          smtp_host: string | null
+          smtp_password_encrypted: string | null
+          smtp_port: number | null
+          smtp_secure: boolean | null
+          smtp_user: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          email_address: string
+          id?: string
+          imap_host: string
+          imap_password_encrypted: string
+          imap_port?: number
+          imap_secure?: boolean
+          imap_user: string
+          is_active?: boolean
+          is_default?: boolean
+          last_polled_at?: string | null
+          last_test_error?: string | null
+          last_test_status?: string | null
+          last_tested_at?: string | null
+          provider?: string | null
+          smtp_host?: string | null
+          smtp_password_encrypted?: string | null
+          smtp_port?: number | null
+          smtp_secure?: boolean | null
+          smtp_user?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          email_address?: string
+          id?: string
+          imap_host?: string
+          imap_password_encrypted?: string
+          imap_port?: number
+          imap_secure?: boolean
+          imap_user?: string
+          is_active?: boolean
+          is_default?: boolean
+          last_polled_at?: string | null
+          last_test_error?: string | null
+          last_test_status?: string | null
+          last_tested_at?: string | null
+          provider?: string | null
+          smtp_host?: string | null
+          smtp_password_encrypted?: string | null
+          smtp_port?: number | null
+          smtp_secure?: boolean | null
+          smtp_user?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shared_email_messages_cache: {
+        Row: {
+          account_id: string
+          attachments: Json | null
+          body_fetched_at: string | null
+          body_html: string | null
+          body_text: string | null
+          cc_addresses: string[] | null
+          date: string | null
+          fetched_at: string
+          flags: string[] | null
+          folder: string
+          from_address: string | null
+          from_name: string | null
+          has_attachment: boolean | null
+          id: string
+          message_id: string | null
+          size_bytes: number | null
+          snippet: string | null
+          subject: string | null
+          to_addresses: string[] | null
+          uid: number
+        }
+        Insert: {
+          account_id: string
+          attachments?: Json | null
+          body_fetched_at?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          cc_addresses?: string[] | null
+          date?: string | null
+          fetched_at?: string
+          flags?: string[] | null
+          folder: string
+          from_address?: string | null
+          from_name?: string | null
+          has_attachment?: boolean | null
+          id?: string
+          message_id?: string | null
+          size_bytes?: number | null
+          snippet?: string | null
+          subject?: string | null
+          to_addresses?: string[] | null
+          uid: number
+        }
+        Update: {
+          account_id?: string
+          attachments?: Json | null
+          body_fetched_at?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          cc_addresses?: string[] | null
+          date?: string | null
+          fetched_at?: string
+          flags?: string[] | null
+          folder?: string
+          from_address?: string | null
+          from_name?: string | null
+          has_attachment?: boolean | null
+          id?: string
+          message_id?: string | null
+          size_bytes?: number | null
+          snippet?: string | null
+          subject?: string | null
+          to_addresses?: string[] | null
+          uid?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_email_messages_cache_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "shared_email_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_tickets: {
         Row: {
           created_at: string | null
