@@ -475,10 +475,13 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
       {mode === 'shared' && (
         <div className="flex items-start gap-3 px-4 py-2.5 border-b border-border bg-primary/5 text-xs">
           <Users className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-          <div className="text-foreground/80">
+          <div className="text-foreground/80 flex-1">
             <span className="font-medium">Geteiltes Postfach</span> — Alle hinzugefügten Konten sind für alle Admins sichtbar und bearbeitbar.
             Wenn du eine Mail als gelesen markierst, ist sie für alle Admins als gelesen markiert.
           </div>
+          <Button asChild variant="outline" size="sm" className="h-7 text-xs shrink-0">
+            <Link to="/email-automatisierung/regeln">🤖 Regeln</Link>
+          </Button>
         </div>
       )}
       {/* Top bar */}
