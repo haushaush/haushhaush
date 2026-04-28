@@ -472,6 +472,15 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
   // ============= MAIN INBOX VIEW =============
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
+      {mode === 'shared' && (
+        <div className="flex items-start gap-3 px-4 py-2.5 border-b border-border bg-primary/5 text-xs">
+          <Users className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <div className="text-foreground/80">
+            <span className="font-medium">Geteiltes Postfach</span> — Alle hinzugefügten Konten sind für alle Admins sichtbar und bearbeitbar.
+            Wenn du eine Mail als gelesen markierst, ist sie für alle Admins als gelesen markiert.
+          </div>
+        </div>
+      )}
       {/* Top bar */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
         <div className="relative flex-1 max-w-md">
