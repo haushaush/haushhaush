@@ -819,6 +819,7 @@ export default function Einstellungen() {
             <TabsTrigger value="mitarbeiter-erstellen">Mitarbeiter erstellen</TabsTrigger>
           )}
           <TabsTrigger value="benachrichtigungen">Benachrichtigungen</TabsTrigger>
+          <TabsTrigger value="sicherheit">Sicherheit</TabsTrigger>
         </TabsList>
 
         {/* ═══════ INTEGRATIONEN TAB ═══════ */}
