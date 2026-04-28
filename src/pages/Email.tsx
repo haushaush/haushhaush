@@ -823,6 +823,7 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
         onClose={() => { setAddOpen(false); setAddPrefill(null); }}
         onAccountSaved={() => { accountsQuery.refetch(); setAddPrefill(null); }}
         prefill={addPrefill}
+        mode={mode}
       />
       <AccountsModal
         open={accountsOpen}
@@ -831,6 +832,7 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
         onAddNew={() => { setAccountsOpen(false); setAddPrefill(null); setAddOpen(true); }}
         onRepair={(acc) => { setAccountsOpen(false); setAddPrefill(acc as any); setAddOpen(true); }}
         onChanged={() => accountsQuery.refetch()}
+        mode={mode}
       />
       <ComposeModal
         open={composeOpen}
@@ -839,6 +841,7 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
         defaultAccountId={activeAccountId ?? undefined}
         prefill={composePrefill}
         onSent={handleRefresh}
+        mode={mode}
       />
       <EmailSummaryPanel
         open={summaryOpen}
