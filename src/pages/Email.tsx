@@ -154,10 +154,10 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
 
   // Load accounts
   const accountsQuery = useQuery({
-    queryKey: ['email-accounts'],
+    queryKey: [`${queryNs}-accounts`, mode],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('email_accounts')
+      const { data, error } = await (supabase as any)
+        .from(accountsTable)
         .select('*')
         .eq('is_active', true)
         .order('is_default', { ascending: false })
