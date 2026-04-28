@@ -82,5 +82,18 @@ Deno.serve(async (req) => {
       polled++;
     } catch { /* continue */ }
   }
+
+  // Fire automation processor (fire-and-forget)
+  if (newMessages > 0) {
+    fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/process-email-automations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+      },
+      body: JSON.stringify({}),
+    }).catch(() => { /* */ });
+  }
+
   return jsonResponse({ ok: true, polled, newMessages });
 });
