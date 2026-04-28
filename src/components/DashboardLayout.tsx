@@ -46,6 +46,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   if (!user) return <Navigate to="/auth" replace />;
 
   return (
+    <MfaGate>
     <SidebarProvider>
       <SidebarWidthSync />
       <div className="min-h-screen flex w-full">
@@ -93,5 +94,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         )}
       </div>
     </SidebarProvider>
+    </MfaGate>
   );
 }
