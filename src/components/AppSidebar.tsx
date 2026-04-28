@@ -18,6 +18,7 @@ interface NavItem {
   url: string;
   icon: any;
   children?: { title: string; url: string }[];
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
