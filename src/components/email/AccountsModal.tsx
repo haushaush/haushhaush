@@ -31,17 +31,19 @@ interface AccountsModalProps {
   onAddNew: () => void;
   onRepair: (account: EmailAccount) => void;
   onChanged: () => void;
+  mode?: 'personal' | 'shared';
 }
 
-export function AccountsModal({ open, onClose, accounts, onAddNew, onRepair, onChanged }: AccountsModalProps) {
+export function AccountsModal({ open, onClose, accounts, onAddNew, onRepair, onChanged, mode = 'personal' }: AccountsModalProps) {
   const [busyId, setBusyId] = useState<string | null>(null);
+  const accountsTable = mode === 'shared' ? 'shared_email_accounts' : 'email_accounts';
+  const listFn = mode === 'shared' ? 'shared-imap-list-mailboxes' : 'imap-list-mailboxes';
 
   const setDefault = async (id: string) => {
     setBusyId(id);
     try {
-      // Clear all
-      await supabase.from('email_accounts').update({ is_default: false }).eq('is_default', true);
-      const { error } = await supabase.from('email_accounts').update({ is_default: true }).eq('id', id);
+      await (supabase.from as any)(accountsTable).update({ is_default: false }).eq('is_default', true);
+      const { error } = await (supabase.from as any)(accountsTable).update({ is_default: true }).eq('id', id);
       if (error) throw error;
       toast.success('Standard-Konto aktualisiert');
       onChanged();
@@ -56,7 +58,7 @@ export function AccountsModal({ open, onClose, accounts, onAddNew, onRepair, onC
     if (!confirm(`Konto "${label}" wirklich entfernen? Alle gecachten Nachrichten werden mitgelöscht.`)) return;
     setBusyId(id);
     try {
-      const { error } = await supabase.from('email_accounts').delete().eq('id', id);
+      const { error } = await (supabase.from as any)(accountsTable).delete().eq('id', id);
       if (error) throw error;
       toast.success('Konto entfernt');
       onChanged();
@@ -70,17 +72,15 @@ export function AccountsModal({ open, onClose, accounts, onAddNew, onRepair, onC
   const testAccount = async (id: string) => {
     setBusyId(id);
     try {
-      const { data, error } = await supabase.functions.invoke('imap-list-mailboxes', { body: { accountId: id } });
+      const { data, error } = await supabase.functions.invoke(listFn, { body: { accountId: id } });
       if (error) throw error;
       if (data?.ok) {
-        await supabase
-          .from('email_accounts')
+        await (supabase.from as any)(accountsTable)
           .update({ last_tested_at: new Date().toISOString(), last_test_status: 'ok', last_test_error: null })
           .eq('id', id);
         toast.success('Verbindung erfolgreich');
       } else {
-        await supabase
-          .from('email_accounts')
+        await (supabase.from as any)(accountsTable)
           .update({ last_tested_at: new Date().toISOString(), last_test_status: data?.error ?? 'unknown', last_test_error: data?.message ?? null })
           .eq('id', id);
         toast.error(`Verbindung fehlgeschlagen: ${data?.error}`);

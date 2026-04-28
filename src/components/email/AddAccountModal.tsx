@@ -14,6 +14,7 @@ interface AddAccountModalProps {
   open: boolean;
   onClose: () => void;
   onAccountSaved: () => void;
+  mode?: 'personal' | 'shared';
   prefill?: {
     id?: string;
     email_address: string;
@@ -31,7 +32,9 @@ interface AddAccountModalProps {
 
 type Step = 1 | 2 | 3;
 
-export function AddAccountModal({ open, onClose, onAccountSaved, prefill }: AddAccountModalProps) {
+export function AddAccountModal({ open, onClose, onAccountSaved, prefill, mode = 'personal' }: AddAccountModalProps) {
+  const testFn = mode === 'shared' ? 'shared-imap-test-connection' : 'imap-test-connection';
+  const saveFn = mode === 'shared' ? 'shared-imap-save-account' : 'imap-save-account';
   const [step, setStep] = useState<Step>(1);
   const [providerKey, setProviderKey] = useState<string>('custom');
   const [form, setForm] = useState({
@@ -115,7 +118,7 @@ export function AddAccountModal({ open, onClose, onAccountSaved, prefill }: AddA
     setTestResult(null);
     setStep(3);
     try {
-      const { data, error } = await supabase.functions.invoke('imap-test-connection', {
+      const { data, error } = await supabase.functions.invoke(testFn, {
         body: {
           imapHost: form.imap_host,
           imapPort: Number(form.imap_port),
@@ -144,7 +147,7 @@ export function AddAccountModal({ open, onClose, onAccountSaved, prefill }: AddA
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('imap-save-account', {
+      const { data, error } = await supabase.functions.invoke(saveFn, {
         body: {
           id: prefill?.id,
           email_address: form.email_address,

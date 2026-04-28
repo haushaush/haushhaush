@@ -22,9 +22,11 @@ interface ComposeModalProps {
     replyTo?: string;
   };
   onSent?: () => void;
+  mode?: 'personal' | 'shared';
 }
 
-export function ComposeModal({ open, onClose, accounts, defaultAccountId, prefill, onSent }: ComposeModalProps) {
+export function ComposeModal({ open, onClose, accounts, defaultAccountId, prefill, onSent, mode = 'personal' }: ComposeModalProps) {
+  const sendFn = mode === 'shared' ? 'shared-imap-send-message' : 'imap-send-message';
   const [accountId, setAccountId] = useState<string>(defaultAccountId ?? '');
   const [to, setTo] = useState('');
   const [cc, setCc] = useState('');
@@ -53,7 +55,7 @@ export function ComposeModal({ open, onClose, accounts, defaultAccountId, prefil
     }
     setSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke('imap-send-message', {
+      const { data, error } = await supabase.functions.invoke(sendFn, {
         body: {
           accountId,
           to: to.split(',').map((s) => s.trim()).filter(Boolean),
