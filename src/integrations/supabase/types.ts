@@ -2005,6 +2005,63 @@ export type Database = {
         }
         Relationships: []
       }
+      mfa_recovery_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mfa_trusted_devices: {
+        Row: {
+          created_at: string
+          device_name: string | null
+          device_token_hash: string
+          id: string
+          ip_address: string | null
+          trusted_until: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_name?: string | null
+          device_token_hash: string
+          id?: string
+          ip_address?: string | null
+          trusted_until: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_name?: string | null
+          device_token_hash?: string
+          id?: string
+          ip_address?: string | null
+          trusted_until?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           desktop_push_enabled: boolean | null
@@ -3192,6 +3249,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_mfa_status: {
+        Row: {
+          last_enrolled_factor_id: string | null
+          mfa_enrolled_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_enrolled_factor_id?: string | null
+          mfa_enrolled_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_enrolled_factor_id?: string | null
+          mfa_enrolled_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_permissions: {
         Row: {
