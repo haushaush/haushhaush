@@ -80,9 +80,10 @@ Deno.serve(async (req: Request) => {
       const { data: userRes } = await userClient.auth.getUser();
       if (userRes?.user) {
         callerId = userRes.user.id;
-        // Check role via security definer function
-        const { data: roleCheck } = await userClient.rpc('is_admin_or_manager', {
+        // Admin-only access
+        const { data: roleCheck } = await userClient.rpc('has_role', {
           _user_id: userRes.user.id,
+          _role: 'admin',
         });
         allowed = roleCheck === true;
       }
@@ -93,7 +94,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!allowed) {
-      return json({ error: 'Forbidden — admin or account-manager role required' }, 403);
+      return json({ error: 'Forbidden — admin role required' }, 403);
     }
 
     // Service role client bypasses RLS for the actual inserts
