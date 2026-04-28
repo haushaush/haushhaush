@@ -18,6 +18,7 @@ interface NavItem {
   url: string;
   icon: any;
   children?: { title: string; url: string }[];
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -80,6 +81,18 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    title: 'Email Automatisierung', url: '/email-automatisierung', icon: Workflow,
+    adminOnly: true,
+    children: [
+      { title: 'Posteingang', url: '/email-automatisierung' },
+      { title: 'Ungelesen', url: '/email-automatisierung/ungelesen' },
+      { title: 'Gesendet', url: '/email-automatisierung/gesendet' },
+      { title: 'Wichtig', url: '/email-automatisierung/wichtig' },
+      { title: 'Entwürfe', url: '/email-automatisierung/entwuerfe' },
+      { title: 'Papierkorb', url: '/email-automatisierung/papierkorb' },
+    ],
+  },
+  {
     title: 'Sales', url: '/sales', icon: TrendingUp,
     children: [
       { title: 'KPIs & Leaderboard', url: '/sales/kpis' },
@@ -139,9 +152,11 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { signOut, user, isAdminOrManager, hasRole } = useAuth();
   const isAdmin = hasRole('admin');
-  const visibleNavItems = navItems.filter(item =>
-    item.url.startsWith('/onepage-leads') ? isAdmin : true
-  );
+  const visibleNavItems = navItems.filter(item => {
+    if (item.adminOnly) return isAdmin;
+    if (item.url.startsWith('/onepage-leads')) return isAdmin;
+    return true;
+  });
   const { displayName, initials, avatarUrl } = useProfile();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [pendingCount, setPendingCount] = useState(0);

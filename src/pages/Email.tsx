@@ -28,6 +28,7 @@ import {
   ExternalLink,
   AlertCircle,
   ListChecks,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -114,11 +115,22 @@ const SLUG_TO_ROUTE: Record<string, EmailRouteSlug> = {
   papierkorb: 'papierkorb',
 };
 
-export default function EmailPage() {
+interface EmailPageProps {
+  mode?: 'personal' | 'shared';
+}
+
+export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
   const { slug: rawSlug } = useParams<{ slug?: string }>();
   const slug: EmailRouteSlug = (rawSlug && SLUG_TO_ROUTE[rawSlug]) || 'posteingang';
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Mode-aware table & edge function names
+  const accountsTable = mode === 'shared' ? 'shared_email_accounts' : 'email_accounts';
+  const fnPrefix = mode === 'shared' ? 'shared-imap' : 'imap';
+  const basePath = mode === 'shared' ? '/email-automatisierung' : '/email';
+  const queryNs = mode === 'shared' ? 'shared-email' : 'email';
+  const downloadFnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${fnPrefix}-download-attachment`;
 
   const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -142,10 +154,10 @@ export default function EmailPage() {
 
   // Load accounts
   const accountsQuery = useQuery({
-    queryKey: ['email-accounts'],
+    queryKey: [`${queryNs}-accounts`, mode],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('email_accounts')
+      const { data, error } = await (supabase as any)
+        .from(accountsTable)
         .select('*')
         .eq('is_active', true)
         .order('is_default', { ascending: false })
@@ -168,10 +180,10 @@ export default function EmailPage() {
 
   // Load mailboxes
   const mailboxesQuery = useQuery({
-    queryKey: ['email-mailboxes', activeAccountId],
+    queryKey: [`${queryNs}-mailboxes`, mode, activeAccountId],
     enabled: !!activeAccountId,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('imap-list-mailboxes', {
+      const { data, error } = await supabase.functions.invoke(`${fnPrefix}-list-mailboxes`, {
         body: { accountId: activeAccountId },
       });
       if (error) throw error;
@@ -201,10 +213,10 @@ export default function EmailPage() {
 
   // Load messages
   const messagesQuery = useQuery({
-    queryKey: ['email-messages', activeAccountId, folderPath, searchParam],
+    queryKey: [`${queryNs}-messages`, mode, activeAccountId, folderPath, searchParam],
     enabled: !!activeAccountId && mailboxes.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('imap-list-messages', {
+      const { data, error } = await supabase.functions.invoke(`${fnPrefix}-list-messages`, {
         body: { accountId: activeAccountId, folder: folderPath, search: searchParam, limit: 50 },
       });
       if (error) throw error;
@@ -216,16 +228,15 @@ export default function EmailPage() {
 
   // Load message detail — with explicit timeout & error surfacing
   const messageQuery = useQuery({
-    queryKey: ['email-message', activeAccountId, folderPath, selectedUid],
+    queryKey: [`${queryNs}-message`, mode, activeAccountId, folderPath, selectedUid],
     enabled: !!activeAccountId && !!selectedUid,
     retry: 1,
-    staleTime: Infinity, // bodies don't change, keep them cached
+    staleTime: Infinity,
     queryFn: async () => {
-      // Client-side hard timeout in case the edge function never responds
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 70_000);
       try {
-        const invokePromise = supabase.functions.invoke('imap-get-message', {
+        const invokePromise = supabase.functions.invoke(`${fnPrefix}-get-message`, {
           body: { accountId: activeAccountId, folder: folderPath, uid: selectedUid },
         });
         const timeoutPromise = new Promise<never>((_, reject) => {
@@ -262,11 +273,11 @@ export default function EmailPage() {
   useEffect(() => {
     const msg = messages.find((m) => m.uid === selectedUid);
     if (!msg || !activeAccountId || !isUnread(msg.flags)) return;
-    supabase.functions.invoke('imap-mark-read', {
+    supabase.functions.invoke(`${fnPrefix}-mark-read`, {
       body: { accountId: activeAccountId, folder: folderPath, uid: selectedUid, read: true },
     }).then(() => {
-      queryClient.invalidateQueries({ queryKey: ['email-messages', activeAccountId, folderPath, searchParam] });
-      queryClient.invalidateQueries({ queryKey: ['email-mailboxes', activeAccountId] });
+      queryClient.invalidateQueries({ queryKey: [`${queryNs}-messages`, mode, activeAccountId, folderPath, searchParam] });
+      queryClient.invalidateQueries({ queryKey: [`${queryNs}-mailboxes`, mode, activeAccountId] });
     });
   }, [selectedUid]); // eslint-disable-line
 
@@ -339,14 +350,14 @@ export default function EmailPage() {
   }, [finalHtml]);
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['email-messages', activeAccountId, folderPath, searchParam] });
-    queryClient.invalidateQueries({ queryKey: ['email-mailboxes', activeAccountId] });
+    queryClient.invalidateQueries({ queryKey: [`${queryNs}-messages`, mode, activeAccountId, folderPath, searchParam] });
+    queryClient.invalidateQueries({ queryKey: [`${queryNs}-mailboxes`, mode, activeAccountId] });
   };
 
   const handleSelectFolder = (newSlug: EmailRouteSlug) => {
     setSelectedUid(null);
-    if (newSlug === 'posteingang') navigate('/email');
-    else navigate(`/email/${newSlug}`);
+    if (newSlug === 'posteingang') navigate(basePath);
+    else navigate(`${basePath}/${newSlug}`);
   };
 
   const handleReply = () => {
@@ -378,7 +389,7 @@ export default function EmailPage() {
     if (!activeAccountId || !selectedUid) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/imap-download-attachment`;
+      const url = downloadFnUrl;
       const res = await fetch(url, {
         method: 'POST',
         headers: {
@@ -452,6 +463,7 @@ export default function EmailPage() {
           onClose={() => setAddOpen(false)}
           onAccountSaved={() => accountsQuery.refetch()}
           prefill={null}
+          mode={mode}
         />
       </div>
     );
@@ -460,6 +472,15 @@ export default function EmailPage() {
   // ============= MAIN INBOX VIEW =============
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
+      {mode === 'shared' && (
+        <div className="flex items-start gap-3 px-4 py-2.5 border-b border-border bg-primary/5 text-xs">
+          <Users className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <div className="text-foreground/80">
+            <span className="font-medium">Geteiltes Postfach</span> — Alle hinzugefügten Konten sind für alle Admins sichtbar und bearbeitbar.
+            Wenn du eine Mail als gelesen markierst, ist sie für alle Admins als gelesen markiert.
+          </div>
+        </div>
+      )}
       {/* Top bar */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
         <div className="relative flex-1 max-w-md">
@@ -802,6 +823,7 @@ export default function EmailPage() {
         onClose={() => { setAddOpen(false); setAddPrefill(null); }}
         onAccountSaved={() => { accountsQuery.refetch(); setAddPrefill(null); }}
         prefill={addPrefill}
+        mode={mode}
       />
       <AccountsModal
         open={accountsOpen}
@@ -810,6 +832,7 @@ export default function EmailPage() {
         onAddNew={() => { setAccountsOpen(false); setAddPrefill(null); setAddOpen(true); }}
         onRepair={(acc) => { setAccountsOpen(false); setAddPrefill(acc as any); setAddOpen(true); }}
         onChanged={() => accountsQuery.refetch()}
+        mode={mode}
       />
       <ComposeModal
         open={composeOpen}
@@ -818,6 +841,7 @@ export default function EmailPage() {
         defaultAccountId={activeAccountId ?? undefined}
         prefill={composePrefill}
         onSent={handleRefresh}
+        mode={mode}
       />
       <EmailSummaryPanel
         open={summaryOpen}
