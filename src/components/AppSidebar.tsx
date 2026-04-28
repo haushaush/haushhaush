@@ -137,7 +137,11 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, user, isAdminOrManager } = useAuth();
+  const { signOut, user, isAdminOrManager, hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
+  const visibleNavItems = navItems.filter(item =>
+    item.url.startsWith('/onepage-leads') ? isAdmin : true
+  );
   const { displayName, initials, avatarUrl } = useProfile();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [pendingCount, setPendingCount] = useState(0);
@@ -427,7 +431,7 @@ export function AppSidebar() {
 
         {/* ─── LEVEL 1: Primary Navigation ─── */}
         <nav className="flex-1 px-2 py-2 space-y-0.5" aria-label="Hauptnavigation">
-          {navItems.map(renderNavItem)}
+          {visibleNavItems.map(renderNavItem)}
         </nav>
 
         {/* ─── LEVEL 2: Secondary Navigation ─── */}

@@ -59,6 +59,7 @@ import EmailPage from "./pages/Email.tsx";
 import Recovery from "./pages/Recovery.tsx";
 import OnePageKunden from "./pages/OnePageKunden.tsx";
 import OnePageKundeDetail from "./pages/OnePageKundeDetail.tsx";
+import { AdminRoute } from "./components/AdminRoute";
 import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
 
 const queryClient = new QueryClient();
@@ -123,9 +124,9 @@ const App = () => (
                 <Route path="/meta/kampagnen" element={<DL><MetaKampagnen /></DL>} />
                 <Route path="/meta/anzeigengruppen" element={<DL><MetaAnzeigengruppen /></DL>} />
                 <Route path="/meta/anzeigen" element={<DL><MetaAnzeigen /></DL>} />
-                <Route path="/onepage-leads" element={<Navigate to="/onepage-leads/kunden" replace />} />
-                <Route path="/onepage-leads/kunden" element={<DL><OnePageKunden /></DL>} />
-                <Route path="/onepage-leads/kunden/:id" element={<DL><OnePageKundeDetail /></DL>} />
+                <Route path="/onepage-leads" element={<AdminRoute><Navigate to="/onepage-leads/kunden" replace /></AdminRoute>} />
+                <Route path="/onepage-leads/kunden" element={<AdminRoute><DL><OnePageKunden /></DL></AdminRoute>} />
+                <Route path="/onepage-leads/kunden/:id" element={<AdminRoute><DL><OnePageKundeDetail /></DL></AdminRoute>} />
                 <Route path="/drive" element={<DL><DriveUebersicht /></DL>} />
                 <Route path="/drive/meine-dateien" element={<DL><DriveMeineDateien /></DL>} />
                 <Route path="/drive/geteilt" element={<DL><DriveGeteilt /></DL>} />
