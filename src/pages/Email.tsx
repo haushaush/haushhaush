@@ -228,16 +228,15 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
 
   // Load message detail — with explicit timeout & error surfacing
   const messageQuery = useQuery({
-    queryKey: ['email-message', activeAccountId, folderPath, selectedUid],
+    queryKey: [`${queryNs}-message`, mode, activeAccountId, folderPath, selectedUid],
     enabled: !!activeAccountId && !!selectedUid,
     retry: 1,
-    staleTime: Infinity, // bodies don't change, keep them cached
+    staleTime: Infinity,
     queryFn: async () => {
-      // Client-side hard timeout in case the edge function never responds
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 70_000);
       try {
-        const invokePromise = supabase.functions.invoke('imap-get-message', {
+        const invokePromise = supabase.functions.invoke(`${fnPrefix}-get-message`, {
           body: { accountId: activeAccountId, folder: folderPath, uid: selectedUid },
         });
         const timeoutPromise = new Promise<never>((_, reject) => {
