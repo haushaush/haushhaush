@@ -106,6 +106,7 @@ export default function Auth() {
               <Label htmlFor="password" className="text-sm text-foreground">Passwort</Label>
               <Input
                 id="password"
+                ref={passwordInputRef}
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
