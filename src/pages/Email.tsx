@@ -350,14 +350,14 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
   }, [finalHtml]);
 
   const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['email-messages', activeAccountId, folderPath, searchParam] });
-    queryClient.invalidateQueries({ queryKey: ['email-mailboxes', activeAccountId] });
+    queryClient.invalidateQueries({ queryKey: [`${queryNs}-messages`, mode, activeAccountId, folderPath, searchParam] });
+    queryClient.invalidateQueries({ queryKey: [`${queryNs}-mailboxes`, mode, activeAccountId] });
   };
 
   const handleSelectFolder = (newSlug: EmailRouteSlug) => {
     setSelectedUid(null);
-    if (newSlug === 'posteingang') navigate('/email');
-    else navigate(`/email/${newSlug}`);
+    if (newSlug === 'posteingang') navigate(basePath);
+    else navigate(`${basePath}/${newSlug}`);
   };
 
   const handleReply = () => {
