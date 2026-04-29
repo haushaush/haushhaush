@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, RefreshCw, Trash2, Save, Loader2, X, Plus, Video } from "lucide-react";
+import { ArrowLeft, RefreshCw, Trash2, Save, Loader2, X, Plus, Video, Sparkles } from "lucide-react";
 import type { MetaAdRow } from "./ReferenzWerbeanzeigen";
 import type { FilterCategory, FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
 
@@ -237,13 +237,31 @@ export default function ReferenzWerbeanzeigeDetail() {
 
               <div>
                 <Label>Tags</Label>
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {tags.map(t => (
-                    <span key={t} className="text-xs bg-muted px-2 py-1 rounded-full inline-flex items-center gap-1">
-                      #{t}
-                      <button onClick={() => setTags(tags.filter(x => x !== t))}><X className="w-3 h-3" /></button>
-                    </span>
-                  ))}
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  <Sparkles className="w-3 h-3 inline -mt-0.5" /> Auto-Tags (#kunde-…, #versicherer-…) werden bei jedem Sync neu generiert. Manuelle Tags bleiben erhalten.
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {tags.map(t => {
+                    const isAutoTag = t.startsWith("kunde-") || t.startsWith("versicherer-");
+                    return (
+                      <span
+                        key={t}
+                        className={`text-xs px-2 py-1 rounded-full inline-flex items-center gap-1 border ${
+                          isAutoTag
+                            ? "bg-primary/10 text-primary border-primary/30"
+                            : "bg-muted border-transparent"
+                        }`}
+                      >
+                        {isAutoTag && <Sparkles className="w-3 h-3" />}
+                        #{t}
+                        {!isAutoTag && (
+                          <button onClick={() => setTags(tags.filter(x => x !== t))}>
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </span>
+                    );
+                  })}
                   <div className="flex items-center gap-1">
                     <Input
                       value={newTag} onChange={(e) => setNewTag(e.target.value)}
