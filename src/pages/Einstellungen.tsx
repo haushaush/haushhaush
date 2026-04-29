@@ -21,6 +21,7 @@ import { IntegrationStatusBar } from '@/components/integrations/IntegrationStatu
 import { PROVIDERS, CATEGORIES } from '@/components/integrations/IntegrationProviders';
 import { ApiPlatform } from '@/components/integrations/ApiPlatform';
 import { MetaMatchingCard } from '@/components/integrations/MetaMatchingCard';
+import { PipedriveAccountsModal } from '@/components/integrations/PipedriveAccountsModal';
 import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
 import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
@@ -1331,6 +1332,13 @@ export default function Einstellungen() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pipedrive Accounts Modal */}
+      <PipedriveAccountsModal
+        open={pipedriveModalOpen}
+        onClose={() => setPipedriveModalOpen(false)}
+        onChanged={fetchData}
+      />
 
       {/* Import Orphan Modal */}
       <ImportOrphanModal
