@@ -246,8 +246,9 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
               src={url}
               title="preview"
               className="w-full rounded border border-border bg-white"
-              style={{ height: 360 }}
-              sandbox="allow-scripts allow-same-origin"
+              style={{ height: 360, pointerEvents: 'none' }}
+              sandbox="allow-same-origin"
+              scrolling="no"
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setStage('input')}>Zurück</Button>
