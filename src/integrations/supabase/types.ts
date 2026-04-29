@@ -2510,8 +2510,86 @@ export type Database = {
           },
         ]
       }
+      pipedrive_accounts: {
+        Row: {
+          api_token_encrypted: string
+          color_hex: string | null
+          created_at: string | null
+          created_by: string | null
+          domain: string
+          id: string
+          is_active: boolean | null
+          last_sync_at: string | null
+          last_sync_message: string | null
+          last_sync_status: string | null
+          linked_kunde_id: string | null
+          name: string
+          pipedrive_company_name: string | null
+          pipedrive_user_email: string | null
+          pipedrive_user_id: number | null
+          pipedrive_user_name: string | null
+          sync_interval_minutes: number | null
+          total_deals_synced: number | null
+          total_persons_synced: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_token_encrypted: string
+          color_hex?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          domain: string
+          id?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          last_sync_message?: string | null
+          last_sync_status?: string | null
+          linked_kunde_id?: string | null
+          name: string
+          pipedrive_company_name?: string | null
+          pipedrive_user_email?: string | null
+          pipedrive_user_id?: number | null
+          pipedrive_user_name?: string | null
+          sync_interval_minutes?: number | null
+          total_deals_synced?: number | null
+          total_persons_synced?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_token_encrypted?: string
+          color_hex?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          domain?: string
+          id?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          last_sync_message?: string | null
+          last_sync_status?: string | null
+          linked_kunde_id?: string | null
+          name?: string
+          pipedrive_company_name?: string | null
+          pipedrive_user_email?: string | null
+          pipedrive_user_id?: number | null
+          pipedrive_user_name?: string | null
+          sync_interval_minutes?: number | null
+          total_deals_synced?: number | null
+          total_persons_synced?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipedrive_accounts_linked_kunde_id_fkey"
+            columns: ["linked_kunde_id"]
+            isOneToOne: false
+            referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipedrive_deals: {
         Row: {
+          account_id: string | null
           currency: string | null
           expected_close_date: string | null
           id: string
@@ -2528,6 +2606,7 @@ export type Database = {
           value: number | null
         }
         Insert: {
+          account_id?: string | null
           currency?: string | null
           expected_close_date?: string | null
           id?: string
@@ -2544,6 +2623,7 @@ export type Database = {
           value?: number | null
         }
         Update: {
+          account_id?: string | null
           currency?: string | null
           expected_close_date?: string | null
           id?: string
@@ -2559,10 +2639,19 @@ export type Database = {
           title?: string | null
           value?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pipedrive_deals_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "pipedrive_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pipedrive_persons: {
         Row: {
+          account_id: string | null
           email: string[] | null
           id: string
           name: string | null
@@ -2573,6 +2662,7 @@ export type Database = {
           synced_at: string | null
         }
         Insert: {
+          account_id?: string | null
           email?: string[] | null
           id?: string
           name?: string | null
@@ -2583,6 +2673,7 @@ export type Database = {
           synced_at?: string | null
         }
         Update: {
+          account_id?: string | null
           email?: string[] | null
           id?: string
           name?: string | null
@@ -2592,10 +2683,19 @@ export type Database = {
           raw_data?: Json | null
           synced_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pipedrive_persons_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "pipedrive_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pipedrive_pipelines: {
         Row: {
+          account_id: string | null
           active: boolean | null
           id: string
           name: string | null
@@ -2604,6 +2704,7 @@ export type Database = {
           synced_at: string | null
         }
         Insert: {
+          account_id?: string | null
           active?: boolean | null
           id?: string
           name?: string | null
@@ -2612,6 +2713,7 @@ export type Database = {
           synced_at?: string | null
         }
         Update: {
+          account_id?: string | null
           active?: boolean | null
           id?: string
           name?: string | null
@@ -2619,52 +2721,19 @@ export type Database = {
           raw_data?: Json | null
           synced_at?: string | null
         }
-        Relationships: []
-      }
-      pipedrive_settings: {
-        Row: {
-          api_token_encrypted: string
-          created_at: string | null
-          created_by: string | null
-          domain: string
-          id: string
-          is_active: boolean | null
-          last_sync_at: string | null
-          last_sync_message: string | null
-          last_sync_status: string | null
-          sync_interval_minutes: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          api_token_encrypted: string
-          created_at?: string | null
-          created_by?: string | null
-          domain: string
-          id?: string
-          is_active?: boolean | null
-          last_sync_at?: string | null
-          last_sync_message?: string | null
-          last_sync_status?: string | null
-          sync_interval_minutes?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          api_token_encrypted?: string
-          created_at?: string | null
-          created_by?: string | null
-          domain?: string
-          id?: string
-          is_active?: boolean | null
-          last_sync_at?: string | null
-          last_sync_message?: string | null
-          last_sync_status?: string | null
-          sync_interval_minutes?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pipedrive_pipelines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "pipedrive_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pipedrive_stages: {
         Row: {
+          account_id: string | null
           id: string
           name: string | null
           order_nr: number | null
@@ -2674,6 +2743,7 @@ export type Database = {
           synced_at: string | null
         }
         Insert: {
+          account_id?: string | null
           id?: string
           name?: string | null
           order_nr?: number | null
@@ -2683,6 +2753,7 @@ export type Database = {
           synced_at?: string | null
         }
         Update: {
+          account_id?: string | null
           id?: string
           name?: string | null
           order_nr?: number | null
@@ -2693,11 +2764,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "pipedrive_stages_pipeline_id_fkey"
-            columns: ["pipeline_id"]
+            foreignKeyName: "pipedrive_stages_account_id_fkey"
+            columns: ["account_id"]
             isOneToOne: false
-            referencedRelation: "pipedrive_pipelines"
-            referencedColumns: ["pipedrive_id"]
+            referencedRelation: "pipedrive_accounts"
+            referencedColumns: ["id"]
           },
         ]
       }
