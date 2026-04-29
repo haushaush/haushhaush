@@ -3552,9 +3552,11 @@ export type Database = {
           display_order: number | null
           id: string
           is_active: boolean | null
+          is_auto_synced: boolean
           is_required: boolean | null
           key: string
           label: string
+          synced_from_field: string | null
           updated_at: string | null
         }
         Insert: {
@@ -3564,9 +3566,11 @@ export type Database = {
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          is_auto_synced?: boolean
           is_required?: boolean | null
           key: string
           label: string
+          synced_from_field?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -3576,9 +3580,11 @@ export type Database = {
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          is_auto_synced?: boolean
           is_required?: boolean | null
           key?: string
           label?: string
+          synced_from_field?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -3591,6 +3597,7 @@ export type Database = {
           display_order: number | null
           id: string
           is_active: boolean | null
+          is_auto_synced: boolean
           key: string
           label: string
         }
@@ -3601,6 +3608,7 @@ export type Database = {
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          is_auto_synced?: boolean
           key: string
           label: string
         }
@@ -3611,6 +3619,7 @@ export type Database = {
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          is_auto_synced?: boolean
           key?: string
           label?: string
         }

@@ -89,24 +89,37 @@ export async function resolveKundeFromMetaAccount(
 }
 
 /**
- * Map a free-text branche (potentially from a text[] column) to a showcase
- * filter option key for category=branche, applies_to=werbeanzeige.
+ * Compute the slug-key the same way the sync function does, so enrichment
+ * matches synced options deterministically.
  */
-export async function mapBrancheToFilterOption(
+function keyForLabel(label: string): string {
+  const slug = slugifyTag("", label).replace(/^-/, "");
+  return slug;
+}
+
+/**
+ * Map a free-text Notion value (potentially text[] or comma-separated) to
+ * a showcase filter option key for the given category, applies_to=werbeanzeige.
+ *
+ * Resolution order: deterministic slug match → label-insensitive match →
+ * substring fallback (helps with stale manual options like "pkv" vs "PKV").
+ */
+export async function mapNotionValueToFilterOption(
   svc: any,
-  notionBranche: string | string[] | null | undefined,
+  categoryKey: string,
+  notionValue: string | string[] | null | undefined,
 ): Promise<string | null> {
-  const inputs = Array.isArray(notionBranche)
-    ? notionBranche.filter(Boolean)
-    : notionBranche
-    ? [notionBranche]
+  const inputs = Array.isArray(notionValue)
+    ? notionValue.filter(Boolean).map((v) => String(v).trim())
+    : notionValue
+    ? String(notionValue).split(",").map((v) => v.trim()).filter(Boolean)
     : [];
   if (inputs.length === 0) return null;
 
   const { data: filterCategory } = await svc
     .from("showcase_filter_categories")
     .select("id")
-    .eq("key", "branche")
+    .eq("key", categoryKey)
     .in("applies_to", ["werbeanzeige", "both"])
     .maybeSingle();
   if (!filterCategory) return null;
@@ -120,53 +133,36 @@ export async function mapBrancheToFilterOption(
   const opts = (options ?? []) as Array<{ key: string; label: string }>;
   if (opts.length === 0) return null;
 
-  const variations: Record<string, string> = {
-    "private krankenversicherung": "pkv",
-    "pkv-beamten": "pkv",
-    "pkv beamte": "pkv",
-    "beihilfe - pkv": "beihilfe",
-    "berufsunfaehigkeit": "bu",
-    "berufsunfähigkeit": "bu",
-    "berufsunfaehigkeitsversicherung": "bu",
-    "berufsunfähigkeitsversicherung": "bu",
-    "kraftfahrt": "kfz",
-    "kfz-versicherung": "kfz",
-    "rechtsschutzversicherung": "rechtsschutz",
-    "beihilfeversicherung": "beihilfe",
-    "unfallversicherung": "unfall",
-  };
-
   for (const raw of inputs) {
-    const cleanInput = String(raw).toLowerCase().trim();
-    if (!cleanInput) continue;
-
-    // Strategy 1: exact match
-    let match = opts.find(
-      (o) => o.key.toLowerCase() === cleanInput || o.label.toLowerCase() === cleanInput,
-    );
-
-    // Strategy 2: substring match either direction
+    const expectedKey = keyForLabel(raw);
+    let match = opts.find((o) => o.key === expectedKey);
     if (!match) {
+      const lc = raw.toLowerCase();
+      match = opts.find((o) => o.label.toLowerCase() === lc);
+    }
+    if (!match) {
+      const lc = raw.toLowerCase();
       match = opts.find((o) => {
         const k = o.key.toLowerCase();
         const l = o.label.toLowerCase();
-        return cleanInput.includes(k) || cleanInput.includes(l) || k.includes(cleanInput) || l.includes(cleanInput);
+        return lc.includes(k) || lc.includes(l) || k.includes(lc) || l.includes(lc);
       });
     }
-
-    // Strategy 3: hardcoded variations
-    if (!match) {
-      const variantKey = variations[cleanInput];
-      if (variantKey) match = opts.find((o) => o.key === variantKey);
-    }
-
     if (match) return match.key;
   }
 
   console.warn(
-    `[mapBrancheToFilterOption] no match for branche=${JSON.stringify(notionBranche)}; available: ${opts.map((o) => o.key).join(", ")}`,
+    `[mapNotionValueToFilterOption] no match for ${categoryKey}=${JSON.stringify(notionValue)}; available: ${opts.map((o) => o.key).join(", ")}`,
   );
   return null;
+}
+
+/** Backward-compat wrapper used elsewhere. */
+export async function mapBrancheToFilterOption(
+  svc: any,
+  notionBranche: string | string[] | null | undefined,
+): Promise<string | null> {
+  return mapNotionValueToFilterOption(svc, "branche", notionBranche);
 }
 
 /**
@@ -189,7 +185,11 @@ export async function enrichAdData(
 
   if (!kunde) {
     // Still strip stale auto-tags so a previously-linked-then-unlinked ad gets cleaned.
-    const cleanedTags = mergeAutoTags(existingTags ?? [], ["kunde", "versicherer"], []);
+    const cleanedTags = mergeAutoTags(
+      existingTags ?? [],
+      ["kunde", "versicherer", "unternehmen"],
+      [],
+    );
     return {
       filter_values: existingFilterValues ?? {},
       custom_tags: cleanedTags,
@@ -198,25 +198,29 @@ export async function enrichAdData(
     };
   }
 
-  const brancheKey = await mapBrancheToFilterOption(svc, kunde.branche);
+  const brancheKey = await mapNotionValueToFilterOption(svc, "branche", kunde.branche);
+  const unternehmenKey = await mapNotionValueToFilterOption(svc, "unternehmen", kunde.unternehmen);
 
   const newFilterValues: Record<string, any> = { ...(existingFilterValues ?? {}) };
   if (brancheKey) newFilterValues.branche = brancheKey;
+  if (unternehmenKey) newFilterValues.unternehmen = unternehmenKey;
 
   const kundeName: string | null = kunde.client_name || kunde.vor_nachname || null;
-  // close_deals has no dedicated 'versicherer' column — `unternehmen` typically
-  // contains the insurer name (e.g. "Hanse Merkur", "Allianz", "Barmenia Gothaer").
   const versicherer: string | null = kunde.unternehmen || null;
 
   const autoTags = [
     slugifyTag("kunde", kundeName),
-    slugifyTag("versicherer", versicherer),
+    slugifyTag("unternehmen", versicherer),
   ].filter(Boolean);
 
-  const mergedTags = mergeAutoTags(existingTags ?? [], ["kunde", "versicherer"], autoTags);
+  const mergedTags = mergeAutoTags(
+    existingTags ?? [],
+    ["kunde", "versicherer", "unternehmen"],
+    autoTags,
+  );
 
   console.log(
-    `[enrichAdData] kunde=${kundeName} branche=${brancheKey ?? "—"} tags=[${mergedTags.join(", ")}]`,
+    `[enrichAdData] kunde=${kundeName} branche=${brancheKey ?? "—"} unternehmen=${unternehmenKey ?? "—"} tags=[${mergedTags.join(", ")}]`,
   );
 
   return {
@@ -226,3 +230,4 @@ export async function enrichAdData(
     kunde,
   };
 }
+

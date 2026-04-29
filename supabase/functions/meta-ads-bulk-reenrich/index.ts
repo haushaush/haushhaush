@@ -39,6 +39,24 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Ensure filter options are up-to-date with current Notion data first
+    try {
+      const syncRes = await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/sync-showcase-filters-from-notion`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            "Content-Type": "application/json",
+          },
+          body: "{}",
+        },
+      );
+      console.log("[bulk-reenrich] filter sync:", syncRes.status);
+    } catch (e) {
+      console.warn("[bulk-reenrich] filter sync failed (non-fatal):", (e as Error).message);
+    }
+
     const { data: ads, error: fetchErr } = await svc
       .from("referenz_meta_ads")
       .select("id, meta_account_id, meta_account_name, filter_values, custom_tags");
