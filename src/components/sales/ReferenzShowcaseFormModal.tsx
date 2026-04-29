@@ -44,8 +44,8 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    supabase.from('close_deals').select('id, display_name').limit(500).then(({ data }) => {
-      const list = (data ?? []).map((d: any) => ({ id: d.id, name: d.display_name ?? d.id }));
+    supabase.from('close_deals').select('id, client_name').limit(500).then(({ data }) => {
+      const list = (data ?? []).map((d: any) => ({ id: d.id, name: d.client_name ?? d.id }));
       setKunden(list);
     });
   }, []);
