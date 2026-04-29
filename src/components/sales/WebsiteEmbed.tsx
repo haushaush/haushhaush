@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { ExternalLink } from 'lucide-react';
 
 interface Website {
   website_url?: string | null;
@@ -13,26 +14,24 @@ interface Props {
   height?: number;
 }
 
-export function WebsiteEmbed({ website, height = 600 }: Props) {
+export function WebsiteEmbed({ website, height = 700 }: Props) {
   const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [showFallback, setShowFallback] = useState(false);
-  const fallbackImg = website.screenshot_url || website.preview_image_url || '/placeholder.svg';
+  const [iframeBlocked, setIframeBlocked] = useState(false);
 
   useEffect(() => {
-    if (!website.website_url || website.embed_method === 'screenshot' || website.embed_method === 'manual') {
-      setShowFallback(true);
-      return;
-    }
-    setShowFallback(false);
+    if (website.embed_method !== 'iframe') return;
     setIframeLoaded(false);
+    setIframeBlocked(false);
     const timer = setTimeout(() => {
-      if (!iframeLoaded) setShowFallback(true);
-    }, 4000);
+      if (!iframeLoaded) setIframeBlocked(true);
+    }, 5000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [website.website_url, website.embed_method]);
 
-  if (showFallback) {
+  const fallbackImg = website.screenshot_url || website.preview_image_url || '/placeholder.svg';
+
+  if (website.embed_method !== 'iframe' || iframeBlocked || !website.website_url) {
     return (
       <div className="relative bg-muted rounded-lg overflow-hidden">
         <img
@@ -49,18 +48,33 @@ export function WebsiteEmbed({ website, height = 600 }: Props) {
   }
 
   return (
-    <div className="relative rounded-lg overflow-hidden border border-border">
+    <div className="relative rounded-lg overflow-hidden border border-border bg-white">
       <iframe
-        src={website.website_url ?? ''}
+        src={website.website_url}
         title={website.title ?? 'Website'}
-        className="w-full bg-white"
-        style={{ height }}
+        className="w-full block"
+        style={{ height, pointerEvents: 'none' }}
         loading="lazy"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        sandbox="allow-same-origin"
         referrerPolicy="no-referrer"
+        scrolling="no"
         onLoad={() => setIframeLoaded(true)}
       />
-      <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-[11px] px-2 py-0.5 rounded">
+
+      {/* Click overlay — opens real site in new tab */}
+      <div
+        className="absolute inset-0 cursor-pointer group"
+        onClick={() => window.open(website.website_url!, '_blank', 'noopener,noreferrer')}
+      >
+        <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-all">
+          <div className="opacity-0 group-hover:opacity-100 bg-background/95 backdrop-blur px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-all">
+            <ExternalLink className="w-4 h-4" />
+            <span className="text-sm font-medium">Live-Vorschau · Klicken zum Öffnen</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-[11px] px-2 py-1 rounded font-medium pointer-events-none">
         ⚡ Live
       </div>
     </div>
@@ -106,35 +120,16 @@ export function testIframeEmbed(url: string, timeoutMs = 4000): Promise<boolean>
   });
 }
 
-/** Grid card scaled iframe preview */
+/** Grid card preview — ALWAYS uses screenshot (faster, more reliable, no iframe quirks) */
 export function WebsiteCardPreview({ website, height = 180 }: Props) {
   const fallbackImg = website.screenshot_url || website.preview_image_url || '/placeholder.svg';
-  if (website.embed_method === 'iframe' && website.website_url) {
-    return (
-      <div className="relative w-full overflow-hidden bg-muted" style={{ height }}>
-        <iframe
-          src={website.website_url}
-          title={website.title ?? ''}
-          className="absolute top-0 left-0 pointer-events-none border-0"
-          style={{
-            width: '200%',
-            height: `${height * (1 / 0.5)}px`,
-            transform: 'scale(0.5)',
-            transformOrigin: 'top left',
-          }}
-          sandbox="allow-scripts allow-same-origin"
-          loading="lazy"
-        />
-        <div className="absolute inset-0" />
-      </div>
-    );
-  }
   return (
     <img
       src={fallbackImg}
       alt={website.title ?? ''}
       className="w-full object-cover"
       style={{ height }}
+      loading="lazy"
     />
   );
 }

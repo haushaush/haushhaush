@@ -3191,6 +3191,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           is_featured: boolean | null
+          is_unpublished: boolean | null
           last_embed_check_at: string | null
           linked_kunde_id: string | null
           metrics: Json | null
@@ -3220,6 +3221,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_featured?: boolean | null
+          is_unpublished?: boolean | null
           last_embed_check_at?: string | null
           linked_kunde_id?: string | null
           metrics?: Json | null
@@ -3249,6 +3251,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           is_featured?: boolean | null
+          is_unpublished?: boolean | null
           last_embed_check_at?: string | null
           linked_kunde_id?: string | null
           metrics?: Json | null

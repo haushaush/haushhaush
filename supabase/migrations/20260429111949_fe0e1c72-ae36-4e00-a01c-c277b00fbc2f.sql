@@ -1,0 +1,1 @@
+alter table public.referenz_showcase add column if not exists is_unpublished boolean default false;

@@ -13,6 +13,27 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+const LOVABLE_PLACEHOLDER_MARKERS = [
+  'Your app will live here',
+  'Ask Lovable to build',
+  'gptengineer.app',
+  'lovable-uploads',
+];
+
+async function isLovablePlaceholder(url: string): Promise<boolean> {
+  try {
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; HaushBot/1.0)' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!resp.ok) return false;
+    const html = await resp.text();
+    return LOVABLE_PLACEHOLDER_MARKERS.some((m) => html.includes(m));
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -33,6 +54,15 @@ Deno.serve(async (req) => {
     const { url } = await req.json();
     if (!url || typeof url !== 'string') return jsonResponse({ ok: false, error: 'url required' }, 400);
 
+    // Detect Lovable placeholder pages
+    if (await isLovablePlaceholder(url)) {
+      return jsonResponse({
+        ok: false,
+        error: 'unpublished',
+        message: 'Diese Lovable-App ist noch nicht published. Klick im Lovable-Editor auf "Publish" um die Live-URL freizugeben.',
+      });
+    }
+
     // Use Microlink free API
     const microlinkUrl = `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&viewport.width=1280&viewport.height=800&screenshot.type=jpeg`;
     const resp = await fetch(microlinkUrl);
@@ -47,7 +77,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: false, error: 'No screenshot returned by Microlink', raw: data?.status }, 502);
     }
 
-    // Download the image and persist to storage
     const imgResp = await fetch(remoteUrl);
     if (!imgResp.ok) {
       return jsonResponse({ ok: false, error: `Image download failed: ${imgResp.status}` }, 502);
