@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail, Globe, BarChart3 } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail, Globe, BarChart3, Video, MonitorPlay } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -109,6 +109,9 @@ const navItems: NavItem[] = [
       { title: 'Vorqualifikation', url: '/sales/vorquali' },
       { title: 'Leadkauf', url: '/sales/leads' },
       { title: 'Cold Mail', url: '/sales/coldmail' },
+      { title: 'Referenz Showcase', url: '/sales/referenz-showcase' },
+      { title: '— Websites', url: '/sales/referenz-showcase/websites' },
+      { title: '— Werbeanzeigen', url: '/sales/referenz-showcase/werbeanzeigen' },
     ],
   },
   {
