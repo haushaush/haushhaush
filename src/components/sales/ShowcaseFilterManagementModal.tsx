@@ -40,11 +40,29 @@ export function ShowcaseFilterManagementModal({ open, onClose, onChanged, applie
   const [cats, setCats] = useState<FilterCategory[]>([]);
   const [opts, setOpts] = useState<FilterOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const [newCatLabel, setNewCatLabel] = useState("");
   const [newOptForCat, setNewOptForCat] = useState<string | null>(null);
   const [newOptLabel, setNewOptLabel] = useState("");
   const [newOptColor, setNewOptColor] = useState("#6B7280");
+
+  const runSync = async () => {
+    setSyncing(true);
+    const { data, error } = await supabase.functions.invoke("sync-showcase-filters-from-notion");
+    setSyncing(false);
+    if (error) {
+      toast({ title: "Sync fehlgeschlagen", description: error.message, variant: "destructive" });
+      return;
+    }
+    const d = data as any;
+    toast({
+      title: "Filter synchronisiert",
+      description: `${d?.added ?? 0} neu · ${d?.reactivated ?? 0} reaktiviert · ${d?.deactivated ?? 0} entfernt`,
+    });
+    await load();
+    onChanged?.();
+  };
 
   const slug = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 
