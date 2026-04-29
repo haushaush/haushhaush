@@ -1,5 +1,6 @@
 // Refresh meta_metrics + creative URLs for one or all imported ads
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { enrichAdData } from "../_shared/showcase-helpers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -186,7 +187,9 @@ Deno.serve(async (req) => {
 
     const { adId, datePreset = "maximum", force = false } = await req.json().catch(() => ({}));
 
-    let query = svc.from("referenz_meta_ads").select("id, meta_ad_id, meta_account_id");
+    let query = svc
+      .from("referenz_meta_ads")
+      .select("id, meta_ad_id, meta_account_id, meta_account_name, filter_values, custom_tags");
     if (adId) query = query.eq("id", adId);
     const { data: rows } = await query;
     if (!rows?.length) return new Response(JSON.stringify({ refreshed: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -230,6 +233,17 @@ Deno.serve(async (req) => {
         const row = ins?.data?.[0];
         const metrics = extractMetrics(row);
 
+        // Re-run enrichment so branche, kunde-link, and auto-tags stay fresh
+        const enrichment = await enrichAdData(
+          svc,
+          { meta_account_id: r.meta_account_id, meta_account_name: r.meta_account_name },
+          {
+            ...(r.filter_values ?? {}),
+            ...(ad_format ? { format: ad_format } : {}),
+          },
+          r.custom_tags ?? [],
+        );
+
         await svc.from("referenz_meta_ads").update({
           meta_metrics: metrics,
           campaign_period_start: row?.date_start ?? null,
@@ -240,6 +254,9 @@ Deno.serve(async (req) => {
           thumbnail_url_meta: rawThumb,
           thumbnail_url_persisted: persistedThumb,
           video_url,
+          filter_values: enrichment.filter_values,
+          custom_tags: enrichment.custom_tags,
+          linked_kunde_id: enrichment.linked_kunde_id,
         }).eq("id", r.id);
         count++;
       } catch (e) {
