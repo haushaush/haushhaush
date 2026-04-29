@@ -89,11 +89,11 @@ export default function ReferenzWerbeanzeigenPage() {
         (x.custom_tags ?? []).some(t => t.toLowerCase().includes(q))
       );
     }
-    Object.entries(activeFilters).forEach(([catKey, vals]) => {
-      if (vals.size === 0) return;
+    Object.entries(activeFilters).forEach(([catKey, val]) => {
+      if (!val) return;
       r = r.filter(x => {
         const v = (x.filter_values ?? {})[catKey];
-        return v && vals.has(v);
+        return v === val;
       });
     });
     if (activeTags.size > 0) {
@@ -121,19 +121,18 @@ export default function ReferenzWerbeanzeigenPage() {
     return sorted;
   }, [rows, search, activeFilters, activeTags, sortBy]);
 
-  const toggleFilter = (catKey: string, value: string) => {
-    setActiveFilters(prev => {
-      const next = { ...prev };
-      const set = new Set(next[catKey] ?? []);
-      if (set.has(value)) set.delete(value); else set.add(value);
-      next[catKey] = set;
-      return next;
-    });
+  const setFilter = (catKey: string, value: string) => {
+    setActiveFilters(prev => ({ ...prev, [catKey]: value }));
   };
-  const clearCategory = (catKey: string) => setActiveFilters(prev => ({ ...prev, [catKey]: new Set() }));
+  const clearFilter = (catKey: string) => setActiveFilters(prev => {
+    const next = { ...prev }; delete next[catKey]; return next;
+  });
+  const clearAllFilters = () => setActiveFilters({});
   const toggleTag = (t: string) => setActiveTags(prev => {
     const n = new Set(prev); n.has(t) ? n.delete(t) : n.add(t); return n;
   });
+
+  const activeFilterCount = Object.values(activeFilters).filter(Boolean).length;
 
   return (
     <div className="p-6">
