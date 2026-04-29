@@ -14,6 +14,8 @@ export interface FilterCategory {
   label: string;
   display_order: number;
   is_active: boolean;
+  is_auto_synced?: boolean;
+  synced_from_field?: string | null;
 }
 export interface FilterOption {
   id: string;
@@ -23,6 +25,7 @@ export interface FilterOption {
   color_hex: string;
   display_order: number;
   is_active: boolean;
+  is_auto_synced?: boolean;
 }
 
 interface Props {
