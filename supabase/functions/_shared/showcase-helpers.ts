@@ -185,7 +185,11 @@ export async function enrichAdData(
 
   if (!kunde) {
     // Still strip stale auto-tags so a previously-linked-then-unlinked ad gets cleaned.
-    const cleanedTags = mergeAutoTags(existingTags ?? [], ["kunde", "versicherer"], []);
+    const cleanedTags = mergeAutoTags(
+      existingTags ?? [],
+      ["kunde", "versicherer", "unternehmen"],
+      [],
+    );
     return {
       filter_values: existingFilterValues ?? {},
       custom_tags: cleanedTags,
@@ -194,25 +198,29 @@ export async function enrichAdData(
     };
   }
 
-  const brancheKey = await mapBrancheToFilterOption(svc, kunde.branche);
+  const brancheKey = await mapNotionValueToFilterOption(svc, "branche", kunde.branche);
+  const unternehmenKey = await mapNotionValueToFilterOption(svc, "unternehmen", kunde.unternehmen);
 
   const newFilterValues: Record<string, any> = { ...(existingFilterValues ?? {}) };
   if (brancheKey) newFilterValues.branche = brancheKey;
+  if (unternehmenKey) newFilterValues.unternehmen = unternehmenKey;
 
   const kundeName: string | null = kunde.client_name || kunde.vor_nachname || null;
-  // close_deals has no dedicated 'versicherer' column — `unternehmen` typically
-  // contains the insurer name (e.g. "Hanse Merkur", "Allianz", "Barmenia Gothaer").
   const versicherer: string | null = kunde.unternehmen || null;
 
   const autoTags = [
     slugifyTag("kunde", kundeName),
-    slugifyTag("versicherer", versicherer),
+    slugifyTag("unternehmen", versicherer),
   ].filter(Boolean);
 
-  const mergedTags = mergeAutoTags(existingTags ?? [], ["kunde", "versicherer"], autoTags);
+  const mergedTags = mergeAutoTags(
+    existingTags ?? [],
+    ["kunde", "versicherer", "unternehmen"],
+    autoTags,
+  );
 
   console.log(
-    `[enrichAdData] kunde=${kundeName} branche=${brancheKey ?? "—"} tags=[${mergedTags.join(", ")}]`,
+    `[enrichAdData] kunde=${kundeName} branche=${brancheKey ?? "—"} unternehmen=${unternehmenKey ?? "—"} tags=[${mergedTags.join(", ")}]`,
   );
 
   return {
@@ -222,3 +230,4 @@ export async function enrichAdData(
     kunde,
   };
 }
+
