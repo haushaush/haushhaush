@@ -104,7 +104,7 @@ export default function ReferenzWebsitesPage() {
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {filtered.map(item => {
             const m = (item.metrics ?? {}) as Record<string, any>;
-            const method = item.embed_method ?? 'screenshot';
+            const hasFallback = !!item.fallback_image_url;
             return (
               <button
                 key={item.id}
@@ -112,14 +112,19 @@ export default function ReferenzWebsitesPage() {
                 className="group text-left bg-card border border-border rounded-lg overflow-hidden hover:border-primary/60 transition-all"
               >
                 <div className="relative">
-                  <WebsiteCardPreview website={item} height={180} />
+                  <WebsiteCardPreview
+                    url={item.website_url}
+                    fallbackImageUrl={item.fallback_image_url}
+                    title={item.title}
+                    height={180}
+                  />
                   {item.is_featured && (
                     <div className="absolute top-2 left-2 bg-primary text-primary-foreground rounded-full p-1 z-10">
                       <Star className="w-3 h-3" fill="currentColor" />
                     </div>
                   )}
                   <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded z-10">
-                    {method === 'iframe' ? '⚡ Live' : '📸 Screenshot'}
+                    {hasFallback ? '📸 Vorschau' : '⚡ Live'}
                   </div>
                 </div>
                 <div className="p-3">

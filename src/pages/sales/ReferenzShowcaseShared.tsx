@@ -29,10 +29,7 @@ export type ShowcaseRow = {
   display_order: number;
   linked_kunde_id: string | null;
   created_at: string;
-  embed_method?: string | null;
-  screenshot_url?: string | null;
-  embed_blocked?: boolean | null;
-  last_embed_check_at?: string | null;
+  fallback_image_url?: string | null;
 };
 
 interface Props {
