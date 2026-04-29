@@ -221,5 +221,5 @@ export function ReferenzWebsites() {
 }
 
 export function ReferenzWerbeanzeigen() {
-  return <ShowcaseGridPage type="werbeanzeige" title="Werbeanzeigen" />;
+  return <ShowcaseGridPage type="werbeanzeige" title="Ad Creatives" />;
 }
