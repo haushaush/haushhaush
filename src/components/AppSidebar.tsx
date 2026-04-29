@@ -111,7 +111,7 @@ const navItems: NavItem[] = [
       { title: 'Cold Mail', url: '/sales/coldmail' },
       { title: 'Referenz Showcase', url: '/sales/referenz-showcase' },
       { title: '— Websites', url: '/sales/referenz-showcase/websites' },
-      { title: '— Werbeanzeigen', url: '/sales/referenz-showcase/werbeanzeigen' },
+      { title: '— Ad Creatives', url: '/sales/referenz-showcase/werbeanzeigen' },
     ],
   },
   {
