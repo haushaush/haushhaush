@@ -9,7 +9,7 @@ import { Plus, Trash2, Pencil, GripVertical, RefreshCw, Lock, Sparkles } from "l
 
 export interface FilterCategory {
   id: string;
-  applies_to: "werbeanzeige" | "website" | "both";
+  applies_to: "werbeanzeige" | "website" | "kampagne" | "both" | "all";
   key: string;
   label: string;
   display_order: number;
@@ -32,7 +32,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onChanged?: () => void;
-  appliesTo?: "werbeanzeige" | "website";
+  appliesTo?: "werbeanzeige" | "website" | "kampagne";
 }
 
 export function ShowcaseFilterManagementModal({ open, onClose, onChanged, appliesTo = "werbeanzeige" }: Props) {
@@ -69,7 +69,7 @@ export function ShowcaseFilterManagementModal({ open, onClose, onChanged, applie
   const load = async () => {
     setLoading(true);
     const [{ data: c }, { data: o }] = await Promise.all([
-      supabase.from("showcase_filter_categories" as any).select("*").in("applies_to", [appliesTo, "both"]).order("display_order"),
+      supabase.from("showcase_filter_categories" as any).select("*").in("applies_to", [appliesTo, "both", "all"]).order("display_order"),
       supabase.from("showcase_filter_options" as any).select("*").order("display_order"),
     ]);
     setCats((c ?? []) as any);
