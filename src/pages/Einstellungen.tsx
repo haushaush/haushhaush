@@ -453,23 +453,8 @@ export default function Einstellungen() {
   const handleIntegrationSave = async (providerId: string, data: Record<string, any>) => {
     if (!user) return;
     if (providerId === 'pipedrive') {
-      const apiToken = data.api_token;
-      const domain = data.domain;
-      if (!apiToken || !domain) {
-        toast.error('Bitte Domain und API Token angeben');
-        return;
-      }
-      const toastId = toast.loading('Verbindung zu Pipedrive wird hergestellt…');
-      const { data: res, error } = await supabase.functions.invoke('pipedrive-save-settings', {
-        body: { apiToken, domain },
-      });
-      toast.dismiss(toastId);
-      if (error || !res?.ok) {
-        toast.error(`Pipedrive: ${res?.message || error?.message || 'Speichern fehlgeschlagen'}`);
-        return;
-      }
-      toast.success(`Pipedrive verbunden (${res.user?.name || res.settings?.domain})`);
-      fetchData();
+      // Pipedrive uses the dedicated multi-account modal, not the generic save flow.
+      setPipedriveModalOpen(true);
       return;
     }
     const existing = getSettingForProvider(providerId);
@@ -506,23 +491,8 @@ export default function Einstellungen() {
   };
 
   const handleIntegrationAction = async (providerId: string, action: string, formData?: Record<string, any>) => {
-    if (providerId === 'pipedrive' && action === 'test') {
-      const apiToken = formData?.api_token;
-      const domain = formData?.domain;
-      if (!apiToken || !domain) {
-        toast.error('Bitte Domain und API Token eingeben, bevor du die Verbindung testest');
-        return;
-      }
-      const toastId = toast.loading('Pipedrive-Verbindung wird getestet…');
-      const { data: res, error } = await supabase.functions.invoke('pipedrive-test-connection', {
-        body: { apiToken, domain },
-      });
-      toast.dismiss(toastId);
-      if (error || !res?.ok) {
-        toast.error(`Pipedrive: ${res?.message || error?.message || 'Verbindung fehlgeschlagen'}`);
-        return;
-      }
-      toast.success(`✓ Verbunden mit ${res.user?.company_name || res.cleanedDomain} als ${res.user?.name}`);
+    if (providerId === 'pipedrive' && (action === 'manage' || action === 'test' || action === 'save')) {
+      setPipedriveModalOpen(true);
       return;
     }
     if (providerId === 'notion' && action === 'sync') {
