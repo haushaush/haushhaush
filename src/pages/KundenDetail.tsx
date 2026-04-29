@@ -477,6 +477,13 @@ export default function KundenDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* TAB 8: PIPEDRIVE (only if linked) */}
+        {pipedriveAccount && (
+          <TabsContent value="pipedrive" className="mt-4">
+            <PipedriveKundeView account={pipedriveAccount} deals={pipedriveDeals} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
