@@ -3186,17 +3186,13 @@ export type Database = {
           created_by: string | null
           description: string | null
           display_order: number | null
-          embed_blocked: boolean | null
-          embed_method: string | null
+          fallback_image_url: string | null
           id: string
           is_active: boolean | null
           is_featured: boolean | null
-          is_unpublished: boolean | null
-          last_embed_check_at: string | null
           linked_kunde_id: string | null
           metrics: Json | null
           preview_image_url: string | null
-          screenshot_url: string | null
           tags: string[] | null
           thumbnail_url: string | null
           title: string
@@ -3216,17 +3212,13 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           display_order?: number | null
-          embed_blocked?: boolean | null
-          embed_method?: string | null
+          fallback_image_url?: string | null
           id?: string
           is_active?: boolean | null
           is_featured?: boolean | null
-          is_unpublished?: boolean | null
-          last_embed_check_at?: string | null
           linked_kunde_id?: string | null
           metrics?: Json | null
           preview_image_url?: string | null
-          screenshot_url?: string | null
           tags?: string[] | null
           thumbnail_url?: string | null
           title: string
@@ -3246,17 +3238,13 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           display_order?: number | null
-          embed_blocked?: boolean | null
-          embed_method?: string | null
+          fallback_image_url?: string | null
           id?: string
           is_active?: boolean | null
           is_featured?: boolean | null
-          is_unpublished?: boolean | null
-          last_embed_check_at?: string | null
           linked_kunde_id?: string | null
           metrics?: Json | null
           preview_image_url?: string | null
-          screenshot_url?: string | null
           tags?: string[] | null
           thumbnail_url?: string | null
           title?: string
