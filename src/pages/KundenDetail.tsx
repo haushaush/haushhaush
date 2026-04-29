@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,6 +42,36 @@ export default function KundenDetail() {
   const [updates, setUpdates] = useState<{ text: string; ts: string }[]>([]);
   const [newUpdate, setNewUpdate] = useState('');
   const [metaAccountId, setMetaAccountId] = useState<string | null>(null);
+  const [pipedriveAccount, setPipedriveAccount] = useState<any | null>(null);
+  const [pipedriveDeals, setPipedriveDeals] = useState<any[]>([]);
+
+  // Load linked Pipedrive account + deals for this kunde
+  useEffect(() => {
+    if (!id) return;
+    let mounted = true;
+    (async () => {
+      const { data: acc } = await supabase
+        .from('pipedrive_accounts' as any)
+        .select('*')
+        .eq('linked_kunde_id', id)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (!mounted) return;
+      setPipedriveAccount(acc || null);
+      if (acc) {
+        const { data: dealsData } = await supabase
+          .from('pipedrive_deals')
+          .select('*')
+          .eq('account_id', (acc as any).id)
+          .order('pipedrive_updated_at', { ascending: false })
+          .limit(50);
+        if (mounted) setPipedriveDeals(dealsData || []);
+      } else {
+        setPipedriveDeals([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
