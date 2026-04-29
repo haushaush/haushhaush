@@ -2510,6 +2510,197 @@ export type Database = {
           },
         ]
       }
+      pipedrive_deals: {
+        Row: {
+          currency: string | null
+          expected_close_date: string | null
+          id: string
+          org_name: string | null
+          person_name: string | null
+          pipedrive_id: number
+          pipedrive_updated_at: string | null
+          raw_data: Json | null
+          stage_id: number | null
+          stage_name: string | null
+          status: string | null
+          synced_at: string | null
+          title: string | null
+          value: number | null
+        }
+        Insert: {
+          currency?: string | null
+          expected_close_date?: string | null
+          id?: string
+          org_name?: string | null
+          person_name?: string | null
+          pipedrive_id: number
+          pipedrive_updated_at?: string | null
+          raw_data?: Json | null
+          stage_id?: number | null
+          stage_name?: string | null
+          status?: string | null
+          synced_at?: string | null
+          title?: string | null
+          value?: number | null
+        }
+        Update: {
+          currency?: string | null
+          expected_close_date?: string | null
+          id?: string
+          org_name?: string | null
+          person_name?: string | null
+          pipedrive_id?: number
+          pipedrive_updated_at?: string | null
+          raw_data?: Json | null
+          stage_id?: number | null
+          stage_name?: string | null
+          status?: string | null
+          synced_at?: string | null
+          title?: string | null
+          value?: number | null
+        }
+        Relationships: []
+      }
+      pipedrive_persons: {
+        Row: {
+          email: string[] | null
+          id: string
+          name: string | null
+          org_name: string | null
+          phone: string[] | null
+          pipedrive_id: number
+          raw_data: Json | null
+          synced_at: string | null
+        }
+        Insert: {
+          email?: string[] | null
+          id?: string
+          name?: string | null
+          org_name?: string | null
+          phone?: string[] | null
+          pipedrive_id: number
+          raw_data?: Json | null
+          synced_at?: string | null
+        }
+        Update: {
+          email?: string[] | null
+          id?: string
+          name?: string | null
+          org_name?: string | null
+          phone?: string[] | null
+          pipedrive_id?: number
+          raw_data?: Json | null
+          synced_at?: string | null
+        }
+        Relationships: []
+      }
+      pipedrive_pipelines: {
+        Row: {
+          active: boolean | null
+          id: string
+          name: string | null
+          pipedrive_id: number
+          raw_data: Json | null
+          synced_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          id?: string
+          name?: string | null
+          pipedrive_id: number
+          raw_data?: Json | null
+          synced_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          id?: string
+          name?: string | null
+          pipedrive_id?: number
+          raw_data?: Json | null
+          synced_at?: string | null
+        }
+        Relationships: []
+      }
+      pipedrive_settings: {
+        Row: {
+          api_token_encrypted: string
+          created_at: string | null
+          created_by: string | null
+          domain: string
+          id: string
+          is_active: boolean | null
+          last_sync_at: string | null
+          last_sync_message: string | null
+          last_sync_status: string | null
+          sync_interval_minutes: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_token_encrypted: string
+          created_at?: string | null
+          created_by?: string | null
+          domain: string
+          id?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          last_sync_message?: string | null
+          last_sync_status?: string | null
+          sync_interval_minutes?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_token_encrypted?: string
+          created_at?: string | null
+          created_by?: string | null
+          domain?: string
+          id?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          last_sync_message?: string | null
+          last_sync_status?: string | null
+          sync_interval_minutes?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      pipedrive_stages: {
+        Row: {
+          id: string
+          name: string | null
+          order_nr: number | null
+          pipedrive_id: number
+          pipeline_id: number | null
+          raw_data: Json | null
+          synced_at: string | null
+        }
+        Insert: {
+          id?: string
+          name?: string | null
+          order_nr?: number | null
+          pipedrive_id: number
+          pipeline_id?: number | null
+          raw_data?: Json | null
+          synced_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string | null
+          order_nr?: number | null
+          pipedrive_id?: number
+          pipeline_id?: number | null
+          raw_data?: Json | null
+          synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipedrive_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipedrive_pipelines"
+            referencedColumns: ["pipedrive_id"]
+          },
+        ]
+      }
       probewoche_candidates: {
         Row: {
           bewertung: number | null
