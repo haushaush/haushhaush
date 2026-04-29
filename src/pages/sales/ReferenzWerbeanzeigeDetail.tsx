@@ -43,7 +43,7 @@ export default function ReferenzWerbeanzeigeDetail() {
     setLoading(true);
     const [{ data: row }, { data: cats }, { data: opts }, { data: kds }] = await Promise.all([
       supabase.from("referenz_meta_ads" as any).select("*").eq("id", id).maybeSingle(),
-      supabase.from("showcase_filter_categories" as any).select("*").in("applies_to", ["werbeanzeige", "both"]).eq("is_active", true).order("display_order"),
+      supabase.from("showcase_filter_categories" as any).select("*").in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
       supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
       supabase.from("close_deals").select("id, client_name").order("client_name").limit(500),
     ]);

@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Globe, Video } from 'lucide-react';
+import { Globe, Video, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function ReferenzShowcaseOverview() {
   const [websiteCount, setWebsiteCount] = useState<number | null>(null);
   const [adCount, setAdCount] = useState<number | null>(null);
+  const [campCount, setCampCount] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
-      const [{ count: w }, { count: a }] = await Promise.all([
+      const [{ count: w }, { count: a }, { count: c }] = await Promise.all([
         supabase.from('referenz_showcase' as any).select('*', { count: 'exact', head: true }).eq('type', 'website').eq('is_active', true),
-        supabase.from('referenz_showcase' as any).select('*', { count: 'exact', head: true }).eq('type', 'werbeanzeige').eq('is_active', true),
+        supabase.from('referenz_meta_ads' as any).select('*', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('referenz_meta_campaigns' as any).select('*', { count: 'exact', head: true }).eq('is_active', true),
       ]);
       setWebsiteCount(w ?? 0);
       setAdCount(a ?? 0);
+      setCampCount(c ?? 0);
     })();
   }, []);
 
@@ -27,35 +30,29 @@ export default function ReferenzShowcaseOverview() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Link
-          to="/sales/referenz-showcase/websites"
-          className="block bg-card border border-border hover:border-primary/60 rounded-xl p-6 transition-all"
-        >
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Link to="/sales/referenz-showcase/websites" className="block bg-card border border-border hover:border-primary/60 rounded-xl p-6 transition-all">
           <Globe className="w-10 h-10 text-primary mb-3" />
           <h2 className="text-lg font-semibold">Websites</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Landingpages und Funnels die wir für Kunden gebaut haben.
-          </p>
-          <p className="text-xs text-muted-foreground mt-3 tabular-nums">
-            {websiteCount ?? '—'} Referenzen
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Landingpages und Funnels die wir für Kunden gebaut haben.</p>
+          <p className="text-xs text-muted-foreground mt-3 tabular-nums">{websiteCount ?? '—'} Referenzen</p>
         </Link>
 
-        <Link
-          to="/sales/referenz-showcase/werbeanzeigen"
-          className="block bg-card border border-border hover:border-primary/60 rounded-xl p-6 transition-all"
-        >
+        <Link to="/sales/referenz-showcase/werbeanzeigen" className="block bg-card border border-border hover:border-primary/60 rounded-xl p-6 transition-all">
           <Video className="w-10 h-10 text-primary mb-3" />
           <h2 className="text-lg font-semibold">Ad Creatives</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Erfolgreiche Meta-Ads, Google-Ads und Creatives.
-          </p>
-          <p className="text-xs text-muted-foreground mt-3 tabular-nums">
-            {adCount ?? '—'} Referenzen
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Erfolgreiche Meta-Ads, Google-Ads und Creatives.</p>
+          <p className="text-xs text-muted-foreground mt-3 tabular-nums">{adCount ?? '—'} Referenzen</p>
+        </Link>
+
+        <Link to="/sales/referenz-showcase/ad-performance" className="block bg-card border border-border hover:border-primary/60 rounded-xl p-6 transition-all">
+          <BarChart3 className="w-10 h-10 text-primary mb-3" />
+          <h2 className="text-lg font-semibold">Ad Performance</h2>
+          <p className="text-sm text-muted-foreground mt-1">Top-Kampagnen mit echten KPIs für Sales-Pitches.</p>
+          <p className="text-xs text-muted-foreground mt-3 tabular-nums">{campCount ?? '—'} Kampagnen</p>
         </Link>
       </div>
     </div>
   );
 }
+

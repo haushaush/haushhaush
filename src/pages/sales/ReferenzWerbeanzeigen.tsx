@@ -61,7 +61,7 @@ export default function ReferenzWerbeanzeigenPage() {
         .order("is_featured", { ascending: false })
         .order("imported_at", { ascending: false }),
       supabase.from("showcase_filter_categories" as any).select("*")
-        .in("applies_to", ["werbeanzeige", "both"]).eq("is_active", true).order("display_order"),
+        .in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
       supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
     ]);
     setRows(((ads ?? []) as any[]) as MetaAdRow[]);

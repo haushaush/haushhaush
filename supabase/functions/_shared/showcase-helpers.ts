@@ -120,7 +120,7 @@ export async function mapNotionValueToFilterOption(
     .from("showcase_filter_categories")
     .select("id")
     .eq("key", categoryKey)
-    .in("applies_to", ["werbeanzeige", "both"])
+    .in("applies_to", ["werbeanzeige", "kampagne", "both", "all"])
     .maybeSingle();
   if (!filterCategory) return null;
 
