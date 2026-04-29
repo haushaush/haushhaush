@@ -909,15 +909,16 @@ export default function Einstellungen() {
               const setting = getSettingForProvider(provider.id);
               const isSlackConnected = provider.id === 'slack';
               const isDriveConnected = provider.id === 'google_drive' && (driveConnected || !!googleDriveConn);
+              const isPipedriveConnected = provider.id === 'pipedrive' && !!pipedriveSettings;
               return (
                 <IntegrationCard
                   key={provider.id}
                   provider={provider}
-                  connected={setting?.connected || isSlackConnected || isDriveConnected}
+                  connected={setting?.connected || isSlackConnected || isDriveConnected || isPipedriveConnected}
                   expanded={expandedCard === provider.id}
                   onToggle={() => setExpandedCard(prev => prev === provider.id ? null : provider.id)}
-                  lastSyncAt={setting?.last_sync_at}
-                  lastSyncStatus={setting?.last_sync_status}
+                  lastSyncAt={setting?.last_sync_at || (provider.id === 'pipedrive' ? pipedriveSettings?.last_sync_at : undefined)}
+                  lastSyncStatus={setting?.last_sync_status || (provider.id === 'pipedrive' ? pipedriveSettings?.last_sync_status : undefined)}
                   lastSyncError={setting?.last_sync_error}
                   config={setting?.config || {}}
                   dynamicConfig={dynamicConfigs[provider.id] || {}}
