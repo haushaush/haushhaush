@@ -1,5 +1,6 @@
 // Import selected Meta Ads into referenz_meta_ads
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { enrichAdData } from "../_shared/showcase-helpers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -196,10 +197,6 @@ Deno.serve(async (req) => {
     const imported: string[] = [];
     const errors: { id: string; error: string }[] = [];
 
-    const { data: links } = await svc.from("kunde_meta_accounts").select("kunde_id, meta_account_id");
-    const linkMap = new Map<string, string>();
-    (links ?? []).forEach((l: any) => linkMap.set(l.meta_account_id, l.kunde_id));
-
     const creativeFields = [
       "id", "name", "object_type",
       "image_url", "thumbnail_url", "image_hash",
@@ -236,7 +233,25 @@ Deno.serve(async (req) => {
           accountName = acc?.name ?? "";
         } catch { /* ignore */ }
 
-        const linkedKunde = linkMap.get(accId) ?? null;
+        // Preserve any existing manual edits (tags, filter values) when re-importing
+        const { data: existing } = await svc
+          .from("referenz_meta_ads")
+          .select("filter_values, custom_tags")
+          .eq("meta_ad_id", ad.id)
+          .maybeSingle();
+
+        const baseFilterValues: Record<string, any> = {
+          ...(existing?.filter_values ?? {}),
+          ...(ad_format ? { format: ad_format } : {}),
+        };
+        const baseTags: string[] = existing?.custom_tags ?? [];
+
+        const enrichment = await enrichAdData(
+          svc,
+          { meta_account_id: accId, meta_account_name: accountName },
+          baseFilterValues,
+          baseTags,
+        );
 
         const { error } = await svc.from("referenz_meta_ads").upsert({
           meta_ad_id: ad.id,
@@ -257,9 +272,10 @@ Deno.serve(async (req) => {
           campaign_period_start: insightRow?.date_start ?? null,
           campaign_period_end: insightRow?.date_stop ?? null,
           metrics_last_refreshed_at: new Date().toISOString(),
-          linked_kunde_id: linkedKunde,
+          linked_kunde_id: enrichment.linked_kunde_id,
+          custom_tags: enrichment.custom_tags,
+          filter_values: enrichment.filter_values,
           created_by: userId,
-          filter_values: ad_format ? { format: ad_format } : {},
         }, { onConflict: "meta_ad_id" });
 
         if (error) errors.push({ id: adId, error: error.message });
