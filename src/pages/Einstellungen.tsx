@@ -880,7 +880,10 @@ export default function Einstellungen() {
               const setting = getSettingForProvider(provider.id);
               const isSlackConnected = provider.id === 'slack';
               const isDriveConnected = provider.id === 'google_drive' && (driveConnected || !!googleDriveConn);
-              const isPipedriveConnected = provider.id === 'pipedrive' && !!pipedriveSettings;
+              const isPipedriveConnected = provider.id === 'pipedrive' && pipedriveAccounts.length > 0;
+              const pipedriveLatest = provider.id === 'pipedrive'
+                ? pipedriveAccounts.reduce((acc: any, a: any) => (!acc || (a.last_sync_at && a.last_sync_at > acc.last_sync_at) ? a : acc), null)
+                : null;
               return (
                 <IntegrationCard
                   key={provider.id}
@@ -888,8 +891,8 @@ export default function Einstellungen() {
                   connected={setting?.connected || isSlackConnected || isDriveConnected || isPipedriveConnected}
                   expanded={expandedCard === provider.id}
                   onToggle={() => setExpandedCard(prev => prev === provider.id ? null : provider.id)}
-                  lastSyncAt={setting?.last_sync_at || (provider.id === 'pipedrive' ? pipedriveSettings?.last_sync_at : undefined)}
-                  lastSyncStatus={setting?.last_sync_status || (provider.id === 'pipedrive' ? pipedriveSettings?.last_sync_status : undefined)}
+                  lastSyncAt={setting?.last_sync_at || pipedriveLatest?.last_sync_at}
+                  lastSyncStatus={setting?.last_sync_status || (provider.id === 'pipedrive' && isPipedriveConnected ? `${pipedriveAccounts.length} Account${pipedriveAccounts.length === 1 ? '' : 's'} verbunden` : undefined)}
                   lastSyncError={setting?.last_sync_error}
                   config={setting?.config || {}}
                   dynamicConfig={dynamicConfigs[provider.id] || {}}
