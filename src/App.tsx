@@ -61,6 +61,9 @@ import Pipedrive from "./pages/Pipedrive.tsx";
 import Recovery from "./pages/Recovery.tsx";
 import OnePageKunden from "./pages/OnePageKunden.tsx";
 import OnePageKundeDetail from "./pages/OnePageKundeDetail.tsx";
+import ReferenzShowcaseOverview from "./pages/sales/ReferenzShowcaseOverview.tsx";
+import { ReferenzWebsites, ReferenzWerbeanzeigen } from "./pages/sales/ReferenzShowcaseShared.tsx";
+import PublicShowcaseView from "./pages/PublicShowcaseView.tsx";
 import { AdminRoute } from "./components/AdminRoute";
 import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
 
@@ -139,6 +142,9 @@ const App = () => (
                 <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
                 <Route path="/projekte/laufzeiten" element={<DL><ProjekteLaufzeiten /></DL>} />
                 <Route path="/sales" element={<Navigate to="/sales/kpis" replace />} />
+                <Route path="/sales/referenz-showcase" element={<DL><ReferenzShowcaseOverview /></DL>} />
+                <Route path="/sales/referenz-showcase/websites" element={<DL><ReferenzWebsites /></DL>} />
+                <Route path="/sales/referenz-showcase/werbeanzeigen" element={<DL><ReferenzWerbeanzeigen /></DL>} />
                 <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
                 <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
                 <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />
@@ -165,6 +171,7 @@ const App = () => (
                 <Route path="/creatives/:id" element={<DL><CreativeDetail /></DL>} />
                 <Route path="/review/:token" element={<CreativeReview />} />
                 <Route path="/tools/ad-creative-studio" element={<DL><AdCreativeStudio /></DL>} />
+                <Route path="/showcase/:id" element={<PublicShowcaseView />} />
 
                 {/* Redirects */}
                 <Route path="/performance" element={<Navigate to="/sales/kpis" replace />} />
