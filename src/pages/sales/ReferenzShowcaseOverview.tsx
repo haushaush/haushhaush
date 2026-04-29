@@ -47,7 +47,7 @@ export default function ReferenzShowcaseOverview() {
           className="block bg-card border border-border hover:border-primary/60 rounded-xl p-6 transition-all"
         >
           <Video className="w-10 h-10 text-primary mb-3" />
-          <h2 className="text-lg font-semibold">Werbeanzeigen</h2>
+          <h2 className="text-lg font-semibold">Ad Creatives</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Erfolgreiche Meta-Ads, Google-Ads und Creatives.
           </p>

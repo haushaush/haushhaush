@@ -150,6 +150,8 @@ const App = () => (
                 <Route path="/sales/referenz-showcase/websites/:id" element={<DL><ReferenzWebsiteDetail /></DL>} />
                 <Route path="/sales/referenz-showcase/werbeanzeigen" element={<DL><ReferenzWerbeanzeigenPage /></DL>} />
                 <Route path="/sales/referenz-showcase/werbeanzeigen/:id" element={<DL><ReferenzWerbeanzeigeDetail /></DL>} />
+                <Route path="/sales/referenz-showcase/ad-creatives" element={<DL><ReferenzWerbeanzeigenPage /></DL>} />
+                <Route path="/sales/referenz-showcase/ad-creatives/:id" element={<DL><ReferenzWerbeanzeigeDetail /></DL>} />
                 <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
                 <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
                 <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />

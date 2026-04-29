@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Star, Settings2, Video, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Search, Star, Settings2, Video, Sparkles, Loader2, ChevronDown } from "lucide-react";
 import { MetaAdImportModal } from "@/components/sales/MetaAdImportModal";
 import { ShowcaseFilterManagementModal, type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
 import { useToast } from "@/hooks/use-toast";
@@ -44,7 +44,7 @@ export default function ReferenzWerbeanzeigenPage() {
   const [rows, setRows] = useState<MetaAdRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeFilters, setActiveFilters] = useState<Record<string, Set<string>>>({});
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<SortKey>("performance");
 
@@ -89,11 +89,11 @@ export default function ReferenzWerbeanzeigenPage() {
         (x.custom_tags ?? []).some(t => t.toLowerCase().includes(q))
       );
     }
-    Object.entries(activeFilters).forEach(([catKey, vals]) => {
-      if (vals.size === 0) return;
+    Object.entries(activeFilters).forEach(([catKey, val]) => {
+      if (!val) return;
       r = r.filter(x => {
         const v = (x.filter_values ?? {})[catKey];
-        return v && vals.has(v);
+        return v === val;
       });
     });
     if (activeTags.size > 0) {
@@ -121,25 +121,24 @@ export default function ReferenzWerbeanzeigenPage() {
     return sorted;
   }, [rows, search, activeFilters, activeTags, sortBy]);
 
-  const toggleFilter = (catKey: string, value: string) => {
-    setActiveFilters(prev => {
-      const next = { ...prev };
-      const set = new Set(next[catKey] ?? []);
-      if (set.has(value)) set.delete(value); else set.add(value);
-      next[catKey] = set;
-      return next;
-    });
+  const setFilter = (catKey: string, value: string) => {
+    setActiveFilters(prev => ({ ...prev, [catKey]: value }));
   };
-  const clearCategory = (catKey: string) => setActiveFilters(prev => ({ ...prev, [catKey]: new Set() }));
+  const clearFilter = (catKey: string) => setActiveFilters(prev => {
+    const next = { ...prev }; delete next[catKey]; return next;
+  });
+  const clearAllFilters = () => setActiveFilters({});
   const toggleTag = (t: string) => setActiveTags(prev => {
     const n = new Set(prev); n.has(t) ? n.delete(t) : n.add(t); return n;
   });
+
+  const activeFilterCount = Object.values(activeFilters).filter(Boolean).length;
 
   return (
     <div className="p-6">
       <header className="flex items-center justify-between mb-5 flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Werbeanzeigen</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Ad Creatives</h1>
           <p className="text-sm text-muted-foreground mt-1">Aus Meta importierte Top-Performer für Sales-Pitches</p>
         </div>
         {isAdmin && (
@@ -182,46 +181,92 @@ export default function ReferenzWerbeanzeigenPage() {
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Suche nach Titel, Tag, Kunde..." className="pl-8" />
         </div>
 
-        {categories.map(cat => {
-          const catOpts = options.filter(o => o.category_id === cat.id);
-          if (catOpts.length === 0) return null;
-          const active = activeFilters[cat.key] ?? new Set();
-          return (
-            <div key={cat.id} className="flex items-start gap-2 flex-wrap">
-              <span className="text-xs font-medium text-muted-foreground pt-1.5 min-w-20">{cat.label}:</span>
-              <button
-                onClick={() => clearCategory(cat.key)}
-                className={`text-xs px-2.5 py-1 rounded-full border transition ${active.size === 0 ? "bg-foreground text-background border-foreground" : "bg-background border-border hover:border-foreground/50"}`}
-              >
-                Alle
-              </button>
-              {catOpts.map(o => {
-                const isOn = active.has(o.key);
-                return (
+        <div className="flex flex-wrap gap-2 items-center">
+          {categories.map(cat => {
+            const catOpts = options
+              .filter(o => o.category_id === cat.id && o.is_active)
+              .slice()
+              .sort((a, b) => a.label.localeCompare(b.label));
+            if (catOpts.length === 0) return null;
+            const currentValue = activeFilters[cat.key] ?? "";
+            const hasValue = !!currentValue;
+            return (
+              <div key={cat.id} className="relative">
+                <select
+                  value={currentValue}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v) setFilter(cat.key, v); else clearFilter(cat.key);
+                  }}
+                  className={`appearance-none pl-3 pr-9 h-9 text-xs rounded-md border cursor-pointer transition-colors ${
+                    hasValue
+                      ? "bg-primary/10 border-primary text-foreground font-medium"
+                      : "bg-background border-border text-foreground hover:border-foreground/40"
+                  }`}
+                >
+                  <option value="">{cat.label}: Alle</option>
+                  {catOpts.map(o => (
+                    <option key={o.key} value={o.key}>{o.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none text-muted-foreground" />
+                {hasValue && (
                   <button
-                    key={o.id}
-                    onClick={() => toggleFilter(cat.key, o.key)}
-                    style={isOn ? { backgroundColor: o.color_hex, borderColor: o.color_hex, color: "#fff" } : { borderColor: `${o.color_hex}55` }}
-                    className="text-xs px-2.5 py-1 rounded-full border transition hover:opacity-80"
+                    onClick={() => clearFilter(cat.key)}
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-foreground text-background rounded-full flex items-center justify-center text-[10px] leading-none hover:opacity-80"
+                    title="Filter entfernen"
+                    aria-label="Filter entfernen"
                   >
-                    {o.label}
+                    ×
                   </button>
-                );
-              })}
-            </div>
-          );
-        })}
+                )}
+              </div>
+            );
+          })}
+
+          <div className="relative ml-auto">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortKey)}
+              className="appearance-none pl-3 pr-9 h-9 text-xs bg-background border border-border rounded-md cursor-pointer hover:border-foreground/40"
+            >
+              <option value="performance">Sortieren: Performance</option>
+              <option value="leads">Meiste Leads</option>
+              <option value="cpl">CPL (niedrig)</option>
+              <option value="roas">ROAS (hoch)</option>
+              <option value="created">Importdatum</option>
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none text-muted-foreground" />
+          </div>
+        </div>
+
+        {(activeFilterCount > 0 || activeTags.size > 0) && (
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-muted-foreground">
+              {activeFilterCount + activeTags.size} Filter aktiv
+            </span>
+            <button
+              onClick={() => { clearAllFilters(); setActiveTags(new Set()); }}
+              className="text-primary hover:underline"
+            >
+              Alle zurücksetzen
+            </button>
+            <span className="text-muted-foreground ml-auto tabular-nums">{filtered.length} Anzeigen</span>
+          </div>
+        )}
 
         {topTags.length > 0 && (
-          <div className="flex items-start gap-2 flex-wrap">
-            <span className="text-xs font-medium text-muted-foreground pt-1.5 min-w-20">Tags:</span>
-            {topTags.map(t => {
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            <span className="text-xs text-muted-foreground">Tags:</span>
+            {topTags.slice(0, 8).map(t => {
               const on = activeTags.has(t);
               return (
                 <button
                   key={t}
                   onClick={() => toggleTag(t)}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition ${on ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border hover:border-primary/50"}`}
+                  className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                    on ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/70"
+                  }`}
                 >
                   #{t}
                 </button>
@@ -230,17 +275,11 @@ export default function ReferenzWerbeanzeigenPage() {
           </div>
         )}
 
-        <div className="flex items-center gap-2 pt-1">
-          <span className="text-xs font-medium text-muted-foreground">Sortieren:</span>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortKey)} className="text-xs bg-background border border-border rounded-md px-2 h-8">
-            <option value="performance">Performance</option>
-            <option value="leads">Leads</option>
-            <option value="cpl">CPL (niedrig)</option>
-            <option value="roas">ROAS (hoch)</option>
-            <option value="created">Importdatum</option>
-          </select>
-          <span className="text-xs text-muted-foreground ml-auto tabular-nums">{filtered.length} Anzeigen</span>
-        </div>
+        {activeFilterCount === 0 && activeTags.size === 0 && (
+          <div className="flex items-center pt-1">
+            <span className="text-xs text-muted-foreground ml-auto tabular-nums">{filtered.length} Anzeigen</span>
+          </div>
+        )}
       </div>
 
       {loading ? (

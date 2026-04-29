@@ -114,7 +114,7 @@ export default function ReferenzWerbeanzeigeDetail() {
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-5">
         <Button variant="ghost" onClick={() => navigate("/sales/referenz-showcase/werbeanzeigen")}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Zurück
+          <ArrowLeft className="w-4 h-4 mr-2" /> Ad Creatives
         </Button>
         {isAdmin && (
           <div className="flex gap-2">
