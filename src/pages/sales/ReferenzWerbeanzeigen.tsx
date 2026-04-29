@@ -44,7 +44,7 @@ export default function ReferenzWerbeanzeigenPage() {
   const [rows, setRows] = useState<MetaAdRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeFilters, setActiveFilters] = useState<Record<string, Set<string>>>({});
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<SortKey>("performance");
 
