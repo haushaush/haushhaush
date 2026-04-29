@@ -3061,6 +3061,92 @@ export type Database = {
           },
         ]
       }
+      referenz_showcase: {
+        Row: {
+          ad_format: string | null
+          ad_platform: string | null
+          branche: string | null
+          campaign_period_end: string | null
+          campaign_period_start: string | null
+          client_name: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          is_featured: boolean | null
+          linked_kunde_id: string | null
+          metrics: Json | null
+          preview_image_url: string | null
+          tags: string[] | null
+          thumbnail_url: string | null
+          title: string
+          type: string
+          updated_at: string | null
+          video_url: string | null
+          website_url: string | null
+        }
+        Insert: {
+          ad_format?: string | null
+          ad_platform?: string | null
+          branche?: string | null
+          campaign_period_end?: string | null
+          campaign_period_start?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          linked_kunde_id?: string | null
+          metrics?: Json | null
+          preview_image_url?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title: string
+          type: string
+          updated_at?: string | null
+          video_url?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          ad_format?: string | null
+          ad_platform?: string | null
+          branche?: string | null
+          campaign_period_end?: string | null
+          campaign_period_start?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          linked_kunde_id?: string | null
+          metrics?: Json | null
+          preview_image_url?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string
+          type?: string
+          updated_at?: string | null
+          video_url?: string | null
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referenz_showcase_linked_kunde_id_fkey"
+            columns: ["linked_kunde_id"]
+            isOneToOne: false
+            referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rejected_meta_matches: {
         Row: {
           id: string
