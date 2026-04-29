@@ -193,10 +193,29 @@ export default function ReferenzWerbeanzeigeDetail() {
             )}
           </div>
 
+          {/* Auto-link info */}
+          {linkedKundeId && (() => {
+            const linkedKunde = kunden.find(k => k.id === linkedKundeId);
+            if (!linkedKunde) return null;
+            return (
+              <div className="border border-primary/30 bg-primary/5 rounded-lg p-3 text-sm flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium">Auto-Verknüpfung mit Notion-Kunde</p>
+                  <p className="text-muted-foreground text-xs mt-0.5">
+                    Diese Anzeige ist mit <strong className="text-foreground">{linkedKunde.client_name}</strong> verknüpft.
+                    Branche, Versicherer-Tag und Kunden-Tag werden bei jedem Sync automatisch aus dem Notion-Kunden aktualisiert.
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Editable */}
           {isAdmin && (
             <div className="border border-border rounded-lg p-4 space-y-4">
               <h2 className="text-sm font-semibold">Showcase-Daten</h2>
+
 
               <div>
                 <Label>Titel im Showcase</Label>
