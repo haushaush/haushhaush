@@ -175,26 +175,42 @@ export function ShowcaseFilterManagementModal({ open, onClose, onChanged, applie
                   </div>
 
                   <div className="space-y-1.5 ml-2">
-                    {catOpts.map((o) => (
-                      <div key={o.id} className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={o.color_hex}
-                          onChange={(e) => updateOption(o.id, { color_hex: e.target.value })}
-                          className="w-7 h-7 rounded border border-border cursor-pointer"
-                        />
-                        <Input
-                          defaultValue={o.label}
-                          className="h-7 flex-1"
-                          onBlur={(e) => { if (e.target.value !== o.label) updateOption(o.id, { label: e.target.value }); }}
-                        />
-                        <Button size="icon" variant="ghost" onClick={() => deleteOption(o.id)}>
-                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
+                    {catOpts.map((o) => {
+                      const optAuto = !!o.is_auto_synced;
+                      return (
+                        <div key={o.id} className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={o.color_hex}
+                            onChange={(e) => updateOption(o.id, { color_hex: e.target.value })}
+                            className="w-7 h-7 rounded border border-border cursor-pointer"
+                          />
+                          <Input
+                            defaultValue={o.label}
+                            className="h-7 flex-1"
+                            onBlur={(e) => { if (e.target.value !== o.label) updateOption(o.id, { label: e.target.value }); }}
+                          />
+                          {!o.is_active && (
+                            <span className="text-[10px] uppercase text-muted-foreground bg-muted px-1.5 py-0.5 rounded">inaktiv</span>
+                          )}
+                          {optAuto ? (
+                            <span title="Aus Notion synchronisiert – nicht löschbar" className="w-7 h-7 inline-flex items-center justify-center text-muted-foreground">
+                              <Lock className="w-3.5 h-3.5" />
+                            </span>
+                          ) : (
+                            <Button size="icon" variant="ghost" onClick={() => deleteOption(o.id)}>
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
 
-                    {newOptForCat === cat.id ? (
+                    {isAuto ? (
+                      <p className="text-[11px] text-muted-foreground pt-1">
+                        🔒 Optionen werden automatisch aus <code className="bg-muted px-1 rounded">{cat.synced_from_field}</code> synchronisiert.
+                      </p>
+                    ) : newOptForCat === cat.id ? (
                       <div className="flex items-center gap-2 pt-1">
                         <input type="color" value={newOptColor} onChange={(e) => setNewOptColor(e.target.value)} className="w-7 h-7 rounded border border-border cursor-pointer" />
                         <Input
