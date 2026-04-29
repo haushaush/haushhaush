@@ -1,63 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Star, Play } from 'lucide-react';
-import { ReferenzShowcaseFormModal } from '@/components/sales/ReferenzShowcaseFormModal';
-import { ReferenzShowcaseDetailPanel } from '@/components/sales/ReferenzShowcaseDetailPanel';
+import { Plus, Search, Star } from 'lucide-react';
+import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
+import { WebsiteCardPreview } from '@/components/sales/WebsiteEmbed';
+import type { ShowcaseRow } from './ReferenzShowcaseShared';
 
-export type ShowcaseRow = {
-  id: string;
-  type: 'website' | 'werbeanzeige';
-  title: string;
-  client_name: string | null;
-  branche: string | null;
-  description: string | null;
-  website_url: string | null;
-  preview_image_url: string | null;
-  video_url: string | null;
-  thumbnail_url: string | null;
-  ad_platform: string | null;
-  ad_format: string | null;
-  metrics: Record<string, any> | null;
-  campaign_period_start: string | null;
-  campaign_period_end: string | null;
-  tags: string[] | null;
-  is_active: boolean;
-  is_featured: boolean;
-  display_order: number;
-  linked_kunde_id: string | null;
-  created_at: string;
-  embed_method?: string | null;
-  screenshot_url?: string | null;
-  embed_blocked?: boolean | null;
-  last_embed_check_at?: string | null;
-};
-
-interface Props {
-  type: 'website' | 'werbeanzeige';
-  title: string;
-}
-
-export function ShowcaseGridPage({ type, title }: Props) {
+export default function ReferenzWebsitesPage() {
   const { hasRole } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = hasRole('admin');
   const [rows, setRows] = useState<ShowcaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [brancheFilter, setBrancheFilter] = useState('');
-  const [platformFilter, setPlatformFilter] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ShowcaseRow | null>(null);
-  const [detail, setDetail] = useState<ShowcaseRow | null>(null);
 
   const load = async () => {
     setLoading(true);
     const { data } = await supabase
       .from('referenz_showcase' as any)
       .select('*')
-      .eq('type', type)
+      .eq('type', 'website')
       .eq('is_active', true)
       .order('is_featured', { ascending: false })
       .order('display_order', { ascending: true })
@@ -66,15 +34,16 @@ export function ShowcaseGridPage({ type, title }: Props) {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [type]);
+  useEffect(() => { load(); }, []);
 
-  const branches = useMemo(() => Array.from(new Set(rows.map(r => r.branche).filter(Boolean))) as string[], [rows]);
-  const platforms = useMemo(() => Array.from(new Set(rows.map(r => r.ad_platform).filter(Boolean))) as string[], [rows]);
+  const branches = useMemo(
+    () => Array.from(new Set(rows.map(r => r.branche).filter(Boolean))) as string[],
+    [rows]
+  );
 
   const filtered = rows.filter(r => {
     if (search && !(`${r.title} ${r.client_name ?? ''} ${r.branche ?? ''}`.toLowerCase().includes(search.toLowerCase()))) return false;
     if (brancheFilter && r.branche !== brancheFilter) return false;
-    if (platformFilter && r.ad_platform !== platformFilter) return false;
     return true;
   });
 
@@ -82,15 +51,14 @@ export function ShowcaseGridPage({ type, title }: Props) {
     <div className="p-6">
       <header className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Websites</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {type === 'website' ? 'Landingpages für Sales-Pitches' : 'Erfolgreiche Werbeanzeigen für Sales-Pitches'}
+            Landingpages für Sales-Pitches – mit Live-Embedding wo möglich
           </p>
         </div>
         {isAdmin && (
           <Button onClick={() => { setEditing(null); setFormOpen(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Hinzufügen
+            <Plus className="w-4 h-4 mr-2" /> Hinzufügen
           </Button>
         )}
       </header>
@@ -115,65 +83,44 @@ export function ShowcaseGridPage({ type, title }: Props) {
             {branches.map(b => <option key={b} value={b}>{b}</option>)}
           </select>
         )}
-        {type === 'werbeanzeige' && platforms.length > 0 && (
-          <select
-            value={platformFilter}
-            onChange={(e) => setPlatformFilter(e.target.value)}
-            className="text-sm bg-background border border-border rounded-md px-3 h-10"
-          >
-            <option value="">Alle Plattformen</option>
-            {platforms.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-        )}
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="aspect-[16/10] rounded-lg bg-muted animate-pulse" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 border border-dashed border-border rounded-lg">
-          <p className="text-sm text-muted-foreground">Noch keine Referenzen vorhanden.</p>
+          <p className="text-sm text-muted-foreground">Noch keine Websites vorhanden.</p>
           {isAdmin && (
             <Button variant="outline" className="mt-4" onClick={() => { setEditing(null); setFormOpen(true); }}>
-              <Plus className="w-4 h-4 mr-2" /> Erste Referenz hinzufügen
+              <Plus className="w-4 h-4 mr-2" /> Erste Website hinzufügen
             </Button>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {filtered.map(item => {
-            const img = item.type === 'website' ? item.preview_image_url : item.thumbnail_url;
             const m = (item.metrics ?? {}) as Record<string, any>;
+            const method = item.embed_method ?? 'screenshot';
             return (
               <button
                 key={item.id}
-                onClick={() => setDetail(item)}
+                onClick={() => navigate(`/sales/referenz-showcase/websites/${item.id}`)}
                 className="group text-left bg-card border border-border rounded-lg overflow-hidden hover:border-primary/60 transition-all"
               >
-                <div className="aspect-[16/10] bg-muted relative overflow-hidden">
-                  {img ? (
-                    <img src={img} alt={item.title} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">Kein Bild</div>
-                  )}
-                  {item.type === 'werbeanzeige' && item.video_url && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                      <Play className="w-10 h-10 text-white drop-shadow" fill="white" />
-                    </div>
-                  )}
+                <div className="relative">
+                  <WebsiteCardPreview website={item} height={180} />
                   {item.is_featured && (
-                    <div className="absolute top-2 left-2 bg-primary text-primary-foreground rounded-full p-1">
+                    <div className="absolute top-2 left-2 bg-primary text-primary-foreground rounded-full p-1 z-10">
                       <Star className="w-3 h-3" fill="currentColor" />
                     </div>
                   )}
-                  {item.ad_platform && (
-                    <div className="absolute top-2 right-2 bg-background/90 backdrop-blur text-[10px] uppercase font-medium rounded px-2 py-0.5">
-                      {item.ad_platform}
-                    </div>
-                  )}
+                  <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded z-10">
+                    {method === 'iframe' ? '⚡ Live' : '📸 Screenshot'}
+                  </div>
                 </div>
                 <div className="p-3">
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-1">
@@ -197,32 +144,13 @@ export function ShowcaseGridPage({ type, title }: Props) {
       )}
 
       {formOpen && (
-        <ReferenzShowcaseFormModal
+        <AddWebsiteModal
           open={formOpen}
-          type={type}
           editing={editing}
           onClose={() => { setFormOpen(false); setEditing(null); }}
           onSaved={() => { setFormOpen(false); setEditing(null); load(); }}
         />
       )}
-
-      {detail && (
-        <ReferenzShowcaseDetailPanel
-          item={detail}
-          isAdmin={isAdmin}
-          onClose={() => setDetail(null)}
-          onEdit={() => { setEditing(detail); setDetail(null); setFormOpen(true); }}
-          onDeleted={() => { setDetail(null); load(); }}
-        />
-      )}
     </div>
   );
-}
-
-export function ReferenzWebsites() {
-  return <ShowcaseGridPage type="website" title="Websites" />;
-}
-
-export function ReferenzWerbeanzeigen() {
-  return <ShowcaseGridPage type="werbeanzeige" title="Werbeanzeigen" />;
 }
