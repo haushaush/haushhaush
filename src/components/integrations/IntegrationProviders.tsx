@@ -38,6 +38,37 @@ export const PROVIDERS: IntegrationProvider[] = [
       { id: 'activities_writable', label: 'Aktivitäten schreibbar' },
     ],
   },
+  {
+    id: 'pipedrive',
+    name: 'Pipedrive',
+    category: 'CRM',
+    iconLetter: 'P',
+    iconBg: 'hsl(8 86% 56%)',
+    description: 'Pipedrive CRM verbinden — Deals, Personen & Pipelines',
+    fields: [
+      { key: 'domain', label: 'Pipedrive Domain', type: 'text', placeholder: 'meinefirma' },
+      { key: 'api_token', label: 'API Token', type: 'password', placeholder: 'API token aus Pipedrive' },
+    ],
+    docUrl: 'https://pipedrive.readme.io/docs/how-to-find-the-api-token',
+    actions: [
+      { label: 'Verbindung testen', variant: 'outline', action: 'test' },
+      { label: 'Speichern', action: 'save' },
+    ],
+    ariaGuide: [
+      'Logge dich in Pipedrive ein',
+      'Klicke oben rechts auf dein Profilbild → "Persönliche Einstellungen"',
+      'Wähle den Tab "API" — dort findest du deinen API-Token',
+      'Domain = der erste Teil deiner URL (z. B. "meinefirma" für meinefirma.pipedrive.com)',
+      'Trage Domain + API Token ein und klicke "Verbindung testen", danach "Speichern"',
+    ],
+    healthChecks: [
+      { id: 'token_valid', label: 'API Token gültig' },
+      { id: 'domain_reachable', label: 'Domain erreichbar' },
+      { id: 'deals_readable', label: 'Deals lesbar' },
+      { id: 'persons_readable', label: 'Personen lesbar' },
+      { id: 'pipelines_readable', label: 'Pipelines lesbar' },
+    ],
+  },
   // Marketing
   {
     id: 'meta_ads',
