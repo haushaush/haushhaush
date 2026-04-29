@@ -228,6 +228,36 @@ export function AppSidebar() {
     };
   }, [user?.id]);
 
+  // Load Pipedrive accounts (for sidebar account switcher)
+  useEffect(() => {
+    if (!isAdmin) return;
+    let mounted = true;
+    const load = async () => {
+      const { data } = await supabase
+        .from('pipedrive_accounts' as any)
+        .select('id, name, color_hex')
+        .eq('is_active', true)
+        .order('created_at', { ascending: true });
+      if (!mounted) return;
+      const list = ((data ?? []) as any[]) as { id: string; name: string; color_hex: string | null }[];
+      setPipedriveAccounts(list);
+      setActivePipedriveId(prev => {
+        if (prev && list.some(a => a.id === prev)) return prev;
+        return list[0]?.id || null;
+      });
+    };
+    load();
+    const ch = supabase
+      .channel('sidebar-pipedrive-accounts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipedrive_accounts' }, load)
+      .subscribe();
+    return () => {
+      mounted = false;
+      supabase.removeChannel(ch);
+    };
+  }, [isAdmin]);
+
+
   const toggleTheme = () => {
     const next = theme === 'light' ? 'dark' : 'light';
     setTheme(next);
