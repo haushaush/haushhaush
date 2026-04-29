@@ -3174,6 +3174,101 @@ export type Database = {
           },
         ]
       }
+      referenz_meta_campaigns: {
+        Row: {
+          campaign_period_end: string | null
+          campaign_period_start: string | null
+          created_by: string | null
+          custom_description: string | null
+          custom_results_summary: string | null
+          custom_setup_notes: string | null
+          custom_tags: string[] | null
+          custom_title: string | null
+          display_order: number | null
+          filter_values: Json | null
+          id: string
+          imported_at: string | null
+          is_active: boolean | null
+          is_featured: boolean | null
+          linked_kunde_id: string | null
+          meta_account_id: string
+          meta_account_name: string | null
+          meta_campaign_id: string
+          meta_campaign_name: string | null
+          meta_objective: string | null
+          meta_status: string | null
+          metrics: Json | null
+          metrics_last_refreshed_at: string | null
+          total_ads_count: number | null
+          total_adsets_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          campaign_period_end?: string | null
+          campaign_period_start?: string | null
+          created_by?: string | null
+          custom_description?: string | null
+          custom_results_summary?: string | null
+          custom_setup_notes?: string | null
+          custom_tags?: string[] | null
+          custom_title?: string | null
+          display_order?: number | null
+          filter_values?: Json | null
+          id?: string
+          imported_at?: string | null
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          linked_kunde_id?: string | null
+          meta_account_id: string
+          meta_account_name?: string | null
+          meta_campaign_id: string
+          meta_campaign_name?: string | null
+          meta_objective?: string | null
+          meta_status?: string | null
+          metrics?: Json | null
+          metrics_last_refreshed_at?: string | null
+          total_ads_count?: number | null
+          total_adsets_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          campaign_period_end?: string | null
+          campaign_period_start?: string | null
+          created_by?: string | null
+          custom_description?: string | null
+          custom_results_summary?: string | null
+          custom_setup_notes?: string | null
+          custom_tags?: string[] | null
+          custom_title?: string | null
+          display_order?: number | null
+          filter_values?: Json | null
+          id?: string
+          imported_at?: string | null
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          linked_kunde_id?: string | null
+          meta_account_id?: string
+          meta_account_name?: string | null
+          meta_campaign_id?: string
+          meta_campaign_name?: string | null
+          meta_objective?: string | null
+          meta_status?: string | null
+          metrics?: Json | null
+          metrics_last_refreshed_at?: string | null
+          total_ads_count?: number | null
+          total_adsets_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referenz_meta_campaigns_linked_kunde_id_fkey"
+            columns: ["linked_kunde_id"]
+            isOneToOne: false
+            referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referenz_showcase: {
         Row: {
           ad_format: string | null
