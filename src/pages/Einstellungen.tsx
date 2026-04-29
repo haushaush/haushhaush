@@ -361,7 +361,7 @@ export default function Einstellungen() {
       if (s.config?.dynamic_data) dynConfigs[s.provider] = s.config.dynamic_data;
     });
     setDynamicConfigs(dynConfigs);
-    setPipedriveSettings(pipedriveRes.data || null);
+    setPipedriveAccounts((pipedriveRes.data || []) as any[]);
     setLoading(false);
   };
 
