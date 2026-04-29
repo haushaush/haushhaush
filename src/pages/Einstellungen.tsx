@@ -288,7 +288,8 @@ export default function Einstellungen() {
 
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveEmail, setDriveEmail] = useState<string | null>(null);
-  const [pipedriveSettings, setPipedriveSettings] = useState<any | null>(null);
+  const [pipedriveAccounts, setPipedriveAccounts] = useState<any[]>([]);
+  const [pipedriveModalOpen, setPipedriveModalOpen] = useState(false);
   const [team, setTeam] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<EmployeeRequest[]>([]);
@@ -341,7 +342,7 @@ export default function Einstellungen() {
       user ? supabase.from('integration_settings').select('*').eq('user_id', user.id) : Promise.resolve({ data: [] }),
       supabase.from('close_deals').select('id, client_name, art, wert_eur').order('client_name'),
       isAdmin ? supabase.from('user_roles').select('user_id').eq('role', 'admin') : Promise.resolve({ data: [] }),
-      isAdmin ? supabase.from('pipedrive_settings' as any).select('id, domain, sync_interval_minutes, is_active, last_sync_at, last_sync_status, last_sync_message').eq('is_active', true).maybeSingle() : Promise.resolve({ data: null }),
+      isAdmin ? supabase.from('pipedrive_accounts' as any).select('id, name, domain, is_active, last_sync_at, last_sync_status, total_deals_synced').order('created_at', { ascending: true }) : Promise.resolve({ data: [] }),
     ]);
     if (driveRes.data) { setDriveConnected(true); setDriveEmail(driveRes.data.google_email); }
     if (googleDriveRes.data) {
@@ -360,7 +361,7 @@ export default function Einstellungen() {
       if (s.config?.dynamic_data) dynConfigs[s.provider] = s.config.dynamic_data;
     });
     setDynamicConfigs(dynConfigs);
-    setPipedriveSettings(pipedriveRes.data || null);
+    setPipedriveAccounts((pipedriveRes.data || []) as any[]);
     setLoading(false);
   };
 
@@ -453,23 +454,8 @@ export default function Einstellungen() {
   const handleIntegrationSave = async (providerId: string, data: Record<string, any>) => {
     if (!user) return;
     if (providerId === 'pipedrive') {
-      const apiToken = data.api_token;
-      const domain = data.domain;
-      if (!apiToken || !domain) {
-        toast.error('Bitte Domain und API Token angeben');
-        return;
-      }
-      const toastId = toast.loading('Verbindung zu Pipedrive wird hergestellt…');
-      const { data: res, error } = await supabase.functions.invoke('pipedrive-save-settings', {
-        body: { apiToken, domain },
-      });
-      toast.dismiss(toastId);
-      if (error || !res?.ok) {
-        toast.error(`Pipedrive: ${res?.message || error?.message || 'Speichern fehlgeschlagen'}`);
-        return;
-      }
-      toast.success(`Pipedrive verbunden (${res.user?.name || res.settings?.domain})`);
-      fetchData();
+      // Pipedrive uses the dedicated multi-account modal, not the generic save flow.
+      setPipedriveModalOpen(true);
       return;
     }
     const existing = getSettingForProvider(providerId);
@@ -506,23 +492,8 @@ export default function Einstellungen() {
   };
 
   const handleIntegrationAction = async (providerId: string, action: string, formData?: Record<string, any>) => {
-    if (providerId === 'pipedrive' && action === 'test') {
-      const apiToken = formData?.api_token;
-      const domain = formData?.domain;
-      if (!apiToken || !domain) {
-        toast.error('Bitte Domain und API Token eingeben, bevor du die Verbindung testest');
-        return;
-      }
-      const toastId = toast.loading('Pipedrive-Verbindung wird getestet…');
-      const { data: res, error } = await supabase.functions.invoke('pipedrive-test-connection', {
-        body: { apiToken, domain },
-      });
-      toast.dismiss(toastId);
-      if (error || !res?.ok) {
-        toast.error(`Pipedrive: ${res?.message || error?.message || 'Verbindung fehlgeschlagen'}`);
-        return;
-      }
-      toast.success(`✓ Verbunden mit ${res.user?.company_name || res.cleanedDomain} als ${res.user?.name}`);
+    if (providerId === 'pipedrive' && (action === 'manage' || action === 'test' || action === 'save')) {
+      setPipedriveModalOpen(true);
       return;
     }
     if (providerId === 'notion' && action === 'sync') {
@@ -909,7 +880,10 @@ export default function Einstellungen() {
               const setting = getSettingForProvider(provider.id);
               const isSlackConnected = provider.id === 'slack';
               const isDriveConnected = provider.id === 'google_drive' && (driveConnected || !!googleDriveConn);
-              const isPipedriveConnected = provider.id === 'pipedrive' && !!pipedriveSettings;
+              const isPipedriveConnected = provider.id === 'pipedrive' && pipedriveAccounts.length > 0;
+              const pipedriveLatest = provider.id === 'pipedrive'
+                ? pipedriveAccounts.reduce((acc: any, a: any) => (!acc || (a.last_sync_at && a.last_sync_at > acc.last_sync_at) ? a : acc), null)
+                : null;
               return (
                 <IntegrationCard
                   key={provider.id}
@@ -917,8 +891,8 @@ export default function Einstellungen() {
                   connected={setting?.connected || isSlackConnected || isDriveConnected || isPipedriveConnected}
                   expanded={expandedCard === provider.id}
                   onToggle={() => setExpandedCard(prev => prev === provider.id ? null : provider.id)}
-                  lastSyncAt={setting?.last_sync_at || (provider.id === 'pipedrive' ? pipedriveSettings?.last_sync_at : undefined)}
-                  lastSyncStatus={setting?.last_sync_status || (provider.id === 'pipedrive' ? pipedriveSettings?.last_sync_status : undefined)}
+                  lastSyncAt={setting?.last_sync_at || pipedriveLatest?.last_sync_at}
+                  lastSyncStatus={setting?.last_sync_status || (provider.id === 'pipedrive' && isPipedriveConnected ? `${pipedriveAccounts.length} Account${pipedriveAccounts.length === 1 ? '' : 's'} verbunden` : undefined)}
                   lastSyncError={setting?.last_sync_error}
                   config={setting?.config || {}}
                   dynamicConfig={dynamicConfigs[provider.id] || {}}
