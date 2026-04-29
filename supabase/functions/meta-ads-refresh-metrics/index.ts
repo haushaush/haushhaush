@@ -41,65 +41,128 @@ function extractMetrics(row: any) {
   };
 }
 
-function resolveCreativeUrls(creative: any): { thumbnail_url: string | null; ad_format: string } {
-  if (!creative) return { thumbnail_url: null, ad_format: "image" };
-  const story = creative.object_story_spec || {};
-  const videoData = story.video_data;
-  const linkData = story.link_data;
-  const photoData = story.photo_data;
-  let thumbnail_url: string | null = null;
-  let ad_format = "image";
-
-  if (creative.video_id || videoData?.video_id) {
-    ad_format = "video";
-    thumbnail_url = videoData?.image_url || videoData?.image_hash_url || creative.image_url || creative.thumbnail_url || null;
-  } else if (linkData?.child_attachments?.length > 0) {
-    ad_format = "carousel";
-    const first = linkData.child_attachments[0];
-    thumbnail_url = first.picture || first.image_url || creative.image_url || creative.thumbnail_url || null;
-  } else if (linkData?.picture || creative.image_url) {
-    ad_format = "image";
-    thumbnail_url = linkData?.picture || creative.image_url || creative.thumbnail_url || null;
-  } else if (photoData?.url) {
-    ad_format = "image";
-    thumbnail_url = photoData.url;
-  } else {
-    thumbnail_url = creative.image_url || creative.thumbnail_url || null;
-  }
-  return { thumbnail_url, ad_format };
-}
-
-async function fetchVideoSource(videoId: string): Promise<string | null> {
-  if (!videoId) return null;
+async function resolveHighResUrl(imageHash: string, accountId: string): Promise<string | null> {
+  if (!imageHash) return null;
   try {
-    const data = await metaGet(`/${videoId}`, { fields: "source,permalink_url" });
-    return data?.source ?? null;
+    const bareAccountId = accountId.replace(/^act_/, "");
+    const url = `${BASE}/act_${bareAccountId}/adimages?hashes=${encodeURIComponent(JSON.stringify([imageHash]))}&fields=hash,url,permalink_url,width,height&access_token=${ACCESS_TOKEN}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      console.warn("[resolveHighResUrl] failed:", data.error?.message || resp.status);
+      return null;
+    }
+    const img = Array.isArray(data.data) ? data.data[0] : data.data?.[imageHash];
+    console.log(`[resolveHighResUrl] hash=${imageHash} → ${img?.width}×${img?.height}`);
+    return img?.permalink_url || img?.url || null;
   } catch (e) {
-    console.warn(`fetchVideoSource failed for ${videoId}:`, e);
+    console.error("[resolveHighResUrl] exception:", e);
     return null;
   }
 }
 
+async function fetchVideoInfo(videoId: string) {
+  try {
+    const url = `${BASE}/${videoId}?fields=source,picture,thumbnails{uri,width,height,is_preferred}&access_token=${ACCESS_TOKEN}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (!resp.ok) return null;
+    const thumbs = data.thumbnails?.data || [];
+    const largest = thumbs.sort((a: any, b: any) => (b.width || 0) - (a.width || 0))[0];
+    return { source: data.source, picture: data.picture, largestThumbnail: largest?.uri || data.picture };
+  } catch {
+    return null;
+  }
+}
+
+async function resolveCreativeUrls(
+  creative: any,
+  accountId: string,
+): Promise<{ thumbnail_url: string | null; video_url: string | null; ad_format: string }> {
+  if (!creative) return { thumbnail_url: null, video_url: null, ad_format: "image" };
+
+  const story = creative.object_story_spec || {};
+  const videoData = story.video_data;
+  const linkData = story.link_data;
+  const photoData = story.photo_data;
+
+  let thumbnail_url: string | null = null;
+  let video_url: string | null = null;
+  let ad_format = "image";
+  let imageHash: string | null = null;
+  let videoId: string | null = null;
+
+  if (creative.video_id || videoData?.video_id) {
+    ad_format = "video";
+    videoId = creative.video_id || videoData?.video_id;
+    imageHash = videoData?.image_hash;
+  } else if (linkData?.child_attachments?.length > 0) {
+    ad_format = "carousel";
+    imageHash = linkData.child_attachments[0].image_hash;
+  } else if (photoData?.image_hash) {
+    ad_format = "image";
+    imageHash = photoData.image_hash;
+  } else if (linkData?.image_hash) {
+    ad_format = "image";
+    imageHash = linkData.image_hash;
+  } else if (creative.image_hash) {
+    ad_format = "image";
+    imageHash = creative.image_hash;
+  }
+
+  if (imageHash) {
+    thumbnail_url = await resolveHighResUrl(imageHash, accountId);
+    console.log(`[resolveCreativeUrls] hash=${imageHash} resolved=${thumbnail_url ? "YES" : "NO"}`);
+  }
+
+  if (videoId) {
+    const videoInfo = await fetchVideoInfo(videoId);
+    video_url = videoInfo?.source || null;
+    if (!thumbnail_url && videoInfo?.largestThumbnail) {
+      thumbnail_url = videoInfo.largestThumbnail;
+    }
+  }
+
+  if (!thumbnail_url) {
+    thumbnail_url = creative.image_url || linkData?.picture || null;
+  }
+
+  if (!thumbnail_url) {
+    console.warn("[resolveCreativeUrls] FALLING BACK to thumbnail_url (64x64)");
+    thumbnail_url = creative.thumbnail_url || null;
+  }
+
+  return { thumbnail_url, video_url, ad_format };
+}
+
 async function persistThumbnail(metaUrl: string | null, adId: string, svc: any): Promise<string | null> {
   if (!metaUrl) return null;
+  console.log(`[persistThumbnail] Fetching: ${metaUrl.substring(0, 100)}...`);
   try {
     const resp = await fetch(metaUrl);
-    if (!resp.ok) return null;
-    const blob = await resp.blob();
-    const buffer = new Uint8Array(await blob.arrayBuffer());
-    const ext = (blob.type || "image/jpeg").split("/")[1]?.split("+")[0] || "jpg";
-    const filename = `meta-ads/${adId}.${ext === "jpeg" ? "jpg" : ext}`;
-    const { error } = await svc.storage
-      .from("referenz-showcase")
-      .upload(filename, buffer, {
-        contentType: blob.type || "image/jpeg",
-        upsert: true,
-      });
-    if (error) { console.error("Storage upload failed:", error); return null; }
+    if (!resp.ok) { console.warn(`[persistThumbnail] Fetch failed: ${resp.status}`); return null; }
+    const contentType = resp.headers.get("content-type") || "image/jpeg";
+    const arrayBuffer = await resp.arrayBuffer();
+    const byteLength = arrayBuffer.byteLength;
+    console.log(`[persistThumbnail] Downloaded ${byteLength} bytes (${contentType})`);
+
+    if (byteLength < 5000) {
+      console.warn(`[persistThumbnail] REFUSING tiny image (${byteLength} bytes) — likely 64x64 thumbnail`);
+      return null;
+    }
+
+    const filename = `meta-ads/${adId}.jpg`;
+    const { error } = await svc.storage.from("referenz-showcase").upload(filename, new Uint8Array(arrayBuffer), {
+      contentType,
+      upsert: true,
+      cacheControl: "31536000",
+    });
+    if (error) { console.error("[persistThumbnail] Upload failed:", error); return null; }
     const { data } = svc.storage.from("referenz-showcase").getPublicUrl(filename);
+    console.log(`[persistThumbnail] Uploaded: ${data?.publicUrl}`);
     return data?.publicUrl ?? null;
   } catch (e) {
-    console.error("persistThumbnail error:", e);
+    console.error("[persistThumbnail] Exception:", e);
     return null;
   }
 }
@@ -121,29 +184,43 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { adId, datePreset = "maximum" } = await req.json().catch(() => ({}));
+    const { adId, datePreset = "maximum", force = false } = await req.json().catch(() => ({}));
 
-    let query = svc.from("referenz_meta_ads").select("id, meta_ad_id");
+    let query = svc.from("referenz_meta_ads").select("id, meta_ad_id, meta_account_id");
     if (adId) query = query.eq("id", adId);
     const { data: rows } = await query;
     if (!rows?.length) return new Response(JSON.stringify({ refreshed: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    const creativeFields = [
+      "id", "name", "object_type",
+      "image_url", "thumbnail_url", "image_hash",
+      "video_id",
+      "object_story_spec{video_data{video_id,image_url,image_hash},link_data{picture,image_hash,child_attachments{picture,image_hash}},photo_data{url,image_hash}}",
+      "asset_feed_spec",
+      "effective_object_story_id",
+    ].join(",");
+
     let count = 0;
-    for (const r of rows) {
+    for (const r of rows as any[]) {
       try {
-        // Re-fetch creative + insights
         const adFields = [
-          "id", "name",
-          "creative{id,name,object_type,image_url,thumbnail_url,video_id,asset_feed_spec,object_story_spec,effective_object_story_id}",
+          "id", "name", "account_id",
+          `creative{${creativeFields}}`,
         ].join(",");
         const adData = await metaGet(`/${r.meta_ad_id}`, { fields: adFields });
         const creative = adData.creative ?? {};
-        const { thumbnail_url: rawThumb, ad_format } = resolveCreativeUrls(creative);
+        const accId = r.meta_account_id || `act_${adData.account_id}`;
 
-        let video_url: string | null = null;
-        const videoId = creative.video_id || creative.object_story_spec?.video_data?.video_id;
-        if (videoId) video_url = await fetchVideoSource(videoId);
+        // Force-clear old persisted file so we always re-fetch
+        if (force) {
+          const { error: rmErr } = await svc.storage
+            .from("referenz-showcase")
+            .remove([`meta-ads/${r.meta_ad_id}.jpg`]);
+          if (rmErr) console.warn("[force] remove failed:", rmErr.message);
+          else console.log(`[force] removed meta-ads/${r.meta_ad_id}.jpg`);
+        }
 
+        const { thumbnail_url: rawThumb, video_url, ad_format } = await resolveCreativeUrls(creative, accId);
         const persistedThumb = await persistThumbnail(rawThumb, r.meta_ad_id, svc);
 
         const ins = await metaGet(`/${r.meta_ad_id}/insights`, {
@@ -152,6 +229,7 @@ Deno.serve(async (req) => {
         });
         const row = ins?.data?.[0];
         const metrics = extractMetrics(row);
+
         await svc.from("referenz_meta_ads").update({
           meta_metrics: metrics,
           campaign_period_start: row?.date_start ?? null,
