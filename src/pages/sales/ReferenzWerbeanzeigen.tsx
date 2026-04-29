@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Star, Settings2, Video } from "lucide-react";
+import { Plus, Search, Star, Settings2, Video, Sparkles, Loader2 } from "lucide-react";
 import { MetaAdImportModal } from "@/components/sales/MetaAdImportModal";
 import { ShowcaseFilterManagementModal, type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
+import { useToast } from "@/hooks/use-toast";
 
 export interface MetaAdRow {
   id: string;
@@ -37,6 +38,8 @@ type SortKey = "performance" | "created" | "cpl" | "roas" | "leads";
 export default function ReferenzWerbeanzeigenPage() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
+  const { toast } = useToast();
+  const [reenriching, setReenriching] = useState(false);
 
   const [rows, setRows] = useState<MetaAdRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,6 +144,28 @@ export default function ReferenzWerbeanzeigenPage() {
         </div>
         {isAdmin && (
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              disabled={reenriching}
+              onClick={async () => {
+                setReenriching(true);
+                const { data, error } = await supabase.functions.invoke("meta-ads-bulk-reenrich");
+                setReenriching(false);
+                if (error) {
+                  toast({ title: "Fehler", description: error.message, variant: "destructive" });
+                } else {
+                  const d = data as any;
+                  toast({
+                    title: "Enrichment fertig",
+                    description: `${d.enriched ?? 0} Anzeigen aktualisiert · ${d.linked ?? 0} mit Kunde verknüpft`,
+                  });
+                  load();
+                }
+              }}
+            >
+              {reenriching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+              Auto-Enrich
+            </Button>
             <Button variant="outline" onClick={() => setFilterMgmtOpen(true)}>
               <Settings2 className="w-4 h-4 mr-2" /> Filter verwalten
             </Button>
