@@ -18,6 +18,8 @@ export interface MetaAdRow {
   meta_adset_name: string | null;
   ad_format: string | null;
   thumbnail_url: string | null;
+  thumbnail_url_meta: string | null;
+  thumbnail_url_persisted: string | null;
   video_url: string | null;
   meta_metrics: Record<string, any> | null;
   custom_title: string | null;
@@ -244,6 +246,8 @@ export default function ReferenzWerbeanzeigenPage() {
 function MetaAdCard({ ad, options }: { ad: MetaAdRow; options: FilterOption[] }) {
   const m = ad.meta_metrics ?? {};
   const isVideo = ad.ad_format === "video" || ad.ad_format === "reel";
+  const isReel = ad.ad_format === "reel";
+  const displayUrl = ad.thumbnail_url_persisted || ad.thumbnail_url || ad.thumbnail_url_meta;
   const optionByKey = (catKey: string, optKey: string) =>
     options.find(o => o.key === optKey); // categories enforce uniqueness in seed; lookup ok
 
@@ -252,9 +256,12 @@ function MetaAdCard({ ad, options }: { ad: MetaAdRow; options: FilterOption[] })
       to={`/sales/referenz-showcase/werbeanzeigen/${ad.id}`}
       className="group bg-card rounded-lg border border-border hover:border-primary/60 hover:shadow-md transition-all overflow-hidden flex flex-col"
     >
-      <div className="aspect-square bg-muted relative overflow-hidden">
-        {ad.thumbnail_url ? (
-          <img src={ad.thumbnail_url} alt={ad.meta_ad_name ?? ""} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
+      <div
+        className="bg-muted relative overflow-hidden"
+        style={{ aspectRatio: isReel ? "9 / 16" : "1 / 1" }}
+      >
+        {displayUrl ? (
+          <img src={displayUrl} alt={ad.meta_ad_name ?? ""} loading="lazy" className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-300" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Video className="w-10 h-10 text-muted-foreground" />
