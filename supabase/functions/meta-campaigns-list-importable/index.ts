@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
     if (!body.accountId) throw new Error("accountId required");
     const accountId = body.accountId.startsWith("act_") ? body.accountId : `act_${body.accountId}`;
     const limit = Math.min(body.limit ?? 25, 50);
-    const datePreset = body.datePreset ?? "lifetime";
+    const datePreset = body.datePreset ?? "maximum";
 
     const { data: existing } = await svc
       .from("referenz_meta_campaigns")
