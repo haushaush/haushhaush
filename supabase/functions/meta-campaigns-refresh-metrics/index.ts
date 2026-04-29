@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { campaignId, datePreset = "lifetime" } = await req.json().catch(() => ({}));
+    const { campaignId, datePreset = "maximum" } = await req.json().catch(() => ({}));
 
     let query = svc
       .from("referenz_meta_campaigns")
