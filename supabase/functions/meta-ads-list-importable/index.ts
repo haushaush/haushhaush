@@ -51,13 +51,13 @@ Deno.serve(async (req) => {
     if (!ACCESS_TOKEN) throw new Error("META_ACCESS_TOKEN not configured");
 
     const supabase = authClient(req);
-    const { data: claims } = await supabase.auth.getClaims();
-    if (!claims?.claims) {
+    const { data: { user }, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userId = claims.claims.sub;
+    const userId = user.id;
     const svc = svcClient();
     const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", userId);
     const isAdmin = (roles ?? []).some((r: any) => r.role === "admin");
