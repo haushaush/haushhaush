@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail, Globe } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail, Globe, BarChart3 } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -37,6 +37,16 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Leads', url: '/close/leads' },
       { title: 'Deals', url: '/close/deals' },
+    ],
+  },
+  {
+    title: 'Pipedrive', url: '/pipedrive', icon: BarChart3,
+    adminOnly: true,
+    children: [
+      { title: 'Übersicht', url: '/pipedrive/uebersicht' },
+      { title: 'Deals', url: '/pipedrive/deals' },
+      { title: 'Personen', url: '/pipedrive/personen' },
+      { title: 'Pipelines', url: '/pipedrive/pipelines' },
     ],
   },
   {
