@@ -248,7 +248,7 @@ export function ShowcaseFilterManagementModal({ open, onClose, onChanged, applie
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Kategorien erscheinen als Filter-Chips auf der Werbeanzeigen-Seite und im Detail-Panel. Du kannst beliebige Kategorien anlegen.
+              Kategorien erscheinen als Filter-Chips auf der Ad Creatives-Seite und im Detail-Panel. Du kannst beliebige Kategorien anlegen.
             </p>
           </div>
         )}
