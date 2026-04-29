@@ -46,6 +46,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
   const [kunden, setKunden] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [unpublishedWarning, setUnpublishedWarning] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from('close_deals').select('id, client_name').limit(500).then(({ data }) => {
@@ -65,48 +66,55 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
     const normalized = normalizeUrl(url);
     if (!normalized) { toast.error('URL erforderlich'); return; }
     setUrl(normalized);
+    setUnpublishedWarning(null);
     setStage('testing');
 
     // Step 1: try iframe
     const canEmbed = await testIframeEmbed(normalized, 4000);
 
-    if (canEmbed) {
-      setEmbedMethod('iframe');
-      setScreenshotUrl(null);
-      setStage('iframe_works');
-      // try title autofill from hostname
-      if (!title) {
-        try {
-          const u = new URL(normalized);
-          setTitle(u.hostname.replace(/^www\./, ''));
-        } catch {}
-      }
-      return;
-    }
-
-    // Step 2: screenshot fallback
+    // Step 2: ALWAYS generate a screenshot in parallel (used for grid card + fallback)
+    let shotUrl: string | null = null;
     try {
       const { data, error } = await supabase.functions.invoke('screenshot-website', {
         body: { url: normalized },
       });
       if (error) throw error;
-      if (data?.ok && data.screenshot_url) {
-        setScreenshotUrl(data.screenshot_url);
-        setEmbedMethod('screenshot');
-        setStage('screenshot_taken');
-        if (!title) {
-          try {
-            const u = new URL(normalized);
-            setTitle(u.hostname.replace(/^www\./, ''));
-          } catch {}
-        }
+      if (data?.error === 'unpublished') {
+        setUnpublishedWarning(data.message || 'Website ist nicht veröffentlicht.');
+        setStage('input');
         return;
       }
-      throw new Error(data?.error || 'Screenshot fehlgeschlagen');
+      if (data?.ok && data.screenshot_url) {
+        shotUrl = data.screenshot_url;
+        setScreenshotUrl(shotUrl);
+      }
     } catch (e: any) {
-      toast.error('Auto-Screenshot fehlgeschlagen', { description: e.message });
-      setStage('manual_required');
+      // Screenshot failure is non-fatal if iframe works
+      if (!canEmbed) {
+        toast.error('Auto-Screenshot fehlgeschlagen', { description: e.message });
+      }
     }
+
+    if (!title) {
+      try {
+        const u = new URL(normalized);
+        setTitle(u.hostname.replace(/^www\./, ''));
+      } catch {}
+    }
+
+    if (canEmbed) {
+      setEmbedMethod('iframe');
+      setStage('iframe_works');
+      return;
+    }
+
+    if (shotUrl) {
+      setEmbedMethod('screenshot');
+      setStage('screenshot_taken');
+      return;
+    }
+
+    setStage('manual_required');
   }
 
   async function handleManualUpload(file: File) {
@@ -194,7 +202,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
               <Label>Website URL</Label>
               <Input
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                onChange={(e) => { setUrl(e.target.value); setUnpublishedWarning(null); }}
                 placeholder="https://example.de"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleTestUrl(); }}
                 autoFocus
@@ -203,6 +211,12 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
                 Wir prüfen automatisch, ob Live-Embedding möglich ist. Wenn nicht: Screenshot-Fallback.
               </p>
             </div>
+            {unpublishedWarning && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded p-3">
+                <p className="font-semibold text-amber-900 dark:text-amber-200 text-sm">⚠️ Website ist nicht veröffentlicht</p>
+                <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">{unpublishedWarning}</p>
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={onClose}>Abbrechen</Button>
               <Button onClick={handleTestUrl} disabled={!url.trim()}>
@@ -232,8 +246,9 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
               src={url}
               title="preview"
               className="w-full rounded border border-border bg-white"
-              style={{ height: 360 }}
-              sandbox="allow-scripts allow-same-origin"
+              style={{ height: 360, pointerEvents: 'none' }}
+              sandbox="allow-same-origin"
+              scrolling="no"
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setStage('input')}>Zurück</Button>
