@@ -1,191 +1,165 @@
-import { useEffect, useState } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ExternalLink, Loader2 } from 'lucide-react';
 
-interface Website {
-  id?: string | null;
-  website_url?: string | null;
-  embed_method?: string | null;
-  screenshot_url?: string | null;
-  preview_image_url?: string | null;
-  title?: string | null;
+interface WebsiteEmbedProps {
+  url: string;
+  title?: string;
+  fallbackImageUrl?: string | null;
+  height?: number | string;
 }
 
-const LIVE_PORTAL_HOST = 'haushhaush.lovable.app';
-
-function detectLovableEditor(): boolean {
-  if (typeof window === 'undefined') return false;
-  const host = window.location.hostname;
-  if (host === LIVE_PORTAL_HOST) return false;
-  if (host.includes('lovable.dev')) return true;
-  // id-preview--*.lovable.app or any non-live host inside an iframe (editor preview)
-  if (host.endsWith('.lovable.app') && host !== LIVE_PORTAL_HOST) return true;
-  try {
-    if (window.parent !== window) return true;
-  } catch {
-    return true;
-  }
-  return false;
-}
-
-interface Props {
-  website: Website;
-  height?: number;
-}
-
-export function WebsiteEmbed({ website, height = 700 }: Props) {
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [iframeBlocked, setIframeBlocked] = useState(false);
+/** Full-size, fully-interactive iframe embed with fallback. */
+export function WebsiteEmbed({ url, title, fallbackImageUrl, height = 700 }: WebsiteEmbedProps) {
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'blocked'>('loading');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    if (website.embed_method !== 'iframe') return;
-    setIframeLoaded(false);
-    setIframeBlocked(false);
+    setStatus('loading');
     const timer = setTimeout(() => {
-      if (!iframeLoaded) setIframeBlocked(true);
-    }, 5000);
+      setStatus(prev => (prev === 'loading' ? 'blocked' : prev));
+    }, 8000);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [website.website_url, website.embed_method]);
+  }, [url]);
 
-  const fallbackImg = website.screenshot_url || website.preview_image_url || '/placeholder.svg';
-  const isInLovableEditor = detectLovableEditor();
-
-  // Editor preview can't embed other Lovable projects (service-worker conflict).
-  // Show screenshot + warning + link to live portal instead.
-  if (website.embed_method === 'iframe' && isInLovableEditor && website.website_url) {
-    const livePortalUrl = website.id
-      ? `https://${LIVE_PORTAL_HOST}/sales/referenz-showcase/websites/${website.id}`
-      : website.website_url;
+  // Fallback: blocked + fallback image available
+  if (status === 'blocked' && fallbackImageUrl) {
     return (
-      <div className="relative rounded-lg overflow-hidden border border-border bg-muted">
-        <img
-          src={fallbackImg}
-          alt={website.title ?? ''}
-          className="w-full object-cover"
-          style={{ maxHeight: height }}
-        />
-        <div className="absolute inset-0 flex items-center justify-center bg-black/55 backdrop-blur-[2px] p-4">
-          <div className="bg-background border border-border px-6 py-5 rounded-lg shadow-xl max-w-md text-center">
-            <p className="font-semibold mb-2 text-sm">⚡ Live-Embed im Editor deaktiviert</p>
-            <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-              Lovable's Editor-Vorschau kann andere Lovable-Projekte nicht korrekt
-              embedden (Service-Worker-Konflikt). Das Live-Portal zeigt das Embed
-              korrekt an.
-            </p>
-            <a
-              href={livePortalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded text-xs font-medium hover:opacity-90 transition"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              Im Live-Portal öffnen
-            </a>
-          </div>
+      <div className="relative bg-muted rounded-lg overflow-hidden border border-border">
+        <img src={fallbackImageUrl} alt={title ?? ''} className="w-full block" />
+        <div className="absolute top-3 right-3 bg-amber-500 text-white text-xs px-2 py-1 rounded font-medium">
+          📸 Vorschau
+        </div>
+        <div className="absolute bottom-3 left-3 right-3 flex justify-center">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 bg-background shadow-lg px-4 py-2 rounded text-sm font-medium hover:bg-muted transition"
+          >
+            <ExternalLink className="w-4 h-4" /> Live öffnen
+          </a>
         </div>
       </div>
     );
   }
 
-  if (website.embed_method !== 'iframe' || iframeBlocked || !website.website_url) {
+  // Blocked + no fallback
+  if (status === 'blocked' && !fallbackImageUrl) {
     return (
-      <div className="relative bg-muted rounded-lg overflow-hidden">
-        <img
-          src={fallbackImg}
-          alt={website.title ?? ''}
-          className="w-full object-cover"
-          style={{ maxHeight: height }}
-        />
-        <div className="absolute top-2 right-2 bg-black/60 text-white text-[11px] px-2 py-0.5 rounded">
-          📸 Screenshot
-        </div>
+      <div className="bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-200 dark:border-amber-900 rounded-lg p-8 text-center">
+        <div className="text-4xl mb-3">🔒</div>
+        <h3 className="font-semibold mb-2">Diese Website blockiert das Embedden</h3>
+        <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+          Manche Websites (Banken, Versicherer) erlauben kein Embedden in iFrames.
+          Lade ein Fallback-Bild hoch oder öffne die Seite im neuen Tab.
+        </p>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded text-sm hover:opacity-90 transition"
+        >
+          <ExternalLink className="w-4 h-4" /> Im neuen Tab öffnen
+        </a>
       </div>
     );
   }
 
   return (
-    <div className="relative rounded-lg overflow-hidden border border-border bg-white">
-      <iframe
-        src={website.website_url}
-        title={website.title ?? 'Website'}
-        className="w-full block"
-        style={{ height, pointerEvents: 'none' }}
-        loading="lazy"
-        sandbox="allow-same-origin"
-        referrerPolicy="no-referrer"
-        scrolling="no"
-        onLoad={() => setIframeLoaded(true)}
-      />
-
-      {/* Click overlay — opens real site in new tab */}
-      <div
-        className="absolute inset-0 cursor-pointer group"
-        onClick={() => window.open(website.website_url!, '_blank', 'noopener,noreferrer')}
-      >
-        <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-all">
-          <div className="opacity-0 group-hover:opacity-100 bg-background/95 backdrop-blur px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-all">
-            <ExternalLink className="w-4 h-4" />
-            <span className="text-sm font-medium">Live-Vorschau · Klicken zum Öffnen</span>
+    <div
+      className="relative rounded-lg overflow-hidden border border-border bg-white"
+      style={{ height: typeof height === 'number' ? `${height}px` : height }}
+    >
+      {status === 'loading' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/60 z-10">
+          <div className="text-center">
+            <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />
+            <p className="text-xs text-muted-foreground mt-2">Lade Website...</p>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-[11px] px-2 py-1 rounded font-medium pointer-events-none">
-        ⚡ Live
-      </div>
+      <iframe
+        ref={iframeRef}
+        src={url}
+        title={title || url}
+        className="w-full h-full border-0 block"
+        loading="lazy"
+        onLoad={() => setStatus('loaded')}
+        onError={() => setStatus('blocked')}
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+        referrerPolicy="no-referrer-when-downgrade"
+        allow="accelerometer; camera; gyroscope; microphone; payment"
+      />
+
+      {status === 'loaded' && (
+        <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-[11px] px-2 py-1 rounded font-medium pointer-events-none">
+          ⚡ Live
+        </div>
+      )}
+
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute bottom-3 right-3 bg-background shadow-lg px-3 py-1.5 rounded text-xs font-medium hover:bg-muted transition flex items-center gap-1"
+      >
+        <ExternalLink className="w-3 h-3" /> Vollbild
+      </a>
     </div>
   );
 }
 
-/** Tries to detect if a URL can be embedded in an iframe. */
-export function testIframeEmbed(url: string, timeoutMs = 4000): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (!url) return resolve(false);
-    const iframe = document.createElement('iframe');
-    iframe.src = url;
-    iframe.style.position = 'absolute';
-    iframe.style.left = '-9999px';
-    iframe.style.width = '100px';
-    iframe.style.height = '100px';
-    iframe.sandbox.add('allow-scripts', 'allow-same-origin');
-
-    let done = false;
-    const cleanup = () => {
-      if (done) return;
-      done = true;
-      try { iframe.remove(); } catch {}
-    };
-
-    const timeout = setTimeout(() => {
-      cleanup();
-      resolve(false);
-    }, timeoutMs);
-
-    iframe.addEventListener('load', () => {
-      clearTimeout(timeout);
-      cleanup();
-      resolve(true);
-    });
-    iframe.addEventListener('error', () => {
-      clearTimeout(timeout);
-      cleanup();
-      resolve(false);
-    });
-
-    document.body.appendChild(iframe);
-  });
+interface CardPreviewProps {
+  url?: string | null;
+  fallbackImageUrl?: string | null;
+  title?: string | null;
+  height?: number;
 }
 
-/** Grid card preview — ALWAYS uses screenshot (faster, more reliable, no iframe quirks) */
-export function WebsiteCardPreview({ website, height = 180 }: Props) {
-  const fallbackImg = website.screenshot_url || website.preview_image_url || '/placeholder.svg';
+/** Grid-card preview: scaled non-interactive iframe, or fallback image. */
+export function WebsiteCardPreview({ url, fallbackImageUrl, title, height = 200 }: CardPreviewProps) {
+  if (fallbackImageUrl) {
+    return (
+      <img
+        src={fallbackImageUrl}
+        alt={title ?? ''}
+        className="w-full object-cover object-top"
+        style={{ height }}
+        loading="lazy"
+      />
+    );
+  }
+
+  if (!url) {
+    return (
+      <div
+        className="w-full bg-muted flex items-center justify-center text-xs text-muted-foreground"
+        style={{ height }}
+      >
+        Keine Vorschau
+      </div>
+    );
+  }
+
   return (
-    <img
-      src={fallbackImg}
-      alt={website.title ?? ''}
-      className="w-full object-cover"
-      style={{ height }}
-      loading="lazy"
-    />
+    <div className="relative w-full overflow-hidden bg-muted" style={{ height }}>
+      <iframe
+        src={url}
+        title={title ?? url}
+        className="border-0 pointer-events-none"
+        style={{
+          width: '1280px',
+          height: '800px',
+          transform: 'scale(0.25)',
+          transformOrigin: 'top left',
+        }}
+        sandbox="allow-scripts allow-same-origin"
+        scrolling="no"
+        loading="lazy"
+      />
+      {/* Overlay to block any iframe interaction inside card */}
+      <div className="absolute inset-0" />
+    </div>
   );
 }
