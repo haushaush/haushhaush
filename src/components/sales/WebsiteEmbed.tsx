@@ -2,11 +2,29 @@ import { useEffect, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 
 interface Website {
+  id?: string | null;
   website_url?: string | null;
   embed_method?: string | null;
   screenshot_url?: string | null;
   preview_image_url?: string | null;
   title?: string | null;
+}
+
+const LIVE_PORTAL_HOST = 'haushhaush.lovable.app';
+
+function detectLovableEditor(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  if (host === LIVE_PORTAL_HOST) return false;
+  if (host.includes('lovable.dev')) return true;
+  // id-preview--*.lovable.app or any non-live host inside an iframe (editor preview)
+  if (host.endsWith('.lovable.app') && host !== LIVE_PORTAL_HOST) return true;
+  try {
+    if (window.parent !== window) return true;
+  } catch {
+    return true;
+  }
+  return false;
 }
 
 interface Props {
