@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { campaignIds, datePreset = "lifetime" } = await req.json();
+    const { campaignIds, datePreset = "maximum" } = await req.json();
     if (!Array.isArray(campaignIds) || campaignIds.length === 0) throw new Error("campaignIds required");
 
     // Sync filter options from Notion first
