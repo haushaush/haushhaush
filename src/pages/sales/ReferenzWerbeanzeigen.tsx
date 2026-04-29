@@ -138,7 +138,7 @@ export default function ReferenzWerbeanzeigenPage() {
     <div className="p-6">
       <header className="flex items-center justify-between mb-5 flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Werbeanzeigen</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Ad Creatives</h1>
           <p className="text-sm text-muted-foreground mt-1">Aus Meta importierte Top-Performer für Sales-Pitches</p>
         </div>
         {isAdmin && (
