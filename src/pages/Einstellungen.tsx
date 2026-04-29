@@ -288,7 +288,8 @@ export default function Einstellungen() {
 
   const [driveConnected, setDriveConnected] = useState(false);
   const [driveEmail, setDriveEmail] = useState<string | null>(null);
-  const [pipedriveSettings, setPipedriveSettings] = useState<any | null>(null);
+  const [pipedriveAccounts, setPipedriveAccounts] = useState<any[]>([]);
+  const [pipedriveModalOpen, setPipedriveModalOpen] = useState(false);
   const [team, setTeam] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<EmployeeRequest[]>([]);
@@ -341,7 +342,7 @@ export default function Einstellungen() {
       user ? supabase.from('integration_settings').select('*').eq('user_id', user.id) : Promise.resolve({ data: [] }),
       supabase.from('close_deals').select('id, client_name, art, wert_eur').order('client_name'),
       isAdmin ? supabase.from('user_roles').select('user_id').eq('role', 'admin') : Promise.resolve({ data: [] }),
-      isAdmin ? supabase.from('pipedrive_settings' as any).select('id, domain, sync_interval_minutes, is_active, last_sync_at, last_sync_status, last_sync_message').eq('is_active', true).maybeSingle() : Promise.resolve({ data: null }),
+      isAdmin ? supabase.from('pipedrive_accounts' as any).select('id, name, domain, is_active, last_sync_at, last_sync_status, total_deals_synced').order('created_at', { ascending: true }) : Promise.resolve({ data: [] }),
     ]);
     if (driveRes.data) { setDriveConnected(true); setDriveEmail(driveRes.data.google_email); }
     if (googleDriveRes.data) {
