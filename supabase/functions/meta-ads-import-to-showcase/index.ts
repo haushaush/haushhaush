@@ -194,6 +194,23 @@ Deno.serve(async (req) => {
     const { adIds, datePreset = "maximum" } = await req.json();
     if (!Array.isArray(adIds) || adIds.length === 0) throw new Error("adIds required");
 
+    // Sync filter options from Notion first so any new branche/unternehmen is available
+    try {
+      await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/sync-showcase-filters-from-notion`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            "Content-Type": "application/json",
+          },
+          body: "{}",
+        },
+      );
+    } catch (e) {
+      console.warn("[import] filter sync failed (non-fatal):", (e as Error).message);
+    }
+
     const imported: string[] = [];
     const errors: { id: string; error: string }[] = [];
 
