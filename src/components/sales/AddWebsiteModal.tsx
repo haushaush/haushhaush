@@ -46,6 +46,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
   const [kunden, setKunden] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [unpublishedWarning, setUnpublishedWarning] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from('close_deals').select('id, client_name').limit(500).then(({ data }) => {
