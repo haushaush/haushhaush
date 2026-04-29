@@ -505,7 +505,26 @@ export default function Einstellungen() {
     }
   };
 
-  const handleIntegrationAction = async (providerId: string, action: string) => {
+  const handleIntegrationAction = async (providerId: string, action: string, formData?: Record<string, any>) => {
+    if (providerId === 'pipedrive' && action === 'test') {
+      const apiToken = formData?.api_token;
+      const domain = formData?.domain;
+      if (!apiToken || !domain) {
+        toast.error('Bitte Domain und API Token eingeben, bevor du die Verbindung testest');
+        return;
+      }
+      const toastId = toast.loading('Pipedrive-Verbindung wird getestet…');
+      const { data: res, error } = await supabase.functions.invoke('pipedrive-test-connection', {
+        body: { apiToken, domain },
+      });
+      toast.dismiss(toastId);
+      if (error || !res?.ok) {
+        toast.error(`Pipedrive: ${res?.message || error?.message || 'Verbindung fehlgeschlagen'}`);
+        return;
+      }
+      toast.success(`✓ Verbunden mit ${res.user?.company_name || res.cleanedDomain} als ${res.user?.name}`);
+      return;
+    }
     if (providerId === 'notion' && action === 'sync') {
       const toastId = toast.loading('Notion wird migriert — Kunden, Projekte, Mitarbeiter, Rechnungen...');
       const { data, error } = await supabase.functions.invoke('sync-notion', { body: { target: 'all' } });
