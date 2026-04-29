@@ -172,6 +172,10 @@ export function AppSidebar() {
   const [pendingCount, setPendingCount] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [bugModalOpen, setBugModalOpen] = useState(false);
+  const [pipedriveAccounts, setPipedriveAccounts] = useState<{ id: string; name: string; color_hex: string | null }[]>([]);
+  const [activePipedriveId, setActivePipedriveId] = useState<string | null>(
+    () => (typeof window !== 'undefined' ? localStorage.getItem('pipedrive-active-account') : null)
+  );
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
     const result = { ...saved };
