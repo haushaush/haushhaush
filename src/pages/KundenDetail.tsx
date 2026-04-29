@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,6 +42,36 @@ export default function KundenDetail() {
   const [updates, setUpdates] = useState<{ text: string; ts: string }[]>([]);
   const [newUpdate, setNewUpdate] = useState('');
   const [metaAccountId, setMetaAccountId] = useState<string | null>(null);
+  const [pipedriveAccount, setPipedriveAccount] = useState<any | null>(null);
+  const [pipedriveDeals, setPipedriveDeals] = useState<any[]>([]);
+
+  // Load linked Pipedrive account + deals for this kunde
+  useEffect(() => {
+    if (!id) return;
+    let mounted = true;
+    (async () => {
+      const { data: acc } = await supabase
+        .from('pipedrive_accounts' as any)
+        .select('*')
+        .eq('linked_kunde_id', id)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (!mounted) return;
+      setPipedriveAccount(acc || null);
+      if (acc) {
+        const { data: dealsData } = await supabase
+          .from('pipedrive_deals')
+          .select('*')
+          .eq('account_id', (acc as any).id)
+          .order('pipedrive_updated_at', { ascending: false })
+          .limit(50);
+        if (mounted) setPipedriveDeals(dealsData || []);
+      } else {
+        setPipedriveDeals([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -198,6 +228,9 @@ export default function KundenDetail() {
           <TabsTrigger value="dateien" className="min-h-[44px]">Dateien</TabsTrigger>
           <TabsTrigger value="finanzen" className="min-h-[44px]">Finanzen</TabsTrigger>
           <TabsTrigger value="metaads" className="min-h-[44px]">Meta Ads</TabsTrigger>
+          {pipedriveAccount && (
+            <TabsTrigger value="pipedrive" className="min-h-[44px]">📊 Pipedrive</TabsTrigger>
+          )}
         </TabsList>
 
         {/* TAB 1: ÜBERSICHT */}
@@ -444,7 +477,101 @@ export default function KundenDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* TAB 8: PIPEDRIVE (only if linked) */}
+        {pipedriveAccount && (
+          <TabsContent value="pipedrive" className="mt-4">
+            <PipedriveKundeView account={pipedriveAccount} deals={pipedriveDeals} />
+          </TabsContent>
+        )}
       </Tabs>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pipedrive view embedded in Kunde detail (only when a Pipedrive account is linked)
+// ─────────────────────────────────────────────────────────────────────────────
+function PipedriveKundeView({ account, deals }: { account: any; deals: any[] }) {
+  const totalValue = deals.reduce((s, d) => s + Number(d.value || 0), 0);
+  const wonDeals = deals.filter(d => d.status === 'won');
+  const openDeals = deals.filter(d => d.status === 'open');
+  const lostDeals = deals.filter(d => d.status === 'lost');
+
+  const byStage: Record<string, any[]> = {};
+  openDeals.forEach(d => {
+    const k = d.stage_name || '—';
+    (byStage[k] ||= []).push(d);
+  });
+
+  const KpiBox = ({ label, value, color }: { label: string; value: string | number; color?: string }) => (
+    <div className="rounded-lg border border-border p-3 text-center bg-card">
+      <p className={`text-xl font-semibold tabular-nums ${color || ''}`}>{value}</p>
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="w-2.5 h-2.5 rounded-full" style={{ background: account.color_hex || '#0EA5E9' }} />
+        <span className="font-medium text-foreground">{account.name}</span>
+        <span>· {account.domain}.pipedrive.com</span>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <KpiBox label="Deals gesamt" value={deals.length} />
+        <KpiBox label="Pipeline-Wert" value={`€${(totalValue / 1000).toFixed(0)}k`} />
+        <KpiBox label="Won" value={wonDeals.length} color="text-success" />
+        <KpiBox label="Lost" value={lostDeals.length} color="text-destructive" />
+      </div>
+
+      {Object.keys(byStage).length > 0 && (
+        <div>
+          <h4 className="font-semibold text-sm mb-2">Aktive Deals nach Stage</h4>
+          <div className="space-y-1 rounded-lg border border-border bg-card p-2">
+            {Object.entries(byStage).map(([stage, list]) => (
+              <div key={stage} className="flex justify-between text-sm py-1.5 px-2 border-b border-border last:border-0">
+                <span>{stage}</span>
+                <span className="text-muted-foreground tabular-nums">
+                  {list.length} Deals · €{(list.reduce((s, d) => s + Number(d.value || 0), 0) / 1000).toFixed(0)}k
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <h4 className="font-semibold text-sm mb-2">Letzte Deals</h4>
+        <div className="space-y-2">
+          {deals.slice(0, 10).map(d => (
+            <div key={d.id} className="border border-border rounded-md p-3 text-sm bg-card">
+              <div className="flex justify-between mb-1 gap-2">
+                <span className="font-medium truncate">{d.title || '—'}</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded shrink-0 ${
+                  d.status === 'won' ? 'bg-success/15 text-success' :
+                  d.status === 'lost' ? 'bg-destructive/15 text-destructive' :
+                  'bg-primary/15 text-primary'
+                }`}>{d.status || '—'}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {d.stage_name || '—'} · €{Number(d.value || 0).toLocaleString('de-DE')} · {d.person_name || '—'}
+              </p>
+            </div>
+          ))}
+          {!deals.length && (
+            <p className="text-sm text-muted-foreground text-center py-6">Noch keine synchronisierten Deals</p>
+          )}
+        </div>
+      </div>
+
+      <Link
+        to={`/pipedrive?account=${account.id}`}
+        className="block text-center text-sm text-primary hover:underline pt-2"
+      >
+        → Alle Daten in Pipedrive-Übersicht anzeigen
+      </Link>
     </div>
   );
 }
