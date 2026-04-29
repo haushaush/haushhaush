@@ -81,7 +81,7 @@ export function ShowcaseGridPage({ type, title }: Props) {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {type === 'website' ? 'Landingpages für Sales-Pitches' : 'Erfolgreiche Werbeanzeigen für Sales-Pitches'}
+            {type === 'website' ? 'Landingpages für Sales-Pitches' : 'Erfolgreiche Ad Creatives für Sales-Pitches'}
           </p>
         </div>
         {isAdmin && (
