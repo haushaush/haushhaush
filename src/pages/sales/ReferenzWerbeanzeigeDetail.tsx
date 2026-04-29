@@ -82,13 +82,13 @@ export default function ReferenzWerbeanzeigeDetail() {
     else { toast({ title: "Gespeichert" }); load(); }
   };
 
-  const refresh = async () => {
+  const refresh = async (force = false) => {
     if (!ad) return;
     setRefreshing(true);
-    const { data, error } = await supabase.functions.invoke("meta-ads-refresh-metrics", { body: { adId: ad.id } });
+    const { data, error } = await supabase.functions.invoke("meta-ads-refresh-metrics", { body: { adId: ad.id, force } });
     setRefreshing(false);
     if (error) toast({ title: "Fehler", description: error.message, variant: "destructive" });
-    else { toast({ title: `${(data as any)?.refreshed ?? 0} Anzeige aktualisiert` }); load(); }
+    else { toast({ title: force ? `Bild + Metriken neu geladen` : `${(data as any)?.refreshed ?? 0} Anzeige aktualisiert` }); load(); }
   };
 
   const remove = async () => {
@@ -118,8 +118,11 @@ export default function ReferenzWerbeanzeigeDetail() {
         </Button>
         {isAdmin && (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={refresh} disabled={refreshing}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} /> Sync
+            <Button variant="outline" onClick={() => refresh(false)} disabled={refreshing}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} /> Sync (Metriken)
+            </Button>
+            <Button variant="outline" onClick={() => refresh(true)} disabled={refreshing}>
+              🖼️ Force-Sync (Bild + Metriken)
             </Button>
             <Button variant="outline" onClick={remove}>
               <Trash2 className="w-4 h-4 mr-2 text-destructive" /> Löschen
