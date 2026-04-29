@@ -228,6 +228,9 @@ export default function KundenDetail() {
           <TabsTrigger value="dateien" className="min-h-[44px]">Dateien</TabsTrigger>
           <TabsTrigger value="finanzen" className="min-h-[44px]">Finanzen</TabsTrigger>
           <TabsTrigger value="metaads" className="min-h-[44px]">Meta Ads</TabsTrigger>
+          {pipedriveAccount && (
+            <TabsTrigger value="pipedrive" className="min-h-[44px]">📊 Pipedrive</TabsTrigger>
+          )}
         </TabsList>
 
         {/* TAB 1: ÜBERSICHT */}
