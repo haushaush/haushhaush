@@ -202,7 +202,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
               <Label>Website URL</Label>
               <Input
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                onChange={(e) => { setUrl(e.target.value); setUnpublishedWarning(null); }}
                 placeholder="https://example.de"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleTestUrl(); }}
                 autoFocus
@@ -211,6 +211,12 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
                 Wir prüfen automatisch, ob Live-Embedding möglich ist. Wenn nicht: Screenshot-Fallback.
               </p>
             </div>
+            {unpublishedWarning && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded p-3">
+                <p className="font-semibold text-amber-900 dark:text-amber-200 text-sm">⚠️ Website ist nicht veröffentlicht</p>
+                <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">{unpublishedWarning}</p>
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={onClose}>Abbrechen</Button>
               <Button onClick={handleTestUrl} disabled={!url.trim()}>
