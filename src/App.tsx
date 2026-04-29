@@ -62,7 +62,9 @@ import Recovery from "./pages/Recovery.tsx";
 import OnePageKunden from "./pages/OnePageKunden.tsx";
 import OnePageKundeDetail from "./pages/OnePageKundeDetail.tsx";
 import ReferenzShowcaseOverview from "./pages/sales/ReferenzShowcaseOverview.tsx";
-import { ReferenzWebsites, ReferenzWerbeanzeigen } from "./pages/sales/ReferenzShowcaseShared.tsx";
+import { ReferenzWebsites } from "./pages/sales/ReferenzShowcaseShared.tsx";
+import ReferenzWerbeanzeigenPage from "./pages/sales/ReferenzWerbeanzeigen.tsx";
+import ReferenzWerbeanzeigeDetail from "./pages/sales/ReferenzWerbeanzeigeDetail.tsx";
 import PublicShowcaseView from "./pages/PublicShowcaseView.tsx";
 import { AdminRoute } from "./components/AdminRoute";
 import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
@@ -144,7 +146,8 @@ const App = () => (
                 <Route path="/sales" element={<Navigate to="/sales/kpis" replace />} />
                 <Route path="/sales/referenz-showcase" element={<DL><ReferenzShowcaseOverview /></DL>} />
                 <Route path="/sales/referenz-showcase/websites" element={<DL><ReferenzWebsites /></DL>} />
-                <Route path="/sales/referenz-showcase/werbeanzeigen" element={<DL><ReferenzWerbeanzeigen /></DL>} />
+                <Route path="/sales/referenz-showcase/werbeanzeigen" element={<DL><ReferenzWerbeanzeigenPage /></DL>} />
+                <Route path="/sales/referenz-showcase/werbeanzeigen/:id" element={<DL><ReferenzWerbeanzeigeDetail /></DL>} />
                 <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
                 <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
                 <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />

@@ -3061,6 +3061,113 @@ export type Database = {
           },
         ]
       }
+      referenz_meta_ads: {
+        Row: {
+          ad_format: string | null
+          campaign_period_end: string | null
+          campaign_period_start: string | null
+          created_by: string | null
+          custom_description: string | null
+          custom_performance_notes: string | null
+          custom_tags: string[] | null
+          custom_title: string | null
+          display_order: number | null
+          filter_values: Json | null
+          id: string
+          imported_at: string | null
+          is_active: boolean | null
+          is_featured: boolean | null
+          linked_kunde_id: string | null
+          meta_account_id: string
+          meta_account_name: string | null
+          meta_ad_id: string
+          meta_ad_name: string | null
+          meta_adset_id: string | null
+          meta_adset_name: string | null
+          meta_campaign_id: string | null
+          meta_campaign_name: string | null
+          meta_creative_id: string | null
+          meta_metrics: Json | null
+          metrics_last_refreshed_at: string | null
+          preview_url: string | null
+          thumbnail_url: string | null
+          updated_at: string | null
+          video_url: string | null
+        }
+        Insert: {
+          ad_format?: string | null
+          campaign_period_end?: string | null
+          campaign_period_start?: string | null
+          created_by?: string | null
+          custom_description?: string | null
+          custom_performance_notes?: string | null
+          custom_tags?: string[] | null
+          custom_title?: string | null
+          display_order?: number | null
+          filter_values?: Json | null
+          id?: string
+          imported_at?: string | null
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          linked_kunde_id?: string | null
+          meta_account_id: string
+          meta_account_name?: string | null
+          meta_ad_id: string
+          meta_ad_name?: string | null
+          meta_adset_id?: string | null
+          meta_adset_name?: string | null
+          meta_campaign_id?: string | null
+          meta_campaign_name?: string | null
+          meta_creative_id?: string | null
+          meta_metrics?: Json | null
+          metrics_last_refreshed_at?: string | null
+          preview_url?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          ad_format?: string | null
+          campaign_period_end?: string | null
+          campaign_period_start?: string | null
+          created_by?: string | null
+          custom_description?: string | null
+          custom_performance_notes?: string | null
+          custom_tags?: string[] | null
+          custom_title?: string | null
+          display_order?: number | null
+          filter_values?: Json | null
+          id?: string
+          imported_at?: string | null
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          linked_kunde_id?: string | null
+          meta_account_id?: string
+          meta_account_name?: string | null
+          meta_ad_id?: string
+          meta_ad_name?: string | null
+          meta_adset_id?: string | null
+          meta_adset_name?: string | null
+          meta_campaign_id?: string | null
+          meta_campaign_name?: string | null
+          meta_creative_id?: string | null
+          meta_metrics?: Json | null
+          metrics_last_refreshed_at?: string | null
+          preview_url?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referenz_meta_ads_linked_kunde_id_fkey"
+            columns: ["linked_kunde_id"]
+            isOneToOne: false
+            referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referenz_showcase: {
         Row: {
           ad_format: string | null
@@ -3424,6 +3531,86 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "shared_email_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      showcase_filter_categories: {
+        Row: {
+          applies_to: string
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          is_required: boolean | null
+          key: string
+          label: string
+          updated_at: string | null
+        }
+        Insert: {
+          applies_to: string
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          key: string
+          label: string
+          updated_at?: string | null
+        }
+        Update: {
+          applies_to?: string
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          key?: string
+          label?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      showcase_filter_options: {
+        Row: {
+          category_id: string
+          color_hex: string | null
+          created_at: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          key: string
+          label: string
+        }
+        Insert: {
+          category_id: string
+          color_hex?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          key: string
+          label: string
+        }
+        Update: {
+          category_id?: string
+          color_hex?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          key?: string
+          label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showcase_filter_options_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "showcase_filter_categories"
             referencedColumns: ["id"]
           },
         ]
