@@ -66,6 +66,8 @@ import ReferenzWebsitesPage from "./pages/sales/ReferenzWebsites.tsx";
 import ReferenzWebsiteDetail from "./pages/sales/ReferenzWebsiteDetail.tsx";
 import ReferenzWerbeanzeigenPage from "./pages/sales/ReferenzWerbeanzeigen.tsx";
 import ReferenzWerbeanzeigeDetail from "./pages/sales/ReferenzWerbeanzeigeDetail.tsx";
+import AdPerformancePage from "./pages/sales/AdPerformance.tsx";
+import AdPerformanceDetail from "./pages/sales/AdPerformanceDetail.tsx";
 import PublicShowcaseView from "./pages/PublicShowcaseView.tsx";
 import { AdminRoute } from "./components/AdminRoute";
 import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
@@ -152,6 +154,8 @@ const App = () => (
                 <Route path="/sales/referenz-showcase/werbeanzeigen/:id" element={<DL><ReferenzWerbeanzeigeDetail /></DL>} />
                 <Route path="/sales/referenz-showcase/ad-creatives" element={<DL><ReferenzWerbeanzeigenPage /></DL>} />
                 <Route path="/sales/referenz-showcase/ad-creatives/:id" element={<DL><ReferenzWerbeanzeigeDetail /></DL>} />
+                <Route path="/sales/referenz-showcase/ad-performance" element={<DL><AdPerformancePage /></DL>} />
+                <Route path="/sales/referenz-showcase/ad-performance/:id" element={<DL><AdPerformanceDetail /></DL>} />
                 <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
                 <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
                 <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />
