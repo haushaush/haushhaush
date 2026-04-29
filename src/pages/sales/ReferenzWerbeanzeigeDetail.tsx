@@ -131,8 +131,25 @@ export default function ReferenzWerbeanzeigeDetail() {
       <div className="grid grid-cols-1 md:grid-cols-[280px,1fr] gap-6">
         {/* Left: thumbnail + Meta data (read-only) */}
         <div className="space-y-3">
-          <div className="aspect-square bg-muted rounded-lg overflow-hidden">
-            {ad.thumbnail_url ? <img src={ad.thumbnail_url} alt="" className="w-full h-full object-cover" /> : (
+          <div
+            className="bg-muted rounded-lg overflow-hidden"
+            style={{ aspectRatio: ad.ad_format === "reel" ? "9 / 16" : "1 / 1" }}
+          >
+            {ad.video_url ? (
+              <video
+                src={ad.video_url}
+                poster={(ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta || undefined}
+                controls
+                preload="metadata"
+                className="w-full h-full object-contain bg-black"
+              />
+            ) : ((ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta) ? (
+              <img
+                src={(ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta}
+                alt=""
+                className="w-full h-full object-contain"
+              />
+            ) : (
               <div className="w-full h-full flex items-center justify-center"><Video className="w-12 h-12 text-muted-foreground" /></div>
             )}
           </div>

@@ -3091,6 +3091,8 @@ export type Database = {
           metrics_last_refreshed_at: string | null
           preview_url: string | null
           thumbnail_url: string | null
+          thumbnail_url_meta: string | null
+          thumbnail_url_persisted: string | null
           updated_at: string | null
           video_url: string | null
         }
@@ -3123,6 +3125,8 @@ export type Database = {
           metrics_last_refreshed_at?: string | null
           preview_url?: string | null
           thumbnail_url?: string | null
+          thumbnail_url_meta?: string | null
+          thumbnail_url_persisted?: string | null
           updated_at?: string | null
           video_url?: string | null
         }
@@ -3155,6 +3159,8 @@ export type Database = {
           metrics_last_refreshed_at?: string | null
           preview_url?: string | null
           thumbnail_url?: string | null
+          thumbnail_url_meta?: string | null
+          thumbnail_url_persisted?: string | null
           updated_at?: string | null
           video_url?: string | null
         }

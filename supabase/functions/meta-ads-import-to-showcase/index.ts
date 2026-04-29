@@ -43,6 +43,77 @@ function extractMetrics(insightRow: any) {
   };
 }
 
+function resolveCreativeUrls(creative: any): { thumbnail_url: string | null; ad_format: string } {
+  if (!creative) return { thumbnail_url: null, ad_format: "image" };
+  const story = creative.object_story_spec || {};
+  const videoData = story.video_data;
+  const linkData = story.link_data;
+  const photoData = story.photo_data;
+  let thumbnail_url: string | null = null;
+  let ad_format = "image";
+
+  if (creative.video_id || videoData?.video_id) {
+    ad_format = "video";
+    thumbnail_url =
+      videoData?.image_url ||
+      videoData?.image_hash_url ||
+      creative.image_url ||
+      creative.thumbnail_url ||
+      null;
+  } else if (linkData?.child_attachments?.length > 0) {
+    ad_format = "carousel";
+    const first = linkData.child_attachments[0];
+    thumbnail_url = first.picture || first.image_url || creative.image_url || creative.thumbnail_url || null;
+  } else if (linkData?.picture || creative.image_url) {
+    ad_format = "image";
+    thumbnail_url = linkData?.picture || creative.image_url || creative.thumbnail_url || null;
+  } else if (photoData?.url) {
+    ad_format = "image";
+    thumbnail_url = photoData.url;
+  } else {
+    thumbnail_url = creative.image_url || creative.thumbnail_url || null;
+  }
+  return { thumbnail_url, ad_format };
+}
+
+async function fetchVideoSource(videoId: string): Promise<string | null> {
+  if (!videoId) return null;
+  try {
+    const data = await metaGet(`/${videoId}`, { fields: "source,permalink_url" });
+    return data?.source ?? null;
+  } catch (e) {
+    console.warn(`fetchVideoSource failed for ${videoId}:`, e);
+    return null;
+  }
+}
+
+async function persistThumbnail(metaUrl: string | null, adId: string, svc: any): Promise<string | null> {
+  if (!metaUrl) return null;
+  try {
+    const resp = await fetch(metaUrl);
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    const buffer = new Uint8Array(await blob.arrayBuffer());
+    const ext = (blob.type || "image/jpeg").split("/")[1]?.split("+")[0] || "jpg";
+    const filename = `meta-ads/${adId}.${ext === "jpeg" ? "jpg" : ext}`;
+    const { error } = await svc.storage
+      .from("referenz-showcase")
+      .upload(filename, buffer, {
+        contentType: blob.type || "image/jpeg",
+        upsert: true,
+      });
+    if (error) {
+      console.error("Storage upload failed:", error);
+      return null;
+    }
+    const { data } = svc.storage.from("referenz-showcase").getPublicUrl(filename);
+    return data?.publicUrl ?? null;
+  } catch (e) {
+    console.error("persistThumbnail error:", e);
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
@@ -70,7 +141,6 @@ Deno.serve(async (req) => {
     const imported: string[] = [];
     const errors: { id: string; error: string }[] = [];
 
-    // Auto-link map: meta_account_id -> kunde_id
     const { data: links } = await svc.from("kunde_meta_accounts").select("kunde_id, meta_account_id");
     const linkMap = new Map<string, string>();
     (links ?? []).forEach((l: any) => linkMap.set(l.meta_account_id, l.kunde_id));
@@ -81,7 +151,7 @@ Deno.serve(async (req) => {
           "id", "name", "status", "effective_status", "account_id",
           "campaign_id", "campaign{name}",
           "adset_id", "adset{name}",
-          "creative{id,thumbnail_url,image_url,video_id}",
+          "creative{id,name,object_type,image_url,thumbnail_url,video_id,asset_feed_spec,object_story_spec,effective_object_story_id}",
         ].join(",");
         const ad = await metaGet(`/${adId}`, { fields });
         const insightsRes = await metaGet(`/${adId}/insights`, {
@@ -91,7 +161,17 @@ Deno.serve(async (req) => {
         const insightRow = insightsRes?.data?.[0];
         const metrics = extractMetrics(insightRow);
         const creative = ad.creative ?? {};
-        const adFormat = creative.video_id ? "video" : "image";
+        const { thumbnail_url: rawThumb, ad_format } = resolveCreativeUrls(creative);
+
+        // Video source
+        let video_url: string | null = null;
+        const videoId = creative.video_id || creative.object_story_spec?.video_data?.video_id;
+        if (videoId) {
+          video_url = await fetchVideoSource(videoId);
+        }
+
+        // Persist thumbnail
+        const persistedThumb = await persistThumbnail(rawThumb, ad.id, svc);
 
         // Account name
         let accountName = "";
@@ -113,15 +193,18 @@ Deno.serve(async (req) => {
           meta_adset_id: ad.adset_id,
           meta_adset_name: ad.adset?.name,
           meta_creative_id: creative.id,
-          ad_format: adFormat,
-          thumbnail_url: creative.thumbnail_url || creative.image_url || null,
+          ad_format,
+          thumbnail_url: persistedThumb || rawThumb,
+          thumbnail_url_meta: rawThumb,
+          thumbnail_url_persisted: persistedThumb,
+          video_url,
           meta_metrics: metrics,
           campaign_period_start: insightRow?.date_start ?? null,
           campaign_period_end: insightRow?.date_stop ?? null,
           metrics_last_refreshed_at: new Date().toISOString(),
           linked_kunde_id: linkedKunde,
           created_by: userId,
-          filter_values: adFormat ? { format: adFormat } : {},
+          filter_values: ad_format ? { format: ad_format } : {},
         }, { onConflict: "meta_ad_id" });
 
         if (error) errors.push({ id: adId, error: error.message });
