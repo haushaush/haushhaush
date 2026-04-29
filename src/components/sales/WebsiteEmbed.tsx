@@ -102,7 +102,6 @@ export function WebsiteEmbed({ website, height = 700 }: Props) {
       </div>
     );
   }
-  }
 
   return (
     <div className="relative rounded-lg overflow-hidden border border-border bg-white">
