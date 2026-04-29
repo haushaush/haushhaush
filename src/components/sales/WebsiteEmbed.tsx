@@ -48,6 +48,44 @@ export function WebsiteEmbed({ website, height = 700 }: Props) {
   }, [website.website_url, website.embed_method]);
 
   const fallbackImg = website.screenshot_url || website.preview_image_url || '/placeholder.svg';
+  const isInLovableEditor = detectLovableEditor();
+
+  // Editor preview can't embed other Lovable projects (service-worker conflict).
+  // Show screenshot + warning + link to live portal instead.
+  if (website.embed_method === 'iframe' && isInLovableEditor && website.website_url) {
+    const livePortalUrl = website.id
+      ? `https://${LIVE_PORTAL_HOST}/sales/referenz-showcase/websites/${website.id}`
+      : website.website_url;
+    return (
+      <div className="relative rounded-lg overflow-hidden border border-border bg-muted">
+        <img
+          src={fallbackImg}
+          alt={website.title ?? ''}
+          className="w-full object-cover"
+          style={{ maxHeight: height }}
+        />
+        <div className="absolute inset-0 flex items-center justify-center bg-black/55 backdrop-blur-[2px] p-4">
+          <div className="bg-background border border-border px-6 py-5 rounded-lg shadow-xl max-w-md text-center">
+            <p className="font-semibold mb-2 text-sm">⚡ Live-Embed im Editor deaktiviert</p>
+            <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+              Lovable's Editor-Vorschau kann andere Lovable-Projekte nicht korrekt
+              embedden (Service-Worker-Konflikt). Das Live-Portal zeigt das Embed
+              korrekt an.
+            </p>
+            <a
+              href={livePortalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded text-xs font-medium hover:opacity-90 transition"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Im Live-Portal öffnen
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (website.embed_method !== 'iframe' || iframeBlocked || !website.website_url) {
     return (
@@ -63,6 +101,7 @@ export function WebsiteEmbed({ website, height = 700 }: Props) {
         </div>
       </div>
     );
+  }
   }
 
   return (
