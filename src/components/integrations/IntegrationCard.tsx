@@ -81,7 +81,7 @@ interface IntegrationCardProps {
   config?: Record<string, any>;
   dynamicConfig?: Record<string, any>;
   onSave: (providerId: string, data: Record<string, any>) => Promise<void>;
-  onAction: (providerId: string, action: string) => void;
+  onAction: (providerId: string, action: string, formData?: Record<string, any>) => void;
   onTest: (providerId: string) => Promise<HealthResult[]>;
   onDynamicUpdate?: (providerId: string, dynamicData: Record<string, any>) => void;
   syncing?: boolean;
@@ -1043,7 +1043,7 @@ export function IntegrationCard({
                       disabled={a.action === 'save' && saving}
                       onClick={() => {
                         if (a.action === 'save') handleSave();
-                        else onAction(provider.id, a.action);
+                        else onAction(provider.id, a.action, formData);
                       }}
                     >
                       {a.action === 'save' && saving ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Speichern...</> : a.label}
