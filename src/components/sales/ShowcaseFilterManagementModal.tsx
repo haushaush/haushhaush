@@ -129,16 +129,27 @@ export function ShowcaseFilterManagementModal({ open, onClose, onChanged, applie
           <DialogTitle>Filter verwalten</DialogTitle>
         </DialogHeader>
 
+        <div className="flex items-center justify-between gap-2 -mt-1">
+          <p className="text-xs text-muted-foreground">
+            Auto-synchronisierte Kategorien werden aus den Notion-Kunden gespeist.
+          </p>
+          <Button size="sm" variant="outline" onClick={runSync} disabled={syncing}>
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
+            Aus Notion synchronisieren
+          </Button>
+        </div>
+
         {loading ? (
           <div className="py-8 text-center text-sm text-muted-foreground">Lädt...</div>
         ) : (
           <div className="space-y-5">
             {cats.map((cat) => {
               const catOpts = opts.filter(o => o.category_id === cat.id).sort((a, b) => a.display_order - b.display_order);
+              const isAuto = !!cat.is_auto_synced;
               return (
-                <div key={cat.id} className="border border-border rounded-lg p-3">
+                <div key={cat.id} className={`border rounded-lg p-3 ${isAuto ? "border-primary/30 bg-primary/[0.02]" : "border-border"}`}>
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Input
                         defaultValue={cat.label}
                         className="h-8 w-48 font-medium"
@@ -147,10 +158,20 @@ export function ShowcaseFilterManagementModal({ open, onClose, onChanged, applie
                       <span className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                         {cat.applies_to}
                       </span>
+                      {isAuto && (
+                        <span
+                          title={`Auto-synct aus ${cat.synced_from_field ?? "Notion"}`}
+                          className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded"
+                        >
+                          <Sparkles className="w-3 h-3" /> Auto-Sync
+                        </span>
+                      )}
                     </div>
-                    <Button size="icon" variant="ghost" onClick={() => deleteCategory(cat.id)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                    {!isAuto && (
+                      <Button size="icon" variant="ghost" onClick={() => deleteCategory(cat.id)}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    )}
                   </div>
 
                   <div className="space-y-1.5 ml-2">
