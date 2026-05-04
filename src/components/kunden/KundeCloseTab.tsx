@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { ExternalLink, RefreshCw, Search, X, Briefcase, Trophy } from "lucide-react";
+import { ExternalLink, RefreshCw, Search, X, Briefcase, Trophy, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,8 @@ interface CloseMatch {
   match_type: string;
   match_confidence: number | null;
   match_reason: string | null;
+  status_category?: string | null;
+  close_status_label?: string | null;
 }
 
 function fmtEUR(v: number, currency = "EUR") {
@@ -58,8 +60,10 @@ export function KundeCloseTab({
   const [linkOpen, setLinkOpen] = useState(false);
 
   const activeMatches = matches.filter((m) => m.match_type !== "rejected");
+  const wonMatches = activeMatches.filter((m) => (m.status_category || "won") === "won");
+  const upsellMatches = activeMatches.filter((m) => m.status_category === "upsell");
 
-  const totalValue = activeMatches.reduce(
+  const totalValue = wonMatches.reduce(
     (sum, m) => sum + (m.opportunity_value || 0),
     0,
   );
@@ -73,7 +77,7 @@ export function KundeCloseTab({
       );
       if (error) throw error;
       toast.success(
-        `Matching abgeschlossen: ${data.matched || 0} neue Treffer`,
+        `Matching abgeschlossen: ${data.matched || data.auto_matched || 0} neue Treffer`,
       );
       onMatchesChange();
     } catch (e: any) {
@@ -109,7 +113,7 @@ export function KundeCloseTab({
         <div>
           <p className="text-sm font-medium">Keine Close-Deals verknüpft</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Klicke auf "Matching starten", um automatisch gewonnene Deals
+            Klicke auf "Matching starten", um automatisch Deals
             zuzuordnen.
           </p>
         </div>
@@ -148,7 +152,7 @@ export function KundeCloseTab({
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h3 className="text-sm font-semibold">
-          Gewonnene Close-Deals{" "}
+          Close-Verknüpfungen{" "}
           <span className="text-muted-foreground font-normal">
             ({activeMatches.length})
           </span>
@@ -166,89 +170,66 @@ export function KundeCloseTab({
         </Button>
       </div>
 
-      {/* KPI summary */}
-      <div className="grid grid-cols-2 gap-3">
-        <KpiCard
-          label="Gewonnene Deals"
-          value={String(activeMatches.length)}
-        />
-        <KpiCard
-          label="Gesamtwert"
-          value={totalValue > 0 ? fmtEUR(totalValue) : "–"}
-        />
-      </div>
-
-      {/* Deal cards */}
-      <div className="space-y-3">
-        {activeMatches.map((match) => (
-          <div
-            key={match.id}
-            className="border border-border rounded-lg p-4 bg-card"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-4 w-4 text-amber-500 shrink-0" />
-                  <p className="font-semibold text-sm truncate">
-                    {match.close_lead_name || match.close_lead_id}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                  <Badge
-                    variant="outline"
-                    className="rounded-[4px] text-[10px] border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                  >
-                    Won
-                  </Badge>
-                  <MatchTypeBadge match={match} />
-                  {match.date_won && (
-                    <span className="text-[10px] text-muted-foreground">
-                      {fmtDate(match.date_won)}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => setRemoveTarget(match)}
-                className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-destructive/10 transition-colors"
-                title="Verknüpfung entfernen"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                  Deal-Wert
-                </p>
-                <p className="text-sm font-medium tabular-nums mt-0.5">
-                  {match.opportunity_value
-                    ? fmtEUR(
-                        match.opportunity_value,
-                        match.opportunity_currency || "EUR",
-                      )
-                    : "–"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                  Gewonnen am
-                </p>
-                <p className="text-sm font-medium mt-0.5">
-                  {fmtDate(match.date_won)}
-                </p>
-              </div>
-            </div>
-
-            {match.match_reason && (
-              <p className="text-[11px] text-muted-foreground mt-3 border-t border-border/50 pt-2">
-                {match.match_reason}
-              </p>
-            )}
+      {/* Upsell section — shown FIRST because it's actionable for sales */}
+      {upsellMatches.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-blue-500" />
+            <h4 className="font-semibold text-sm">
+              💡 Upsell-Bereit ({upsellMatches.length})
+            </h4>
           </div>
-        ))}
-      </div>
+          <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
+            <p className="text-xs text-muted-foreground">
+              Dieser Kunde wurde in Close als Upsell-Kandidat markiert.
+              Guter Zeitpunkt für ein Cross-Sell-Gespräch.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {upsellMatches.map((match) => (
+              <DealCard
+                key={match.id}
+                match={match}
+                variant="upsell"
+                onRemove={() => setRemoveTarget(match)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Won section */}
+      {wonMatches.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-amber-500" />
+            <h4 className="font-semibold text-sm">
+              ✅ Gewonnene Deals ({wonMatches.length})
+            </h4>
+          </div>
+          {/* KPI summary */}
+          <div className="grid grid-cols-2 gap-3">
+            <KpiCard
+              label="Gewonnene Deals"
+              value={String(wonMatches.length)}
+            />
+            <KpiCard
+              label="Gesamtwert"
+              value={totalValue > 0 ? fmtEUR(totalValue) : "–"}
+            />
+          </div>
+          <div className="space-y-3">
+            {wonMatches.map((match) => (
+              <DealCard
+                key={match.id}
+                match={match}
+                variant="won"
+                onRemove={() => setRemoveTarget(match)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="flex flex-wrap gap-2 pt-2">
@@ -304,6 +285,91 @@ export function KundeCloseTab({
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function DealCard({
+  match,
+  variant,
+  onRemove,
+}: {
+  match: CloseMatch;
+  variant: "won" | "upsell";
+  onRemove: () => void;
+}) {
+  const isUpsell = variant === "upsell";
+  return (
+    <div className="border border-border rounded-lg p-4 bg-card">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            {isUpsell ? (
+              <TrendingUp className="h-4 w-4 text-blue-500 shrink-0" />
+            ) : (
+              <Trophy className="h-4 w-4 text-amber-500 shrink-0" />
+            )}
+            <p className="font-semibold text-sm truncate">
+              {match.close_lead_name || match.close_lead_id}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            <Badge
+              variant="outline"
+              className={cn(
+                "rounded-[4px] text-[10px]",
+                isUpsell
+                  ? "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300"
+                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+              )}
+            >
+              {isUpsell ? "Upsell" : "Won"}
+            </Badge>
+            <MatchTypeBadge match={match} />
+            {match.date_won && (
+              <span className="text-[10px] text-muted-foreground">
+                {fmtDate(match.date_won)}
+              </span>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={onRemove}
+          className="text-muted-foreground hover:text-destructive p-1.5 rounded-md hover:bg-destructive/10 transition-colors"
+          title="Verknüpfung entfernen"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {!isUpsell && (
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+              Deal-Wert
+            </p>
+            <p className="text-sm font-medium tabular-nums mt-0.5">
+              {match.opportunity_value
+                ? fmtEUR(match.opportunity_value, match.opportunity_currency || "EUR")
+                : "–"}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+              Gewonnen am
+            </p>
+            <p className="text-sm font-medium mt-0.5">
+              {fmtDate(match.date_won)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {match.match_reason && (
+        <p className="text-[11px] text-muted-foreground mt-3 border-t border-border/50 pt-2">
+          {match.match_reason}
+        </p>
+      )}
     </div>
   );
 }
@@ -371,8 +437,7 @@ function ManualLinkModal({
     setLoading(true);
     const { data } = await supabase
       .from("close_opportunities")
-      .select("id, lead_id, lead_name, value, value_currency, date_won, status_type")
-      .eq("status_type", "won")
+      .select("id, lead_id, lead_name, value, value_currency, date_won, status_type, status_label")
       .ilike("lead_name", `%${search}%`)
       .limit(20);
     setResults(
@@ -386,8 +451,15 @@ function ManualLinkModal({
     return () => clearTimeout(t);
   }, [doSearch]);
 
+  const inferCategory = (statusType?: string, statusLabel?: string): string => {
+    if (statusType === "won") return "won";
+    if ((statusLabel || "").toLowerCase().includes("upsell")) return "upsell";
+    return "won";
+  };
+
   const linkOpp = async (opp: any) => {
     setSubmitting(true);
+    const category = inferCategory(opp.status_type, opp.status_label);
     const { error } = await supabase.from("kunde_close_deals" as any).insert({
       kunde_id: kundeId,
       close_opportunity_id: opp.id,
@@ -399,6 +471,8 @@ function ManualLinkModal({
       match_type: "manual",
       match_confidence: 1.0,
       match_reason: "Manuell verknüpft",
+      close_status_label: opp.status_label || opp.status_type || "Won",
+      status_category: category,
     } as any);
     setSubmitting(false);
     if (error) {
@@ -433,36 +507,44 @@ function ManualLinkModal({
           )}
           {!loading && results.length === 0 && search.length >= 2 && (
             <p className="text-sm text-muted-foreground text-center py-4">
-              Keine gewonnenen Deals gefunden
+              Keine Deals gefunden
             </p>
           )}
-          {results.map((opp) => (
-            <button
-              key={opp.id}
-              onClick={() => linkOpp(opp)}
-              disabled={submitting}
-              className="w-full flex items-center justify-between gap-3 p-3 rounded-md border border-border hover:bg-muted/60 transition-colors text-left"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{opp.lead_name}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Won{" "}
-                  {opp.date_won
-                    ? new Date(opp.date_won).toLocaleDateString("de-DE")
-                    : ""}
-                  {opp.value
-                    ? ` · ${new Intl.NumberFormat("de-DE", { style: "currency", currency: opp.value_currency || "EUR", maximumFractionDigits: 0 }).format(opp.value)}`
-                    : ""}
-                </p>
-              </div>
-              <Badge
-                variant="outline"
-                className="rounded-[4px] text-[10px] border-emerald-500/30 bg-emerald-500/10 text-emerald-700 shrink-0"
+          {results.map((opp) => {
+            const isUpsell = (opp.status_label || "").toLowerCase().includes("upsell");
+            return (
+              <button
+                key={opp.id}
+                onClick={() => linkOpp(opp)}
+                disabled={submitting}
+                className="w-full flex items-center justify-between gap-3 p-3 rounded-md border border-border hover:bg-muted/60 transition-colors text-left"
               >
-                Won
-              </Badge>
-            </button>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">{opp.lead_name}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {opp.status_type || opp.status_label || "–"}{" "}
+                    {opp.date_won
+                      ? new Date(opp.date_won).toLocaleDateString("de-DE")
+                      : ""}
+                    {opp.value
+                      ? ` · ${new Intl.NumberFormat("de-DE", { style: "currency", currency: opp.value_currency || "EUR", maximumFractionDigits: 0 }).format(opp.value)}`
+                      : ""}
+                  </p>
+                </div>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "rounded-[4px] text-[10px] shrink-0",
+                    isUpsell
+                      ? "border-blue-500/30 bg-blue-500/10 text-blue-700"
+                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",
+                  )}
+                >
+                  {isUpsell ? "Upsell" : "Won"}
+                </Badge>
+              </button>
+            );
+          })}
         </div>
       </DialogContent>
     </Dialog>

@@ -951,7 +951,8 @@ export default function Einstellungen() {
           </div>
 
           <MetaMatchingCard />
-          <CloseMatchingCard />
+          <CloseMatchingCard statusFilter="won" />
+          <CloseMatchingCard statusFilter="upsell" />
         </TabsContent>
         )}
 
