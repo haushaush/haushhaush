@@ -46,7 +46,8 @@ const fmtDate = (d: string | Date | null) => {
   } catch { return '–'; }
 };
 
-function getInitials(name: string) {
+function getInitials(name?: string | null) {
+  if (!name) return '??';
   return name.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
 }
 
