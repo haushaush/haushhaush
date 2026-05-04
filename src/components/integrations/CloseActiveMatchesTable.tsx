@@ -333,6 +333,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
                         <p className="text-xs font-medium leading-tight">{row.close_lead_name || "–"}</p>
                         <p className="text-[10px] font-mono text-muted-foreground leading-tight">{row.close_lead_id}</p>
                       </td>
+                      <td className="px-3 py-1.5"><StatusBadge category={row.status_category} /></td>
                       <td className="px-3 py-1.5"><MatchTypeBadge type={row.match_type} /></td>
                       <td className="px-3 py-1.5 text-right text-xs tabular-nums">
                         {row.match_type === "manual" || row.match_confidence == null ? "—" : `${Math.round(row.match_confidence * 100)}%`}
