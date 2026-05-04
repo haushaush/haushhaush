@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Bell, Palette, Users, Hash, X, Check, Search, Loader2, Upload, Building2, ImageIcon, Trash2, AlertTriangle, UserPlus, ChevronDown, ChevronRight } from 'lucide-react';
+import { Bell, Palette, Users, Hash, X, Check, Search, Loader2, Upload, Building2, ImageIcon, Trash2, AlertTriangle, UserPlus, ChevronDown, ChevronRight, GitMerge } from 'lucide-react';
 import { toast } from 'sonner';
 import { IntegrationCard, type HealthResult } from '@/components/integrations/IntegrationCard';
 import { IntegrationStatusBar } from '@/components/integrations/IntegrationStatusBar';
@@ -25,6 +25,7 @@ import { PipedriveAccountsModal } from '@/components/integrations/PipedriveAccou
 import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
 import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
+import { CloseMatchingCard } from '@/components/integrations/CloseMatchingCard';
 
 interface EmployeeRequest {
   id: string;
@@ -264,9 +265,9 @@ export default function Einstellungen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const defaultTab = isAdmin ? 'integrationen' : 'branding';
-  const adminOnlyTabs = ['integrationen', 'mitarbeiter-erstellen'];
+  const adminOnlyTabs = ['integrationen', 'verknuepfungen', 'mitarbeiter-erstellen'];
   const allowedTabs = isAdmin
-    ? ['integrationen', 'branding', 'benutzer', 'mitarbeiter-erstellen', 'benachrichtigungen', 'sicherheit']
+    ? ['integrationen', 'verknuepfungen', 'branding', 'benutzer', 'mitarbeiter-erstellen', 'benachrichtigungen', 'sicherheit']
     : ['branding', 'benutzer', 'benachrichtigungen', 'sicherheit'];
   const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
 
@@ -821,6 +822,12 @@ export default function Einstellungen() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="flex flex-wrap h-auto gap-1">
           {isAdmin && <TabsTrigger value="integrationen">Integrationen</TabsTrigger>}
+          {isAdmin && (
+            <TabsTrigger value="verknuepfungen" className="flex items-center gap-1.5">
+              <GitMerge className="h-3.5 w-3.5" />
+              Verknüpfungen
+            </TabsTrigger>
+          )}
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="benutzer" className="relative">
             Benutzer
@@ -923,11 +930,6 @@ export default function Einstellungen() {
             </div>
           )}
 
-          {/* Meta Matching admin */}
-          <div className="border-t border-border pt-8">
-            <MetaMatchingCard />
-          </div>
-
           {/* API Platform */}
           <div className="border-t border-border pt-8">
             <ApiPlatform />
@@ -935,7 +937,25 @@ export default function Einstellungen() {
         </TabsContent>
         )}
 
-        {/* ═══════ BRANDING TAB ═══════ */}
+        {/* ═══════ VERKNÜPFUNGEN TAB ═══════ */}
+        {isAdmin && (
+        <TabsContent value="verknuepfungen" className="mt-6 space-y-8">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <GitMerge className="h-5 w-5 text-primary" />
+              Verknüpfungen
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Datenquellen mit Kunden cross-referenzieren
+            </p>
+          </div>
+
+          <MetaMatchingCard />
+          <CloseMatchingCard />
+        </TabsContent>
+        )}
+
+
         <TabsContent value="branding" className="mt-4 space-y-4">
           <Card className="border-border bg-card">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><Palette className="h-4 w-4 text-primary" />Logo & Branding</CardTitle></CardHeader>

@@ -87,13 +87,15 @@ Deno.serve(async (req) => {
   const leadsMap = new Map<string, any>();
   (closeLeads || []).forEach((l) => leadsMap.set(l.id, l));
 
-  // 4. Load existing matches to skip rejected
+  // 4. Load existing approved matches and rejections
   const { data: existing } = await admin
     .from("kunde_close_deals")
     .select("kunde_id, close_opportunity_id, match_type");
 
-  const existingKeys = new Set(
-    (existing || []).map((r) => `${r.kunde_id}|${r.close_opportunity_id}`),
+  const approvedKeys = new Set(
+    (existing || [])
+      .filter((r) => r.match_type !== "rejected")
+      .map((r) => `${r.kunde_id}|${r.close_opportunity_id}`),
   );
   const rejectedKeys = new Set(
     (existing || [])
@@ -101,9 +103,19 @@ Deno.serve(async (req) => {
       .map((r) => `${r.kunde_id}|${r.close_opportunity_id}`),
   );
 
+  // 4b. Load existing pending matches
+  const { data: existingPending } = await admin
+    .from("pending_close_matches")
+    .select("kunde_id, close_lead_id");
+  const pendingKeys = new Set(
+    (existingPending || []).map((r) => `${r.kunde_id}|${r.close_lead_id}`),
+  );
+
   // 5. Match
-  let matched = 0;
-  const upserts: any[] = [];
+  let autoMatched = 0;
+  let pendingCount = 0;
+  const directInserts: any[] = [];
+  const pendingInserts: any[] = [];
 
   for (const kunde of kunden) {
     const kundeEmail = (kunde.email || "").toLowerCase().trim();
@@ -113,7 +125,7 @@ Deno.serve(async (req) => {
     for (const opp of wonOpps) {
       const key = `${kunde.id}|${opp.id}`;
       if (rejectedKeys.has(key)) continue;
-      if (existingKeys.has(key)) continue;
+      if (approvedKeys.has(key)) continue;
 
       const lead = opp.lead_id ? leadsMap.get(opp.lead_id) : null;
       const leadEmails = extractLeadEmails(lead);
@@ -156,32 +168,60 @@ Deno.serve(async (req) => {
 
       if (!matchType) continue;
 
-      upserts.push({
-        kunde_id: kunde.id,
-        close_opportunity_id: opp.id,
-        close_lead_id: opp.lead_id || "",
-        close_lead_name: lead?.display_name || opp.lead_name,
-        opportunity_value: opp.value,
-        opportunity_currency: opp.value_currency || "EUR",
-        date_won: opp.date_won,
-        match_type: matchType,
-        match_confidence: confidence,
-        match_reason: reason,
-      });
-
-      log(`MATCH: "${kundeName}" ↔ "${leadName}" [${matchType} ${confidence}]`);
-      matched++;
+      // High confidence (>=0.95) → direct insert into kunde_close_deals
+      if (confidence >= 0.95) {
+        directInserts.push({
+          kunde_id: kunde.id,
+          close_opportunity_id: opp.id,
+          close_lead_id: opp.lead_id || "",
+          close_lead_name: lead?.display_name || opp.lead_name,
+          opportunity_value: opp.value,
+          opportunity_currency: opp.value_currency || "EUR",
+          date_won: opp.date_won,
+          match_type: matchType,
+          match_confidence: confidence,
+          match_reason: reason,
+        });
+        log(`AUTO-MATCH: "${kundeName}" ↔ "${leadName}" [${matchType} ${confidence}]`);
+        autoMatched++;
+      } else {
+        // Lower confidence → pending review queue
+        const pendingKey = `${kunde.id}|${opp.lead_id || opp.id}`;
+        if (!pendingKeys.has(pendingKey)) {
+          pendingInserts.push({
+            kunde_id: kunde.id,
+            close_lead_id: opp.lead_id || opp.id,
+            close_lead_name: lead?.display_name || opp.lead_name,
+            match_confidence: Math.round(confidence * 100),
+            match_reason: reason,
+            match_type: matchType,
+            status: "pending",
+          });
+          pendingKeys.add(pendingKey);
+          log(`PENDING: "${kundeName}" ↔ "${leadName}" [${matchType} ${confidence}]`);
+          pendingCount++;
+        }
+      }
     }
   }
 
-  // Batch upsert
-  if (upserts.length > 0) {
+  // Batch upsert direct matches
+  if (directInserts.length > 0) {
     const { error } = await admin
       .from("kunde_close_deals")
-      .upsert(upserts, { onConflict: "kunde_id,close_opportunity_id", ignoreDuplicates: false });
+      .upsert(directInserts, { onConflict: "kunde_id,close_opportunity_id", ignoreDuplicates: false });
     if (error) {
-      log(`Upsert error: ${error.message}`);
-      return json({ ok: false, error: error.message }, 500);
+      log(`Direct upsert error: ${error.message}`);
+    }
+  }
+
+  // Batch upsert pending matches
+  if (pendingInserts.length > 0) {
+    const { error } = await admin
+      .from("pending_close_matches")
+      .upsert(pendingInserts, { onConflict: "kunde_id,close_lead_id", ignoreDuplicates: true });
+    if (error) {
+      log(`Pending upsert error: ${error.message}`);
     }
   }
 
@@ -189,7 +229,8 @@ Deno.serve(async (req) => {
     ok: true,
     kunden_processed: kunden.length,
     opportunities_checked: wonOpps.length,
-    matched,
+    auto_matched: autoMatched,
+    pending: pendingCount,
     duration_ms: Date.now() - t0,
   });
 });
