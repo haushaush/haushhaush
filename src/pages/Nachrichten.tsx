@@ -138,8 +138,10 @@ function TagPill({ tag }: { tag: string }) {
 export default function Nachrichten() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState<TabKey>('alle');
+  const tabFromUrl = searchParams.get('tab') as TabKey | null;
+  const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl && TABS.some(t => t.key === tabFromUrl) ? tabFromUrl : 'alle');
   const [search, setSearch] = useState('');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
