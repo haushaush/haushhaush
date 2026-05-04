@@ -263,6 +263,13 @@ Deno.serve(async (req) => {
   });
 });
 
+function inferCategory(statusLabel?: string | null, statusType?: string | null): string {
+  const label = (statusLabel || "").toLowerCase();
+  if (label.includes("upsell")) return "upsell";
+  if (statusType === "won" || label.includes("won")) return "won";
+  return "won";
+}
+
 function extractLeadEmails(lead: any): string[] {
   if (!lead?.contacts) return [];
   const emails: string[] = [];
