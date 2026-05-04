@@ -24,7 +24,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { title: 'Übersicht', url: '/', icon: Home },
   {
-    title: 'Notion Kunden', url: '/kunden', icon: Users,
+    title: 'Kunden', url: '/kunden', icon: Users,
     children: [
       { title: 'Alle Kunden', url: '/kunden' },
       { title: 'Pipeline', url: '/kunden/pipeline' },
@@ -72,7 +72,7 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    title: 'Notion Projekte & Aufgaben', url: '/projekte', icon: ClipboardList,
+    title: 'Projekte & Aufgaben', url: '/projekte', icon: ClipboardList,
     children: [
       { title: 'Alle Projekte', url: '/projekte' },
       { title: 'Meine Aufgaben', url: '/projekte/aufgaben' },
