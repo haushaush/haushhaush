@@ -930,11 +930,6 @@ export default function Einstellungen() {
             </div>
           )}
 
-          {/* Meta Matching admin */}
-          <div className="border-t border-border pt-8">
-            <MetaMatchingCard />
-          </div>
-
           {/* API Platform */}
           <div className="border-t border-border pt-8">
             <ApiPlatform />
