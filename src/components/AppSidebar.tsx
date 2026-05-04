@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail, Globe, BarChart3, Video, MonitorPlay } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail, Globe, BarChart3, Video, MonitorPlay, Wrench } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -33,6 +33,61 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    title: 'Sales', url: '/sales', icon: TrendingUp,
+    children: [
+      { title: 'KPIs & Leaderboard', url: '/sales/kpis' },
+      { title: 'Vorqualifikation', url: '/sales/vorquali' },
+      { title: 'Leadkauf', url: '/sales/leads' },
+      { title: 'Cold Mail', url: '/sales/coldmail' },
+      { title: 'Referenz Showcase', url: '/sales/referenz-showcase' },
+      { title: '— Websites', url: '/sales/referenz-showcase/websites' },
+      { title: '— Ad Creatives', url: '/sales/referenz-showcase/werbeanzeigen' },
+      { title: '— Ad Performance', url: '/sales/referenz-showcase/ad-performance' },
+    ],
+  },
+  {
+    title: 'Projekte & Aufgaben', url: '/projekte', icon: ClipboardList,
+    children: [
+      { title: 'Alle Projekte', url: '/projekte' },
+      { title: 'Meine Aufgaben', url: '/projekte/aufgaben' },
+      { title: 'Laufzeit Projekte', url: '/projekte/laufzeiten' },
+    ],
+  },
+  // "Tools" is rendered separately between here and Fulfillment
+  {
+    title: 'Fulfillment', url: '/fulfillment', icon: Target,
+    children: [
+      { title: 'Ad Performance', url: '/fulfillment/ads' },
+      { title: 'Mediabuying', url: '/fulfillment/mediabuying' },
+      { title: 'Customer Success', url: '/fulfillment/customer-success' },
+    ],
+  },
+  {
+    title: 'Finanzen', url: '/finanzen', icon: Euro,
+    children: [
+      { title: 'Übersicht', url: '/finanzen' },
+      { title: 'Rechnungen', url: '/finanzen/rechnungen' },
+      { title: 'Belege', url: '/finanzen/belege' },
+      { title: 'Buchhaltung', url: '/finanzen/buchhaltung' },
+      { title: 'Werbebudgets', url: '/finanzen/werbebudgets' },
+    ],
+  },
+  {
+    title: 'Team & HR', url: '/hr', icon: UserCircle,
+    children: [
+      { title: 'Mitarbeiter', url: '/hr/mitarbeiter' },
+      { title: 'Verträge & Gehalt', url: '/hr/vertraege' },
+      { title: 'Probewoche', url: '/hr/probewoche' },
+      { title: 'Akademie', url: '/hr/akademie' },
+      { title: 'Coaching', url: '/hr/coaching' },
+      { title: 'Wiki & SOPs', url: '/hr/wiki' },
+    ],
+  },
+];
+
+// Items that go under the "Tools" expandable category
+const toolsNavItems: NavItem[] = [
+  {
     title: 'Close', url: '/close', icon: Briefcase,
     children: [
       { title: 'Leads', url: '/close/leads' },
@@ -58,6 +113,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'OnePage Leads', url: '/onepage-leads/kunden', icon: Globe,
+    adminOnly: true,
     children: [
       { title: 'Kunden', url: '/onepage-leads/kunden' },
     ],
@@ -69,14 +125,6 @@ const navItems: NavItem[] = [
       { title: 'Meine Dateien', url: '/drive/meine-dateien' },
       { title: 'Geteilt mit mir', url: '/drive/geteilt' },
       { title: 'Papierkorb', url: '/drive/papierkorb' },
-    ],
-  },
-  {
-    title: 'Projekte & Aufgaben', url: '/projekte', icon: ClipboardList,
-    children: [
-      { title: 'Alle Projekte', url: '/projekte' },
-      { title: 'Meine Aufgaben', url: '/projekte/aufgaben' },
-      { title: 'Laufzeit Projekte', url: '/projekte/laufzeiten' },
     ],
   },
   {
@@ -103,55 +151,9 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    title: 'Sales', url: '/sales', icon: TrendingUp,
-    children: [
-      { title: 'KPIs & Leaderboard', url: '/sales/kpis' },
-      { title: 'Vorqualifikation', url: '/sales/vorquali' },
-      { title: 'Leadkauf', url: '/sales/leads' },
-      { title: 'Cold Mail', url: '/sales/coldmail' },
-      { title: 'Referenz Showcase', url: '/sales/referenz-showcase' },
-      { title: '— Websites', url: '/sales/referenz-showcase/websites' },
-      { title: '— Ad Creatives', url: '/sales/referenz-showcase/werbeanzeigen' },
-      { title: '— Ad Performance', url: '/sales/referenz-showcase/ad-performance' },
-    ],
-  },
-  {
-    title: 'Fulfillment', url: '/fulfillment', icon: Target,
-    children: [
-      { title: 'Ad Performance', url: '/fulfillment/ads' },
-      { title: 'Mediabuying', url: '/fulfillment/mediabuying' },
-      { title: 'Customer Success', url: '/fulfillment/customer-success' },
-    ],
-  },
-  {
-    title: 'Tools', url: '/tools/ad-creative-studio', icon: Wand2,
-    children: [
-      { title: 'Ad Creative Studio', url: '/tools/ad-creative-studio' },
-    ],
-  },
-  {
-    title: 'Finanzen', url: '/finanzen', icon: Euro,
-    children: [
-      { title: 'Übersicht', url: '/finanzen' },
-      { title: 'Rechnungen', url: '/finanzen/rechnungen' },
-      { title: 'Belege', url: '/finanzen/belege' },
-      { title: 'Buchhaltung', url: '/finanzen/buchhaltung' },
-      { title: 'Werbebudgets', url: '/finanzen/werbebudgets' },
-    ],
-  },
-  {
-    title: 'Team & HR', url: '/hr', icon: UserCircle,
-    children: [
-      { title: 'Mitarbeiter', url: '/hr/mitarbeiter' },
-      { title: 'Verträge & Gehalt', url: '/hr/vertraege' },
-      { title: 'Probewoche', url: '/hr/probewoche' },
-      { title: 'Akademie', url: '/hr/akademie' },
-      { title: 'Coaching', url: '/hr/coaching' },
-      { title: 'Wiki & SOPs', url: '/hr/wiki' },
-    ],
+    title: 'Ad Creative Studio', url: '/tools/ad-creative-studio', icon: Wand2,
   },
 ];
-
 function loadSidebarState(): Record<string, boolean> {
   try { return JSON.parse(localStorage.getItem('sidebar-state') || '{}'); } catch { return {}; }
 }
@@ -166,11 +168,13 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { signOut, user, isAdminOrManager, hasRole } = useAuth();
   const isAdmin = hasRole('admin');
-  const visibleNavItems = navItems.filter(item => {
+  const filterByPermission = (item: NavItem) => {
     if (item.adminOnly) return isAdmin;
     if (item.url.startsWith('/onepage-leads')) return isAdmin;
     return true;
-  });
+  };
+  const visibleNavItems = navItems.filter(filterByPermission);
+  const visibleToolsItems = toolsNavItems.filter(filterByPermission);
   const { displayName, initials, avatarUrl } = useProfile();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [pendingCount, setPendingCount] = useState(0);
@@ -183,12 +187,19 @@ export function AppSidebar() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
     const result = { ...saved };
-    navItems.forEach(item => {
+    const allItems = [...navItems, ...toolsNavItems];
+    allItems.forEach(item => {
       if (item.children) {
         const isActive = item.children.some(c => location.pathname === c.url) || location.pathname.startsWith(item.url + '/');
         if (isActive) result[item.title] = true;
       }
     });
+    // Auto-open Tools category if any tool item is active
+    const anyToolActive = toolsNavItems.some(t =>
+      location.pathname.startsWith(t.url + '/') || location.pathname === t.url ||
+      t.children?.some(c => location.pathname === c.url)
+    );
+    if (anyToolActive) result['__tools'] = true;
     return result;
   });
 
@@ -290,6 +301,13 @@ export function AppSidebar() {
   const automationenGroupActive = ariaActive || n8nActive || webhooksActive;
   const einstellungenActive = location.pathname === '/einstellungen';
   const automationenOpen = openGroups['__automationen'] ?? automationenGroupActive;
+  const toolsOpen = openGroups['__tools'] ?? false;
+  const anyToolActive = visibleToolsItems.some(t => isParentActive(t));
+
+  // Split navItems: items before Fulfillment = top group, Fulfillment onwards = bottom group
+  const toolsInsertIndex = visibleNavItems.findIndex(i => i.title === 'Fulfillment');
+  const navItemsBefore = toolsInsertIndex >= 0 ? visibleNavItems.slice(0, toolsInsertIndex) : visibleNavItems;
+  const navItemsAfter = toolsInsertIndex >= 0 ? visibleNavItems.slice(toolsInsertIndex) : [];
 
   // ─── LEVEL 1: Primary nav item renderer ───
   const renderNavItem = (item: NavItem) => {
@@ -528,7 +546,133 @@ export function AppSidebar() {
 
         {/* ─── LEVEL 1: Primary Navigation ─── */}
         <nav className="flex-1 px-2 py-2 space-y-0.5" aria-label="Hauptnavigation">
-          {visibleNavItems.map(renderNavItem)}
+          {navItemsBefore.map(renderNavItem)}
+
+          {/* ─── Tools Category ─── */}
+          {visibleToolsItems.length > 0 && (
+            collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <NavLink
+                    to={visibleToolsItems[0].url}
+                    className={cn(
+                      'sidebar-nav-item flex items-center justify-center rounded-lg transition-colors min-h-[40px] px-0 py-2.5',
+                      'text-[14px] font-medium',
+                      anyToolActive ? 'text-primary' : 'text-foreground hover:bg-muted/60'
+                    )}
+                  >
+                    <Wrench className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+                  </NavLink>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">Tools</TooltipContent>
+              </Tooltip>
+            ) : (
+              <div>
+                <button
+                  onClick={() => setOpenGroups(p => ({ ...p, __tools: !toolsOpen }))}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-[9px] rounded-lg w-full text-left transition-colors min-h-[40px]',
+                    'text-[14px] font-medium',
+                    anyToolActive ? 'text-primary' : 'text-foreground hover:bg-muted/60'
+                  )}
+                  aria-expanded={toolsOpen}
+                >
+                  <Wrench className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+                  <span className="flex-1 truncate">Tools</span>
+                  <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200', toolsOpen && 'rotate-90')} aria-hidden="true" />
+                </button>
+                <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', toolsOpen ? 'max-h-[80rem]' : 'max-h-0')}>
+                  <div className="ml-7 border-l border-border pl-1 py-1 space-y-0.5">
+                    {visibleToolsItems.map(toolItem => {
+                      const toolActive = isParentActive(toolItem);
+                      const toolOpen = openGroups[toolItem.title] ?? false;
+
+                      if (!toolItem.children) {
+                        return (
+                          <NavLink key={toolItem.title} to={toolItem.url} end className={cn(
+                            'flex items-center gap-2.5 px-3 py-2 rounded-md text-[13px] transition-colors min-h-[34px] truncate',
+                            toolActive ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary -ml-[calc(0.25rem+1px)] pl-[calc(0.75rem+1px)]' : 'text-muted-foreground hover:bg-muted/60'
+                          )}>
+                            <toolItem.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span className="truncate">{toolItem.title}</span>
+                          </NavLink>
+                        );
+                      }
+
+                      return (
+                        <div key={toolItem.title}>
+                          <button
+                            onClick={() => toggleGroup(toolItem.title)}
+                            className={cn(
+                              'flex items-center gap-2.5 px-3 py-2 rounded-md w-full text-left transition-colors min-h-[34px]',
+                              'text-[13px]',
+                              toolActive ? 'text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
+                            )}
+                            aria-expanded={toolOpen}
+                          >
+                            <toolItem.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span className="flex-1 truncate">{toolItem.title}</span>
+                            <ChevronRight className={cn('h-3 w-3 shrink-0 transition-transform duration-200', toolOpen && 'rotate-90')} aria-hidden="true" />
+                          </button>
+                          <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', toolOpen ? 'max-h-[28rem]' : 'max-h-0')}>
+                            <div className="ml-6 border-l border-border pl-2 py-0.5 space-y-0.5">
+                              {toolItem.title === 'Pipedrive' && (
+                                <div className="px-1 pb-2">
+                                  {pipedriveAccounts.length === 0 ? (
+                                    <NavLink
+                                      to="/einstellungen?tab=integrationen"
+                                      className="block text-[11px] text-muted-foreground hover:text-foreground italic px-2 py-1.5 rounded border border-dashed border-border"
+                                    >
+                                      Kein Konto verbunden →
+                                    </NavLink>
+                                  ) : (
+                                    <select
+                                      value={activePipedriveId || ''}
+                                      onChange={(e) => {
+                                        const id = e.target.value;
+                                        setActivePipedriveId(id);
+                                        localStorage.setItem('pipedrive-active-account', id);
+                                        if (location.pathname.startsWith('/pipedrive')) {
+                                          navigate(`${location.pathname}?account=${id}`);
+                                        }
+                                      }}
+                                      className="w-full text-[11px] bg-muted text-foreground rounded px-2 py-1.5 border border-border focus:outline-none focus:ring-1 focus:ring-primary"
+                                      aria-label="Pipedrive Account auswählen"
+                                    >
+                                      {pipedriveAccounts.map(a => (
+                                        <option key={a.id} value={a.id}>● {a.name}</option>
+                                      ))}
+                                    </select>
+                                  )}
+                                </div>
+                              )}
+                              {toolItem.children!.map(child => {
+                                const childActive = isActive(child.url);
+                                const isPipedriveChild = toolItem.title === 'Pipedrive';
+                                const href = isPipedriveChild && activePipedriveId
+                                  ? `${child.url}?account=${activePipedriveId}`
+                                  : child.url;
+                                return (
+                                  <NavLink key={child.url} to={href} end={child.url === toolItem.url} className={cn(
+                                    'block px-3 py-1.5 rounded-md text-[12px] transition-colors min-h-[30px] truncate',
+                                    childActive ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary -ml-[calc(0.5rem+1px)] pl-[calc(0.75rem+1px)]' : 'text-muted-foreground hover:bg-muted/60'
+                                  )} aria-current={childActive ? 'page' : undefined}>
+                                    {child.title}
+                                  </NavLink>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+
+          {navItemsAfter.map(renderNavItem)}
         </nav>
 
         {/* ─── LEVEL 2: Secondary Navigation ─── */}
