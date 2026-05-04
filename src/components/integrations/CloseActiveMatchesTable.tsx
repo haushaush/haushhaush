@@ -206,9 +206,10 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
   };
 
   const exportCsv = () => {
-    const header = ["Kunde", "Kunde ID", "Close Lead", "Close Lead ID", "Match-Typ", "Confidence", "Verknuepft am"];
+    const header = ["Kunde", "Kunde ID", "Close Lead", "Close Lead ID", "Status", "Match-Typ", "Confidence", "Verknuepft am"];
     const rows = filtered.map((m) => [
       getKundeDisplayName(m.kunde), m.kunde?.id || "", m.close_lead_name || "", m.close_lead_id,
+      (m.status_category || "won") === "upsell" ? "Upsell" : "Won",
       m.match_type || "", m.match_confidence != null ? `${Math.round(m.match_confidence * 100)}%` : "",
       new Date(m.matched_at).toLocaleString("de-DE"),
     ]);
