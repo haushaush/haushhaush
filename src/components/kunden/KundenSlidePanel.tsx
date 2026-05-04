@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2, FolderKanban, Facebook } from 'lucide-react';
+import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2, FolderKanban, Facebook, Briefcase } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
