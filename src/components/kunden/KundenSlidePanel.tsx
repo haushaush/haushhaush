@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { KundeMetaAdsTab } from './KundeMetaAdsTab';
+import { KundeCloseTab } from './KundeCloseTab';
 import { getKundeDisplayName } from '@/lib/kunde-display-name';
 
 const STATUS_STYLES: Record<string, string> = {
