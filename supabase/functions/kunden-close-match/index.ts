@@ -78,8 +78,10 @@ Deno.serve(async (req) => {
   if (statusFilter === "won") {
     oppsQuery = oppsQuery.eq("status_type", "won");
   } else if (statusFilter === "upsell") {
-    // Upsell leads: look for status_label containing "upsell" (case insensitive via ilike)
     oppsQuery = oppsQuery.ilike("status_label", "%upsell%");
+  } else if (statusFilter === "won_or_upsell") {
+    // Combined: won status_type OR upsell in status_label
+    oppsQuery = oppsQuery.or("status_type.eq.won,status_label.ilike.%upsell%");
   }
 
   const { data: filteredOpps } = await oppsQuery;
@@ -98,11 +100,16 @@ Deno.serve(async (req) => {
   const leadsMap = new Map<string, any>();
   (closeLeads || []).forEach((l) => leadsMap.set(l.id, l));
 
-  // 4. Load existing approved matches and rejections for this status_category
-  const { data: existing } = await admin
+  // 4. Load existing approved matches and rejections
+  let existingQuery = admin
     .from("kunde_close_deals")
-    .select("kunde_id, close_opportunity_id, match_type, status_category")
-    .eq("status_category", statusFilter);
+    .select("kunde_id, close_opportunity_id, match_type, status_category");
+  if (statusFilter !== "won_or_upsell") {
+    existingQuery = existingQuery.eq("status_category", statusFilter);
+  } else {
+    existingQuery = existingQuery.in("status_category", ["won", "upsell"]);
+  }
+  const { data: existing } = await existingQuery;
 
   const approvedKeys = new Set(
     (existing || [])
@@ -115,11 +122,16 @@ Deno.serve(async (req) => {
       .map((r) => `${r.kunde_id}|${r.close_opportunity_id}`),
   );
 
-  // 4b. Load existing pending matches for this status_category
-  const { data: existingPending } = await admin
+  // 4b. Load existing pending matches
+  let pendingQuery = admin
     .from("pending_close_matches")
-    .select("kunde_id, close_lead_id, status_category")
-    .eq("status_category", statusFilter);
+    .select("kunde_id, close_lead_id, status_category");
+  if (statusFilter !== "won_or_upsell") {
+    pendingQuery = pendingQuery.eq("status_category", statusFilter);
+  } else {
+    pendingQuery = pendingQuery.in("status_category", ["won", "upsell"]);
+  }
+  const { data: existingPending } = await pendingQuery;
   const pendingKeys = new Set(
     (existingPending || []).map((r) => `${r.kunde_id}|${r.close_lead_id}`),
   );
@@ -194,8 +206,8 @@ Deno.serve(async (req) => {
           match_type: matchType,
           match_confidence: confidence,
           match_reason: reason,
-          close_status_label: opp.status_label || (statusFilter === "won" ? "Won" : "Upsell"),
-          status_category: statusFilter,
+          close_status_label: opp.status_label || "Won",
+          status_category: inferCategory(opp.status_label, opp.status_type),
         });
         log(`AUTO-MATCH [${statusFilter}]: "${kundeName}" ↔ "${leadName}" [${matchType} ${confidence}]`);
         autoMatched++;
@@ -211,7 +223,7 @@ Deno.serve(async (req) => {
             match_reason: reason,
             match_type: matchType,
             status: "pending",
-            status_category: statusFilter,
+            status_category: inferCategory(opp.status_label, opp.status_type),
           });
           pendingKeys.add(pendingKey);
           log(`PENDING [${statusFilter}]: "${kundeName}" ↔ "${leadName}" [${matchType} ${confidence}]`);
@@ -250,6 +262,13 @@ Deno.serve(async (req) => {
     duration_ms: Date.now() - t0,
   });
 });
+
+function inferCategory(statusLabel?: string | null, statusType?: string | null): string {
+  const label = (statusLabel || "").toLowerCase();
+  if (label.includes("upsell")) return "upsell";
+  if (statusType === "won" || label.includes("won")) return "won";
+  return "won";
+}
 
 function extractLeadEmails(lead: any): string[] {
   if (!lead?.contacts) return [];
