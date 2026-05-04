@@ -357,7 +357,7 @@ export default function Nachrichten() {
             return (
               <button
                 key={tab.key}
-                onClick={() => { setActiveTab(tab.key); setSelectedId(null); }}
+                onClick={() => { setActiveTab(tab.key); setSelectedId(null); setSearchParams(tab.key === 'alle' ? {} : { tab: tab.key }); }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
                   isActive ? 'text-primary border-b-2 border-primary bg-primary/5' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
