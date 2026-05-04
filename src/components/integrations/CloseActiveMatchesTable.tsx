@@ -242,11 +242,16 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
     }
   };
 
-  const filterChips: { key: FilterKey; label: string }[] = [
-    { key: "all", label: "Alle" },
+  const sourceChips: { key: SourceFilter; label: string }[] = [
+    { key: "all", label: `Alle ${matches.length}` },
     { key: "auto", label: "🤖 Auto" },
     { key: "ai", label: "✨ KI" },
     { key: "manual", label: "✓ Manuell" },
+  ];
+
+  const statusChips: { key: StatusFilter; label: string }[] = [
+    { key: "won", label: `🏆 Won ${wonCount}` },
+    { key: "upsell", label: `💡 Upsell ${upsellCount}` },
   ];
 
   return (
@@ -261,11 +266,20 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Suchen…" className="h-8 pl-7 w-48 text-xs" />
           </div>
           <div className="flex items-center gap-1 rounded-md bg-muted/40 p-0.5">
-            {filterChips.map((c) => (
+            {statusChips.map((c) => (
               <button
-                key={c.key} onClick={() => setFilter(c.key)}
+                key={c.key} onClick={() => setStatusFilter(statusFilter === c.key ? "all" : c.key)}
                 className={cn("px-2.5 py-1 rounded-[4px] text-[11px] font-medium transition-colors",
-                  filter === c.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                  statusFilter === c.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+              >{c.label}</button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 rounded-md bg-muted/40 p-0.5">
+            {sourceChips.map((c) => (
+              <button
+                key={c.key} onClick={() => setSourceFilter(c.key)}
+                className={cn("px-2.5 py-1 rounded-[4px] text-[11px] font-medium transition-colors",
+                  sourceFilter === c.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
               >{c.label}</button>
             ))}
           </div>
