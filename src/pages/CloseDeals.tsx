@@ -56,7 +56,7 @@ export default function CloseDeals() {
       .from('close_opportunities')
       .select('*')
       .order('date_updated', { ascending: false })
-      .limit(5000);
+      .range(0, 4999);
     if (error) toast.error('Fehler beim Laden: ' + error.message);
     else {
       setDeals((data || []) as CloseDeal[]);
