@@ -579,6 +579,13 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
                 />
               </TabsContent>
             )}
+            <TabsContent value="close" className="flex-1 m-0 overflow-y-auto">
+              <KundeCloseTab
+                kundeId={d.id}
+                matches={closeMatches}
+                onMatchesChange={reloadCloseMatches}
+              />
+            </TabsContent>
           </Tabs>
         </div>
 
