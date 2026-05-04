@@ -78,8 +78,10 @@ Deno.serve(async (req) => {
   if (statusFilter === "won") {
     oppsQuery = oppsQuery.eq("status_type", "won");
   } else if (statusFilter === "upsell") {
-    // Upsell leads: look for status_label containing "upsell" (case insensitive via ilike)
     oppsQuery = oppsQuery.ilike("status_label", "%upsell%");
+  } else if (statusFilter === "won_or_upsell") {
+    // Combined: won status_type OR upsell in status_label
+    oppsQuery = oppsQuery.or("status_type.eq.won,status_label.ilike.%upsell%");
   }
 
   const { data: filteredOpps } = await oppsQuery;
