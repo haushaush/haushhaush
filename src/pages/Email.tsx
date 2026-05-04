@@ -117,11 +117,16 @@ const SLUG_TO_ROUTE: Record<string, EmailRouteSlug> = {
 
 interface EmailPageProps {
   mode?: 'personal' | 'shared';
+  /** When true, folder navigation uses internal state instead of URL params */
+  embedded?: boolean;
+  /** Override the initial folder slug when embedded */
+  initialSlug?: EmailRouteSlug;
 }
 
-export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
+export default function EmailPage({ mode = 'personal', embedded = false, initialSlug }: EmailPageProps) {
   const { slug: rawSlug } = useParams<{ slug?: string }>();
-  const slug: EmailRouteSlug = (rawSlug && SLUG_TO_ROUTE[rawSlug]) || 'posteingang';
+  const [embeddedSlug, setEmbeddedSlug] = useState<EmailRouteSlug>(initialSlug || 'posteingang');
+  const slug: EmailRouteSlug = embedded ? embeddedSlug : ((rawSlug && SLUG_TO_ROUTE[rawSlug]) || 'posteingang');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -356,7 +361,9 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
 
   const handleSelectFolder = (newSlug: EmailRouteSlug) => {
     setSelectedUid(null);
-    if (newSlug === 'posteingang') navigate(basePath);
+    if (embedded) {
+      setEmbeddedSlug(newSlug);
+    } else if (newSlug === 'posteingang') navigate(basePath);
     else navigate(`${basePath}/${newSlug}`);
   };
 
@@ -431,10 +438,12 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
     );
   }, [mailboxes]);
 
+  const heightClass = embedded ? 'h-full' : 'h-[calc(100vh-4rem)]';
+
   // ============= LOADING / NO ACCOUNTS STATE =============
   if (accountsQuery.isLoading) {
     return (
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+      <div className={`${heightClass} flex items-center justify-center`}>
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -442,7 +451,7 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
 
   if (accounts.length === 0) {
     return (
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+      <div className={`${heightClass} flex items-center justify-center`}>
         <div className="max-w-md text-center space-y-4 p-8">
           <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
             <Mail className="h-8 w-8 text-primary" />
@@ -471,7 +480,7 @@ export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
 
   // ============= MAIN INBOX VIEW =============
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <div className={`${heightClass} flex flex-col`}>
       {mode === 'shared' && (
         <div className="flex items-start gap-3 px-4 py-2.5 border-b border-border bg-primary/5 text-xs">
           <Users className="h-4 w-4 text-primary shrink-0 mt-0.5" />

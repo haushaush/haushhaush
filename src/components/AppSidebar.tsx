@@ -128,17 +128,6 @@ const toolsNavItems: NavItem[] = [
     ],
   },
   {
-    title: 'Email', url: '/email', icon: Mail,
-    children: [
-      { title: 'Posteingang', url: '/email' },
-      { title: 'Ungelesen', url: '/email/ungelesen' },
-      { title: 'Gesendet', url: '/email/gesendet' },
-      { title: 'Wichtig', url: '/email/wichtig' },
-      { title: 'Entwürfe', url: '/email/entwuerfe' },
-      { title: 'Papierkorb', url: '/email/papierkorb' },
-    ],
-  },
-  {
     title: 'Email Automatisierung', url: '/email-automatisierung', icon: Workflow,
     adminOnly: true,
     children: [
@@ -294,7 +283,7 @@ export function AppSidebar() {
     return item.children.some(c => isActive(c.url)) || location.pathname.startsWith(item.url + '/');
   };
 
-  const nachrichtenActive = location.pathname === '/nachrichten';
+  const nachrichtenActive = location.pathname === '/nachrichten' || (location.pathname.startsWith('/email') && !location.pathname.startsWith('/email-automatisierung'));
   const ariaActive = location.pathname === '/aria' || location.pathname === '/automationen/aria';
   const n8nActive = location.pathname === '/automationen/n8n';
   const webhooksActive = location.pathname === '/automationen/webhooks';
