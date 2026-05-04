@@ -6,13 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2, FolderKanban, Facebook } from 'lucide-react';
+import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2, FolderKanban, Facebook, Briefcase } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { KundeMetaAdsTab } from './KundeMetaAdsTab';
+import { KundeCloseTab } from './KundeCloseTab';
 import { getKundeDisplayName } from '@/lib/kunde-display-name';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -243,6 +244,7 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('uebersicht');
   const [metaMatches, setMetaMatches] = useState<any[]>([]);
+  const [closeMatches, setCloseMatches] = useState<any[]>([]);
 
   const reloadMetaMatches = useCallback(() => {
     if (!d?.id) return;
@@ -250,7 +252,13 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
       .then(({ data }) => setMetaMatches(data || []));
   }, [d?.id]);
 
-  useEffect(() => { reloadMetaMatches(); }, [reloadMetaMatches]);
+  const reloadCloseMatches = useCallback(() => {
+    if (!d?.id) return;
+    supabase.from('kunde_close_deals' as any).select('*').eq('kunde_id', d.id)
+      .then(({ data }) => setCloseMatches((data as any[]) || []));
+  }, [d?.id]);
+
+  useEffect(() => { reloadMetaMatches(); reloadCloseMatches(); }, [reloadMetaMatches, reloadCloseMatches]);
 
   // Auto-switch to Meta Ads tab when ?tab=meta-ads is in URL on open
   useEffect(() => {
@@ -411,6 +419,10 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
                     Meta Ads{metaMatches.length > 1 ? ` (${metaMatches.length})` : ''}
                   </TabsTrigger>
                 )}
+                <TabsTrigger value="close" className="flex-1 gap-1.5">
+                  <Briefcase className="h-3.5 w-3.5" />
+                  Close{closeMatches.filter(m => m.match_type !== 'rejected').length > 0 ? ` (${closeMatches.filter(m => m.match_type !== 'rejected').length})` : ''}
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -567,6 +579,13 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
                 />
               </TabsContent>
             )}
+            <TabsContent value="close" className="flex-1 m-0 overflow-y-auto">
+              <KundeCloseTab
+                kundeId={d.id}
+                matches={closeMatches}
+                onMatchesChange={reloadCloseMatches}
+              />
+            </TabsContent>
           </Tabs>
         </div>
 

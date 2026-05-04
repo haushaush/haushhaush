@@ -1994,6 +1994,59 @@ export type Database = {
           },
         ]
       }
+      kunde_close_deals: {
+        Row: {
+          close_lead_id: string
+          close_lead_name: string | null
+          close_opportunity_id: string
+          date_won: string | null
+          id: string
+          kunde_id: string
+          match_confidence: number | null
+          match_reason: string | null
+          match_type: string
+          matched_at: string | null
+          opportunity_currency: string | null
+          opportunity_value: number | null
+        }
+        Insert: {
+          close_lead_id: string
+          close_lead_name?: string | null
+          close_opportunity_id: string
+          date_won?: string | null
+          id?: string
+          kunde_id: string
+          match_confidence?: number | null
+          match_reason?: string | null
+          match_type: string
+          matched_at?: string | null
+          opportunity_currency?: string | null
+          opportunity_value?: number | null
+        }
+        Update: {
+          close_lead_id?: string
+          close_lead_name?: string | null
+          close_opportunity_id?: string
+          date_won?: string | null
+          id?: string
+          kunde_id?: string
+          match_confidence?: number | null
+          match_reason?: string | null
+          match_type?: string
+          matched_at?: string | null
+          opportunity_currency?: string | null
+          opportunity_value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kunde_close_deals_kunde_id_fkey"
+            columns: ["kunde_id"]
+            isOneToOne: false
+            referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kunde_meta_accounts: {
         Row: {
           id: string
