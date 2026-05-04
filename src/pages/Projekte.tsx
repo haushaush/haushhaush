@@ -82,7 +82,8 @@ const fmtDate = (d: string | null | undefined) => {
   try { return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { return d; }
 };
 
-function getInitials(name: string) {
+function getInitials(name?: string | null) {
+  if (!name) return '??';
   return name.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
 }
 
