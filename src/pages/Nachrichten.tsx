@@ -319,117 +319,127 @@ export default function Nachrichten() {
     return () => window.removeEventListener('keydown', handler);
   }, [selectedId, filtered, notifications]);
 
-  // Mobile: show detail full-screen
-  if (isMobile && selected) {
+  // Mobile: show detail full-screen (only for non-email tabs)
+  if (isMobile && selected && activeTab !== 'email') {
     return <DetailPanel n={selected} onBack={() => setSelectedId(null)} onArchive={activeTab === 'archiv' ? unarchiveNotif : archiveNotif} onToggleRead={toggleRead} navigate={navigate} isArchiveTab={activeTab === 'archiv'} />;
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem-1px)] -m-4 md:-m-6">
-      {/* Left Panel */}
-      <div className={`flex flex-col border-r border-border bg-card ${selected && !isMobile ? 'w-[380px] shrink-0' : 'flex-1'}`}>
-        {/* Search */}
-        <div className="p-3 border-b border-border">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Nachrichten durchsuchen..."
-              className="pl-9 pr-8 h-9 bg-accent border-border"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-1 px-3 py-2 border-b border-border overflow-x-auto">
-          {TABS.map(tab => {
-            const count = tab.key === 'alle' || tab.key === 'ungelesen' ? counts.alle
-              : tab.key === 'slack' ? counts.slack
-              : tab.key === 'email' ? counts.email
-              : tab.key === 'intern' ? counts.intern : 0;
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => { setActiveTab(tab.key); setSelectedId(null); setSearchParams(tab.key === 'alle' ? {} : { tab: tab.key }); }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
-                  isActive ? 'text-primary border-b-2 border-primary bg-primary/5' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                {tab.label}
-                {count > 0 && tab.key !== 'archiv' && (
-                  <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 text-[10px] font-semibold rounded-full bg-destructive text-destructive-foreground">
-                    {count > 99 ? '99+' : count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Mark all read */}
-        {counts.alle > 0 && activeTab !== 'archiv' && (
-          <div className="px-3 py-1.5 border-b border-border">
-            <button onClick={markAllRead} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">
-              Alle gelesen
+    <div className="flex flex-col h-[calc(100vh-3.5rem-1px)] -m-4 md:-m-6">
+      {/* Tabs header — always visible */}
+      <div className="flex gap-1 px-3 py-2 border-b border-border overflow-x-auto shrink-0 bg-card">
+        {TABS.map(tab => {
+          const count = tab.key === 'alle' || tab.key === 'ungelesen' ? counts.alle
+            : tab.key === 'slack' ? counts.slack
+            : tab.key === 'email' ? counts.email
+            : tab.key === 'intern' ? counts.intern : 0;
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => { setActiveTab(tab.key); setSelectedId(null); setSearchParams(tab.key === 'alle' ? {} : { tab: tab.key }); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
+                isActive ? 'text-primary border-b-2 border-primary bg-primary/5' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              {tab.label}
+              {count > 0 && tab.key !== 'archiv' && (
+                <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 text-[10px] font-semibold rounded-full bg-destructive text-destructive-foreground">
+                  {count > 99 ? '99+' : count}
+                </span>
+              )}
             </button>
-          </div>
-        )}
-
-        {/* List */}
-        <ScrollArea className="flex-1">
-          {loading ? (
-            <div className="p-3 space-y-2" aria-busy="true">
-              {[1,2,3,4,5].map(i => (
-                <div key={i} className="flex gap-3 animate-pulse p-3">
-                  <div className="w-8 h-8 rounded-full bg-muted shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-3 bg-muted rounded w-2/3" />
-                    <div className="h-3 bg-muted rounded w-full" />
-                    <div className="h-2.5 bg-muted rounded w-1/2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <EmptyState tab={activeTab} navigate={navigate} />
-          ) : (
-            <div>
-              {filtered.map(n => (
-                <NotificationRow
-                  key={n.id}
-                  n={n}
-                  isSelected={selectedId === n.id}
-                  onClick={() => selectNotif(n)}
-                  onArchive={() => activeTab === 'archiv' ? unarchiveNotif(n.id) : archiveNotif(n.id)}
-                  onToggleRead={() => toggleRead(n)}
-                  isArchiveTab={activeTab === 'archiv'}
-                />
-              ))}
-              <div ref={listEndRef} className="h-4" />
-            </div>
-          )}
-        </ScrollArea>
+          );
+        })}
       </div>
 
-      {/* Right Panel (desktop) */}
-      {!isMobile && selected && (
-        <div className="flex-1 bg-background">
-          <DetailPanel n={selected} onBack={() => setSelectedId(null)} onArchive={activeTab === 'archiv' ? unarchiveNotif : archiveNotif} onToggleRead={toggleRead} navigate={navigate} isArchiveTab={activeTab === 'archiv'} />
+      {/* E-Mail tab → render full EmailPage */}
+      {activeTab === 'email' ? (
+        <div className="flex-1 min-h-0">
+          <EmailPage mode="personal" embedded />
         </div>
-      )}
-      {!isMobile && !selected && (
-        <div className="flex-1 bg-background flex items-center justify-center">
-          <div className="text-center text-muted-foreground">
-            <Mail className="h-12 w-12 mx-auto mb-3 opacity-20" />
-            <p className="text-sm">Nachricht auswählen</p>
+      ) : (
+        /* Notification tabs content */
+        <div className="flex flex-1 min-h-0">
+          {/* Left Panel */}
+          <div className={`flex flex-col border-r border-border bg-card ${selected && !isMobile ? 'w-[380px] shrink-0' : 'flex-1'}`}>
+            {/* Search */}
+            <div className="p-3 border-b border-border">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Nachrichten durchsuchen..."
+                  className="pl-9 pr-8 h-9 bg-accent border-border"
+                />
+                {search && (
+                  <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Mark all read */}
+            {counts.alle > 0 && activeTab !== 'archiv' && (
+              <div className="px-3 py-1.5 border-b border-border">
+                <button onClick={markAllRead} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">
+                  Alle gelesen
+                </button>
+              </div>
+            )}
+
+            {/* List */}
+            <ScrollArea className="flex-1">
+              {loading ? (
+                <div className="p-3 space-y-2" aria-busy="true">
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} className="flex gap-3 animate-pulse p-3">
+                      <div className="w-8 h-8 rounded-full bg-muted shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 bg-muted rounded w-2/3" />
+                        <div className="h-3 bg-muted rounded w-full" />
+                        <div className="h-2.5 bg-muted rounded w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
+                <EmptyState tab={activeTab} navigate={navigate} />
+              ) : (
+                <div>
+                  {filtered.map(n => (
+                    <NotificationRow
+                      key={n.id}
+                      n={n}
+                      isSelected={selectedId === n.id}
+                      onClick={() => selectNotif(n)}
+                      onArchive={() => activeTab === 'archiv' ? unarchiveNotif(n.id) : archiveNotif(n.id)}
+                      onToggleRead={() => toggleRead(n)}
+                      isArchiveTab={activeTab === 'archiv'}
+                    />
+                  ))}
+                  <div ref={listEndRef} className="h-4" />
+                </div>
+              )}
+            </ScrollArea>
           </div>
+
+          {/* Right Panel (desktop) */}
+          {!isMobile && selected && (
+            <div className="flex-1 bg-background">
+              <DetailPanel n={selected} onBack={() => setSelectedId(null)} onArchive={activeTab === 'archiv' ? unarchiveNotif : archiveNotif} onToggleRead={toggleRead} navigate={navigate} isArchiveTab={activeTab === 'archiv'} />
+            </div>
+          )}
+          {!isMobile && !selected && (
+            <div className="flex-1 bg-background flex items-center justify-center">
+              <div className="text-center text-muted-foreground">
+                <Mail className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p className="text-sm">Nachricht auswählen</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
