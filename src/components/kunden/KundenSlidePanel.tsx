@@ -419,6 +419,10 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
                     Meta Ads{metaMatches.length > 1 ? ` (${metaMatches.length})` : ''}
                   </TabsTrigger>
                 )}
+                <TabsTrigger value="close" className="flex-1 gap-1.5">
+                  <Briefcase className="h-3.5 w-3.5" />
+                  Close{closeMatches.filter(m => m.match_type !== 'rejected').length > 0 ? ` (${closeMatches.filter(m => m.match_type !== 'rejected').length})` : ''}
+                </TabsTrigger>
               </TabsList>
             </div>
 
