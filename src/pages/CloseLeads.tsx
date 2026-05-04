@@ -48,7 +48,7 @@ export default function CloseLeads() {
       .from('close_leads')
       .select('*')
       .order('date_updated', { ascending: false })
-      .limit(5000);
+      .range(0, 4999);
     if (error) toast.error('Fehler beim Laden: ' + error.message);
     else {
       setLeads((data || []) as CloseLead[]);
