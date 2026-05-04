@@ -151,7 +151,7 @@ function MitarbeiterSelect({ selected, allMembers, onChange }: {
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const getInitials = (name: string) => name.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
+  const getInitials = (name?: string | null) => (!name ? '??' : name.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase());
 
   return (
     <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
