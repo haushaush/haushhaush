@@ -54,9 +54,9 @@ export function CloseMatchingCard() {
         .order("match_confidence", { ascending: false }),
       supabase
         .from("kunde_close_deals")
-        .select("id, close_lead_id, close_lead_name, match_type, match_confidence, match_reason, date_won, opportunity_value, opportunity_currency, created_at, status_category, kunde:close_deals(id, unternehmen, client_name, vor_nachname)")
+        .select("id, kunde_id, close_lead_id, close_lead_name, match_type, match_confidence, match_reason, date_won, opportunity_value, opportunity_currency, matched_at, status_category")
         .neq("match_type", "rejected")
-        .order("created_at", { ascending: false }),
+        .order("matched_at", { ascending: false }),
     ]);
 
     const rows = (pen || []) as PendingRow[];
