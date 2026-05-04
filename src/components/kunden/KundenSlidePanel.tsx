@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2, FolderKanban, Facebook, Briefcase } from 'lucide-react';
+import { X, ExternalLink, AlertTriangle, Save, CalendarIcon, Trash2, FolderKanban, Facebook, Briefcase, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -254,7 +254,7 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
 
   const reloadCloseMatches = useCallback(() => {
     if (!d?.id) return;
-    supabase.from('kunde_close_deals' as any).select('*').eq('kunde_id', d.id)
+    supabase.from('kunde_close_deals' as any).select('*, status_category, close_status_label').eq('kunde_id', d.id)
       .then(({ data }) => setCloseMatches((data as any[]) || []));
   }, [d?.id]);
 
@@ -421,7 +421,18 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
                 )}
                 <TabsTrigger value="close" className="flex-1 gap-1.5">
                   <Briefcase className="h-3.5 w-3.5" />
-                  Close{closeMatches.filter(m => m.match_type !== 'rejected').length > 0 ? ` (${closeMatches.filter(m => m.match_type !== 'rejected').length})` : ''}
+                  Close
+                  {(() => {
+                    const active = closeMatches.filter(m => m.match_type !== 'rejected');
+                    const wonCount = active.filter(m => (m.status_category || 'won') === 'won').length;
+                    const upsellCount = active.filter(m => m.status_category === 'upsell').length;
+                    return (
+                      <>
+                        {wonCount > 0 && <Badge variant="outline" className="rounded-[4px] text-[9px] ml-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1 py-0">{wonCount}</Badge>}
+                        {upsellCount > 0 && <Badge variant="outline" className="rounded-[4px] text-[9px] ml-0.5 border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300 px-1 py-0">⚡{upsellCount}</Badge>}
+                      </>
+                    );
+                  })()}
                 </TabsTrigger>
               </TabsList>
             </div>

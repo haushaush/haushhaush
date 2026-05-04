@@ -1,10 +1,11 @@
 // Admin card for the Close Leads ↔ Notion-Kunden matching engine.
+// Accepts a statusFilter prop ('won' | 'upsell') to differentiate matching categories.
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Play, Check, X as XIcon, Briefcase, RotateCcw } from "lucide-react";
+import { Loader2, Play, Check, X as XIcon, Briefcase, RotateCcw, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { getKundeDisplayName } from "@/lib/kunde-display-name";
 import {
@@ -32,7 +33,29 @@ interface PendingRow {
   kunde?: { client_name: string; unternehmen: string | null; vor_nachname: string | null };
 }
 
-export function CloseMatchingCard() {
+interface CloseMatchingCardProps {
+  statusFilter?: "won" | "upsell";
+}
+
+const CONFIG = {
+  won: {
+    title: "Close Won Deals ↔ Kunden Matching",
+    icon: Briefcase,
+    iconClass: "text-primary",
+    toastRunning: "Close Won-Matching läuft…",
+  },
+  upsell: {
+    title: "Close Upsell Leads ↔ Kunden Matching",
+    icon: TrendingUp,
+    iconClass: "text-blue-500",
+    toastRunning: "Close Upsell-Matching läuft…",
+  },
+};
+
+export function CloseMatchingCard({ statusFilter = "won" }: CloseMatchingCardProps) {
+  const cfg = CONFIG[statusFilter];
+  const Icon = cfg.icon;
+
   const [pending, setPending] = useState<PendingRow[]>([]);
   const [active, setActive] = useState<CloseActiveMatch[]>([]);
   const [loadingActive, setLoadingActive] = useState(true);
@@ -46,11 +69,13 @@ export function CloseMatchingCard() {
         .from("pending_close_matches")
         .select("id, kunde_id, close_lead_id, close_lead_name, match_confidence, match_reason, match_type, ai_reasoning")
         .eq("status", "pending")
+        .eq("status_category", statusFilter)
         .order("match_confidence", { ascending: false }),
       supabase
         .from("kunde_close_deals")
-        .select("id, close_lead_id, close_lead_name, match_type, match_confidence, match_reason, date_won, opportunity_value, opportunity_currency, created_at, kunde:close_deals(id, unternehmen, client_name, vor_nachname)")
+        .select("id, close_lead_id, close_lead_name, match_type, match_confidence, match_reason, date_won, opportunity_value, opportunity_currency, created_at, status_category, kunde:close_deals(id, unternehmen, client_name, vor_nachname)")
         .neq("match_type", "rejected")
+        .eq("status_category", statusFilter)
         .order("created_at", { ascending: false }),
     ]);
 
@@ -67,7 +92,7 @@ export function CloseMatchingCard() {
     setPending(rows);
     setActive((act || []) as unknown as CloseActiveMatch[]);
     setLoadingActive(false);
-  }, []);
+  }, [statusFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -78,10 +103,10 @@ export function CloseMatchingCard() {
 
   const runMatching = async () => {
     setRunning(true);
-    const t = toast.loading("Close Matching läuft…");
+    const t = toast.loading(cfg.toastRunning);
     try {
       const { data, error } = await supabase.functions.invoke("kunden-close-match", {
-        body: { trigger: "manual" },
+        body: { trigger: "manual", statusFilter },
       });
       if (error || !data?.ok) throw new Error(error?.message || data?.error || "Matching fehlgeschlagen");
       toast.success(
@@ -100,16 +125,19 @@ export function CloseMatchingCard() {
     setRunning(true);
     const t = toast.loading("Auto-Matches werden gelöscht und neu berechnet…");
     try {
-      // Wipe non-manual/non-rejected matches and pending suggestions
       const [{ error: delAuto }, { error: delPending }] = await Promise.all([
-        supabase.from("kunde_close_deals").delete().in("match_type", ["auto_email", "auto_name", "auto_company", "auto_phone", "ai_suggested"]),
-        supabase.from("pending_close_matches").delete().eq("status", "pending"),
+        supabase.from("kunde_close_deals").delete()
+          .eq("status_category", statusFilter)
+          .in("match_type", ["auto_email", "auto_name", "auto_company", "auto_phone", "ai_suggested"]),
+        supabase.from("pending_close_matches").delete()
+          .eq("status", "pending")
+          .eq("status_category", statusFilter),
       ]);
       if (delAuto) throw delAuto;
       if (delPending) throw delPending;
 
       const { data, error } = await supabase.functions.invoke("kunden-close-match", {
-        body: { trigger: "manual-rematch" },
+        body: { trigger: "manual-rematch", statusFilter },
       });
       if (error || !data?.ok) throw new Error(error?.message || data?.error || "Matching fehlgeschlagen");
       toast.success(
@@ -127,12 +155,10 @@ export function CloseMatchingCard() {
   const accept = async (row: PendingRow) => {
     setBusyId(row.id);
     try {
-      // Find the won opportunity for this lead to get the opportunity details
       const { data: opps } = await supabase
         .from("close_opportunities")
-        .select("id, lead_id, lead_name, value, value_currency, date_won")
+        .select("id, lead_id, lead_name, value, value_currency, date_won, status_label")
         .eq("lead_id", row.close_lead_id)
-        .eq("status_type", "won")
         .limit(1);
       
       const opp = opps?.[0];
@@ -147,6 +173,8 @@ export function CloseMatchingCard() {
         match_type: row.match_type || "auto_name",
         match_confidence: (row.match_confidence || 0) / 100,
         match_reason: row.match_reason,
+        close_status_label: opp?.status_label || (statusFilter === "won" ? "Won" : "Upsell"),
+        status_category: statusFilter,
       });
       if (!error) {
         await supabase.from("pending_close_matches").update({
@@ -185,9 +213,8 @@ export function CloseMatchingCard() {
       try {
         const { data: opps } = await supabase
           .from("close_opportunities")
-          .select("id, lead_id, lead_name, value, value_currency, date_won")
+          .select("id, lead_id, lead_name, value, value_currency, date_won, status_label")
           .eq("lead_id", row.close_lead_id)
-          .eq("status_type", "won")
           .limit(1);
         const opp = opps?.[0];
         const { error } = await supabase.from("kunde_close_deals").upsert({
@@ -201,6 +228,8 @@ export function CloseMatchingCard() {
           match_type: row.match_type || "auto_name",
           match_confidence: (row.match_confidence || 0) / 100,
           match_reason: row.match_reason,
+          close_status_label: opp?.status_label || (statusFilter === "won" ? "Won" : "Upsell"),
+          status_category: statusFilter,
         }, { onConflict: "kunde_id,close_opportunity_id", ignoreDuplicates: true });
         if (!error) success++;
       } catch { /* skip */ }
@@ -218,8 +247,8 @@ export function CloseMatchingCard() {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <CardTitle className="text-base flex items-center gap-2">
-            <Briefcase className="h-4 w-4 text-primary" />
-            Close Leads ↔ Kunden Matching
+            <Icon className={`h-4 w-4 ${cfg.iconClass}`} />
+            {cfg.title}
           </CardTitle>
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={runMatching} disabled={running}>
