@@ -168,11 +168,13 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { signOut, user, isAdminOrManager, hasRole } = useAuth();
   const isAdmin = hasRole('admin');
-  const visibleNavItems = navItems.filter(item => {
+  const filterByPermission = (item: NavItem) => {
     if (item.adminOnly) return isAdmin;
     if (item.url.startsWith('/onepage-leads')) return isAdmin;
     return true;
-  });
+  };
+  const visibleNavItems = navItems.filter(filterByPermission);
+  const visibleToolsItems = toolsNavItems.filter(filterByPermission);
   const { displayName, initials, avatarUrl } = useProfile();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [pendingCount, setPendingCount] = useState(0);
@@ -185,12 +187,19 @@ export function AppSidebar() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
     const result = { ...saved };
-    navItems.forEach(item => {
+    const allItems = [...navItems, ...toolsNavItems];
+    allItems.forEach(item => {
       if (item.children) {
         const isActive = item.children.some(c => location.pathname === c.url) || location.pathname.startsWith(item.url + '/');
         if (isActive) result[item.title] = true;
       }
     });
+    // Auto-open Tools category if any tool item is active
+    const anyToolActive = toolsNavItems.some(t =>
+      location.pathname.startsWith(t.url + '/') || location.pathname === t.url ||
+      t.children?.some(c => location.pathname === c.url)
+    );
+    if (anyToolActive) result['__tools'] = true;
     return result;
   });
 
