@@ -48,7 +48,7 @@ export interface CloseActiveMatch {
   date_won: string | null;
   opportunity_value: number | null;
   opportunity_currency: string | null;
-  created_at: string;
+  matched_at: string;
   kunde: {
     id: string;
     unternehmen: string | null;
@@ -58,7 +58,7 @@ export interface CloseActiveMatch {
 }
 
 type FilterKey = "all" | "auto" | "ai" | "manual";
-type SortKey = "kunde" | "lead" | "type" | "confidence" | "created_at";
+type SortKey = "kunde" | "lead" | "type" | "confidence" | "matched_at";
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 25;
@@ -135,7 +135,7 @@ interface Props {
 export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("created_at");
+  const [sortKey, setSortKey] = useState<SortKey>("matched_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
   const [removeTarget, setRemoveTarget] = useState<CloseActiveMatch | null>(null);
@@ -165,7 +165,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
         case "lead": av = (a.close_lead_name || "").toLowerCase(); bv = (b.close_lead_name || "").toLowerCase(); break;
         case "type": av = a.match_type || ""; bv = b.match_type || ""; break;
         case "confidence": av = a.match_confidence ?? -1; bv = b.match_confidence ?? -1; break;
-        case "created_at": default: av = new Date(a.created_at).getTime(); bv = new Date(b.created_at).getTime();
+        case "matched_at": default: av = new Date(a.matched_at).getTime(); bv = new Date(b.matched_at).getTime();
       }
       if (av < bv) return sortDir === "asc" ? -1 : 1;
       if (av > bv) return sortDir === "asc" ? 1 : -1;
@@ -178,7 +178,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
 
   const handleSort = (k: SortKey) => {
     if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(k); setSortDir(k === "created_at" || k === "confidence" ? "desc" : "asc"); }
+    else { setSortKey(k); setSortDir(k === "matched_at" || k === "confidence" ? "desc" : "asc"); }
   };
 
   const exportCsv = () => {
@@ -186,7 +186,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
     const rows = filtered.map((m) => [
       getKundeDisplayName(m.kunde), m.kunde?.id || "", m.close_lead_name || "", m.close_lead_id,
       m.match_type || "", m.match_confidence != null ? `${Math.round(m.match_confidence * 100)}%` : "",
-      new Date(m.created_at).toLocaleString("de-DE"),
+      new Date(m.matched_at).toLocaleString("de-DE"),
     ]);
     const escape = (v: string) => { const s = String(v ?? ""); return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const csv = [header, ...rows].map((r) => r.map(escape).join(";")).join("\n");
@@ -275,7 +275,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
                     <SortHeader label="Close Lead" sortKey="lead" active={sortKey} dir={sortDir} onSort={handleSort} />
                     <SortHeader label="Match-Typ" sortKey="type" active={sortKey} dir={sortDir} onSort={handleSort} />
                     <SortHeader label="Confidence" sortKey="confidence" active={sortKey} dir={sortDir} onSort={handleSort} align="right" />
-                    <SortHeader label="Verknüpft am" sortKey="created_at" active={sortKey} dir={sortDir} onSort={handleSort} />
+                    <SortHeader label="Verknüpft am" sortKey="matched_at" active={sortKey} dir={sortDir} onSort={handleSort} />
                     <th className="px-3 py-2 text-right font-medium w-16">Aktion</th>
                   </tr>
                 </thead>
@@ -301,9 +301,9 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
                         <TooltipProvider delayDuration={200}>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="text-xs text-muted-foreground cursor-default">{relativeTime(row.created_at)}</span>
+                              <span className="text-xs text-muted-foreground cursor-default">{relativeTime(row.matched_at)}</span>
                             </TooltipTrigger>
-                            <TooltipContent>{fullDate(row.created_at)}</TooltipContent>
+                            <TooltipContent>{fullDate(row.matched_at)}</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </td>

@@ -54,9 +54,9 @@ export function CloseMatchingCard() {
         .order("match_confidence", { ascending: false }),
       supabase
         .from("kunde_close_deals")
-        .select("id, close_lead_id, close_lead_name, match_type, match_confidence, match_reason, date_won, opportunity_value, opportunity_currency, created_at, status_category, kunde:close_deals(id, unternehmen, client_name, vor_nachname)")
+        .select("id, kunde_id, close_lead_id, close_lead_name, match_type, match_confidence, match_reason, date_won, opportunity_value, opportunity_currency, matched_at, status_category")
         .neq("match_type", "rejected")
-        .order("created_at", { ascending: false }),
+        .order("matched_at", { ascending: false }),
     ]);
 
     const rows = (pen || []) as PendingRow[];
@@ -70,7 +70,19 @@ export function CloseMatchingCard() {
       rows.forEach((r) => { r.kunde = map.get(r.kunde_id); });
     }
     setPending(rows);
-    setActive((act || []) as unknown as CloseActiveMatch[]);
+
+    // Enrich active matches with kunde data
+    const activeRows = (act || []) as any[];
+    if (activeRows.length > 0) {
+      const kundeIds = Array.from(new Set(activeRows.map((r: any) => r.kunde_id)));
+      const { data: kundenAct } = await supabase
+        .from("close_deals")
+        .select("id, client_name, unternehmen, vor_nachname")
+        .in("id", kundeIds);
+      const kundeMap = new Map((kundenAct || []).map((k: any) => [k.id, k]));
+      activeRows.forEach((r: any) => { r.kunde = kundeMap.get(r.kunde_id) || null; });
+    }
+    setActive(activeRows as unknown as CloseActiveMatch[]);
     setLoadingActive(false);
   }, []);
 
