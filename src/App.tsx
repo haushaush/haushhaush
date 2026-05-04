@@ -165,8 +165,8 @@ const App = () => (
                 <Route path="/hr/mitarbeiter/:id" element={<DL><MitarbeiterDetail /></DL>} />
                 <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
                 <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
-                <Route path="/email" element={<DL><EmailPage mode="personal" /></DL>} />
-                <Route path="/email/:slug" element={<DL><EmailPage mode="personal" /></DL>} />
+                <Route path="/email" element={<Navigate to="/nachrichten?tab=email" replace />} />
+                <Route path="/email/:slug" element={<Navigate to="/nachrichten?tab=email" replace />} />
                 <Route path="/email-automatisierung" element={<AdminRoute><DL><EmailPage mode="shared" /></DL></AdminRoute>} />
                 <Route path="/email-automatisierung/regeln" element={<AdminRoute><DL><EmailAutomationRules /></DL></AdminRoute>} />
                 <Route path="/email-automatisierung/:slug" element={<AdminRoute><DL><EmailPage mode="shared" /></DL></AdminRoute>} />
