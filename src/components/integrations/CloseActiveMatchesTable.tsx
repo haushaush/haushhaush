@@ -151,21 +151,27 @@ interface Props {
 
 export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<FilterKey>("all");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("matched_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
   const [removeTarget, setRemoveTarget] = useState<CloseActiveMatch | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { setPage(1); }, [filter, search]);
+  useEffect(() => { setPage(1); }, [sourceFilter, statusFilter, search]);
+
+  const wonCount = matches.filter((m) => (m.status_category || "won") === "won").length;
+  const upsellCount = matches.filter((m) => m.status_category === "upsell").length;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let rows = matches;
-    if (filter === "auto") rows = rows.filter((m) => (m.match_type || "").startsWith("auto"));
-    else if (filter === "ai") rows = rows.filter((m) => m.match_type === "ai_suggested");
-    else if (filter === "manual") rows = rows.filter((m) => m.match_type === "manual");
+    if (sourceFilter === "auto") rows = rows.filter((m) => (m.match_type || "").startsWith("auto"));
+    else if (sourceFilter === "ai") rows = rows.filter((m) => m.match_type === "ai_suggested");
+    else if (sourceFilter === "manual") rows = rows.filter((m) => m.match_type === "manual");
+    if (statusFilter === "won") rows = rows.filter((m) => (m.status_category || "won") === "won");
+    else if (statusFilter === "upsell") rows = rows.filter((m) => m.status_category === "upsell");
     if (q) {
       rows = rows.filter((m) => {
         const kundeName = getKundeDisplayName(m.kunde).toLowerCase();
@@ -180,6 +186,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
       switch (sortKey) {
         case "kunde": av = getKundeDisplayName(a.kunde).toLowerCase(); bv = getKundeDisplayName(b.kunde).toLowerCase(); break;
         case "lead": av = (a.close_lead_name || "").toLowerCase(); bv = (b.close_lead_name || "").toLowerCase(); break;
+        case "status": av = a.status_category || "won"; bv = b.status_category || "won"; break;
         case "type": av = a.match_type || ""; bv = b.match_type || ""; break;
         case "confidence": av = a.match_confidence ?? -1; bv = b.match_confidence ?? -1; break;
         case "matched_at": default: av = new Date(a.matched_at).getTime(); bv = new Date(b.matched_at).getTime();
@@ -188,7 +195,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
       if (av > bv) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [matches, search, filter, sortKey, sortDir]);
+  }, [matches, search, sourceFilter, statusFilter, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
