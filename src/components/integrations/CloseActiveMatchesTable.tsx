@@ -49,6 +49,7 @@ export interface CloseActiveMatch {
   opportunity_value: number | null;
   opportunity_currency: string | null;
   matched_at: string;
+  status_category?: string | null;
   kunde: {
     id: string;
     unternehmen: string | null;
@@ -57,8 +58,9 @@ export interface CloseActiveMatch {
   } | null;
 }
 
-type FilterKey = "all" | "auto" | "ai" | "manual";
-type SortKey = "kunde" | "lead" | "type" | "confidence" | "matched_at";
+type SourceFilter = "all" | "auto" | "ai" | "manual";
+type StatusFilter = "all" | "won" | "upsell";
+type SortKey = "kunde" | "lead" | "status" | "type" | "confidence" | "matched_at";
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 25;
