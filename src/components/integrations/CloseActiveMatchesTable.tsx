@@ -108,6 +108,21 @@ function MatchTypeBadge({ type }: { type: string | null }) {
   );
 }
 
+function StatusBadge({ category }: { category: string | null | undefined }) {
+  if (category === "upsell") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[4px] bg-blue-500/15 text-blue-600 dark:text-blue-400 font-medium">
+        💡 Upsell
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[4px] bg-green-500/15 text-green-600 dark:text-green-400 font-medium">
+      🏆 Won
+    </span>
+  );
+}
+
 function SortHeader({
   label, sortKey, active, dir, onSort, align = "left", className,
 }: {
