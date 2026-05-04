@@ -312,6 +312,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
                   <tr>
                     <SortHeader label="Kunde" sortKey="kunde" active={sortKey} dir={sortDir} onSort={handleSort} />
                     <SortHeader label="Close Lead" sortKey="lead" active={sortKey} dir={sortDir} onSort={handleSort} />
+                    <SortHeader label="Status" sortKey="status" active={sortKey} dir={sortDir} onSort={handleSort} />
                     <SortHeader label="Match-Typ" sortKey="type" active={sortKey} dir={sortDir} onSort={handleSort} />
                     <SortHeader label="Confidence" sortKey="confidence" active={sortKey} dir={sortDir} onSort={handleSort} align="right" />
                     <SortHeader label="Verknüpft am" sortKey="matched_at" active={sortKey} dir={sortDir} onSort={handleSort} />
