@@ -937,7 +937,25 @@ export default function Einstellungen() {
         </TabsContent>
         )}
 
-        {/* ═══════ BRANDING TAB ═══════ */}
+        {/* ═══════ VERKNÜPFUNGEN TAB ═══════ */}
+        {isAdmin && (
+        <TabsContent value="verknuepfungen" className="mt-6 space-y-8">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <GitMerge className="h-5 w-5 text-primary" />
+              Verknüpfungen
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Datenquellen mit Kunden cross-referenzieren
+            </p>
+          </div>
+
+          <MetaMatchingCard />
+          <CloseMatchingCard />
+        </TabsContent>
+        )}
+
+
         <TabsContent value="branding" className="mt-4 space-y-4">
           <Card className="border-border bg-card">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><Palette className="h-4 w-4 text-primary" />Logo & Branding</CardTitle></CardHeader>
