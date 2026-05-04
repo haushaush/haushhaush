@@ -288,11 +288,11 @@ export function CloseMatchingCard() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
-          <span>{autoCount} automatisch</span>
+          <span>{active.length} verknüpft</span>
           <span>·</span>
-          <span>{aiCount} via KI</span>
+          <span>🏆 {wonActiveCount} Won</span>
           <span>·</span>
-          <span>{manualCount} manuell</span>
+          <span>💡 {upsellActiveCount} Upsell</span>
           <span>·</span>
           <span>{pending.length} zur Prüfung</span>
           {pending.length > 0 && (
