@@ -2522,6 +2522,59 @@ export type Database = {
           },
         ]
       }
+      pending_close_matches: {
+        Row: {
+          ai_reasoning: string | null
+          close_lead_id: string
+          close_lead_name: string | null
+          created_at: string
+          id: string
+          kunde_id: string
+          match_confidence: number
+          match_reason: string | null
+          match_type: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          ai_reasoning?: string | null
+          close_lead_id: string
+          close_lead_name?: string | null
+          created_at?: string
+          id?: string
+          kunde_id: string
+          match_confidence: number
+          match_reason?: string | null
+          match_type?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          ai_reasoning?: string | null
+          close_lead_id?: string
+          close_lead_name?: string | null
+          created_at?: string
+          id?: string
+          kunde_id?: string
+          match_confidence?: number
+          match_reason?: string | null
+          match_type?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_close_matches_kunde_id_fkey"
+            columns: ["kunde_id"]
+            isOneToOne: false
+            referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_meta_matches: {
         Row: {
           confidence: number
