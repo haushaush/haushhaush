@@ -206,8 +206,8 @@ Deno.serve(async (req) => {
           match_type: matchType,
           match_confidence: confidence,
           match_reason: reason,
-          close_status_label: opp.status_label || (statusFilter === "won" ? "Won" : "Upsell"),
-          status_category: statusFilter,
+          close_status_label: opp.status_label || "Won",
+          status_category: inferCategory(opp.status_label, opp.status_type),
         });
         log(`AUTO-MATCH [${statusFilter}]: "${kundeName}" ↔ "${leadName}" [${matchType} ${confidence}]`);
         autoMatched++;
@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
             match_reason: reason,
             match_type: matchType,
             status: "pending",
-            status_category: statusFilter,
+            status_category: inferCategory(opp.status_label, opp.status_type),
           });
           pendingKeys.add(pendingKey);
           log(`PENDING [${statusFilter}]: "${kundeName}" ↔ "${leadName}" [${matchType} ${confidence}]`);
