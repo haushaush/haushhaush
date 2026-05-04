@@ -48,7 +48,7 @@ export default function CloseLeads() {
       .from('close_leads')
       .select('*')
       .order('date_updated', { ascending: false })
-      .limit(1000);
+      .limit(5000);
     if (error) toast.error('Fehler beim Laden: ' + error.message);
     else {
       setLeads((data || []) as CloseLead[]);
@@ -72,12 +72,15 @@ export default function CloseLeads() {
     setSyncing(true);
     try {
       let skip = 0;
-      const limit = 100;
+      const limit = 200;
+      const maxRecords = 5000;
       let total = 0;
       let hasMore = true;
-      while (hasMore) {
+      let pageCount = 0;
+      while (hasMore && total < maxRecords) {
+        pageCount++;
         const { data, error } = await supabase.functions.invoke('close-proxy', {
-          body: { endpoint: `/lead/?_limit=${limit}&_skip=${skip}`, method: 'GET' },
+          body: { endpoint: `/lead/?_limit=${limit}&_skip=${skip}&_order_by=-date_updated`, method: 'GET' },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
@@ -106,7 +109,10 @@ export default function CloseLeads() {
 
         hasMore = data?.has_more === true;
         skip += limit;
-        if (skip > 5000) break;
+
+        if (pageCount % 3 === 0) {
+          toast.info(`Sync läuft… ${total} Leads geladen`, { id: 'lead-sync-progress' });
+        }
       }
       toast.success(`${total} Leads synchronisiert`);
       await loadFromCache();
