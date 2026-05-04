@@ -254,7 +254,7 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
 
   const reloadCloseMatches = useCallback(() => {
     if (!d?.id) return;
-    supabase.from('kunde_close_deals' as any).select('*').eq('kunde_id', d.id)
+    supabase.from('kunde_close_deals' as any).select('*, status_category, close_status_label').eq('kunde_id', d.id)
       .then(({ data }) => setCloseMatches((data as any[]) || []));
   }, [d?.id]);
 
