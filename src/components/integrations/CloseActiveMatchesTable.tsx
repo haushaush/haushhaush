@@ -49,6 +49,7 @@ export interface CloseActiveMatch {
   opportunity_value: number | null;
   opportunity_currency: string | null;
   matched_at: string;
+  status_category?: string | null;
   kunde: {
     id: string;
     unternehmen: string | null;
@@ -57,8 +58,9 @@ export interface CloseActiveMatch {
   } | null;
 }
 
-type FilterKey = "all" | "auto" | "ai" | "manual";
-type SortKey = "kunde" | "lead" | "type" | "confidence" | "matched_at";
+type SourceFilter = "all" | "auto" | "ai" | "manual";
+type StatusFilter = "all" | "won" | "upsell";
+type SortKey = "kunde" | "lead" | "status" | "type" | "confidence" | "matched_at";
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 25;
@@ -106,6 +108,21 @@ function MatchTypeBadge({ type }: { type: string | null }) {
   );
 }
 
+function StatusBadge({ category }: { category: string | null | undefined }) {
+  if (category === "upsell") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[4px] bg-blue-500/15 text-blue-600 dark:text-blue-400 font-medium">
+        💡 Upsell
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[4px] bg-green-500/15 text-green-600 dark:text-green-400 font-medium">
+      🏆 Won
+    </span>
+  );
+}
+
 function SortHeader({
   label, sortKey, active, dir, onSort, align = "left", className,
 }: {
@@ -134,21 +151,27 @@ interface Props {
 
 export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<FilterKey>("all");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("matched_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(1);
   const [removeTarget, setRemoveTarget] = useState<CloseActiveMatch | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { setPage(1); }, [filter, search]);
+  useEffect(() => { setPage(1); }, [sourceFilter, statusFilter, search]);
+
+  const wonCount = matches.filter((m) => (m.status_category || "won") === "won").length;
+  const upsellCount = matches.filter((m) => m.status_category === "upsell").length;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let rows = matches;
-    if (filter === "auto") rows = rows.filter((m) => (m.match_type || "").startsWith("auto"));
-    else if (filter === "ai") rows = rows.filter((m) => m.match_type === "ai_suggested");
-    else if (filter === "manual") rows = rows.filter((m) => m.match_type === "manual");
+    if (sourceFilter === "auto") rows = rows.filter((m) => (m.match_type || "").startsWith("auto"));
+    else if (sourceFilter === "ai") rows = rows.filter((m) => m.match_type === "ai_suggested");
+    else if (sourceFilter === "manual") rows = rows.filter((m) => m.match_type === "manual");
+    if (statusFilter === "won") rows = rows.filter((m) => (m.status_category || "won") === "won");
+    else if (statusFilter === "upsell") rows = rows.filter((m) => m.status_category === "upsell");
     if (q) {
       rows = rows.filter((m) => {
         const kundeName = getKundeDisplayName(m.kunde).toLowerCase();
@@ -163,6 +186,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
       switch (sortKey) {
         case "kunde": av = getKundeDisplayName(a.kunde).toLowerCase(); bv = getKundeDisplayName(b.kunde).toLowerCase(); break;
         case "lead": av = (a.close_lead_name || "").toLowerCase(); bv = (b.close_lead_name || "").toLowerCase(); break;
+        case "status": av = a.status_category || "won"; bv = b.status_category || "won"; break;
         case "type": av = a.match_type || ""; bv = b.match_type || ""; break;
         case "confidence": av = a.match_confidence ?? -1; bv = b.match_confidence ?? -1; break;
         case "matched_at": default: av = new Date(a.matched_at).getTime(); bv = new Date(b.matched_at).getTime();
@@ -171,7 +195,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
       if (av > bv) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [matches, search, filter, sortKey, sortDir]);
+  }, [matches, search, sourceFilter, statusFilter, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -182,9 +206,10 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
   };
 
   const exportCsv = () => {
-    const header = ["Kunde", "Kunde ID", "Close Lead", "Close Lead ID", "Match-Typ", "Confidence", "Verknuepft am"];
+    const header = ["Kunde", "Kunde ID", "Close Lead", "Close Lead ID", "Status", "Match-Typ", "Confidence", "Verknuepft am"];
     const rows = filtered.map((m) => [
       getKundeDisplayName(m.kunde), m.kunde?.id || "", m.close_lead_name || "", m.close_lead_id,
+      (m.status_category || "won") === "upsell" ? "Upsell" : "Won",
       m.match_type || "", m.match_confidence != null ? `${Math.round(m.match_confidence * 100)}%` : "",
       new Date(m.matched_at).toLocaleString("de-DE"),
     ]);
@@ -217,11 +242,16 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
     }
   };
 
-  const filterChips: { key: FilterKey; label: string }[] = [
-    { key: "all", label: "Alle" },
+  const sourceChips: { key: SourceFilter; label: string }[] = [
+    { key: "all", label: `Alle ${matches.length}` },
     { key: "auto", label: "🤖 Auto" },
     { key: "ai", label: "✨ KI" },
     { key: "manual", label: "✓ Manuell" },
+  ];
+
+  const statusChips: { key: StatusFilter; label: string }[] = [
+    { key: "won", label: `🏆 Won ${wonCount}` },
+    { key: "upsell", label: `💡 Upsell ${upsellCount}` },
   ];
 
   return (
@@ -236,11 +266,20 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Suchen…" className="h-8 pl-7 w-48 text-xs" />
           </div>
           <div className="flex items-center gap-1 rounded-md bg-muted/40 p-0.5">
-            {filterChips.map((c) => (
+            {statusChips.map((c) => (
               <button
-                key={c.key} onClick={() => setFilter(c.key)}
+                key={c.key} onClick={() => setStatusFilter(statusFilter === c.key ? "all" : c.key)}
                 className={cn("px-2.5 py-1 rounded-[4px] text-[11px] font-medium transition-colors",
-                  filter === c.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                  statusFilter === c.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+              >{c.label}</button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1 rounded-md bg-muted/40 p-0.5">
+            {sourceChips.map((c) => (
+              <button
+                key={c.key} onClick={() => setSourceFilter(c.key)}
+                className={cn("px-2.5 py-1 rounded-[4px] text-[11px] font-medium transition-colors",
+                  sourceFilter === c.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
               >{c.label}</button>
             ))}
           </div>
@@ -273,6 +312,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
                   <tr>
                     <SortHeader label="Kunde" sortKey="kunde" active={sortKey} dir={sortDir} onSort={handleSort} />
                     <SortHeader label="Close Lead" sortKey="lead" active={sortKey} dir={sortDir} onSort={handleSort} />
+                    <SortHeader label="Status" sortKey="status" active={sortKey} dir={sortDir} onSort={handleSort} />
                     <SortHeader label="Match-Typ" sortKey="type" active={sortKey} dir={sortDir} onSort={handleSort} />
                     <SortHeader label="Confidence" sortKey="confidence" active={sortKey} dir={sortDir} onSort={handleSort} align="right" />
                     <SortHeader label="Verknüpft am" sortKey="matched_at" active={sortKey} dir={sortDir} onSort={handleSort} />
@@ -293,6 +333,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
                         <p className="text-xs font-medium leading-tight">{row.close_lead_name || "–"}</p>
                         <p className="text-[10px] font-mono text-muted-foreground leading-tight">{row.close_lead_id}</p>
                       </td>
+                      <td className="px-3 py-1.5"><StatusBadge category={row.status_category} /></td>
                       <td className="px-3 py-1.5"><MatchTypeBadge type={row.match_type} /></td>
                       <td className="px-3 py-1.5 text-right text-xs tabular-nums">
                         {row.match_type === "manual" || row.match_confidence == null ? "—" : `${Math.round(row.match_confidence * 100)}%`}
