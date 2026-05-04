@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail, Globe, BarChart3, Video, MonitorPlay } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail, Globe, BarChart3, Video, MonitorPlay, Wrench } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -33,6 +33,61 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    title: 'Sales', url: '/sales', icon: TrendingUp,
+    children: [
+      { title: 'KPIs & Leaderboard', url: '/sales/kpis' },
+      { title: 'Vorqualifikation', url: '/sales/vorquali' },
+      { title: 'Leadkauf', url: '/sales/leads' },
+      { title: 'Cold Mail', url: '/sales/coldmail' },
+      { title: 'Referenz Showcase', url: '/sales/referenz-showcase' },
+      { title: '— Websites', url: '/sales/referenz-showcase/websites' },
+      { title: '— Ad Creatives', url: '/sales/referenz-showcase/werbeanzeigen' },
+      { title: '— Ad Performance', url: '/sales/referenz-showcase/ad-performance' },
+    ],
+  },
+  {
+    title: 'Projekte & Aufgaben', url: '/projekte', icon: ClipboardList,
+    children: [
+      { title: 'Alle Projekte', url: '/projekte' },
+      { title: 'Meine Aufgaben', url: '/projekte/aufgaben' },
+      { title: 'Laufzeit Projekte', url: '/projekte/laufzeiten' },
+    ],
+  },
+  // "Tools" is rendered separately between here and Fulfillment
+  {
+    title: 'Fulfillment', url: '/fulfillment', icon: Target,
+    children: [
+      { title: 'Ad Performance', url: '/fulfillment/ads' },
+      { title: 'Mediabuying', url: '/fulfillment/mediabuying' },
+      { title: 'Customer Success', url: '/fulfillment/customer-success' },
+    ],
+  },
+  {
+    title: 'Finanzen', url: '/finanzen', icon: Euro,
+    children: [
+      { title: 'Übersicht', url: '/finanzen' },
+      { title: 'Rechnungen', url: '/finanzen/rechnungen' },
+      { title: 'Belege', url: '/finanzen/belege' },
+      { title: 'Buchhaltung', url: '/finanzen/buchhaltung' },
+      { title: 'Werbebudgets', url: '/finanzen/werbebudgets' },
+    ],
+  },
+  {
+    title: 'Team & HR', url: '/hr', icon: UserCircle,
+    children: [
+      { title: 'Mitarbeiter', url: '/hr/mitarbeiter' },
+      { title: 'Verträge & Gehalt', url: '/hr/vertraege' },
+      { title: 'Probewoche', url: '/hr/probewoche' },
+      { title: 'Akademie', url: '/hr/akademie' },
+      { title: 'Coaching', url: '/hr/coaching' },
+      { title: 'Wiki & SOPs', url: '/hr/wiki' },
+    ],
+  },
+];
+
+// Items that go under the "Tools" expandable category
+const toolsNavItems: NavItem[] = [
+  {
     title: 'Close', url: '/close', icon: Briefcase,
     children: [
       { title: 'Leads', url: '/close/leads' },
@@ -58,6 +113,7 @@ const navItems: NavItem[] = [
   },
   {
     title: 'OnePage Leads', url: '/onepage-leads/kunden', icon: Globe,
+    adminOnly: true,
     children: [
       { title: 'Kunden', url: '/onepage-leads/kunden' },
     ],
@@ -69,14 +125,6 @@ const navItems: NavItem[] = [
       { title: 'Meine Dateien', url: '/drive/meine-dateien' },
       { title: 'Geteilt mit mir', url: '/drive/geteilt' },
       { title: 'Papierkorb', url: '/drive/papierkorb' },
-    ],
-  },
-  {
-    title: 'Projekte & Aufgaben', url: '/projekte', icon: ClipboardList,
-    children: [
-      { title: 'Alle Projekte', url: '/projekte' },
-      { title: 'Meine Aufgaben', url: '/projekte/aufgaben' },
-      { title: 'Laufzeit Projekte', url: '/projekte/laufzeiten' },
     ],
   },
   {
@@ -103,55 +151,9 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    title: 'Sales', url: '/sales', icon: TrendingUp,
-    children: [
-      { title: 'KPIs & Leaderboard', url: '/sales/kpis' },
-      { title: 'Vorqualifikation', url: '/sales/vorquali' },
-      { title: 'Leadkauf', url: '/sales/leads' },
-      { title: 'Cold Mail', url: '/sales/coldmail' },
-      { title: 'Referenz Showcase', url: '/sales/referenz-showcase' },
-      { title: '— Websites', url: '/sales/referenz-showcase/websites' },
-      { title: '— Ad Creatives', url: '/sales/referenz-showcase/werbeanzeigen' },
-      { title: '— Ad Performance', url: '/sales/referenz-showcase/ad-performance' },
-    ],
-  },
-  {
-    title: 'Fulfillment', url: '/fulfillment', icon: Target,
-    children: [
-      { title: 'Ad Performance', url: '/fulfillment/ads' },
-      { title: 'Mediabuying', url: '/fulfillment/mediabuying' },
-      { title: 'Customer Success', url: '/fulfillment/customer-success' },
-    ],
-  },
-  {
-    title: 'Tools', url: '/tools/ad-creative-studio', icon: Wand2,
-    children: [
-      { title: 'Ad Creative Studio', url: '/tools/ad-creative-studio' },
-    ],
-  },
-  {
-    title: 'Finanzen', url: '/finanzen', icon: Euro,
-    children: [
-      { title: 'Übersicht', url: '/finanzen' },
-      { title: 'Rechnungen', url: '/finanzen/rechnungen' },
-      { title: 'Belege', url: '/finanzen/belege' },
-      { title: 'Buchhaltung', url: '/finanzen/buchhaltung' },
-      { title: 'Werbebudgets', url: '/finanzen/werbebudgets' },
-    ],
-  },
-  {
-    title: 'Team & HR', url: '/hr', icon: UserCircle,
-    children: [
-      { title: 'Mitarbeiter', url: '/hr/mitarbeiter' },
-      { title: 'Verträge & Gehalt', url: '/hr/vertraege' },
-      { title: 'Probewoche', url: '/hr/probewoche' },
-      { title: 'Akademie', url: '/hr/akademie' },
-      { title: 'Coaching', url: '/hr/coaching' },
-      { title: 'Wiki & SOPs', url: '/hr/wiki' },
-    ],
+    title: 'Ad Creative Studio', url: '/tools/ad-creative-studio', icon: Wand2,
   },
 ];
-
 function loadSidebarState(): Record<string, boolean> {
   try { return JSON.parse(localStorage.getItem('sidebar-state') || '{}'); } catch { return {}; }
 }
