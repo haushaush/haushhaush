@@ -361,7 +361,9 @@ export default function EmailPage({ mode = 'personal', embedded = false, initial
 
   const handleSelectFolder = (newSlug: EmailRouteSlug) => {
     setSelectedUid(null);
-    if (newSlug === 'posteingang') navigate(basePath);
+    if (embedded) {
+      setEmbeddedSlug(newSlug);
+    } else if (newSlug === 'posteingang') navigate(basePath);
     else navigate(`${basePath}/${newSlug}`);
   };
 
