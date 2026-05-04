@@ -52,6 +52,9 @@ Deno.serve(async (req) => {
 
   const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
   const targetKundeId: string | undefined = body.kundeId;
+  const statusFilter: string = body.statusFilter || "won"; // 'won' | 'upsell'
+
+  log(`statusFilter=${statusFilter}, kundeId=${targetKundeId || "all"}`);
 
   // 1. Load Notion-Kunden
   let kundenQuery = admin
@@ -67,18 +70,26 @@ Deno.serve(async (req) => {
 
   log(`Loaded ${kunden.length} kunden`);
 
-  // 2. Load Close CRM won opportunities
-  const { data: wonOpps } = await admin
+  // 2. Load Close CRM opportunities filtered by status
+  let oppsQuery = admin
     .from("close_opportunities")
-    .select("id, lead_id, lead_name, value, value_currency, value_formatted, date_won, status_type")
-    .eq("status_type", "won");
+    .select("id, lead_id, lead_name, value, value_currency, value_formatted, date_won, status_type, status_label");
 
-  if (!wonOpps?.length) return json({ ok: true, matched: 0, message: "No won opportunities" });
+  if (statusFilter === "won") {
+    oppsQuery = oppsQuery.eq("status_type", "won");
+  } else if (statusFilter === "upsell") {
+    // Upsell leads: look for status_label containing "upsell" (case insensitive via ilike)
+    oppsQuery = oppsQuery.ilike("status_label", "%upsell%");
+  }
 
-  log(`Loaded ${wonOpps.length} won opportunities`);
+  const { data: filteredOpps } = await oppsQuery;
+
+  if (!filteredOpps?.length) return json({ ok: true, matched: 0, message: `No ${statusFilter} opportunities` });
+
+  log(`Loaded ${filteredOpps.length} ${statusFilter} opportunities`);
 
   // 3. Load Close leads for contact info
-  const leadIds = [...new Set(wonOpps.map((o) => o.lead_id).filter(Boolean))];
+  const leadIds = [...new Set(filteredOpps.map((o) => o.lead_id).filter(Boolean))];
   const { data: closeLeads } = await admin
     .from("close_leads")
     .select("id, display_name, contacts")
@@ -87,10 +98,11 @@ Deno.serve(async (req) => {
   const leadsMap = new Map<string, any>();
   (closeLeads || []).forEach((l) => leadsMap.set(l.id, l));
 
-  // 4. Load existing approved matches and rejections
+  // 4. Load existing approved matches and rejections for this status_category
   const { data: existing } = await admin
     .from("kunde_close_deals")
-    .select("kunde_id, close_opportunity_id, match_type");
+    .select("kunde_id, close_opportunity_id, match_type, status_category")
+    .eq("status_category", statusFilter);
 
   const approvedKeys = new Set(
     (existing || [])
@@ -103,10 +115,11 @@ Deno.serve(async (req) => {
       .map((r) => `${r.kunde_id}|${r.close_opportunity_id}`),
   );
 
-  // 4b. Load existing pending matches
+  // 4b. Load existing pending matches for this status_category
   const { data: existingPending } = await admin
     .from("pending_close_matches")
-    .select("kunde_id, close_lead_id");
+    .select("kunde_id, close_lead_id, status_category")
+    .eq("status_category", statusFilter);
   const pendingKeys = new Set(
     (existingPending || []).map((r) => `${r.kunde_id}|${r.close_lead_id}`),
   );
@@ -122,7 +135,7 @@ Deno.serve(async (req) => {
     const kundeName = (kunde.vor_nachname || kunde.client_name || "").toLowerCase().trim();
     const kundeCompany = (kunde.unternehmen || "").toLowerCase().trim();
 
-    for (const opp of wonOpps) {
+    for (const opp of filteredOpps) {
       const key = `${kunde.id}|${opp.id}`;
       if (rejectedKeys.has(key)) continue;
       if (approvedKeys.has(key)) continue;
@@ -181,8 +194,10 @@ Deno.serve(async (req) => {
           match_type: matchType,
           match_confidence: confidence,
           match_reason: reason,
+          close_status_label: opp.status_label || (statusFilter === "won" ? "Won" : "Upsell"),
+          status_category: statusFilter,
         });
-        log(`AUTO-MATCH: "${kundeName}" ↔ "${leadName}" [${matchType} ${confidence}]`);
+        log(`AUTO-MATCH [${statusFilter}]: "${kundeName}" ↔ "${leadName}" [${matchType} ${confidence}]`);
         autoMatched++;
       } else {
         // Lower confidence → pending review queue
@@ -196,9 +211,10 @@ Deno.serve(async (req) => {
             match_reason: reason,
             match_type: matchType,
             status: "pending",
+            status_category: statusFilter,
           });
           pendingKeys.add(pendingKey);
-          log(`PENDING: "${kundeName}" ↔ "${leadName}" [${matchType} ${confidence}]`);
+          log(`PENDING [${statusFilter}]: "${kundeName}" ↔ "${leadName}" [${matchType} ${confidence}]`);
           pendingCount++;
         }
       }
@@ -228,7 +244,7 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     kunden_processed: kunden.length,
-    opportunities_checked: wonOpps.length,
+    opportunities_checked: filteredOpps.length,
     auto_matched: autoMatched,
     pending: pendingCount,
     duration_ms: Date.now() - t0,
