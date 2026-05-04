@@ -25,6 +25,7 @@ import { PipedriveAccountsModal } from '@/components/integrations/PipedriveAccou
 import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
 import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
+import { CloseMatchingCard } from '@/components/integrations/CloseMatchingCard';
 
 interface EmployeeRequest {
   id: string;
