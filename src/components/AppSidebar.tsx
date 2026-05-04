@@ -128,17 +128,6 @@ const toolsNavItems: NavItem[] = [
     ],
   },
   {
-    title: 'Email', url: '/email', icon: Mail,
-    children: [
-      { title: 'Posteingang', url: '/email' },
-      { title: 'Ungelesen', url: '/email/ungelesen' },
-      { title: 'Gesendet', url: '/email/gesendet' },
-      { title: 'Wichtig', url: '/email/wichtig' },
-      { title: 'Entwürfe', url: '/email/entwuerfe' },
-      { title: 'Papierkorb', url: '/email/papierkorb' },
-    ],
-  },
-  {
     title: 'Email Automatisierung', url: '/email-automatisierung', icon: Workflow,
     adminOnly: true,
     children: [

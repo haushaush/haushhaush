@@ -117,11 +117,16 @@ const SLUG_TO_ROUTE: Record<string, EmailRouteSlug> = {
 
 interface EmailPageProps {
   mode?: 'personal' | 'shared';
+  /** When true, folder navigation uses internal state instead of URL params */
+  embedded?: boolean;
+  /** Override the initial folder slug when embedded */
+  initialSlug?: EmailRouteSlug;
 }
 
-export default function EmailPage({ mode = 'personal' }: EmailPageProps) {
+export default function EmailPage({ mode = 'personal', embedded = false, initialSlug }: EmailPageProps) {
   const { slug: rawSlug } = useParams<{ slug?: string }>();
-  const slug: EmailRouteSlug = (rawSlug && SLUG_TO_ROUTE[rawSlug]) || 'posteingang';
+  const [embeddedSlug, setEmbeddedSlug] = useState<EmailRouteSlug>(initialSlug || 'posteingang');
+  const slug: EmailRouteSlug = embedded ? embeddedSlug : ((rawSlug && SLUG_TO_ROUTE[rawSlug]) || 'posteingang');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
