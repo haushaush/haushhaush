@@ -91,6 +91,8 @@ export function CloseMatchingCard() {
   const autoCount = active.filter((m) => ["auto_email", "auto_name", "auto_company", "auto_phone"].includes(m.match_type || "")).length;
   const aiCount = active.filter((m) => m.match_type === "ai_suggested").length;
   const manualCount = active.filter((m) => m.match_type === "manual").length;
+  const wonActiveCount = active.filter((m) => (m.status_category || "won") === "won").length;
+  const upsellActiveCount = active.filter((m) => m.status_category === "upsell").length;
 
   const wonPendingCount = pending.filter((p) => (p.status_category || "won") === "won").length;
   const upsellPendingCount = pending.filter((p) => p.status_category === "upsell").length;
