@@ -244,6 +244,7 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('uebersicht');
   const [metaMatches, setMetaMatches] = useState<any[]>([]);
+  const [closeMatches, setCloseMatches] = useState<any[]>([]);
 
   const reloadMetaMatches = useCallback(() => {
     if (!d?.id) return;
@@ -251,7 +252,13 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
       .then(({ data }) => setMetaMatches(data || []));
   }, [d?.id]);
 
-  useEffect(() => { reloadMetaMatches(); }, [reloadMetaMatches]);
+  const reloadCloseMatches = useCallback(() => {
+    if (!d?.id) return;
+    supabase.from('kunde_close_deals' as any).select('*').eq('kunde_id', d.id)
+      .then(({ data }) => setCloseMatches((data as any[]) || []));
+  }, [d?.id]);
+
+  useEffect(() => { reloadMetaMatches(); reloadCloseMatches(); }, [reloadMetaMatches, reloadCloseMatches]);
 
   // Auto-switch to Meta Ads tab when ?tab=meta-ads is in URL on open
   useEffect(() => {
