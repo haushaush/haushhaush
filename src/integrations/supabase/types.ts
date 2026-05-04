@@ -1999,6 +1999,7 @@ export type Database = {
           close_lead_id: string
           close_lead_name: string | null
           close_opportunity_id: string
+          close_status_label: string | null
           date_won: string | null
           id: string
           kunde_id: string
@@ -2008,11 +2009,13 @@ export type Database = {
           matched_at: string | null
           opportunity_currency: string | null
           opportunity_value: number | null
+          status_category: string | null
         }
         Insert: {
           close_lead_id: string
           close_lead_name?: string | null
           close_opportunity_id: string
+          close_status_label?: string | null
           date_won?: string | null
           id?: string
           kunde_id: string
@@ -2022,11 +2025,13 @@ export type Database = {
           matched_at?: string | null
           opportunity_currency?: string | null
           opportunity_value?: number | null
+          status_category?: string | null
         }
         Update: {
           close_lead_id?: string
           close_lead_name?: string | null
           close_opportunity_id?: string
+          close_status_label?: string | null
           date_won?: string | null
           id?: string
           kunde_id?: string
@@ -2036,6 +2041,7 @@ export type Database = {
           matched_at?: string | null
           opportunity_currency?: string | null
           opportunity_value?: number | null
+          status_category?: string | null
         }
         Relationships: [
           {
@@ -2536,6 +2542,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
+          status_category: string | null
         }
         Insert: {
           ai_reasoning?: string | null
@@ -2550,6 +2557,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          status_category?: string | null
         }
         Update: {
           ai_reasoning?: string | null
@@ -2564,6 +2572,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          status_category?: string | null
         }
         Relationships: [
           {
