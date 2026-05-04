@@ -301,6 +301,13 @@ export function AppSidebar() {
   const automationenGroupActive = ariaActive || n8nActive || webhooksActive;
   const einstellungenActive = location.pathname === '/einstellungen';
   const automationenOpen = openGroups['__automationen'] ?? automationenGroupActive;
+  const toolsOpen = openGroups['__tools'] ?? false;
+  const anyToolActive = visibleToolsItems.some(t => isParentActive(t));
+
+  // Split navItems: items before Fulfillment = top group, Fulfillment onwards = bottom group
+  const toolsInsertIndex = visibleNavItems.findIndex(i => i.title === 'Fulfillment');
+  const navItemsBefore = toolsInsertIndex >= 0 ? visibleNavItems.slice(0, toolsInsertIndex) : visibleNavItems;
+  const navItemsAfter = toolsInsertIndex >= 0 ? visibleNavItems.slice(toolsInsertIndex) : [];
 
   // ─── LEVEL 1: Primary nav item renderer ───
   const renderNavItem = (item: NavItem) => {
