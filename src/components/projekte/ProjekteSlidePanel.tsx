@@ -288,7 +288,7 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
               {(() => {
                 const members: { id: string; name: string; avatar_url?: string | null }[] = Array.isArray(editData.mitarbeiter) ? editData.mitarbeiter : [];
                 if (members.length === 0) return null;
-                const getI = (n: string) => n.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase());
+                const getI = (n?: string | null) => (!n ? '??' : n.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase());
                 return (
                   <div className="flex -space-x-1.5 shrink-0">
                     {members.slice(0, 3).map(m => m.avatar_url ? (
