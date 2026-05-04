@@ -70,7 +70,19 @@ export function CloseMatchingCard() {
       rows.forEach((r) => { r.kunde = map.get(r.kunde_id); });
     }
     setPending(rows);
-    setActive((act || []) as unknown as CloseActiveMatch[]);
+
+    // Enrich active matches with kunde data
+    const activeRows = (act || []) as any[];
+    if (activeRows.length > 0) {
+      const kundeIds = Array.from(new Set(activeRows.map((r: any) => r.kunde_id)));
+      const { data: kundenAct } = await supabase
+        .from("close_deals")
+        .select("id, client_name, unternehmen, vor_nachname")
+        .in("id", kundeIds);
+      const kundeMap = new Map((kundenAct || []).map((k: any) => [k.id, k]));
+      activeRows.forEach((r: any) => { r.kunde = kundeMap.get(r.kunde_id) || null; });
+    }
+    setActive(activeRows as unknown as CloseActiveMatch[]);
     setLoadingActive(false);
   }, []);
 
