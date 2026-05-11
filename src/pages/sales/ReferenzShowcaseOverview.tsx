@@ -482,23 +482,37 @@ function DropdownPill({
   label, value, onChange, options,
 }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   const isActive = !!value;
+  const activeOption = options.find(o => o.value === value);
+  const displayLabel = activeOption ? activeOption.label : `${label}: Alle`;
   return (
-    <div className="relative">
+    <div className="relative inline-block">
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className={`appearance-none pl-3.5 pr-9 py-1.5 rounded-full text-sm font-medium border cursor-pointer transition-all outline-none ${
-          isActive
-            ? 'bg-teal-50 text-teal-700 border-teal-200'
-            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-        }`}
+        className={`
+          appearance-none cursor-pointer
+          px-5 py-3 pr-11
+          text-sm font-medium
+          rounded-xl border
+          transition-all duration-150
+          min-w-[180px]
+          outline-none
+          ${isActive
+            ? 'bg-white text-gray-900 border-teal-400 ring-1 ring-teal-100 shadow-sm'
+            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:shadow-sm'
+          }
+        `}
       >
         <option value="">{label}: Alle</option>
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
-      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none text-gray-500" />
+      <ChevronDown className={`
+        absolute right-3.5 top-1/2 -translate-y-1/2
+        w-4 h-4 pointer-events-none transition-colors
+        ${isActive ? 'text-teal-500' : 'text-gray-400'}
+      `} />
     </div>
   );
 }
