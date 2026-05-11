@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Globe, Video, BarChart3, Search, ChevronDown,
-  Image as ImageIcon, Star, ArrowUpRight, RefreshCw,
+  Search, ChevronDown, RefreshCw,
+  Image as ImageIcon, Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
