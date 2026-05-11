@@ -264,7 +264,10 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={onClose}>Abbrechen</Button>
-              <Button onClick={handleNext} disabled={!url.trim() || !title.trim()}>
+              <Button
+                onClick={handleNext}
+                disabled={!url.trim() || !title.trim() || (!thumbnailFile && !existingThumbnailUrl)}
+              >
                 Weiter →
               </Button>
             </div>
