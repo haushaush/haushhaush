@@ -349,7 +349,7 @@ export default function ReferenzShowcaseOverview() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Suchen nach Titel, Kunde, Tag..."
-                className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-transparent focus:border-gray-300 focus:bg-white rounded-xl text-sm outline-none transition-all"
+                className="w-full pl-11 pr-4 py-3 text-sm bg-white border border-gray-200 focus:border-teal-400 focus:ring-1 focus:ring-teal-100 focus:outline-none hover:border-gray-300 rounded-xl transition-all duration-150"
               />
             </div>
             <div className="relative">
