@@ -507,7 +507,7 @@ function DropdownPill({
           min-w-[180px]
           outline-none
           ${isActive
-            ? 'bg-white text-gray-900 border-teal-400 ring-1 ring-teal-100 shadow-sm'
+            ? 'bg-teal-50 text-teal-900 border-teal-400 ring-1 ring-teal-100 shadow-sm'
             : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:shadow-sm'
           }
         `}
