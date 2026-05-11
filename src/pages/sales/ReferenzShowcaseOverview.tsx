@@ -334,6 +334,28 @@ export default function ReferenzShowcaseOverview() {
           </p>
         </header>
 
+        {/* Category tiles */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
+          <CategoryTile
+            label="Websites"
+            count={counts.websites}
+            href="/sales/referenz-showcase/websites"
+            icon={Globe}
+          />
+          <CategoryTile
+            label="Ad Creatives"
+            count={counts.ads}
+            href="/sales/referenz-showcase/werbeanzeigen"
+            icon={Video}
+          />
+          <CategoryTile
+            label="Ad Performance"
+            count={counts.performance}
+            href="/sales/referenz-showcase/ad-performance"
+            icon={BarChart3}
+          />
+        </div>
+
         {/* Filter panel */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-8">
           <div className="flex gap-3 mb-4 flex-wrap">
@@ -426,29 +448,24 @@ export default function ReferenzShowcaseOverview() {
 }
 
 function CategoryTile({
-  label, count, countLabel, href, accent,
+  label, count, href, icon: Icon,
 }: {
   label: string;
   count: number;
-  countLabel?: string;
   href: string;
-  accent: string;
+  icon: React.ComponentType<{ className?: string }>;
 }) {
-  const labelText = countLabel || (count === 1 ? 'Referenz' : 'Referenzen');
-
   return (
     <Link
       to={href}
-      className="group relative block bg-white rounded-2xl border border-gray-200/80 px-8 py-10 text-center shadow-sm hover:shadow-md hover:border-gray-300 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
+      className="group block bg-white rounded-2xl border border-gray-200/80 px-8 py-12 text-center shadow-sm hover:shadow-lg hover:border-teal-300 hover:-translate-y-1 transition-all duration-200"
     >
-      {/* Accent line on hover */}
-      <div className={`absolute top-0 left-0 right-0 h-1 ${accent} opacity-0 group-hover:opacity-100 transition-opacity`} />
-
-      <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">
+      <Icon className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-teal-600 transition-colors" />
+      <h3 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
         {label}
       </h3>
       <p className="text-sm text-gray-500 mt-2 font-normal">
-        {count} {labelText}
+        {count} {count === 1 ? 'Referenz' : 'Referenzen'}
       </p>
     </Link>
   );
