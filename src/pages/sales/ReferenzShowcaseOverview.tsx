@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Globe, Video, BarChart3, Search, ChevronDown,
-  Image as ImageIcon, Star, ArrowUpRight, RefreshCw,
+  Globe, Video, BarChart3, Search, ChevronDown, RefreshCw,
+  Image as ImageIcon, Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -313,29 +313,25 @@ export default function ReferenzShowcaseOverview() {
         </header>
 
         {/* Category tiles */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-10">
           <CategoryTile
-            icon={<Globe className="w-6 h-6" />}
             label="Websites"
             count={counts.websites}
             href="/sales/referenz-showcase/websites"
-            accent="bg-gradient-to-br from-teal-500 to-teal-600"
+            accent="bg-gradient-to-r from-teal-400 to-teal-500"
           />
           <CategoryTile
-            icon={<Video className="w-6 h-6" />}
             label="Ad Creatives"
             count={counts.ads}
             href="/sales/referenz-showcase/werbeanzeigen"
-            accent="bg-gradient-to-br from-purple-500 to-purple-600"
+            accent="bg-gradient-to-r from-purple-400 to-purple-500"
           />
           <CategoryTile
-            icon={<BarChart3 className="w-6 h-6" />}
             label="Ad Performance"
             count={counts.performance}
+            countLabel={counts.performance === 1 ? 'Kampagne' : 'Kampagnen'}
             href="/sales/referenz-showcase/ad-performance"
-            accent="bg-gradient-to-br from-blue-500 to-blue-600"
-            unitSingular="Kampagne"
-            unitPlural="Kampagnen"
+            accent="bg-gradient-to-r from-blue-400 to-blue-500"
           />
         </div>
 
@@ -431,28 +427,30 @@ export default function ReferenzShowcaseOverview() {
 }
 
 function CategoryTile({
-  icon, label, count, href, accent, unitSingular = 'Referenz', unitPlural = 'Referenzen',
+  label, count, countLabel, href, accent,
 }: {
-  icon: React.ReactNode; label: string; count: number; href: string; accent: string;
-  unitSingular?: string; unitPlural?: string;
+  label: string;
+  count: number;
+  countLabel?: string;
+  href: string;
+  accent: string;
 }) {
+  const labelText = countLabel || (count === 1 ? 'Referenz' : 'Referenzen');
+
   return (
     <Link
       to={href}
-      className="group relative bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
+      className="group relative block bg-white rounded-2xl border border-gray-200/80 px-8 py-10 text-center shadow-sm hover:shadow-md hover:border-gray-300 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
     >
-      <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-xl ${accent} flex items-center justify-center text-white shadow-sm`}>
-          {icon}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900">{label}</h3>
-          <p className="text-sm text-gray-500 mt-0.5 tabular-nums">
-            {count} {count === 1 ? unitSingular : unitPlural}
-          </p>
-        </div>
-        <ArrowUpRight className="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors" />
-      </div>
+      {/* Accent line on hover */}
+      <div className={`absolute top-0 left-0 right-0 h-1 ${accent} opacity-0 group-hover:opacity-100 transition-opacity`} />
+
+      <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">
+        {label}
+      </h3>
+      <p className="text-sm text-gray-500 mt-2 font-normal">
+        {count} {labelText}
+      </p>
     </Link>
   );
 }
