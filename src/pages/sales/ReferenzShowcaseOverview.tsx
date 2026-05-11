@@ -427,28 +427,30 @@ export default function ReferenzShowcaseOverview() {
 }
 
 function CategoryTile({
-  icon, label, count, href, accent, unitSingular = 'Referenz', unitPlural = 'Referenzen',
+  label, count, countLabel, href, accent,
 }: {
-  icon: React.ReactNode; label: string; count: number; href: string; accent: string;
-  unitSingular?: string; unitPlural?: string;
+  label: string;
+  count: number;
+  countLabel?: string;
+  href: string;
+  accent: string;
 }) {
+  const labelText = countLabel || (count === 1 ? 'Referenz' : 'Referenzen');
+
   return (
     <Link
       to={href}
-      className="group relative bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
+      className="group relative block bg-white rounded-2xl border border-gray-200/80 px-8 py-10 text-center shadow-sm hover:shadow-md hover:border-gray-300 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
     >
-      <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-xl ${accent} flex items-center justify-center text-white shadow-sm`}>
-          {icon}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900">{label}</h3>
-          <p className="text-sm text-gray-500 mt-0.5 tabular-nums">
-            {count} {count === 1 ? unitSingular : unitPlural}
-          </p>
-        </div>
-        <ArrowUpRight className="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors" />
-      </div>
+      {/* Accent line on hover */}
+      <div className={`absolute top-0 left-0 right-0 h-1 ${accent} opacity-0 group-hover:opacity-100 transition-opacity`} />
+
+      <h3 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">
+        {label}
+      </h3>
+      <p className="text-sm text-gray-500 mt-2 font-normal">
+        {count} {labelText}
+      </p>
     </Link>
   );
 }
