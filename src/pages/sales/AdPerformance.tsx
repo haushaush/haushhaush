@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Plus, Search, Star, Settings2, BarChart3, ChevronDown } from "lucide-react";
+import { Plus, Settings2, BarChart3 } from "lucide-react";
 import { MetaCampaignImportModal } from "@/components/sales/MetaCampaignImportModal";
 import { ShowcaseFilterManagementModal, type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
+import {
+  ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
+  ShowcaseCard, ShowcaseEmptyState, ResultCount, PrimaryActionButton, SecondaryActionButton,
+  type AnyItem,
+} from "./ReferenzShowcaseUI";
 
 export interface CampaignRow {
   id: string;
@@ -29,16 +31,11 @@ export interface CampaignRow {
   custom_tags: string[] | null;
   filter_values: Record<string, string> | null;
   linked_kunde_id: string | null;
+  linked_kunde?: { client_name?: string; unternehmen?: string; branche?: string } | null;
   is_featured: boolean;
 }
 
 type SortKey = "best_roas" | "lowest_cpl" | "most_leads" | "highest_spend" | "newest";
-
-function fmtPeriod(start: string | null, end: string | null) {
-  if (!start && !end) return "—";
-  const f = (s: string | null) => s ? new Date(s).toLocaleDateString("de-DE", { month: "short", year: "numeric" }) : "—";
-  return `${f(start)} – ${f(end)}`;
-}
 
 export default function AdPerformancePage() {
   const { hasRole } = useAuth();
@@ -59,7 +56,9 @@ export default function AdPerformancePage() {
   const load = async () => {
     setLoading(true);
     const [{ data: camps }, { data: cats }, { data: opts }] = await Promise.all([
-      supabase.from("referenz_meta_campaigns" as any).select("*").eq("is_active", true)
+      supabase.from("referenz_meta_campaigns" as any)
+        .select("*, linked_kunde:close_deals(client_name, unternehmen, branche)")
+        .eq("is_active", true)
         .order("is_featured", { ascending: false })
         .order("imported_at", { ascending: false }),
       supabase.from("showcase_filter_categories" as any).select("*")
@@ -107,199 +106,104 @@ export default function AdPerformancePage() {
     return sorted;
   }, [rows, search, activeFilters, sortBy]);
 
-  const setFilter = (k: string, v: string) => setActiveFilters(p => ({ ...p, [k]: v }));
-  const clearFilter = (k: string) => setActiveFilters(p => { const n = { ...p }; delete n[k]; return n; });
-  const clearAllFilters = () => setActiveFilters({});
-  const activeFilterCount = Object.values(activeFilters).filter(Boolean).length;
+  const setFilter = (k: string, v: string) =>
+    setActiveFilters(p => {
+      const n = { ...p };
+      if (v) n[k] = v; else delete n[k];
+      return n;
+    });
+
+  const items: AnyItem[] = useMemo(
+    () => filtered.map(c => ({ ...c, _type: 'campaign' as const })),
+    [filtered],
+  );
+
+  const hasActiveFilters = !!search || Object.values(activeFilters).some(Boolean);
+  const resetFilters = () => { setSearch(''); setActiveFilters({}); };
 
   return (
-    <div className="p-6">
-      <header className="flex items-center justify-between mb-5 flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Ad Performance</h1>
-          <p className="text-sm text-muted-foreground mt-1">Top-Kampagnen mit echten Performance-Zahlen für Sales-Pitches</p>
-        </div>
-        {isAdmin && (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setFilterMgmtOpen(true)}>
-              <Settings2 className="w-4 h-4 mr-2" /> Filter verwalten
-            </Button>
-            <Button onClick={() => setImportOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" /> Aus Meta importieren
-            </Button>
-          </div>
+    <ShowcasePageWrapper>
+      <SubPageHeader
+        title="Ad Performance"
+        subtitle="Top-Kampagnen mit echten Performance-Zahlen für Sales-Pitches"
+        actions={isAdmin && (
+          <>
+            <SecondaryActionButton onClick={() => setFilterMgmtOpen(true)}>
+              <Settings2 className="w-4 h-4" /> Filter verwalten
+            </SecondaryActionButton>
+            <PrimaryActionButton onClick={() => setImportOpen(true)}>
+              <Plus className="w-4 h-4" /> Aus Meta importieren
+            </PrimaryActionButton>
+          </>
         )}
-      </header>
+      />
 
-      <div className="space-y-3 mb-5">
-        <div className="relative max-w-md">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Suche nach Kampagne, Kunde, Beschreibung…" className="pl-8" />
+      <div className="space-y-4 mb-8">
+        <div className="flex flex-col md:flex-row gap-3">
+          <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Kampagne, Kunde, Beschreibung…" />
+          <DropdownPill
+            label="Sortieren"
+            value={sortBy === 'best_roas' ? '' : sortBy}
+            onChange={v => setSortBy((v || 'best_roas') as SortKey)}
+            options={[
+              { value: 'lowest_cpl', label: 'Niedrigster CPL' },
+              { value: 'most_leads', label: 'Meiste Leads' },
+              { value: 'highest_spend', label: 'Höchster Spend' },
+              { value: 'newest', label: 'Neueste' },
+            ]}
+          />
         </div>
 
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap items-center gap-3">
           {categories.map(cat => {
             const catOpts = options
               .filter(o => o.category_id === cat.id && o.is_active)
-              .slice()
+              .map(o => ({ value: o.key, label: o.label }))
               .sort((a, b) => a.label.localeCompare(b.label));
             if (catOpts.length === 0) return null;
-            const currentValue = activeFilters[cat.key] ?? "";
-            const hasValue = !!currentValue;
             return (
-              <div key={cat.id} className="relative">
-                <select
-                  value={currentValue}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v) setFilter(cat.key, v); else clearFilter(cat.key);
-                  }}
-                  className={`appearance-none pl-3 pr-9 h-9 text-xs rounded-md border cursor-pointer transition-colors ${
-                    hasValue
-                      ? "bg-primary/10 border-primary text-foreground font-medium"
-                      : "bg-background border-border text-foreground hover:border-foreground/40"
-                  }`}
-                >
-                  <option value="">{cat.label}: Alle</option>
-                  {catOpts.map(o => (
-                    <option key={o.key} value={o.key}>{o.label}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none text-muted-foreground" />
-                {hasValue && (
-                  <button
-                    onClick={() => clearFilter(cat.key)}
-                    className="absolute -top-1 -right-1 w-4 h-4 bg-foreground text-background rounded-full flex items-center justify-center text-[10px] leading-none hover:opacity-80"
-                    aria-label="Filter entfernen"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
+              <DropdownPill
+                key={cat.id}
+                label={cat.label}
+                value={activeFilters[cat.key] ?? ''}
+                onChange={v => setFilter(cat.key, v)}
+                options={catOpts}
+              />
             );
           })}
-
-          <div className="relative ml-auto">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortKey)}
-              className="appearance-none pl-3 pr-9 h-9 text-xs bg-background border border-border rounded-md cursor-pointer hover:border-foreground/40"
-            >
-              <option value="best_roas">Bester ROAS</option>
-              <option value="lowest_cpl">Niedrigster CPL</option>
-              <option value="most_leads">Meiste Leads</option>
-              <option value="highest_spend">Höchster Spend</option>
-              <option value="newest">Neueste</option>
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none text-muted-foreground" />
-          </div>
-        </div>
-
-        {activeFilterCount > 0 && (
-          <div className="flex items-center gap-3 text-xs">
-            <span className="text-muted-foreground">{activeFilterCount} Filter aktiv</span>
-            <button onClick={clearAllFilters} className="text-primary hover:underline">Alle zurücksetzen</button>
-            <span className="text-muted-foreground ml-auto tabular-nums">{filtered.length} Kampagnen</span>
-          </div>
-        )}
-        {activeFilterCount === 0 && (
-          <div className="flex items-center pt-1">
-            <span className="text-xs text-muted-foreground ml-auto tabular-nums">{filtered.length} Kampagnen</span>
-          </div>
-        )}
-      </div>
-
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-56 rounded-lg bg-muted animate-pulse" />)}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 border border-dashed border-border rounded-lg">
-          <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">{rows.length === 0 ? "Noch keine Kampagnen importiert." : "Keine Treffer für die aktuellen Filter."}</p>
-          {isAdmin && rows.length === 0 && (
-            <Button variant="outline" className="mt-4" onClick={() => setImportOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" /> Erste Kampagne aus Meta importieren
-            </Button>
+          {hasActiveFilters && (
+            <button onClick={resetFilters} className="ml-auto text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline">
+              Filter zurücksetzen
+            </button>
           )}
         </div>
+      </div>
+
+      <ResultCount count={filtered.length} singular="Kampagne" plural="Kampagnen" />
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="aspect-[16/10] rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <ShowcaseEmptyState
+          subtitle={rows.length === 0 ? 'Noch keine Kampagnen importiert.' : undefined}
+          action={isAdmin && rows.length === 0 ? (
+            <PrimaryActionButton onClick={() => setImportOpen(true)}>
+              <Plus className="w-4 h-4" /> Erste Kampagne aus Meta importieren
+            </PrimaryActionButton>
+          ) : undefined}
+        />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(c => <CampaignCard key={c.id} campaign={c} options={options} />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {items.map(item => <ShowcaseCard key={item.id} item={item} />)}
         </div>
       )}
 
       <MetaCampaignImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
       <ShowcaseFilterManagementModal open={filterMgmtOpen} onClose={() => setFilterMgmtOpen(false)} onChanged={load} appliesTo="kampagne" />
-    </div>
-  );
-}
-
-function CampaignCard({ campaign, options }: { campaign: CampaignRow; options: FilterOption[] }) {
-  const m = campaign.metrics ?? {};
-  const roas = Number(m.roas ?? 0);
-  const tier = roas >= 3 ? "excellent" : roas >= 2 ? "good" : "standard";
-
-  const tierClasses: Record<string, string> = {
-    excellent: "border-emerald-500/60 bg-gradient-to-br from-emerald-500/10 to-card",
-    good: "border-primary/60 bg-gradient-to-br from-primary/10 to-card",
-    standard: "border-border bg-card",
-  };
-
-  const branche = campaign.filter_values?.branche;
-  const brancheLabel = branche ? options.find(o => o.key === branche)?.label : null;
-
-  return (
-    <Link
-      to={`/sales/referenz-showcase/ad-performance/${campaign.id}`}
-      className={`block border-2 rounded-lg p-5 hover:shadow-md transition-all ${tierClasses[tier]}`}
-    >
-      <div className="flex items-start justify-between mb-3 gap-2">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold truncate">{campaign.custom_title || campaign.meta_campaign_name}</h3>
-          <p className="text-xs text-muted-foreground truncate mt-0.5">
-            {campaign.meta_account_name ?? campaign.meta_account_id}
-            {brancheLabel && (
-              <span className="ml-2 inline-block bg-muted px-1.5 py-0.5 rounded text-[10px]">{brancheLabel}</span>
-            )}
-          </p>
-        </div>
-        {campaign.is_featured && <Star className="w-4 h-4 text-amber-500 shrink-0" fill="currentColor" />}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <BigMetric label="ROAS" value={m.roas != null ? `${Number(m.roas).toFixed(1)}x` : "—"} highlight={tier === "excellent"} />
-        <BigMetric label="CPL" value={m.cpl != null ? `€${Number(m.cpl).toFixed(2)}` : "—"} />
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 text-xs border-t border-border pt-3 tabular-nums">
-        <SecondaryMetric label="Leads" value={m.leads != null ? Number(m.leads).toLocaleString("de-DE") : "—"} />
-        <SecondaryMetric label="Spend" value={m.spend != null ? `€${(Number(m.spend) / 1000).toFixed(1)}k` : "—"} />
-        <SecondaryMetric label="CTR" value={m.ctr != null ? `${Number(m.ctr).toFixed(1)}%` : "—"} />
-      </div>
-
-      <p className="text-[11px] text-muted-foreground mt-3 tabular-nums">
-        {fmtPeriod(campaign.campaign_period_start, campaign.campaign_period_end)}
-        {(campaign.total_ads_count ?? 0) > 0 && ` · ${campaign.total_ads_count} Ads`}
-      </p>
-    </Link>
-  );
-}
-
-function BigMetric({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className={`p-3 rounded ${highlight ? "bg-emerald-500/15" : "bg-muted/60"}`}>
-      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</p>
-      <p className={`text-2xl font-bold tabular-nums ${highlight ? "text-emerald-700 dark:text-emerald-400" : ""}`}>{value}</p>
-    </div>
-  );
-}
-
-function SecondaryMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-muted-foreground text-[10px] uppercase tracking-wide">{label}</p>
-      <p className="font-semibold">{value}</p>
-    </div>
+    </ShowcasePageWrapper>
   );
 }
