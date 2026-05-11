@@ -14,6 +14,7 @@ import {
   Tag,
   Calendar,
   Building2,
+  Briefcase,
   RefreshCw,
 } from 'lucide-react';
 import { WebsiteEmbed } from '@/components/sales/WebsiteEmbed';
