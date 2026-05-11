@@ -80,12 +80,13 @@ export function ShowcaseSearchInput({
 /* DropdownPill                                                       */
 /* ------------------------------------------------------------------ */
 export function DropdownPill({
-  label, value, onChange, options,
+  label, value, onChange, options, minWidth = 180,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
+  minWidth?: number;
 }) {
   const isActive = !!value;
   const activeOption = options.find(o => o.value === value);
@@ -95,13 +96,13 @@ export function DropdownPill({
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
+        style={{ minWidth: `${minWidth}px` }}
         className={`
           appearance-none cursor-pointer
           px-5 py-3 pr-11
           text-sm font-medium
           rounded-xl border
           transition-all duration-150
-          min-w-[180px]
           outline-none
           ${isActive
             ? 'bg-teal-50 dark:bg-teal-950 text-teal-900 dark:text-teal-100 border-teal-400 dark:border-teal-700 ring-1 ring-teal-100 dark:ring-teal-900 shadow-sm'
