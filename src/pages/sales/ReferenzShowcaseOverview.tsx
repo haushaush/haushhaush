@@ -413,7 +413,7 @@ export default function ReferenzShowcaseOverview() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-4 text-sm text-gray-600">
+        <div className="flex items-center justify-between mb-4 text-sm text-gray-600 dark:text-gray-400">
           <span>
             {filteredItems.length} {filteredItems.length === 1 ? 'Referenz' : 'Referenzen'}
             {filteredItems.length < allItems.length && ` von ${allItems.length}`}
@@ -421,8 +421,8 @@ export default function ReferenzShowcaseOverview() {
         </div>
 
         {filteredItems.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
-            <p className="text-sm text-gray-500">Keine Referenzen gefunden.</p>
+          <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Keine Referenzen gefunden.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
