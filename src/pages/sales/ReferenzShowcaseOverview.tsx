@@ -563,9 +563,9 @@ function ShowcaseCard({
   return (
     <Link
       to={detailHref}
-      className="group block bg-white rounded-2xl border border-gray-200/80 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 transition-all duration-200 overflow-hidden"
+      className="group block bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
     >
-      <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
+      <div className="relative bg-gray-50 dark:bg-gray-800 overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
         {item._type === 'campaign'
           ? <PerformanceHero campaign={item} />
           : <ImageContent item={item} />}
@@ -579,32 +579,32 @@ function ShowcaseCard({
 
       <div className="p-5">
         {eyebrow && (
-          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5 truncate">
+          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 truncate">
             {eyebrow}
           </p>
         )}
 
-        <h3 className="text-lg font-bold text-gray-900 leading-snug mb-3 line-clamp-2 min-h-[3.5rem] group-hover:text-teal-700 transition-colors">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-snug mb-3 line-clamp-2 min-h-[3.5rem] group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
           {title}
         </h3>
 
         <PrimaryHighlight item={item} />
 
         {metaParts.length > 0 && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
             {metaParts.map((part, i) => (
               <span key={i} className="flex items-center gap-2">
-                {i > 0 && <span className="text-gray-300">·</span>}
+                {i > 0 && <span className="text-gray-300 dark:text-gray-600">·</span>}
                 <span>{part}</span>
               </span>
             ))}
           </div>
         )}
 
-        <div className="border-t border-gray-100 my-4" />
+        <div className="border-t border-gray-100 dark:border-gray-800 my-4" />
 
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-teal-600 group-hover:text-teal-700 group-hover:underline transition-all">
+          <span className="text-sm font-semibold text-teal-600 dark:text-teal-400 group-hover:text-teal-700 dark:group-hover:text-teal-300 group-hover:underline transition-all">
             Ansehen →
           </span>
           {externalLink && (
@@ -613,14 +613,14 @@ function ShowcaseCard({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1"
+              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-1"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span>Original</span>
             </a>
           )}
           {!externalLink && item.created_at && (
-            <span className="text-xs text-gray-400 font-medium">
+            <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
               {formatRelativeDate(item.created_at)}
             </span>
           )}
