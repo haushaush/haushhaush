@@ -288,6 +288,31 @@ export default function ReferenzWerbeanzeigeDetail() {
                       </div>
                     </div>
                   )}
+                  {branche && (
+                    <div className="flex items-start gap-3">
+                      <Tag className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500" />
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Branche</div>
+                        <div className="text-gray-900 dark:text-white font-medium capitalize">
+                          {branche}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {unternehmen && (
+                    <div className="flex items-start gap-3">
+                      <Briefcase className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500" />
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Unternehmen</div>
+                        <div className="text-gray-900 dark:text-white font-medium">
+                          {unternehmen}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {(branche || unternehmen) && (ad.meta_account_name || ad.meta_campaign_name || ad.meta_adset_name) && (
+                    <div className="border-t border-gray-100 dark:border-gray-800 my-2" />
+                  )}
                   {ad.meta_account_name && (
                     <div className="flex items-start gap-3">
                       <Facebook className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500" />
