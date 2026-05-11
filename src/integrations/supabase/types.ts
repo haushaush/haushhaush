@@ -3398,8 +3398,10 @@ export type Database = {
           display_order: number | null
           fallback_image_url: string | null
           id: string
+          iframe_check_at: string | null
           is_active: boolean | null
           is_featured: boolean | null
+          is_iframe_blocked: boolean | null
           linked_kunde_id: string | null
           metrics: Json | null
           preview_image_url: string | null
@@ -3424,8 +3426,10 @@ export type Database = {
           display_order?: number | null
           fallback_image_url?: string | null
           id?: string
+          iframe_check_at?: string | null
           is_active?: boolean | null
           is_featured?: boolean | null
+          is_iframe_blocked?: boolean | null
           linked_kunde_id?: string | null
           metrics?: Json | null
           preview_image_url?: string | null
@@ -3450,8 +3454,10 @@ export type Database = {
           display_order?: number | null
           fallback_image_url?: string | null
           id?: string
+          iframe_check_at?: string | null
           is_active?: boolean | null
           is_featured?: boolean | null
+          is_iframe_blocked?: boolean | null
           linked_kunde_id?: string | null
           metrics?: Json | null
           preview_image_url?: string | null
