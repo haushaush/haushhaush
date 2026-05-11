@@ -1,7 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Globe, Video, BarChart3, Search, ChevronDown, Image as ImageIcon, Star } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Globe, Video, BarChart3, Search, ChevronDown,
+  Image as ImageIcon, Star, ArrowUpRight, RefreshCw,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 type AnyItem = Record<string, any> & { _type: 'website' | 'werbeanzeige' | 'campaign' };
@@ -9,11 +13,13 @@ type AnyItem = Record<string, any> & { _type: 'website' | 'werbeanzeige' | 'camp
 const KUNDE_SELECT = 'linked_kunde:close_deals(client_name, unternehmen, branche)';
 
 export default function ReferenzShowcaseOverview() {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'website' | 'werbeanzeige' | 'campaign'>('all');
   const [brancheFilter, setBrancheFilter] = useState('');
   const [unternehmenFilter, setUnternehmenFilter] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'featured' | 'kunde'>('newest');
+  const [syncing, setSyncing] = useState(false);
 
   const { data: websites = [] } = useQuery({
     queryKey: ['showcase-websites'],
@@ -49,27 +55,107 @@ export default function ReferenzShowcaseOverview() {
     },
   });
 
+  // Unified filter category + option queries
+  const { data: filterCategories = [] } = useQuery({
+    queryKey: ['showcase-filter-categories-unified'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('showcase_filter_categories' as any)
+        .select('*')
+        .in('applies_to', ['all', 'werbeanzeige', 'website', 'campaign', 'both'])
+        .eq('is_active', true)
+        .order('display_order');
+      return (data as any[]) || [];
+    },
+  });
+
+  const { data: filterOptions = [] } = useQuery({
+    queryKey: ['showcase-filter-options-unified'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('showcase_filter_options' as any)
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order')
+        .range(0, 999);
+      return (data as any[]) || [];
+    },
+  });
+
+  const getOptionsFor = (categoryKey: string) => {
+    const cats = filterCategories.filter((c: any) => c.key === categoryKey);
+    if (!cats.length) return [] as { value: string; label: string }[];
+    const catIds = new Set(cats.map((c: any) => c.id));
+    const seen = new Map<string, string>();
+    filterOptions
+      .filter((o: any) => catIds.has(o.category_id))
+      .forEach((o: any) => { if (!seen.has(o.label)) seen.set(o.label, o.label); });
+    return Array.from(seen.values())
+      .sort((a, b) => a.localeCompare(b, 'de'))
+      .map(label => ({ value: label, label }));
+  };
+
+  // Auto-sync filters if stale (>24h)
+  useEffect(() => {
+    const lastSync = localStorage.getItem('showcase-filters-last-sync');
+    const now = Date.now();
+    const ageHours = lastSync ? (now - parseInt(lastSync, 10)) / 3.6e6 : Infinity;
+    if (ageHours > 24) {
+      supabase.functions.invoke('sync-showcase-filters-from-notion').then(({ error }) => {
+        if (!error) {
+          localStorage.setItem('showcase-filters-last-sync', String(now));
+          queryClient.invalidateQueries({ queryKey: ['showcase-filter-options-unified'] });
+        }
+      });
+    }
+  }, [queryClient]);
+
+  const triggerSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-showcase-filters-from-notion');
+      if (error) throw error;
+      localStorage.setItem('showcase-filters-last-sync', String(Date.now()));
+      const added = (data as any)?.added ?? 0;
+      const reactivated = (data as any)?.reactivated ?? 0;
+      toast.success(`Filter aktualisiert: ${added} neu, ${reactivated} reaktiviert`);
+      queryClient.invalidateQueries({ queryKey: ['showcase-filter-options-unified'] });
+    } catch (e: any) {
+      toast.error(e.message || 'Sync fehlgeschlagen');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const allItems = useMemo<AnyItem[]>(
     () => [...websites, ...adCreatives, ...campaigns],
     [websites, adCreatives, campaigns],
   );
 
-  const getBranche = (i: AnyItem) => i.linked_kunde?.branche || i.filter_values?.branche || i.branche || null;
-  const getUnternehmen = (i: AnyItem) => i.linked_kunde?.unternehmen || i.filter_values?.unternehmen || null;
+  const getBranche = (i: AnyItem) => {
+    const b = i.linked_kunde?.branche;
+    if (Array.isArray(b)) return b[0] || null;
+    return b || i.filter_values?.branche || i.branche || null;
+  };
+  const getUnternehmen = (i: AnyItem) =>
+    i.linked_kunde?.unternehmen || i.filter_values?.unternehmen || null;
   const getKundenname = (i: AnyItem) =>
     i.linked_kunde?.client_name || i.client_name || i.meta_account_name || null;
   const getTitle = (i: AnyItem) =>
     i.custom_title || i.title || i.meta_campaign_name || i.meta_ad_name || 'Unbenannt';
   const getCreated = (i: AnyItem) => i.created_at || i.imported_at || '';
 
-  const brancheOptions = useMemo(
-    () => Array.from(new Set(allItems.map(getBranche).filter(Boolean))) as string[],
-    [allItems],
-  );
-  const unternehmenOptions = useMemo(
-    () => Array.from(new Set(allItems.map(getUnternehmen).filter(Boolean))) as string[],
-    [allItems],
-  );
+  const brancheOptions = useMemo(() => {
+    const fromOptions = getOptionsFor('branche').map(o => o.value);
+    const fromItems = allItems.map(getBranche).filter(Boolean) as string[];
+    return Array.from(new Set([...fromOptions, ...fromItems])).sort((a, b) => a.localeCompare(b, 'de')).map(v => ({ value: v, label: v }));
+  }, [filterOptions, filterCategories, allItems]);
+
+  const unternehmenOptions = useMemo(() => {
+    const fromOptions = getOptionsFor('unternehmen').map(o => o.value);
+    const fromItems = allItems.map(getUnternehmen).filter(Boolean) as string[];
+    return Array.from(new Set([...fromOptions, ...fromItems])).sort((a, b) => a.localeCompare(b, 'de')).map(v => ({ value: v, label: v }));
+  }, [filterOptions, filterCategories, allItems]);
 
   const filteredItems = useMemo(() => {
     let out = allItems.filter(item => {
@@ -79,20 +165,11 @@ export default function ReferenzShowcaseOverview() {
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const searchable = [
-          item.title,
-          item.custom_title,
-          item.meta_campaign_name,
-          item.meta_ad_name,
-          item.client_name,
-          item.meta_account_name,
-          getKundenname(item),
-          getBranche(item),
-          getUnternehmen(item),
+          item.title, item.custom_title, item.meta_campaign_name, item.meta_ad_name,
+          item.client_name, item.meta_account_name,
+          getKundenname(item), getBranche(item), getUnternehmen(item),
           ...(item.custom_tags || item.tags || []),
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
+        ].filter(Boolean).join(' ').toLowerCase();
         if (!searchable.includes(q)) return false;
       }
       return true;
@@ -130,168 +207,214 @@ export default function ReferenzShowcaseOverview() {
     typeFilter !== 'all' || brancheFilter || unternehmenFilter || searchQuery;
 
   return (
-    <div className="p-6 max-w-7xl">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Referenz Showcase</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Alle bisherigen Projekte für Sales-Pitches und Calls.
-        </p>
-      </header>
+    <div className="min-h-screen bg-[#fafaf7]">
+      <div className="max-w-7xl mx-auto px-6 py-10">
+        <header className="mb-10">
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Referenz Showcase</h1>
+          <p className="text-gray-500 mt-2 text-[15px]">
+            Alle bisherigen Projekte für Sales-Pitches und Calls
+          </p>
+        </header>
 
-      {/* Category tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <CategoryTile
-          icon={<Globe className="w-9 h-9" />}
-          label="Websites"
-          count={counts.websites}
-          href="/sales/referenz-showcase/websites"
-          unit="Referenz"
-          unitPlural="Referenzen"
-        />
-        <CategoryTile
-          icon={<Video className="w-9 h-9" />}
-          label="Ad Creatives"
-          count={counts.ads}
-          href="/sales/referenz-showcase/werbeanzeigen"
-          unit="Referenz"
-          unitPlural="Referenzen"
-        />
-        <CategoryTile
-          icon={<BarChart3 className="w-9 h-9" />}
-          label="Ad Performance"
-          count={counts.performance}
-          href="/sales/referenz-showcase/ad-performance"
-          unit="Kampagne"
-          unitPlural="Kampagnen"
-        />
-      </div>
+        {/* Category tiles */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <CategoryTile
+            icon={<Globe className="w-6 h-6" />}
+            label="Websites"
+            count={counts.websites}
+            href="/sales/referenz-showcase/websites"
+            accent="bg-gradient-to-br from-teal-500 to-teal-600"
+          />
+          <CategoryTile
+            icon={<Video className="w-6 h-6" />}
+            label="Ad Creatives"
+            count={counts.ads}
+            href="/sales/referenz-showcase/werbeanzeigen"
+            accent="bg-gradient-to-br from-purple-500 to-purple-600"
+          />
+          <CategoryTile
+            icon={<BarChart3 className="w-6 h-6" />}
+            label="Ad Performance"
+            count={counts.performance}
+            href="/sales/referenz-showcase/ad-performance"
+            accent="bg-gradient-to-br from-blue-500 to-blue-600"
+            unitSingular="Kampagne"
+            unitPlural="Kampagnen"
+          />
+        </div>
 
-      {/* Filter bar */}
-      <div className="space-y-3 mb-6">
-        <div className="flex gap-3 flex-wrap">
-          <div className="flex-1 min-w-[240px] relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Suchen nach Titel, Kunde, Tag..."
-              className="w-full pl-10 pr-3 h-10 bg-background border border-border rounded-md text-sm"
-            />
-          </div>
-          <div className="relative">
-            <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value as any)}
-              className="appearance-none pl-3 pr-9 h-10 bg-background border border-border rounded-md text-sm"
+        {/* Filter panel */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-8">
+          <div className="flex gap-3 mb-4 flex-wrap">
+            <div className="flex-1 min-w-[240px] relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Suchen nach Titel, Kunde, Tag..."
+                className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-transparent focus:border-gray-300 focus:bg-white rounded-xl text-sm outline-none transition-all"
+              />
+            </div>
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as any)}
+                className="appearance-none px-4 py-3 pr-10 bg-gray-50 border border-transparent hover:border-gray-200 rounded-xl text-sm cursor-pointer outline-none"
+              >
+                <option value="newest">Sortieren: Neueste</option>
+                <option value="oldest">Älteste</option>
+                <option value="featured">Featured zuerst</option>
+                <option value="kunde">Nach Kunde</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-500" />
+            </div>
+            <button
+              onClick={triggerSync}
+              disabled={syncing}
+              className="px-4 py-3 bg-gray-50 border border-transparent hover:border-gray-200 rounded-xl text-sm cursor-pointer outline-none flex items-center gap-2 disabled:opacity-60"
             >
-              <option value="newest">Sortieren: Neueste</option>
-              <option value="oldest">Älteste</option>
-              <option value="featured">Featured zuerst</option>
-              <option value="kunde">Nach Kunde</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-muted-foreground" />
+              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Filter aktualisieren</span>
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <Chip active={typeFilter === 'all'} onClick={() => setTypeFilter('all')} tone="neutral">
+              Alle <span className="ml-1.5 text-xs opacity-60">{counts.all}</span>
+            </Chip>
+            <Chip active={typeFilter === 'website'} onClick={() => setTypeFilter('website')} tone="teal">
+              🌐 Websites <span className="ml-1.5 text-xs opacity-60">{counts.websites}</span>
+            </Chip>
+            <Chip active={typeFilter === 'werbeanzeige'} onClick={() => setTypeFilter('werbeanzeige')} tone="purple">
+              🎬 Ad Creatives <span className="ml-1.5 text-xs opacity-60">{counts.ads}</span>
+            </Chip>
+            <Chip active={typeFilter === 'campaign'} onClick={() => setTypeFilter('campaign')} tone="blue">
+              📊 Performance <span className="ml-1.5 text-xs opacity-60">{counts.performance}</span>
+            </Chip>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <DropdownPill label="Branche" value={brancheFilter} onChange={setBrancheFilter} options={brancheOptions} />
+            <DropdownPill label="Unternehmen" value={unternehmenFilter} onChange={setUnternehmenFilter} options={unternehmenOptions} />
+            {hasActiveFilters && (
+              <button onClick={resetFilters} className="text-xs text-teal-700 hover:underline ml-1 self-center">
+                Zurücksetzen
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground mr-1">Typ:</span>
-          <FilterChip active={typeFilter === 'all'} onClick={() => setTypeFilter('all')} label={`Alle ${counts.all}`} />
-          <FilterChip active={typeFilter === 'website'} onClick={() => setTypeFilter('website')} label={`🌐 Websites ${counts.websites}`} />
-          <FilterChip active={typeFilter === 'werbeanzeige'} onClick={() => setTypeFilter('werbeanzeige')} label={`🎬 Ads ${counts.ads}`} />
-          <FilterChip active={typeFilter === 'campaign'} onClick={() => setTypeFilter('campaign')} label={`📊 Performance ${counts.performance}`} />
-        </div>
-
-        <div className="flex flex-wrap gap-2 items-center">
-          <DropdownFilter label="Branche" value={brancheFilter} onChange={setBrancheFilter} options={brancheOptions} />
-          <DropdownFilter label="Unternehmen" value={unternehmenFilter} onChange={setUnternehmenFilter} options={unternehmenOptions} />
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
+        <div className="flex items-center justify-between mb-4 text-sm text-gray-600">
+          <span>
             {filteredItems.length} {filteredItems.length === 1 ? 'Referenz' : 'Referenzen'}
             {filteredItems.length < allItems.length && ` von ${allItems.length}`}
           </span>
-          {hasActiveFilters && (
-            <button onClick={resetFilters} className="text-primary hover:underline text-xs">
-              Alle Filter zurücksetzen
-            </button>
-          )}
         </div>
-      </div>
 
-      {/* Grid */}
-      {filteredItems.length === 0 ? (
-        <div className="text-center py-16 border border-dashed border-border rounded-lg">
-          <p className="text-sm text-muted-foreground">Keine Referenzen gefunden.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
-          {filteredItems.map(item => (
-            <ShowcaseCard key={`${item._type}-${item.id}`} item={item} getKundenname={getKundenname} getBranche={getBranche} getTitle={getTitle} />
-          ))}
-        </div>
-      )}
+        {filteredItems.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
+            <p className="text-sm text-gray-500">Keine Referenzen gefunden.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredItems.map(item => (
+              <ShowcaseCard
+                key={`${item._type}-${item.id}`}
+                item={item}
+                getKundenname={getKundenname}
+                getBranche={getBranche}
+                getTitle={getTitle}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 function CategoryTile({
-  icon, label, count, href, unit, unitPlural,
-}: { icon: React.ReactNode; label: string; count: number; href: string; unit: string; unitPlural: string }) {
+  icon, label, count, href, accent, unitSingular = 'Referenz', unitPlural = 'Referenzen',
+}: {
+  icon: React.ReactNode; label: string; count: number; href: string; accent: string;
+  unitSingular?: string; unitPlural?: string;
+}) {
   return (
     <Link
       to={href}
-      className="block bg-card border border-border hover:border-primary/60 hover:shadow-md rounded-xl p-6 transition-all group"
+      className="group relative bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
     >
-      <div className="text-primary mb-3">{icon}</div>
-      <h3 className="text-lg font-semibold">{label}</h3>
-      <p className="text-xs text-muted-foreground mt-2 tabular-nums">
-        {count} {count === 1 ? unit : unitPlural}
-      </p>
+      <div className="flex items-center gap-4">
+        <div className={`w-12 h-12 rounded-xl ${accent} flex items-center justify-center text-white shadow-sm`}>
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900">{label}</h3>
+          <p className="text-sm text-gray-500 mt-0.5 tabular-nums">
+            {count} {count === 1 ? unitSingular : unitPlural}
+          </p>
+        </div>
+        <ArrowUpRight className="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors" />
+      </div>
     </Link>
   );
 }
 
-function FilterChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+function Chip({
+  active, onClick, tone, children,
+}: { active: boolean; onClick: () => void; tone: 'neutral' | 'teal' | 'purple' | 'blue'; children: React.ReactNode }) {
+  const activeClasses = {
+    neutral: 'bg-gray-900 text-white border-gray-900',
+    teal: 'bg-teal-50 text-teal-700 border-teal-200',
+    purple: 'bg-purple-50 text-purple-700 border-purple-200',
+    blue: 'bg-blue-50 text-blue-700 border-blue-200',
+  }[tone];
   return (
     <button
       onClick={onClick}
-      className={`text-xs px-3 h-7 rounded-full border transition-colors ${
-        active
-          ? 'bg-primary text-primary-foreground border-primary'
-          : 'bg-background border-border hover:border-primary/60 text-foreground'
+      className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all ${
+        active ? activeClasses : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
       }`}
     >
-      {label}
+      {children}
     </button>
   );
 }
 
-function DropdownFilter({
+function DropdownPill({
   label, value, onChange, options,
-}: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
-  if (options.length === 0) return null;
+}: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+  const isActive = !!value;
   return (
     <div className="relative">
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="appearance-none pl-3 pr-8 h-9 bg-background border border-border rounded-md text-sm"
+        className={`appearance-none pl-3.5 pr-9 py-1.5 rounded-full text-sm font-medium border cursor-pointer transition-all outline-none ${
+          isActive
+            ? 'bg-teal-50 text-teal-700 border-teal-200'
+            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+        }`}
       >
         <option value="">{label}: Alle</option>
-        {options.map(o => (
-          <option key={o} value={o}>{o}</option>
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
-      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none text-muted-foreground" />
+      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none text-gray-500" />
     </div>
   );
 }
 
 function ShowcaseCard({
   item, getKundenname, getBranche, getTitle,
-}: { item: AnyItem; getKundenname: (i: AnyItem) => string | null; getBranche: (i: AnyItem) => string | null; getTitle: (i: AnyItem) => string }) {
+}: {
+  item: AnyItem;
+  getKundenname: (i: AnyItem) => string | null;
+  getBranche: (i: AnyItem) => string | null;
+  getTitle: (i: AnyItem) => string;
+}) {
   const detailHref =
     item._type === 'website' ? `/sales/referenz-showcase/websites/${item.id}` :
     item._type === 'werbeanzeige' ? `/sales/referenz-showcase/werbeanzeigen/${item.id}` :
@@ -301,35 +424,39 @@ function ShowcaseCard({
   const branche = getBranche(item);
 
   return (
-    <Link
-      to={detailHref}
-      className="block bg-card border border-border hover:border-primary/60 hover:shadow-md rounded-lg overflow-hidden transition-all group"
-    >
-      <div className="relative overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
-        {item._type === 'campaign' ? (
-          <PerformanceCardVisual campaign={item} />
-        ) : (
-          <ImageCardVisual item={item} />
-        )}
-        <TypeBadge type={item._type} />
-        {item.is_featured && (
-          <div className="absolute top-2 left-2 bg-primary text-primary-foreground rounded-full p-1">
-            <Star className="w-3 h-3" fill="currentColor" />
-          </div>
-        )}
-      </div>
-      <div className="p-3">
-        <p className="text-[11px] text-muted-foreground truncate">
-          {kunde || '—'}
-          {branche && <span> · {branche}</span>}
-        </p>
-        <h3 className="text-sm font-medium truncate mt-0.5">{getTitle(item)}</h3>
+    <Link to={detailHref} className="group block">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-200">
+        <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
+          {item._type === 'campaign'
+            ? <PerformanceHero campaign={item} />
+            : <ImageContent item={item} />}
+          <TypeIndicator type={item._type} />
+          {item.is_featured && (
+            <div className="absolute top-3 left-3 w-7 h-7 rounded-full bg-yellow-400 flex items-center justify-center shadow-sm">
+              <Star className="w-3.5 h-3.5 text-white" fill="currentColor" />
+            </div>
+          )}
+        </div>
+        <div className="p-4">
+          <p className="text-xs text-gray-500 mb-1 flex items-center gap-1.5">
+            <span className="truncate">{kunde || '—'}</span>
+            {branche && (
+              <>
+                <span className="text-gray-300">·</span>
+                <span className="truncate">{branche}</span>
+              </>
+            )}
+          </p>
+          <h3 className="font-semibold text-gray-900 text-sm leading-snug truncate group-hover:text-teal-600 transition-colors">
+            {getTitle(item)}
+          </h3>
+        </div>
       </div>
     </Link>
   );
 }
 
-function ImageCardVisual({ item }: { item: AnyItem }) {
+function ImageContent({ item }: { item: AnyItem }) {
   const imageUrl =
     item.thumbnail_url ||
     item.fallback_image_url ||
@@ -337,60 +464,82 @@ function ImageCardVisual({ item }: { item: AnyItem }) {
     item.thumbnail_url_persisted ||
     item.thumbnail_url_meta;
 
-  if (imageUrl) {
+  if (!imageUrl) {
     return (
-      <img
-        src={imageUrl}
-        alt={item.title || item.meta_ad_name || ''}
-        className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-        loading="lazy"
-      />
+      <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <ImageIcon className="w-10 h-10 text-gray-300" />
+      </div>
     );
   }
   return (
-    <div className="w-full h-full bg-muted flex items-center justify-center">
-      <ImageIcon className="w-10 h-10 text-muted-foreground" />
-    </div>
+    <img
+      src={imageUrl}
+      alt={item.title || item.meta_ad_name || ''}
+      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+      loading="lazy"
+    />
   );
 }
 
-function PerformanceCardVisual({ campaign }: { campaign: AnyItem }) {
+function PerformanceHero({ campaign }: { campaign: AnyItem }) {
   const m = campaign.metrics || {};
-  const roas = typeof m.roas === 'number' ? m.roas : (m.roas ? Number(m.roas) : null);
-  const cpl = typeof m.cpl === 'number' ? m.cpl : (m.cpl ? Number(m.cpl) : null);
+  const roas = m.roas != null ? Number(m.roas) : null;
+  const cpl = m.cpl != null ? Number(m.cpl) : null;
   const leads = m.leads != null ? Number(m.leads) : null;
 
+  const tier: 'exceptional' | 'good' | 'standard' | 'none' =
+    roas == null || isNaN(roas) ? 'none' :
+    roas >= 4 ? 'exceptional' :
+    roas >= 2.5 ? 'good' : 'standard';
+
+  const tierStyles = {
+    exceptional: 'bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-white',
+    good: 'bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 text-white',
+    standard: 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700',
+    none: 'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400',
+  }[tier];
+
   return (
-    <div className="w-full h-full bg-gradient-to-br from-muted via-muted/50 to-background flex flex-col items-center justify-center p-4">
-      <div className="text-center">
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">ROAS</p>
-        <p className="text-4xl font-bold tabular-nums text-foreground">
-          {roas != null && !isNaN(roas) ? `${roas.toFixed(1)}x` : '—'}
+    <div className={`w-full h-full flex flex-col justify-center items-center p-6 relative overflow-hidden ${tierStyles}`}>
+      <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+      <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/10 blur-xl" />
+      <div className="relative z-10 text-center">
+        <p className="text-[10px] uppercase tracking-[0.2em] opacity-80 mb-1">ROAS</p>
+        <p className="text-5xl font-bold leading-none tracking-tight tabular-nums">
+          {roas != null && !isNaN(roas) ? (
+            <>{roas.toFixed(1)}<span className="text-2xl ml-1 opacity-80">x</span></>
+          ) : '—'}
         </p>
       </div>
-      <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] w-full max-w-[180px]">
-        <div className="text-center bg-background/80 rounded px-2 py-1">
-          <p className="text-muted-foreground">CPL</p>
-          <p className="font-semibold tabular-nums">{cpl != null && !isNaN(cpl) ? `€${cpl.toFixed(2)}` : '—'}</p>
+      <div className="relative z-10 grid grid-cols-2 gap-2 mt-4 w-full max-w-[200px]">
+        <div className="text-center bg-white/15 backdrop-blur-sm rounded-lg px-2 py-1.5">
+          <p className="text-[10px] uppercase tracking-wider opacity-80">CPL</p>
+          <p className="font-semibold text-sm tabular-nums">
+            {cpl != null && !isNaN(cpl) ? `€${cpl.toFixed(2)}` : '—'}
+          </p>
         </div>
-        <div className="text-center bg-background/80 rounded px-2 py-1">
-          <p className="text-muted-foreground">Leads</p>
-          <p className="font-semibold tabular-nums">{leads != null && !isNaN(leads) ? leads.toLocaleString('de-DE') : '—'}</p>
+        <div className="text-center bg-white/15 backdrop-blur-sm rounded-lg px-2 py-1.5">
+          <p className="text-[10px] uppercase tracking-wider opacity-80">Leads</p>
+          <p className="font-semibold text-sm tabular-nums">
+            {leads != null && !isNaN(leads) ? leads.toLocaleString('de-DE') : '—'}
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-function TypeBadge({ type }: { type: AnyItem['_type'] }) {
+function TypeIndicator({ type }: { type: AnyItem['_type'] }) {
   const config = {
-    website: { icon: '🌐', label: 'Website' },
-    werbeanzeige: { icon: '🎬', label: 'Ad' },
-    campaign: { icon: '📊', label: 'Performance' },
+    website: { label: 'Website', Icon: Globe, color: 'bg-teal-500/90' },
+    werbeanzeige: { label: 'Ad', Icon: Video, color: 'bg-purple-500/90' },
+    campaign: { label: 'Performance', Icon: BarChart3, color: 'bg-blue-500/90' },
   }[type];
+  const { Icon } = config;
   return (
-    <div className="absolute top-2 right-2 bg-background/90 backdrop-blur text-[10px] uppercase font-medium rounded px-2 py-0.5 border border-border">
-      {config.icon} {config.label}
+    <div className={`absolute top-3 right-3 ${config.color} backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 font-medium shadow-sm`}>
+      <Icon className="w-3 h-3" />
+      {config.label}
     </div>
   );
 }
