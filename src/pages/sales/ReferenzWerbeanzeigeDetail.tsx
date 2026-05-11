@@ -136,6 +136,8 @@ export default function ReferenzWerbeanzeigeDetail() {
   const title = ad.custom_title || ad.meta_ad_name || "Unbenannt";
   const thumb = (ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta;
   const versicherer = (ad.custom_tags ?? []).find(t => t.startsWith("versicherer-"))?.replace("versicherer-", "");
+  const branche = linkedKunde?.branche || ad.filter_values?.branche || "";
+  const unternehmen = linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
 
   return (
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950">
