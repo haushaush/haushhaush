@@ -530,38 +530,118 @@ function ShowcaseCard({
 
   const kunde = getKundenname(item);
   const branche = getBranche(item);
+  const unternehmen =
+    item.linked_kunde?.unternehmen || item.filter_values?.unternehmen || item.unternehmen || null;
+  const externalLink =
+    item.external_link || item.website_url || item.notion_url || item.original_url || null;
+
+  const eyebrow = (kunde || '').trim();
+  const title = getTitle(item);
+
+  const metaParts: string[] = [];
+  if (branche) metaParts.push(branche);
+  if (unternehmen && typeof unternehmen === 'string') metaParts.push(unternehmen);
+  if (item._type === 'campaign') {
+    if (item.date_range) metaParts.push(item.date_range);
+    const spend = item.metrics?.spend;
+    if (spend != null && !isNaN(Number(spend))) {
+      metaParts.push(`€${Math.round(Number(spend)).toLocaleString('de-DE')} Spend`);
+    }
+  }
 
   return (
-    <Link to={detailHref} className="group block">
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-200">
-        <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
-          {item._type === 'campaign'
-            ? <PerformanceHero campaign={item} />
-            : <ImageContent item={item} />}
-          <TypeIndicator type={item._type} />
-          {item.is_featured && (
-            <div className="absolute top-3 left-3 w-7 h-7 rounded-full bg-yellow-400 flex items-center justify-center shadow-sm">
-              <Star className="w-3.5 h-3.5 text-white" fill="currentColor" />
-            </div>
-          )}
-        </div>
-        <div className="p-4">
-          <p className="text-xs text-gray-500 mb-1 flex items-center gap-1.5">
-            <span className="truncate">{kunde || '—'}</span>
-            {branche && (
-              <>
-                <span className="text-gray-300">·</span>
-                <span className="truncate">{branche}</span>
-              </>
-            )}
+    <Link
+      to={detailHref}
+      className="group block bg-white rounded-2xl border border-gray-200/80 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 transition-all duration-200 overflow-hidden"
+    >
+      <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
+        {item._type === 'campaign'
+          ? <PerformanceHero campaign={item} />
+          : <ImageContent item={item} />}
+        <TypeIndicator type={item._type} />
+        {item.is_featured && (
+          <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center shadow-md">
+            <Star className="w-4 h-4 text-white" fill="currentColor" />
+          </div>
+        )}
+      </div>
+
+      <div className="p-5">
+        {eyebrow && (
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5 truncate">
+            {eyebrow}
           </p>
-          <h3 className="font-semibold text-gray-900 text-sm leading-snug truncate group-hover:text-teal-600 transition-colors">
-            {getTitle(item)}
-          </h3>
+        )}
+
+        <h3 className="text-lg font-bold text-gray-900 leading-snug mb-3 line-clamp-2 min-h-[3.5rem] group-hover:text-teal-700 transition-colors">
+          {title}
+        </h3>
+
+        <PrimaryHighlight item={item} />
+
+        {metaParts.length > 0 && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+            {metaParts.map((part, i) => (
+              <span key={i} className="flex items-center gap-2">
+                {i > 0 && <span className="text-gray-300">·</span>}
+                <span>{part}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="border-t border-gray-100 my-4" />
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-teal-600 group-hover:text-teal-700 group-hover:underline transition-all">
+            Ansehen →
+          </span>
+          {externalLink && (
+            <a
+              href={externalLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Original</span>
+            </a>
+          )}
         </div>
       </div>
     </Link>
   );
+}
+
+function PrimaryHighlight({ item }: { item: AnyItem }) {
+  if (item._type === 'campaign') {
+    const roas = item.metrics?.roas != null ? Number(item.metrics.roas) : null;
+    const leads = item.metrics?.leads != null ? Number(item.metrics.leads) : null;
+    if (roas != null && !isNaN(roas)) {
+      return <p className="text-2xl font-bold text-teal-600 mb-3 tabular-nums">{roas.toFixed(1)}x ROAS</p>;
+    }
+    if (leads != null && !isNaN(leads)) {
+      return <p className="text-2xl font-bold text-teal-600 mb-3 tabular-nums">{leads.toLocaleString('de-DE')} Leads</p>;
+    }
+    return null;
+  }
+  if (item._type === 'website' && item.is_active) {
+    return (
+      <p className="text-sm font-semibold text-teal-600 mb-3 flex items-center gap-1.5">
+        <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+        Live
+      </p>
+    );
+  }
+  if (item._type === 'werbeanzeige') {
+    return (
+      <p className="text-sm font-semibold text-purple-600 mb-3">
+        {item.creative_format || item.ad_format || 'Creative'}
+      </p>
+    );
+  }
+  return null;
 }
 
 function ImageContent({ item }: { item: AnyItem }) {
