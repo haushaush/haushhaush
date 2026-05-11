@@ -10,6 +10,18 @@ import { supabase } from '@/integrations/supabase/client';
 
 type AnyItem = Record<string, any> & { _type: 'website' | 'werbeanzeige' | 'campaign' };
 
+function formatRelativeDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const diff = Date.now() - d.getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days < 1) return 'heute';
+  if (days < 2) return 'gestern';
+  if (days < 30) return `vor ${days} Tagen`;
+  if (days < 365) return `vor ${Math.floor(days / 30)} Mon.`;
+  return d.toLocaleDateString('de-DE', { month: 'short', year: 'numeric' });
+}
+
 const KUNDE_SELECT = 'linked_kunde:close_deals(client_name, unternehmen, branche)';
 
 export default function ReferenzShowcaseOverview() {
