@@ -635,16 +635,16 @@ function PrimaryHighlight({ item }: { item: AnyItem }) {
     const roas = item.metrics?.roas != null ? Number(item.metrics.roas) : null;
     const leads = item.metrics?.leads != null ? Number(item.metrics.leads) : null;
     if (roas != null && !isNaN(roas)) {
-      return <p className="text-2xl font-bold text-teal-600 mb-3 tabular-nums">{roas.toFixed(1)}x ROAS</p>;
+      return <p className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-3 tabular-nums">{roas.toFixed(1)}x ROAS</p>;
     }
     if (leads != null && !isNaN(leads)) {
-      return <p className="text-2xl font-bold text-teal-600 mb-3 tabular-nums">{leads.toLocaleString('de-DE')} Leads</p>;
+      return <p className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-3 tabular-nums">{leads.toLocaleString('de-DE')} Leads</p>;
     }
     return null;
   }
   if (item._type === 'website' && item.is_active) {
     return (
-      <p className="text-sm font-semibold text-teal-600 mb-3 flex items-center gap-1.5">
+      <p className="text-sm font-semibold text-teal-600 dark:text-teal-400 mb-3 flex items-center gap-1.5">
         <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
         Live
       </p>
@@ -652,7 +652,7 @@ function PrimaryHighlight({ item }: { item: AnyItem }) {
   }
   if (item._type === 'werbeanzeige') {
     return (
-      <p className="text-sm font-semibold text-purple-600 mb-3">
+      <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mb-3">
         {item.creative_format || item.ad_format || 'Creative'}
       </p>
     );
