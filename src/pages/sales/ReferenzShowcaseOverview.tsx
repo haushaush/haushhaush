@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Search, ChevronDown, RefreshCw,
+  Globe, Video, BarChart3, Search, ChevronDown, RefreshCw,
   Image as ImageIcon, Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
