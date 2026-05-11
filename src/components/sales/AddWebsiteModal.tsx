@@ -43,15 +43,33 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
   );
   const [fallbackPreviewUrl, setFallbackPreviewUrl] = useState<string | null>(null);
 
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [existingThumbnailUrl, setExistingThumbnailUrl] = useState<string | null>(
+    (editing as any)?.thumbnail_url ?? null
+  );
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!fallbackFile) {
-      setFallbackPreviewUrl(null);
-      return;
-    }
+    if (!fallbackFile) { setFallbackPreviewUrl(null); return; }
     const objectUrl = URL.createObjectURL(fallbackFile);
     setFallbackPreviewUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [fallbackFile]);
+
+  useEffect(() => {
+    if (!thumbnailFile) { setThumbnailPreviewUrl(null); return; }
+    const objectUrl = URL.createObjectURL(thumbnailFile);
+    setThumbnailPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [thumbnailFile]);
+
+  function handleThumbnailChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Bitte ein Bild auswählen'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Bild zu groß (max. 5MB)'); return; }
+    setThumbnailFile(file);
+  }
 
   function handleNext() {
     if (!url.trim()) {
