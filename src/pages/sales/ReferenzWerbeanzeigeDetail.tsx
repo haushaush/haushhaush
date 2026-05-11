@@ -8,7 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, RefreshCw, Trash2, Save, Loader2, X, Plus, Video, Sparkles } from "lucide-react";
+import {
+  ArrowLeft, RefreshCw, Trash2, Save, Loader2, X, Plus, Video, Image as ImageIcon,
+  Sparkles, Share2, Pencil, Copy, ExternalLink, BarChart3, Building2, Target, Facebook, DownloadCloud,
+} from "lucide-react";
 import type { MetaAdRow } from "./ReferenzWerbeanzeigen";
 import type { FilterCategory, FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
 
@@ -23,6 +26,7 @@ export default function ReferenzWerbeanzeigeDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [editMode, setEditMode] = useState(false);
 
   const [categories, setCategories] = useState<FilterCategory[]>([]);
   const [options, setOptions] = useState<FilterOption[]>([]);
@@ -42,7 +46,9 @@ export default function ReferenzWerbeanzeigeDetail() {
     if (!id) return;
     setLoading(true);
     const [{ data: row }, { data: cats }, { data: opts }, { data: kds }] = await Promise.all([
-      supabase.from("referenz_meta_ads" as any).select("*").eq("id", id).maybeSingle(),
+      supabase.from("referenz_meta_ads" as any)
+        .select("*, linked_kunde:close_deals(id, client_name, unternehmen, branche)")
+        .eq("id", id).maybeSingle(),
       supabase.from("showcase_filter_categories" as any).select("*").in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
       supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
       supabase.from("close_deals").select("id, client_name").order("client_name").limit(500),
@@ -105,118 +111,224 @@ export default function ReferenzWerbeanzeigeDetail() {
     setTags([...tags, t]); setNewTag("");
   };
 
-  if (loading) return <div className="p-10"><Loader2 className="w-6 h-6 animate-spin" /></div>;
-  if (!ad) return <div className="p-10 text-sm text-muted-foreground">Nicht gefunden. <Link className="underline" to="/sales/referenz-showcase/werbeanzeigen">Zurück</Link></div>;
+  const copyShareLink = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    toast({ title: "Link kopiert" });
+  };
+
+  if (loading) return (
+    <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 flex items-center justify-center">
+      <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+    </div>
+  );
+  if (!ad) return (
+    <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 p-10 text-sm text-gray-500 dark:text-gray-400">
+      Nicht gefunden. <Link className="underline" to="/sales/referenz-showcase/werbeanzeigen">Zurück</Link>
+    </div>
+  );
 
   const m = ad.meta_metrics ?? {};
+  const isVideo = ad.ad_format === "video" || ad.ad_format === "reel" || !!ad.video_url;
+  const formatLabel = isVideo ? "Video Ad" : ad.ad_format === "carousel" ? "Carousel Ad" : "Image Ad";
+  const linkedKunde = (ad as any).linked_kunde as { id?: string; client_name?: string; unternehmen?: string; branche?: string } | null;
+  const eyebrow = linkedKunde?.unternehmen || linkedKunde?.client_name || ad.meta_account_name || "";
+  const title = ad.custom_title || ad.meta_ad_name || "Unbenannt";
+  const thumb = (ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta;
+  const versicherer = (ad.custom_tags ?? []).find(t => t.startsWith("versicherer-"))?.replace("versicherer-", "");
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-5">
-        <Button variant="ghost" onClick={() => navigate("/sales/referenz-showcase/werbeanzeigen")}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Ad Creatives
-        </Button>
-        {isAdmin && (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => refresh(false)} disabled={refreshing}>
-              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} /> Sync (Metriken)
+    <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950">
+      {/* Back-Bar */}
+      <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link to="/sales/referenz-showcase/werbeanzeigen" className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+            <ArrowLeft className="w-4 h-4" />
+            Ad Creatives
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={copyShareLink}>
+              <Share2 className="w-4 h-4 mr-2" /> Teilen
             </Button>
-            <Button variant="outline" onClick={() => refresh(true)} disabled={refreshing}>
-              🖼️ Force-Sync (Bild + Metriken)
-            </Button>
-            <Button variant="outline" onClick={remove}>
-              <Trash2 className="w-4 h-4 mr-2 text-destructive" /> Löschen
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-[280px,1fr] gap-6">
-        {/* Left: thumbnail + Meta data (read-only) */}
-        <div className="space-y-3">
-          <div
-            className="bg-muted rounded-lg overflow-hidden"
-            style={{ aspectRatio: ad.ad_format === "reel" ? "9 / 16" : "1 / 1" }}
-          >
-            {ad.video_url ? (
-              <video
-                src={ad.video_url}
-                poster={(ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta || undefined}
-                controls
-                preload="metadata"
-                className="w-full h-full object-contain bg-black"
-              />
-            ) : ((ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta) ? (
-              <img
-                src={(ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta}
-                alt=""
-                className="w-full h-full object-contain"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center"><Video className="w-12 h-12 text-muted-foreground" /></div>
+            {isAdmin && (
+              <Button variant={editMode ? "default" : "outline"} size="sm" onClick={() => setEditMode(!editMode)}>
+                <Pencil className="w-4 h-4 mr-2" /> {editMode ? "Bearbeiten beenden" : "Bearbeiten"}
+              </Button>
+            )}
+            {isAdmin && editMode && (
+              <>
+                <Button variant="outline" size="sm" onClick={() => refresh(false)} disabled={refreshing}>
+                  <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} /> Sync
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => refresh(true)} disabled={refreshing}>
+                  <DownloadCloud className="w-4 h-4 mr-2" /> Force-Sync
+                </Button>
+                <Button variant="ghost" size="sm" className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" onClick={remove}>
+                  <Trash2 className="w-4 h-4 mr-2" /> Löschen
+                </Button>
+              </>
             )}
           </div>
-          <div className="text-xs space-y-1.5">
-            <div className="text-muted-foreground">Account</div>
-            <div className="font-medium">{ad.meta_account_name ?? ad.meta_account_id}</div>
-            <div className="text-muted-foreground pt-1">Kampagne</div>
-            <div className="font-medium">{ad.meta_campaign_name ?? "—"}</div>
-            <div className="text-muted-foreground pt-1">Ad Set</div>
-            <div className="font-medium">{ad.meta_adset_name ?? "—"}</div>
-            <div className="text-muted-foreground pt-1">Format</div>
-            <div className="font-medium capitalize">{ad.ad_format ?? "—"}</div>
+        </div>
+      </div>
+
+      {/* Main */}
+      <div className="max-w-7xl mx-auto px-6 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          {/* LEFT */}
+          <div className="lg:col-span-3 space-y-6">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+              <div className="relative aspect-[16/10] bg-gray-50 dark:bg-gray-800">
+                {ad.video_url ? (
+                  <video src={ad.video_url} poster={thumb || undefined} controls preload="metadata" className="w-full h-full object-contain bg-black" />
+                ) : thumb ? (
+                  <img src={thumb} alt={title} className="w-full h-full object-contain" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    {isVideo ? <Video className="w-12 h-12 text-gray-300 dark:text-gray-600" /> : <ImageIcon className="w-12 h-12 text-gray-300 dark:text-gray-600" />}
+                  </div>
+                )}
+                <div className="absolute top-4 right-4 flex items-center gap-2 bg-purple-600/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-md">
+                  {isVideo ? <Video className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
+                  {formatLabel}
+                </div>
+              </div>
+            </div>
+
+            {(ad.custom_description) && (
+              <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Beschreibung</h2>
+                <div className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{ad.custom_description}</div>
+              </section>
+            )}
+
+            {(ad as any).custom_performance_notes && (
+              <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Insights</h2>
+                <div className="text-gray-700 dark:text-gray-300 leading-relaxed italic whitespace-pre-wrap">{(ad as any).custom_performance_notes}</div>
+              </section>
+            )}
+          </div>
+
+          {/* RIGHT */}
+          <div className="lg:col-span-2">
+            <div className="lg:sticky lg:top-24 space-y-6">
+              {/* Info-Panel */}
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm">
+                {eyebrow && (
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                    {eyebrow.toUpperCase()}
+                  </p>
+                )}
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-3">{title}</h1>
+                <div className="text-lg font-semibold text-purple-600 dark:text-purple-400 mb-6">
+                  {formatLabel}
+                  {versicherer && <span className="text-gray-400 dark:text-gray-500 font-normal"> · {versicherer}</span>}
+                </div>
+
+                {(ad as any).meta_permalink_url && (
+                  <a
+                    href={(ad as any).meta_permalink_url}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3.5 rounded-xl transition-colors mb-3"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Im Meta Ads Library ansehen
+                  </a>
+                )}
+                <Button variant="outline" className="w-full" onClick={copyShareLink}>
+                  <Copy className="w-4 h-4 mr-2" /> Link kopieren
+                </Button>
+              </div>
+
+              {/* Performance-Panel */}
+              {(m.leads != null || m.cpl != null || m.ctr != null || m.roas != null || m.spend != null || m.clicks != null) && (
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm">
+                  <div className="flex items-center gap-2 mb-5">
+                    <BarChart3 className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                    <h3 className="font-bold text-gray-900 dark:text-white">Performance</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <PerformanceStat label="Leads" value={m.leads != null ? String(m.leads) : "—"} highlight />
+                    <PerformanceStat label="CPL" value={m.cpl != null ? `€${Number(m.cpl).toFixed(2)}` : "—"} highlight />
+                    <PerformanceStat label="ROAS" value={m.roas != null ? `${Number(m.roas).toFixed(1)}x` : "—"} />
+                    <PerformanceStat label="CTR" value={m.ctr != null ? `${Number(m.ctr).toFixed(2)}%` : "—"} />
+                    <PerformanceStat label="Spend" value={m.spend != null ? `€${Number(m.spend).toLocaleString("de-DE")}` : "—"} />
+                    <PerformanceStat label="Klicks" value={m.clicks != null ? String(m.clicks) : "—"} />
+                  </div>
+                  {ad.campaign_period_start && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                      Zeitraum: {ad.campaign_period_start} – {ad.campaign_period_end ?? "heute"}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Meta-Panel */}
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm">
+                <h3 className="font-bold text-gray-900 dark:text-white mb-4">Details</h3>
+                <div className="space-y-3 text-sm">
+                  {linkedKunde?.id && (
+                    <div className="flex items-start gap-3">
+                      <Building2 className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500" />
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Kunde</div>
+                        <Link to={`/kunden/${linkedKunde.id}`} className="text-teal-600 dark:text-teal-400 hover:underline font-medium">
+                          {linkedKunde.client_name}
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                  {ad.meta_account_name && (
+                    <div className="flex items-start gap-3">
+                      <Facebook className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500" />
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Meta Account</div>
+                        <div className="text-gray-900 dark:text-white font-medium">{ad.meta_account_name}</div>
+                      </div>
+                    </div>
+                  )}
+                  {ad.meta_campaign_name && (
+                    <div className="flex items-start gap-3">
+                      <Target className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500" />
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Kampagne</div>
+                        <div className="text-gray-900 dark:text-white font-medium">{ad.meta_campaign_name}</div>
+                      </div>
+                    </div>
+                  )}
+                  {ad.meta_adset_name && (
+                    <div className="flex items-start gap-3">
+                      <Target className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500" />
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Ad Set</div>
+                        <div className="text-gray-900 dark:text-white font-medium">{ad.meta_adset_name}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {tags.length > 0 && (
+                  <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-800">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Tags</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {tags.map(tag => (
+                        <span key={tag} className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs rounded-md">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Right: metrics + editable */}
-        <div className="space-y-5">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">{ad.custom_title || ad.meta_ad_name}</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Meta Ad ID: <span className="font-mono">{ad.meta_ad_id}</span></p>
-          </div>
-
-          {/* Performance */}
-          <div className="border border-border rounded-lg p-4">
-            <h2 className="text-sm font-semibold mb-3">📊 Performance</h2>
-            <div className="grid grid-cols-3 gap-3 text-sm tabular-nums">
-              <Stat label="Leads" value={m.leads?.toString() ?? "—"} />
-              <Stat label="CPL" value={m.cpl != null ? `€${m.cpl}` : "—"} />
-              <Stat label="ROAS" value={m.roas != null ? `${m.roas}x` : "—"} />
-              <Stat label="CTR" value={m.ctr != null ? `${m.ctr}%` : "—"} />
-              <Stat label="Spend" value={m.spend != null ? `€${m.spend}` : "—"} />
-              <Stat label="Klicks" value={m.clicks?.toString() ?? "—"} />
-            </div>
-            {ad.campaign_period_start && (
-              <p className="text-[11px] text-muted-foreground mt-3">
-                Zeitraum: {ad.campaign_period_start} – {ad.campaign_period_end}
-              </p>
-            )}
-          </div>
-
-          {/* Auto-link info */}
-          {linkedKundeId && (() => {
-            const linkedKunde = kunden.find(k => k.id === linkedKundeId);
-            if (!linkedKunde) return null;
-            return (
-              <div className="border border-primary/30 bg-primary/5 rounded-lg p-3 text-sm flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">Auto-Verknüpfung mit Notion-Kunde</p>
-                  <p className="text-muted-foreground text-xs mt-0.5">
-                    Diese Anzeige ist mit <strong className="text-foreground">{linkedKunde.client_name}</strong> verknüpft.
-                    Branche, Versicherer-Tag und Kunden-Tag werden bei jedem Sync automatisch aus dem Notion-Kunden aktualisiert.
-                  </p>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Editable */}
-          {isAdmin && (
-            <div className="border border-border rounded-lg p-4 space-y-4">
-              <h2 className="text-sm font-semibold">Showcase-Daten</h2>
-
-
+        {/* Edit-Form */}
+        {isAdmin && editMode && (
+          <div className="mt-16 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Showcase-Daten bearbeiten</h2>
+            <div className="space-y-5 max-w-2xl">
               <div>
                 <Label>Titel im Showcase</Label>
                 <Input value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} placeholder={ad.meta_ad_name ?? ""} className="mt-1" />
@@ -238,7 +350,7 @@ export default function ReferenzWerbeanzeigeDetail() {
                       const catOpts = options.filter(o => o.category_id === cat.id);
                       return (
                         <div key={cat.id}>
-                          <span className="text-xs text-muted-foreground">{cat.label}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{cat.label}</span>
                           <select
                             value={filterValues[cat.key] ?? ""}
                             onChange={(e) => setFilterValues({ ...filterValues, [cat.key]: e.target.value })}
@@ -256,21 +368,14 @@ export default function ReferenzWerbeanzeigeDetail() {
 
               <div>
                 <Label>Tags</Label>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  <Sparkles className="w-3 h-3 inline -mt-0.5" /> Auto-Tags (#kunde-…, #versicherer-…) werden bei jedem Sync neu generiert. Manuelle Tags bleiben erhalten.
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                  <Sparkles className="w-3 h-3 inline -mt-0.5" /> Auto-Tags (#kunde-…, #versicherer-…) werden bei jedem Sync neu generiert.
                 </p>
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                   {tags.map(t => {
                     const isAutoTag = t.startsWith("kunde-") || t.startsWith("versicherer-");
                     return (
-                      <span
-                        key={t}
-                        className={`text-xs px-2 py-1 rounded-full inline-flex items-center gap-1 border ${
-                          isAutoTag
-                            ? "bg-primary/10 text-primary border-primary/30"
-                            : "bg-muted border-transparent"
-                        }`}
-                      >
+                      <span key={t} className={`text-xs px-2 py-1 rounded-full inline-flex items-center gap-1 border ${isAutoTag ? "bg-primary/10 text-primary border-primary/30" : "bg-muted border-transparent"}`}>
                         {isAutoTag && <Sparkles className="w-3 h-3" />}
                         #{t}
                         {!isAutoTag && (
@@ -314,18 +419,20 @@ export default function ReferenzWerbeanzeigeDetail() {
                 Speichern
               </Button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function PerformanceStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div>
-      <div className="text-[11px] text-muted-foreground">{label}</div>
-      <div className="font-semibold">{value}</div>
+      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</div>
+      <div className={`font-bold tabular-nums ${highlight ? "text-2xl text-teal-600 dark:text-teal-400" : "text-lg text-gray-900 dark:text-white"}`}>
+        {value}
+      </div>
     </div>
   );
 }
