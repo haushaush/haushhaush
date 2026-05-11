@@ -313,29 +313,25 @@ export default function ReferenzShowcaseOverview() {
         </header>
 
         {/* Category tiles */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-10">
           <CategoryTile
-            icon={<Globe className="w-6 h-6" />}
             label="Websites"
             count={counts.websites}
             href="/sales/referenz-showcase/websites"
-            accent="bg-gradient-to-br from-teal-500 to-teal-600"
+            accent="bg-gradient-to-r from-teal-400 to-teal-500"
           />
           <CategoryTile
-            icon={<Video className="w-6 h-6" />}
             label="Ad Creatives"
             count={counts.ads}
             href="/sales/referenz-showcase/werbeanzeigen"
-            accent="bg-gradient-to-br from-purple-500 to-purple-600"
+            accent="bg-gradient-to-r from-purple-400 to-purple-500"
           />
           <CategoryTile
-            icon={<BarChart3 className="w-6 h-6" />}
             label="Ad Performance"
             count={counts.performance}
+            countLabel={counts.performance === 1 ? 'Kampagne' : 'Kampagnen'}
             href="/sales/referenz-showcase/ad-performance"
-            accent="bg-gradient-to-br from-blue-500 to-blue-600"
-            unitSingular="Kampagne"
-            unitPlural="Kampagnen"
+            accent="bg-gradient-to-r from-blue-400 to-blue-500"
           />
         </div>
 
