@@ -279,6 +279,16 @@ export default function ReferenzWebsiteDetail() {
                   </div>
                 )}
 
+                {(item as any).linked_kunde?.unternehmen && (
+                  <div className="flex items-start gap-3 text-sm">
+                    <Briefcase className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500 shrink-0" />
+                    <div>
+                      <div className="text-gray-500 dark:text-gray-400 text-xs">Unternehmen</div>
+                      <div className="text-gray-900 dark:text-white font-medium">{(item as any).linked_kunde.unternehmen}</div>
+                    </div>
+                  </div>
+                )}
+
                 {item.created_at && (
                   <div className="flex items-start gap-3 text-sm">
                     <Calendar className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500 shrink-0" />
