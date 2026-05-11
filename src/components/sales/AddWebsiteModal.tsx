@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ImageIcon, X } from 'lucide-react';
 import { WebsiteEmbed } from './WebsiteEmbed';
 import type { ShowcaseRow } from '@/pages/sales/ReferenzShowcaseShared';
 
@@ -43,15 +43,33 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
   );
   const [fallbackPreviewUrl, setFallbackPreviewUrl] = useState<string | null>(null);
 
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [existingThumbnailUrl, setExistingThumbnailUrl] = useState<string | null>(
+    (editing as any)?.thumbnail_url ?? null
+  );
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!fallbackFile) {
-      setFallbackPreviewUrl(null);
-      return;
-    }
+    if (!fallbackFile) { setFallbackPreviewUrl(null); return; }
     const objectUrl = URL.createObjectURL(fallbackFile);
     setFallbackPreviewUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [fallbackFile]);
+
+  useEffect(() => {
+    if (!thumbnailFile) { setThumbnailPreviewUrl(null); return; }
+    const objectUrl = URL.createObjectURL(thumbnailFile);
+    setThumbnailPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [thumbnailFile]);
+
+  function handleThumbnailChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Bitte ein Bild auswählen'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Bild zu groß (max. 5MB)'); return; }
+    setThumbnailFile(file);
+  }
 
   function handleNext() {
     if (!url.trim()) {
@@ -79,6 +97,21 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
 
     try {
       let fallbackUrl: string | null = existingFallbackUrl;
+      let thumbnailUrl: string | null = existingThumbnailUrl;
+
+      if (thumbnailFile) {
+        const ext = thumbnailFile.name.split('.').pop() || 'jpg';
+        const path = `websites/thumbnails/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from('referenz-showcase')
+          .upload(path, thumbnailFile, { upsert: false, contentType: thumbnailFile.type, cacheControl: '31536000' });
+        if (upErr) throw upErr;
+        const { data: { publicUrl } } = supabase.storage
+          .from('referenz-showcase')
+          .getPublicUrl(path);
+        thumbnailUrl = publicUrl;
+        if (!fallbackUrl && !fallbackFile) fallbackUrl = publicUrl;
+      }
 
       if (fallbackFile) {
         const ext = fallbackFile.name.split('.').pop() || 'png';
@@ -103,6 +136,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
         description: description.trim() || null,
         website_url: cleanUrl,
         fallback_image_url: fallbackUrl,
+        thumbnail_url: thumbnailUrl,
         is_featured: isFeatured,
         is_active: true,
       };
@@ -141,6 +175,34 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
 
         {stage === 'input' && (
           <div className="space-y-4 py-2">
+            <div>
+              <Label>Thumbnail *</Label>
+              {(thumbnailPreviewUrl || existingThumbnailUrl) ? (
+                <div className="relative mt-1">
+                  <img
+                    src={thumbnailPreviewUrl || existingThumbnailUrl || ''}
+                    alt="Thumbnail Vorschau"
+                    className="w-full rounded border border-border object-cover"
+                    style={{ aspectRatio: '16/9' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setThumbnailFile(null); setExistingThumbnailUrl(null); }}
+                    className="absolute top-2 right-2 bg-background/90 border border-border shadow rounded-full w-7 h-7 flex items-center justify-center hover:bg-muted"
+                    aria-label="Thumbnail entfernen"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="mt-1 block border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/60 hover:bg-muted/30 transition-colors">
+                  <input type="file" accept="image/*" onChange={handleThumbnailChange} className="hidden" />
+                  <ImageIcon className="w-7 h-7 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium">Bild auswählen</p>
+                  <p className="text-xs text-muted-foreground mt-1">Empfohlen: 800×450px (16:9) · max. 5MB</p>
+                </label>
+              )}
+            </div>
             <div>
               <Label>Website-URL *</Label>
               <Input
@@ -202,7 +264,10 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={onClose}>Abbrechen</Button>
-              <Button onClick={handleNext} disabled={!url.trim() || !title.trim()}>
+              <Button
+                onClick={handleNext}
+                disabled={!url.trim() || !title.trim() || (!thumbnailFile && !existingThumbnailUrl)}
+              >
                 Weiter →
               </Button>
             </div>

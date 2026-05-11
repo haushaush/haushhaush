@@ -4,9 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Star } from 'lucide-react';
+import { Plus, Search, Star, ImageIcon } from 'lucide-react';
 import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
-import { WebsiteCardPreview } from '@/components/sales/WebsiteEmbed';
 import type { ShowcaseRow } from './ReferenzShowcaseShared';
 
 export default function ReferenzWebsitesPage() {
@@ -104,27 +103,34 @@ export default function ReferenzWebsitesPage() {
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {filtered.map(item => {
             const m = (item.metrics ?? {}) as Record<string, any>;
-            const hasFallback = !!item.fallback_image_url;
+            const thumb = item.thumbnail_url || item.fallback_image_url;
             return (
               <button
                 key={item.id}
                 onClick={() => navigate(`/sales/referenz-showcase/websites/${item.id}`)}
                 className="group text-left bg-card border border-border rounded-lg overflow-hidden hover:border-primary/60 transition-all"
               >
-                <div className="relative">
-                  <WebsiteCardPreview
-                    url={item.website_url}
-                    fallbackImageUrl={item.fallback_image_url}
-                    title={item.title}
-                    height={180}
-                  />
+                <div className="relative bg-muted" style={{ aspectRatio: '16/9' }}>
+                  {thumb ? (
+                    <img
+                      src={thumb}
+                      alt={item.title}
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-1">
+                      <ImageIcon className="w-8 h-8" />
+                      <span className="text-[10px]">Kein Thumbnail</span>
+                    </div>
+                  )}
                   {item.is_featured && (
                     <div className="absolute top-2 left-2 bg-primary text-primary-foreground rounded-full p-1 z-10">
                       <Star className="w-3 h-3" fill="currentColor" />
                     </div>
                   )}
-                  <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded z-10">
-                    {hasFallback ? '📸 Vorschau' : '⚡ Live'}
+                  <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded z-10 font-medium">
+                    ⚡ Live
                   </div>
                 </div>
                 <div className="p-3">
