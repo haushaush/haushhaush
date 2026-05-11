@@ -30,6 +30,8 @@ export type ShowcaseRow = {
   linked_kunde_id: string | null;
   created_at: string;
   fallback_image_url?: string | null;
+  is_iframe_blocked?: boolean | null;
+  iframe_check_at?: string | null;
 };
 
 interface Props {

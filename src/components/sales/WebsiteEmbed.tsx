@@ -1,57 +1,108 @@
 import { useEffect, useRef, useState } from 'react';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink, Loader2, ImageIcon } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface WebsiteEmbedProps {
   url: string;
   title?: string;
   fallbackImageUrl?: string | null;
   height?: number | string;
+  /** If provided, will persist iframe-blocked status to DB via edge function. */
+  showcaseId?: string;
+  /** Initial known blocked state from DB (true = blocked, false = ok, null/undefined = unknown). */
+  initialIsBlocked?: boolean | null;
+  /** Whether DB has already checked this URL. */
+  hasChecked?: boolean;
 }
 
-/** Full-size, fully-interactive iframe embed with fallback. */
-export function WebsiteEmbed({ url, title, fallbackImageUrl, height = 700 }: WebsiteEmbedProps) {
-  const [status, setStatus] = useState<'loading' | 'loaded' | 'blocked'>('loading');
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+/** Full-size, fully-interactive iframe embed with smart fallback. */
+export function WebsiteEmbed({
+  url,
+  title,
+  fallbackImageUrl,
+  height = 700,
+  showcaseId,
+  initialIsBlocked,
+  hasChecked,
+}: WebsiteEmbedProps) {
+  const [showFallback, setShowFallback] = useState(initialIsBlocked === true);
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'blocked'>(
+    initialIsBlocked === true ? 'blocked' : 'loading'
+  );
+  const iframeLoadedRef = useRef(false);
+  const checkedRef = useRef(!!hasChecked);
 
+  // Background check (one-time per mount) if never checked.
   useEffect(() => {
-    setStatus('loading');
-    const timer = setTimeout(() => {
-      setStatus(prev => (prev === 'loading' ? 'blocked' : prev));
-    }, 8000);
-    return () => clearTimeout(timer);
-  }, [url]);
+    if (!showcaseId || checkedRef.current) return;
+    checkedRef.current = true;
+    supabase.functions
+      .invoke('check-website-embeddable', {
+        body: { showcase_id: showcaseId, url },
+      })
+      .then(({ data }) => {
+        if (data?.is_blocked) {
+          setShowFallback(true);
+          setStatus('blocked');
+        }
+      })
+      .catch(() => {});
+  }, [showcaseId, url]);
 
-  // Fallback: blocked + fallback image available
-  if (status === 'blocked' && fallbackImageUrl) {
-    return (
-      <div className="relative bg-muted rounded-lg overflow-hidden border border-border">
-        <img src={fallbackImageUrl} alt={title ?? ''} className="w-full block" />
-        <div className="absolute top-3 right-3 bg-amber-500 text-white text-xs px-2 py-1 rounded font-medium">
-          📸 Vorschau
-        </div>
-        <div className="absolute bottom-3 left-3 right-3 flex justify-center">
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 bg-background shadow-lg px-4 py-2 rounded text-sm font-medium hover:bg-muted transition"
-          >
-            <ExternalLink className="w-4 h-4" /> Live öffnen
-          </a>
-        </div>
-      </div>
-    );
-  }
+  // Timeout fallback: if iframe doesn't fire load within 5s, assume blocked.
+  useEffect(() => {
+    if (showFallback) return;
+    const t = setTimeout(() => {
+      if (!iframeLoadedRef.current) {
+        setShowFallback(true);
+        setStatus('blocked');
+      }
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [showFallback, url]);
 
-  // Blocked + no fallback
-  if (status === 'blocked' && !fallbackImageUrl) {
+  // FALLBACK MODE
+  if (showFallback) {
+    if (fallbackImageUrl) {
+      return (
+        <div
+          className="relative bg-muted rounded-lg overflow-hidden border border-border"
+          style={{ height: typeof height === 'number' ? `${height}px` : height }}
+        >
+          <img
+            src={fallbackImageUrl}
+            alt={title ?? ''}
+            className="w-full h-full object-cover object-top"
+          />
+          <div className="absolute top-3 right-3 bg-amber-500 text-white text-xs px-2 py-1 rounded font-medium shadow">
+            📸 Vorschau
+          </div>
+          <div className="absolute bottom-3 left-3 right-3 flex justify-center">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-background shadow-lg px-4 py-2 rounded text-sm font-medium hover:bg-muted transition"
+            >
+              <ExternalLink className="w-4 h-4" /> Live öffnen
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    // No fallback image — clean empty state instead of browser error
     return (
-      <div className="bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-200 dark:border-amber-900 rounded-lg p-8 text-center">
-        <div className="text-4xl mb-3">🔒</div>
-        <h3 className="font-semibold mb-2">Diese Website blockiert das Embedden</h3>
-        <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-          Manche Websites (Banken, Versicherer) erlauben kein Embedden in iFrames.
-          Lade ein Fallback-Bild hoch oder öffne die Seite im neuen Tab.
+      <div
+        className="flex flex-col items-center justify-center text-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg border border-border p-8"
+        style={{ height: typeof height === 'number' ? `${height}px` : height }}
+      >
+        <ImageIcon className="w-10 h-10 text-gray-400 dark:text-gray-600 mb-3" />
+        <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+          Vorschau nicht verfügbar
+        </h3>
+        <p className="text-xs text-muted-foreground mb-4 max-w-xs">
+          Diese Website blockiert das Embedden. Öffne sie im neuen Tab, um sie zu sehen.
         </p>
         <a
           href={url}
@@ -59,12 +110,13 @@ export function WebsiteEmbed({ url, title, fallbackImageUrl, height = 700 }: Web
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded text-sm hover:opacity-90 transition"
         >
-          <ExternalLink className="w-4 h-4" /> Im neuen Tab öffnen
+          <ExternalLink className="w-4 h-4" /> Website besuchen
         </a>
       </div>
     );
   }
 
+  // NORMAL MODE: iframe
   return (
     <div
       className="relative rounded-lg overflow-hidden border border-border bg-white"
@@ -80,13 +132,18 @@ export function WebsiteEmbed({ url, title, fallbackImageUrl, height = 700 }: Web
       )}
 
       <iframe
-        ref={iframeRef}
         src={url}
         title={title || url}
         className="w-full h-full border-0 block"
         loading="lazy"
-        onLoad={() => setStatus('loaded')}
-        onError={() => setStatus('blocked')}
+        onLoad={() => {
+          iframeLoadedRef.current = true;
+          setStatus('loaded');
+        }}
+        onError={() => {
+          setShowFallback(true);
+          setStatus('blocked');
+        }}
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
         referrerPolicy="no-referrer-when-downgrade"
         allow="accelerometer; camera; gyroscope; microphone; payment"
@@ -158,7 +215,6 @@ export function WebsiteCardPreview({ url, fallbackImageUrl, title, height = 200 
         scrolling="no"
         loading="lazy"
       />
-      {/* Overlay to block any iframe interaction inside card */}
       <div className="absolute inset-0" />
     </div>
   );
