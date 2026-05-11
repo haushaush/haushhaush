@@ -323,13 +323,13 @@ export default function ReferenzShowcaseOverview() {
     typeFilter !== 'all' || brancheFilter || unternehmenFilter || searchQuery;
 
   return (
-    <div className="min-h-screen bg-[#fafaf7] pb-32">
+    <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 pb-32">
       <div className="px-6 lg:px-10 pt-10">
         <header className="text-center max-w-3xl mx-auto mb-16 pt-8">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 tracking-tight leading-[1.05]">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white tracking-tight leading-[1.05]">
             Referenz Showcase
           </h1>
-          <p className="text-lg md:text-xl text-gray-500 mt-5 font-normal">
+          <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 mt-5 font-normal">
             Alle bisherigen Projekte für Sales-Pitches und Calls
           </p>
         </header>
@@ -357,35 +357,35 @@ export default function ReferenzShowcaseOverview() {
         </div>
 
         {/* Filter panel */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-8">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 mb-8">
           <div className="flex gap-3 mb-4 flex-wrap">
             <div className="flex-1 min-w-[240px] relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input
                 type="search"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Suchen nach Titel, Kunde, Tag..."
-                className="w-full pl-11 pr-4 py-3 text-sm bg-white border border-gray-200 focus:border-teal-400 focus:ring-1 focus:ring-teal-100 focus:outline-none hover:border-gray-300 rounded-xl transition-all duration-150"
+                className="w-full pl-11 pr-4 py-3 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 border border-gray-200 dark:border-gray-700 focus:border-teal-400 focus:ring-1 focus:ring-teal-100 dark:focus:ring-teal-900 focus:outline-none hover:border-gray-300 dark:hover:border-gray-600 rounded-xl transition-all duration-150"
               />
             </div>
             <div className="relative inline-block">
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as any)}
-                className="appearance-none cursor-pointer px-5 py-3 pr-11 text-sm font-medium bg-white text-gray-700 border border-gray-200 hover:border-gray-300 hover:shadow-sm rounded-xl transition-all duration-150 min-w-[200px] outline-none"
+                className="appearance-none cursor-pointer px-5 py-3 pr-11 text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm rounded-xl transition-all duration-150 min-w-[200px] outline-none"
               >
                 <option value="newest">Sortieren: Neueste</option>
                 <option value="oldest">Älteste</option>
                 <option value="featured">Featured zuerst</option>
                 <option value="kunde">Nach Kunde</option>
               </select>
-              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-400" />
+              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-400 dark:text-gray-500" />
             </div>
             <button
               onClick={triggerSync}
               disabled={syncing}
-              className="px-4 py-3 bg-gray-50 border border-transparent hover:border-gray-200 rounded-xl text-sm cursor-pointer outline-none flex items-center gap-2 disabled:opacity-60"
+              className="px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded-xl text-sm cursor-pointer outline-none flex items-center gap-2 disabled:opacity-60"
             >
               <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Filter aktualisieren</span>
@@ -406,14 +406,14 @@ export default function ReferenzShowcaseOverview() {
             <DropdownPill label="Branche" value={brancheFilter} onChange={setBrancheFilter} options={brancheOptions} />
             <DropdownPill label="Unternehmen" value={unternehmenFilter} onChange={setUnternehmenFilter} options={unternehmenOptions} />
             {hasActiveFilters && (
-              <button onClick={resetFilters} className="text-sm text-gray-500 hover:text-gray-900 underline ml-auto">
+              <button onClick={resetFilters} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline ml-auto">
                 Filter zurücksetzen
               </button>
             )}
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-4 text-sm text-gray-600">
+        <div className="flex items-center justify-between mb-4 text-sm text-gray-600 dark:text-gray-400">
           <span>
             {filteredItems.length} {filteredItems.length === 1 ? 'Referenz' : 'Referenzen'}
             {filteredItems.length < allItems.length && ` von ${allItems.length}`}
@@ -421,8 +421,8 @@ export default function ReferenzShowcaseOverview() {
         </div>
 
         {filteredItems.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
-            <p className="text-sm text-gray-500">Keine Referenzen gefunden.</p>
+          <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Keine Referenzen gefunden.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -453,13 +453,13 @@ function CategoryTile({
   return (
     <Link
       to={href}
-      className="group block bg-white rounded-2xl border border-gray-200/80 px-8 py-12 text-center shadow-sm hover:shadow-lg hover:border-teal-300 hover:-translate-y-1 transition-all duration-200"
+      className="group block bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 px-8 py-12 text-center shadow-sm hover:shadow-lg hover:border-teal-300 dark:hover:border-teal-700 hover:-translate-y-1 transition-all duration-200"
     >
-      <Icon className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-teal-600 transition-colors" />
-      <h3 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+      <Icon className="w-8 h-8 mx-auto mb-4 text-gray-400 dark:text-gray-500 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors" />
+      <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
         {label}
       </h3>
-      <p className="text-sm text-gray-500 mt-2 font-normal">
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-normal">
         {count} {count === 1 ? 'Referenz' : 'Referenzen'}
       </p>
     </Link>
@@ -507,8 +507,8 @@ function DropdownPill({
           min-w-[180px]
           outline-none
           ${isActive
-            ? 'bg-teal-50 text-teal-900 border-teal-400 ring-1 ring-teal-100 shadow-sm'
-            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:shadow-sm'
+            ? 'bg-teal-50 dark:bg-teal-950 text-teal-900 dark:text-teal-100 border-teal-400 dark:border-teal-700 ring-1 ring-teal-100 dark:ring-teal-900 shadow-sm'
+            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
           }
         `}
       >
@@ -520,7 +520,7 @@ function DropdownPill({
       <ChevronDown className={`
         absolute right-3.5 top-1/2 -translate-y-1/2
         w-4 h-4 pointer-events-none transition-colors
-        ${isActive ? 'text-teal-500' : 'text-gray-400'}
+        ${isActive ? 'text-teal-500 dark:text-teal-400' : 'text-gray-400 dark:text-gray-500'}
       `} />
     </div>
   );
@@ -563,9 +563,9 @@ function ShowcaseCard({
   return (
     <Link
       to={detailHref}
-      className="group block bg-white rounded-2xl border border-gray-200/80 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 transition-all duration-200 overflow-hidden"
+      className="group block bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
     >
-      <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
+      <div className="relative bg-gray-50 dark:bg-gray-800 overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
         {item._type === 'campaign'
           ? <PerformanceHero campaign={item} />
           : <ImageContent item={item} />}
@@ -579,32 +579,32 @@ function ShowcaseCard({
 
       <div className="p-5">
         {eyebrow && (
-          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5 truncate">
+          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 truncate">
             {eyebrow}
           </p>
         )}
 
-        <h3 className="text-lg font-bold text-gray-900 leading-snug mb-3 line-clamp-2 min-h-[3.5rem] group-hover:text-teal-700 transition-colors">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-snug mb-3 line-clamp-2 min-h-[3.5rem] group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
           {title}
         </h3>
 
         <PrimaryHighlight item={item} />
 
         {metaParts.length > 0 && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
             {metaParts.map((part, i) => (
               <span key={i} className="flex items-center gap-2">
-                {i > 0 && <span className="text-gray-300">·</span>}
+                {i > 0 && <span className="text-gray-300 dark:text-gray-600">·</span>}
                 <span>{part}</span>
               </span>
             ))}
           </div>
         )}
 
-        <div className="border-t border-gray-100 my-4" />
+        <div className="border-t border-gray-100 dark:border-gray-800 my-4" />
 
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-teal-600 group-hover:text-teal-700 group-hover:underline transition-all">
+          <span className="text-sm font-semibold text-teal-600 dark:text-teal-400 group-hover:text-teal-700 dark:group-hover:text-teal-300 group-hover:underline transition-all">
             Ansehen →
           </span>
           {externalLink && (
@@ -613,14 +613,14 @@ function ShowcaseCard({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1"
+              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-1"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span>Original</span>
             </a>
           )}
           {!externalLink && item.created_at && (
-            <span className="text-xs text-gray-400 font-medium">
+            <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
               {formatRelativeDate(item.created_at)}
             </span>
           )}
@@ -635,16 +635,16 @@ function PrimaryHighlight({ item }: { item: AnyItem }) {
     const roas = item.metrics?.roas != null ? Number(item.metrics.roas) : null;
     const leads = item.metrics?.leads != null ? Number(item.metrics.leads) : null;
     if (roas != null && !isNaN(roas)) {
-      return <p className="text-2xl font-bold text-teal-600 mb-3 tabular-nums">{roas.toFixed(1)}x ROAS</p>;
+      return <p className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-3 tabular-nums">{roas.toFixed(1)}x ROAS</p>;
     }
     if (leads != null && !isNaN(leads)) {
-      return <p className="text-2xl font-bold text-teal-600 mb-3 tabular-nums">{leads.toLocaleString('de-DE')} Leads</p>;
+      return <p className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-3 tabular-nums">{leads.toLocaleString('de-DE')} Leads</p>;
     }
     return null;
   }
   if (item._type === 'website' && item.is_active) {
     return (
-      <p className="text-sm font-semibold text-teal-600 mb-3 flex items-center gap-1.5">
+      <p className="text-sm font-semibold text-teal-600 dark:text-teal-400 mb-3 flex items-center gap-1.5">
         <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
         Live
       </p>
@@ -652,7 +652,7 @@ function PrimaryHighlight({ item }: { item: AnyItem }) {
   }
   if (item._type === 'werbeanzeige') {
     return (
-      <p className="text-sm font-semibold text-purple-600 mb-3">
+      <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mb-3">
         {item.creative_format || item.ad_format || 'Creative'}
       </p>
     );
@@ -670,8 +670,8 @@ function ImageContent({ item }: { item: AnyItem }) {
 
   if (!imageUrl) {
     return (
-      <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <ImageIcon className="w-10 h-10 text-gray-300" />
+      <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <ImageIcon className="w-10 h-10 text-gray-300 dark:text-gray-600" />
       </div>
     );
   }
@@ -704,8 +704,8 @@ function PerformanceHero({ campaign }: { campaign: AnyItem }) {
   const tierStyles = {
     exceptional: 'bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-white',
     good: 'bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 text-white',
-    standard: 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700',
-    none: 'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400',
+    standard: 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 text-slate-700 dark:text-slate-200',
+    none: 'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 text-gray-400 dark:text-gray-500',
   }[tier];
 
   return (
