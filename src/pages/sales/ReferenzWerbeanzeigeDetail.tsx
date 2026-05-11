@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, RefreshCw, Trash2, Save, Loader2, X, Plus, Video, Image as ImageIcon,
   Sparkles, Share2, Pencil, Copy, ExternalLink, BarChart3, Building2, Target, Facebook, DownloadCloud,
+  Tag, Briefcase,
 } from "lucide-react";
 import type { MetaAdRow } from "./ReferenzWerbeanzeigen";
 import type { FilterCategory, FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
@@ -135,6 +136,8 @@ export default function ReferenzWerbeanzeigeDetail() {
   const title = ad.custom_title || ad.meta_ad_name || "Unbenannt";
   const thumb = (ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta;
   const versicherer = (ad.custom_tags ?? []).find(t => t.startsWith("versicherer-"))?.replace("versicherer-", "");
+  const branche = linkedKunde?.branche || ad.filter_values?.branche || "";
+  const unternehmen = linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
 
   return (
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950">
@@ -220,10 +223,17 @@ export default function ReferenzWerbeanzeigeDetail() {
                   </p>
                 )}
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-3">{title}</h1>
-                <div className="text-lg font-semibold text-purple-600 dark:text-purple-400 mb-6">
+                <div className="text-lg font-semibold text-purple-600 dark:text-purple-400 mb-1">
                   {formatLabel}
                   {versicherer && <span className="text-gray-400 dark:text-gray-500 font-normal"> · {versicherer}</span>}
                 </div>
+                {(branche || unternehmen) && (
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                    {branche && <span className="capitalize">{branche}</span>}
+                    {branche && unternehmen && <span> · </span>}
+                    {unternehmen && <span>{unternehmen}</span>}
+                  </div>
+                )}
 
                 {(ad as any).meta_permalink_url && (
                   <a
@@ -277,6 +287,31 @@ export default function ReferenzWerbeanzeigeDetail() {
                         </Link>
                       </div>
                     </div>
+                  )}
+                  {branche && (
+                    <div className="flex items-start gap-3">
+                      <Tag className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500" />
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Branche</div>
+                        <div className="text-gray-900 dark:text-white font-medium capitalize">
+                          {branche}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {unternehmen && (
+                    <div className="flex items-start gap-3">
+                      <Briefcase className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500" />
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Unternehmen</div>
+                        <div className="text-gray-900 dark:text-white font-medium">
+                          {unternehmen}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {(branche || unternehmen) && (ad.meta_account_name || ad.meta_campaign_name || ad.meta_adset_name) && (
+                    <div className="border-t border-gray-100 dark:border-gray-800 my-2" />
                   )}
                   {ad.meta_account_name && (
                     <div className="flex items-start gap-3">

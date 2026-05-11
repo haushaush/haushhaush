@@ -14,6 +14,7 @@ import {
   Tag,
   Calendar,
   Building2,
+  Briefcase,
   RefreshCw,
 } from 'lucide-react';
 import { WebsiteEmbed } from '@/components/sales/WebsiteEmbed';
@@ -34,7 +35,7 @@ export default function ReferenzWebsiteDetail() {
     setLoading(true);
     const { data, error } = await supabase
       .from('referenz_showcase' as any)
-      .select('*')
+      .select('*, linked_kunde:close_deals(id, client_name, unternehmen, branche)')
       .eq('id', id)
       .maybeSingle();
     if (error) toast.error('Laden fehlgeschlagen', { description: error.message });
@@ -274,6 +275,16 @@ export default function ReferenzWebsiteDetail() {
                     <div>
                       <div className="text-gray-500 dark:text-gray-400 text-xs">Kunde</div>
                       <div className="text-gray-900 dark:text-white font-medium">{item.client_name}</div>
+                    </div>
+                  </div>
+                )}
+
+                {(item as any).linked_kunde?.unternehmen && (
+                  <div className="flex items-start gap-3 text-sm">
+                    <Briefcase className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500 shrink-0" />
+                    <div>
+                      <div className="text-gray-500 dark:text-gray-400 text-xs">Unternehmen</div>
+                      <div className="text-gray-900 dark:text-white font-medium">{(item as any).linked_kunde.unternehmen}</div>
                     </div>
                   </div>
                 )}
