@@ -392,27 +392,22 @@ export default function ReferenzShowcaseOverview() {
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <Chip active={typeFilter === 'all'} onClick={() => setTypeFilter('all')} tone="neutral">
-              Alle <span className="ml-1.5 text-xs opacity-60">{counts.all}</span>
-            </Chip>
-            <Chip active={typeFilter === 'website'} onClick={() => setTypeFilter('website')} tone="teal">
-              🌐 Websites <span className="ml-1.5 text-xs opacity-60">{counts.websites}</span>
-            </Chip>
-            <Chip active={typeFilter === 'werbeanzeige'} onClick={() => setTypeFilter('werbeanzeige')} tone="purple">
-              🎬 Ad Creatives <span className="ml-1.5 text-xs opacity-60">{counts.ads}</span>
-            </Chip>
-            <Chip active={typeFilter === 'campaign'} onClick={() => setTypeFilter('campaign')} tone="blue">
-              📊 Performance <span className="ml-1.5 text-xs opacity-60">{counts.performance}</span>
-            </Chip>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <DropdownPill
+              label="Typ"
+              value={typeFilter === 'all' ? '' : typeFilter}
+              onChange={v => setTypeFilter((v || 'all') as any)}
+              options={[
+                { value: 'website', label: `Websites (${counts.websites})` },
+                { value: 'werbeanzeige', label: `Ad Creatives (${counts.ads})` },
+                { value: 'campaign', label: `Performance (${counts.performance})` },
+              ]}
+            />
             <DropdownPill label="Branche" value={brancheFilter} onChange={setBrancheFilter} options={brancheOptions} />
             <DropdownPill label="Unternehmen" value={unternehmenFilter} onChange={setUnternehmenFilter} options={unternehmenOptions} />
             {hasActiveFilters && (
-              <button onClick={resetFilters} className="text-xs text-teal-700 hover:underline ml-1 self-center">
-                Zurücksetzen
+              <button onClick={resetFilters} className="text-sm text-gray-500 hover:text-gray-900 underline ml-auto">
+                Filter zurücksetzen
               </button>
             )}
           </div>
@@ -512,7 +507,7 @@ function DropdownPill({
           min-w-[180px]
           outline-none
           ${isActive
-            ? 'bg-white text-gray-900 border-teal-400 ring-1 ring-teal-100 shadow-sm'
+            ? 'bg-teal-50 text-teal-900 border-teal-400 ring-1 ring-teal-100 shadow-sm'
             : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:shadow-sm'
           }
         `}
