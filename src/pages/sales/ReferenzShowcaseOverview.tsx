@@ -658,9 +658,14 @@ function ImageContent({ item }: { item: AnyItem }) {
 
 function PerformanceHero({ campaign }: { campaign: AnyItem }) {
   const m = campaign.metrics || {};
-  const roas = m.roas != null ? Number(m.roas) : null;
-  const cpl = m.cpl != null ? Number(m.cpl) : null;
-  const leads = m.leads != null ? Number(m.leads) : null;
+  const num = (v: any): number | null => {
+    if (v == null || v === '') return null;
+    const n = Number(v);
+    return isNaN(n) ? null : n;
+  };
+  const roas = num(m.roas) ?? num(campaign.roas) ?? num(m.ROAS);
+  const cpl = num(m.cpl) ?? num(campaign.cpl) ?? num(m.CPL);
+  const leads = num(m.leads) ?? num(campaign.leads) ?? num(m.Leads);
 
   const tier: 'exceptional' | 'good' | 'standard' | 'none' =
     roas == null || isNaN(roas) ? 'none' :
