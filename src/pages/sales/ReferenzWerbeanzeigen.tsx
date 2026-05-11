@@ -171,7 +171,8 @@ export default function ReferenzWerbeanzeigenPage() {
         )}
       />
 
-      <div className="space-y-4 mb-8">
+      <div className="space-y-3 mb-8">
+        {/* Row 1: Search + Sort */}
         <div className="flex flex-col md:flex-row gap-3">
           <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
           <DropdownPill
@@ -187,6 +188,7 @@ export default function ReferenzWerbeanzeigenPage() {
           />
         </div>
 
+        {/* Row 2: Filter pills */}
         <div className="flex flex-wrap items-center gap-3">
           {categories.map(cat => {
             const catOpts = options
@@ -201,6 +203,7 @@ export default function ReferenzWerbeanzeigenPage() {
                 value={activeFilters[cat.key] ?? ''}
                 onChange={v => setFilter(cat.key, v)}
                 options={catOpts}
+                minWidth={160}
               />
             );
           })}
