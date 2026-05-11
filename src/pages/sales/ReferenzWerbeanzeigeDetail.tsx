@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, RefreshCw, Trash2, Save, Loader2, X, Plus, Video, Image as ImageIcon,
   Sparkles, Share2, Pencil, Copy, ExternalLink, BarChart3, Building2, Target, Facebook, DownloadCloud,
+  Tag, Briefcase,
 } from "lucide-react";
 import type { MetaAdRow } from "./ReferenzWerbeanzeigen";
 import type { FilterCategory, FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
