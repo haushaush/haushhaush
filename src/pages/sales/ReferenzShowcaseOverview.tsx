@@ -692,23 +692,23 @@ function PerformanceHero({ campaign }: { campaign: AnyItem }) {
       <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
       <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/10 blur-xl" />
       <div className="relative z-10 text-center">
-        <p className="text-[10px] uppercase tracking-[0.2em] opacity-80 mb-1">ROAS</p>
-        <p className="text-5xl font-bold leading-none tracking-tight tabular-nums">
+        <p className="text-xs uppercase tracking-[0.25em] opacity-80 mb-1.5 font-medium">ROAS</p>
+        <p className="text-7xl font-bold leading-none tracking-tight tabular-nums">
           {roas != null && !isNaN(roas) ? (
-            <>{roas.toFixed(1)}<span className="text-2xl ml-1 opacity-80">x</span></>
+            <>{roas.toFixed(1)}<span className="text-3xl ml-1 opacity-80">x</span></>
           ) : '—'}
         </p>
       </div>
-      <div className="relative z-10 grid grid-cols-2 gap-2 mt-4 w-full max-w-[200px]">
-        <div className="text-center bg-white/15 backdrop-blur-sm rounded-lg px-2 py-1.5">
-          <p className="text-[10px] uppercase tracking-wider opacity-80">CPL</p>
-          <p className="font-semibold text-sm tabular-nums">
+      <div className="relative z-10 grid grid-cols-2 gap-3 mt-6 w-full max-w-[240px]">
+        <div className="text-center bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wider opacity-80 font-medium">CPL</p>
+          <p className="font-semibold text-base mt-0.5 tabular-nums">
             {cpl != null && !isNaN(cpl) ? `€${cpl.toFixed(2)}` : '—'}
           </p>
         </div>
-        <div className="text-center bg-white/15 backdrop-blur-sm rounded-lg px-2 py-1.5">
-          <p className="text-[10px] uppercase tracking-wider opacity-80">Leads</p>
-          <p className="font-semibold text-sm tabular-nums">
+        <div className="text-center bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wider opacity-80 font-medium">Leads</p>
+          <p className="font-semibold text-base mt-0.5 tabular-nums">
             {leads != null && !isNaN(leads) ? leads.toLocaleString('de-DE') : '—'}
           </p>
         </div>
