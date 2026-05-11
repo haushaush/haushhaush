@@ -303,9 +303,11 @@ export default function ReferenzShowcaseOverview() {
   return (
     <div className="min-h-screen bg-[#fafaf7]">
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <header className="mb-10">
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Referenz Showcase</h1>
-          <p className="text-gray-500 mt-2 text-[15px]">
+        <header className="text-center max-w-3xl mx-auto mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight leading-tight">
+            Referenz Showcase
+          </h1>
+          <p className="text-base md:text-lg text-gray-500 mt-3 font-normal">
             Alle bisherigen Projekte für Sales-Pitches und Calls
           </p>
         </header>
