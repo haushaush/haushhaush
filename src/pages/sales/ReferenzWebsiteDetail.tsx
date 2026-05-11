@@ -35,7 +35,7 @@ export default function ReferenzWebsiteDetail() {
     setLoading(true);
     const { data, error } = await supabase
       .from('referenz_showcase' as any)
-      .select('*')
+      .select('*, linked_kunde:close_deals(id, client_name, unternehmen, branche)')
       .eq('id', id)
       .maybeSingle();
     if (error) toast.error('Laden fehlgeschlagen', { description: error.message });
