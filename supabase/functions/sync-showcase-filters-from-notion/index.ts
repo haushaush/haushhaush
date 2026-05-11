@@ -53,7 +53,8 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const { data: rows, error: rowErr } = await svc.from("close_deals").select(fieldName);
+      const { data: rows, error: rowErr } = await svc.from("close_deals").select(fieldName).range(0, 9999);
+      log(`${category.key}: read ${rows?.length ?? 0} rows from close_deals.${fieldName}`);
       if (rowErr) {
         log(`Failed to read close_deals.${fieldName}: ${rowErr.message}`);
         continue;
