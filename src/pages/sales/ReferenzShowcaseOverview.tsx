@@ -334,6 +334,28 @@ export default function ReferenzShowcaseOverview() {
           </p>
         </header>
 
+        {/* Category tiles */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
+          <CategoryTile
+            label="Websites"
+            count={counts.websites}
+            href="/sales/referenz-showcase/websites"
+            icon={Globe}
+          />
+          <CategoryTile
+            label="Ad Creatives"
+            count={counts.ads}
+            href="/sales/referenz-showcase/werbeanzeigen"
+            icon={Video}
+          />
+          <CategoryTile
+            label="Ad Performance"
+            count={counts.performance}
+            href="/sales/referenz-showcase/ad-performance"
+            icon={BarChart3}
+          />
+        </div>
+
         {/* Filter panel */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-8">
           <div className="flex gap-3 mb-4 flex-wrap">
