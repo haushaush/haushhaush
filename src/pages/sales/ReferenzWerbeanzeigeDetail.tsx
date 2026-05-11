@@ -223,10 +223,17 @@ export default function ReferenzWerbeanzeigeDetail() {
                   </p>
                 )}
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-3">{title}</h1>
-                <div className="text-lg font-semibold text-purple-600 dark:text-purple-400 mb-6">
+                <div className="text-lg font-semibold text-purple-600 dark:text-purple-400 mb-1">
                   {formatLabel}
                   {versicherer && <span className="text-gray-400 dark:text-gray-500 font-normal"> · {versicherer}</span>}
                 </div>
+                {(branche || unternehmen) && (
+                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                    {branche && <span className="capitalize">{branche}</span>}
+                    {branche && unternehmen && <span> · </span>}
+                    {unternehmen && <span>{unternehmen}</span>}
+                  </div>
+                )}
 
                 {(ad as any).meta_permalink_url && (
                   <a
