@@ -142,6 +142,9 @@ export default function ReferenzWebsiteDetail() {
             </Button>
             {isAdmin && (
               <>
+                <Button variant="ghost" size="sm" onClick={handleRecheck} title="Embed-Status neu prüfen">
+                  <RefreshCw className="w-4 h-4 mr-2" /> Status neu prüfen
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
                   <Pencil className="w-4 h-4 mr-2" /> Bearbeiten
                 </Button>
