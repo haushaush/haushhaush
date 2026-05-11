@@ -14,6 +14,7 @@ import {
   Tag,
   Calendar,
   Building2,
+  RefreshCw,
 } from 'lucide-react';
 import { WebsiteEmbed } from '@/components/sales/WebsiteEmbed';
 import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
@@ -76,6 +77,24 @@ export default function ReferenzWebsiteDetail() {
     }
   }
 
+  async function handleRecheck() {
+    if (!item?.website_url) return;
+    const promise = supabase.functions
+      .invoke('check-website-embeddable', {
+        body: { showcase_id: item.id, url: item.website_url },
+      })
+      .then(({ data, error }) => {
+        if (error) throw error;
+        load();
+        return data;
+      });
+    toast.promise(promise, {
+      loading: 'Prüfe Embed-Status…',
+      success: (d: any) => (d?.is_blocked ? 'Website blockiert Embedding' : 'Embedding möglich'),
+      error: 'Prüfung fehlgeschlagen',
+    });
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 p-6">
@@ -123,6 +142,9 @@ export default function ReferenzWebsiteDetail() {
             </Button>
             {isAdmin && (
               <>
+                <Button variant="ghost" size="sm" onClick={handleRecheck} title="Embed-Status neu prüfen">
+                  <RefreshCw className="w-4 h-4 mr-2" /> Status neu prüfen
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
                   <Pencil className="w-4 h-4 mr-2" /> Bearbeiten
                 </Button>
@@ -154,6 +176,9 @@ export default function ReferenzWebsiteDetail() {
                       title={item.title}
                       fallbackImageUrl={fallback}
                       height="100%"
+                      showcaseId={item.id}
+                      initialIsBlocked={item.is_iframe_blocked ?? null}
+                      hasChecked={!!item.iframe_check_at}
                     />
                   </div>
                 ) : fallback ? (

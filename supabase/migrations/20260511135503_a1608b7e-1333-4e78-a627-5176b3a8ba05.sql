@@ -1,0 +1,3 @@
+ALTER TABLE public.referenz_showcase
+ADD COLUMN IF NOT EXISTS is_iframe_blocked BOOLEAN DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS iframe_check_at TIMESTAMPTZ DEFAULT NULL;
