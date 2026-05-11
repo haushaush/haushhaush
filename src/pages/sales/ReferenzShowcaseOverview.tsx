@@ -324,7 +324,7 @@ export default function ReferenzShowcaseOverview() {
 
   return (
     <div className="min-h-screen bg-[#fafaf7] pb-32">
-      <div className="max-w-7xl mx-auto px-6 py-10">
+      <div className="px-6 lg:px-10 pt-10">
         <header className="text-center max-w-3xl mx-auto mb-16 pt-8">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 tracking-tight leading-[1.05]">
             Referenz Showcase
@@ -408,7 +408,7 @@ export default function ReferenzShowcaseOverview() {
             <p className="text-sm text-gray-500">Keine Referenzen gefunden.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredItems.map(item => (
               <ShowcaseCard
                 key={`${item._type}-${item.id}`}
