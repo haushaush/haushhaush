@@ -10,6 +10,18 @@ import { supabase } from '@/integrations/supabase/client';
 
 type AnyItem = Record<string, any> & { _type: 'website' | 'werbeanzeige' | 'campaign' };
 
+function formatRelativeDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const diff = Date.now() - d.getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days < 1) return 'heute';
+  if (days < 2) return 'gestern';
+  if (days < 30) return `vor ${days} Tagen`;
+  if (days < 365) return `vor ${Math.floor(days / 30)} Mon.`;
+  return d.toLocaleDateString('de-DE', { month: 'short', year: 'numeric' });
+}
+
 const KUNDE_SELECT = 'linked_kunde:close_deals(client_name, unternehmen, branche)';
 
 export default function ReferenzShowcaseOverview() {
@@ -191,8 +203,18 @@ export default function ReferenzShowcaseOverview() {
   };
   const getKundenname = (i: AnyItem) =>
     i.linked_kunde?.client_name || i.client_name || i.meta_account_name || null;
-  const getTitle = (i: AnyItem) =>
-    i.custom_title || i.title || i.meta_campaign_name || i.meta_ad_name || 'Unbenannt';
+  const getTitle = (i: AnyItem) => {
+    if (i.custom_title) return i.custom_title;
+    if (i._type === 'campaign') {
+      const branche = i.linked_kunde?.branche || i.filter_values?.branche || i.branche || 'Performance';
+      const start = i.start_date || i.campaign_period_start || i.created_at;
+      const month = start
+        ? new Date(start).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
+        : '';
+      return month ? `${branche} · ${month}` : String(branche);
+    }
+    return i.title || i.meta_ad_name || i.meta_campaign_name || 'Unbenannt';
+  };
   const getCreated = (i: AnyItem) => i.created_at || i.imported_at || '';
 
   const capitalizeWords = (s: string) =>
@@ -301,39 +323,16 @@ export default function ReferenzShowcaseOverview() {
     typeFilter !== 'all' || brancheFilter || unternehmenFilter || searchQuery;
 
   return (
-    <div className="min-h-screen bg-[#fafaf7]">
+    <div className="min-h-screen bg-[#fafaf7] pb-32">
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <header className="text-center max-w-3xl mx-auto mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight leading-tight">
+        <header className="text-center max-w-3xl mx-auto mb-16 pt-8">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 tracking-tight leading-[1.05]">
             Referenz Showcase
           </h1>
-          <p className="text-base md:text-lg text-gray-500 mt-3 font-normal">
+          <p className="text-lg md:text-xl text-gray-500 mt-5 font-normal">
             Alle bisherigen Projekte für Sales-Pitches und Calls
           </p>
         </header>
-
-        {/* Category tiles */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-10">
-          <CategoryTile
-            label="Websites"
-            count={counts.websites}
-            href="/sales/referenz-showcase/websites"
-            accent="bg-gradient-to-r from-teal-400 to-teal-500"
-          />
-          <CategoryTile
-            label="Ad Creatives"
-            count={counts.ads}
-            href="/sales/referenz-showcase/werbeanzeigen"
-            accent="bg-gradient-to-r from-purple-400 to-purple-500"
-          />
-          <CategoryTile
-            label="Ad Performance"
-            count={counts.performance}
-            countLabel={counts.performance === 1 ? 'Kampagne' : 'Kampagnen'}
-            href="/sales/referenz-showcase/ad-performance"
-            accent="bg-gradient-to-r from-blue-400 to-blue-500"
-          />
-        </div>
 
         {/* Filter panel */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-8">
@@ -608,6 +607,11 @@ function ShowcaseCard({
               <span>Original</span>
             </a>
           )}
+          {!externalLink && item.created_at && (
+            <span className="text-xs text-gray-400 font-medium">
+              {formatRelativeDate(item.created_at)}
+            </span>
+          )}
         </div>
       </div>
     </Link>
@@ -671,9 +675,14 @@ function ImageContent({ item }: { item: AnyItem }) {
 
 function PerformanceHero({ campaign }: { campaign: AnyItem }) {
   const m = campaign.metrics || {};
-  const roas = m.roas != null ? Number(m.roas) : null;
-  const cpl = m.cpl != null ? Number(m.cpl) : null;
-  const leads = m.leads != null ? Number(m.leads) : null;
+  const num = (v: any): number | null => {
+    if (v == null || v === '') return null;
+    const n = Number(v);
+    return isNaN(n) ? null : n;
+  };
+  const roas = num(m.roas) ?? num(campaign.roas) ?? num(m.ROAS);
+  const cpl = num(m.cpl) ?? num(campaign.cpl) ?? num(m.CPL);
+  const leads = num(m.leads) ?? num(campaign.leads) ?? num(m.Leads);
 
   const tier: 'exceptional' | 'good' | 'standard' | 'none' =
     roas == null || isNaN(roas) ? 'none' :
