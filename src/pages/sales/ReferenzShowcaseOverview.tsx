@@ -191,8 +191,18 @@ export default function ReferenzShowcaseOverview() {
   };
   const getKundenname = (i: AnyItem) =>
     i.linked_kunde?.client_name || i.client_name || i.meta_account_name || null;
-  const getTitle = (i: AnyItem) =>
-    i.custom_title || i.title || i.meta_campaign_name || i.meta_ad_name || 'Unbenannt';
+  const getTitle = (i: AnyItem) => {
+    if (i.custom_title) return i.custom_title;
+    if (i._type === 'campaign') {
+      const branche = i.linked_kunde?.branche || i.filter_values?.branche || i.branche || 'Performance';
+      const start = i.start_date || i.campaign_period_start || i.created_at;
+      const month = start
+        ? new Date(start).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
+        : '';
+      return month ? `${branche} · ${month}` : String(branche);
+    }
+    return i.title || i.meta_ad_name || i.meta_campaign_name || 'Unbenannt';
+  };
   const getCreated = (i: AnyItem) => i.created_at || i.imported_at || '';
 
   const capitalizeWords = (s: string) =>
