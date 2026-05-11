@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Globe, Video, BarChart3, Search, ChevronDown, RefreshCw,
-  Image as ImageIcon, Star,
+  Image as ImageIcon, Star, ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -409,7 +409,7 @@ export default function ReferenzShowcaseOverview() {
             <p className="text-sm text-gray-500">Keine Referenzen gefunden.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredItems.map(item => (
               <ShowcaseCard
                 key={`${item._type}-${item.id}`}
@@ -530,38 +530,118 @@ function ShowcaseCard({
 
   const kunde = getKundenname(item);
   const branche = getBranche(item);
+  const unternehmen =
+    item.linked_kunde?.unternehmen || item.filter_values?.unternehmen || item.unternehmen || null;
+  const externalLink =
+    item.external_link || item.website_url || item.notion_url || item.original_url || null;
+
+  const eyebrow = (kunde || '').trim();
+  const title = getTitle(item);
+
+  const metaParts: string[] = [];
+  if (branche) metaParts.push(branche);
+  if (unternehmen && typeof unternehmen === 'string') metaParts.push(unternehmen);
+  if (item._type === 'campaign') {
+    if (item.date_range) metaParts.push(item.date_range);
+    const spend = item.metrics?.spend;
+    if (spend != null && !isNaN(Number(spend))) {
+      metaParts.push(`€${Math.round(Number(spend)).toLocaleString('de-DE')} Spend`);
+    }
+  }
 
   return (
-    <Link to={detailHref} className="group block">
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-200">
-        <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
-          {item._type === 'campaign'
-            ? <PerformanceHero campaign={item} />
-            : <ImageContent item={item} />}
-          <TypeIndicator type={item._type} />
-          {item.is_featured && (
-            <div className="absolute top-3 left-3 w-7 h-7 rounded-full bg-yellow-400 flex items-center justify-center shadow-sm">
-              <Star className="w-3.5 h-3.5 text-white" fill="currentColor" />
-            </div>
-          )}
-        </div>
-        <div className="p-4">
-          <p className="text-xs text-gray-500 mb-1 flex items-center gap-1.5">
-            <span className="truncate">{kunde || '—'}</span>
-            {branche && (
-              <>
-                <span className="text-gray-300">·</span>
-                <span className="truncate">{branche}</span>
-              </>
-            )}
+    <Link
+      to={detailHref}
+      className="group block bg-white rounded-2xl border border-gray-200/80 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 transition-all duration-200 overflow-hidden"
+    >
+      <div className="relative bg-gray-50 overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
+        {item._type === 'campaign'
+          ? <PerformanceHero campaign={item} />
+          : <ImageContent item={item} />}
+        <TypeIndicator type={item._type} />
+        {item.is_featured && (
+          <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center shadow-md">
+            <Star className="w-4 h-4 text-white" fill="currentColor" />
+          </div>
+        )}
+      </div>
+
+      <div className="p-5">
+        {eyebrow && (
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5 truncate">
+            {eyebrow}
           </p>
-          <h3 className="font-semibold text-gray-900 text-sm leading-snug truncate group-hover:text-teal-600 transition-colors">
-            {getTitle(item)}
-          </h3>
+        )}
+
+        <h3 className="text-lg font-bold text-gray-900 leading-snug mb-3 line-clamp-2 min-h-[3.5rem] group-hover:text-teal-700 transition-colors">
+          {title}
+        </h3>
+
+        <PrimaryHighlight item={item} />
+
+        {metaParts.length > 0 && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+            {metaParts.map((part, i) => (
+              <span key={i} className="flex items-center gap-2">
+                {i > 0 && <span className="text-gray-300">·</span>}
+                <span>{part}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="border-t border-gray-100 my-4" />
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold text-teal-600 group-hover:text-teal-700 group-hover:underline transition-all">
+            Ansehen →
+          </span>
+          {externalLink && (
+            <a
+              href={externalLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Original</span>
+            </a>
+          )}
         </div>
       </div>
     </Link>
   );
+}
+
+function PrimaryHighlight({ item }: { item: AnyItem }) {
+  if (item._type === 'campaign') {
+    const roas = item.metrics?.roas != null ? Number(item.metrics.roas) : null;
+    const leads = item.metrics?.leads != null ? Number(item.metrics.leads) : null;
+    if (roas != null && !isNaN(roas)) {
+      return <p className="text-2xl font-bold text-teal-600 mb-3 tabular-nums">{roas.toFixed(1)}x ROAS</p>;
+    }
+    if (leads != null && !isNaN(leads)) {
+      return <p className="text-2xl font-bold text-teal-600 mb-3 tabular-nums">{leads.toLocaleString('de-DE')} Leads</p>;
+    }
+    return null;
+  }
+  if (item._type === 'website' && item.is_active) {
+    return (
+      <p className="text-sm font-semibold text-teal-600 mb-3 flex items-center gap-1.5">
+        <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+        Live
+      </p>
+    );
+  }
+  if (item._type === 'werbeanzeige') {
+    return (
+      <p className="text-sm font-semibold text-purple-600 mb-3">
+        {item.creative_format || item.ad_format || 'Creative'}
+      </p>
+    );
+  }
+  return null;
 }
 
 function ImageContent({ item }: { item: AnyItem }) {
@@ -612,23 +692,23 @@ function PerformanceHero({ campaign }: { campaign: AnyItem }) {
       <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
       <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/10 blur-xl" />
       <div className="relative z-10 text-center">
-        <p className="text-[10px] uppercase tracking-[0.2em] opacity-80 mb-1">ROAS</p>
-        <p className="text-5xl font-bold leading-none tracking-tight tabular-nums">
+        <p className="text-xs uppercase tracking-[0.25em] opacity-80 mb-1.5 font-medium">ROAS</p>
+        <p className="text-7xl font-bold leading-none tracking-tight tabular-nums">
           {roas != null && !isNaN(roas) ? (
-            <>{roas.toFixed(1)}<span className="text-2xl ml-1 opacity-80">x</span></>
+            <>{roas.toFixed(1)}<span className="text-3xl ml-1 opacity-80">x</span></>
           ) : '—'}
         </p>
       </div>
-      <div className="relative z-10 grid grid-cols-2 gap-2 mt-4 w-full max-w-[200px]">
-        <div className="text-center bg-white/15 backdrop-blur-sm rounded-lg px-2 py-1.5">
-          <p className="text-[10px] uppercase tracking-wider opacity-80">CPL</p>
-          <p className="font-semibold text-sm tabular-nums">
+      <div className="relative z-10 grid grid-cols-2 gap-3 mt-6 w-full max-w-[240px]">
+        <div className="text-center bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wider opacity-80 font-medium">CPL</p>
+          <p className="font-semibold text-base mt-0.5 tabular-nums">
             {cpl != null && !isNaN(cpl) ? `€${cpl.toFixed(2)}` : '—'}
           </p>
         </div>
-        <div className="text-center bg-white/15 backdrop-blur-sm rounded-lg px-2 py-1.5">
-          <p className="text-[10px] uppercase tracking-wider opacity-80">Leads</p>
-          <p className="font-semibold text-sm tabular-nums">
+        <div className="text-center bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wider opacity-80 font-medium">Leads</p>
+          <p className="font-semibold text-base mt-0.5 tabular-nums">
             {leads != null && !isNaN(leads) ? leads.toLocaleString('de-DE') : '—'}
           </p>
         </div>
@@ -639,14 +719,14 @@ function PerformanceHero({ campaign }: { campaign: AnyItem }) {
 
 function TypeIndicator({ type }: { type: AnyItem['_type'] }) {
   const config = {
-    website: { label: 'Website', Icon: Globe, color: 'bg-teal-500/90' },
-    werbeanzeige: { label: 'Ad', Icon: Video, color: 'bg-purple-500/90' },
-    campaign: { label: 'Performance', Icon: BarChart3, color: 'bg-blue-500/90' },
+    website: { label: 'Website', Icon: Globe, color: 'bg-teal-600/95' },
+    werbeanzeige: { label: 'Ad', Icon: Video, color: 'bg-purple-600/95' },
+    campaign: { label: 'Performance', Icon: BarChart3, color: 'bg-blue-600/95' },
   }[type];
   const { Icon } = config;
   return (
-    <div className={`absolute top-3 right-3 ${config.color} backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 font-medium shadow-sm`}>
-      <Icon className="w-3 h-3" />
+    <div className={`absolute top-3 right-3 ${config.color} backdrop-blur-md text-white text-[11px] px-2 py-1 rounded-md flex items-center gap-1 font-medium shadow-sm`}>
+      <Icon className="w-2.5 h-2.5" />
       {config.label}
     </div>
   );
