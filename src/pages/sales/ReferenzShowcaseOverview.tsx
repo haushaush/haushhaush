@@ -303,9 +303,11 @@ export default function ReferenzShowcaseOverview() {
   return (
     <div className="min-h-screen bg-[#fafaf7]">
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <header className="mb-10">
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Referenz Showcase</h1>
-          <p className="text-gray-500 mt-2 text-[15px]">
+        <header className="text-center max-w-3xl mx-auto mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight leading-tight">
+            Referenz Showcase
+          </h1>
+          <p className="text-base md:text-lg text-gray-500 mt-3 font-normal">
             Alle bisherigen Projekte für Sales-Pitches und Calls
           </p>
         </header>
@@ -347,21 +349,21 @@ export default function ReferenzShowcaseOverview() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Suchen nach Titel, Kunde, Tag..."
-                className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-transparent focus:border-gray-300 focus:bg-white rounded-xl text-sm outline-none transition-all"
+                className="w-full pl-11 pr-4 py-3 text-sm bg-white border border-gray-200 focus:border-teal-400 focus:ring-1 focus:ring-teal-100 focus:outline-none hover:border-gray-300 rounded-xl transition-all duration-150"
               />
             </div>
-            <div className="relative">
+            <div className="relative inline-block">
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as any)}
-                className="appearance-none px-4 py-3 pr-10 bg-gray-50 border border-transparent hover:border-gray-200 rounded-xl text-sm cursor-pointer outline-none"
+                className="appearance-none cursor-pointer px-5 py-3 pr-11 text-sm font-medium bg-white text-gray-700 border border-gray-200 hover:border-gray-300 hover:shadow-sm rounded-xl transition-all duration-150 min-w-[200px] outline-none"
               >
                 <option value="newest">Sortieren: Neueste</option>
                 <option value="oldest">Älteste</option>
                 <option value="featured">Featured zuerst</option>
                 <option value="kunde">Nach Kunde</option>
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-500" />
+              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-400" />
             </div>
             <button
               onClick={triggerSync}
@@ -467,7 +469,7 @@ function Chip({
   return (
     <button
       onClick={onClick}
-      className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all ${
+      className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
         active ? activeClasses : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
       }`}
     >
@@ -480,23 +482,37 @@ function DropdownPill({
   label, value, onChange, options,
 }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   const isActive = !!value;
+  const activeOption = options.find(o => o.value === value);
+  const displayLabel = activeOption ? activeOption.label : `${label}: Alle`;
   return (
-    <div className="relative">
+    <div className="relative inline-block">
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className={`appearance-none pl-3.5 pr-9 py-1.5 rounded-full text-sm font-medium border cursor-pointer transition-all outline-none ${
-          isActive
-            ? 'bg-teal-50 text-teal-700 border-teal-200'
-            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-        }`}
+        className={`
+          appearance-none cursor-pointer
+          px-5 py-3 pr-11
+          text-sm font-medium
+          rounded-xl border
+          transition-all duration-150
+          min-w-[180px]
+          outline-none
+          ${isActive
+            ? 'bg-white text-gray-900 border-teal-400 ring-1 ring-teal-100 shadow-sm'
+            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:shadow-sm'
+          }
+        `}
       >
         <option value="">{label}: Alle</option>
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
-      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none text-gray-500" />
+      <ChevronDown className={`
+        absolute right-3.5 top-1/2 -translate-y-1/2
+        w-4 h-4 pointer-events-none transition-colors
+        ${isActive ? 'text-teal-500' : 'text-gray-400'}
+      `} />
     </div>
   );
 }
