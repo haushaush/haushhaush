@@ -704,8 +704,8 @@ function PerformanceHero({ campaign }: { campaign: AnyItem }) {
   const tierStyles = {
     exceptional: 'bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 text-white',
     good: 'bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 text-white',
-    standard: 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700',
-    none: 'bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400',
+    standard: 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 text-slate-700 dark:text-slate-200',
+    none: 'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 text-gray-400 dark:text-gray-500',
   }[tier];
 
   return (
