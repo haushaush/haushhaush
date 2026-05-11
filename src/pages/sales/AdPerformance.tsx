@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Settings2, BarChart3 } from "lucide-react";
+import { Plus, Settings2 } from "lucide-react";
 import { MetaCampaignImportModal } from "@/components/sales/MetaCampaignImportModal";
 import { ShowcaseFilterManagementModal, type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
 import {
