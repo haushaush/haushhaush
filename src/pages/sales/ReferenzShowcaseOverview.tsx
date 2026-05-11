@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Globe, Video, BarChart3, Search, ChevronDown, RefreshCw,
-  Image as ImageIcon, Star,
+  Image as ImageIcon, Star, ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
