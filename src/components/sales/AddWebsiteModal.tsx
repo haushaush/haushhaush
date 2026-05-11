@@ -176,6 +176,34 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
         {stage === 'input' && (
           <div className="space-y-4 py-2">
             <div>
+              <Label>Thumbnail *</Label>
+              {(thumbnailPreviewUrl || existingThumbnailUrl) ? (
+                <div className="relative mt-1">
+                  <img
+                    src={thumbnailPreviewUrl || existingThumbnailUrl || ''}
+                    alt="Thumbnail Vorschau"
+                    className="w-full rounded border border-border object-cover"
+                    style={{ aspectRatio: '16/9' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setThumbnailFile(null); setExistingThumbnailUrl(null); }}
+                    className="absolute top-2 right-2 bg-background/90 border border-border shadow rounded-full w-7 h-7 flex items-center justify-center hover:bg-muted"
+                    aria-label="Thumbnail entfernen"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="mt-1 block border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/60 hover:bg-muted/30 transition-colors">
+                  <input type="file" accept="image/*" onChange={handleThumbnailChange} className="hidden" />
+                  <ImageIcon className="w-7 h-7 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium">Bild auswählen</p>
+                  <p className="text-xs text-muted-foreground mt-1">Empfohlen: 800×450px (16:9) · max. 5MB</p>
+                </label>
+              )}
+            </div>
+            <div>
               <Label>Website-URL *</Label>
               <Input
                 type="url"
