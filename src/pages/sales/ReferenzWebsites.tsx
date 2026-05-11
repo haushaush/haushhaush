@@ -4,9 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Star } from 'lucide-react';
+import { Plus, Search, Star, ImageIcon } from 'lucide-react';
 import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
-import { WebsiteCardPreview } from '@/components/sales/WebsiteEmbed';
 import type { ShowcaseRow } from './ReferenzShowcaseShared';
 
 export default function ReferenzWebsitesPage() {
