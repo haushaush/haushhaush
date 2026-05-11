@@ -453,13 +453,13 @@ function CategoryTile({
   return (
     <Link
       to={href}
-      className="group block bg-white rounded-2xl border border-gray-200/80 px-8 py-12 text-center shadow-sm hover:shadow-lg hover:border-teal-300 hover:-translate-y-1 transition-all duration-200"
+      className="group block bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 px-8 py-12 text-center shadow-sm hover:shadow-lg hover:border-teal-300 dark:hover:border-teal-700 hover:-translate-y-1 transition-all duration-200"
     >
-      <Icon className="w-8 h-8 mx-auto mb-4 text-gray-400 group-hover:text-teal-600 transition-colors" />
-      <h3 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+      <Icon className="w-8 h-8 mx-auto mb-4 text-gray-400 dark:text-gray-500 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors" />
+      <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
         {label}
       </h3>
-      <p className="text-sm text-gray-500 mt-2 font-normal">
+      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-normal">
         {count} {count === 1 ? 'Referenz' : 'Referenzen'}
       </p>
     </Link>
