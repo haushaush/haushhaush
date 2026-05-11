@@ -670,8 +670,8 @@ function ImageContent({ item }: { item: AnyItem }) {
 
   if (!imageUrl) {
     return (
-      <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <ImageIcon className="w-10 h-10 text-gray-300" />
+      <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <ImageIcon className="w-10 h-10 text-gray-300 dark:text-gray-600" />
       </div>
     );
   }
