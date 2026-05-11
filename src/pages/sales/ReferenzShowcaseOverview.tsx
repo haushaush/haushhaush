@@ -719,14 +719,14 @@ function PerformanceHero({ campaign }: { campaign: AnyItem }) {
 
 function TypeIndicator({ type }: { type: AnyItem['_type'] }) {
   const config = {
-    website: { label: 'Website', Icon: Globe, color: 'bg-teal-500/90' },
-    werbeanzeige: { label: 'Ad', Icon: Video, color: 'bg-purple-500/90' },
-    campaign: { label: 'Performance', Icon: BarChart3, color: 'bg-blue-500/90' },
+    website: { label: 'Website', Icon: Globe, color: 'bg-teal-600/95' },
+    werbeanzeige: { label: 'Ad', Icon: Video, color: 'bg-purple-600/95' },
+    campaign: { label: 'Performance', Icon: BarChart3, color: 'bg-blue-600/95' },
   }[type];
   const { Icon } = config;
   return (
-    <div className={`absolute top-3 right-3 ${config.color} backdrop-blur-sm text-white text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 font-medium shadow-sm`}>
-      <Icon className="w-3 h-3" />
+    <div className={`absolute top-3 right-3 ${config.color} backdrop-blur-md text-white text-[11px] px-2 py-1 rounded-md flex items-center gap-1 font-medium shadow-sm`}>
+      <Icon className="w-2.5 h-2.5" />
       {config.label}
     </div>
   );
