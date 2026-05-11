@@ -132,36 +132,130 @@ export default function ReferenzShowcaseOverview() {
     [websites, adCreatives, campaigns],
   );
 
-  const getBranche = (i: AnyItem) => {
-    const b = i.linked_kunde?.branche;
-    if (Array.isArray(b)) return b[0] || null;
-    return b || i.filter_values?.branche || i.branche || null;
+  const normalize = (v: any): string | null => {
+    if (Array.isArray(v)) v = v[0];
+    if (!v || typeof v !== 'string') return null;
+    const t = v.trim().toLowerCase();
+    return t || null;
   };
-  const getUnternehmen = (i: AnyItem) =>
-    i.linked_kunde?.unternehmen || i.filter_values?.unternehmen || null;
+
+  const getBrancheValue = (i: AnyItem): string | null => {
+    const tags: string[] = i.custom_tags || i.tags || [];
+    const fromTags = tags
+      .filter(t => typeof t === 'string' && t.toLowerCase().startsWith('branche-'))
+      .map(t => t.slice('branche-'.length));
+    const candidates = [
+      i.linked_kunde?.branche,
+      i.filter_values?.branche,
+      i.branche,
+      ...fromTags,
+    ];
+    for (const c of candidates) {
+      const n = normalize(c);
+      if (n) return n;
+    }
+    return null;
+  };
+
+  const getUnternehmenValue = (i: AnyItem): string | null => {
+    const tags: string[] = i.custom_tags || i.tags || [];
+    const fromTags = tags
+      .filter(t => typeof t === 'string' && (t.toLowerCase().startsWith('versicherer-') || t.toLowerCase().startsWith('unternehmen-')))
+      .map(t => t.replace(/^(versicherer-|unternehmen-)/i, ''));
+    const candidates = [
+      i.linked_kunde?.unternehmen,
+      i.filter_values?.unternehmen,
+      i.unternehmen,
+      ...fromTags,
+    ];
+    for (const c of candidates) {
+      const n = normalize(c);
+      if (n) return n;
+    }
+    return null;
+  };
+
+  // Display-friendly version (preserves original casing from first occurrence)
+  const getBranche = (i: AnyItem): string | null => {
+    const tags: string[] = i.custom_tags || i.tags || [];
+    const fromTags = tags
+      .filter(t => typeof t === 'string' && t.toLowerCase().startsWith('branche-'))
+      .map(t => t.slice('branche-'.length));
+    const raw = i.linked_kunde?.branche ?? i.filter_values?.branche ?? i.branche ?? fromTags[0] ?? null;
+    if (Array.isArray(raw)) return raw[0]?.trim() || null;
+    return (typeof raw === 'string' && raw.trim()) ? raw.trim() : null;
+  };
+  const getUnternehmen = (i: AnyItem): string | null => {
+    const raw = i.linked_kunde?.unternehmen || i.filter_values?.unternehmen || i.unternehmen || null;
+    return (typeof raw === 'string' && raw.trim()) ? raw.trim() : null;
+  };
   const getKundenname = (i: AnyItem) =>
     i.linked_kunde?.client_name || i.client_name || i.meta_account_name || null;
   const getTitle = (i: AnyItem) =>
     i.custom_title || i.title || i.meta_campaign_name || i.meta_ad_name || 'Unbenannt';
   const getCreated = (i: AnyItem) => i.created_at || i.imported_at || '';
 
+  const capitalizeWords = (s: string) =>
+    s.split(/\s+/).map(w => w.length > 3 ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(' ');
+
   const brancheOptions = useMemo(() => {
-    const fromOptions = getOptionsFor('branche').map(o => o.value);
-    const fromItems = allItems.map(getBranche).filter(Boolean) as string[];
-    return Array.from(new Set([...fromOptions, ...fromItems])).sort((a, b) => a.localeCompare(b, 'de')).map(v => ({ value: v, label: v }));
-  }, [filterOptions, filterCategories, allItems]);
+    const counts = new Map<string, number>();
+    const display = new Map<string, string>();
+    allItems.forEach(item => {
+      const n = getBrancheValue(item);
+      if (!n) return;
+      counts.set(n, (counts.get(n) || 0) + 1);
+      if (!display.has(n)) {
+        const raw = getBranche(item);
+        display.set(n, raw || capitalizeWords(n));
+      }
+    });
+    return Array.from(counts.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'de'))
+      .map(([value, count]) => ({ value, label: `${display.get(value) || capitalizeWords(value)} (${count})` }));
+  }, [allItems]);
 
   const unternehmenOptions = useMemo(() => {
-    const fromOptions = getOptionsFor('unternehmen').map(o => o.value);
-    const fromItems = allItems.map(getUnternehmen).filter(Boolean) as string[];
-    return Array.from(new Set([...fromOptions, ...fromItems])).sort((a, b) => a.localeCompare(b, 'de')).map(v => ({ value: v, label: v }));
-  }, [filterOptions, filterCategories, allItems]);
+    const counts = new Map<string, number>();
+    const display = new Map<string, string>();
+    allItems.forEach(item => {
+      const n = getUnternehmenValue(item);
+      if (!n) return;
+      counts.set(n, (counts.get(n) || 0) + 1);
+      if (!display.has(n)) {
+        const raw = getUnternehmen(item);
+        display.set(n, raw || capitalizeWords(n));
+      }
+    });
+    return Array.from(counts.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'de'))
+      .map(([value, count]) => ({ value, label: `${display.get(value) || capitalizeWords(value)} (${count})` }));
+  }, [allItems]);
+
+  // Debug logging
+  useEffect(() => {
+    if (!allItems.length) return;
+    console.log('[showcase-filter-debug] Total items:', allItems.length);
+    allItems.forEach(item => {
+      console.log(`[${item._type}] ${getTitle(item)}`, {
+        'linked_kunde.branche': item.linked_kunde?.branche,
+        'filter_values.branche': item.filter_values?.branche,
+        'item.branche': item.branche,
+        'custom_tags': item.custom_tags,
+        '→ normalized branche': getBrancheValue(item),
+        '→ normalized unternehmen': getUnternehmenValue(item),
+      });
+    });
+    console.log('[showcase-filter-debug] Branche options:', brancheOptions);
+    console.log('[showcase-filter-debug] Unternehmen options:', unternehmenOptions);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allItems]);
 
   const filteredItems = useMemo(() => {
     let out = allItems.filter(item => {
       if (typeFilter !== 'all' && item._type !== typeFilter) return false;
-      if (brancheFilter && getBranche(item) !== brancheFilter) return false;
-      if (unternehmenFilter && getUnternehmen(item) !== unternehmenFilter) return false;
+      if (brancheFilter && getBrancheValue(item) !== brancheFilter.toLowerCase().trim()) return false;
+      if (unternehmenFilter && getUnternehmenValue(item) !== unternehmenFilter.toLowerCase().trim()) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const searchable = [
