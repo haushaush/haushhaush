@@ -595,6 +595,11 @@ function ShowcaseCard({
               <span>Original</span>
             </a>
           )}
+          {!externalLink && item.created_at && (
+            <span className="text-xs text-gray-400 font-medium">
+              {formatRelativeDate(item.created_at)}
+            </span>
+          )}
         </div>
       </div>
     </Link>
