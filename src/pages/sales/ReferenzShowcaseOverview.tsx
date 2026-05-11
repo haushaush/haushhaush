@@ -507,8 +507,8 @@ function DropdownPill({
           min-w-[180px]
           outline-none
           ${isActive
-            ? 'bg-teal-50 text-teal-900 border-teal-400 ring-1 ring-teal-100 shadow-sm'
-            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:shadow-sm'
+            ? 'bg-teal-50 dark:bg-teal-950 text-teal-900 dark:text-teal-100 border-teal-400 dark:border-teal-700 ring-1 ring-teal-100 dark:ring-teal-900 shadow-sm'
+            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm'
           }
         `}
       >
@@ -520,7 +520,7 @@ function DropdownPill({
       <ChevronDown className={`
         absolute right-3.5 top-1/2 -translate-y-1/2
         w-4 h-4 pointer-events-none transition-colors
-        ${isActive ? 'text-teal-500' : 'text-gray-400'}
+        ${isActive ? 'text-teal-500 dark:text-teal-400' : 'text-gray-400 dark:text-gray-500'}
       `} />
     </div>
   );
