@@ -77,6 +77,24 @@ export default function ReferenzWebsiteDetail() {
     }
   }
 
+  async function handleRecheck() {
+    if (!item?.website_url) return;
+    const promise = supabase.functions
+      .invoke('check-website-embeddable', {
+        body: { showcase_id: item.id, url: item.website_url },
+      })
+      .then(({ data, error }) => {
+        if (error) throw error;
+        load();
+        return data;
+      });
+    toast.promise(promise, {
+      loading: 'Prüfe Embed-Status…',
+      success: (d: any) => (d?.is_blocked ? 'Website blockiert Embedding' : 'Embedding möglich'),
+      error: 'Prüfung fehlgeschlagen',
+    });
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 p-6">
