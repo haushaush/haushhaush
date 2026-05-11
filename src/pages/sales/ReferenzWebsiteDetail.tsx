@@ -176,6 +176,9 @@ export default function ReferenzWebsiteDetail() {
                       title={item.title}
                       fallbackImageUrl={fallback}
                       height="100%"
+                      showcaseId={item.id}
+                      initialIsBlocked={item.is_iframe_blocked ?? null}
+                      hasChecked={!!item.iframe_check_at}
                     />
                   </div>
                 ) : fallback ? (
