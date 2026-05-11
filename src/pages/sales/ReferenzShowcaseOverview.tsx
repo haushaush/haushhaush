@@ -357,35 +357,35 @@ export default function ReferenzShowcaseOverview() {
         </div>
 
         {/* Filter panel */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-8">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 mb-8">
           <div className="flex gap-3 mb-4 flex-wrap">
             <div className="flex-1 min-w-[240px] relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input
                 type="search"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Suchen nach Titel, Kunde, Tag..."
-                className="w-full pl-11 pr-4 py-3 text-sm bg-white border border-gray-200 focus:border-teal-400 focus:ring-1 focus:ring-teal-100 focus:outline-none hover:border-gray-300 rounded-xl transition-all duration-150"
+                className="w-full pl-11 pr-4 py-3 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 border border-gray-200 dark:border-gray-700 focus:border-teal-400 focus:ring-1 focus:ring-teal-100 dark:focus:ring-teal-900 focus:outline-none hover:border-gray-300 dark:hover:border-gray-600 rounded-xl transition-all duration-150"
               />
             </div>
             <div className="relative inline-block">
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as any)}
-                className="appearance-none cursor-pointer px-5 py-3 pr-11 text-sm font-medium bg-white text-gray-700 border border-gray-200 hover:border-gray-300 hover:shadow-sm rounded-xl transition-all duration-150 min-w-[200px] outline-none"
+                className="appearance-none cursor-pointer px-5 py-3 pr-11 text-sm font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm rounded-xl transition-all duration-150 min-w-[200px] outline-none"
               >
                 <option value="newest">Sortieren: Neueste</option>
                 <option value="oldest">Älteste</option>
                 <option value="featured">Featured zuerst</option>
                 <option value="kunde">Nach Kunde</option>
               </select>
-              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-400" />
+              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-400 dark:text-gray-500" />
             </div>
             <button
               onClick={triggerSync}
               disabled={syncing}
-              className="px-4 py-3 bg-gray-50 border border-transparent hover:border-gray-200 rounded-xl text-sm cursor-pointer outline-none flex items-center gap-2 disabled:opacity-60"
+              className="px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-transparent hover:border-gray-200 dark:hover:border-gray-700 rounded-xl text-sm cursor-pointer outline-none flex items-center gap-2 disabled:opacity-60"
             >
               <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Filter aktualisieren</span>
@@ -406,7 +406,7 @@ export default function ReferenzShowcaseOverview() {
             <DropdownPill label="Branche" value={brancheFilter} onChange={setBrancheFilter} options={brancheOptions} />
             <DropdownPill label="Unternehmen" value={unternehmenFilter} onChange={setUnternehmenFilter} options={unternehmenOptions} />
             {hasActiveFilters && (
-              <button onClick={resetFilters} className="text-sm text-gray-500 hover:text-gray-900 underline ml-auto">
+              <button onClick={resetFilters} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline ml-auto">
                 Filter zurücksetzen
               </button>
             )}
