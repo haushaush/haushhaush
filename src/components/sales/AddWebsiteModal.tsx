@@ -97,6 +97,21 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
 
     try {
       let fallbackUrl: string | null = existingFallbackUrl;
+      let thumbnailUrl: string | null = existingThumbnailUrl;
+
+      if (thumbnailFile) {
+        const ext = thumbnailFile.name.split('.').pop() || 'jpg';
+        const path = `websites/thumbnails/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from('referenz-showcase')
+          .upload(path, thumbnailFile, { upsert: false, contentType: thumbnailFile.type, cacheControl: '31536000' });
+        if (upErr) throw upErr;
+        const { data: { publicUrl } } = supabase.storage
+          .from('referenz-showcase')
+          .getPublicUrl(path);
+        thumbnailUrl = publicUrl;
+        if (!fallbackUrl && !fallbackFile) fallbackUrl = publicUrl;
+      }
 
       if (fallbackFile) {
         const ext = fallbackFile.name.split('.').pop() || 'png';
@@ -121,6 +136,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
         description: description.trim() || null,
         website_url: cleanUrl,
         fallback_image_url: fallbackUrl,
+        thumbnail_url: thumbnailUrl,
         is_featured: isFeatured,
         is_active: true,
       };
