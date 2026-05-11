@@ -311,39 +311,16 @@ export default function ReferenzShowcaseOverview() {
     typeFilter !== 'all' || brancheFilter || unternehmenFilter || searchQuery;
 
   return (
-    <div className="min-h-screen bg-[#fafaf7]">
+    <div className="min-h-screen bg-[#fafaf7] pb-32">
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <header className="text-center max-w-3xl mx-auto mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight leading-tight">
+        <header className="text-center max-w-3xl mx-auto mb-16 pt-8">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 tracking-tight leading-[1.05]">
             Referenz Showcase
           </h1>
-          <p className="text-base md:text-lg text-gray-500 mt-3 font-normal">
+          <p className="text-lg md:text-xl text-gray-500 mt-5 font-normal">
             Alle bisherigen Projekte für Sales-Pitches und Calls
           </p>
         </header>
-
-        {/* Category tiles */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-10">
-          <CategoryTile
-            label="Websites"
-            count={counts.websites}
-            href="/sales/referenz-showcase/websites"
-            accent="bg-gradient-to-r from-teal-400 to-teal-500"
-          />
-          <CategoryTile
-            label="Ad Creatives"
-            count={counts.ads}
-            href="/sales/referenz-showcase/werbeanzeigen"
-            accent="bg-gradient-to-r from-purple-400 to-purple-500"
-          />
-          <CategoryTile
-            label="Ad Performance"
-            count={counts.performance}
-            countLabel={counts.performance === 1 ? 'Kampagne' : 'Kampagnen'}
-            href="/sales/referenz-showcase/ad-performance"
-            accent="bg-gradient-to-r from-blue-400 to-blue-500"
-          />
-        </div>
 
         {/* Filter panel */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-8">
