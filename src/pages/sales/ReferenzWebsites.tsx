@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsPublicView } from '@/hooks/useIsPublicView';
 import { Plus } from 'lucide-react';
 import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
 import type { ShowcaseRow } from './ReferenzShowcaseShared';
@@ -12,7 +13,8 @@ import {
 
 export default function ReferenzWebsitesPage() {
   const { hasRole } = useAuth();
-  const isAdmin = hasRole('admin');
+  const isPublic = useIsPublicView();
+  const isAdmin = hasRole('admin') && !isPublic;
   const [rows, setRows] = useState<ShowcaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');

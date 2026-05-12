@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +21,8 @@ export default function ReferenzWerbeanzeigeDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasRole } = useAuth();
-  const isAdmin = hasRole("admin");
+  const isPublic = useIsPublicView();
+  const isAdmin = hasRole("admin") && !isPublic;
   const { toast } = useToast();
 
   const [ad, setAd] = useState<MetaAdRow | null>(null);

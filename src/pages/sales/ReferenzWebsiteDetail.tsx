@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsPublicView } from '@/hooks/useIsPublicView';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import {
@@ -25,7 +26,8 @@ export default function ReferenzWebsiteDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasRole } = useAuth();
-  const isAdmin = hasRole('admin');
+  const isPublic = useIsPublicView();
+  const isAdmin = hasRole('admin') && !isPublic;
   const [item, setItem] = useState<ShowcaseRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);

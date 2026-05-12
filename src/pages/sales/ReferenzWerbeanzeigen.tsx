@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Plus, Settings2, Sparkles, Loader2 } from "lucide-react";
 import { MetaAdImportModal } from "@/components/sales/MetaAdImportModal";
 import { ShowcaseFilterManagementModal, type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
@@ -42,7 +43,8 @@ type SortKey = "performance" | "created" | "cpl" | "roas" | "leads";
 
 export default function ReferenzWerbeanzeigenPage() {
   const { hasRole } = useAuth();
-  const isAdmin = hasRole("admin");
+  const isPublic = useIsPublicView();
+  const isAdmin = hasRole("admin") && !isPublic;
   const { toast } = useToast();
   const [reenriching, setReenriching] = useState(false);
 
