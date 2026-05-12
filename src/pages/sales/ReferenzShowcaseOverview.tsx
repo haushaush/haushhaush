@@ -343,19 +343,19 @@ export default function ReferenzShowcaseOverview() {
           <CategoryTile
             label="Websites"
             count={counts.websites}
-            href="/sales/referenz-showcase/websites"
+            href={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`}
             icon={Globe}
           />
           <CategoryTile
             label="Ad Creatives"
             count={counts.ads}
-            href="/sales/referenz-showcase/werbeanzeigen"
+            href={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen`}
             icon={Video}
           />
           <CategoryTile
             label="Ad Performance"
             count={counts.performance}
-            href="/sales/referenz-showcase/ad-performance"
+            href={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/ad-performance`}
             icon={BarChart3}
           />
         </div>
