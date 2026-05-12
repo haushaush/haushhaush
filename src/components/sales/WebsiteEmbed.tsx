@@ -85,9 +85,6 @@ export function WebsiteEmbed({
             alt={title ?? ''}
             className="w-full h-full object-cover object-top"
           />
-          <div className="absolute top-3 right-3 bg-amber-500 text-white text-xs px-2 py-1 rounded font-medium shadow">
-            📸 Vorschau
-          </div>
         </div>
       );
     }
