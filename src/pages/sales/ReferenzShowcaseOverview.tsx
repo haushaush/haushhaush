@@ -418,7 +418,7 @@ export default function ReferenzShowcaseOverview() {
             <p className="text-sm text-gray-500 dark:text-gray-400">Keine Referenzen gefunden.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 auto-rows-fr">
             {filteredItems.map(item => (
               <ShowcaseCard
                 key={`${item._type}-${item.id}`}
