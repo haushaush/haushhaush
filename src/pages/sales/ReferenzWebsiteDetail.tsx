@@ -170,11 +170,11 @@ export default function ReferenzWebsiteDetail() {
 
       {/* Main */}
       <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16 xl:px-20 py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-stretch mb-8">
           {/* Hero */}
-          <div className="lg:col-span-3 space-y-4">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
-              <div className="relative aspect-[16/10] bg-gray-50 dark:bg-gray-800">
+          <div className="lg:col-span-3 flex flex-col">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm flex flex-col flex-1 min-h-[500px]">
+              <div className="relative flex-1 bg-gray-50 dark:bg-gray-800 min-h-[400px]">
                 {item.website_url ? (
                   <div className="absolute inset-0">
                     <WebsiteEmbed
@@ -188,9 +188,9 @@ export default function ReferenzWebsiteDetail() {
                     />
                   </div>
                 ) : fallback ? (
-                  <img src={fallback} alt={item.title} className="w-full h-full object-cover object-top" />
+                  <img src={fallback} alt={item.title} className="absolute inset-0 w-full h-full object-cover object-top" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-sm text-gray-400 dark:text-gray-600">
+                  <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 dark:text-gray-600">
                     Keine Vorschau
                   </div>
                 )}
@@ -218,8 +218,8 @@ export default function ReferenzWebsiteDetail() {
           </div>
 
           {/* Info-Panel */}
-          <div className="lg:col-span-2">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm lg:sticky lg:top-6">
+          <div className="lg:col-span-2 flex flex-col">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm flex-1">
               <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                 {(item.client_name || 'Kunde').toUpperCase()}
               </p>
@@ -314,47 +314,46 @@ export default function ReferenzWebsiteDetail() {
           </div>
         </div>
 
-        {hasKeyFeatures && (
-          <section className="mt-16 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
-            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-6">Highlights</h2>
-            <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {keyFeatures.map((feat, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <Check className="w-5 h-5 mt-0.5 text-teal-600 dark:text-teal-400 shrink-0" />
-                  <span className="text-gray-700 dark:text-gray-300">{feat}</span>
-                </li>
+        {/* Bottom: full-width sections */}
+        <div className="space-y-6">
+          {hasKeyFeatures && (
+            <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
+              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-6">Highlights</h2>
+              <ul className={`grid gap-3 ${keyFeatures.length > 4 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                {keyFeatures.map((feat, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <Check className="w-5 h-5 mt-0.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                    <span className="text-gray-700 dark:text-gray-300">{feat}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {hasDescription && (
+            <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
+              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Beschreibung</h2>
+              <div className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                {item.description}
+              </div>
+            </section>
+          )}
+        </div>
+
+        {hasTags && (
+          <section className="mt-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
+            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Tags</h2>
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm rounded-md"
+                >
+                  {tag}
+                </span>
               ))}
-            </ul>
+            </div>
           </section>
-        )}
-
-        {(hasDescription || hasTags) && (
-          <div className="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {hasDescription && (
-              <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Beschreibung</h2>
-                <div className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {item.description}
-                </div>
-              </section>
-            )}
-
-            {hasTags && (
-              <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Tags</h2>
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm rounded-md"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
         )}
       </div>
 
