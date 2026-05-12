@@ -409,12 +409,29 @@ function PerformanceHero({ campaign }: { campaign: AnyItem }) {
   );
 }
 
-function TypeIndicator({ type }: { type: AnyItem['_type'] }) {
+function TypeIndicator({ item }: { item: AnyItem }) {
+  if (item._type === 'website') {
+    const isLive = item.is_iframe_blocked !== true;
+    if (isLive) {
+      return (
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-emerald-500/95 backdrop-blur-md text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-sm">
+          <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
+          Live
+        </div>
+      );
+    }
+    return (
+      <div className="absolute top-3 right-3 flex items-center gap-1 bg-gray-700/95 dark:bg-gray-800/95 backdrop-blur-md text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-sm">
+        <ImageIcon className="w-2.5 h-2.5" />
+        Bild
+      </div>
+    );
+  }
   const config = {
-    website: { label: 'Website', Icon: Globe, color: 'bg-teal-600/95' },
     werbeanzeige: { label: 'Ad', Icon: Video, color: 'bg-purple-600/95' },
     campaign: { label: 'Performance', Icon: BarChart3, color: 'bg-blue-600/95' },
-  }[type];
+  }[item._type as 'werbeanzeige' | 'campaign'];
+  if (!config) return null;
   const { Icon } = config;
   return (
     <div className={`absolute top-3 right-3 ${config.color} backdrop-blur-md text-white text-[11px] px-2 py-1 rounded-md flex items-center gap-1 font-medium shadow-sm`}>
