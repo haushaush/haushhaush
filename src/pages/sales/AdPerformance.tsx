@@ -59,7 +59,7 @@ export default function AdPerformancePage() {
     setLoading(true);
     const [{ data: camps }, { data: cats }, { data: opts }] = await Promise.all([
       supabase.from("referenz_meta_campaigns" as any)
-        .select("*, linked_kunde:close_deals(client_name, unternehmen, branche)")
+        .select(isPublic ? '*' : '*, linked_kunde:close_deals(client_name, unternehmen, branche)')
         .eq("is_active", true)
         .order("is_featured", { ascending: false })
         .order("imported_at", { ascending: false }),

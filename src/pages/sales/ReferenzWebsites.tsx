@@ -28,7 +28,7 @@ export default function ReferenzWebsitesPage() {
     setLoading(true);
     const { data } = await supabase
       .from('referenz_showcase' as any)
-      .select('*, linked_kunde:close_deals(client_name, unternehmen, branche)')
+      .select(isPublic ? '*' : '*, linked_kunde:close_deals(client_name, unternehmen, branche)')
       .eq('type', 'website')
       .eq('is_active', true)
       .order('is_featured', { ascending: false })
