@@ -140,9 +140,10 @@ export default function AdPerformancePage() {
         )}
       />
 
-      <div className="space-y-4 mb-8">
-        <div className="flex flex-col md:flex-row gap-3">
-          <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Kampagne, Kunde, Beschreibung…" />
+      <div className="space-y-3 mb-8">
+        <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Kampagne, Kunde, Beschreibung…" />
+
+        <div className="flex flex-wrap items-center gap-3">
           <DropdownPill
             label="Sortieren"
             value={sortBy === 'best_roas' ? '' : sortBy}
@@ -154,9 +155,6 @@ export default function AdPerformancePage() {
               { value: 'newest', label: 'Neueste' },
             ]}
           />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
           {categories.map(cat => {
             const catOpts = options
               .filter(o => o.category_id === cat.id && o.is_active)
