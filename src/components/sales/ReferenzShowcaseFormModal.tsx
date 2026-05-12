@@ -251,6 +251,14 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
             <Switch checked={isFeatured} onCheckedChange={setIsFeatured} id="featured" />
             <Label htmlFor="featured" className="cursor-pointer">Als Featured markieren</Label>
           </div>
+
+          <div className="flex items-start justify-between gap-3 rounded-xl border border-border bg-muted/30 p-3">
+            <div>
+              <Label htmlFor="is_public" className="cursor-pointer text-sm font-medium">Öffentlich sichtbar</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">Wenn aktiv, im /showcase-Bereich ohne Login sichtbar.</p>
+            </div>
+            <Switch checked={isPublic} onCheckedChange={setIsPublic} id="is_public" />
+          </div>
         </div>
 
         <DialogFooter>
