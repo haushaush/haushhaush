@@ -53,22 +53,21 @@ export function WebsiteEmbed({
         body: { showcase_id: showcaseId, url },
       })
       .then(({ data }) => {
-        if (data?.is_blocked) {
-          setShowFallback(true);
-          setStatus('blocked');
-        }
+        if (data?.is_blocked) activateFallback();
       })
       .catch(() => {});
   }, [showcaseId, url]);
+
+  // Notify when initially blocked.
+  useEffect(() => {
+    if (showFallback) onFallbackActivated?.();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Timeout fallback: if iframe doesn't fire load within 5s, assume blocked.
   useEffect(() => {
     if (showFallback) return;
     const t = setTimeout(() => {
-      if (!iframeLoadedRef.current) {
-        setShowFallback(true);
-        setStatus('blocked');
-      }
+      if (!iframeLoadedRef.current) activateFallback();
     }, 5000);
     return () => clearTimeout(t);
   }, [showFallback, url]);
