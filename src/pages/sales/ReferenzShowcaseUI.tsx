@@ -102,13 +102,13 @@ export function DropdownPill({
         className={`
           appearance-none cursor-pointer
           px-5 py-3 pr-11
-          text-sm font-medium
+          text-sm
           rounded-xl border
           transition-all duration-150
           outline-none
           ${isActive
-            ? 'bg-teal-50 dark:bg-teal-950 text-teal-900 dark:text-teal-100 border-teal-400 dark:border-teal-700 ring-1 ring-teal-100 dark:ring-teal-900 shadow-sm'
-            : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm'
+            ? 'bg-teal-50 dark:bg-teal-950 text-teal-900 dark:text-teal-100 border-teal-400 dark:border-teal-700 ring-1 ring-teal-100 dark:ring-teal-900 shadow-sm font-bold'
+            : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm font-semibold'
           }
         `}
       >
