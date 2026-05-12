@@ -1,7 +1,21 @@
+import { useEffect } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { Trophy } from 'lucide-react';
 
+function useNoIndex() {
+  useEffect(() => {
+    const meta = document.createElement('meta');
+    meta.name = 'robots';
+    meta.content = 'noindex, nofollow';
+    document.head.appendChild(meta);
+    return () => {
+      document.head.removeChild(meta);
+    };
+  }, []);
+}
+
 export default function PublicShowcaseLayout() {
+  useNoIndex();
   return (
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 flex flex-col">
       <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
