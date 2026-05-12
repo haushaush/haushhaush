@@ -544,16 +544,7 @@ function ShowcaseCard({
   const eyebrow = (kunde || '').trim();
   const title = getTitle(item);
 
-  const metaParts: string[] = [];
-  if (branche) metaParts.push(branche);
-  if (unternehmen && typeof unternehmen === 'string') metaParts.push(unternehmen);
-  if (item._type === 'campaign') {
-    if (item.date_range) metaParts.push(item.date_range);
-    const spend = item.metrics?.spend;
-    if (spend != null && !isNaN(Number(spend))) {
-      metaParts.push(`€${Math.round(Number(spend)).toLocaleString('de-DE')} Spend`);
-    }
-  }
+
 
   return (
     <Link
