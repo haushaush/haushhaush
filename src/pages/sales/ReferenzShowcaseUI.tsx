@@ -33,12 +33,13 @@ export function SubPageHeader({
   subtitle: string;
   actions?: React.ReactNode;
 }) {
+  const isPublic = useIsPublicView();
   return (
     <header className="mb-10">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
         <div>
           <Link
-            to="/sales/referenz-showcase"
+            to={isPublic ? '/showcase' : '/sales/referenz-showcase'}
             className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-3 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
