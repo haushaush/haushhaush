@@ -15,6 +15,7 @@ function useNoIndex() {
 }
 
 export default function PublicShowcaseLayout() {
+  useNoIndex();
   return (
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 flex flex-col">
       <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
