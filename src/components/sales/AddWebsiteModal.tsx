@@ -467,7 +467,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
               <Button variant="outline" onClick={onClose}>Abbrechen</Button>
               <Button
                 onClick={handleNext}
-                disabled={!url.trim() || !title.trim() || (!thumbnailFile && !existingThumbnailUrl)}
+                disabled={!url.trim() || !title.trim() || (!thumbnailFile && !existingThumbnailUrl && !autoThumbnailUrl)}
               >
                 Weiter →
               </Button>
