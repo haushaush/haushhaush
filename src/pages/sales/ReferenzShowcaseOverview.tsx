@@ -321,6 +321,7 @@ export default function ReferenzShowcaseOverview() {
     setBrancheFilter('');
     setUnternehmenFilter('');
     setSearchQuery('');
+    setSortBy('newest');
   };
 
   const hasActiveFilters =
