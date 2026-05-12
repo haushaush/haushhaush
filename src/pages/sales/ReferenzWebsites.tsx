@@ -107,9 +107,10 @@ export default function ReferenzWebsitesPage() {
         )}
       />
 
-      <div className="space-y-4 mb-8">
-        <div className="flex flex-col md:flex-row gap-3">
-          <ShowcaseSearchInput value={search} onChange={setSearch} />
+      <div className="space-y-3 mb-8">
+        <ShowcaseSearchInput value={search} onChange={setSearch} />
+
+        <div className="flex flex-wrap items-center gap-3">
           <DropdownPill
             label="Sortieren"
             value={sortBy === 'featured' ? '' : sortBy}
@@ -119,9 +120,6 @@ export default function ReferenzWebsitesPage() {
               { value: 'oldest', label: 'Älteste' },
             ]}
           />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
           <DropdownPill label="Branche" value={brancheFilter} onChange={setBrancheFilter} options={brancheOptions} />
           <DropdownPill label="Unternehmen" value={unternehmenFilter} onChange={setUnternehmenFilter} options={unternehmenOptions} />
           {hasActiveFilters && (
