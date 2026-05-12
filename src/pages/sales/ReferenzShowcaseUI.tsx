@@ -250,14 +250,22 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
         </div>
 
         {item._type === 'website' && item.key_features?.length > 0 && (
-          <ul className="mt-2.5 space-y-1.5">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             {item.key_features.slice(0, 3).map((feat: string, i: number) => (
-              <li key={i} className="flex items-start gap-1.5 text-xs text-gray-600 dark:text-gray-400">
-                <Check className="w-3 h-3 mt-0.5 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span className="line-clamp-1">{feat}</span>
-              </li>
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-md"
+              >
+                <Check className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
+                <span className="truncate max-w-[140px]">{feat}</span>
+              </span>
             ))}
-          </ul>
+            {item.key_features.length > 3 && (
+              <span className="inline-flex items-center px-2.5 py-1 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-500 text-xs font-medium rounded-md border border-dashed border-gray-200 dark:border-gray-700">
+                +{item.key_features.length - 3}
+              </span>
+            )}
+          </div>
         )}
 
         {unternehmen && typeof unternehmen === 'string' && (
