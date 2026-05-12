@@ -145,14 +145,6 @@ export function WebsiteEmbed({
         </div>
       )}
 
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute bottom-3 right-3 bg-background shadow-lg px-3 py-1.5 rounded text-xs font-medium hover:bg-muted transition flex items-center gap-1"
-      >
-        <ExternalLink className="w-3 h-3" /> Vollbild
-      </a>
     </div>
   );
 }
