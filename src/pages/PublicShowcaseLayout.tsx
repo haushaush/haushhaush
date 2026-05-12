@@ -1,5 +1,18 @@
+import { useEffect } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { Trophy } from 'lucide-react';
+
+function useNoIndex() {
+  useEffect(() => {
+    const meta = document.createElement('meta');
+    meta.name = 'robots';
+    meta.content = 'noindex, nofollow';
+    document.head.appendChild(meta);
+    return () => {
+      document.head.removeChild(meta);
+    };
+  }, []);
+}
 
 export default function PublicShowcaseLayout() {
   return (
