@@ -191,6 +191,8 @@ export default function ReferenzWebsiteDetail() {
                       showcaseId={item.id}
                       initialIsBlocked={item.is_iframe_blocked ?? null}
                       hasChecked={!!item.iframe_check_at}
+                      onFallbackActivated={() => setIsShowingFallback(true)}
+                      onLiveActivated={() => setIsShowingFallback(false)}
                     />
                   </div>
                 ) : fallback ? (
@@ -202,10 +204,17 @@ export default function ReferenzWebsiteDetail() {
                 )}
 
                 {item.website_url && (
-                  <div className="absolute top-4 right-4 flex items-center gap-2 bg-emerald-500/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-md shadow-lg z-20 pointer-events-none">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                    Live
-                  </div>
+                  isShowingFallback ? (
+                    <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-gray-700/95 dark:bg-gray-800/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-md shadow-lg z-20 pointer-events-none">
+                      <ImageIcon className="w-3 h-3" />
+                      Bild
+                    </div>
+                  ) : (
+                    <div className="absolute top-4 right-4 flex items-center gap-2 bg-emerald-500/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-md shadow-lg z-20 pointer-events-none">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                      Live
+                    </div>
+                  )
                 )}
               </div>
 
