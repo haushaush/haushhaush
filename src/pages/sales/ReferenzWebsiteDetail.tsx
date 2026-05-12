@@ -17,6 +17,7 @@ import {
   Building2,
   Briefcase,
   RefreshCw,
+  Check,
 } from 'lucide-react';
 import { WebsiteEmbed } from '@/components/sales/WebsiteEmbed';
 import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
