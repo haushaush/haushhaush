@@ -130,6 +130,10 @@ export default function ReferenzWebsiteDetail() {
   const hasTags = tags.length > 0;
   const keyFeatures = ((item as any).key_features as string[] | null) ?? [];
   const hasKeyFeatures = keyFeatures.length > 0;
+  const [isShowingFallback, setIsShowingFallback] = useState(item.is_iframe_blocked === true);
+  useEffect(() => {
+    setIsShowingFallback(item.is_iframe_blocked === true);
+  }, [item.id, item.is_iframe_blocked]);
 
   return (
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950">
