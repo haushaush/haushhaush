@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +21,8 @@ export default function ReferenzWerbeanzeigeDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasRole } = useAuth();
-  const isAdmin = hasRole("admin");
+  const isPublic = useIsPublicView();
+  const isAdmin = hasRole("admin") && !isPublic;
   const { toast } = useToast();
 
   const [ad, setAd] = useState<MetaAdRow | null>(null);
@@ -48,7 +50,7 @@ export default function ReferenzWerbeanzeigeDetail() {
     setLoading(true);
     const [{ data: row }, { data: cats }, { data: opts }, { data: kds }] = await Promise.all([
       supabase.from("referenz_meta_ads" as any)
-        .select("*, linked_kunde:close_deals(id, client_name, unternehmen, branche)")
+        .select(isPublic ? '*' : '*, linked_kunde:close_deals(id, client_name, unternehmen, branche)')
         .eq("id", id).maybeSingle(),
       supabase.from("showcase_filter_categories" as any).select("*").in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
       supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
@@ -103,7 +105,7 @@ export default function ReferenzWerbeanzeigeDetail() {
     if (!confirm("Anzeige aus Showcase entfernen?")) return;
     const { error } = await supabase.from("referenz_meta_ads" as any).delete().eq("id", ad.id);
     if (error) toast({ title: "Fehler", description: error.message, variant: "destructive" });
-    else navigate("/sales/referenz-showcase/werbeanzeigen");
+    else navigate(`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen`);
   };
 
   const addTag = () => {
@@ -124,7 +126,7 @@ export default function ReferenzWerbeanzeigeDetail() {
   );
   if (!ad) return (
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 p-10 text-sm text-gray-500 dark:text-gray-400">
-      Nicht gefunden. <Link className="underline" to="/sales/referenz-showcase/werbeanzeigen">Zurück</Link>
+      Nicht gefunden. <Link className="underline" to={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen`}>Zurück</Link>
     </div>
   );
 
@@ -144,7 +146,7 @@ export default function ReferenzWerbeanzeigeDetail() {
       {/* Back-Bar */}
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/sales/referenz-showcase/werbeanzeigen" className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+          <Link to={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen`} className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
             <ArrowLeft className="w-4 h-4" />
             Ad Creatives
           </Link>

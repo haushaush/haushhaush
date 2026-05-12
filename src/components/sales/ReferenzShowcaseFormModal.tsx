@@ -39,6 +39,7 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
   const [periodEnd, setPeriodEnd] = useState(editing?.campaign_period_end ?? '');
   const [tagsInput, setTagsInput] = useState((editing?.tags ?? []).join(', '));
   const [isFeatured, setIsFeatured] = useState(editing?.is_featured ?? false);
+  const [isPublic, setIsPublic] = useState<boolean>((editing as any)?.is_public ?? true);
   const [kunden, setKunden] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -98,6 +99,7 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
       campaign_period_end: periodEnd || null,
       tags,
       is_featured: isFeatured,
+      is_public: isPublic,
     };
 
     try {
@@ -248,6 +250,14 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
           <div className="flex items-center gap-2">
             <Switch checked={isFeatured} onCheckedChange={setIsFeatured} id="featured" />
             <Label htmlFor="featured" className="cursor-pointer">Als Featured markieren</Label>
+          </div>
+
+          <div className="flex items-start justify-between gap-3 rounded-xl border border-border bg-muted/30 p-3">
+            <div>
+              <Label htmlFor="is_public" className="cursor-pointer text-sm font-medium">Öffentlich sichtbar</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">Wenn aktiv, im /showcase-Bereich ohne Login sichtbar.</p>
+            </div>
+            <Switch checked={isPublic} onCheckedChange={setIsPublic} id="is_public" />
           </div>
         </div>
 

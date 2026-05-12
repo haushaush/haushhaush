@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsPublicView } from '@/hooks/useIsPublicView';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import {
@@ -25,7 +26,8 @@ export default function ReferenzWebsiteDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hasRole } = useAuth();
-  const isAdmin = hasRole('admin');
+  const isPublic = useIsPublicView();
+  const isAdmin = hasRole('admin') && !isPublic;
   const [item, setItem] = useState<ShowcaseRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
@@ -35,7 +37,7 @@ export default function ReferenzWebsiteDetail() {
     setLoading(true);
     const { data, error } = await supabase
       .from('referenz_showcase' as any)
-      .select('*, linked_kunde:close_deals(id, client_name, unternehmen, branche)')
+      .select(isPublic ? '*' : '*, linked_kunde:close_deals(id, client_name, unternehmen, branche)')
       .eq('id', id)
       .maybeSingle();
     if (error) toast.error('Laden fehlgeschlagen', { description: error.message });
@@ -53,7 +55,7 @@ export default function ReferenzWebsiteDetail() {
     if (error) toast.error('Löschen fehlgeschlagen', { description: error.message });
     else {
       toast.success('Gelöscht');
-      navigate('/sales/referenz-showcase/websites');
+      navigate(`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`);
     }
   }
 
@@ -110,7 +112,7 @@ export default function ReferenzWebsiteDetail() {
     return (
       <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 p-6">
         <div className="max-w-7xl mx-auto">
-          <Button variant="ghost" onClick={() => navigate('/sales/referenz-showcase/websites')}>
+          <Button variant="ghost" onClick={() => navigate(`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`)}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Zurück
           </Button>
           <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">Website nicht gefunden.</p>
@@ -131,7 +133,7 @@ export default function ReferenzWebsiteDetail() {
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link
-            to="/sales/referenz-showcase/websites"
+            to={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`}
             className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

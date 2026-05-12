@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, FlaskConical } from 'lucide-react';
+import { Loader2, FlaskConical, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 
 const logoUrl = import.meta.env.VITE_LOGO_URL || null;
@@ -188,6 +188,14 @@ export default function Auth() {
           </div>
         </div>
       </div>
+
+      <Link
+        to="/showcase"
+        className="fixed bottom-6 right-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/80 backdrop-blur px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors shadow-sm"
+      >
+        <Trophy className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+        Referenz Showcase ansehen →
+      </Link>
     </div>
   );
 }

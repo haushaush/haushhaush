@@ -69,6 +69,8 @@ import ReferenzWerbeanzeigeDetail from "./pages/sales/ReferenzWerbeanzeigeDetail
 import AdPerformancePage from "./pages/sales/AdPerformance.tsx";
 import AdPerformanceDetail from "./pages/sales/AdPerformanceDetail.tsx";
 import PublicShowcaseView from "./pages/PublicShowcaseView.tsx";
+import PublicShowcaseLayout from "./pages/PublicShowcaseLayout.tsx";
+import { ShowcaseAuthRedirect } from "./components/ShowcaseAuthRedirect";
 import { AdminRoute } from "./components/AdminRoute";
 import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
 
@@ -147,15 +149,28 @@ const App = () => (
                 <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
                 <Route path="/projekte/laufzeiten" element={<DL><ProjekteLaufzeiten /></DL>} />
                 <Route path="/sales" element={<Navigate to="/sales/kpis" replace />} />
-                <Route path="/sales/referenz-showcase" element={<DL><ReferenzShowcaseOverview /></DL>} />
-                <Route path="/sales/referenz-showcase/websites" element={<DL><ReferenzWebsitesPage /></DL>} />
-                <Route path="/sales/referenz-showcase/websites/:id" element={<DL><ReferenzWebsiteDetail /></DL>} />
-                <Route path="/sales/referenz-showcase/werbeanzeigen" element={<DL><ReferenzWerbeanzeigenPage /></DL>} />
-                <Route path="/sales/referenz-showcase/werbeanzeigen/:id" element={<DL><ReferenzWerbeanzeigeDetail /></DL>} />
-                <Route path="/sales/referenz-showcase/ad-creatives" element={<DL><ReferenzWerbeanzeigenPage /></DL>} />
-                <Route path="/sales/referenz-showcase/ad-creatives/:id" element={<DL><ReferenzWerbeanzeigeDetail /></DL>} />
-                <Route path="/sales/referenz-showcase/ad-performance" element={<DL><AdPerformancePage /></DL>} />
-                <Route path="/sales/referenz-showcase/ad-performance/:id" element={<DL><AdPerformanceDetail /></DL>} />
+                <Route path="/sales/referenz-showcase" element={<ShowcaseAuthRedirect><DL><ReferenzShowcaseOverview /></DL></ShowcaseAuthRedirect>} />
+                <Route path="/sales/referenz-showcase/websites" element={<ShowcaseAuthRedirect><DL><ReferenzWebsitesPage /></DL></ShowcaseAuthRedirect>} />
+                <Route path="/sales/referenz-showcase/websites/:id" element={<ShowcaseAuthRedirect><DL><ReferenzWebsiteDetail /></DL></ShowcaseAuthRedirect>} />
+                <Route path="/sales/referenz-showcase/werbeanzeigen" element={<ShowcaseAuthRedirect><DL><ReferenzWerbeanzeigenPage /></DL></ShowcaseAuthRedirect>} />
+                <Route path="/sales/referenz-showcase/werbeanzeigen/:id" element={<ShowcaseAuthRedirect><DL><ReferenzWerbeanzeigeDetail /></DL></ShowcaseAuthRedirect>} />
+                <Route path="/sales/referenz-showcase/ad-creatives" element={<ShowcaseAuthRedirect><DL><ReferenzWerbeanzeigenPage /></DL></ShowcaseAuthRedirect>} />
+                <Route path="/sales/referenz-showcase/ad-creatives/:id" element={<ShowcaseAuthRedirect><DL><ReferenzWerbeanzeigeDetail /></DL></ShowcaseAuthRedirect>} />
+                <Route path="/sales/referenz-showcase/ad-performance" element={<ShowcaseAuthRedirect><DL><AdPerformancePage /></DL></ShowcaseAuthRedirect>} />
+                <Route path="/sales/referenz-showcase/ad-performance/:id" element={<ShowcaseAuthRedirect><DL><AdPerformanceDetail /></DL></ShowcaseAuthRedirect>} />
+
+                {/* Public showcase (no auth required) */}
+                <Route path="/showcase" element={<PublicShowcaseLayout />}>
+                  <Route index element={<ReferenzShowcaseOverview />} />
+                  <Route path="websites" element={<ReferenzWebsitesPage />} />
+                  <Route path="websites/:id" element={<ReferenzWebsiteDetail />} />
+                  <Route path="werbeanzeigen" element={<ReferenzWerbeanzeigenPage />} />
+                  <Route path="werbeanzeigen/:id" element={<ReferenzWerbeanzeigeDetail />} />
+                  <Route path="ad-creatives" element={<ReferenzWerbeanzeigenPage />} />
+                  <Route path="ad-creatives/:id" element={<ReferenzWerbeanzeigeDetail />} />
+                  <Route path="ad-performance" element={<AdPerformancePage />} />
+                  <Route path="ad-performance/:id" element={<AdPerformanceDetail />} />
+                </Route>
                 <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
                 <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
                 <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />

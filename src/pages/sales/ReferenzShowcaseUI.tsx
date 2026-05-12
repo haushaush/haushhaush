@@ -4,6 +4,7 @@ import {
   Image as ImageIcon, Globe, Video, BarChart3, Inbox,
 } from 'lucide-react';
 import type React from 'react';
+import { useIsPublicView } from '@/hooks/useIsPublicView';
 
 export type AnyItem = Record<string, any> & {
   _type: 'website' | 'werbeanzeige' | 'campaign';
@@ -32,12 +33,13 @@ export function SubPageHeader({
   subtitle: string;
   actions?: React.ReactNode;
 }) {
+  const isPublic = useIsPublicView();
   return (
     <header className="mb-10">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
         <div>
           <Link
-            to="/sales/referenz-showcase"
+            to={isPublic ? '/showcase' : '/sales/referenz-showcase'}
             className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-3 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -198,10 +200,12 @@ export function getShowcaseBranche(i: AnyItem): string | null {
 /* ShowcaseCard                                                        */
 /* ------------------------------------------------------------------ */
 export function ShowcaseCard({ item }: { item: AnyItem }) {
+  const isPublic = useIsPublicView();
+  const basePath = isPublic ? '/showcase' : '/sales/referenz-showcase';
   const detailHref =
-    item._type === 'website' ? `/sales/referenz-showcase/websites/${item.id}` :
-    item._type === 'werbeanzeige' ? `/sales/referenz-showcase/werbeanzeigen/${item.id}` :
-    `/sales/referenz-showcase/ad-performance/${item.id}`;
+    item._type === 'website' ? `${basePath}/websites/${item.id}` :
+    item._type === 'werbeanzeige' ? `${basePath}/werbeanzeigen/${item.id}` :
+    `${basePath}/ad-performance/${item.id}`;
 
   const kunde = getShowcaseKundenname(item);
   const branche = getShowcaseBranche(item);

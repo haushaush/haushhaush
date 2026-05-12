@@ -40,9 +40,6 @@ const navItems: NavItem[] = [
       { title: 'Leadkauf', url: '/sales/leads' },
       { title: 'Cold Mail', url: '/sales/coldmail' },
       { title: 'Referenz Showcase', url: '/sales/referenz-showcase' },
-      { title: '— Websites', url: '/sales/referenz-showcase/websites' },
-      { title: '— Ad Creatives', url: '/sales/referenz-showcase/werbeanzeigen' },
-      { title: '— Ad Performance', url: '/sales/referenz-showcase/ad-performance' },
     ],
   },
   {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Plus, Settings2 } from "lucide-react";
 import { MetaCampaignImportModal } from "@/components/sales/MetaCampaignImportModal";
 import { ShowcaseFilterManagementModal, type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
@@ -39,7 +40,8 @@ type SortKey = "best_roas" | "lowest_cpl" | "most_leads" | "highest_spend" | "ne
 
 export default function AdPerformancePage() {
   const { hasRole } = useAuth();
-  const isAdmin = hasRole("admin");
+  const isPublic = useIsPublicView();
+  const isAdmin = hasRole("admin") && !isPublic;
 
   const [rows, setRows] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export default function AdPerformancePage() {
     setLoading(true);
     const [{ data: camps }, { data: cats }, { data: opts }] = await Promise.all([
       supabase.from("referenz_meta_campaigns" as any)
-        .select("*, linked_kunde:close_deals(client_name, unternehmen, branche)")
+        .select(isPublic ? '*' : '*, linked_kunde:close_deals(client_name, unternehmen, branche)')
         .eq("is_active", true)
         .order("is_featured", { ascending: false })
         .order("imported_at", { ascending: false }),

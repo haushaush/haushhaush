@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsPublicView } from '@/hooks/useIsPublicView';
 
 type AnyItem = Record<string, any> & { _type: 'website' | 'werbeanzeige' | 'campaign' };
 
@@ -26,6 +27,8 @@ const KUNDE_SELECT = 'linked_kunde:close_deals(client_name, unternehmen, branche
 
 export default function ReferenzShowcaseOverview() {
   const queryClient = useQueryClient();
+  const isPublic = useIsPublicView();
+  const kundeJoin = isPublic ? '' : `, ${KUNDE_SELECT}`;
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'website' | 'werbeanzeige' | 'campaign'>('all');
   const [brancheFilter, setBrancheFilter] = useState('');
@@ -34,11 +37,11 @@ export default function ReferenzShowcaseOverview() {
   const [syncing, setSyncing] = useState(false);
 
   const { data: websites = [] } = useQuery({
-    queryKey: ['showcase-websites'],
+    queryKey: ['showcase-websites', isPublic],
     queryFn: async () => {
       const { data } = await supabase
         .from('referenz_showcase' as any)
-        .select(`*, ${KUNDE_SELECT}`)
+        .select(`*${kundeJoin}`)
         .eq('type', 'website')
         .eq('is_active', true);
       return ((data as any[]) || []).map(w => ({ ...w, _type: 'website' as const }));
@@ -46,26 +49,27 @@ export default function ReferenzShowcaseOverview() {
   });
 
   const { data: adCreatives = [] } = useQuery({
-    queryKey: ['showcase-ad-creatives'],
+    queryKey: ['showcase-ad-creatives', isPublic],
     queryFn: async () => {
       const { data } = await supabase
         .from('referenz_meta_ads' as any)
-        .select(`*, ${KUNDE_SELECT}`)
+        .select(`*${kundeJoin}`)
         .eq('is_active', true);
       return ((data as any[]) || []).map(a => ({ ...a, _type: 'werbeanzeige' as const }));
     },
   });
 
   const { data: campaigns = [] } = useQuery({
-    queryKey: ['showcase-campaigns'],
+    queryKey: ['showcase-campaigns', isPublic],
     queryFn: async () => {
       const { data } = await supabase
         .from('referenz_meta_campaigns' as any)
-        .select(`*, ${KUNDE_SELECT}`)
+        .select(`*${kundeJoin}`)
         .eq('is_active', true);
       return ((data as any[]) || []).map(c => ({ ...c, _type: 'campaign' as const }));
     },
   });
+
 
   // Unified filter category + option queries
   const { data: filterCategories = [] } = useQuery({
@@ -339,19 +343,19 @@ export default function ReferenzShowcaseOverview() {
           <CategoryTile
             label="Websites"
             count={counts.websites}
-            href="/sales/referenz-showcase/websites"
+            href={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`}
             icon={Globe}
           />
           <CategoryTile
             label="Ad Creatives"
             count={counts.ads}
-            href="/sales/referenz-showcase/werbeanzeigen"
+            href={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen`}
             icon={Video}
           />
           <CategoryTile
             label="Ad Performance"
             count={counts.performance}
-            href="/sales/referenz-showcase/ad-performance"
+            href={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/ad-performance`}
             icon={BarChart3}
           />
         </div>
@@ -433,6 +437,7 @@ export default function ReferenzShowcaseOverview() {
                 getKundenname={getKundenname}
                 getBranche={getBranche}
                 getTitle={getTitle}
+                basePath={isPublic ? '/showcase' : '/sales/referenz-showcase'}
               />
             ))}
           </div>
@@ -527,17 +532,18 @@ function DropdownPill({
 }
 
 function ShowcaseCard({
-  item, getKundenname, getBranche, getTitle,
+  item, getKundenname, getBranche, getTitle, basePath,
 }: {
   item: AnyItem;
   getKundenname: (i: AnyItem) => string | null;
   getBranche: (i: AnyItem) => string | null;
   getTitle: (i: AnyItem) => string;
+  basePath: string;
 }) {
   const detailHref =
-    item._type === 'website' ? `/sales/referenz-showcase/websites/${item.id}` :
-    item._type === 'werbeanzeige' ? `/sales/referenz-showcase/werbeanzeigen/${item.id}` :
-    `/sales/referenz-showcase/ad-performance/${item.id}`;
+    item._type === 'website' ? `${basePath}/websites/${item.id}` :
+    item._type === 'werbeanzeige' ? `${basePath}/werbeanzeigen/${item.id}` :
+    `${basePath}/ad-performance/${item.id}`;
 
   const kunde = getKundenname(item);
   const branche = getBranche(item);

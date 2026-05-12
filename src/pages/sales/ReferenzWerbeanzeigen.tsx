@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Plus, Settings2, Sparkles, Loader2 } from "lucide-react";
 import { MetaAdImportModal } from "@/components/sales/MetaAdImportModal";
 import { ShowcaseFilterManagementModal, type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
@@ -42,7 +43,8 @@ type SortKey = "performance" | "created" | "cpl" | "roas" | "leads";
 
 export default function ReferenzWerbeanzeigenPage() {
   const { hasRole } = useAuth();
-  const isAdmin = hasRole("admin");
+  const isPublic = useIsPublicView();
+  const isAdmin = hasRole("admin") && !isPublic;
   const { toast } = useToast();
   const [reenriching, setReenriching] = useState(false);
 
@@ -62,7 +64,7 @@ export default function ReferenzWerbeanzeigenPage() {
     setLoading(true);
     const [{ data: ads }, { data: cats }, { data: opts }] = await Promise.all([
       supabase.from("referenz_meta_ads" as any)
-        .select("*, linked_kunde:close_deals(client_name, unternehmen, branche)")
+        .select(isPublic ? '*' : '*, linked_kunde:close_deals(client_name, unternehmen, branche)')
         .eq("is_active", true)
         .order("is_featured", { ascending: false })
         .order("imported_at", { ascending: false }),
