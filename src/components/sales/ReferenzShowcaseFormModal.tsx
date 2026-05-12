@@ -39,6 +39,7 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
   const [periodEnd, setPeriodEnd] = useState(editing?.campaign_period_end ?? '');
   const [tagsInput, setTagsInput] = useState((editing?.tags ?? []).join(', '));
   const [isFeatured, setIsFeatured] = useState(editing?.is_featured ?? false);
+  const [isPublic, setIsPublic] = useState<boolean>((editing as any)?.is_public ?? true);
   const [kunden, setKunden] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
