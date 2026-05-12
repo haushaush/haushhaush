@@ -18,6 +18,7 @@ import {
   Briefcase,
   RefreshCw,
   Check,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { WebsiteEmbed } from '@/components/sales/WebsiteEmbed';
 import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
