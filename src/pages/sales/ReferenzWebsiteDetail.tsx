@@ -340,33 +340,20 @@ export default function ReferenzWebsiteDetail() {
           )}
         </div>
 
-        {(hasDescription || hasTags) && (
-          <div className="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {hasDescription && (
-              <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Beschreibung</h2>
-                <div className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {item.description}
-                </div>
-              </section>
-            )}
-
-            {hasTags && (
-              <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Tags</h2>
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm rounded-md"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
+        {hasTags && (
+          <section className="mt-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
+            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Tags</h2>
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm rounded-md"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </section>
         )}
       </div>
 
