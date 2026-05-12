@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft, ChevronDown, Search, Star, ExternalLink,
-  Image as ImageIcon, Globe, Video, BarChart3, Inbox,
+  Image as ImageIcon, Globe, Video, BarChart3, Inbox, Check,
 } from 'lucide-react';
 import type React from 'react';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
@@ -248,6 +248,17 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
         <div className="mb-2">
           <PrimaryHighlight item={item} branche={branche} />
         </div>
+
+        {item._type === 'website' && item.key_features?.length > 0 && (
+          <ul className="mt-2.5 space-y-1.5">
+            {item.key_features.slice(0, 3).map((feat: string, i: number) => (
+              <li key={i} className="flex items-start gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                <Check className="w-3 h-3 mt-0.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                <span className="line-clamp-1">{feat}</span>
+              </li>
+            ))}
+          </ul>
+        )}
 
         {unternehmen && typeof unternehmen === 'string' && (
           <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 truncate">
