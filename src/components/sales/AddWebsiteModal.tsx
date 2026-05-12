@@ -140,6 +140,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
         thumbnail_url: thumbnailUrl,
         is_featured: isFeatured,
         is_active: true,
+        key_features: keyFeatures.length > 0 ? keyFeatures : null,
       };
 
       if (editing) {
