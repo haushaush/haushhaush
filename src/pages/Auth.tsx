@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, FlaskConical } from 'lucide-react';
+import { Loader2, FlaskConical, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 
 const logoUrl = import.meta.env.VITE_LOGO_URL || null;
