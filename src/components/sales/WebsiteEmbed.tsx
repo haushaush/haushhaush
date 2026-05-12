@@ -137,21 +137,13 @@ export function WebsiteEmbed({
         onLoad={() => {
           iframeLoadedRef.current = true;
           setStatus('loaded');
+          onLiveActivated?.();
         }}
-        onError={() => {
-          setShowFallback(true);
-          setStatus('blocked');
-        }}
+        onError={activateFallback}
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
         referrerPolicy="no-referrer-when-downgrade"
         allow="accelerometer; camera; gyroscope; microphone; payment"
       />
-
-      {status === 'loaded' && (
-        <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-[11px] px-2 py-1 rounded font-medium pointer-events-none">
-          ⚡ Live
-        </div>
-      )}
 
     </div>
   );
