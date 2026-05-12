@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft, ChevronDown, Search, Star, ExternalLink,
-  Image as ImageIcon, Globe, Video, BarChart3, Inbox,
+  Image as ImageIcon, Globe, Video, BarChart3, Inbox, Check,
 } from 'lucide-react';
 import type React from 'react';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
