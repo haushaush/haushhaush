@@ -82,7 +82,7 @@ export function ShowcaseSearchInput({
 /* DropdownPill                                                       */
 /* ------------------------------------------------------------------ */
 export function DropdownPill({
-  label, value, onChange, options, minWidth = 180,
+  label, value, onChange, options, minWidth = 170,
 }: {
   label: string;
   value: string;
