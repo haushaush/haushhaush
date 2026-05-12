@@ -28,6 +28,78 @@ function normalizeUrl(input: string): string {
   return /^https?:\/\//i.test(t) ? t : `https://${t}`;
 }
 
+function TagInput({
+  value = [],
+  onChange,
+  max = 6,
+  placeholder,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+  max?: number;
+  placeholder?: string;
+}) {
+  const [input, setInput] = useState('');
+  const addTag = () => {
+    const trimmed = input.trim();
+    if (!trimmed || value.includes(trimmed) || value.length >= max) return;
+    onChange([...value, trimmed]);
+    setInput('');
+  };
+  const removeTag = (i: number) => onChange(value.filter((_, idx) => idx !== i));
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addTag();
+            }
+          }}
+          placeholder={placeholder}
+          disabled={value.length >= max}
+          className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm placeholder:text-gray-400 disabled:opacity-50"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addTag}
+          disabled={!input.trim() || value.length >= max}
+        >
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {value.map((tag, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 bg-teal-50 dark:bg-teal-950 text-teal-900 dark:text-teal-100 text-sm rounded-md"
+            >
+              {tag}
+              <button
+                type="button"
+                onClick={() => removeTag(i)}
+                className="hover:bg-teal-100 dark:hover:bg-teal-900 rounded p-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {value.length >= max && (
+        <p className="text-xs text-gray-400">Maximum {max} Highlights erreicht</p>
+      )}
+    </div>
+  );
+}
+
 export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
   const isEdit = !!editing;
   const [stage, setStage] = useState<Stage>('input');
