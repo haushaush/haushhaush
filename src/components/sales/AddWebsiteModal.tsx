@@ -203,6 +203,10 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
       let fallbackUrl: string | null = existingFallbackUrl;
       let thumbnailUrl: string | null = existingThumbnailUrl;
 
+      if (thumbnailMode === 'auto' && autoThumbnailUrl) {
+        thumbnailUrl = autoThumbnailUrl;
+      }
+
       if (thumbnailFile) {
         const ext = thumbnailFile.name.split('.').pop() || 'jpg';
         const path = `websites/thumbnails/${crypto.randomUUID()}.${ext}`;
