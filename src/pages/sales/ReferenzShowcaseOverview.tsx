@@ -361,7 +361,7 @@ export default function ReferenzShowcaseOverview() {
         </div>
 
         {/* Filter panel */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 mb-8">
+        <div className="mb-8">
           <div className="flex gap-3 mb-4 flex-wrap">
             <div className="flex-1 min-w-[240px] relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
