@@ -126,7 +126,7 @@ export default function AdPerformanceDetail() {
     if (!confirm("Kampagne aus Showcase entfernen?")) return;
     const { error } = await supabase.from("referenz_meta_campaigns" as any).delete().eq("id", campaign.id);
     if (error) toast({ title: "Fehler", description: error.message, variant: "destructive" });
-    else navigate("/sales/referenz-showcase/ad-performance");
+    else navigate("${isPublic ? '/showcase' : '/sales/referenz-showcase'}/ad-performance");
   };
 
   const addTag = () => {
@@ -146,7 +146,7 @@ export default function AdPerformanceDetail() {
   };
 
   if (loading) return <div className="p-10"><Loader2 className="w-6 h-6 animate-spin" /></div>;
-  if (!campaign) return <div className="p-10 text-sm text-muted-foreground">Nicht gefunden. <Link className="underline" to="/sales/referenz-showcase/ad-performance">Zurück</Link></div>;
+  if (!campaign) return <div className="p-10 text-sm text-muted-foreground">Nicht gefunden. <Link className="underline" to="${isPublic ? '/showcase' : '/sales/referenz-showcase'}/ad-performance">Zurück</Link></div>;
 
   const m = (campaign.metrics ?? {}) as Record<string, any>;
   const roas = m.roas != null ? Number(m.roas) : 0;
@@ -180,7 +180,7 @@ export default function AdPerformanceDetail() {
       {/* Sticky Back-Bar */}
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/sales/referenz-showcase/ad-performance" className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+          <Link to="${isPublic ? '/showcase' : '/sales/referenz-showcase'}/ad-performance" className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
             <ArrowLeft className="w-4 h-4" />
             Ad Performance
           </Link>
