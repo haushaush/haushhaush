@@ -3192,6 +3192,7 @@ export type Database = {
           imported_at: string | null
           is_active: boolean | null
           is_featured: boolean | null
+          is_public: boolean | null
           linked_kunde_id: string | null
           meta_account_id: string
           meta_account_name: string | null
@@ -3226,6 +3227,7 @@ export type Database = {
           imported_at?: string | null
           is_active?: boolean | null
           is_featured?: boolean | null
+          is_public?: boolean | null
           linked_kunde_id?: string | null
           meta_account_id: string
           meta_account_name?: string | null
@@ -3260,6 +3262,7 @@ export type Database = {
           imported_at?: string | null
           is_active?: boolean | null
           is_featured?: boolean | null
+          is_public?: boolean | null
           linked_kunde_id?: string | null
           meta_account_id?: string
           meta_account_name?: string | null
@@ -3305,6 +3308,7 @@ export type Database = {
           imported_at: string | null
           is_active: boolean | null
           is_featured: boolean | null
+          is_public: boolean | null
           linked_kunde_id: string | null
           meta_account_id: string
           meta_account_name: string | null
@@ -3333,6 +3337,7 @@ export type Database = {
           imported_at?: string | null
           is_active?: boolean | null
           is_featured?: boolean | null
+          is_public?: boolean | null
           linked_kunde_id?: string | null
           meta_account_id: string
           meta_account_name?: string | null
@@ -3361,6 +3366,7 @@ export type Database = {
           imported_at?: string | null
           is_active?: boolean | null
           is_featured?: boolean | null
+          is_public?: boolean | null
           linked_kunde_id?: string | null
           meta_account_id?: string
           meta_account_name?: string | null
@@ -3402,6 +3408,7 @@ export type Database = {
           is_active: boolean | null
           is_featured: boolean | null
           is_iframe_blocked: boolean | null
+          is_public: boolean | null
           linked_kunde_id: string | null
           metrics: Json | null
           preview_image_url: string | null
@@ -3430,6 +3437,7 @@ export type Database = {
           is_active?: boolean | null
           is_featured?: boolean | null
           is_iframe_blocked?: boolean | null
+          is_public?: boolean | null
           linked_kunde_id?: string | null
           metrics?: Json | null
           preview_image_url?: string | null
@@ -3458,6 +3466,7 @@ export type Database = {
           is_active?: boolean | null
           is_featured?: boolean | null
           is_iframe_blocked?: boolean | null
+          is_public?: boolean | null
           linked_kunde_id?: string | null
           metrics?: Json | null
           preview_image_url?: string | null
