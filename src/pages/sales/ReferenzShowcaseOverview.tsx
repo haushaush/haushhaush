@@ -555,7 +555,7 @@ function ShowcaseCard({
         {item._type === 'campaign'
           ? <PerformanceHero campaign={item} />
           : <ImageContent item={item} />}
-        <TypeIndicator type={item._type} />
+        <TypeIndicator item={item} />
         {item.is_featured && (
           <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center shadow-md">
             <Star className="w-4 h-4 text-white" fill="currentColor" />
