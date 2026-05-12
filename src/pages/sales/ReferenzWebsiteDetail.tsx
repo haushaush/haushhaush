@@ -203,17 +203,6 @@ export default function ReferenzWebsiteDetail() {
                 )}
               </div>
 
-              {item.website_url && (
-                <a
-                  href={item.website_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 py-3 border-t border-gray-200 dark:border-gray-800 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Im neuen Tab öffnen
-                </a>
-              )}
             </div>
           </div>
 

@@ -77,16 +77,6 @@ export function WebsiteEmbed({
           <div className="absolute top-3 right-3 bg-amber-500 text-white text-xs px-2 py-1 rounded font-medium shadow">
             📸 Vorschau
           </div>
-          <div className="absolute bottom-3 left-3 right-3 flex justify-center">
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 bg-background shadow-lg px-4 py-2 rounded text-sm font-medium hover:bg-muted transition"
-            >
-              <ExternalLink className="w-4 h-4" /> Live öffnen
-            </a>
-          </div>
         </div>
       );
     }
@@ -155,14 +145,6 @@ export function WebsiteEmbed({
         </div>
       )}
 
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute bottom-3 right-3 bg-background shadow-lg px-3 py-1.5 rounded text-xs font-medium hover:bg-muted transition flex items-center gap-1"
-      >
-        <ExternalLink className="w-3 h-3" /> Vollbild
-      </a>
     </div>
   );
 }
