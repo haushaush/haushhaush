@@ -443,22 +443,6 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
                 placeholder="Highlight eingeben + Enter"
               />
             </div>
-            <div>
-              <Label>Fallback-Bild (optional)</Label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setFallbackFile(e.target.files?.[0] ?? null)}
-                className="w-full text-sm mt-1"
-              />
-              <p className="text-xs text-muted-foreground mt-1.5">
-                Wird angezeigt, falls die Website das Embedden blockiert. Tipp: Browser-Screenshot
-                (Strg+Shift+S oder F12 → Device Toolbar) reicht.
-              </p>
-              {(previewFallback) && (
-                <img src={previewFallback} alt="" className="mt-2 max-h-32 rounded border border-border" />
-              )}
-            </div>
             <div className="flex items-center gap-2">
               <Switch checked={isFeatured} onCheckedChange={setIsFeatured} id="feat-w" />
               <Label htmlFor="feat-w" className="cursor-pointer">Als Featured markieren</Label>
