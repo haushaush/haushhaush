@@ -13,6 +13,10 @@ interface WebsiteEmbedProps {
   initialIsBlocked?: boolean | null;
   /** Whether DB has already checked this URL. */
   hasChecked?: boolean;
+  /** Fired when the embed switches to fallback (iframe blocked or no preview). */
+  onFallbackActivated?: () => void;
+  /** Fired when the iframe successfully loads. */
+  onLiveActivated?: () => void;
 }
 
 /** Full-size, fully-interactive iframe embed with smart fallback. */
@@ -24,6 +28,8 @@ export function WebsiteEmbed({
   showcaseId,
   initialIsBlocked,
   hasChecked,
+  onFallbackActivated,
+  onLiveActivated,
 }: WebsiteEmbedProps) {
   const [showFallback, setShowFallback] = useState(initialIsBlocked === true);
   const [status, setStatus] = useState<'loading' | 'loaded' | 'blocked'>(
@@ -31,6 +37,12 @@ export function WebsiteEmbed({
   );
   const iframeLoadedRef = useRef(false);
   const checkedRef = useRef(!!hasChecked);
+
+  const activateFallback = () => {
+    setShowFallback(true);
+    setStatus('blocked');
+    onFallbackActivated?.();
+  };
 
   // Background check (one-time per mount) if never checked.
   useEffect(() => {
@@ -41,22 +53,21 @@ export function WebsiteEmbed({
         body: { showcase_id: showcaseId, url },
       })
       .then(({ data }) => {
-        if (data?.is_blocked) {
-          setShowFallback(true);
-          setStatus('blocked');
-        }
+        if (data?.is_blocked) activateFallback();
       })
       .catch(() => {});
   }, [showcaseId, url]);
+
+  // Notify when initially blocked.
+  useEffect(() => {
+    if (showFallback) onFallbackActivated?.();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Timeout fallback: if iframe doesn't fire load within 5s, assume blocked.
   useEffect(() => {
     if (showFallback) return;
     const t = setTimeout(() => {
-      if (!iframeLoadedRef.current) {
-        setShowFallback(true);
-        setStatus('blocked');
-      }
+      if (!iframeLoadedRef.current) activateFallback();
     }, 5000);
     return () => clearTimeout(t);
   }, [showFallback, url]);
@@ -74,9 +85,6 @@ export function WebsiteEmbed({
             alt={title ?? ''}
             className="w-full h-full object-cover object-top"
           />
-          <div className="absolute top-3 right-3 bg-amber-500 text-white text-xs px-2 py-1 rounded font-medium shadow">
-            📸 Vorschau
-          </div>
         </div>
       );
     }
@@ -129,21 +137,13 @@ export function WebsiteEmbed({
         onLoad={() => {
           iframeLoadedRef.current = true;
           setStatus('loaded');
+          onLiveActivated?.();
         }}
-        onError={() => {
-          setShowFallback(true);
-          setStatus('blocked');
-        }}
+        onError={activateFallback}
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
         referrerPolicy="no-referrer-when-downgrade"
         allow="accelerometer; camera; gyroscope; microphone; payment"
       />
-
-      {status === 'loaded' && (
-        <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-[11px] px-2 py-1 rounded font-medium pointer-events-none">
-          ⚡ Live
-        </div>
-      )}
 
     </div>
   );
