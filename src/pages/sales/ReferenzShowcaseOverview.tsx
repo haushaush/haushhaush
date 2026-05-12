@@ -27,12 +27,48 @@ const KUNDE_SELECT = 'linked_kunde:close_deals(client_name, unternehmen, branche
 
 export default function ReferenzShowcaseOverview() {
   const queryClient = useQueryClient();
+  const isPublic = useIsPublicView();
+  const kundeJoin = isPublic ? '' : `, ${KUNDE_SELECT}`;
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'website' | 'werbeanzeige' | 'campaign'>('all');
   const [brancheFilter, setBrancheFilter] = useState('');
   const [unternehmenFilter, setUnternehmenFilter] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'featured' | 'kunde'>('newest');
   const [syncing, setSyncing] = useState(false);
+
+  const { data: websites = [] } = useQuery({
+    queryKey: ['showcase-websites', isPublic],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('referenz_showcase' as any)
+        .select(`*${kundeJoin}`)
+        .eq('type', 'website')
+        .eq('is_active', true);
+      return ((data as any[]) || []).map(w => ({ ...w, _type: 'website' as const }));
+    },
+  });
+
+  const { data: adCreatives = [] } = useQuery({
+    queryKey: ['showcase-ad-creatives', isPublic],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('referenz_meta_ads' as any)
+        .select(`*${kundeJoin}`)
+        .eq('is_active', true);
+      return ((data as any[]) || []).map(a => ({ ...a, _type: 'werbeanzeige' as const }));
+    },
+  });
+
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ['showcase-campaigns', isPublic],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('referenz_meta_campaigns' as any)
+        .select(`*${kundeJoin}`)
+        .eq('is_active', true);
+      return ((data as any[]) || []).map(c => ({ ...c, _type: 'campaign' as const }));
+    },
+  });
 
   const { data: websites = [] } = useQuery({
     queryKey: ['showcase-websites'],
