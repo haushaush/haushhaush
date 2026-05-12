@@ -33,6 +33,11 @@ export default function ReferenzWebsiteDetail() {
   const [item, setItem] = useState<ShowcaseRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
+  const [isShowingFallback, setIsShowingFallback] = useState(false);
+
+  useEffect(() => {
+    setIsShowingFallback(item?.is_iframe_blocked === true);
+  }, [item?.id, item?.is_iframe_blocked]);
 
   const load = async () => {
     if (!id) return;
