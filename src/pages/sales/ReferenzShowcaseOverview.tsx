@@ -437,6 +437,7 @@ export default function ReferenzShowcaseOverview() {
                 getKundenname={getKundenname}
                 getBranche={getBranche}
                 getTitle={getTitle}
+                basePath={isPublic ? '/showcase' : '/sales/referenz-showcase'}
               />
             ))}
           </div>
