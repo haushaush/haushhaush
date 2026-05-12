@@ -331,7 +331,7 @@ export default function ReferenzShowcaseOverview() {
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 pb-32">
       <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16 xl:px-20 pt-10">
         <header className="text-center max-w-3xl mx-auto mb-16 pt-8">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white tracking-tight leading-[1.05]">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-[1.05]">
             Referenz Showcase
           </h1>
           <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 mt-5 font-normal">
@@ -450,7 +450,7 @@ function CategoryTile({
       className="group block bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 px-8 py-12 text-center shadow-sm hover:shadow-lg hover:border-teal-300 dark:hover:border-teal-700 hover:-translate-y-1 transition-all duration-200"
     >
       <Icon className="w-8 h-8 mx-auto mb-4 text-gray-400 dark:text-gray-500 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors" />
-      <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+      <h3 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
         {label}
       </h3>
       <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-normal">
