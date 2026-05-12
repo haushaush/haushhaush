@@ -220,9 +220,9 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
   return (
     <Link
       to={detailHref}
-      className="group block bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
+      className="group h-full flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
     >
-      <div className="relative bg-gray-50 dark:bg-gray-800 overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
+      <div className="relative bg-gray-50 dark:bg-gray-800 overflow-hidden shrink-0" style={{ aspectRatio: '16 / 10' }}>
         {item._type === 'campaign'
           ? <PerformanceHero campaign={item} />
           : <ImageContent item={item} />}
@@ -234,7 +234,7 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
         )}
       </div>
 
-      <div className="p-4">
+      <div className="p-4 flex flex-col flex-1">
         {eyebrow && (
           <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 truncate">
             {eyebrow}
