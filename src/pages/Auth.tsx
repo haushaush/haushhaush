@@ -188,6 +188,14 @@ export default function Auth() {
           </div>
         </div>
       </div>
+
+      <Link
+        to="/showcase"
+        className="fixed bottom-6 right-6 inline-flex items-center gap-2 rounded-full border border-border bg-card/80 backdrop-blur px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors shadow-sm"
+      >
+        <Trophy className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+        Referenz Showcase ansehen →
+      </Link>
     </div>
   );
 }
