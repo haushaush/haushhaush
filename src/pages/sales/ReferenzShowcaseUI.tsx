@@ -220,9 +220,9 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
   return (
     <Link
       to={detailHref}
-      className="group block bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
+      className="group h-full flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
     >
-      <div className="relative bg-gray-50 dark:bg-gray-800 overflow-hidden" style={{ aspectRatio: '16 / 10' }}>
+      <div className="relative bg-gray-50 dark:bg-gray-800 overflow-hidden shrink-0" style={{ aspectRatio: '16 / 10' }}>
         {item._type === 'campaign'
           ? <PerformanceHero campaign={item} />
           : <ImageContent item={item} />}
@@ -234,48 +234,52 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
         )}
       </div>
 
-      <div className="p-4">
-        {eyebrow && (
-          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 truncate">
-            {eyebrow}
-          </p>
-        )}
+      <div className="p-4 flex flex-col flex-1">
+        <div>
+          {eyebrow && (
+            <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 truncate">
+              {eyebrow}
+            </p>
+          )}
 
-        <h3 className="text-lg font-extrabold text-gray-900 dark:text-white leading-snug mb-2 line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
-          {title}
-        </h3>
+          <h3 className="text-lg font-extrabold text-gray-900 dark:text-white leading-snug mb-2 line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
+            {title}
+          </h3>
 
-        <div className="mb-2">
-          <PrimaryHighlight item={item} branche={branche} />
+          <div className="mb-2">
+            <PrimaryHighlight item={item} branche={branche} />
+          </div>
+
+          {item._type === 'website' && item.key_features?.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {item.key_features.slice(0, 3).map((feat: string, i: number) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-md"
+                >
+                  <Check className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
+                  <span className="truncate max-w-[140px]">{feat}</span>
+                </span>
+              ))}
+              {item.key_features.length > 3 && (
+                <span className="inline-flex items-center px-2.5 py-1 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-500 text-xs font-medium rounded-md border border-dashed border-gray-200 dark:border-gray-700">
+                  +{item.key_features.length - 3}
+                </span>
+              )}
+            </div>
+          )}
+
+          {unternehmen && typeof unternehmen === 'string' && (
+            <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 truncate">
+              {unternehmen}
+              {item._type === 'campaign' && item.metrics?.spend != null && !isNaN(Number(item.metrics.spend)) && (
+                <> · €{Math.round(Number(item.metrics.spend)).toLocaleString('de-DE')} Spend</>
+              )}
+            </div>
+          )}
         </div>
 
-        {item._type === 'website' && item.key_features?.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {item.key_features.slice(0, 3).map((feat: string, i: number) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-md"
-              >
-                <Check className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span className="truncate max-w-[140px]">{feat}</span>
-              </span>
-            ))}
-            {item.key_features.length > 3 && (
-              <span className="inline-flex items-center px-2.5 py-1 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-500 text-xs font-medium rounded-md border border-dashed border-gray-200 dark:border-gray-700">
-                +{item.key_features.length - 3}
-              </span>
-            )}
-          </div>
-        )}
-
-        {unternehmen && typeof unternehmen === 'string' && (
-          <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 truncate">
-            {unternehmen}
-            {item._type === 'campaign' && item.metrics?.spend != null && !isNaN(Number(item.metrics.spend)) && (
-              <> · €{Math.round(Number(item.metrics.spend)).toLocaleString('de-DE')} Spend</>
-            )}
-          </div>
-        )}
+        <div className="flex-1" />
 
         <div className="border-t border-gray-100 dark:border-gray-800 mt-3 pt-3 flex items-center justify-between">
           <span className="text-sm font-semibold text-teal-600 dark:text-teal-400 group-hover:text-teal-700 dark:group-hover:text-teal-300 group-hover:underline transition-all">
