@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Loader2, ImageIcon, X } from 'lucide-react';
+import { Loader2, ImageIcon, X, Plus } from 'lucide-react';
 import { WebsiteEmbed } from './WebsiteEmbed';
 import type { ShowcaseRow } from '@/pages/sales/ReferenzShowcaseShared';
 
@@ -28,6 +28,78 @@ function normalizeUrl(input: string): string {
   return /^https?:\/\//i.test(t) ? t : `https://${t}`;
 }
 
+function TagInput({
+  value = [],
+  onChange,
+  max = 6,
+  placeholder,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+  max?: number;
+  placeholder?: string;
+}) {
+  const [input, setInput] = useState('');
+  const addTag = () => {
+    const trimmed = input.trim();
+    if (!trimmed || value.includes(trimmed) || value.length >= max) return;
+    onChange([...value, trimmed]);
+    setInput('');
+  };
+  const removeTag = (i: number) => onChange(value.filter((_, idx) => idx !== i));
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addTag();
+            }
+          }}
+          placeholder={placeholder}
+          disabled={value.length >= max}
+          className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm placeholder:text-gray-400 disabled:opacity-50"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addTag}
+          disabled={!input.trim() || value.length >= max}
+        >
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {value.map((tag, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 bg-teal-50 dark:bg-teal-950 text-teal-900 dark:text-teal-100 text-sm rounded-md"
+            >
+              {tag}
+              <button
+                type="button"
+                onClick={() => removeTag(i)}
+                className="hover:bg-teal-100 dark:hover:bg-teal-900 rounded p-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {value.length >= max && (
+        <p className="text-xs text-gray-400">Maximum {max} Highlights erreicht</p>
+      )}
+    </div>
+  );
+}
+
 export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
   const isEdit = !!editing;
   const [stage, setStage] = useState<Stage>('input');
@@ -37,6 +109,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
   const [branche, setBranche] = useState(editing?.branche ?? '');
   const [description, setDescription] = useState(editing?.description ?? '');
   const [isFeatured, setIsFeatured] = useState(editing?.is_featured ?? false);
+  const [keyFeatures, setKeyFeatures] = useState<string[]>(((editing as any)?.key_features as string[]) ?? []);
   const [fallbackFile, setFallbackFile] = useState<File | null>(null);
   const [existingFallbackUrl, setExistingFallbackUrl] = useState<string | null>(
     (editing as any)?.fallback_image_url ?? null
@@ -139,6 +212,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
         thumbnail_url: thumbnailUrl,
         is_featured: isFeatured,
         is_active: true,
+        key_features: keyFeatures.length > 0 ? keyFeatures : null,
       };
 
       if (editing) {
@@ -241,6 +315,20 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
             <div>
               <Label>Beschreibung</Label>
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
+            </div>
+            <div>
+              <Label>
+                Highlights <span className="text-gray-400 text-xs font-normal">(optional, max 6)</span>
+              </Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                z.B. "Live-Chat integriert", "Multi-Step-Funnel", "Calendly-Buchung"
+              </p>
+              <TagInput
+                value={keyFeatures}
+                onChange={setKeyFeatures}
+                max={6}
+                placeholder="Highlight eingeben + Enter"
+              />
             </div>
             <div>
               <Label>Fallback-Bild (optional)</Label>

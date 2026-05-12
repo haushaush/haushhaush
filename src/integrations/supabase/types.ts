@@ -3409,6 +3409,7 @@ export type Database = {
           is_featured: boolean | null
           is_iframe_blocked: boolean | null
           is_public: boolean | null
+          key_features: string[] | null
           linked_kunde_id: string | null
           metrics: Json | null
           preview_image_url: string | null
@@ -3438,6 +3439,7 @@ export type Database = {
           is_featured?: boolean | null
           is_iframe_blocked?: boolean | null
           is_public?: boolean | null
+          key_features?: string[] | null
           linked_kunde_id?: string | null
           metrics?: Json | null
           preview_image_url?: string | null
@@ -3467,6 +3469,7 @@ export type Database = {
           is_featured?: boolean | null
           is_iframe_blocked?: boolean | null
           is_public?: boolean | null
+          key_features?: string[] | null
           linked_kunde_id?: string | null
           metrics?: Json | null
           preview_image_url?: string | null
