@@ -314,6 +314,20 @@ export default function ReferenzWebsiteDetail() {
           </div>
         </div>
 
+        {hasKeyFeatures && (
+          <section className="mt-16 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
+            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-6">Highlights</h2>
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {keyFeatures.map((feat, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <Check className="w-5 h-5 mt-0.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                  <span className="text-gray-700 dark:text-gray-300">{feat}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {(hasDescription || hasTags) && (
           <div className="mt-16 grid grid-cols-1 lg:grid-cols-2 gap-8">
             {hasDescription && (
