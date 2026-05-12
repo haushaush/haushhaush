@@ -13,6 +13,10 @@ interface WebsiteEmbedProps {
   initialIsBlocked?: boolean | null;
   /** Whether DB has already checked this URL. */
   hasChecked?: boolean;
+  /** Fired when the embed switches to fallback (iframe blocked or no preview). */
+  onFallbackActivated?: () => void;
+  /** Fired when the iframe successfully loads. */
+  onLiveActivated?: () => void;
 }
 
 /** Full-size, fully-interactive iframe embed with smart fallback. */
@@ -24,6 +28,8 @@ export function WebsiteEmbed({
   showcaseId,
   initialIsBlocked,
   hasChecked,
+  onFallbackActivated,
+  onLiveActivated,
 }: WebsiteEmbedProps) {
   const [showFallback, setShowFallback] = useState(initialIsBlocked === true);
   const [status, setStatus] = useState<'loading' | 'loaded' | 'blocked'>(
@@ -31,6 +37,12 @@ export function WebsiteEmbed({
   );
   const iframeLoadedRef = useRef(false);
   const checkedRef = useRef(!!hasChecked);
+
+  const activateFallback = () => {
+    setShowFallback(true);
+    setStatus('blocked');
+    onFallbackActivated?.();
+  };
 
   // Background check (one-time per mount) if never checked.
   useEffect(() => {
