@@ -245,6 +245,20 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
             </div>
             <div>
+              <Label>
+                Highlights <span className="text-gray-400 text-xs font-normal">(optional, max 6)</span>
+              </Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                z.B. "Live-Chat integriert", "Multi-Step-Funnel", "Calendly-Buchung"
+              </p>
+              <TagInput
+                value={keyFeatures}
+                onChange={setKeyFeatures}
+                max={6}
+                placeholder="Highlight eingeben + Enter"
+              />
+            </div>
+            <div>
               <Label>Fallback-Bild (optional)</Label>
               <input
                 type="file"
