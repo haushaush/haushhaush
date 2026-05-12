@@ -37,6 +37,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
   const [branche, setBranche] = useState(editing?.branche ?? '');
   const [description, setDescription] = useState(editing?.description ?? '');
   const [isFeatured, setIsFeatured] = useState(editing?.is_featured ?? false);
+  const [keyFeatures, setKeyFeatures] = useState<string[]>(((editing as any)?.key_features as string[]) ?? []);
   const [fallbackFile, setFallbackFile] = useState<File | null>(null);
   const [existingFallbackUrl, setExistingFallbackUrl] = useState<string | null>(
     (editing as any)?.fallback_image_url ?? null
