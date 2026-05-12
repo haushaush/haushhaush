@@ -532,17 +532,18 @@ function DropdownPill({
 }
 
 function ShowcaseCard({
-  item, getKundenname, getBranche, getTitle,
+  item, getKundenname, getBranche, getTitle, basePath,
 }: {
   item: AnyItem;
   getKundenname: (i: AnyItem) => string | null;
   getBranche: (i: AnyItem) => string | null;
   getTitle: (i: AnyItem) => string;
+  basePath: string;
 }) {
   const detailHref =
-    item._type === 'website' ? `/sales/referenz-showcase/websites/${item.id}` :
-    item._type === 'werbeanzeige' ? `/sales/referenz-showcase/werbeanzeigen/${item.id}` :
-    `/sales/referenz-showcase/ad-performance/${item.id}`;
+    item._type === 'website' ? `${basePath}/websites/${item.id}` :
+    item._type === 'werbeanzeige' ? `${basePath}/werbeanzeigen/${item.id}` :
+    `${basePath}/ad-performance/${item.id}`;
 
   const kunde = getKundenname(item);
   const branche = getBranche(item);
