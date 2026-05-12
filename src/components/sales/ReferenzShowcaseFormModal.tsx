@@ -99,6 +99,7 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
       campaign_period_end: periodEnd || null,
       tags,
       is_featured: isFeatured,
+      is_public: isPublic,
     };
 
     try {
