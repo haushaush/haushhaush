@@ -572,33 +572,31 @@ function ShowcaseCard({
         )}
       </div>
 
-      <div className="p-5">
+      <div className="p-4">
         {eyebrow && (
-          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 truncate">
+          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 truncate">
             {eyebrow}
           </p>
         )}
 
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-snug mb-3 line-clamp-2 min-h-[3.5rem] group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
+        <h3 className="text-lg font-extrabold text-gray-900 dark:text-white leading-snug mb-2 line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
           {title}
         </h3>
 
-        <PrimaryHighlight item={item} />
+        <div className="mb-2">
+          <PrimaryHighlight item={item} branche={branche} />
+        </div>
 
-        {metaParts.length > 0 && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-            {metaParts.map((part, i) => (
-              <span key={i} className="flex items-center gap-2">
-                {i > 0 && <span className="text-gray-300 dark:text-gray-600">·</span>}
-                <span>{part}</span>
-              </span>
-            ))}
+        {unternehmen && typeof unternehmen === 'string' && (
+          <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 truncate">
+            {unternehmen}
+            {item._type === 'campaign' && item.metrics?.spend != null && !isNaN(Number(item.metrics.spend)) && (
+              <> · €{Math.round(Number(item.metrics.spend)).toLocaleString('de-DE')} Spend</>
+            )}
           </div>
         )}
 
-        <div className="border-t border-gray-100 dark:border-gray-800 my-4" />
-
-        <div className="flex items-center justify-between">
+        <div className="border-t border-gray-100 dark:border-gray-800 mt-3 pt-3 flex items-center justify-between">
           <span className="text-sm font-semibold text-teal-600 dark:text-teal-400 group-hover:text-teal-700 dark:group-hover:text-teal-300 group-hover:underline transition-all">
             Ansehen →
           </span>
@@ -608,9 +606,9 @@ function ShowcaseCard({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-1"
+              className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
+              <ExternalLink className="w-3 h-3" />
               <span>Original</span>
             </a>
           )}
@@ -625,31 +623,45 @@ function ShowcaseCard({
   );
 }
 
-function PrimaryHighlight({ item }: { item: AnyItem }) {
+function PrimaryHighlight({ item, branche }: { item: AnyItem; branche?: string | null }) {
   if (item._type === 'campaign') {
     const roas = item.metrics?.roas != null ? Number(item.metrics.roas) : null;
     const leads = item.metrics?.leads != null ? Number(item.metrics.leads) : null;
     if (roas != null && !isNaN(roas)) {
-      return <p className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-3 tabular-nums">{roas.toFixed(1)}x ROAS</p>;
+      return <p className="text-xl font-bold text-teal-600 dark:text-teal-400 tabular-nums">{roas.toFixed(1)}x ROAS</p>;
     }
     if (leads != null && !isNaN(leads)) {
-      return <p className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-3 tabular-nums">{leads.toLocaleString('de-DE')} Leads</p>;
+      return <p className="text-xl font-bold text-teal-600 dark:text-teal-400 tabular-nums">{leads.toLocaleString('de-DE')} Leads</p>;
     }
     return null;
   }
   if (item._type === 'website' && item.is_active) {
     return (
-      <p className="text-sm font-semibold text-teal-600 dark:text-teal-400 mb-3 flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
-        Live
-      </p>
+      <div className="flex items-center gap-1.5 text-sm">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Live</span>
+        {branche && (
+          <>
+            <span className="text-gray-300 dark:text-gray-700">·</span>
+            <span className="text-gray-500 dark:text-gray-400 capitalize truncate">{branche}</span>
+          </>
+        )}
+      </div>
     );
   }
   if (item._type === 'werbeanzeige') {
     return (
-      <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 mb-3">
-        {item.creative_format || item.ad_format || 'Creative'}
-      </p>
+      <div className="flex items-center gap-1.5 text-sm">
+        <span className="text-purple-600 dark:text-purple-400 font-semibold">
+          {item.creative_format || item.ad_format || 'Creative'}
+        </span>
+        {branche && (
+          <>
+            <span className="text-gray-300 dark:text-gray-700">·</span>
+            <span className="text-gray-500 dark:text-gray-400 capitalize truncate">{branche}</span>
+          </>
+        )}
+      </div>
     );
   }
   return null;
