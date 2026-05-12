@@ -123,7 +123,7 @@ export default function ReferenzWebsiteDetail() {
   }
 
   const displayUrl = item.website_url?.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') ?? '';
-  const fallback = item.fallback_image_url || item.preview_image_url || item.thumbnail_url || null;
+  const fallback = item.thumbnail_url || item.preview_image_url || item.fallback_image_url || null;
   const hasDescription = !!item.description;
   const tags = item.tags ?? [];
   const hasTags = tags.length > 0;
