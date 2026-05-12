@@ -70,39 +70,6 @@ export default function ReferenzShowcaseOverview() {
     },
   });
 
-  const { data: websites = [] } = useQuery({
-    queryKey: ['showcase-websites'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('referenz_showcase' as any)
-        .select(`*, ${KUNDE_SELECT}`)
-        .eq('type', 'website')
-        .eq('is_active', true);
-      return ((data as any[]) || []).map(w => ({ ...w, _type: 'website' as const }));
-    },
-  });
-
-  const { data: adCreatives = [] } = useQuery({
-    queryKey: ['showcase-ad-creatives'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('referenz_meta_ads' as any)
-        .select(`*, ${KUNDE_SELECT}`)
-        .eq('is_active', true);
-      return ((data as any[]) || []).map(a => ({ ...a, _type: 'werbeanzeige' as const }));
-    },
-  });
-
-  const { data: campaigns = [] } = useQuery({
-    queryKey: ['showcase-campaigns'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('referenz_meta_campaigns' as any)
-        .select(`*, ${KUNDE_SELECT}`)
-        .eq('is_active', true);
-      return ((data as any[]) || []).map(c => ({ ...c, _type: 'campaign' as const }));
-    },
-  });
 
   // Unified filter category + option queries
   const { data: filterCategories = [] } = useQuery({
