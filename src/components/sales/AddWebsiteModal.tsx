@@ -285,34 +285,6 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
         {stage === 'input' && (
           <div className="space-y-4 py-2">
             <div>
-              <Label>Thumbnail *</Label>
-              {(thumbnailPreviewUrl || existingThumbnailUrl) ? (
-                <div className="relative mt-1">
-                  <img
-                    src={thumbnailPreviewUrl || existingThumbnailUrl || ''}
-                    alt="Thumbnail Vorschau"
-                    className="w-full rounded border border-border object-cover"
-                    style={{ aspectRatio: '16/9' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => { setThumbnailFile(null); setExistingThumbnailUrl(null); }}
-                    className="absolute top-2 right-2 bg-background/90 border border-border shadow rounded-full w-7 h-7 flex items-center justify-center hover:bg-muted"
-                    aria-label="Thumbnail entfernen"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="mt-1 block border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/60 hover:bg-muted/30 transition-colors">
-                  <input type="file" accept="image/*" onChange={handleThumbnailChange} className="hidden" />
-                  <ImageIcon className="w-7 h-7 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm font-medium">Bild auswählen</p>
-                  <p className="text-xs text-muted-foreground mt-1">Empfohlen: 800×450px (16:9) · max. 5MB</p>
-                </label>
-              )}
-            </div>
-            <div>
               <Label>Website-URL *</Label>
               <Input
                 type="url"
@@ -320,7 +292,113 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://kunde.de"
                 autoFocus
+                onBlur={() => {
+                  const n = normalizeUrl(url);
+                  if (
+                    n.startsWith('http') &&
+                    thumbnailMode === 'auto' &&
+                    !autoThumbnailUrl &&
+                    !thumbnailFile &&
+                    !existingThumbnailUrl &&
+                    !isGenerating
+                  ) {
+                    generateThumbnail();
+                  }
+                }}
               />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label>Thumbnail *</Label>
+                <div className="flex items-center gap-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setThumbnailMode('auto')}
+                    className={`px-2 py-1 rounded ${thumbnailMode === 'auto' ? 'bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 font-semibold' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Automatisch
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setThumbnailMode('manual')}
+                    className={`px-2 py-1 rounded ${thumbnailMode === 'manual' ? 'bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 font-semibold' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Manuell
+                  </button>
+                </div>
+              </div>
+
+              {thumbnailMode === 'auto' ? (
+                <>
+                  {!autoThumbnailUrl && !isGenerating && (
+                    <button
+                      type="button"
+                      onClick={generateThumbnail}
+                      disabled={!url.trim()}
+                      className="w-full border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/60 hover:bg-muted/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Camera className="w-7 h-7 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm font-medium">Screenshot automatisch erstellen</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {!url.trim() ? 'Erst URL eingeben' : 'Klicken zum Erstellen'}
+                      </p>
+                    </button>
+                  )}
+                  {isGenerating && (
+                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                      <Loader2 className="w-7 h-7 mx-auto text-primary animate-spin mb-2" />
+                      <p className="text-sm font-medium">Screenshot wird erstellt…</p>
+                      <p className="text-xs text-muted-foreground mt-1">Kann bis zu 30 Sekunden dauern</p>
+                    </div>
+                  )}
+                  {autoThumbnailUrl && !isGenerating && (
+                    <div className="relative group">
+                      <img
+                        src={autoThumbnailUrl}
+                        alt="Auto-Thumbnail"
+                        className="w-full rounded border border-border object-cover"
+                        style={{ aspectRatio: '16/9' }}
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors rounded flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                        <Button type="button" size="sm" variant="secondary" onClick={generateThumbnail}>
+                          <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Neu erstellen
+                        </Button>
+                        <Button type="button" size="sm" variant="secondary" onClick={() => { setAutoThumbnailUrl(null); setThumbnailMode('manual'); }}>
+                          <Upload className="w-3.5 h-3.5 mr-1.5" /> Manuell ersetzen
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {(thumbnailPreviewUrl || existingThumbnailUrl) ? (
+                    <div className="relative">
+                      <img
+                        src={thumbnailPreviewUrl || existingThumbnailUrl || ''}
+                        alt="Thumbnail Vorschau"
+                        className="w-full rounded border border-border object-cover"
+                        style={{ aspectRatio: '16/9' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setThumbnailFile(null); setExistingThumbnailUrl(null); }}
+                        className="absolute top-2 right-2 bg-background/90 border border-border shadow rounded-full w-7 h-7 flex items-center justify-center hover:bg-muted"
+                        aria-label="Thumbnail entfernen"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="block border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/60 hover:bg-muted/30 transition-colors">
+                      <input type="file" accept="image/*" onChange={handleThumbnailChange} className="hidden" />
+                      <ImageIcon className="w-7 h-7 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm font-medium">Bild auswählen</p>
+                      <p className="text-xs text-muted-foreground mt-1">Empfohlen: 800×450px (16:9) · max. 5MB</p>
+                    </label>
+                  )}
+                </>
+              )}
             </div>
             <div>
               <Label>Titel *</Label>
