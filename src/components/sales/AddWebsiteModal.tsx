@@ -121,6 +121,11 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
     (editing as any)?.thumbnail_url ?? null
   );
   const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null);
+  const [autoThumbnailUrl, setAutoThumbnailUrl] = useState<string | null>(null);
+  const [thumbnailMode, setThumbnailMode] = useState<'auto' | 'manual'>(
+    editing?.thumbnail_url ? 'manual' : 'auto'
+  );
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     if (!fallbackFile) { setFallbackPreviewUrl(null); return; }
@@ -142,6 +147,32 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
     if (!file.type.startsWith('image/')) { toast.error('Bitte ein Bild auswählen'); return; }
     if (file.size > 5 * 1024 * 1024) { toast.error('Bild zu groß (max. 5MB)'); return; }
     setThumbnailFile(file);
+  }
+
+  async function generateThumbnail() {
+    const normalized = normalizeUrl(url);
+    if (!normalized.startsWith('http')) {
+      toast.error('Bitte gültige URL eingeben');
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-website-thumbnail', {
+        body: { url: normalized },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const thumb = (data as any)?.thumbnail_url as string | undefined;
+      const src = (data as any)?.source as string | undefined;
+      if (!thumb) throw new Error('Kein Thumbnail erhalten');
+      setAutoThumbnailUrl(thumb);
+      toast.success(src === 'microlink' ? 'Screenshot erstellt' : 'OpenGraph-Bild übernommen');
+    } catch (e: any) {
+      toast.error(`Auto-Thumbnail fehlgeschlagen: ${e.message}`);
+      setThumbnailMode('manual');
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   function handleNext() {
