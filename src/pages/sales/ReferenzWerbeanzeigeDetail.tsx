@@ -145,7 +145,7 @@ export default function ReferenzWerbeanzeigeDetail() {
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950">
       {/* Back-Bar */}
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16 xl:px-20 py-4 flex items-center justify-between">
           <Link to={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen`} className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
             <ArrowLeft className="w-4 h-4" />
             Ad Creatives
@@ -177,7 +177,7 @@ export default function ReferenzWerbeanzeigeDetail() {
       </div>
 
       {/* Main */}
-      <div className="max-w-7xl mx-auto px-6 py-10">
+      <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16 xl:px-20 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
           {/* LEFT */}
           <div className="lg:col-span-3 space-y-6">

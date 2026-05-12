@@ -328,7 +328,7 @@ export default function ReferenzShowcaseOverview() {
 
   return (
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 pb-32">
-      <div className="px-6 lg:px-10 pt-10">
+      <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16 xl:px-20 pt-10">
         <header className="text-center max-w-3xl mx-auto mb-16 pt-8">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white tracking-tight leading-[1.05]">
             Referenz Showcase
@@ -361,7 +361,7 @@ export default function ReferenzShowcaseOverview() {
         </div>
 
         {/* Filter panel */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-5 mb-8">
+        <div className="mb-8">
           <div className="flex gap-3 mb-4 flex-wrap">
             <div className="flex-1 min-w-[240px] relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
