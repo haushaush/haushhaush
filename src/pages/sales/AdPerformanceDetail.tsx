@@ -272,7 +272,7 @@ export default function AdPerformanceDetail() {
               {/* Info-Panel */}
               <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm">
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">{eyebrow}</p>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white leading-tight mb-3">{readableTitle}</h1>
+                <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white leading-tight mb-3">{readableTitle}</h1>
                 {(branche || dateRange) && (
                   <div className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                     {branche && <span className="capitalize">{branche}</span>}

@@ -221,7 +221,7 @@ export default function ReferenzWebsiteDetail() {
                 {(item.client_name || 'Kunde').toUpperCase()}
               </p>
 
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white leading-tight mb-4">
+              <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white leading-tight mb-4">
                 {item.title}
               </h1>
 

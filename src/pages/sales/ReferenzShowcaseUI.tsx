@@ -45,7 +45,7 @@ export function SubPageHeader({
             <ArrowLeft className="w-4 h-4" />
             Referenz Showcase
           </Link>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
             {title}
           </h1>
           <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 mt-2 font-normal">
