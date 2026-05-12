@@ -4,6 +4,7 @@ import {
   Image as ImageIcon, Globe, Video, BarChart3, Inbox,
 } from 'lucide-react';
 import type React from 'react';
+import { useIsPublicView } from '@/hooks/useIsPublicView';
 
 export type AnyItem = Record<string, any> & {
   _type: 'website' | 'werbeanzeige' | 'campaign';
