@@ -105,7 +105,7 @@ export default function ReferenzWerbeanzeigeDetail() {
     if (!confirm("Anzeige aus Showcase entfernen?")) return;
     const { error } = await supabase.from("referenz_meta_ads" as any).delete().eq("id", ad.id);
     if (error) toast({ title: "Fehler", description: error.message, variant: "destructive" });
-    else navigate("${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen");
+    else navigate(`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen`);
   };
 
   const addTag = () => {
@@ -126,7 +126,7 @@ export default function ReferenzWerbeanzeigeDetail() {
   );
   if (!ad) return (
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 p-10 text-sm text-gray-500 dark:text-gray-400">
-      Nicht gefunden. <Link className="underline" to="${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen">Zurück</Link>
+      Nicht gefunden. <Link className="underline" to={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen`}>Zurück</Link>
     </div>
   );
 
@@ -146,7 +146,7 @@ export default function ReferenzWerbeanzeigeDetail() {
       {/* Back-Bar */}
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen" className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+          <Link to={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen`} className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
             <ArrowLeft className="w-4 h-4" />
             Ad Creatives
           </Link>

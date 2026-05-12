@@ -55,7 +55,7 @@ export default function ReferenzWebsiteDetail() {
     if (error) toast.error('Löschen fehlgeschlagen', { description: error.message });
     else {
       toast.success('Gelöscht');
-      navigate('${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites');
+      navigate(`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`);
     }
   }
 
@@ -112,7 +112,7 @@ export default function ReferenzWebsiteDetail() {
     return (
       <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 p-6">
         <div className="max-w-7xl mx-auto">
-          <Button variant="ghost" onClick={() => navigate('${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites')}>
+          <Button variant="ghost" onClick={() => navigate(`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`)}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Zurück
           </Button>
           <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">Website nicht gefunden.</p>
@@ -133,7 +133,7 @@ export default function ReferenzWebsiteDetail() {
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link
-            to="${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites"
+            to={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`}
             className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
