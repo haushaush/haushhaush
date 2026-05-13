@@ -357,6 +357,10 @@ Deno.serve(async (req) => {
         count++;
       } catch (e) {
         console.error("refresh error", r.meta_ad_id, e);
+        await svc.from("referenz_meta_ads").update({
+          last_sync_error: (e as Error).message,
+          last_synced_at: new Date().toISOString(),
+        }).eq("id", r.id);
       }
     }
     return new Response(JSON.stringify({ refreshed: count }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
