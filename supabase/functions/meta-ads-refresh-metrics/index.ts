@@ -309,7 +309,7 @@ Deno.serve(async (req) => {
           else console.log(`[force] removed meta-ads/${r.meta_ad_id}.jpg`);
         }
 
-        const { thumbnail_url: rawThumb, video_url, ad_format } = await resolveCreativeUrls(creative, accId);
+        const { thumbnail_url: rawThumb, video_url, ad_format, strategy, details } = await resolveCreativeUrls(creative, accId, r.meta_ad_id);
         const persistedThumb = await persistThumbnail(rawThumb, r.meta_ad_id, svc);
 
         const ins = await metaGet(`/${r.meta_ad_id}/insights`, {
@@ -339,6 +339,16 @@ Deno.serve(async (req) => {
           thumbnail_url: persistedThumb || rawThumb,
           thumbnail_url_meta: rawThumb,
           thumbnail_url_persisted: persistedThumb,
+          sync_strategy: strategy,
+          sync_details: {
+            ...details,
+            raw_url: rawThumb,
+            persisted_url: persistedThumb,
+            persisted_to_storage: !!persistedThumb && persistedThumb !== rawThumb,
+            force,
+          },
+          last_sync_error: rawThumb ? null : "No image URL found",
+          last_synced_at: new Date().toISOString(),
           video_url,
           filter_values: enrichment.filter_values,
           custom_tags: enrichment.custom_tags,
