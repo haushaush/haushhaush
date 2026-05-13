@@ -44,6 +44,17 @@ function extractMetrics(insightRow: any) {
   };
 }
 
+// Upgrade FB CDN URLs to highest resolution variants where possible
+function upgradeFbResolution(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return url
+    .replace(/_n\.(jpg|png)/gi, "_o.$1")
+    .replace(/_s\.(jpg|png)/gi, "_o.$1")
+    .replace(/_t\.(jpg|png)/gi, "_o.$1")
+    .replace(/\/p\d+x\d+\//g, "/p1080x1080/")
+    .replace(/\/s\d+x\d+\//g, "/s1080x1080/");
+}
+
 async function resolveHighResUrl(imageHash: string, accountId: string): Promise<string | null> {
   if (!imageHash) return null;
   try {
