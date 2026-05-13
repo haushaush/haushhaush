@@ -44,6 +44,17 @@ function extractMetrics(insightRow: any) {
   };
 }
 
+// Upgrade FB CDN URLs to highest resolution variants where possible
+function upgradeFbResolution(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return url
+    .replace(/_n\.(jpg|png)/gi, "_o.$1")
+    .replace(/_s\.(jpg|png)/gi, "_o.$1")
+    .replace(/_t\.(jpg|png)/gi, "_o.$1")
+    .replace(/\/p\d+x\d+\//g, "/p1080x1080/")
+    .replace(/\/s\d+x\d+\//g, "/s1080x1080/");
+}
+
 async function resolveHighResUrl(imageHash: string, accountId: string): Promise<string | null> {
   if (!imageHash) return null;
   try {
@@ -113,26 +124,53 @@ async function resolveCreativeUrls(
     imageHash = creative.image_hash;
   }
 
-  if (imageHash) {
-    thumbnail_url = await resolveHighResUrl(imageHash, accountId);
-    console.log(`[resolveCreativeUrls] hash=${imageHash} resolved=${thumbnail_url ? "YES" : "NO"}`);
+  // STRATEGY 1: object_story_spec.photo_data.url — original quality
+  if (!thumbnail_url && photoData?.url) {
+    thumbnail_url = photoData.url;
+    console.log("[resolveCreativeUrls] strategy 1: photo_data.url");
   }
 
+  // STRATEGY 2: asset_feed_spec.images[0].url — multi-asset originals
+  if (!thumbnail_url) {
+    const feedImg = creative.asset_feed_spec?.images?.[0]?.url;
+    if (feedImg) {
+      thumbnail_url = feedImg;
+      console.log("[resolveCreativeUrls] strategy 2: asset_feed_spec.images");
+    }
+  }
+
+  // STRATEGY 3: /adimages lookup via image_hash → permalink_url (HiRes)
+  if (!thumbnail_url && imageHash) {
+    thumbnail_url = await resolveHighResUrl(imageHash, accountId);
+    if (thumbnail_url) console.log("[resolveCreativeUrls] strategy 3: adimages lookup");
+  }
+
+  // STRATEGY 4: video thumbnail (largest available)
   if (videoId) {
     const videoInfo = await fetchVideoInfo(videoId);
     video_url = videoInfo?.source || null;
     if (!thumbnail_url && videoInfo?.largestThumbnail) {
       thumbnail_url = videoInfo.largestThumbnail;
+      console.log("[resolveCreativeUrls] strategy 4: video thumbnail");
     }
   }
 
-  if (!thumbnail_url) {
-    thumbnail_url = creative.image_url || linkData?.picture || null;
+  // STRATEGY 5: link_data.picture (upgraded suffix)
+  if (!thumbnail_url && linkData?.picture) {
+    thumbnail_url = upgradeFbResolution(linkData.picture);
+    console.log("[resolveCreativeUrls] strategy 5: link_data.picture");
   }
 
-  if (!thumbnail_url) {
-    console.warn("[resolveCreativeUrls] FALLING BACK to thumbnail_url (64x64)");
-    thumbnail_url = creative.thumbnail_url || null;
+  // STRATEGY 6: creative.image_url (default, upgrade suffix)
+  if (!thumbnail_url && creative.image_url) {
+    thumbnail_url = upgradeFbResolution(creative.image_url);
+    console.log("[resolveCreativeUrls] strategy 6: creative.image_url upgraded");
+  }
+
+  // STRATEGY 7: thumbnail_url (worst case, 64x64)
+  if (!thumbnail_url && creative.thumbnail_url) {
+    console.warn("[resolveCreativeUrls] FALLBACK: tiny thumbnail_url");
+    thumbnail_url = upgradeFbResolution(creative.thumbnail_url);
   }
 
   return { thumbnail_url, video_url, ad_format };
