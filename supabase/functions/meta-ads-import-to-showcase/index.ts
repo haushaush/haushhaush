@@ -373,7 +373,7 @@ Deno.serve(async (req) => {
             persisted_url: persistedThumb,
             persisted_to_storage: !!persistedThumb && persistedThumb !== rawThumb,
           },
-          last_sync_error: rawThumb ? null : "No image URL found",
+          last_sync_error: rawThumb ? (persistedThumb === rawThumb ? "Image not persisted to storage; using Meta URL fallback" : null) : "No image URL found",
           last_synced_at: new Date().toISOString(),
           video_url,
           meta_metrics: metrics,
