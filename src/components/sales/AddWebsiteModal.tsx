@@ -114,6 +114,12 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
   const [title, setTitle] = useState(editing?.title ?? '');
   const [clientName, setClientName] = useState(editing?.client_name ?? '');
   const [branche, setBranche] = useState(editing?.branche ?? '');
+  const [unternehmen, setUnternehmen] = useState((editing as any)?.unternehmen ?? '');
+
+  const { data: branchen = [] } = useBranchen();
+  const { data: unternehmenList = [] } = useUnternehmen();
+  const createBranche = useCreateBranche();
+  const createUnternehmen = useCreateUnternehmen();
   const [description, setDescription] = useState(editing?.description ?? '');
   const [isFeatured, setIsFeatured] = useState(editing?.is_featured ?? false);
   const [keyFeatures, setKeyFeatures] = useState<string[]>(((editing as any)?.key_features as string[]) ?? []);
