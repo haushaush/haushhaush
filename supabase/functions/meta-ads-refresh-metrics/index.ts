@@ -44,29 +44,40 @@ function extractMetrics(row: any) {
   };
 }
 
-function upgradeFbResolution(url: string | null | undefined): string | null {
-  if (!url) return null;
+function upgradeFbResolution(url: string): string {
+  if (!url) return url;
+
   let cleaned = url;
-  try {
-    const u = new URL(url);
-    // Strip Meta CDN size/transform params that force tiny thumbnails (e.g. stp=...p64x64_q75)
-    u.searchParams.delete("stp");
-    u.searchParams.delete("dst-jpg");
-    u.searchParams.delete("dst-emg0");
-    cleaned = u.toString();
-  } catch {
-    cleaned = cleaned
-      .replace(/([?&])stp=[^&]+&?/g, "$1")
-      .replace(/[?&]$/, "");
-  }
-  return cleaned
-    .replace(/_n\.(jpg|png|webp)/gi, "_o.$1")
-    .replace(/_s\.(jpg|png|webp)/gi, "_o.$1")
-    .replace(/_t\.(jpg|png|webp)/gi, "_o.$1")
-    .replace(/\/p\d+x\d+\//g, "/")
-    .replace(/\/s\d+x\d+\//g, "/")
-    .replace(/\/c\d+(?:\.\d+)?x\d+(?:\.\d+)?\//g, "/");
+
+  // CRITICAL STEP 1: Entferne stp-Parameter (das macht Bild 64x64)
+  // Match: &stp=... bis zum nächsten & oder Ende
+  cleaned = cleaned.replace(/[?&]stp=[^&]+/g, (match) => {
+    return match.startsWith('?') ? '?' : '';
+  });
+
+  // Aufräumen: doppelte ? oder & nach Removal
+  cleaned = cleaned.replace(/\?&/, '?').replace(/&&+/g, '&').replace(/[?&]$/, '');
+
+  // CRITICAL STEP 2: _n.jpg → _o.jpg (Original)
+  cleaned = cleaned.replace(/_n\.jpg/g, '_o.jpg')
+                   .replace(/_s\.jpg/g, '_o.jpg')
+                   .replace(/_t\.jpg/g, '_o.jpg');
+
+  // CRITICAL STEP 3: Path-basierte Resolution-Limiter
+  cleaned = cleaned.replace(/\/p\d+x\d+\//g, '/')
+                   .replace(/\/s\d+x\d+\//g, '/')
+                   .replace(/\/c\d+\.\d+x\d+\.\d+\//g, '/');
+
+  return cleaned;
 }
+
+const testUrl = "https://scontent.xx.fbcdn.net/v/t45.1600-4/file_n.jpg?_nc_cat=110&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=52f3c4";
+const result = upgradeFbResolution(testUrl);
+console.log('UPGRADE TEST:');
+console.log('  Input :', testUrl);
+console.log('  Output:', result);
+console.log('  stp removed:', !result.includes('stp='));
+console.log('  _n→_o done:', result.includes('_o.jpg'));
 
 async function resolveHighResUrl(imageHash: string, accountId: string): Promise<string | null> {
   if (!imageHash) return null;
