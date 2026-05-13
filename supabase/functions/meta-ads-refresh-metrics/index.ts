@@ -46,12 +46,26 @@ function extractMetrics(row: any) {
 
 function upgradeFbResolution(url: string | null | undefined): string | null {
   if (!url) return null;
-  return url
+  let cleaned = url;
+  try {
+    const u = new URL(url);
+    // Strip Meta CDN size/transform params that force tiny thumbnails (e.g. stp=...p64x64_q75)
+    u.searchParams.delete("stp");
+    u.searchParams.delete("dst-jpg");
+    u.searchParams.delete("dst-emg0");
+    cleaned = u.toString();
+  } catch {
+    cleaned = cleaned
+      .replace(/([?&])stp=[^&]+&?/g, "$1")
+      .replace(/[?&]$/, "");
+  }
+  return cleaned
     .replace(/_n\.(jpg|png|webp)/gi, "_o.$1")
     .replace(/_s\.(jpg|png|webp)/gi, "_o.$1")
     .replace(/_t\.(jpg|png|webp)/gi, "_o.$1")
-    .replace(/\/p\d+x\d+\//g, "/p1080x1080/")
-    .replace(/\/s\d+x\d+\//g, "/s1080x1080/");
+    .replace(/\/p\d+x\d+\//g, "/")
+    .replace(/\/s\d+x\d+\//g, "/")
+    .replace(/\/c\d+(?:\.\d+)?x\d+(?:\.\d+)?\//g, "/");
 }
 
 async function resolveHighResUrl(imageHash: string, accountId: string): Promise<string | null> {
