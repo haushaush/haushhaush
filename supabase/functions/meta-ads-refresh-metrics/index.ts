@@ -117,8 +117,21 @@ async function fetchVideoInfo(videoId: string) {
 async function resolveCreativeUrls(
   creative: any,
   accountId: string,
-): Promise<{ thumbnail_url: string | null; video_url: string | null; ad_format: string }> {
-  if (!creative) return { thumbnail_url: null, video_url: null, ad_format: "image" };
+  adId: string,
+): Promise<{ thumbnail_url: string | null; video_url: string | null; ad_format: string; strategy: string; details: Record<string, any> }> {
+  if (!creative) return { thumbnail_url: null, video_url: null, ad_format: "image", strategy: "none", details: { reason: "missing creative" } };
+
+  console.log(`[${adId}] Resolving image URL...`);
+  console.log(`[${adId}] Available fields:`, {
+    has_image_url: !!creative?.image_url,
+    has_thumbnail_url: !!creative?.thumbnail_url,
+    has_image_hash: !!creative?.image_hash,
+    has_object_story_spec: !!creative?.object_story_spec,
+    has_photo_data: !!creative?.object_story_spec?.photo_data,
+    has_link_data: !!creative?.object_story_spec?.link_data,
+    has_asset_feed_spec: !!creative?.asset_feed_spec,
+    image_url_sample: creative?.image_url?.substring(0, 200),
+  });
 
   const story = creative.object_story_spec || {};
   const videoData = story.video_data;
@@ -149,29 +162,53 @@ async function resolveCreativeUrls(
     imageHash = creative.image_hash;
   }
 
+  const photoUrl = photoData?.url;
+  if (photoUrl) {
+    console.log(`[${adId}] ✓ Strategy 1 (photo_data.url): ${photoUrl.substring(0, 200)}`);
+    return { thumbnail_url: photoUrl, video_url, ad_format, strategy: "photo_data", details: { photoUrl } };
+  }
+
+  const linkPicture = linkData?.picture;
+  if (linkPicture) {
+    const upgraded = upgradeFbResolution(linkPicture);
+    console.log(`[${adId}] ✓ Strategy 2 (link_data.picture): ${upgraded?.substring(0, 200)}`);
+    return { thumbnail_url: upgraded, video_url, ad_format, strategy: "link_data", details: { original: linkPicture, upgraded } };
+  }
+
+  const feedImage = creative?.asset_feed_spec?.images?.[0]?.url;
+  if (feedImage) {
+    console.log(`[${adId}] ✓ Strategy 3 (asset_feed_spec): ${feedImage.substring(0, 200)}`);
+    return { thumbnail_url: feedImage, video_url, ad_format, strategy: "asset_feed", details: { feedImage } };
+  }
+
   if (imageHash) {
-    thumbnail_url = await resolveHighResUrl(imageHash, accountId);
-    console.log(`[resolveCreativeUrls] hash=${imageHash} resolved=${thumbnail_url ? "YES" : "NO"}`);
+    const adImage = await lookupAdImage(imageHash, accountId, adId);
+    if (adImage) return { thumbnail_url: adImage.url, video_url, ad_format, strategy: adImage.strategy, details: adImage.details };
   }
 
   if (videoId) {
     const videoInfo = await fetchVideoInfo(videoId);
     video_url = videoInfo?.source || null;
-    if (!thumbnail_url && videoInfo?.largestThumbnail) {
-      thumbnail_url = videoInfo.largestThumbnail;
+    if (videoInfo?.largestThumbnail) {
+      console.log(`[${adId}] ✓ Strategy 5 (video thumbnail): ${videoInfo.largestThumbnail.substring(0, 200)}`);
+      return { thumbnail_url: videoInfo.largestThumbnail, video_url, ad_format, strategy: "video_thumbnail", details: { videoId, picture: videoInfo.picture, largestThumbnail: videoInfo.largestThumbnail } };
     }
   }
 
-  if (!thumbnail_url) {
-    thumbnail_url = creative.image_url || linkData?.picture || null;
+  if (creative?.thumbnail_url) {
+    const upgraded = upgradeFbResolution(creative.thumbnail_url);
+    console.log(`[${adId}] ⚠ Strategy 6 (thumbnail_url): ${upgraded?.substring(0, 200)}`);
+    return { thumbnail_url: upgraded, video_url, ad_format, strategy: "thumbnail", details: { original: creative.thumbnail_url, upgraded } };
   }
 
-  if (!thumbnail_url) {
-    console.warn("[resolveCreativeUrls] FALLING BACK to thumbnail_url (64x64)");
-    thumbnail_url = creative.thumbnail_url || null;
+  if (creative?.image_url) {
+    const upgraded = upgradeFbResolution(creative.image_url);
+    console.log(`[${adId}] ⚠⚠ Strategy 7 FALLBACK (image_url): ${upgraded?.substring(0, 200)}`);
+    return { thumbnail_url: upgraded, video_url, ad_format, strategy: "image_url_fallback", details: { original: creative.image_url, upgraded } };
   }
 
-  return { thumbnail_url, video_url, ad_format };
+  console.error(`[${adId}] ✗ All strategies failed`);
+  return { thumbnail_url: null, video_url, ad_format, strategy: "none", details: { creative } };
 }
 
 async function persistThumbnail(metaUrl: string | null, adId: string, svc: any): Promise<string | null> {
