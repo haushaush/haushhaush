@@ -12,6 +12,8 @@ const ACCESS_TOKEN = Deno.env.get("META_ACCESS_TOKEN");
 const API_VERSION = "v19.0";
 const BASE = `https://graph.facebook.com/${API_VERSION}`;
 
+type ImageResolveResult = { url: string | null; strategy: string; details: Record<string, any> };
+
 async function metaGet(path: string, params: Record<string, string> = {}) {
   const url = new URL(`${BASE}${path.startsWith("/") ? path : `/${path}`}`);
   url.searchParams.set("access_token", ACCESS_TOKEN!);
@@ -40,6 +42,16 @@ function extractMetrics(row: any) {
     cpl: leads > 0 ? +(spend / leads).toFixed(2) : null,
     roas: purchaseValue && spend > 0 ? +(Number(purchaseValue.value) / spend).toFixed(2) : null,
   };
+}
+
+function upgradeFbResolution(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return url
+    .replace(/_n\.(jpg|png|webp)/gi, "_o.$1")
+    .replace(/_s\.(jpg|png|webp)/gi, "_o.$1")
+    .replace(/_t\.(jpg|png|webp)/gi, "_o.$1")
+    .replace(/\/p\d+x\d+\//g, "/p1080x1080/")
+    .replace(/\/s\d+x\d+\//g, "/s1080x1080/");
 }
 
 async function resolveHighResUrl(imageHash: string, accountId: string): Promise<string | null> {
