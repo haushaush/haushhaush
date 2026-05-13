@@ -47,15 +47,40 @@ function extractMetrics(insightRow: any) {
 }
 
 // Upgrade FB CDN URLs to highest resolution variants where possible
-function upgradeFbResolution(url: string | null | undefined): string | null {
-  if (!url) return null;
-  return url
-    .replace(/_n\.(jpg|png)/gi, "_o.$1")
-    .replace(/_s\.(jpg|png)/gi, "_o.$1")
-    .replace(/_t\.(jpg|png)/gi, "_o.$1")
-    .replace(/\/p\d+x\d+\//g, "/p1080x1080/")
-    .replace(/\/s\d+x\d+\//g, "/s1080x1080/");
+function upgradeFbResolution(url: string): string {
+  if (!url) return url;
+
+  let cleaned = url;
+
+  // CRITICAL STEP 1: Entferne stp-Parameter (das macht Bild 64x64)
+  // Match: &stp=... bis zum nächsten & oder Ende
+  cleaned = cleaned.replace(/[?&]stp=[^&]+/g, (match) => {
+    return match.startsWith('?') ? '?' : '';
+  });
+
+  // Aufräumen: doppelte ? oder & nach Removal
+  cleaned = cleaned.replace(/\?&/, '?').replace(/&&+/g, '&').replace(/[?&]$/, '');
+
+  // CRITICAL STEP 2: _n.jpg → _o.jpg (Original)
+  cleaned = cleaned.replace(/_n\.jpg/g, '_o.jpg')
+                   .replace(/_s\.jpg/g, '_o.jpg')
+                   .replace(/_t\.jpg/g, '_o.jpg');
+
+  // CRITICAL STEP 3: Path-basierte Resolution-Limiter
+  cleaned = cleaned.replace(/\/p\d+x\d+\//g, '/')
+                   .replace(/\/s\d+x\d+\//g, '/')
+                   .replace(/\/c\d+\.\d+x\d+\.\d+\//g, '/');
+
+  return cleaned;
 }
+
+const testUrl = "https://scontent.xx.fbcdn.net/v/t45.1600-4/file_n.jpg?_nc_cat=110&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=52f3c4";
+const result = upgradeFbResolution(testUrl);
+console.log('UPGRADE TEST:');
+console.log('  Input :', testUrl);
+console.log('  Output:', result);
+console.log('  stp removed:', !result.includes('stp='));
+console.log('  _n→_o done:', result.includes('_o.jpg'));
 
 async function resolveHighResUrl(imageHash: string, accountId: string): Promise<string | null> {
   if (!imageHash) return null;
@@ -77,30 +102,123 @@ async function resolveHighResUrl(imageHash: string, accountId: string): Promise<
   }
 }
 
-async function lookupAdImage(hash: string, accountId: string, adId: string): Promise<ImageResolveResult | null> {
-  const bareAccountId = accountId.replace(/^act_/, "");
-  const lookupUrl = `${BASE}/act_${bareAccountId}/adimages?hashes=${encodeURIComponent(JSON.stringify([hash]))}&fields=hash,url,permalink_url,original_width,original_height,width,height&access_token=${ACCESS_TOKEN}`;
-  console.log(`[${adId}] Trying Strategy 4 (adimages lookup) with hash: ${hash}`);
-  try {
-    const lookupRes = await fetch(lookupUrl);
-    const lookupData = await lookupRes.json();
-    console.log(`[${adId}] adimages response:`, JSON.stringify(lookupData, null, 2));
-    if (!lookupRes.ok || lookupData?.error) {
-      console.warn(`[${adId}] adimages lookup failed: ${lookupRes.status}`, lookupData?.error ?? lookupData);
-      return null;
-    }
-    const imagesObj = lookupData?.images || {};
-    const imageData = imagesObj[hash] || lookupData?.data?.find?.((img: any) => img.hash === hash) || lookupData?.data?.[0];
-    if (!imageData) return null;
-    const bestUrl = imageData.permalink_url || imageData.url;
-    if (!bestUrl) return null;
-    const dimensions = `${imageData.original_width ?? imageData.width ?? "?"}×${imageData.original_height ?? imageData.height ?? "?"}`;
-    console.log(`[${adId}] ✓ Strategy 4 found: ${bestUrl.substring(0, 200)} (${dimensions})`);
-    return { url: bestUrl, strategy: "adimages", details: { hash, permalink_url: imageData.permalink_url, url: imageData.url, dimensions, raw: imageData } };
-  } catch (e) {
-    console.error(`[${adId}] adimages exception:`, (e as Error).message);
-    return null;
+async function resolveBestImageUrl(creative: any, accountId: string, token: string, adId: string) {
+  const story = creative?.object_story_spec || {};
+  const photoData = story.photo_data;
+  const linkData = story.link_data;
+  const videoData = story.video_data;
+  const assetImages = creative?.asset_feed_spec?.images ?? [];
+  const hash = creative?.image_hash
+    || photoData?.image_hash
+    || linkData?.image_hash
+    || videoData?.image_hash
+    || linkData?.child_attachments?.[0]?.image_hash
+    || assetImages?.[0]?.hash
+    || assetImages?.[0]?.image_hash
+    || null;
+
+  const debug: any = {
+    creative_keys: Object.keys(creative || {}),
+    image_hash: hash,
+    direct_image_hash: creative?.image_hash || null,
+    has_object_story_spec: !!creative?.object_story_spec,
+    object_story_spec_keys: creative?.object_story_spec ? Object.keys(creative.object_story_spec) : [],
+    has_asset_feed_spec: !!creative?.asset_feed_spec,
+    asset_feed_image_count: Array.isArray(assetImages) ? assetImages.length : 0,
+  };
+
+  console.log(`[${adId}] Resolve debug:`, JSON.stringify(debug, null, 2));
+
+  // STRATEGY 1
+  if (photoData?.url) {
+    const upgraded = upgradeFbResolution(photoData.url);
+    console.log(`[${adId}] Strategy 1: photo_data.url\n  Before: ${photoData.url.substring(0, 200)}\n  After:  ${upgraded.substring(0, 200)}`);
+    return { url: upgraded, strategy: 'photo_data', debug: { ...debug, original: photoData.url, upgraded } };
+  } else {
+    debug.photo_data_error = 'No object_story_spec.photo_data.url';
   }
+
+  // STRATEGY 2
+  if (linkData?.picture) {
+    const upgraded = upgradeFbResolution(linkData.picture);
+    console.log(`[${adId}] Strategy 2: link_data.picture\n  Before: ${linkData.picture.substring(0, 200)}\n  After:  ${upgraded.substring(0, 200)}`);
+    return { url: upgraded, strategy: 'link_data', debug: { ...debug, original: linkData.picture, upgraded } };
+  } else {
+    debug.link_data_error = 'No object_story_spec.link_data.picture';
+  }
+
+  // STRATEGY 3
+  if (assetImages?.[0]?.url) {
+    const upgraded = upgradeFbResolution(assetImages[0].url);
+    console.log(`[${adId}] Strategy 3: asset_feed\n  Before: ${assetImages[0].url.substring(0, 200)}\n  After:  ${upgraded.substring(0, 200)}`);
+    return { url: upgraded, strategy: 'asset_feed', debug: { ...debug, original: assetImages[0].url, upgraded } };
+  } else {
+    debug.asset_feed_error = 'No asset_feed_spec.images[0].url';
+  }
+
+  // STRATEGY 4 — image_hash lookup (HIER NEU PRIORISIERT)
+  if (hash) {
+    console.log(`[${adId}] Strategy 4: Trying /adimages lookup with hash ${hash}`);
+
+    try {
+      const bareAccountId = accountId.replace(/^act_/, '');
+      const lookupUrl = `https://graph.facebook.com/v19.0/act_${bareAccountId}/adimages?hashes=${encodeURIComponent(JSON.stringify([hash]))}&fields=url,permalink_url,original_width,original_height,width,height&access_token=${token}`;
+
+      console.log(`[${adId}] Lookup URL: ${lookupUrl.substring(0, 200)}...`);
+
+      const lookupRes = await fetch(lookupUrl);
+      const lookupData = await lookupRes.json();
+
+      console.log(`[${adId}] adimages response status: ${lookupRes.status}`);
+      console.log(`[${adId}] adimages response body:`, JSON.stringify(lookupData, null, 2));
+
+      if (lookupRes.ok) {
+        // WICHTIG: Meta returnt images als Object mit hash als key, NICHT als array
+        const imagesObj = lookupData?.images || {};
+        const imageData = imagesObj[hash] || lookupData?.data?.[0];
+
+        if (imageData) {
+          const bestUrl = imageData.permalink_url || imageData.url;
+          const upgraded = upgradeFbResolution(bestUrl);
+          debug.adimages_dimensions = `${imageData.original_width || imageData.width}×${imageData.original_height || imageData.height}`;
+          debug.adimages_permalink = imageData.permalink_url;
+          debug.original = bestUrl;
+          debug.upgraded = upgraded;
+          debug.adimages_raw = imageData;
+          console.log(`[${adId}] ✓ Strategy 4 SUCCESS: ${debug.adimages_dimensions}`);
+          return { url: upgraded, strategy: 'adimages', debug };
+        } else {
+          console.warn(`[${adId}] adimages returned 200 but no imageData for hash ${hash}`);
+          debug.adimages_error = `No imageData for hash ${hash}`;
+        }
+      } else {
+        console.error(`[${adId}] adimages lookup failed: ${lookupRes.status}`, lookupData);
+        debug.adimages_error = `HTTP ${lookupRes.status}: ${JSON.stringify(lookupData?.error || lookupData)}`;
+      }
+    } catch (e: any) {
+      console.error(`[${adId}] adimages exception:`, e.message);
+      debug.adimages_error = e.message;
+    }
+  } else {
+    console.warn(`[${adId}] No image_hash available — skipping Strategy 4`);
+    debug.adimages_error = 'No image_hash in creative';
+  }
+
+  // STRATEGY 5 — thumbnail (mit URL-Cleanup)
+  if (creative?.thumbnail_url) {
+    const upgraded = upgradeFbResolution(creative.thumbnail_url);
+    console.log(`[${adId}] Strategy 5: thumbnail (after cleanup)\n  Before: ${creative.thumbnail_url.substring(0, 200)}\n  After:  ${upgraded.substring(0, 200)}`);
+    return { url: upgraded, strategy: 'thumbnail', debug: { ...debug, original: creative.thumbnail_url, upgraded } };
+  }
+
+  // STRATEGY 6 — image_url (mit URL-Cleanup)
+  if (creative?.image_url) {
+    const upgraded = upgradeFbResolution(creative.image_url);
+    console.log(`[${adId}] Strategy 6 FALLBACK: image_url (after cleanup)\n  Before: ${creative.image_url.substring(0, 200)}\n  After:  ${upgraded.substring(0, 200)}`);
+    return { url: upgraded, strategy: 'image_url_fallback', debug: { ...debug, original: creative.image_url, upgraded } };
+  }
+
+  return { url: null, strategy: 'none', debug };
 }
 
 async function fetchVideoInfo(videoId: string) {
@@ -125,130 +243,141 @@ async function resolveCreativeUrls(
   if (!creative) return { thumbnail_url: null, video_url: null, ad_format: "image", strategy: "none", details: { reason: "missing creative" } };
 
   console.log(`[${adId}] Resolving image URL...`);
-  console.log(`[${adId}] Available fields:`, {
-    has_image_url: !!creative?.image_url,
-    has_thumbnail_url: !!creative?.thumbnail_url,
-    has_image_hash: !!creative?.image_hash,
-    has_object_story_spec: !!creative?.object_story_spec,
-    has_photo_data: !!creative?.object_story_spec?.photo_data,
-    has_link_data: !!creative?.object_story_spec?.link_data,
-    has_asset_feed_spec: !!creative?.asset_feed_spec,
-    image_url_sample: creative?.image_url?.substring(0, 200),
-  });
-
   const story = creative.object_story_spec || {};
   const videoData = story.video_data;
   const linkData = story.link_data;
-  const photoData = story.photo_data;
-
-  let thumbnail_url: string | null = null;
   let video_url: string | null = null;
   let ad_format = "image";
-  let imageHash: string | null = null;
   let videoId: string | null = null;
 
   if (creative.video_id || videoData?.video_id) {
     ad_format = "video";
     videoId = creative.video_id || videoData?.video_id;
-    imageHash = videoData?.image_hash;
   } else if (linkData?.child_attachments?.length > 0) {
     ad_format = "carousel";
-    imageHash = linkData.child_attachments[0].image_hash;
-  } else if (photoData?.image_hash) {
-    ad_format = "image";
-    imageHash = photoData.image_hash;
-  } else if (linkData?.image_hash) {
-    ad_format = "image";
-    imageHash = linkData.image_hash;
-  } else if (creative.image_hash) {
-    ad_format = "image";
-    imageHash = creative.image_hash;
   }
 
-  if (photoData?.url) {
-    console.log(`[${adId}] ✓ Strategy 1 (photo_data.url): ${photoData.url.substring(0, 200)}`);
-    return { thumbnail_url: photoData.url, video_url, ad_format, strategy: "photo_data", details: { photoUrl: photoData.url } };
-  }
-
-  if (linkData?.picture) {
-    const upgraded = upgradeFbResolution(linkData.picture);
-    console.log(`[${adId}] ✓ Strategy 2 (link_data.picture): ${upgraded?.substring(0, 200)}`);
-    return { thumbnail_url: upgraded, video_url, ad_format, strategy: "link_data", details: { original: linkData.picture, upgraded } };
-  }
-
-  const feedImg = creative.asset_feed_spec?.images?.[0]?.url;
-  if (feedImg) {
-    console.log(`[${adId}] ✓ Strategy 3 (asset_feed_spec): ${feedImg.substring(0, 200)}`);
-    return { thumbnail_url: feedImg, video_url, ad_format, strategy: "asset_feed", details: { feedImage: feedImg } };
-  }
-
-  if (imageHash) {
-    const adImage = await lookupAdImage(imageHash, accountId, adId);
-    if (adImage) return { thumbnail_url: adImage.url, video_url, ad_format, strategy: adImage.strategy, details: adImage.details };
-  }
-
-  if (videoId) {
+  const resolveResult = await resolveBestImageUrl(creative, accountId, ACCESS_TOKEN!, adId);
+  if (!resolveResult.url && videoId) {
     const videoInfo = await fetchVideoInfo(videoId);
     video_url = videoInfo?.source || null;
     if (videoInfo?.largestThumbnail) {
-      console.log(`[${adId}] ✓ Strategy 5 (video thumbnail): ${videoInfo.largestThumbnail.substring(0, 200)}`);
-      return { thumbnail_url: videoInfo.largestThumbnail, video_url, ad_format, strategy: "video_thumbnail", details: { videoId, picture: videoInfo.picture, largestThumbnail: videoInfo.largestThumbnail } };
+      const upgraded = upgradeFbResolution(videoInfo.largestThumbnail);
+      console.log(`[${adId}] Strategy video_thumbnail:\n  Before: ${videoInfo.largestThumbnail.substring(0, 200)}\n  After:  ${upgraded.substring(0, 200)}`);
+      return { thumbnail_url: upgraded, video_url, ad_format, strategy: "video_thumbnail", details: { ...resolveResult.debug, videoId, original: videoInfo.largestThumbnail, upgraded } };
     }
   }
 
-  if (creative.thumbnail_url) {
-    const upgraded = upgradeFbResolution(creative.thumbnail_url);
-    console.log(`[${adId}] ⚠ Strategy 6 (thumbnail_url): ${upgraded?.substring(0, 200)}`);
-    return { thumbnail_url: upgraded, video_url, ad_format, strategy: "thumbnail", details: { original: creative.thumbnail_url, upgraded } };
-  }
-
-  if (creative.image_url) {
-    const upgraded = upgradeFbResolution(creative.image_url);
-    console.log(`[${adId}] ⚠⚠ Strategy 7 FALLBACK (image_url): ${upgraded?.substring(0, 200)}`);
-    return { thumbnail_url: upgraded, video_url, ad_format, strategy: "image_url_fallback", details: { original: creative.image_url, upgraded } };
-  }
-
-  console.error(`[${adId}] ✗ All strategies failed`);
-  return { thumbnail_url: null, video_url, ad_format, strategy: "none", details: { creative } };
+  return {
+    thumbnail_url: resolveResult.url,
+    video_url,
+    ad_format,
+    strategy: resolveResult.strategy,
+    details: resolveResult.debug,
+  };
 }
 
-async function persistThumbnail(metaUrl: string | null, adId: string, svc: any): Promise<string | null> {
-  if (!metaUrl) return null;
-  console.log(`[${adId}] Persisting image from: ${metaUrl.substring(0, 200)}`);
+async function persistImageToStorage(metaUrl: string | null, adId: string, supabase: any) {
+  const result: any = {
+    url: null,
+    error: null,
+    debug: {
+      source_url: metaUrl?.substring(0, 200),
+      bucket: 'referenz-showcase',
+    }
+  };
+
+  // Schritt 0: URL valid?
+  if (!metaUrl || !metaUrl.startsWith('http')) {
+    result.error = 'Invalid source URL';
+    return result;
+  }
+
   try {
-    const resp = await fetch(metaUrl, {
-      signal: AbortSignal.timeout(15000),
+    // Schritt 1: Fetch from Meta
+    console.log(`[${adId}] PERSIST: Fetching ${metaUrl.substring(0, 150)}...`);
+
+    const imgRes = await fetch(metaUrl, {
+      signal: AbortSignal.timeout(20000),
       headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-        "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'image/*,*/*;q=0.8',
       },
     });
-    if (!resp.ok) { console.error(`[${adId}] Image fetch failed: ${resp.status} ${resp.statusText}`); return metaUrl; }
-    const contentLength = resp.headers.get("content-length");
-    const contentType = resp.headers.get("content-type") || "image/jpeg";
-    const arrayBuffer = await resp.arrayBuffer();
-    const byteLength = arrayBuffer.byteLength;
-    console.log(`[${adId}] Image downloaded: ${contentLength ?? byteLength} bytes, type: ${contentType}, buffer: ${byteLength}`);
 
-    if (byteLength < 5000) {
-      console.warn(`[${adId}] REFUSING tiny image (${byteLength} bytes) — likely 64x64 thumbnail`);
-      return metaUrl;
+    result.debug.fetch_status = imgRes.status;
+    result.debug.fetch_content_type = imgRes.headers.get('content-type');
+    result.debug.fetch_content_length = imgRes.headers.get('content-length');
+
+    if (!imgRes.ok) {
+      result.error = `Meta CDN returned ${imgRes.status}`;
+      return result;
     }
 
-    const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
+    // Schritt 2: Read body
+    const buffer = await imgRes.arrayBuffer();
+    const sizeKb = Math.round(buffer.byteLength / 1024);
+    result.debug.actual_size_kb = sizeKb;
+
+    console.log(`[${adId}] PERSIST: Got ${sizeKb}KB`);
+
+    if (sizeKb < 2) {
+      result.error = `Image too small: ${sizeKb}KB — likely empty or broken`;
+      return result;
+    }
+
+    if (sizeKb < 10) {
+      console.warn(`[${adId}] PERSIST: Suspiciously small (${sizeKb}KB) — but uploading anyway`);
+    }
+
+    // Schritt 3: Upload to Storage
+    const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+    const ext = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
     const filename = `meta-ads/${adId}-${Date.now()}.${ext}`;
-    const { error } = await svc.storage.from("referenz-showcase").upload(filename, new Uint8Array(arrayBuffer), {
-      contentType,
-      upsert: true,
-      cacheControl: "31536000",
-    });
-    if (error) { console.error(`[${adId}] Upload error:`, error); return metaUrl; }
-    const { data } = svc.storage.from("referenz-showcase").getPublicUrl(filename);
-    console.log(`[${adId}] ✓ Persisted to: ${data?.publicUrl}`);
-    return data?.publicUrl ?? null;
-  } catch (e) {
-    console.error(`[${adId}] Persist failed:`, (e as Error).message);
-    return metaUrl;
+
+    result.debug.target_filename = filename;
+
+    console.log(`[${adId}] PERSIST: Uploading to ${filename}`);
+
+    const { data: uploadData, error: uploadErr } = await supabase.storage
+      .from('referenz-showcase')
+      .upload(filename, buffer, {
+        contentType,
+        cacheControl: '31536000',
+        upsert: true,
+      });
+
+    result.debug.upload_data = uploadData;
+
+    if (uploadErr) {
+      console.error(`[${adId}] PERSIST: Upload error:`, JSON.stringify(uploadErr));
+      result.error = `Upload error: ${uploadErr.message || JSON.stringify(uploadErr)}`;
+      result.debug.upload_error_full = uploadErr;
+      return result;
+    }
+
+    // Schritt 4: Public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('referenz-showcase')
+      .getPublicUrl(filename);
+
+    if (!publicUrl) {
+      result.error = 'getPublicUrl returned empty';
+      return result;
+    }
+
+    result.url = publicUrl;
+    result.debug.public_url = publicUrl;
+
+    console.log(`[${adId}] PERSIST: ✓ Success → ${publicUrl}`);
+    return result;
+
+  } catch (e: any) {
+    result.error = `Exception: ${e.message}`;
+    result.debug.exception = e.message;
+    result.debug.exception_stack = e.stack?.substring(0, 500);
+    console.error(`[${adId}] PERSIST: Exception:`, e.message);
+    return result;
   }
 }
 
@@ -267,7 +396,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const userId = user.id;
-    const svc = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY not configured");
+    const svc = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKey);
     const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", userId);
     if (!(roles ?? []).some((r: any) => r.role === "admin")) {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -324,7 +455,8 @@ Deno.serve(async (req) => {
         const accId = `act_${ad.account_id}`;
         const { thumbnail_url: rawThumb, video_url, ad_format, strategy, details } = await resolveCreativeUrls(creative, accId, ad.id);
 
-        const persistedThumb = await persistThumbnail(rawThumb, ad.id, svc);
+        const persistResult = await persistImageToStorage(rawThumb, ad.id, svc);
+        const persistedThumb = persistResult.url;
 
         let accountName = "";
         try {
@@ -365,15 +497,18 @@ Deno.serve(async (req) => {
           ad_format,
           thumbnail_url: persistedThumb || rawThumb,
           thumbnail_url_meta: rawThumb,
-          thumbnail_url_persisted: persistedThumb && persistedThumb !== rawThumb ? persistedThumb : null,
+          thumbnail_url_persisted: persistedThumb,
           sync_strategy: strategy,
           sync_details: {
             ...details,
             raw_url: rawThumb,
-            persisted_url: persistedThumb && persistedThumb !== rawThumb ? persistedThumb : null,
-            persisted_to_storage: !!persistedThumb && persistedThumb !== rawThumb,
+            persisted_url: persistedThumb,
+            persisted_to_storage: !!persistedThumb,
+            persist_error: persistResult.error,
+            persist_size_kb: persistResult.debug?.actual_size_kb ?? null,
+            persist_debug: persistResult.debug,
           },
-          last_sync_error: rawThumb ? (persistedThumb === rawThumb ? "Image not persisted to storage; using Meta URL fallback" : null) : "No image URL found",
+          last_sync_error: persistResult.error ?? (rawThumb ? null : "No image URL found"),
           last_synced_at: new Date().toISOString(),
           video_url,
           meta_metrics: metrics,
