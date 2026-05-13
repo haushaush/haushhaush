@@ -337,7 +337,8 @@ Deno.serve(async (req) => {
         }
 
         const { thumbnail_url: rawThumb, video_url, ad_format, strategy, details } = await resolveCreativeUrls(creative, accId, r.meta_ad_id);
-        const persistedThumb = await persistThumbnail(rawThumb, r.meta_ad_id, svc);
+        const persistResult = await persistThumbnail(rawThumb, r.meta_ad_id, svc);
+        const persistedThumb = persistResult.url;
 
         const ins = await metaGet(`/${r.meta_ad_id}/insights`, {
           fields: "spend,impressions,clicks,ctr,cpm,actions,action_values,date_start,date_stop",
