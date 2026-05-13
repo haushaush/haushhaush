@@ -604,6 +604,27 @@ export type Database = {
           },
         ]
       }
+      branchen: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       bug_reports: {
         Row: {
           browser_info: string | null
@@ -3417,6 +3438,7 @@ export type Database = {
           thumbnail_url: string | null
           title: string
           type: string
+          unternehmen: string | null
           updated_at: string | null
           video_url: string | null
           website_url: string | null
@@ -3447,6 +3469,7 @@ export type Database = {
           thumbnail_url?: string | null
           title: string
           type: string
+          unternehmen?: string | null
           updated_at?: string | null
           video_url?: string | null
           website_url?: string | null
@@ -3477,6 +3500,7 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string
           type?: string
+          unternehmen?: string | null
           updated_at?: string | null
           video_url?: string | null
           website_url?: string | null
@@ -4275,6 +4299,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      unternehmen: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       user_mfa_status: {
         Row: {
