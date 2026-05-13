@@ -140,6 +140,10 @@ export default function ReferenzWerbeanzeigeDetail() {
   const versicherer = (ad.custom_tags ?? []).find(t => t.startsWith("versicherer-"))?.replace("versicherer-", "");
   const branche = linkedKunde?.branche || ad.filter_values?.branche || "";
   const unternehmen = linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
+  const syncDetails = (ad as any).sync_details;
+  const syncStrategy = (ad as any).sync_strategy;
+  const lastSyncedAt = (ad as any).last_synced_at;
+  const strategyTone = syncStrategy === "photo_data" ? "text-emerald-600 dark:text-emerald-400" : syncStrategy === "adimages" ? "text-blue-600 dark:text-blue-400" : "text-amber-600 dark:text-amber-400";
 
   return (
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950">
@@ -251,6 +255,24 @@ export default function ReferenzWerbeanzeigeDetail() {
                   <Copy className="w-4 h-4 mr-2" /> Link kopieren
                 </Button>
               </div>
+
+              {editMode && syncStrategy && (
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 text-xs space-y-1 shadow-sm">
+                  <div className="font-bold text-gray-700 dark:text-gray-300 mb-2">Sync Debug Info</div>
+                  <div className="font-mono text-gray-600 dark:text-gray-400 space-y-1">
+                    <div>Strategy: <span className={`font-bold ${strategyTone}`}>{syncStrategy}</span></div>
+                    {lastSyncedAt && <div>Last sync: {new Date(lastSyncedAt).toLocaleString("de-DE")}</div>}
+                    {syncDetails?.dimensions && <div>Dimensions: {syncDetails.dimensions}</div>}
+                    {(ad as any).last_sync_error && <div className="text-red-600 dark:text-red-400">Error: {(ad as any).last_sync_error}</div>}
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-gray-500 dark:text-gray-400">Raw details</summary>
+                      <pre className="mt-2 text-[10px] overflow-auto max-h-40 bg-white dark:bg-gray-950 p-2 rounded border border-gray-100 dark:border-gray-800">
+                        {JSON.stringify(syncDetails, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
+                </div>
+              )}
 
               {/* Performance-Panel */}
               {(m.leads != null || m.cpl != null || m.ctr != null || m.roas != null || m.spend != null || m.clicks != null) && (
