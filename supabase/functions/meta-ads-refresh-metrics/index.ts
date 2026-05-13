@@ -178,46 +178,52 @@ async function resolveCreativeUrls(
 
   const photoUrl = photoData?.url;
   if (photoUrl) {
-    console.log(`[${adId}] ✓ Strategy 1 (photo_data.url): ${photoUrl.substring(0, 200)}`);
-    return { thumbnail_url: photoUrl, video_url, ad_format, strategy: "photo_data", details: { photoUrl } };
+    const upgraded = upgradeFbResolution(photoUrl);
+    console.log(`[${adId}] ✓ Strategy 1 (photo_data.url):\n  Before: ${photoUrl.substring(0, 200)}\n  After:  ${upgraded?.substring(0, 200)}`);
+    return { thumbnail_url: upgraded, video_url, ad_format, strategy: "photo_data", details: { original: photoUrl, upgraded } };
   }
 
   const linkPicture = linkData?.picture;
   if (linkPicture) {
     const upgraded = upgradeFbResolution(linkPicture);
-    console.log(`[${adId}] ✓ Strategy 2 (link_data.picture): ${upgraded?.substring(0, 200)}`);
+    console.log(`[${adId}] ✓ Strategy 2 (link_data.picture):\n  Before: ${linkPicture.substring(0, 200)}\n  After:  ${upgraded?.substring(0, 200)}`);
     return { thumbnail_url: upgraded, video_url, ad_format, strategy: "link_data", details: { original: linkPicture, upgraded } };
   }
 
   const feedImage = creative?.asset_feed_spec?.images?.[0]?.url;
   if (feedImage) {
-    console.log(`[${adId}] ✓ Strategy 3 (asset_feed_spec): ${feedImage.substring(0, 200)}`);
-    return { thumbnail_url: feedImage, video_url, ad_format, strategy: "asset_feed", details: { feedImage } };
+    const upgraded = upgradeFbResolution(feedImage);
+    console.log(`[${adId}] ✓ Strategy 3 (asset_feed_spec):\n  Before: ${feedImage.substring(0, 200)}\n  After:  ${upgraded?.substring(0, 200)}`);
+    return { thumbnail_url: upgraded, video_url, ad_format, strategy: "asset_feed", details: { original: feedImage, upgraded } };
   }
 
   if (imageHash) {
     const adImage = await lookupAdImage(imageHash, accountId, adId);
-    if (adImage) return { thumbnail_url: adImage.url, video_url, ad_format, strategy: adImage.strategy, details: adImage.details };
+    if (adImage) {
+      const upgraded = upgradeFbResolution(adImage.url);
+      return { thumbnail_url: upgraded, video_url, ad_format, strategy: adImage.strategy, details: { ...adImage.details, upgraded } };
+    }
   }
 
   if (videoId) {
     const videoInfo = await fetchVideoInfo(videoId);
     video_url = videoInfo?.source || null;
     if (videoInfo?.largestThumbnail) {
-      console.log(`[${adId}] ✓ Strategy 5 (video thumbnail): ${videoInfo.largestThumbnail.substring(0, 200)}`);
-      return { thumbnail_url: videoInfo.largestThumbnail, video_url, ad_format, strategy: "video_thumbnail", details: { videoId, picture: videoInfo.picture, largestThumbnail: videoInfo.largestThumbnail } };
+      const upgraded = upgradeFbResolution(videoInfo.largestThumbnail);
+      console.log(`[${adId}] ✓ Strategy 5 (video thumbnail): ${upgraded?.substring(0, 200)}`);
+      return { thumbnail_url: upgraded, video_url, ad_format, strategy: "video_thumbnail", details: { videoId, original: videoInfo.largestThumbnail, upgraded } };
     }
   }
 
   if (creative?.thumbnail_url) {
     const upgraded = upgradeFbResolution(creative.thumbnail_url);
-    console.log(`[${adId}] ⚠ Strategy 6 (thumbnail_url): ${upgraded?.substring(0, 200)}`);
+    console.log(`[${adId}] ⚠ Strategy 6 (thumbnail_url):\n  Before: ${creative.thumbnail_url.substring(0, 200)}\n  After:  ${upgraded?.substring(0, 200)}`);
     return { thumbnail_url: upgraded, video_url, ad_format, strategy: "thumbnail", details: { original: creative.thumbnail_url, upgraded } };
   }
 
   if (creative?.image_url) {
     const upgraded = upgradeFbResolution(creative.image_url);
-    console.log(`[${adId}] ⚠⚠ Strategy 7 FALLBACK (image_url): ${upgraded?.substring(0, 200)}`);
+    console.log(`[${adId}] ⚠⚠ Strategy 7 FALLBACK (image_url):\n  Before: ${creative.image_url.substring(0, 200)}\n  After:  ${upgraded?.substring(0, 200)}`);
     return { thumbnail_url: upgraded, video_url, ad_format, strategy: "image_url_fallback", details: { original: creative.image_url, upgraded } };
   }
 
