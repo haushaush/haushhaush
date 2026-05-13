@@ -12,6 +12,8 @@ const ACCESS_TOKEN = Deno.env.get("META_ACCESS_TOKEN");
 const API_VERSION = "v19.0";
 const BASE = `https://graph.facebook.com/${API_VERSION}`;
 
+type ImageResolveResult = { url: string | null; strategy: string; details: Record<string, any> };
+
 async function metaGet(path: string, params: Record<string, string> = {}) {
   const url = new URL(`${BASE}${path.startsWith("/") ? path : `/${path}`}`);
   url.searchParams.set("access_token", ACCESS_TOKEN!);
