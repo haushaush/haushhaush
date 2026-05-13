@@ -10,6 +10,13 @@ import { toast } from 'sonner';
 import { Loader2, ImageIcon, X, Plus, Camera, RefreshCw, Upload } from 'lucide-react';
 import { WebsiteEmbed } from './WebsiteEmbed';
 import type { ShowcaseRow } from '@/pages/sales/ReferenzShowcaseShared';
+import { Combobox } from '@/components/ui/Combobox';
+import {
+  useBranchen,
+  useCreateBranche,
+  useUnternehmen,
+  useCreateUnternehmen,
+} from '@/hooks/useLookups';
 
 interface Props {
   open: boolean;
