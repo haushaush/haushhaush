@@ -77,6 +77,32 @@ async function resolveHighResUrl(imageHash: string, accountId: string): Promise<
   }
 }
 
+async function lookupAdImage(hash: string, accountId: string, adId: string): Promise<ImageResolveResult | null> {
+  const bareAccountId = accountId.replace(/^act_/, "");
+  const lookupUrl = `${BASE}/act_${bareAccountId}/adimages?hashes=${encodeURIComponent(JSON.stringify([hash]))}&fields=hash,url,permalink_url,original_width,original_height,width,height&access_token=${ACCESS_TOKEN}`;
+  console.log(`[${adId}] Trying Strategy 4 (adimages lookup) with hash: ${hash}`);
+  try {
+    const lookupRes = await fetch(lookupUrl);
+    const lookupData = await lookupRes.json();
+    console.log(`[${adId}] adimages response:`, JSON.stringify(lookupData, null, 2));
+    if (!lookupRes.ok || lookupData?.error) {
+      console.warn(`[${adId}] adimages lookup failed: ${lookupRes.status}`, lookupData?.error ?? lookupData);
+      return null;
+    }
+    const imagesObj = lookupData?.images || {};
+    const imageData = imagesObj[hash] || lookupData?.data?.find?.((img: any) => img.hash === hash) || lookupData?.data?.[0];
+    if (!imageData) return null;
+    const bestUrl = imageData.permalink_url || imageData.url;
+    if (!bestUrl) return null;
+    const dimensions = `${imageData.original_width ?? imageData.width ?? "?"}×${imageData.original_height ?? imageData.height ?? "?"}`;
+    console.log(`[${adId}] ✓ Strategy 4 found: ${bestUrl.substring(0, 200)} (${dimensions})`);
+    return { url: bestUrl, strategy: "adimages", details: { hash, permalink_url: imageData.permalink_url, url: imageData.url, dimensions, raw: imageData } };
+  } catch (e) {
+    console.error(`[${adId}] adimages exception:`, (e as Error).message);
+    return null;
+  }
+}
+
 async function fetchVideoInfo(videoId: string) {
   try {
     const url = `${BASE}/${videoId}?fields=source,picture,thumbnails{uri,width,height,is_preferred}&access_token=${ACCESS_TOKEN}`;
