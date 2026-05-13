@@ -322,7 +322,7 @@ Deno.serve(async (req) => {
         const metrics = extractMetrics(insightRow);
         const creative = ad.creative ?? {};
         const accId = `act_${ad.account_id}`;
-        const { thumbnail_url: rawThumb, video_url, ad_format } = await resolveCreativeUrls(creative, accId);
+        const { thumbnail_url: rawThumb, video_url, ad_format, strategy, details } = await resolveCreativeUrls(creative, accId, ad.id);
 
         const persistedThumb = await persistThumbnail(rawThumb, ad.id, svc);
 
@@ -366,6 +366,15 @@ Deno.serve(async (req) => {
           thumbnail_url: persistedThumb || rawThumb,
           thumbnail_url_meta: rawThumb,
           thumbnail_url_persisted: persistedThumb,
+          sync_strategy: strategy,
+          sync_details: {
+            ...details,
+            raw_url: rawThumb,
+            persisted_url: persistedThumb,
+            persisted_to_storage: !!persistedThumb && persistedThumb !== rawThumb,
+          },
+          last_sync_error: rawThumb ? null : "No image URL found",
+          last_synced_at: new Date().toISOString(),
           video_url,
           meta_metrics: metrics,
           campaign_period_start: insightRow?.date_start ?? null,
