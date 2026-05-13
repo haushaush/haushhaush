@@ -3214,6 +3214,8 @@ export type Database = {
           is_active: boolean | null
           is_featured: boolean | null
           is_public: boolean | null
+          last_sync_error: string | null
+          last_synced_at: string | null
           linked_kunde_id: string | null
           meta_account_id: string
           meta_account_name: string | null
@@ -3227,6 +3229,8 @@ export type Database = {
           meta_metrics: Json | null
           metrics_last_refreshed_at: string | null
           preview_url: string | null
+          sync_details: Json | null
+          sync_strategy: string | null
           thumbnail_url: string | null
           thumbnail_url_meta: string | null
           thumbnail_url_persisted: string | null
@@ -3249,6 +3253,8 @@ export type Database = {
           is_active?: boolean | null
           is_featured?: boolean | null
           is_public?: boolean | null
+          last_sync_error?: string | null
+          last_synced_at?: string | null
           linked_kunde_id?: string | null
           meta_account_id: string
           meta_account_name?: string | null
@@ -3262,6 +3268,8 @@ export type Database = {
           meta_metrics?: Json | null
           metrics_last_refreshed_at?: string | null
           preview_url?: string | null
+          sync_details?: Json | null
+          sync_strategy?: string | null
           thumbnail_url?: string | null
           thumbnail_url_meta?: string | null
           thumbnail_url_persisted?: string | null
@@ -3284,6 +3292,8 @@ export type Database = {
           is_active?: boolean | null
           is_featured?: boolean | null
           is_public?: boolean | null
+          last_sync_error?: string | null
+          last_synced_at?: string | null
           linked_kunde_id?: string | null
           meta_account_id?: string
           meta_account_name?: string | null
@@ -3297,6 +3307,8 @@ export type Database = {
           meta_metrics?: Json | null
           metrics_last_refreshed_at?: string | null
           preview_url?: string | null
+          sync_details?: Json | null
+          sync_strategy?: string | null
           thumbnail_url?: string | null
           thumbnail_url_meta?: string | null
           thumbnail_url_persisted?: string | null
