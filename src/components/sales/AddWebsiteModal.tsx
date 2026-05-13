@@ -254,6 +254,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
         title: title.trim(),
         client_name: clientName.trim() || null,
         branche: branche.trim() || null,
+        unternehmen: (unternehmen || '').trim() || null,
         description: description.trim() || null,
         website_url: cleanUrl,
         fallback_image_url: fallbackUrl,
