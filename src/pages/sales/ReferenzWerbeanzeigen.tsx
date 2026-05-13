@@ -35,6 +35,10 @@ export interface MetaAdRow {
   is_featured: boolean;
   campaign_period_start: string | null;
   campaign_period_end: string | null;
+  sync_strategy?: string | null;
+  sync_details?: Record<string, any> | null;
+  last_sync_error?: string | null;
+  last_synced_at?: string | null;
   imported_at?: string | null;
   created_at?: string | null;
 }
