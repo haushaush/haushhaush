@@ -218,7 +218,7 @@ async function resolveBestImageUrl(creative: any, accountId: string, token: stri
   return { url: null, strategy: 'none', debug };
 }
 
-async function fetchVideoInfoasync function fetchVideoInfo(videoId: string) {
+async function fetchVideoInfo(videoId: string) {
   try {
     const url = `${BASE}/${videoId}?fields=source,picture,thumbnails{uri,width,height,is_preferred}&access_token=${ACCESS_TOKEN}`;
     const resp = await fetch(url);
@@ -389,7 +389,9 @@ Deno.serve(async (req) => {
     );
     const { data: { user }, error: authErr } = await supabase.auth.getUser();
     if (authErr || !user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    const svc = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY not configured");
+    const svc = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKey);
     const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", user.id);
     if (!(roles ?? []).some((r: any) => r.role === "admin")) {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -434,7 +436,7 @@ Deno.serve(async (req) => {
         }
 
         const { thumbnail_url: rawThumb, video_url, ad_format, strategy, details } = await resolveCreativeUrls(creative, accId, r.meta_ad_id);
-        const persistResult = await persistThumbnail(rawThumb, r.meta_ad_id, svc);
+        const persistResult = await persistImageToStorage(rawThumb, r.meta_ad_id, svc);
         const persistedThumb = persistResult.url;
 
         const ins = await metaGet(`/${r.meta_ad_id}/insights`, {
@@ -471,7 +473,8 @@ Deno.serve(async (req) => {
             persisted_url: persistedThumb,
             persisted_to_storage: !!persistedThumb,
             persist_error: persistResult.error,
-            persist_size_kb: persistResult.sizeKb,
+            persist_size_kb: persistResult.debug?.actual_size_kb ?? null,
+            persist_debug: persistResult.debug,
             force,
           },
           last_sync_error: persistResult.error ?? (rawThumb ? null : "No image URL found"),
