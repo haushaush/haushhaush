@@ -214,33 +214,41 @@ async function resolveCreativeUrls(
 
 async function persistThumbnail(metaUrl: string | null, adId: string, svc: any): Promise<string | null> {
   if (!metaUrl) return null;
-  console.log(`[persistThumbnail] Fetching: ${metaUrl.substring(0, 100)}...`);
+  console.log(`[${adId}] Persisting image from: ${metaUrl.substring(0, 200)}`);
   try {
-    const resp = await fetch(metaUrl);
-    if (!resp.ok) { console.warn(`[persistThumbnail] Fetch failed: ${resp.status}`); return null; }
+    const resp = await fetch(metaUrl, {
+      signal: AbortSignal.timeout(15000),
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+      },
+    });
+    if (!resp.ok) { console.error(`[${adId}] Image fetch failed: ${resp.status} ${resp.statusText}`); return metaUrl; }
+    const contentLength = resp.headers.get("content-length");
     const contentType = resp.headers.get("content-type") || "image/jpeg";
     const arrayBuffer = await resp.arrayBuffer();
     const byteLength = arrayBuffer.byteLength;
-    console.log(`[persistThumbnail] Downloaded ${byteLength} bytes (${contentType})`);
+    console.log(`[${adId}] Image downloaded: ${contentLength ?? byteLength} bytes, type: ${contentType}, buffer: ${byteLength}`);
 
     if (byteLength < 5000) {
-      console.warn(`[persistThumbnail] REFUSING tiny image (${byteLength} bytes) — likely 64x64 thumbnail`);
-      return null;
+      console.warn(`[${adId}] REFUSING tiny image (${byteLength} bytes) — likely 64x64 thumbnail`);
+      return metaUrl;
     }
 
-    const filename = `meta-ads/${adId}.jpg`;
+    const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
+    const filename = `meta-ads/${adId}-${Date.now()}.${ext}`;
     const { error } = await svc.storage.from("referenz-showcase").upload(filename, new Uint8Array(arrayBuffer), {
       contentType,
       upsert: true,
       cacheControl: "31536000",
     });
-    if (error) { console.error("[persistThumbnail] Upload failed:", error); return null; }
+    if (error) { console.error(`[${adId}] Upload error:`, error); return metaUrl; }
     const { data } = svc.storage.from("referenz-showcase").getPublicUrl(filename);
-    console.log(`[persistThumbnail] Uploaded: ${data?.publicUrl}`);
+    console.log(`[${adId}] ✓ Persisted to: ${data?.publicUrl}`);
     return data?.publicUrl ?? null;
   } catch (e) {
-    console.error("[persistThumbnail] Exception:", e);
-    return null;
+    console.error(`[${adId}] Persist failed:`, (e as Error).message);
+    return metaUrl;
   }
 }
 
