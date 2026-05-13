@@ -27,7 +27,7 @@ interface Props {
 
 type Stage = 'input' | 'preview' | 'saving';
 
-const BRANCHEN = ['PKV', 'BU', 'KFZ', 'Rechtsschutz', 'Beihilfe', 'Unfall', 'Sonstige'];
+
 
 function normalizeUrl(input: string): string {
   const t = input.trim();
