@@ -231,46 +231,53 @@ async function resolveCreativeUrls(
   return { thumbnail_url: null, video_url, ad_format, strategy: "none", details: { creative } };
 }
 
-async function persistThumbnail(metaUrl: string | null, adId: string, svc: any): Promise<string | null> {
-  if (!metaUrl) return null;
-  console.log(`[${adId}] Persisting image from: ${metaUrl.substring(0, 200)}`);
+async function persistThumbnail(metaUrl: string | null, adId: string, svc: any): Promise<{ url: string | null; error: string | null; sizeKb: number | null }> {
+  if (!metaUrl) return { url: null, error: "no source URL", sizeKb: null };
+  console.log(`[${adId}] === STORAGE UPLOAD START ===`);
+  console.log(`[${adId}] Source URL: ${metaUrl.substring(0, 300)}`);
   try {
     const resp = await fetch(metaUrl, {
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(20000),
       headers: {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
         "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
       },
     });
+    console.log(`[${adId}] Meta CDN response: ${resp.status} ${resp.statusText}`);
     if (!resp.ok) {
-      console.error(`[${adId}] Image fetch failed: ${resp.status} ${resp.statusText}`);
-      return metaUrl;
+      const errText = await resp.text().catch(() => "no body");
+      console.error(`[${adId}] Meta fetch failed: ${errText.substring(0, 200)}`);
+      return { url: null, error: `Meta fetch ${resp.status}: ${errText.substring(0, 100)}`, sizeKb: null };
     }
-    const contentLength = resp.headers.get("content-length");
+    const buffer = await resp.arrayBuffer();
+    const sizeKb = Math.round(buffer.byteLength / 1024);
     const contentType = resp.headers.get("content-type") || "image/jpeg";
-    const arrayBuffer = await resp.arrayBuffer();
-    const byteLength = arrayBuffer.byteLength;
-    console.log(`[${adId}] Image downloaded: ${contentLength ?? byteLength} bytes, type: ${contentType}, buffer: ${byteLength}`);
-
-    if (byteLength < 5000) {
-      console.warn(`[${adId}] REFUSING tiny image (${byteLength} bytes) — likely 64x64 thumbnail`);
-      return metaUrl;
+    console.log(`[${adId}] Downloaded: ${sizeKb}KB, type: ${contentType}`);
+    if (buffer.byteLength < 5000) {
+      console.warn(`[${adId}] ⚠ REFUSING tiny image (${sizeKb}KB) — likely 64x64 thumbnail`);
+      return { url: null, error: `tiny image: ${sizeKb}KB`, sizeKb };
     }
-
     const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
     const filename = `meta-ads/${adId}-${Date.now()}.${ext}`;
-    const { error } = await svc.storage.from("referenz-showcase").upload(filename, new Uint8Array(arrayBuffer), {
+    console.log(`[${adId}] Uploading to storage: ${filename}`);
+    const { data: uploadData, error: uploadErr } = await svc.storage.from("referenz-showcase").upload(filename, new Uint8Array(buffer), {
       contentType,
       upsert: true,
       cacheControl: "31536000",
     });
-    if (error) { console.error(`[${adId}] Upload error:`, error); return metaUrl; }
+    if (uploadErr) {
+      console.error(`[${adId}] Storage upload error:`, JSON.stringify(uploadErr));
+      return { url: null, error: `Upload: ${uploadErr.message}`, sizeKb };
+    }
+    console.log(`[${adId}] Upload success:`, uploadData);
     const { data } = svc.storage.from("referenz-showcase").getPublicUrl(filename);
-    console.log(`[${adId}] ✓ Persisted to: ${data?.publicUrl}`);
-    return data?.publicUrl ?? null;
-  } catch (e) {
-    console.error(`[${adId}] Persist failed:`, (e as Error).message);
-    return metaUrl;
+    console.log(`[${adId}] ✓ Final public URL: ${data?.publicUrl}`);
+    console.log(`[${adId}] === STORAGE UPLOAD END ===`);
+    return { url: data?.publicUrl ?? null, error: null, sizeKb };
+  } catch (e: any) {
+    console.error(`[${adId}] Persist exception:`, e.message, e.stack);
+    return { url: null, error: e.message, sizeKb: null };
   }
 }
 
