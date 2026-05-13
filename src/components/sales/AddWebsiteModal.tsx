@@ -10,6 +10,13 @@ import { toast } from 'sonner';
 import { Loader2, ImageIcon, X, Plus, Camera, RefreshCw, Upload } from 'lucide-react';
 import { WebsiteEmbed } from './WebsiteEmbed';
 import type { ShowcaseRow } from '@/pages/sales/ReferenzShowcaseShared';
+import { Combobox } from '@/components/ui/Combobox';
+import {
+  useBranchen,
+  useCreateBranche,
+  useUnternehmen,
+  useCreateUnternehmen,
+} from '@/hooks/useLookups';
 
 interface Props {
   open: boolean;
@@ -20,7 +27,7 @@ interface Props {
 
 type Stage = 'input' | 'preview' | 'saving';
 
-const BRANCHEN = ['PKV', 'BU', 'KFZ', 'Rechtsschutz', 'Beihilfe', 'Unfall', 'Sonstige'];
+
 
 function normalizeUrl(input: string): string {
   const t = input.trim();
@@ -107,6 +114,12 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
   const [title, setTitle] = useState(editing?.title ?? '');
   const [clientName, setClientName] = useState(editing?.client_name ?? '');
   const [branche, setBranche] = useState(editing?.branche ?? '');
+  const [unternehmen, setUnternehmen] = useState((editing as any)?.unternehmen ?? '');
+
+  const { data: branchen = [] } = useBranchen();
+  const { data: unternehmenList = [] } = useUnternehmen();
+  const createBranche = useCreateBranche();
+  const createUnternehmen = useCreateUnternehmen();
   const [description, setDescription] = useState(editing?.description ?? '');
   const [isFeatured, setIsFeatured] = useState(editing?.is_featured ?? false);
   const [keyFeatures, setKeyFeatures] = useState<string[]>(((editing as any)?.key_features as string[]) ?? []);
@@ -241,6 +254,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
         title: title.trim(),
         client_name: clientName.trim() || null,
         branche: branche.trim() || null,
+        unternehmen: (unternehmen || '').trim() || null,
         description: description.trim() || null,
         website_url: cleanUrl,
         fallback_image_url: fallbackUrl,
@@ -408,21 +422,30 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
                 placeholder="z.B. Marvin Rixen BU-Funnel"
               />
             </div>
+            <div>
+              <Label>Kunde</Label>
+              <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Marvin Rixen" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Kunde</Label>
-                <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Marvin Rixen" />
+                <Label>Branche</Label>
+                <Combobox
+                  value={branche}
+                  onChange={setBranche}
+                  options={branchen}
+                  onCreateNew={(name) => createBranche.mutateAsync(name)}
+                  placeholder="Wählen..."
+                />
               </div>
               <div>
-                <Label>Branche</Label>
-                <select
-                  value={branche}
-                  onChange={(e) => setBranche(e.target.value)}
-                  className="w-full h-10 bg-background border border-input rounded-md px-3 text-sm"
-                >
-                  <option value="">Wählen...</option>
-                  {BRANCHEN.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
+                <Label>Unternehmen</Label>
+                <Combobox
+                  value={unternehmen}
+                  onChange={setUnternehmen}
+                  options={unternehmenList}
+                  onCreateNew={(name) => createUnternehmen.mutateAsync(name)}
+                  placeholder="Wählen..."
+                />
               </div>
             </div>
             <div>
