@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
       const microlinkUrl =
         `https://api.microlink.io/?url=${encodeURIComponent(url)}` +
         `&screenshot=true&meta=false&embed=screenshot.url` +
-        `&waitUntil=networkidle0&viewport.width=1440&viewport.height=900&viewport.deviceScaleFactor=2`;
+        `&waitUntil=networkidle0&viewport.width=1440&viewport.height=810&viewport.deviceScaleFactor=2`;
 
       const res = await fetch(microlinkUrl, { signal: AbortSignal.timeout(25000) });
       const ct = res.headers.get("content-type") ?? "";

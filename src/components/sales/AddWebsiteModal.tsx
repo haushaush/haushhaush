@@ -408,7 +408,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
                       <input type="file" accept="image/*" onChange={handleThumbnailChange} className="hidden" />
                       <ImageIcon className="w-7 h-7 mx-auto text-muted-foreground mb-2" />
                       <p className="text-sm font-medium">Bild auswählen</p>
-                      <p className="text-xs text-muted-foreground mt-1">Empfohlen: 800×450px (16:9) · max. 5MB</p>
+                      <p className="text-xs text-muted-foreground mt-1">Empfohlen: 1280×720px (16:9) · max. 5MB</p>
                     </label>
                   )}
                 </>
