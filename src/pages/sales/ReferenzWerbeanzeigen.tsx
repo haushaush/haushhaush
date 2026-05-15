@@ -3,11 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
-import { Plus, Settings2, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Sparkles, Loader2 } from "lucide-react";
 import { MetaAdImportModal } from "@/components/sales/MetaAdImportModal";
-import { ShowcaseFilterManagementModal, type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
+import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
 import { AdCreativeFilters, ActiveFilterChips, TOP_CPL_THRESHOLDS, type AdFilters } from "@/components/sales/AdCreativeFilters";
 import { useToast } from "@/hooks/use-toast";
+import { SHOWCASE_COPY } from "@/copy/showcase";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
   ShowcaseCard, ShowcaseEmptyState, PrimaryActionButton, SecondaryActionButton,
@@ -114,7 +115,6 @@ export default function ReferenzWerbeanzeigenPage() {
     });
 
   const [importOpen, setImportOpen] = useState(false);
-  const [filterMgmtOpen, setFilterMgmtOpen] = useState(false);
 
   const [categories, setCategories] = useState<FilterCategory[]>([]);
   const [options, setOptions] = useState<FilterOption[]>([]);
@@ -250,8 +250,8 @@ export default function ReferenzWerbeanzeigenPage() {
   return (
     <ShowcasePageWrapper>
       <SubPageHeader
-        title="Ad Creatives"
-        subtitle="Aus Meta importierte Top-Performer für Sales-Pitches"
+        title={SHOWCASE_COPY.werbeanzeigen.title}
+        subtitle={SHOWCASE_COPY.werbeanzeigen.description}
         actions={isAdmin && (
           <>
             <SecondaryActionButton
@@ -265,7 +265,7 @@ export default function ReferenzWerbeanzeigenPage() {
                 } else {
                   const d = data as any;
                   toast({
-                    title: "Enrichment fertig",
+                    title: "Anreicherung fertig",
                     description: `${d.enriched ?? 0} Anzeigen aktualisiert · ${d.linked ?? 0} mit Kunde verknüpft`,
                   });
                   load();
@@ -273,13 +273,10 @@ export default function ReferenzWerbeanzeigenPage() {
               }}
             >
               {reenriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              Auto-Enrich
-            </SecondaryActionButton>
-            <SecondaryActionButton onClick={() => setFilterMgmtOpen(true)}>
-              <Settings2 className="w-4 h-4" /> Filter verwalten
+              {SHOWCASE_COPY.werbeanzeigen.enrichLabel}
             </SecondaryActionButton>
             <PrimaryActionButton onClick={() => setImportOpen(true)}>
-              <Plus className="w-4 h-4" /> Aus Meta importieren
+              <Plus className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importLabel}
             </PrimaryActionButton>
           </>
         )}
