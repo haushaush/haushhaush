@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
-import { Plus } from 'lucide-react';
+import { Plus, Star, Clock, Sparkles } from 'lucide-react';
 import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
 import { SHOWCASE_COPY } from '@/copy/showcase';
 import type { ShowcaseRow } from './ReferenzShowcaseShared';
@@ -11,6 +11,7 @@ import {
   ShowcaseCard, ShowcaseEmptyState, ResultCount, PrimaryActionButton,
   getShowcaseBranche, type AnyItem,
 } from './ReferenzShowcaseUI';
+import { cn } from '@/lib/utils';
 
 export default function ReferenzWebsitesPage() {
   const { hasRole } = useAuth();
