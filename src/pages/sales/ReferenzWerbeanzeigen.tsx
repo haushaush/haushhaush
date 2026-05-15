@@ -351,18 +351,19 @@ export default function ReferenzWerbeanzeigenPage() {
         </div>
       ) : items.length === 0 ? (
         <ShowcaseEmptyState
-          subtitle={rows.length === 0 ? 'Noch keine Anzeigen importiert.' : 'Keine Treffer für deine Filter.'}
+          title={rows.length === 0 ? SHOWCASE_COPY.werbeanzeigen.emptyTitle : 'Keine Ergebnisse'}
+          subtitle={rows.length === 0 ? SHOWCASE_COPY.werbeanzeigen.emptyDescription : 'Keine Treffer für deine Filter.'}
           action={
             rows.length === 0 && isAdmin ? (
               <PrimaryActionButton onClick={() => setImportOpen(true)}>
-                <Plus className="w-4 h-4" /> Erste Anzeigen importieren
+                <Plus className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importFirstLabel}
               </PrimaryActionButton>
             ) : hasActiveFilters ? (
               <button
                 onClick={resetFilters}
                 className="text-sm font-semibold text-teal-600 dark:text-teal-400 hover:underline"
               >
-                Filter zurücksetzen
+                Alle zurücksetzen
               </button>
             ) : undefined
           }
@@ -374,7 +375,6 @@ export default function ReferenzWerbeanzeigenPage() {
       )}
 
       <MetaAdImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
-      <ShowcaseFilterManagementModal open={filterMgmtOpen} onClose={() => setFilterMgmtOpen(false)} onChanged={load} appliesTo="werbeanzeige" />
     </ShowcasePageWrapper>
   );
 }
