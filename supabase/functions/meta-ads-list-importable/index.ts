@@ -114,43 +114,56 @@ Deno.serve(async (req) => {
       accountName = acc?.name ?? "";
     } catch { /* ignore */ }
 
-    // Pull insights in parallel (batched) per ad
+    // Single account-level insights call with level=ad — avoids per-ad rate limits
+    const insightsByAd = new Map<string, any>();
+    if (ads.length > 0) {
+      try {
+        let after: string | undefined;
+        let safety = 0;
+        do {
+          const insParams: Record<string, string> = {
+            level: "ad",
+            fields: "ad_id,spend,impressions,clicks,ctr,cpm,actions,action_values",
+            date_preset: datePreset,
+            limit: "500",
+          };
+          if (after) insParams.after = after;
+          const insRes = await metaGet(`/${accountId}/insights`, insParams);
+          for (const row of (insRes?.data ?? [])) {
+            if (row.ad_id) insightsByAd.set(row.ad_id, row);
+          }
+          after = insRes?.paging?.cursors?.after && insRes?.paging?.next ? insRes.paging.cursors.after : undefined;
+          safety++;
+        } while (after && safety < 10);
+      } catch (e) {
+        console.warn("account-level insights failed:", (e as Error).message);
+      }
+    }
+
     const enriched: any[] = [];
     for (const ad of ads) {
       const alreadyImported = importedSet.has(ad.id);
       let metrics: any = null;
-      if (!alreadyImported) {
-        try {
-          const ins = await metaGet(`/${ad.id}/insights`, {
-            fields: "spend,impressions,clicks,ctr,cpm,actions,action_values",
-            date_preset: datePreset,
-          });
-          const row = ins?.data?.[0];
-          if (row) {
-            const leadAction = (row.actions ?? []).find((a: any) =>
-              ["lead", "offsite_conversion.fb_pixel_lead", "onsite_conversion.lead_grouped"].includes(a.action_type)
-            );
-            const purchaseValue = (row.action_values ?? []).find((a: any) =>
-              ["purchase", "offsite_conversion.fb_pixel_purchase"].includes(a.action_type)
-            );
-            const leads = leadAction ? Number(leadAction.value) : 0;
-            const spend = Number(row.spend ?? 0);
-            metrics = {
-              spend,
-              impressions: Number(row.impressions ?? 0),
-              clicks: Number(row.clicks ?? 0),
-              ctr: row.ctr ? Number(row.ctr) : null,
-              cpm: row.cpm ? Number(row.cpm) : null,
-              leads,
-              cpl: leads > 0 ? +(spend / leads).toFixed(2) : null,
-              roas: purchaseValue && spend > 0 ? +(Number(purchaseValue.value) / spend).toFixed(2) : null,
-            };
-          }
-        } catch (e) {
-          console.warn(`insights skipped for ${ad.id}:`, (e as Error).message);
-        }
-        // Throttle to avoid Meta "User request limit reached"
-        await new Promise((r) => setTimeout(r, 120));
+      const row = insightsByAd.get(ad.id);
+      if (!alreadyImported && row) {
+        const leadAction = (row.actions ?? []).find((a: any) =>
+          ["lead", "offsite_conversion.fb_pixel_lead", "onsite_conversion.lead_grouped"].includes(a.action_type)
+        );
+        const purchaseValue = (row.action_values ?? []).find((a: any) =>
+          ["purchase", "offsite_conversion.fb_pixel_purchase"].includes(a.action_type)
+        );
+        const leads = leadAction ? Number(leadAction.value) : 0;
+        const spend = Number(row.spend ?? 0);
+        metrics = {
+          spend,
+          impressions: Number(row.impressions ?? 0),
+          clicks: Number(row.clicks ?? 0),
+          ctr: row.ctr ? Number(row.ctr) : null,
+          cpm: row.cpm ? Number(row.cpm) : null,
+          leads,
+          cpl: leads > 0 ? +(spend / leads).toFixed(2) : null,
+          roas: purchaseValue && spend > 0 ? +(Number(purchaseValue.value) / spend).toFixed(2) : null,
+        };
       }
       const creative = ad.creative ?? {};
       const thumbnail = creative.thumbnail_url || creative.image_url || null;
