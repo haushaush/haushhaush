@@ -304,6 +304,18 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       const ad = ads.find(a => a.meta_ad_id === adId);
       const adName = ad?.meta_ad_name ?? adId;
 
+      // Pre-check blacklist (defense-in-depth alongside backend filter)
+      const blockedReason = ad ? isBlacklisted(ad) : null;
+      if (blockedReason) {
+        setProgress(prev => ({
+          ...prev,
+          done: prev.done + 1,
+          skipped: [...prev.skipped, { adId, adName, reason: blockedReason }],
+          recent: [{ adId, adName, status: 'error' as const, message: `⊘ ${adName}: Blacklist (${blockedReason})` }, ...prev.recent].slice(0, 20),
+        }));
+        continue;
+      }
+
       setProgress(prev => ({
         ...prev,
         recent: [{ adId, adName, status: 'pending' as const, message: `Importiere "${adName}"...` }, ...prev.recent].slice(0, 20),
