@@ -255,8 +255,13 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     if (!playerReady || !playerRef.current) return;
     const vid = tracks[trackIndex]?.id;
     if (!vid) return;
-    if (playingRef.current) playerRef.current.loadVideoById(vid);
-    else playerRef.current.cueVideoById(vid);
+    try {
+      if (playingRef.current && typeof playerRef.current.loadVideoById === 'function') {
+        playerRef.current.loadVideoById(vid);
+      } else if (typeof playerRef.current.cueVideoById === 'function') {
+        playerRef.current.cueVideoById(vid);
+      }
+    } catch {}
   }, [trackIndex, playerReady, tracks]);
 
   const togglePlay = useCallback(() => {
