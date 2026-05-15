@@ -339,7 +339,7 @@ export default function ReferenzWerbeanzeigenPage() {
             <PrimaryActionButton onClick={() => setImportOpen(true)}>
               <Upload className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importLabel}
             </PrimaryActionButton>
-          </>
+          </div>
         )}
       />
 
