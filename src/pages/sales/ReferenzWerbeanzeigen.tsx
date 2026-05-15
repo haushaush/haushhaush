@@ -434,6 +434,26 @@ export default function ReferenzWerbeanzeigenPage() {
         </p>
       </div>
 
+      {searchParams.get('debug') === 'true' && (
+        <div className="mb-6 p-4 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 font-mono text-xs">
+          <h3 className="font-bold mb-2 text-gray-900 dark:text-white">Debug · Ad-Status-Distribution</h3>
+          <pre className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{JSON.stringify(
+            rows.reduce<Record<string, number>>((acc, ad) => {
+              const key = (ad as any).effective_status || (ad as any).status || 'null';
+              acc[key] = (acc[key] || 0) + 1;
+              return acc;
+            }, {}),
+            null, 2
+          )}</pre>
+          <p className="mt-2 text-gray-900 dark:text-white">last_synced_at:</p>
+          <pre className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{JSON.stringify({
+            with: rows.filter(a => a.last_synced_at).length,
+            without: rows.filter(a => !a.last_synced_at).length,
+            newest: rows.map(a => a.last_synced_at).filter(Boolean).sort().pop() ?? null,
+          }, null, 2)}</pre>
+        </div>
+      )}
+
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {Array.from({ length: 8 }).map((_, i) => (
