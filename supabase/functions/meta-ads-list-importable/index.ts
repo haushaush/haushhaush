@@ -35,14 +35,28 @@ function svcClient() {
   );
 }
 
-async function metaGet(path: string, params: Record<string, string> = {}) {
+function isRateLimit(msg: string) {
+  return /user request limit|rate limit|\(#17\)|\(#4\)|\(#32\)|\(#613\)/i.test(msg);
+}
+
+async function metaGet(path: string, params: Record<string, string> = {}, retries = 2) {
   const url = new URL(`${BASE}${path.startsWith("/") ? path : `/${path}`}`);
   url.searchParams.set("access_token", ACCESS_TOKEN!);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const res = await fetch(url.toString());
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.error?.message || `Meta API ${res.status}`);
-  return data;
+  let lastErr = "";
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch(url.toString());
+    const data = await res.json();
+    if (res.ok) return data;
+    lastErr = data?.error?.message || `Meta API ${res.status}`;
+    if (!isRateLimit(lastErr) || attempt === retries) throw new Error(lastErr);
+    await new Promise((r) => setTimeout(r, [3000, 8000][attempt] ?? 8000));
+  }
+  throw new Error(lastErr);
+}
+
+function isRateLimitErr(e: unknown) {
+  return isRateLimit((e as Error)?.message ?? "");
 }
 
 Deno.serve(async (req) => {
@@ -196,8 +210,16 @@ Deno.serve(async (req) => {
     );
   } catch (err) {
     console.error("meta-ads-list-importable", err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const msg = (err as Error).message;
+    const rl = isRateLimitErr(err);
+    return new Response(JSON.stringify({
+      error: rl
+        ? "Meta API Rate-Limit erreicht. Bitte 5–10 Minuten warten und erneut versuchen."
+        : msg,
+      rate_limited: rl,
+    }), {
+      status: rl ? 429 : 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
