@@ -569,7 +569,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ imported, errors }), {
+    return new Response(JSON.stringify({ imported, errors, skipped }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
