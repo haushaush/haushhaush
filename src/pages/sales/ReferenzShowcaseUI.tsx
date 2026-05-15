@@ -221,8 +221,10 @@ export function getShowcaseKundenname(i: AnyItem): string | null {
 
 export function getShowcaseBranche(i: AnyItem): string | null {
   const raw = i.linked_kunde?.branche ?? i.filter_values?.branche ?? i.branche ?? null;
-  if (Array.isArray(raw)) return raw[0]?.trim() || null;
-  return (typeof raw === 'string' && raw.trim()) ? raw.trim() : null;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof value !== 'string' || !value.trim()) return null;
+  // Use canonical short label when raw value matches a known alias
+  return getBrancheDisplay(value, 'short') ?? value.trim();
 }
 
 /* ------------------------------------------------------------------ */
