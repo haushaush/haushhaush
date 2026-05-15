@@ -296,6 +296,15 @@ export default function ReferenzWerbeanzeigenPage() {
         subtitle={SHOWCASE_COPY.werbeanzeigen.description}
         actions={isAdmin && (
           <>
+            <Link
+              to="/admin/import-blacklist"
+              className="inline-flex items-center gap-2 px-3 h-9 rounded-xl border border-gray-200 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-gray-300 dark:hover:border-gray-700 transition-colors"
+            >
+              <ShieldOff className="w-4 h-4" /> Blacklist
+            </Link>
+            <SecondaryActionButton onClick={() => setRematchOpen(true)}>
+              <Wand2 className="w-4 h-4" /> Neu matchen
+            </SecondaryActionButton>
             <SecondaryActionButton
               disabled={reenriching}
               onClick={async () => {
