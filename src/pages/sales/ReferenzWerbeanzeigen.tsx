@@ -192,21 +192,35 @@ export default function ReferenzWerbeanzeigenPage() {
       const leads = num(m.leads);
       const ctr = ctrPct(m.ctr);
       const spend = num(m.spend);
+      const status = (m.status || m.effective_status || "").toString().toUpperCase();
+      const fmt = (x.ad_format || "").toLowerCase();
 
+      // Quick toggles
       if (adFilters.has_leads && !(leads != null && leads > 0)) return false;
-      if (adFilters.has_video) {
-        const f = (x.ad_format || "").toLowerCase();
-        if (f !== "video" && f !== "reel") return false;
+      if (adFilters.has_video && fmt !== "video" && fmt !== "reel") return false;
+      if (adFilters.top_performers && !isTopPerformer(x as any)) return false;
+      if (adFilters.is_active && status !== "ACTIVE") return false;
+      if (adFilters.high_spend && (spend == null || spend < 500)) return false;
+      if (adFilters.recent && !isWithinDays(x.imported_at ?? x.created_at ?? null, 30)) return false;
+      if (adFilters.featured && !x.is_featured) return false;
+
+      // Standalone dropdown filters
+      if (brancheFilter) {
+        const b = (x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? "").toString();
+        if (b !== brancheFilter) return false;
       }
-      if (adFilters.top_performers) {
-        const branche = x.linked_kunde?.branche ?? null;
-        const threshold = TOP_CPL_THRESHOLDS[branche || ""] ?? TOP_CPL_THRESHOLDS.default;
-        const isTop =
-          (cpl != null && cpl < threshold) ||
-          (ctr != null && ctr > 3) ||
-          (leads != null && leads > 20);
-        if (!isTop) return false;
+      if (kundeFilter && x.linked_kunde_id !== kundeFilter) return false;
+      if (unternehmenFilter) {
+        const u = (x.linked_kunde?.unternehmen ?? (x.filter_values ?? {}).unternehmen ?? "").toString();
+        if (u !== unternehmenFilter) return false;
       }
+      if (werbekontoFilter && x.meta_account_id !== werbekontoFilter) return false;
+      if (formatFilter) {
+        if (formatFilter === "video" && fmt !== "video" && fmt !== "reel") return false;
+        if (formatFilter === "image" && fmt !== "image" && fmt !== "" && fmt !== "single_image") return false;
+        if (formatFilter === "carousel" && fmt !== "carousel") return false;
+      }
+
       if (adFilters.cpl_range) {
         const [lo, hi] = adFilters.cpl_range;
         if (cpl == null || cpl < lo || cpl > hi) return false;
