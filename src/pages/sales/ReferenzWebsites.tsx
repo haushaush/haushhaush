@@ -213,6 +213,28 @@ export default function ReferenzWebsitesPage() {
         </div>
       </div>
 
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="aspect-video rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <ShowcaseEmptyState
+          title={rows.length === 0 ? SHOWCASE_COPY.websites.emptyTitle : 'Keine Ergebnisse'}
+          subtitle={rows.length === 0 ? SHOWCASE_COPY.websites.emptyDescription : undefined}
+          action={isAdmin && rows.length === 0 ? (
+            <PrimaryActionButton onClick={() => { setEditing(null); setFormOpen(true); }}>
+              <Plus className="w-4 h-4" /> {SHOWCASE_COPY.websites.addFirstLabel}
+            </PrimaryActionButton>
+          ) : undefined}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
+          {filtered.map(item => <ShowcaseCard key={item.id} item={item} />)}
+        </div>
+      )}
+
       {formOpen && (
         <AddWebsiteModal
           open={formOpen}
