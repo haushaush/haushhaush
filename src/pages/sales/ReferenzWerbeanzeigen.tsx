@@ -45,7 +45,7 @@ export interface MetaAdRow {
   created_at?: string | null;
 }
 
-type SortKey = "performance" | "created" | "cpl" | "roas" | "leads";
+type SortKey = "performance" | "created" | "cpl" | "roas" | "leads" | "spend" | "ctr";
 
 export default function ReferenzWerbeanzeigenPage() {
   const { hasRole } = useAuth();
