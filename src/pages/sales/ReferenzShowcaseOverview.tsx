@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Globe, Sparkles, TrendingUp, Search, ChevronRight,
+  Globe, Sparkles, TrendingUp, Search, ChevronRight, Lightbulb, Upload, Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -368,6 +368,9 @@ export default function ReferenzShowcaseOverview() {
         />
       </div>
 
+      {counts.websites + counts.ads + counts.performance === 0 && (
+        <OnboardingHint isPublic={isPublic} />
+      )}
       <div className="mb-8 space-y-3">
         {/* Row 1: Search full-width */}
         <div className="relative w-full">
@@ -515,3 +518,57 @@ function DropdownPill({
   );
 }
 
+
+function OnboardingHint({ isPublic }: { isPublic: boolean }) {
+  if (isPublic) return null;
+  return (
+    <div className="mb-10 rounded-2xl border border-teal-200 dark:border-teal-900 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/20 p-6">
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-md shrink-0">
+          <Lightbulb className="w-6 h-6 text-white" />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-bold text-gray-900 dark:text-white tracking-tight mb-1">
+            So funktioniert dein Showcase
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-5">
+            Sammle deine besten Cases an einem Ort. Anzeigen kommen direkt aus Meta, Websites ergänzt du manuell. Im Sales-Call hast du alles in einer Sekunde griffbereit.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+            <OnboardingStep n="1" title="Meta verbinden" desc="Anzeigen automatisch importieren" />
+            <OnboardingStep n="2" title="Websites ergänzen" desc="Landingpages mit Live-Vorschau" />
+            <OnboardingStep n="3" title="Mit Prospects teilen" desc="Jeder Case bekommt einen Link" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/sales/referenz-showcase/werbeanzeigen"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              <Upload className="w-4 h-4" /> Anzeigen importieren
+            </Link>
+            <Link
+              to="/sales/referenz-showcase/websites"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Website hinzufügen
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OnboardingStep({ n, title, desc }: { n: string; title: string; desc: string }) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-xl bg-white/70 dark:bg-gray-900/40 border border-white/60 dark:border-gray-800/60">
+      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-500 to-cyan-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
+        {n}
+      </div>
+      <div>
+        <div className="text-sm font-bold text-gray-900 dark:text-white">{title}</div>
+        <div className="text-xs text-gray-600 dark:text-gray-400">{desc}</div>
+      </div>
+    </div>
+  );
+}

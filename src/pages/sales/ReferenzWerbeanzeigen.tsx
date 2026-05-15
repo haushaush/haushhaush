@@ -3,8 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
-import { Plus, Sparkles, Loader2 } from "lucide-react";
-import { MetaAdImportModal } from "@/components/sales/MetaAdImportModal";
+import { Plus, Upload, Sparkles, Loader2 } from "lucide-react";
+import { BulkImportWizard } from "@/components/showcase/BulkImportWizard";
 import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
 import { AdCreativeFilters, ActiveFilterChips, TOP_CPL_THRESHOLDS, type AdFilters } from "@/components/sales/AdCreativeFilters";
 import { useToast } from "@/hooks/use-toast";
@@ -276,7 +276,7 @@ export default function ReferenzWerbeanzeigenPage() {
               {SHOWCASE_COPY.werbeanzeigen.enrichLabel}
             </SecondaryActionButton>
             <PrimaryActionButton onClick={() => setImportOpen(true)}>
-              <Plus className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importLabel}
+              <Upload className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importLabel}
             </PrimaryActionButton>
           </>
         )}
@@ -374,7 +374,7 @@ export default function ReferenzWerbeanzeigenPage() {
         </div>
       )}
 
-      <MetaAdImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
+      <BulkImportWizard open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
     </ShowcasePageWrapper>
   );
 }
