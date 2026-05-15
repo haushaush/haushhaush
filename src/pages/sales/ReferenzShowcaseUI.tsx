@@ -348,26 +348,10 @@ function PrimaryHighlight({ item, branche }: { item: AnyItem; branche?: string |
     return null;
   }
   if (item._type === 'website') {
-    const isLive = item.is_iframe_blocked !== true;
+    if (!branche) return null;
     return (
       <div className="flex items-center gap-1.5 text-sm">
-        {isLive ? (
-          <>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Live</span>
-          </>
-        ) : (
-          <>
-            <ImageIcon className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-            <span className="text-gray-600 dark:text-gray-400 font-semibold">Screenshot</span>
-          </>
-        )}
-        {branche && (
-          <>
-            <span className="text-gray-300 dark:text-gray-700">·</span>
-            <span className="text-gray-500 dark:text-gray-400 capitalize truncate">{branche}</span>
-          </>
-        )}
+        <span className="text-gray-500 dark:text-gray-400 capitalize truncate">{branche}</span>
       </div>
     );
   }
