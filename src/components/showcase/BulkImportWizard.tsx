@@ -122,6 +122,47 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
     }
   }, [open, accounts]);
 
+  // Auto-match enrichment when entering enrich step
+  const runAutoMatch = (force = false) => {
+    const selectedAds = ads.filter(a => selected.has(a.meta_ad_id));
+    const next: Record<string, Enrichment> = force ? {} : { ...enrichment };
+    let matched = 0;
+    let guessed = 0;
+    for (const ad of selectedAds) {
+      if (!force && next[ad.meta_ad_id]?.branche) continue;
+      const k = matchKunde(ad);
+      if (k && (k.branche || k.unternehmen)) {
+        next[ad.meta_ad_id] = {
+          branche: k.branche,
+          unternehmen: k.unternehmen,
+          kunde_id: k.kunde_id,
+          auto_matched: true,
+          match_reason: `Über Werbekonto ${ad.meta_account_name || ad.meta_account_id}${k.kundenname ? ` → ${k.kundenname}` : ''}`,
+        };
+        matched++;
+        continue;
+      }
+      const guess = guessBrancheFromText(`${ad.meta_ad_name} ${ad.meta_campaign_name ?? ''}`);
+      if (guess) {
+        next[ad.meta_ad_id] = {
+          branche: guess,
+          unternehmen: '',
+          auto_matched: false,
+          match_reason: 'Aus Anzeigen-Name erkannt',
+        };
+        guessed++;
+      }
+    }
+    setEnrichment(next);
+    return { matched, guessed };
+  };
+
+  useEffect(() => {
+    if (step !== 'enrich') return;
+    runAutoMatch(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   // Lookups for enrichment dropdowns (close_deals)
   const [brancheOpts, setBrancheOpts] = useState<string[]>([]);
   const [unternehmenOpts, setUnternehmenOpts] = useState<string[]>([]);
