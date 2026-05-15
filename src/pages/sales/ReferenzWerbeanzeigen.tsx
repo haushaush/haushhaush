@@ -374,7 +374,7 @@ export default function ReferenzWerbeanzeigenPage() {
         </div>
       )}
 
-      <MetaAdImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
+      <BulkImportWizard open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
     </ShowcasePageWrapper>
   );
 }
