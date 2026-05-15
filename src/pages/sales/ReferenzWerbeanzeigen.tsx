@@ -450,7 +450,6 @@ export default function ReferenzWerbeanzeigenPage() {
       )}
 
       <BulkImportWizard open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
-      <RematchAdsDialog open={rematchOpen} onClose={() => setRematchOpen(false)} onDone={load} />
     </ShowcasePageWrapper>
   );
 }
