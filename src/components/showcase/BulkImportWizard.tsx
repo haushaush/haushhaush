@@ -34,6 +34,9 @@ interface ImportableAd {
 interface Enrichment {
   branche?: string;
   unternehmen?: string;
+  auto_matched?: boolean;
+  match_reason?: string;
+  kunde_id?: string | null;
 }
 
 interface FilterState {
