@@ -383,7 +383,9 @@ export default function ReferenzWerbeanzeigenPage() {
         {(werbekonten.length > 0 || categories.length > 0) && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 max-w-5xl mx-auto">
             <DropdownPill label="Werbekonto" icon={Wallet} value={werbekontoFilter} onChange={setStandaloneFilter('werbekonto')} options={werbekonten} />
-            {categories.map(cat => {
+            {categories
+              .filter(cat => !['branche', 'kunde', 'unternehmen', 'zielgruppe', 'format', 'werbekonto'].includes(cat.key.toLowerCase()))
+              .map(cat => {
               const catOpts = options
                 .filter(o => o.category_id === cat.id && o.is_active)
                 .map(o => ({ value: o.key, label: o.label }))
