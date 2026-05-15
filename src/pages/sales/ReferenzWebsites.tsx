@@ -21,7 +21,13 @@ export default function ReferenzWebsitesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [brancheFilter, setBrancheFilter] = useState('');
+  const [kundeFilter, setKundeFilter] = useState('');
   const [unternehmenFilter, setUnternehmenFilter] = useState('');
+  const [highlightFilter, setHighlightFilter] = useState('');
+  const [zeitraumFilter, setZeitraumFilter] = useState('');
+  const [featuredOnly, setFeaturedOnly] = useState(false);
+  const [recentOnly, setRecentOnly] = useState(false);
+  const [withHighlightsOnly, setWithHighlightsOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'featured'>('featured');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ShowcaseRow | null>(null);
