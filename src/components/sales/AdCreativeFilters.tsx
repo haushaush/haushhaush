@@ -98,15 +98,31 @@ function RangeFilter({
   description?: string;
 }) {
   const [local, setLocal] = useState<[number, number]>(value);
-  useEffect(() => { setLocal(value); }, [value[0], value[1]]);
+  const [inMin, setInMin] = useState(String(value[0]));
+  const [inMax, setInMax] = useState(String(value[1]));
+  useEffect(() => {
+    setLocal(value);
+    setInMin(String(value[0]));
+    setInMax(String(value[1]));
+  }, [value[0], value[1]]);
   useEffect(() => {
     const t = setTimeout(() => {
       if (local[0] !== value[0] || local[1] !== value[1]) onChange(local);
     }, 200);
     return () => clearTimeout(t);
   }, [local]);
+  const commit = () => {
+    const a = Math.max(min, Math.min(max, Number(inMin) || min));
+    const b = Math.max(min, Math.min(max, Number(inMax) || max));
+    const sorted: [number, number] = a <= b ? [a, b] : [b, a];
+    setLocal(sorted);
+    setInMin(String(sorted[0]));
+    setInMax(String(sorted[1]));
+    onChange(sorted);
+  };
+  const inputCls = "w-full pl-9 pr-9 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-sm font-semibold tabular-nums focus:border-teal-400 focus:ring-1 focus:ring-teal-100 dark:focus:ring-teal-900 outline-none";
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-bold text-gray-900 dark:text-white">{label}</p>
@@ -118,7 +134,31 @@ function RangeFilter({
           {prefix}{local[0].toLocaleString("de-DE")}{suffix} – {prefix}{local[1].toLocaleString("de-DE")}{suffix}
         </span>
       </div>
-      <DualRangeSlider min={min} max={max} step={step} value={local} onChange={setLocal} />
+      <DualRangeSlider min={min} max={max} step={step} value={local} onChange={(v) => {
+        setLocal(v);
+        setInMin(String(v[0]));
+        setInMax(String(v[1]));
+      }} />
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase tracking-wider text-gray-400 pointer-events-none">Min</span>
+          <input type="number" value={inMin} min={min} max={max} step={step}
+            onChange={e => setInMin(e.target.value)}
+            onBlur={commit}
+            onKeyDown={e => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
+            className={inputCls} />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">{prefix || suffix}</span>
+        </div>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase tracking-wider text-gray-400 pointer-events-none">Max</span>
+          <input type="number" value={inMax} min={min} max={max} step={step}
+            onChange={e => setInMax(e.target.value)}
+            onBlur={commit}
+            onKeyDown={e => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
+            className={inputCls} />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">{prefix || suffix}</span>
+        </div>
+      </div>
     </div>
   );
 }
