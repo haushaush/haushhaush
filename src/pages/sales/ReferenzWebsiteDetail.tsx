@@ -98,6 +98,7 @@ export default function ReferenzWebsiteDetail() {
   const linkedKunde = (item as any).linked_kunde as { unternehmen?: string; branche?: string } | null;
 
   return (
+    <>
     <DetailPageLayout
       backHref={backHref}
       backLabel="Websites"
