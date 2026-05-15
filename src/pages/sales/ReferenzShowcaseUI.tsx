@@ -295,14 +295,14 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
             {item.key_features.slice(0, 3).map((feat: string, i: number) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-[11px] font-medium rounded-md"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg"
               >
-                <Check className="w-2.5 h-2.5 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span className="truncate max-w-[120px]">{feat}</span>
+                <Check className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
+                <span className="truncate max-w-[140px]">{feat}</span>
               </span>
             ))}
             {item.key_features.length > 3 && (
-              <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium text-gray-400 dark:text-gray-500">
+              <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium text-gray-400 dark:text-gray-500 rounded-lg">
                 +{item.key_features.length - 3}
               </span>
             )}
