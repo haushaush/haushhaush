@@ -240,7 +240,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
         setProgress(prev => ({
           ...prev,
           done: prev.done + 1,
-          recent: [{ adId, adName, status: 'success', message: `✓ ${adName}` }, ...prev.recent].slice(0, 20),
+          recent: [{ adId, adName, status: 'success' as const, message: `✓ ${adName}` }, ...prev.recent].slice(0, 20),
         }));
       } catch (e) {
         const msg = (e as Error).message;
@@ -248,7 +248,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
           ...prev,
           done: prev.done + 1,
           errors: [...prev.errors, { adId, adName, message: msg }],
-          recent: [{ adId, adName, status: 'error', message: `✗ ${adName}: ${msg}` }, ...prev.recent].slice(0, 20),
+          recent: [{ adId, adName, status: 'error' as const, message: `✗ ${adName}: ${msg}` }, ...prev.recent].slice(0, 20),
         }));
       }
     }
