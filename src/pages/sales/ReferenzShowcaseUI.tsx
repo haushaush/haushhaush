@@ -559,9 +559,12 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
   const ctrDisplay = ctr == null ? '—' : ctr <= 1 ? `${(ctr * 100).toFixed(1)}%` : `${ctr.toFixed(1)}%`;
 
   return (
-    <Link
+    <SurfaceCard
+      as={Link}
       to={detailHref}
-      className="group h-full flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
+      interactive
+      padding="none"
+      className="group h-full flex flex-col overflow-hidden"
     >
       <div className="relative aspect-square bg-gray-50 dark:bg-gray-800 shrink-0 overflow-hidden">
         {isVideo && item.video_url ? (
@@ -654,6 +657,6 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
           ) : null}
         </div>
       </div>
-    </Link>
+    </SurfaceCard>
   );
 }
