@@ -184,10 +184,11 @@ export default function AdPerformancePage() {
         </div>
       ) : items.length === 0 ? (
         <ShowcaseEmptyState
-          subtitle={rows.length === 0 ? 'Noch keine Kampagnen importiert.' : undefined}
+          title={rows.length === 0 ? SHOWCASE_COPY.adPerformance.emptyTitle : 'Keine Ergebnisse'}
+          subtitle={rows.length === 0 ? SHOWCASE_COPY.adPerformance.emptyDescription : undefined}
           action={isAdmin && rows.length === 0 ? (
             <PrimaryActionButton onClick={() => setImportOpen(true)}>
-              <Plus className="w-4 h-4" /> Erste Kampagne aus Meta importieren
+              <Plus className="w-4 h-4" /> {SHOWCASE_COPY.adPerformance.importFirstLabel}
             </PrimaryActionButton>
           ) : undefined}
         />
@@ -198,7 +199,6 @@ export default function AdPerformancePage() {
       )}
 
       <MetaCampaignImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
-      <ShowcaseFilterManagementModal open={filterMgmtOpen} onClose={() => setFilterMgmtOpen(false)} onChanged={load} appliesTo="kampagne" />
     </ShowcasePageWrapper>
   );
 }
