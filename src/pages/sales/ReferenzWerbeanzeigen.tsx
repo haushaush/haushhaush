@@ -212,7 +212,11 @@ export default function ReferenzWerbeanzeigenPage() {
         const b = (x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? "").toString();
         if (b !== brancheFilter) return false;
       }
-      if (kundeFilter && x.linked_kunde_id !== kundeFilter) return false;
+      if (kundeFilter) {
+        const entry = kunden.find(k => k.value === kundeFilter);
+        const ids = entry?.allIds ?? [kundeFilter];
+        if (!x.linked_kunde_id || !ids.includes(x.linked_kunde_id)) return false;
+      }
       if (unternehmenFilter) {
         const u = (x.linked_kunde?.unternehmen ?? (x.filter_values ?? {}).unternehmen ?? "").toString();
         if (u !== unternehmenFilter) return false;
