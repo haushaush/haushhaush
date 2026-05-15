@@ -276,7 +276,7 @@ export default function ReferenzWerbeanzeigenPage() {
               {SHOWCASE_COPY.werbeanzeigen.enrichLabel}
             </SecondaryActionButton>
             <PrimaryActionButton onClick={() => setImportOpen(true)}>
-              <Plus className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importLabel}
+              <Upload className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importLabel}
             </PrimaryActionButton>
           </>
         )}
