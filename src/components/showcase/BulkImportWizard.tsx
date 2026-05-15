@@ -1104,7 +1104,7 @@ function ImportStep({ progress }: { progress: ImportProgress }) {
 // Step: Done
 // ───────────────────────────────────────────────────────────────────
 function DoneStep({ progress, onClose }: { progress: ImportProgress; onClose: () => void }) {
-  const success = progress.total - progress.errors.length;
+  const success = progress.total - progress.errors.length - progress.skipped.length;
   return (
     <div className="max-w-md mx-auto py-8 text-center">
       <div className="w-20 h-20 mx-auto rounded-2xl bg-emerald-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-200 dark:shadow-emerald-900/50">
@@ -1113,15 +1113,22 @@ function DoneStep({ progress, onClose }: { progress: ImportProgress; onClose: ()
       <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-2 tabular-nums">
         {success} Anzeigen importiert
       </h3>
-      {progress.errors.length > 0 ? (
-        <p className="text-sm text-amber-600 dark:text-amber-400 mb-6">
-          {progress.errors.length} konnten nicht importiert werden. Details unten.
-        </p>
-      ) : (
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-          Alle Anzeigen wurden erfolgreich importiert.
-        </p>
-      )}
+      <div className="flex flex-col items-center gap-1 mb-6">
+        {progress.skipped.length > 0 && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 tabular-nums">
+            {progress.skipped.length} übersprungen (Blacklist)
+          </p>
+        )}
+        {progress.errors.length > 0 ? (
+          <p className="text-sm text-amber-600 dark:text-amber-400">
+            {progress.errors.length} konnten nicht importiert werden. Details unten.
+          </p>
+        ) : progress.skipped.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Alle Anzeigen wurden erfolgreich importiert.
+          </p>
+        ) : null}
+      </div>
       {progress.errors.length > 0 && (
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 text-left mb-6 max-h-48 overflow-y-auto">
           <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
