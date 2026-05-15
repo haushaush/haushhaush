@@ -6,9 +6,11 @@ import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Plus, Upload, Sparkles, Loader2 } from "lucide-react";
 import { BulkImportWizard } from "@/components/showcase/BulkImportWizard";
 import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
-import { AdCreativeFilters, ActiveFilterChips, TOP_CPL_THRESHOLDS, type AdFilters } from "@/components/sales/AdCreativeFilters";
+import { AdCreativeFilters, ActiveFilterChips, type AdFilters } from "@/components/sales/AdCreativeFilters";
 import { useToast } from "@/hooks/use-toast";
 import { SHOWCASE_COPY } from "@/copy/showcase";
+import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
+import { useFilterOptions } from "@/hooks/useFilterOptions";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
   ShowcaseCard, ShowcaseEmptyState, PrimaryActionButton, SecondaryActionButton,
