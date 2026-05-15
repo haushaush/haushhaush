@@ -250,11 +250,12 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
         after = (data as any)?.paging?.cursors?.after;
         if (!after) break;
       }
-      // Apply min thresholds locally
+      // Apply min thresholds + blacklist filter locally
       const filtered = all.filter(a => {
         const m = a.metrics ?? {};
         if (filters.minLeads > 0 && (m.leads ?? 0) < filters.minLeads) return false;
         if (filters.minSpend > 0 && (m.spend ?? 0) < filters.minSpend) return false;
+        if (isBlacklisted(a)) return false;
         return true;
       });
       setAds(filtered);
