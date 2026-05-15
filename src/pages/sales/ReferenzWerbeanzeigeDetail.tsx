@@ -19,6 +19,7 @@ import {
   DetailPageLayout, DetailHero, DetailInfoPanel, InfoSection, InfoSectionTitle,
   DetailRowList, DetailRow, MetricLarge, DetailPageSkeleton,
 } from "@/components/showcase/DetailPageLayout";
+import { DeleteAdDialog } from "@/components/showcase/DeleteAdDialog";
 
 export default function ReferenzWerbeanzeigeDetail() {
   const { id } = useParams<{ id: string }>();
