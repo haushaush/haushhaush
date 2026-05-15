@@ -10,8 +10,8 @@ export const SHOWCASE_COPY = {
   websites: {
     title: 'Websites',
     description: 'Landingpages und Webauftritte, gebaut für Performance.',
-    emptyTitle: 'Noch keine Website hier',
-    emptyDescription: 'Lade die erste Referenz hoch und sie erscheint hier.',
+    emptyTitle: 'Noch keine Websites',
+    emptyDescription: 'Die erste Landingpage wartet darauf, vorgezeigt zu werden.',
     addLabel: 'Neue Website',
     addFirstLabel: 'Erste Website hinzufügen',
   },
@@ -19,9 +19,9 @@ export const SHOWCASE_COPY = {
   werbeanzeigen: {
     title: 'Anzeigen',
     description: 'Die besten Creatives unserer Kampagnen — direkt aus Meta.',
-    emptyTitle: 'Noch keine Anzeigen',
-    emptyDescription: 'Importiere Anzeigen aus deinem Meta-Account.',
-    importLabel: 'Anzeigen importieren',
+    emptyTitle: 'Keine Anzeigen importiert',
+    emptyDescription: 'Aktiviere die Meta-Verbindung und importiere deine Top-Creatives in einem Schwung.',
+    importLabel: 'Importieren',
     importFirstLabel: 'Erste Anzeigen importieren',
     enrichLabel: 'Automatisch anreichern',
   },
