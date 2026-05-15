@@ -353,7 +353,7 @@ export function ActiveFilterChips({
           key={c.key}
           type="button"
           onClick={c.onRemove}
-          className={`inline-flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-semibold rounded-full border transition-opacity hover:opacity-75 ${toneMap[c.tone]}`}
+          className={`inline-flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-semibold rounded-xl border transition-opacity hover:opacity-75 ${toneMap[c.tone]}`}
         >
           {c.label}
           <X className="w-3 h-3" />
