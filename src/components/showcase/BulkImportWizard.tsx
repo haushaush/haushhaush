@@ -90,6 +90,8 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   const { branchen, createBranche } = useBranchen();
   const { unternehmen: unternehmenPool, createUnternehmen } = useUnternehmen();
   const { matchKunde } = useKundenMapping();
+
+  const [step, setStep] = useState<Step>('source');
   const [accountId, setAccountId] = useState<string>('');
   const [filters, setFilters] = useState<FilterState>({
     datePreset: 'last_90d',
