@@ -9,7 +9,7 @@ import {
   X, Check, Facebook, Calendar, Activity, Filter, Flame, Loader2,
   Download, Search as SearchIcon, Sparkles, Zap, Wand2, HelpCircle,
 } from 'lucide-react';
-import { Combobox } from '@/components/ui/Combobox';
+import { Combobox, type ComboboxOption } from '@/components/ui/Combobox';
 import { useBranchen, useUnternehmen } from '@/hooks/useBranchenUnternehmen';
 import { useKundenMapping, guessBrancheFromText, type KundeMatch } from '@/hooks/useKundenMapping';
 
