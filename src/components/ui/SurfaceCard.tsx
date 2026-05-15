@@ -1,12 +1,14 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-export interface SurfaceCardProps extends React.HTMLAttributes<HTMLElement> {
+export interface SurfaceCardProps {
   as?: React.ElementType;
   /** Adds hover-lift + shadow + border emphasis transition. */
   interactive?: boolean;
   padding?: 'none' | 'sm' | 'md' | 'lg';
   children?: React.ReactNode;
+  className?: string;
+  [key: string]: any;
 }
 
 const paddingMap: Record<NonNullable<SurfaceCardProps['padding']>, string> = {
