@@ -38,6 +38,8 @@ function QuickToggle({
     emerald: "bg-emerald-500 text-white border-emerald-500",
     blue: "bg-blue-500 text-white border-blue-500",
     purple: "bg-purple-500 text-white border-purple-500",
+    amber: "bg-amber-500 text-white border-amber-500",
+    yellow: "bg-yellow-500 text-white border-yellow-500",
   };
   return (
     <button
