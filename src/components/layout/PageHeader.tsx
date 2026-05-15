@@ -19,6 +19,8 @@ interface PageHeaderProps {
   className?: string;
   /** Centered hero variant (used by main showcase page). */
   centered?: boolean;
+  /** Alignment for sub-pages. `center` mirrors hero with breadcrumb + actions. */
+  align?: 'left' | 'center';
 }
 
 const titleSize: Record<'lg' | 'xl', string> = {
@@ -42,6 +44,7 @@ export function PageHeader({
   actions,
   size = 'lg',
   centered = false,
+  align = 'left',
   className,
 }: PageHeaderProps) {
   if (centered) {
@@ -57,26 +60,37 @@ export function PageHeader({
     );
   }
 
-  return (
-    <header className={cn('mb-10', className)}>
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-        <div className="min-w-0">
-          {breadcrumb &&
-            (breadcrumb.href ? (
-              <Link
-                to={breadcrumb.href}
-                className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-3 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                {breadcrumb.label}
-              </Link>
-            ) : (
-              <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
-                <ArrowLeft className="w-4 h-4" />
-                {breadcrumb.label}
-              </span>
-            ))}
+  const isCenter = align === 'center';
 
+  return (
+    <header className={cn('mb-10', isCenter && 'text-center', className)}>
+      {breadcrumb &&
+        (breadcrumb.href ? (
+          <Link
+            to={breadcrumb.href}
+            className={cn(
+              'inline-flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-3 transition-colors',
+            )}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {breadcrumb.label}
+          </Link>
+        ) : (
+          <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
+            <ArrowLeft className="w-4 h-4" />
+            {breadcrumb.label}
+          </span>
+        ))}
+
+      <div
+        className={cn(
+          'flex flex-col gap-6',
+          isCenter
+            ? 'items-center'
+            : 'md:flex-row md:items-end md:justify-between',
+        )}
+      >
+        <div className={cn('min-w-0', isCenter && 'max-w-2xl mx-auto')}>
           <h1 className={cn(titleSize[size], 'text-gray-900 dark:text-white')}>{title}</h1>
           {description && (
             <p
@@ -89,7 +103,16 @@ export function PageHeader({
             </p>
           )}
         </div>
-        {actions && <div className="flex flex-wrap gap-2 shrink-0">{actions}</div>}
+        {actions && (
+          <div
+            className={cn(
+              'flex flex-wrap gap-2 shrink-0',
+              isCenter && 'justify-center',
+            )}
+          >
+            {actions}
+          </div>
+        )}
       </div>
     </header>
   );

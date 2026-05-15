@@ -6,9 +6,11 @@ import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Plus, Upload, Sparkles, Loader2 } from "lucide-react";
 import { BulkImportWizard } from "@/components/showcase/BulkImportWizard";
 import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
-import { AdCreativeFilters, ActiveFilterChips, TOP_CPL_THRESHOLDS, type AdFilters } from "@/components/sales/AdCreativeFilters";
+import { AdCreativeFilters, ActiveFilterChips, type AdFilters } from "@/components/sales/AdCreativeFilters";
 import { useToast } from "@/hooks/use-toast";
 import { SHOWCASE_COPY } from "@/copy/showcase";
+import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
+import { useFilterOptions } from "@/hooks/useFilterOptions";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
   ShowcaseCard, ShowcaseEmptyState, PrimaryActionButton, SecondaryActionButton,
@@ -75,6 +77,10 @@ export default function ReferenzWerbeanzeigenPage() {
     if (searchParams.get("has_leads") === "1") f.has_leads = true;
     if (searchParams.get("top") === "1") f.top_performers = true;
     if (searchParams.get("video") === "1") f.has_video = true;
+    if (searchParams.get("active") === "1") f.is_active = true;
+    if (searchParams.get("high_spend") === "1") f.high_spend = true;
+    if (searchParams.get("recent") === "1") f.recent = true;
+    if (searchParams.get("featured") === "1") f.featured = true;
     const cplMin = searchParams.get("cpl_min");
     const cplMax = searchParams.get("cpl_max");
     if (cplMin || cplMax) f.cpl_range = [Number(cplMin ?? 0), Number(cplMax ?? 100)];
@@ -87,6 +93,13 @@ export default function ReferenzWerbeanzeigenPage() {
     if (mc) f.min_ctr = Number(mc);
     return f;
   }, [searchParams]);
+
+  // Standalone dropdown filters (in addition to dynamic filter_categories)
+  const brancheFilter = searchParams.get("branche") ?? "";
+  const kundeFilter = searchParams.get("kunde") ?? "";
+  const unternehmenFilter = searchParams.get("unternehmen") ?? "";
+  const werbekontoFilter = searchParams.get("werbekonto") ?? "";
+  const formatFilter = searchParams.get("format") ?? "";
 
   const updateParams = useCallback((mut: (p: URLSearchParams) => void) => {
     setSearchParams(prev => {
@@ -102,12 +115,19 @@ export default function ReferenzWerbeanzeigenPage() {
     updateParams(p => { v && v !== "performance" ? p.set("sort", v) : p.delete("sort"); });
   const setDropdownFilter = (k: string, v: string) =>
     updateParams(p => { v ? p.set(`f.${k}`, v) : p.delete(`f.${k}`); });
+  const setStandaloneFilter = (key: string) => (v: string) =>
+    updateParams(p => { v ? p.set(key, v) : p.delete(key); });
   const setAdFilters = (next: AdFilters) =>
     updateParams(p => {
-      ["has_leads", "top", "video", "cpl_min", "cpl_max", "sp_min", "sp_max", "min_leads", "min_ctr"].forEach(k => p.delete(k));
+      ["has_leads", "top", "video", "active", "high_spend", "recent", "featured",
+       "cpl_min", "cpl_max", "sp_min", "sp_max", "min_leads", "min_ctr"].forEach(k => p.delete(k));
       if (next.has_leads) p.set("has_leads", "1");
       if (next.top_performers) p.set("top", "1");
       if (next.has_video) p.set("video", "1");
+      if (next.is_active) p.set("active", "1");
+      if (next.high_spend) p.set("high_spend", "1");
+      if (next.recent) p.set("recent", "1");
+      if (next.featured) p.set("featured", "1");
       if (next.cpl_range) { p.set("cpl_min", String(next.cpl_range[0])); p.set("cpl_max", String(next.cpl_range[1])); }
       if (next.spend_range) { p.set("sp_min", String(next.spend_range[0])); p.set("sp_max", String(next.spend_range[1])); }
       if (next.min_leads != null) p.set("min_leads", String(next.min_leads));
@@ -172,21 +192,35 @@ export default function ReferenzWerbeanzeigenPage() {
       const leads = num(m.leads);
       const ctr = ctrPct(m.ctr);
       const spend = num(m.spend);
+      const status = (m.status || m.effective_status || "").toString().toUpperCase();
+      const fmt = (x.ad_format || "").toLowerCase();
 
+      // Quick toggles
       if (adFilters.has_leads && !(leads != null && leads > 0)) return false;
-      if (adFilters.has_video) {
-        const f = (x.ad_format || "").toLowerCase();
-        if (f !== "video" && f !== "reel") return false;
+      if (adFilters.has_video && fmt !== "video" && fmt !== "reel") return false;
+      if (adFilters.top_performers && !isTopPerformer(x as any)) return false;
+      if (adFilters.is_active && status !== "ACTIVE") return false;
+      if (adFilters.high_spend && (spend == null || spend < 500)) return false;
+      if (adFilters.recent && !isWithinDays(x.imported_at ?? x.created_at ?? null, 30)) return false;
+      if (adFilters.featured && !x.is_featured) return false;
+
+      // Standalone dropdown filters
+      if (brancheFilter) {
+        const b = (x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? "").toString();
+        if (b !== brancheFilter) return false;
       }
-      if (adFilters.top_performers) {
-        const branche = x.linked_kunde?.branche ?? null;
-        const threshold = TOP_CPL_THRESHOLDS[branche || ""] ?? TOP_CPL_THRESHOLDS.default;
-        const isTop =
-          (cpl != null && cpl < threshold) ||
-          (ctr != null && ctr > 3) ||
-          (leads != null && leads > 20);
-        if (!isTop) return false;
+      if (kundeFilter && x.linked_kunde_id !== kundeFilter) return false;
+      if (unternehmenFilter) {
+        const u = (x.linked_kunde?.unternehmen ?? (x.filter_values ?? {}).unternehmen ?? "").toString();
+        if (u !== unternehmenFilter) return false;
       }
+      if (werbekontoFilter && x.meta_account_id !== werbekontoFilter) return false;
+      if (formatFilter) {
+        if (formatFilter === "video" && fmt !== "video" && fmt !== "reel") return false;
+        if (formatFilter === "image" && fmt !== "image" && fmt !== "" && fmt !== "single_image") return false;
+        if (formatFilter === "carousel" && fmt !== "carousel") return false;
+      }
+
       if (adFilters.cpl_range) {
         const [lo, hi] = adFilters.cpl_range;
         if (cpl == null || cpl < lo || cpl > hi) return false;
@@ -220,7 +254,7 @@ export default function ReferenzWerbeanzeigenPage() {
       }
     });
     return sorted;
-  }, [rows, search, activeFilters, sortBy, adFilters]);
+  }, [rows, search, activeFilters, sortBy, adFilters, brancheFilter, kundeFilter, unternehmenFilter, werbekontoFilter, formatFilter]);
 
   const items: AnyItem[] = useMemo(
     () => filtered.map(a => ({
@@ -231,10 +265,13 @@ export default function ReferenzWerbeanzeigenPage() {
     [filtered],
   );
 
+  const { branchen, unternehmen, kunden, werbekonten } = useFilterOptions('werbeanzeige');
+
   const hasActiveFilters =
     !!search ||
     Object.values(activeFilters).some(Boolean) ||
-    Object.keys(adFilters).length > 0;
+    Object.keys(adFilters).length > 0 ||
+    !!brancheFilter || !!kundeFilter || !!unternehmenFilter || !!werbekontoFilter || !!formatFilter;
   const resetFilters = () => updateParams(p => { Array.from(p.keys()).forEach(k => p.delete(k)); });
 
   const dropdownLabels = useMemo(() => {
@@ -283,9 +320,11 @@ export default function ReferenzWerbeanzeigenPage() {
       />
 
       <div className="space-y-4 mb-8">
-        <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
+        <div className="max-w-2xl mx-auto">
+          <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
+        </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-2 max-w-5xl mx-auto">
           <DropdownPill
             label="Sortieren"
             value={sortBy === 'performance' ? '' : sortBy}
@@ -297,6 +336,40 @@ export default function ReferenzWerbeanzeigenPage() {
               { value: 'spend', label: 'Höchster Spend' },
               { value: 'roas', label: 'ROAS (hoch)' },
               { value: 'created', label: 'Importdatum' },
+            ]}
+          />
+          <DropdownPill
+            label="Branche"
+            value={brancheFilter}
+            onChange={setStandaloneFilter('branche')}
+            options={branchen}
+          />
+          <DropdownPill
+            label="Kunde"
+            value={kundeFilter}
+            onChange={setStandaloneFilter('kunde')}
+            options={kunden}
+          />
+          <DropdownPill
+            label="Unternehmen"
+            value={unternehmenFilter}
+            onChange={setStandaloneFilter('unternehmen')}
+            options={unternehmen}
+          />
+          <DropdownPill
+            label="Werbekonto"
+            value={werbekontoFilter}
+            onChange={setStandaloneFilter('werbekonto')}
+            options={werbekonten}
+          />
+          <DropdownPill
+            label="Format"
+            value={formatFilter}
+            onChange={setStandaloneFilter('format')}
+            options={[
+              { value: 'image', label: 'Bild' },
+              { value: 'video', label: 'Video' },
+              { value: 'carousel', label: 'Karussell' },
             ]}
           />
           {categories.map(cat => {

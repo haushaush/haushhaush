@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import {
-  Flame, UserCheck, Video, SlidersHorizontal, ChevronDown, X, type LucideIcon,
+  Flame, UserCheck, Video, SlidersHorizontal, ChevronDown, X,
+  Activity, Euro, Clock, Star, type LucideIcon,
 } from "lucide-react";
 
 export type AdFilters = {
   has_leads?: boolean;
   top_performers?: boolean;
   has_video?: boolean;
+  is_active?: boolean;
+  high_spend?: boolean;
+  recent?: boolean;
+  featured?: boolean;
   cpl_range?: [number, number];
   min_leads?: number;
   min_ctr?: number; // in percent (0-100)
@@ -17,7 +22,7 @@ export type AdFilters = {
 export const CPL_BOUNDS: [number, number] = [0, 100];
 export const SPEND_BOUNDS: [number, number] = [0, 50000];
 
-type ToggleColor = "gray" | "emerald" | "blue" | "purple";
+type ToggleColor = "gray" | "emerald" | "blue" | "purple" | "amber" | "yellow";
 
 function QuickToggle({
   active, onClick, icon: Icon, label, color = "gray",
@@ -33,6 +38,8 @@ function QuickToggle({
     emerald: "bg-emerald-500 text-white border-emerald-500",
     blue: "bg-blue-500 text-white border-blue-500",
     purple: "bg-purple-500 text-white border-purple-500",
+    amber: "bg-amber-500 text-white border-amber-500",
+    yellow: "bg-yellow-500 text-white border-yellow-500",
   };
   return (
     <button
@@ -180,7 +187,7 @@ export function AdCreativeFilters({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-center gap-2">
         <QuickToggle
           active={!!filters.has_leads}
           onClick={() => toggle("has_leads")}
@@ -195,24 +202,51 @@ export function AdCreativeFilters({
           color="emerald"
         />
         <QuickToggle
+          active={!!filters.is_active}
+          onClick={() => toggle("is_active")}
+          icon={Activity}
+          label="Aktiv"
+          color="blue"
+        />
+        <QuickToggle
           active={!!filters.has_video}
           onClick={() => toggle("has_video")}
           icon={Video}
           label="Nur Videos"
           color="purple"
         />
+        <QuickToggle
+          active={!!filters.high_spend}
+          onClick={() => toggle("high_spend")}
+          icon={Euro}
+          label="High Budget"
+          color="amber"
+        />
+        <QuickToggle
+          active={!!filters.recent}
+          onClick={() => toggle("recent")}
+          icon={Clock}
+          label="Letzte 30 Tage"
+        />
+        <QuickToggle
+          active={!!filters.featured}
+          onClick={() => toggle("featured")}
+          icon={Star}
+          label="Featured"
+          color="yellow"
+        />
 
         <button
           type="button"
           onClick={() => setShowAdvanced(s => !s)}
-          className={`ml-auto inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold rounded-full border transition-all ${
+          className={`inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold rounded-full border transition-all ${
             showAdvanced
               ? "bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800"
               : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
           }`}
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          Erweiterte Filter
+          Performance
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
         </button>
       </div>
@@ -291,6 +325,10 @@ export function ActiveFilterChips({
   if (adFilters.has_leads) chips.push({ key: "has_leads", label: "Mit Leads", onRemove: () => onRemoveAdFilter("has_leads"), tone: "gray" });
   if (adFilters.top_performers) chips.push({ key: "top_performers", label: "Top-Performer", onRemove: () => onRemoveAdFilter("top_performers"), tone: "emerald" });
   if (adFilters.has_video) chips.push({ key: "has_video", label: "Nur Videos", onRemove: () => onRemoveAdFilter("has_video"), tone: "purple" });
+  if (adFilters.is_active) chips.push({ key: "is_active", label: "Aktiv", onRemove: () => onRemoveAdFilter("is_active"), tone: "gray" });
+  if (adFilters.high_spend) chips.push({ key: "high_spend", label: "High Budget", onRemove: () => onRemoveAdFilter("high_spend"), tone: "gray" });
+  if (adFilters.recent) chips.push({ key: "recent", label: "Letzte 30 Tage", onRemove: () => onRemoveAdFilter("recent"), tone: "gray" });
+  if (adFilters.featured) chips.push({ key: "featured", label: "Featured", onRemove: () => onRemoveAdFilter("featured"), tone: "gray" });
   if (adFilters.cpl_range) chips.push({ key: "cpl_range", label: `CPL €${adFilters.cpl_range[0]}–€${adFilters.cpl_range[1]}`, onRemove: () => onRemoveAdFilter("cpl_range"), tone: "teal" });
   if (adFilters.spend_range) chips.push({ key: "spend_range", label: `Spend €${adFilters.spend_range[0].toLocaleString("de-DE")}–€${adFilters.spend_range[1].toLocaleString("de-DE")}`, onRemove: () => onRemoveAdFilter("spend_range"), tone: "teal" });
   if (adFilters.min_leads != null) chips.push({ key: "min_leads", label: `Min. ${adFilters.min_leads} Leads`, onRemove: () => onRemoveAdFilter("min_leads"), tone: "teal" });
