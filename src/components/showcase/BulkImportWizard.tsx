@@ -125,7 +125,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       setStep('source');
       setSelected(new Set());
       setEnrichment({});
-      setProgress({ done: 0, total: 0, recent: [], errors: [] });
+      setProgress({ done: 0, total: 0, recent: [], errors: [], skipped: [] });
       if (!accountId && accounts[0]) setAccountId(accounts[0].id);
     }
   }, [open, accounts]);
@@ -268,7 +268,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   const runImport = async () => {
     setStep('import');
     const ids = Array.from(selected);
-    setProgress({ done: 0, total: ids.length, recent: [], errors: [] });
+    setProgress({ done: 0, total: ids.length, recent: [], errors: [], skipped: [] });
 
     for (let i = 0; i < ids.length; i++) {
       const adId = ids[i];
