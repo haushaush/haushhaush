@@ -211,8 +211,13 @@ export default function ReferenzWerbeanzeigenPage() {
 
       // Standalone dropdown filters
       if (brancheFilter) {
-        const b = (x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? "").toString();
-        if (b !== brancheFilter) return false;
+        const raw = (x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? '').toString();
+        const canonical = normalizeBranche(raw);
+        // Filter holds either a canonical id (e.g. 'pkv') or a raw unknown label
+        const matches =
+          (canonical && canonical === brancheFilter) ||
+          raw.trim().toLowerCase() === brancheFilter.toLowerCase();
+        if (!matches) return false;
       }
       if (kundeFilter) {
         const entry = kunden.find(k => k.value === kundeFilter);
