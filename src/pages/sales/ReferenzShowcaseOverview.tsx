@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Globe, Video, BarChart3, Search, ChevronDown, RefreshCw,
-  Image as ImageIcon, Star, ExternalLink, Check,
+  Globe, Sparkles, TrendingUp, Search, ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +10,8 @@ import { useIsPublicView } from '@/hooks/useIsPublicView';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
+import { ShowcaseCard } from './ReferenzShowcaseUI';
+import { SHOWCASE_COPY } from '@/copy/showcase';
 
 type AnyItem = Record<string, any> & { _type: 'website' | 'werbeanzeige' | 'campaign' };
 
