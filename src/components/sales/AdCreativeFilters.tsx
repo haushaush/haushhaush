@@ -239,7 +239,7 @@ export function AdCreativeFilters({
         <button
           type="button"
           onClick={() => setShowAdvanced(s => !s)}
-          className={`inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold rounded-full border transition-all ${
+          className={`inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold rounded-xl border transition-all ${
             showAdvanced
               ? "bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800"
               : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
