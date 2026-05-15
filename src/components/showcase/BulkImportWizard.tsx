@@ -213,7 +213,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
 
       setProgress(prev => ({
         ...prev,
-        recent: [{ adId, adName, status: 'pending', message: `Importiere "${adName}"...` }, ...prev.recent].slice(0, 20),
+        recent: [{ adId, adName, status: 'pending' as const, message: `Importiere "${adName}"...` }, ...prev.recent].slice(0, 20),
       }));
 
       try {
