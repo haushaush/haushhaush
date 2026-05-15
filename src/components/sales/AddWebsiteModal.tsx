@@ -282,6 +282,10 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
         if (error) throw error;
       }
 
+      if (keyFeatures.length > 0) {
+        try { await incrementHighlights(keyFeatures); } catch {}
+      }
+
       toast.success(editing ? 'Aktualisiert' : 'Website hinzugefügt');
       onSaved();
     } catch (e: any) {
