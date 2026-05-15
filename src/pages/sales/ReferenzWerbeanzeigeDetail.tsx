@@ -134,6 +134,7 @@ export default function ReferenzWerbeanzeigeDetail() {
   const isWinning = !!(cpl != null && cpl > 0 && cpl < 5);
 
   return (
+    <>
     <DetailPageLayout
       backHref={backHref}
       backLabel="Anzeigen"
