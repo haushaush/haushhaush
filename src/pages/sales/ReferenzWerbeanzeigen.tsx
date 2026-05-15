@@ -343,7 +343,10 @@ export default function ReferenzWerbeanzeigenPage() {
         )}
       />
 
+      {isAdmin && <SyncStatusBanner />}
+
       <div className="space-y-4 mb-8">
+
         <div className="max-w-2xl mx-auto">
           <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
         </div>
