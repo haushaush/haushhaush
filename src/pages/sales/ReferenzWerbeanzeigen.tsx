@@ -305,10 +305,10 @@ export default function ReferenzWerbeanzeigenPage() {
         title={SHOWCASE_COPY.werbeanzeigen.title}
         subtitle={SHOWCASE_COPY.werbeanzeigen.description}
         actions={isAdmin && (
-          <>
+          <div className="flex items-center gap-2">
             <Link
               to="/admin/import-blacklist"
-              className="inline-flex items-center gap-2 px-3 h-9 rounded-xl border border-gray-200 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-gray-300 dark:hover:border-gray-700 transition-colors"
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium shadow-sm transition-colors"
             >
               <ShieldOff className="w-4 h-4" /> Blacklist
             </Link>
