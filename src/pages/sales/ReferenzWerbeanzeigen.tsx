@@ -11,9 +11,10 @@ import { AdCreativeFilters, ActiveFilterChips, type AdFilters } from "@/componen
 import { useToast } from "@/hooks/use-toast";
 import { SHOWCASE_COPY } from "@/copy/showcase";
 import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
-import { getAdLiveStatus } from "@/lib/adStatus";
+import { getAdLiveStatus, isAdActive } from "@/lib/adStatus";
 import { useFilterOptions } from "@/hooks/useFilterOptions";
 import { normalizeBranche } from "@/lib/branchen";
+import { SyncStatusBanner } from "@/components/admin/SyncStatusBanner";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
   ShowcaseCard, ShowcaseEmptyState, PrimaryActionButton, SecondaryActionButton,
