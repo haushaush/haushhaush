@@ -17,6 +17,8 @@ import {
   useUnternehmen,
   useCreateUnternehmen,
 } from '@/hooks/useLookups';
+import { HighlightsPicker } from '@/components/ui/HighlightsPicker';
+import { useHighlights } from '@/hooks/useHighlights';
 
 interface Props {
   open: boolean;
