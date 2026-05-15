@@ -4567,6 +4567,27 @@ export type Database = {
           },
         ]
       }
+      website_highlights: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          usage_count: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          usage_count?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          usage_count?: number
+        }
+        Relationships: []
+      }
       wiki_pages: {
         Row: {
           content: string | null
@@ -4653,6 +4674,7 @@ export type Database = {
         Args: { branche_name: string }
         Returns: string
       }
+      increment_highlight_usage: { Args: { p_label: string }; Returns: string }
       increment_unternehmen_usage: {
         Args: { branche_id_in?: string; unt_name: string }
         Returns: string
