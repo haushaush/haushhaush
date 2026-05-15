@@ -87,8 +87,9 @@ const DATE_PRESETS = [
 export function BulkImportWizard({ open, onClose, onImported }: Props) {
   const { accounts, loadingAccounts } = useMetaAds();
   const { toast } = useToast();
-
-  const [step, setStep] = useState<Step>('source');
+  const { branchen, createBranche } = useBranchen();
+  const { unternehmen: unternehmenPool, createUnternehmen } = useUnternehmen();
+  const { matchKunde } = useKundenMapping();
   const [accountId, setAccountId] = useState<string>('');
   const [filters, setFilters] = useState<FilterState>({
     datePreset: 'last_90d',
