@@ -324,9 +324,11 @@ export default function ReferenzWerbeanzeigenPage() {
           <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-2 max-w-5xl mx-auto">
+        {/* Equal-width dropdown grid: 5 columns */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 max-w-5xl mx-auto">
           <DropdownPill
             label="Sortieren"
+            icon={ArrowUpDown}
             value={sortBy === 'performance' ? '' : sortBy}
             onChange={v => setSortBy((v || 'performance') as SortKey)}
             options={[
@@ -338,32 +340,12 @@ export default function ReferenzWerbeanzeigenPage() {
               { value: 'created', label: 'Importdatum' },
             ]}
           />
-          <DropdownPill
-            label="Branche"
-            value={brancheFilter}
-            onChange={setStandaloneFilter('branche')}
-            options={branchen}
-          />
-          <DropdownPill
-            label="Kunde"
-            value={kundeFilter}
-            onChange={setStandaloneFilter('kunde')}
-            options={kunden}
-          />
-          <DropdownPill
-            label="Unternehmen"
-            value={unternehmenFilter}
-            onChange={setStandaloneFilter('unternehmen')}
-            options={unternehmen}
-          />
-          <DropdownPill
-            label="Werbekonto"
-            value={werbekontoFilter}
-            onChange={setStandaloneFilter('werbekonto')}
-            options={werbekonten}
-          />
+          <DropdownPill label="Branche" icon={Tag} value={brancheFilter} onChange={setStandaloneFilter('branche')} options={branchen} />
+          <DropdownPill label="Kunde" icon={User} value={kundeFilter} onChange={setStandaloneFilter('kunde')} options={kunden} />
+          <DropdownPill label="Unternehmen" icon={Building2} value={unternehmenFilter} onChange={setStandaloneFilter('unternehmen')} options={unternehmen} />
           <DropdownPill
             label="Format"
+            icon={ImageIcon}
             value={formatFilter}
             onChange={setStandaloneFilter('format')}
             options={[
@@ -372,23 +354,30 @@ export default function ReferenzWerbeanzeigenPage() {
               { value: 'carousel', label: 'Karussell' },
             ]}
           />
-          {categories.map(cat => {
-            const catOpts = options
-              .filter(o => o.category_id === cat.id && o.is_active)
-              .map(o => ({ value: o.key, label: o.label }))
-              .sort((a, b) => a.label.localeCompare(b.label));
-            if (catOpts.length === 0) return null;
-            return (
-              <DropdownPill
-                key={cat.id}
-                label={cat.label}
-                value={activeFilters[cat.key] ?? ''}
-                onChange={v => setDropdownFilter(cat.key, v)}
-                options={catOpts}
-              />
-            );
-          })}
         </div>
+
+        {/* Werbekonto + dynamic categories: second row, equal columns */}
+        {(werbekonten.length > 0 || categories.length > 0) && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 max-w-5xl mx-auto">
+            <DropdownPill label="Werbekonto" icon={Wallet} value={werbekontoFilter} onChange={setStandaloneFilter('werbekonto')} options={werbekonten} />
+            {categories.map(cat => {
+              const catOpts = options
+                .filter(o => o.category_id === cat.id && o.is_active)
+                .map(o => ({ value: o.key, label: o.label }))
+                .sort((a, b) => a.label.localeCompare(b.label));
+              if (catOpts.length === 0) return null;
+              return (
+                <DropdownPill
+                  key={cat.id}
+                  label={cat.label}
+                  value={activeFilters[cat.key] ?? ''}
+                  onChange={v => setDropdownFilter(cat.key, v)}
+                  options={catOpts}
+                />
+              );
+            })}
+          </div>
+        )}
 
         <AdCreativeFilters filters={adFilters} onChange={setAdFilters} />
 
