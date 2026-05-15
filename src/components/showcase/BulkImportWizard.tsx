@@ -144,6 +144,9 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       let after: string | undefined;
       // fetch up to ~200 ads (8 pages × 25)
       for (let i = 0; i < 8; i++) {
+        const { data: sess } = await supabase.auth.getSession();
+        const token = sess.session?.access_token;
+        if (!token) throw new Error('Nicht eingeloggt – bitte erneut anmelden.');
         const { data, error } = await supabase.functions.invoke('meta-ads-list-importable', {
           body: {
             accountId,
@@ -152,6 +155,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
             after,
             datePreset: filters.datePreset,
           },
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (error) throw error;
         const page = (data as any)?.ads as ImportableAd[] | undefined;
@@ -219,8 +223,12 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       }));
 
       try {
+        const { data: sess2 } = await supabase.auth.getSession();
+        const token2 = sess2.session?.access_token;
+        if (!token2) throw new Error('Nicht eingeloggt – bitte erneut anmelden.');
         const { data, error } = await supabase.functions.invoke('meta-ads-import-to-showcase', {
           body: { adIds: [adId] },
+          headers: { Authorization: `Bearer ${token2}` },
         });
         if (error) throw error;
         const res = data as any;
