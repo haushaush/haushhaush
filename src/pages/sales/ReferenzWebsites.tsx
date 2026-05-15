@@ -135,7 +135,7 @@ export default function ReferenzWebsitesPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="aspect-[16/10] rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse" />
+            <div key={i} className="aspect-video rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
@@ -148,7 +148,7 @@ export default function ReferenzWebsitesPage() {
           ) : undefined}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 auto-rows-fr">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
           {filtered.map(item => <ShowcaseCard key={item.id} item={item} />)}
         </div>
       )}
