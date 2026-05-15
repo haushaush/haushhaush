@@ -58,6 +58,14 @@ interface ImportProgress {
   total: number;
   recent: ProgressEntry[];
   errors: { adId: string; adName: string; message: string }[];
+  skipped: { adId: string; adName: string; reason: string }[];
+}
+
+interface BlacklistSet {
+  accounts: Set<string>;
+  ads: Set<string>;
+  campaigns: Set<string>;
+  keywords: string[];
 }
 
 // ───────────────────────────────────────────────────────────────────
@@ -108,7 +116,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   const [bulkUnternehmen, setBulkUnternehmen] = useState('');
 
   const [progress, setProgress] = useState<ImportProgress>({
-    done: 0, total: 0, recent: [], errors: [],
+    done: 0, total: 0, recent: [], errors: [], skipped: [],
   });
 
   // Reset on open
@@ -117,7 +125,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       setStep('source');
       setSelected(new Set());
       setEnrichment({});
-      setProgress({ done: 0, total: 0, recent: [], errors: [] });
+      setProgress({ done: 0, total: 0, recent: [], errors: [], skipped: [] });
       if (!accountId && accounts[0]) setAccountId(accounts[0].id);
     }
   }, [open, accounts]);
@@ -162,6 +170,34 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
     runAutoMatch(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
+
+  // Blacklist (loaded once when wizard opens)
+  const [blacklist, setBlacklist] = useState<BlacklistSet>({
+    accounts: new Set(), ads: new Set(), campaigns: new Set(), keywords: [],
+  });
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase.from('import_blacklist' as any).select('scope, target_id');
+      const set: BlacklistSet = { accounts: new Set(), ads: new Set(), campaigns: new Set(), keywords: [] };
+      for (const b of ((data ?? []) as any[]) as Array<{ scope: string; target_id: string }>) {
+        if (b.scope === 'meta_account') set.accounts.add(b.target_id);
+        else if (b.scope === 'meta_ad') set.ads.add(b.target_id);
+        else if (b.scope === 'meta_campaign') set.campaigns.add(b.target_id);
+        else if (b.scope === 'keyword') set.keywords.push(b.target_id.toLowerCase());
+      }
+      setBlacklist(set);
+    })();
+  }, [open]);
+
+  const isBlacklisted = (ad: ImportableAd): string | null => {
+    if (blacklist.ads.has(ad.meta_ad_id)) return 'Anzeige';
+    if (blacklist.accounts.has(ad.meta_account_id)) return 'Werbekonto';
+    const name = (ad.meta_ad_name || '').toLowerCase();
+    const kw = blacklist.keywords.find(k => name.includes(k));
+    if (kw) return `Keyword "${kw}"`;
+    return null;
+  };
 
   // Lookups for enrichment dropdowns (close_deals)
   const [brancheOpts, setBrancheOpts] = useState<string[]>([]);
@@ -214,11 +250,12 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
         after = (data as any)?.paging?.cursors?.after;
         if (!after) break;
       }
-      // Apply min thresholds locally
+      // Apply min thresholds + blacklist filter locally
       const filtered = all.filter(a => {
         const m = a.metrics ?? {};
         if (filters.minLeads > 0 && (m.leads ?? 0) < filters.minLeads) return false;
         if (filters.minSpend > 0 && (m.spend ?? 0) < filters.minSpend) return false;
+        if (isBlacklisted(a)) return false;
         return true;
       });
       setAds(filtered);
@@ -260,12 +297,24 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   const runImport = async () => {
     setStep('import');
     const ids = Array.from(selected);
-    setProgress({ done: 0, total: ids.length, recent: [], errors: [] });
+    setProgress({ done: 0, total: ids.length, recent: [], errors: [], skipped: [] });
 
     for (let i = 0; i < ids.length; i++) {
       const adId = ids[i];
       const ad = ads.find(a => a.meta_ad_id === adId);
       const adName = ad?.meta_ad_name ?? adId;
+
+      // Pre-check blacklist (defense-in-depth alongside backend filter)
+      const blockedReason = ad ? isBlacklisted(ad) : null;
+      if (blockedReason) {
+        setProgress(prev => ({
+          ...prev,
+          done: prev.done + 1,
+          skipped: [...prev.skipped, { adId, adName, reason: blockedReason }],
+          recent: [{ adId, adName, status: 'error' as const, message: `⊘ ${adName}: Blacklist (${blockedReason})` }, ...prev.recent].slice(0, 20),
+        }));
+        continue;
+      }
 
       setProgress(prev => ({
         ...prev,
@@ -282,6 +331,16 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
         });
         if (error) throw error;
         const res = data as any;
+        const skip = (res?.skipped ?? []).find((s: any) => s.id === adId || s.adId === adId);
+        if (skip) {
+          setProgress(prev => ({
+            ...prev,
+            done: prev.done + 1,
+            skipped: [...prev.skipped, { adId, adName, reason: skip.reason || 'Blacklist' }],
+            recent: [{ adId, adName, status: 'error' as const, message: `⊘ ${adName}: ${skip.reason || 'Blacklist'}` }, ...prev.recent].slice(0, 20),
+          }));
+          continue;
+        }
         if (res?.errors?.length) {
           throw new Error(res.errors[0]?.error || 'Unbekannter Fehler');
         }
@@ -345,19 +404,12 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && canCloseRequest) onClose(); }}>
       <DialogContent persistent className="max-w-6xl h-[88vh] flex flex-col p-0 overflow-hidden gap-0">
-        {/* HEADER */}
-        <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-              Anzeigen aus Meta importieren
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
-          </div>
-          {canCloseRequest && (
-            <button onClick={onClose} className="w-9 h-9 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500">
-              <X className="w-4 h-4" />
-            </button>
-          )}
+        {/* HEADER (Radix Dialog renders its own close button automatically) */}
+        <div className="px-6 py-5 pr-14 border-b border-gray-200 dark:border-gray-800 shrink-0">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+            Anzeigen aus Meta importieren
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
         </div>
 
         {/* STEPPER */}
@@ -1052,7 +1104,7 @@ function ImportStep({ progress }: { progress: ImportProgress }) {
 // Step: Done
 // ───────────────────────────────────────────────────────────────────
 function DoneStep({ progress, onClose }: { progress: ImportProgress; onClose: () => void }) {
-  const success = progress.total - progress.errors.length;
+  const success = progress.total - progress.errors.length - progress.skipped.length;
   return (
     <div className="max-w-md mx-auto py-8 text-center">
       <div className="w-20 h-20 mx-auto rounded-2xl bg-emerald-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-200 dark:shadow-emerald-900/50">
@@ -1061,15 +1113,22 @@ function DoneStep({ progress, onClose }: { progress: ImportProgress; onClose: ()
       <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-2 tabular-nums">
         {success} Anzeigen importiert
       </h3>
-      {progress.errors.length > 0 ? (
-        <p className="text-sm text-amber-600 dark:text-amber-400 mb-6">
-          {progress.errors.length} konnten nicht importiert werden. Details unten.
-        </p>
-      ) : (
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-          Alle Anzeigen wurden erfolgreich importiert.
-        </p>
-      )}
+      <div className="flex flex-col items-center gap-1 mb-6">
+        {progress.skipped.length > 0 && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 tabular-nums">
+            {progress.skipped.length} übersprungen (Blacklist)
+          </p>
+        )}
+        {progress.errors.length > 0 ? (
+          <p className="text-sm text-amber-600 dark:text-amber-400">
+            {progress.errors.length} konnten nicht importiert werden. Details unten.
+          </p>
+        ) : progress.skipped.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Alle Anzeigen wurden erfolgreich importiert.
+          </p>
+        ) : null}
+      </div>
       {progress.errors.length > 0 && (
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 text-left mb-6 max-h-48 overflow-y-auto">
           <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">

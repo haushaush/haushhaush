@@ -305,10 +305,10 @@ export default function ReferenzWerbeanzeigenPage() {
         title={SHOWCASE_COPY.werbeanzeigen.title}
         subtitle={SHOWCASE_COPY.werbeanzeigen.description}
         actions={isAdmin && (
-          <>
+          <div className="flex items-center gap-2">
             <Link
               to="/admin/import-blacklist"
-              className="inline-flex items-center gap-2 px-3 h-9 rounded-xl border border-gray-200 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-gray-300 dark:hover:border-gray-700 transition-colors"
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium shadow-sm transition-colors"
             >
               <ShieldOff className="w-4 h-4" /> Blacklist
             </Link>
@@ -339,7 +339,7 @@ export default function ReferenzWerbeanzeigenPage() {
             <PrimaryActionButton onClick={() => setImportOpen(true)}>
               <Upload className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importLabel}
             </PrimaryActionButton>
-          </>
+          </div>
         )}
       />
 
@@ -351,8 +351,8 @@ export default function ReferenzWerbeanzeigenPage() {
           <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
         </div>
 
-        {/* Equal-width dropdown grid: 5 columns */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 max-w-5xl mx-auto">
+        {/* Equal-width dropdown grid: 6 columns on desktop, all same width */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 max-w-5xl mx-auto">
           <DropdownPill
             label="Sortieren"
             icon={ArrowUpDown}
@@ -370,6 +370,7 @@ export default function ReferenzWerbeanzeigenPage() {
           <DropdownPill label="Branche" icon={Tag} value={brancheFilter} onChange={setStandaloneFilter('branche')} options={branchen} />
           <DropdownPill label="Kunde" icon={User} value={kundeFilter} onChange={setStandaloneFilter('kunde')} options={kunden} />
           <DropdownPill label="Unternehmen" icon={Building2} value={unternehmenFilter} onChange={setStandaloneFilter('unternehmen')} options={unternehmen} />
+          <DropdownPill label="Werbekonto" icon={Wallet} value={werbekontoFilter} onChange={setStandaloneFilter('werbekonto')} options={werbekonten} />
           <DropdownPill
             label="Format"
             icon={ImageIcon}
@@ -383,30 +384,31 @@ export default function ReferenzWerbeanzeigenPage() {
           />
         </div>
 
-        {/* Werbekonto + dynamic categories: second row, equal columns */}
-        {(werbekonten.length > 0 || categories.length > 0) && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 max-w-5xl mx-auto">
-            <DropdownPill label="Werbekonto" icon={Wallet} value={werbekontoFilter} onChange={setStandaloneFilter('werbekonto')} options={werbekonten} />
-            {categories
-              .filter(cat => !['branche', 'kunde', 'unternehmen', 'zielgruppe', 'format', 'werbekonto'].includes(cat.key.toLowerCase()))
-              .map(cat => {
-              const catOpts = options
-                .filter(o => o.category_id === cat.id && o.is_active)
-                .map(o => ({ value: o.key, label: o.label }))
-                .sort((a, b) => a.label.localeCompare(b.label));
-              if (catOpts.length === 0) return null;
-              return (
-                <DropdownPill
-                  key={cat.id}
-                  label={cat.label}
-                  value={activeFilters[cat.key] ?? ''}
-                  onChange={v => setDropdownFilter(cat.key, v)}
-                  options={catOpts}
-                />
-              );
-            })}
-          </div>
-        )}
+        {/* Dynamic categories: optional second row, equal columns */}
+        {(() => {
+          const dynCats = categories.filter(cat => !['branche', 'kunde', 'unternehmen', 'zielgruppe', 'format', 'werbekonto'].includes(cat.key.toLowerCase()));
+          if (dynCats.length === 0) return null;
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 max-w-5xl mx-auto">
+              {dynCats.map(cat => {
+                const catOpts = options
+                  .filter(o => o.category_id === cat.id && o.is_active)
+                  .map(o => ({ value: o.key, label: o.label }))
+                  .sort((a, b) => a.label.localeCompare(b.label));
+                if (catOpts.length === 0) return null;
+                return (
+                  <DropdownPill
+                    key={cat.id}
+                    label={cat.label}
+                    value={activeFilters[cat.key] ?? ''}
+                    onChange={v => setDropdownFilter(cat.key, v)}
+                    options={catOpts}
+                  />
+                );
+              })}
+            </div>
+          );
+        })()}
 
         <AdCreativeFilters filters={adFilters} onChange={setAdFilters} />
 

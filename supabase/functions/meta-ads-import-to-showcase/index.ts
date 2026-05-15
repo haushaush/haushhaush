@@ -426,6 +426,24 @@ Deno.serve(async (req) => {
 
     const imported: string[] = [];
     const errors: { id: string; error: string }[] = [];
+    const skipped: { id: string; reason: string }[] = [];
+
+    // Load blacklist once
+    const { data: blacklistRows } = await svc
+      .from("import_blacklist")
+      .select("scope, target_id");
+    const blocked = {
+      accounts: new Set<string>(),
+      ads: new Set<string>(),
+      campaigns: new Set<string>(),
+      keywords: [] as string[],
+    };
+    for (const b of (blacklistRows ?? []) as Array<{ scope: string; target_id: string }>) {
+      if (b.scope === "meta_account") blocked.accounts.add(b.target_id);
+      else if (b.scope === "meta_ad") blocked.ads.add(b.target_id);
+      else if (b.scope === "meta_campaign") blocked.campaigns.add(b.target_id);
+      else if (b.scope === "keyword") blocked.keywords.push(b.target_id.toLowerCase());
+    }
 
     const creativeFields = [
       "id", "name", "object_type",
@@ -437,6 +455,11 @@ Deno.serve(async (req) => {
     ].join(",");
 
     for (const adId of adIds) {
+      // Pre-check: ad-id-level blacklist
+      if (blocked.ads.has(adId)) {
+        skipped.push({ id: adId, reason: "Anzeige" });
+        continue;
+      }
       try {
         const fields = [
           "id", "name", "status", "effective_status", "account_id",
@@ -445,6 +468,24 @@ Deno.serve(async (req) => {
           `creative{${creativeFields}}`,
         ].join(",");
         const ad = await metaGet(`/${adId}`, { fields });
+
+        // Blacklist: account / campaign / keyword
+        const accIdRaw = `act_${ad.account_id}`;
+        if (blocked.accounts.has(accIdRaw)) {
+          skipped.push({ id: adId, reason: "Werbekonto" });
+          continue;
+        }
+        if (ad.campaign_id && blocked.campaigns.has(ad.campaign_id)) {
+          skipped.push({ id: adId, reason: "Kampagne" });
+          continue;
+        }
+        const adNameLower = (ad.name || "").toLowerCase();
+        const kwHit = blocked.keywords.find(k => adNameLower.includes(k));
+        if (kwHit) {
+          skipped.push({ id: adId, reason: `Keyword "${kwHit}"` });
+          continue;
+        }
+
         const insightsRes = await metaGet(`/${adId}/insights`, {
           fields: "spend,impressions,clicks,ctr,cpm,actions,action_values,date_start,date_stop",
           date_preset: datePreset,
@@ -452,7 +493,7 @@ Deno.serve(async (req) => {
         const insightRow = insightsRes?.data?.[0];
         const metrics = extractMetrics(insightRow);
         const creative = ad.creative ?? {};
-        const accId = `act_${ad.account_id}`;
+        const accId = accIdRaw;
         const { thumbnail_url: rawThumb, video_url, ad_format, strategy, details } = await resolveCreativeUrls(creative, accId, ad.id);
 
         const persistResult = await persistImageToStorage(rawThumb, ad.id, svc);
@@ -528,7 +569,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ imported, errors }), {
+    return new Response(JSON.stringify({ imported, errors, skipped }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
