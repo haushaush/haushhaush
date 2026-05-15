@@ -34,10 +34,15 @@ Deno.serve(async (req) => {
     if (!ytRes.ok) {
       const err = await ytRes.text();
       console.error("YouTube API error:", err);
-      return new Response(JSON.stringify({ error: "YouTube API request failed" }), {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const isQuota = ytRes.status === 403 && err.includes("quota");
+      return new Response(
+        JSON.stringify({
+          results: [],
+          error: isQuota ? "YouTube-Tageskontingent erreicht. Bitte später erneut versuchen." : "YouTube API nicht erreichbar.",
+          fallback: true,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const data = await ytRes.json();
