@@ -246,3 +246,35 @@ export default function ReferenzWebsitesPage() {
     </ShowcasePageWrapper>
   );
 }
+
+function QuickToggle({
+  active, onClick, icon: Icon, label, tone,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  tone?: 'yellow' | 'emerald';
+}) {
+  const activeClasses =
+    tone === 'yellow'
+      ? 'bg-yellow-50 border-yellow-300 text-yellow-800 dark:bg-yellow-950/40 dark:border-yellow-800 dark:text-yellow-200'
+      : tone === 'emerald'
+      ? 'bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-200'
+      : 'bg-gray-900 border-gray-900 text-white dark:bg-white dark:border-white dark:text-gray-900';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
+        active
+          ? activeClasses
+          : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'
+      )}
+    >
+      <Icon className="w-3.5 h-3.5" />
+      {label}
+    </button>
+  );
+}
