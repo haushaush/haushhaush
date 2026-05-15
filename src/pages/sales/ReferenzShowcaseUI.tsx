@@ -207,9 +207,12 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
   const title = getShowcaseTitle(item);
 
   return (
-    <Link
+    <SurfaceCard
+      as={Link}
       to={detailHref}
-      className="group h-full flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
+      interactive
+      padding="none"
+      className="group h-full flex flex-col overflow-hidden"
     >
       <div className="relative bg-gray-50 dark:bg-gray-800 overflow-hidden shrink-0" style={{ aspectRatio: '16 / 9' }}>
         {item._type === 'campaign'
