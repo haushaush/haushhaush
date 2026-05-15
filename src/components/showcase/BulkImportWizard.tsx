@@ -126,8 +126,10 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       const b = new Set<string>();
       const u = new Set<string>();
       ((data ?? []) as any[]).forEach(r => {
-        if (r.branche?.trim()) b.add(r.branche.trim());
-        if (r.unternehmen?.trim()) u.add(r.unternehmen.trim());
+        const br = typeof r.branche === 'string' ? r.branche.trim() : '';
+        const un = typeof r.unternehmen === 'string' ? r.unternehmen.trim() : '';
+        if (br) b.add(br);
+        if (un) u.add(un);
       });
       setBrancheOpts([...b].sort((a, b) => a.localeCompare(b, 'de')));
       setUnternehmenOpts([...u].sort((a, b) => a.localeCompare(b, 'de')));
