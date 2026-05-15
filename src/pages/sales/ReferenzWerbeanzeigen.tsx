@@ -200,7 +200,7 @@ export default function ReferenzWerbeanzeigenPage() {
       if (adFilters.has_leads && !(leads != null && leads > 0)) return false;
       if (adFilters.has_video && fmt !== "video" && fmt !== "reel") return false;
       if (adFilters.top_performers && !isTopPerformer(x as any)) return false;
-      if (adFilters.is_active && status !== "ACTIVE") return false;
+      if (adFilters.is_active && getAdLiveStatus(x as any) !== 'live') return false;
       if (adFilters.high_spend && (spend == null || spend < 500)) return false;
       if (adFilters.recent && !isWithinDays(x.imported_at ?? x.created_at ?? null, 30)) return false;
       if (adFilters.featured && !x.is_featured) return false;
