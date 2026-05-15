@@ -106,13 +106,7 @@ export default function ReferenzWerbeanzeigeDetail() {
     else { toast({ title: force ? `Bild + Metriken neu geladen` : `${(data as any)?.refreshed ?? 0} Anzeige aktualisiert` }); load(); }
   };
 
-  const remove = async () => {
-    if (!ad) return;
-    if (!confirm("Anzeige aus Showcase entfernen?")) return;
-    const { error } = await supabase.from("referenz_meta_ads" as any).delete().eq("id", ad.id);
-    if (error) toast({ title: "Fehler", description: error.message, variant: "destructive" });
-    else navigate(backHref);
-  };
+  // Soft/hard delete handled via DeleteAdDialog
 
   const addTag = () => {
     const t = newTag.trim().toLowerCase().replace(/^#/, "");
