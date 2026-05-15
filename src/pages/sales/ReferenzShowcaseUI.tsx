@@ -234,74 +234,64 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
         )}
       </div>
 
-      <div className="p-4 flex flex-col flex-1">
-        <div>
+      <div className="p-5 flex flex-col flex-1">
+        <div className="space-y-1.5">
           {eyebrow && (
-            <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 truncate">
+            <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] truncate">
               {eyebrow}
             </p>
           )}
 
-          <h3 className="text-lg font-extrabold text-gray-900 dark:text-white leading-snug mb-2 line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
+          <h3 className="text-lg font-extrabold text-gray-900 dark:text-white leading-tight line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
             {title}
           </h3>
 
-          <div className="mb-2">
+          <div className="pt-1">
             <PrimaryHighlight item={item} branche={branche} />
           </div>
-
-          {item._type === 'website' && item.key_features?.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {item.key_features.slice(0, 3).map((feat: string, i: number) => (
-                <span
-                  key={i}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-md"
-                >
-                  <Check className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
-                  <span className="truncate max-w-[140px]">{feat}</span>
-                </span>
-              ))}
-              {item.key_features.length > 3 && (
-                <span className="inline-flex items-center px-2.5 py-1 bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-500 text-xs font-medium rounded-md border border-dashed border-gray-200 dark:border-gray-700">
-                  +{item.key_features.length - 3}
-                </span>
-              )}
-            </div>
-          )}
-
-          {unternehmen && typeof unternehmen === 'string' && (
-            <div className="mb-2 text-xs text-gray-500 dark:text-gray-400 truncate">
-              {unternehmen}
-              {item._type === 'campaign' && item.metrics?.spend != null && !isNaN(Number(item.metrics.spend)) && (
-                <> · €{Math.round(Number(item.metrics.spend)).toLocaleString('de-DE')} Spend</>
-              )}
-            </div>
-          )}
         </div>
 
         <div className="flex-1" />
 
-        <div className="border-t border-gray-100 dark:border-gray-800 mt-3 pt-3 flex items-center justify-between">
-          <span className="text-sm font-semibold text-teal-600 dark:text-teal-400 group-hover:text-teal-700 dark:group-hover:text-teal-300 group-hover:underline transition-all">
+        {item._type === 'website' && item.key_features?.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-4">
+            {item.key_features.slice(0, 3).map((feat: string, i: number) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-[11px] font-medium rounded-md"
+              >
+                <Check className="w-2.5 h-2.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                <span className="truncate max-w-[120px]">{feat}</span>
+              </span>
+            ))}
+            {item.key_features.length > 3 && (
+              <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium text-gray-400 dark:text-gray-500">
+                +{item.key_features.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="border-t border-gray-100 dark:border-gray-800 mt-4 pt-3 flex items-center justify-between">
+          <span className="text-sm font-bold text-teal-600 dark:text-teal-400 group-hover:translate-x-0.5 transition-transform">
             Ansehen →
           </span>
-          {externalLink && (
+          {externalLink ? (
             <a
               href={externalLink}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex items-center gap-1"
+              className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
             >
               <ExternalLink className="w-3 h-3" />
               <span>Original</span>
             </a>
-          )}
-          {!externalLink && item.created_at && (
+          ) : item.created_at ? (
             <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
               {formatRelativeDate(item.created_at)}
             </span>
-          )}
+          ) : null}
         </div>
       </div>
     </Link>
