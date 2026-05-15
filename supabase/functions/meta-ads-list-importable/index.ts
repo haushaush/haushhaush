@@ -187,6 +187,11 @@ Deno.serve(async (req) => {
 
     const enriched: any[] = [];
     for (const ad of ads) {
+      // Skip blacklisted (campaign, ad, keyword) and hard-deleted
+      if (hardBlockedSet.has(ad.id)) continue;
+      if (blAd.has(ad.id)) continue;
+      if (ad.campaign_id && blCampaign.has(ad.campaign_id)) continue;
+      if (blKeyword.length && ad.name && blKeyword.some(k => String(ad.name).toLowerCase().includes(k))) continue;
       const alreadyImported = importedSet.has(ad.id);
       let metrics: any = null;
       const row = insightsByAd.get(ad.id);
