@@ -162,6 +162,8 @@ export default function ReferenzWerbeanzeigenPage() {
 
   useEffect(() => { load(); }, []);
 
+  const { branchen, unternehmen, kunden, werbekonten } = useFilterOptions('werbeanzeige');
+
   const filtered = useMemo(() => {
     let r = rows;
     if (search) {
