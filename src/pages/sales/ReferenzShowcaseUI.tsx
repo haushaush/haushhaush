@@ -511,7 +511,7 @@ export function PrimaryActionButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white text-sm font-medium shadow-sm transition-colors"
+      className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white text-sm font-medium shadow-sm transition-colors"
     >
       {children}
     </button>
@@ -525,7 +525,7 @@ export function SecondaryActionButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium shadow-sm transition-colors disabled:opacity-60"
+      className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium shadow-sm transition-colors disabled:opacity-60"
     >
       {children}
     </button>
