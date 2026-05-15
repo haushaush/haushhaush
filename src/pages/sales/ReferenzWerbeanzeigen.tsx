@@ -10,6 +10,7 @@ import { AdCreativeFilters, ActiveFilterChips, type AdFilters } from "@/componen
 import { useToast } from "@/hooks/use-toast";
 import { SHOWCASE_COPY } from "@/copy/showcase";
 import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
+import { getAdLiveStatus } from "@/lib/adStatus";
 import { useFilterOptions } from "@/hooks/useFilterOptions";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
