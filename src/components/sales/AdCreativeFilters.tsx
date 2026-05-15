@@ -325,6 +325,10 @@ export function ActiveFilterChips({
   if (adFilters.has_leads) chips.push({ key: "has_leads", label: "Mit Leads", onRemove: () => onRemoveAdFilter("has_leads"), tone: "gray" });
   if (adFilters.top_performers) chips.push({ key: "top_performers", label: "Top-Performer", onRemove: () => onRemoveAdFilter("top_performers"), tone: "emerald" });
   if (adFilters.has_video) chips.push({ key: "has_video", label: "Nur Videos", onRemove: () => onRemoveAdFilter("has_video"), tone: "purple" });
+  if (adFilters.is_active) chips.push({ key: "is_active", label: "Aktiv", onRemove: () => onRemoveAdFilter("is_active"), tone: "gray" });
+  if (adFilters.high_spend) chips.push({ key: "high_spend", label: "High Budget", onRemove: () => onRemoveAdFilter("high_spend"), tone: "gray" });
+  if (adFilters.recent) chips.push({ key: "recent", label: "Letzte 30 Tage", onRemove: () => onRemoveAdFilter("recent"), tone: "gray" });
+  if (adFilters.featured) chips.push({ key: "featured", label: "Featured", onRemove: () => onRemoveAdFilter("featured"), tone: "gray" });
   if (adFilters.cpl_range) chips.push({ key: "cpl_range", label: `CPL €${adFilters.cpl_range[0]}–€${adFilters.cpl_range[1]}`, onRemove: () => onRemoveAdFilter("cpl_range"), tone: "teal" });
   if (adFilters.spend_range) chips.push({ key: "spend_range", label: `Spend €${adFilters.spend_range[0].toLocaleString("de-DE")}–€${adFilters.spend_range[1].toLocaleString("de-DE")}`, onRemove: () => onRemoveAdFilter("spend_range"), tone: "teal" });
   if (adFilters.min_leads != null) chips.push({ key: "min_leads", label: `Min. ${adFilters.min_leads} Leads`, onRemove: () => onRemoveAdFilter("min_leads"), tone: "teal" });
