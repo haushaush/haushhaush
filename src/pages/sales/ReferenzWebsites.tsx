@@ -64,6 +64,17 @@ export default function ReferenzWebsitesPage() {
       .map(([v, c]) => ({ value: v, label: `${v} (${c})` }));
   }, [items]);
 
+  const kundeOptions = useMemo(() => {
+    const map = new Map<string, number>();
+    items.forEach(i => {
+      const k = (i as any).linked_kunde?.client_name || (i as any).client_name;
+      if (typeof k === 'string' && k.trim()) map.set(k.trim(), (map.get(k.trim()) ?? 0) + 1);
+    });
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'de'))
+      .map(([v, c]) => ({ value: v, label: `${v} (${c})` }));
+  }, [items]);
+
   const unternehmenOptions = useMemo(() => {
     const map = new Map<string, number>();
     items.forEach(i => {
@@ -75,14 +86,51 @@ export default function ReferenzWebsitesPage() {
       .map(([v, c]) => ({ value: v, label: `${v} (${c})` }));
   }, [items]);
 
+  const highlightOptions = useMemo(() => {
+    const map = new Map<string, number>();
+    items.forEach(i => {
+      const features = ((i as any).key_features as string[] | null) || [];
+      features.forEach(f => {
+        const t = (f || '').trim();
+        if (t) map.set(t, (map.get(t) ?? 0) + 1);
+      });
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([v, c]) => ({ value: v, label: `${v} (${c})` }));
+  }, [items]);
+
+  const zeitraumOptions = [
+    { value: '7d', label: 'Letzte 7 Tage' },
+    { value: '30d', label: 'Letzte 30 Tage' },
+    { value: '90d', label: 'Letzte 90 Tage' },
+    { value: '1y', label: 'Letztes Jahr' },
+  ];
+
   const filtered = useMemo(() => {
+    const now = Date.now();
+    const days30 = 30 * 24 * 60 * 60 * 1000;
     let out = items.filter(i => {
       if (brancheFilter && getShowcaseBranche(i) !== brancheFilter) return false;
+      const k = (i as any).linked_kunde?.client_name || (i as any).client_name;
+      if (kundeFilter && k !== kundeFilter) return false;
       const u = (i as any).linked_kunde?.unternehmen || (i as any).unternehmen;
       if (unternehmenFilter && u !== unternehmenFilter) return false;
+      const features = ((i as any).key_features as string[] | null) || [];
+      if (highlightFilter && !features.includes(highlightFilter)) return false;
+      if (withHighlightsOnly && features.length === 0) return false;
+      if (featuredOnly && !i.is_featured) return false;
+      if (zeitraumFilter) {
+        const days = zeitraumFilter === '1y' ? 365 : parseInt(zeitraumFilter);
+        const cutoff = now - days * 24 * 60 * 60 * 1000;
+        if (!i.created_at || new Date(i.created_at).getTime() < cutoff) return false;
+      }
+      if (recentOnly) {
+        if (!i.created_at || new Date(i.created_at).getTime() < now - days30) return false;
+      }
       if (search) {
         const q = search.toLowerCase();
-        const hay = [i.title, i.client_name, i.branche, (i as any).linked_kunde?.client_name]
+        const hay = [i.title, i.client_name, i.branche, (i as any).linked_kunde?.client_name, ...features]
           .filter(Boolean).join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
@@ -98,10 +146,17 @@ export default function ReferenzWebsitesPage() {
       return sortBy === 'oldest' ? ca.localeCompare(cb) : cb.localeCompare(ca);
     });
     return out;
-  }, [items, brancheFilter, unternehmenFilter, search, sortBy]);
+  }, [items, brancheFilter, kundeFilter, unternehmenFilter, highlightFilter, zeitraumFilter, featuredOnly, recentOnly, withHighlightsOnly, search, sortBy]);
 
-  const hasActiveFilters = !!(search || brancheFilter || unternehmenFilter);
-  const resetFilters = () => { setSearch(''); setBrancheFilter(''); setUnternehmenFilter(''); };
+  const hasActiveFilters = !!(
+    search || brancheFilter || kundeFilter || unternehmenFilter ||
+    highlightFilter || zeitraumFilter || featuredOnly || recentOnly || withHighlightsOnly
+  );
+  const resetFilters = () => {
+    setSearch(''); setBrancheFilter(''); setKundeFilter(''); setUnternehmenFilter('');
+    setHighlightFilter(''); setZeitraumFilter('');
+    setFeaturedOnly(false); setRecentOnly(false); setWithHighlightsOnly(false);
+  };
 
   return (
     <ShowcasePageWrapper>
@@ -115,10 +170,10 @@ export default function ReferenzWebsitesPage() {
         )}
       />
 
-      <div className="space-y-3 mb-8">
+      <div className="space-y-4 mb-8 max-w-5xl mx-auto">
         <ShowcaseSearchInput value={search} onChange={setSearch} />
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           <DropdownPill
             label="Sortieren"
             value={sortBy === 'featured' ? '' : sortBy}
@@ -129,38 +184,34 @@ export default function ReferenzWebsitesPage() {
             ]}
           />
           <DropdownPill label="Branche" value={brancheFilter} onChange={setBrancheFilter} options={brancheOptions} />
+          <DropdownPill label="Kunde" value={kundeFilter} onChange={setKundeFilter} options={kundeOptions} />
           <DropdownPill label="Unternehmen" value={unternehmenFilter} onChange={setUnternehmenFilter} options={unternehmenOptions} />
+          <DropdownPill label="Highlights" value={highlightFilter} onChange={setHighlightFilter} options={highlightOptions} />
+          <DropdownPill label="Zeitraum" value={zeitraumFilter} onChange={setZeitraumFilter} options={zeitraumOptions} />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <QuickToggle active={featuredOnly} onClick={() => setFeaturedOnly(v => !v)} icon={Star} label="Featured" tone="yellow" />
+          <QuickToggle active={recentOnly} onClick={() => setRecentOnly(v => !v)} icon={Clock} label="Letzte 30 Tage" />
+          <QuickToggle active={withHighlightsOnly} onClick={() => setWithHighlightsOnly(v => !v)} icon={Sparkles} label="Mit Highlights" tone="emerald" />
+        </div>
+
+        <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+          {hasActiveFilters ? (
+            <><strong className="text-gray-900 dark:text-white tabular-nums">{filtered.length}</strong> von <span className="tabular-nums">{items.length}</span></>
+          ) : (
+            <><strong className="text-gray-900 dark:text-white tabular-nums">{items.length}</strong> Referenzen</>
+          )}
           {hasActiveFilters && (
-            <button onClick={resetFilters} className="ml-auto text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline">
-              Filter zurücksetzen
-            </button>
+            <>
+              <span className="mx-2 text-gray-300 dark:text-gray-700">·</span>
+              <button onClick={resetFilters} className="text-xs text-gray-500 hover:text-gray-900 dark:hover:text-white underline">
+                Alle zurücksetzen
+              </button>
+            </>
           )}
         </div>
       </div>
-
-      <ResultCount count={filtered.length} singular="Referenz" plural="Referenzen" />
-
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="aspect-video rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <ShowcaseEmptyState
-          title={rows.length === 0 ? SHOWCASE_COPY.websites.emptyTitle : 'Keine Ergebnisse'}
-          subtitle={rows.length === 0 ? SHOWCASE_COPY.websites.emptyDescription : undefined}
-          action={isAdmin && rows.length === 0 ? (
-            <PrimaryActionButton onClick={() => { setEditing(null); setFormOpen(true); }}>
-              <Plus className="w-4 h-4" /> {SHOWCASE_COPY.websites.addFirstLabel}
-            </PrimaryActionButton>
-          ) : undefined}
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
-          {filtered.map(item => <ShowcaseCard key={item.id} item={item} />)}
-        </div>
-      )}
 
       {formOpen && (
         <AddWebsiteModal
