@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import {
   ChevronDown, Search, Star, ExternalLink,
   Image as ImageIcon, Video, BarChart3, Inbox, Check, Flame, Euro,
+  Tag, Building2,
 } from 'lucide-react';
 import type React from 'react';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
