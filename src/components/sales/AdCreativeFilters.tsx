@@ -187,7 +187,7 @@ export function AdCreativeFilters({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-center gap-2">
         <QuickToggle
           active={!!filters.has_leads}
           onClick={() => toggle("has_leads")}
@@ -202,16 +202,54 @@ export function AdCreativeFilters({
           color="emerald"
         />
         <QuickToggle
+          active={!!filters.is_active}
+          onClick={() => toggle("is_active")}
+          icon={Activity}
+          label="Aktiv"
+          color="blue"
+        />
+        <QuickToggle
           active={!!filters.has_video}
           onClick={() => toggle("has_video")}
           icon={Video}
           label="Nur Videos"
           color="purple"
         />
+        <QuickToggle
+          active={!!filters.high_spend}
+          onClick={() => toggle("high_spend")}
+          icon={Euro}
+          label="High Budget"
+          color="amber"
+        />
+        <QuickToggle
+          active={!!filters.recent}
+          onClick={() => toggle("recent")}
+          icon={Clock}
+          label="Letzte 30 Tage"
+        />
+        <QuickToggle
+          active={!!filters.featured}
+          onClick={() => toggle("featured")}
+          icon={Star}
+          label="Featured"
+          color="yellow"
+        />
 
         <button
           type="button"
           onClick={() => setShowAdvanced(s => !s)}
+          className={`inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold rounded-full border transition-all ${
+            showAdvanced
+              ? "bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800"
+              : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
+          }`}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          Performance
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+        </button>
+      </div>
           className={`ml-auto inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold rounded-full border transition-all ${
             showAdvanced
               ? "bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800"
