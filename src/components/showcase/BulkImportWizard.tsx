@@ -73,7 +73,7 @@ const STEPS: { key: Step; label: string }[] = [
   { key: 'source', label: 'Quelle' },
   { key: 'filter', label: 'Filter' },
   { key: 'select', label: 'Auswahl' },
-  { key: 'enrich', label: 'Anreichern' },
+  { key: 'enrich', label: 'Zuordnen' },
   { key: 'import', label: 'Import' },
 ];
 

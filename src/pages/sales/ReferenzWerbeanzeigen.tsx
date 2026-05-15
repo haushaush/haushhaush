@@ -4,9 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Link } from "react-router-dom";
-import { Plus, Upload, Sparkles, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon, Wand2, ShieldOff } from "lucide-react";
+import { Plus, Upload, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon, Wand2, ShieldOff } from "lucide-react";
 import { BulkImportWizard } from "@/components/showcase/BulkImportWizard";
-import { RematchAdsDialog } from "@/components/showcase/RematchAdsDialog";
 import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
 import { AdCreativeFilters, ActiveFilterChips, type AdFilters } from "@/components/sales/AdCreativeFilters";
 import { useToast } from "@/hooks/use-toast";
@@ -138,7 +137,6 @@ export default function ReferenzWerbeanzeigenPage() {
     });
 
   const [importOpen, setImportOpen] = useState(false);
-  const [rematchOpen, setRematchOpen] = useState(false);
 
   const [categories, setCategories] = useState<FilterCategory[]>([]);
   const [options, setOptions] = useState<FilterOption[]>([]);
@@ -163,6 +161,8 @@ export default function ReferenzWerbeanzeigenPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const { branchen, unternehmen, kunden, werbekonten } = useFilterOptions('werbeanzeige');
 
   const filtered = useMemo(() => {
     let r = rows;
@@ -214,7 +214,11 @@ export default function ReferenzWerbeanzeigenPage() {
         const b = (x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? "").toString();
         if (b !== brancheFilter) return false;
       }
-      if (kundeFilter && x.linked_kunde_id !== kundeFilter) return false;
+      if (kundeFilter) {
+        const entry = kunden.find(k => k.value === kundeFilter);
+        const ids = entry?.allIds ?? [kundeFilter];
+        if (!x.linked_kunde_id || !ids.includes(x.linked_kunde_id)) return false;
+      }
       if (unternehmenFilter) {
         const u = (x.linked_kunde?.unternehmen ?? (x.filter_values ?? {}).unternehmen ?? "").toString();
         if (u !== unternehmenFilter) return false;
@@ -259,7 +263,7 @@ export default function ReferenzWerbeanzeigenPage() {
       }
     });
     return sorted;
-  }, [rows, search, activeFilters, sortBy, adFilters, brancheFilter, kundeFilter, unternehmenFilter, werbekontoFilter, formatFilter]);
+  }, [rows, search, activeFilters, sortBy, adFilters, brancheFilter, kundeFilter, unternehmenFilter, werbekontoFilter, formatFilter, kunden]);
 
   const items: AnyItem[] = useMemo(
     () => filtered.map(a => ({
@@ -270,7 +274,6 @@ export default function ReferenzWerbeanzeigenPage() {
     [filtered],
   );
 
-  const { branchen, unternehmen, kunden, werbekonten } = useFilterOptions('werbeanzeige');
 
   const hasActiveFilters =
     !!search ||
@@ -302,29 +305,29 @@ export default function ReferenzWerbeanzeigenPage() {
             >
               <ShieldOff className="w-4 h-4" /> Blacklist
             </Link>
-            <SecondaryActionButton onClick={() => setRematchOpen(true)}>
-              <Wand2 className="w-4 h-4" /> Neu matchen
-            </SecondaryActionButton>
             <SecondaryActionButton
               disabled={reenriching}
               onClick={async () => {
+                if (!confirm('Alle nicht-zugeordneten Anzeigen automatisch über Werbekonten und Ad-Namen zu Kunden zuordnen?')) return;
                 setReenriching(true);
-                const { data, error } = await supabase.functions.invoke("meta-ads-bulk-reenrich");
+                const { data, error } = await supabase.functions.invoke('rematch-all-ads', {
+                  body: { only_unmatched: true, override_manual: false },
+                });
                 setReenriching(false);
                 if (error) {
-                  toast({ title: "Fehler", description: error.message, variant: "destructive" });
+                  toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
                 } else {
-                  const d = data as any;
+                  const s = (data as any)?.stats ?? {};
                   toast({
-                    title: "Anreicherung fertig",
-                    description: `${d.enriched ?? 0} Anzeigen aktualisiert · ${d.linked ?? 0} mit Kunde verknüpft`,
+                    title: 'Auto-Zuordnung fertig',
+                    description: `${s.matched_by_account ?? 0} über Werbekonto · ${s.matched_by_keyword ?? 0} aus Ad-Name · ${s.no_match ?? 0} ohne Treffer`,
                   });
                   load();
                 }
               }}
             >
-              {reenriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              {SHOWCASE_COPY.werbeanzeigen.enrichLabel}
+              {reenriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+              Auto-Zuordnen
             </SecondaryActionButton>
             <PrimaryActionButton onClick={() => setImportOpen(true)}>
               <Upload className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importLabel}
@@ -451,7 +454,6 @@ export default function ReferenzWerbeanzeigenPage() {
       )}
 
       <BulkImportWizard open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
-      <RematchAdsDialog open={rematchOpen} onClose={() => setRematchOpen(false)} onDone={load} />
     </ShowcasePageWrapper>
   );
 }
