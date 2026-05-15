@@ -223,8 +223,12 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       }));
 
       try {
+        const { data: sess2 } = await supabase.auth.getSession();
+        const token2 = sess2.session?.access_token;
+        if (!token2) throw new Error('Nicht eingeloggt – bitte erneut anmelden.');
         const { data, error } = await supabase.functions.invoke('meta-ads-import-to-showcase', {
           body: { adIds: [adId] },
+          headers: { Authorization: `Bearer ${token2}` },
         });
         if (error) throw error;
         const res = data as any;
