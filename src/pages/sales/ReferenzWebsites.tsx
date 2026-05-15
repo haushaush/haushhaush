@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
 import { Plus } from 'lucide-react';
 import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
+import { SHOWCASE_COPY } from '@/copy/showcase';
 import type { ShowcaseRow } from './ReferenzShowcaseShared';
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
@@ -98,11 +99,11 @@ export default function ReferenzWebsitesPage() {
   return (
     <ShowcasePageWrapper>
       <SubPageHeader
-        title="Websites"
-        subtitle="Landingpages für Sales-Pitches – mit Live-Embedding wo möglich"
+        title={SHOWCASE_COPY.websites.title}
+        subtitle={SHOWCASE_COPY.websites.description}
         actions={isAdmin && (
           <PrimaryActionButton onClick={() => { setEditing(null); setFormOpen(true); }}>
-            <Plus className="w-4 h-4" /> Hinzufügen
+            <Plus className="w-4 h-4" /> {SHOWCASE_COPY.websites.addLabel}
           </PrimaryActionButton>
         )}
       />
@@ -140,10 +141,11 @@ export default function ReferenzWebsitesPage() {
         </div>
       ) : filtered.length === 0 ? (
         <ShowcaseEmptyState
-          subtitle={rows.length === 0 ? 'Noch keine Websites vorhanden.' : undefined}
+          title={rows.length === 0 ? SHOWCASE_COPY.websites.emptyTitle : 'Keine Ergebnisse'}
+          subtitle={rows.length === 0 ? SHOWCASE_COPY.websites.emptyDescription : undefined}
           action={isAdmin && rows.length === 0 ? (
             <PrimaryActionButton onClick={() => { setEditing(null); setFormOpen(true); }}>
-              <Plus className="w-4 h-4" /> Erste Website hinzufügen
+              <Plus className="w-4 h-4" /> {SHOWCASE_COPY.websites.addFirstLabel}
             </PrimaryActionButton>
           ) : undefined}
         />
