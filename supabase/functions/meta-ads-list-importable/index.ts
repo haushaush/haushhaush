@@ -87,11 +87,42 @@ Deno.serve(async (req) => {
     const limit = Math.min(body.limit ?? 25, 50);
     const datePreset = body.datePreset ?? "last_30d";
 
-    // Existing imported IDs
+    // Existing imported IDs (only non-deleted count as "imported"; hard-deleted blocks re-import via blacklist below)
     const { data: existing } = await svc
       .from("referenz_meta_ads")
-      .select("meta_ad_id");
-    const importedSet = new Set((existing ?? []).map((r: any) => r.meta_ad_id));
+      .select("meta_ad_id, deleted_at, delete_mode");
+    const importedSet = new Set(
+      (existing ?? [])
+        .filter((r: any) => !r.deleted_at)
+        .map((r: any) => r.meta_ad_id)
+    );
+    const hardBlockedSet = new Set(
+      (existing ?? [])
+        .filter((r: any) => r.deleted_at && r.delete_mode === 'hard')
+        .map((r: any) => r.meta_ad_id)
+    );
+
+    // Blacklist (account, campaign, ad, keyword)
+    const { data: blacklist } = await svc
+      .from("import_blacklist")
+      .select("scope, target_id");
+    const blAccount = new Set<string>();
+    const blCampaign = new Set<string>();
+    const blAd = new Set<string>();
+    const blKeyword: string[] = [];
+    for (const b of (blacklist ?? []) as any[]) {
+      if (b.scope === 'meta_account') { blAccount.add(b.target_id); blAccount.add(b.target_id.replace(/^act_/, '')); blAccount.add(`act_${b.target_id.replace(/^act_/, '')}`); }
+      else if (b.scope === 'meta_campaign') blCampaign.add(b.target_id);
+      else if (b.scope === 'meta_ad') blAd.add(b.target_id);
+      else if (b.scope === 'keyword') blKeyword.push(String(b.target_id).toLowerCase());
+    }
+
+    // If account itself is blacklisted, return empty result
+    if (blAccount.has(accountId) || blAccount.has(accountId.replace(/^act_/, ''))) {
+      return new Response(JSON.stringify({ ads: [], paging: null, account_name: '', blocked: 'account' }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Fetch ads
     const fields = [
