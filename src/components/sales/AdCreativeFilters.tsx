@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import {
-  Flame, UserCheck, Video, SlidersHorizontal, ChevronDown, X, type LucideIcon,
+  Flame, UserCheck, Video, SlidersHorizontal, ChevronDown, X,
+  Activity, Euro, Clock, Star, type LucideIcon,
 } from "lucide-react";
 
 export type AdFilters = {
   has_leads?: boolean;
   top_performers?: boolean;
   has_video?: boolean;
+  is_active?: boolean;
+  high_spend?: boolean;
+  recent?: boolean;
+  featured?: boolean;
   cpl_range?: [number, number];
   min_leads?: number;
   min_ctr?: number; // in percent (0-100)
@@ -17,7 +22,7 @@ export type AdFilters = {
 export const CPL_BOUNDS: [number, number] = [0, 100];
 export const SPEND_BOUNDS: [number, number] = [0, 50000];
 
-type ToggleColor = "gray" | "emerald" | "blue" | "purple";
+type ToggleColor = "gray" | "emerald" | "blue" | "purple" | "amber" | "yellow";
 
 function QuickToggle({
   active, onClick, icon: Icon, label, color = "gray",
