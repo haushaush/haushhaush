@@ -1869,6 +1869,36 @@ export type Database = {
         }
         Relationships: []
       }
+      import_blacklist: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          reason: string | null
+          scope: string
+          target_id: string
+          target_label: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string | null
+          scope: string
+          target_id: string
+          target_label?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          reason?: string | null
+          scope?: string
+          target_id?: string
+          target_label?: string | null
+        }
+        Relationships: []
+      }
       integration_settings: {
         Row: {
           access_token: string | null
@@ -3213,6 +3243,9 @@ export type Database = {
           custom_performance_notes: string | null
           custom_tags: string[] | null
           custom_title: string | null
+          delete_mode: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           display_order: number | null
           effective_status: string | null
           filter_values: Json | null
@@ -3221,9 +3254,11 @@ export type Database = {
           is_active: boolean | null
           is_featured: boolean | null
           is_public: boolean | null
+          last_matched_at: string | null
           last_sync_error: string | null
           last_synced_at: string | null
           linked_kunde_id: string | null
+          match_method: string | null
           meta_account_id: string
           meta_account_name: string | null
           meta_ad_id: string
@@ -3255,6 +3290,9 @@ export type Database = {
           custom_performance_notes?: string | null
           custom_tags?: string[] | null
           custom_title?: string | null
+          delete_mode?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           display_order?: number | null
           effective_status?: string | null
           filter_values?: Json | null
@@ -3263,9 +3301,11 @@ export type Database = {
           is_active?: boolean | null
           is_featured?: boolean | null
           is_public?: boolean | null
+          last_matched_at?: string | null
           last_sync_error?: string | null
           last_synced_at?: string | null
           linked_kunde_id?: string | null
+          match_method?: string | null
           meta_account_id: string
           meta_account_name?: string | null
           meta_ad_id: string
@@ -3297,6 +3337,9 @@ export type Database = {
           custom_performance_notes?: string | null
           custom_tags?: string[] | null
           custom_title?: string | null
+          delete_mode?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           display_order?: number | null
           effective_status?: string | null
           filter_values?: Json | null
@@ -3305,9 +3348,11 @@ export type Database = {
           is_active?: boolean | null
           is_featured?: boolean | null
           is_public?: boolean | null
+          last_matched_at?: string | null
           last_sync_error?: string | null
           last_synced_at?: string | null
           linked_kunde_id?: string | null
+          match_method?: string | null
           meta_account_id?: string
           meta_account_name?: string | null
           meta_ad_id?: string
@@ -4613,6 +4658,16 @@ export type Database = {
         Returns: string
       }
       is_admin_or_manager: { Args: { _user_id: string }; Returns: boolean }
+      is_importable: {
+        Args: {
+          p_ad_name?: string
+          p_kunde_id?: string
+          p_meta_account_id: string
+          p_meta_ad_id: string
+          p_meta_campaign_id?: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       ampelstatus: "Grün" | "Gelb" | "Rot" | "CC"

@@ -19,6 +19,7 @@ import {
   DetailPageLayout, DetailHero, DetailInfoPanel, InfoSection, InfoSectionTitle,
   DetailRowList, DetailRow, MetricLarge, DetailPageSkeleton,
 } from "@/components/showcase/DetailPageLayout";
+import { DeleteAdDialog } from "@/components/showcase/DeleteAdDialog";
 
 export default function ReferenzWerbeanzeigeDetail() {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +34,7 @@ export default function ReferenzWerbeanzeigeDetail() {
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [categories, setCategories] = useState<FilterCategory[]>([]);
   const [options, setOptions] = useState<FilterOption[]>([]);
@@ -104,13 +106,7 @@ export default function ReferenzWerbeanzeigeDetail() {
     else { toast({ title: force ? `Bild + Metriken neu geladen` : `${(data as any)?.refreshed ?? 0} Anzeige aktualisiert` }); load(); }
   };
 
-  const remove = async () => {
-    if (!ad) return;
-    if (!confirm("Anzeige aus Showcase entfernen?")) return;
-    const { error } = await supabase.from("referenz_meta_ads" as any).delete().eq("id", ad.id);
-    if (error) toast({ title: "Fehler", description: error.message, variant: "destructive" });
-    else navigate(backHref);
-  };
+  // Soft/hard delete handled via DeleteAdDialog
 
   const addTag = () => {
     const t = newTag.trim().toLowerCase().replace(/^#/, "");
@@ -138,6 +134,7 @@ export default function ReferenzWerbeanzeigeDetail() {
   const isWinning = !!(cpl != null && cpl > 0 && cpl < 5);
 
   return (
+    <>
     <DetailPageLayout
       backHref={backHref}
       backLabel="Anzeigen"
@@ -152,7 +149,7 @@ export default function ReferenzWerbeanzeigeDetail() {
           <Button variant="outline" size="sm" onClick={() => refresh(true)} disabled={refreshing}>
             <DownloadCloud className="w-3.5 h-3.5 mr-1.5" /> Force
           </Button>
-          <Button variant="ghost" size="sm" onClick={remove} className="text-red-600 dark:text-red-400">
+          <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)} className="text-red-600 dark:text-red-400">
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </>
@@ -344,5 +341,15 @@ export default function ReferenzWerbeanzeigeDetail() {
         </div>
       }
     />
+    {ad && (
+      <DeleteAdDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        adIds={[ad.id]}
+        adLabel={ad.custom_title || ad.meta_ad_name || undefined}
+        onDeleted={() => navigate(backHref)}
+      />
+    )}
+    </>
   );
 }

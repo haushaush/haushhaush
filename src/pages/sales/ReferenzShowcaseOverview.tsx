@@ -58,7 +58,8 @@ export default function ReferenzShowcaseOverview() {
       const { data } = await supabase
         .from('referenz_meta_ads' as any)
         .select(`*${kundeJoin}`)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .is('deleted_at', null);
       return ((data as any[]) || []).map(a => ({ ...a, _type: 'werbeanzeige' as const }));
     },
   });

@@ -3,8 +3,10 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
-import { Plus, Upload, Sparkles, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Plus, Upload, Sparkles, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon, Wand2, ShieldOff } from "lucide-react";
 import { BulkImportWizard } from "@/components/showcase/BulkImportWizard";
+import { RematchAdsDialog } from "@/components/showcase/RematchAdsDialog";
 import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
 import { AdCreativeFilters, ActiveFilterChips, type AdFilters } from "@/components/sales/AdCreativeFilters";
 import { useToast } from "@/hooks/use-toast";
@@ -136,6 +138,7 @@ export default function ReferenzWerbeanzeigenPage() {
     });
 
   const [importOpen, setImportOpen] = useState(false);
+  const [rematchOpen, setRematchOpen] = useState(false);
 
   const [categories, setCategories] = useState<FilterCategory[]>([]);
   const [options, setOptions] = useState<FilterOption[]>([]);
@@ -146,6 +149,7 @@ export default function ReferenzWerbeanzeigenPage() {
       supabase.from("referenz_meta_ads" as any)
         .select(isPublic ? '*' : '*, linked_kunde:close_deals(client_name, unternehmen, branche)')
         .eq("is_active", true)
+        .is("deleted_at", null)
         .order("is_featured", { ascending: false })
         .order("imported_at", { ascending: false }),
       supabase.from("showcase_filter_categories" as any).select("*")
@@ -292,6 +296,15 @@ export default function ReferenzWerbeanzeigenPage() {
         subtitle={SHOWCASE_COPY.werbeanzeigen.description}
         actions={isAdmin && (
           <>
+            <Link
+              to="/admin/import-blacklist"
+              className="inline-flex items-center gap-2 px-3 h-9 rounded-xl border border-gray-200 dark:border-gray-800 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:border-gray-300 dark:hover:border-gray-700 transition-colors"
+            >
+              <ShieldOff className="w-4 h-4" /> Blacklist
+            </Link>
+            <SecondaryActionButton onClick={() => setRematchOpen(true)}>
+              <Wand2 className="w-4 h-4" /> Neu matchen
+            </SecondaryActionButton>
             <SecondaryActionButton
               disabled={reenriching}
               onClick={async () => {
@@ -438,6 +451,7 @@ export default function ReferenzWerbeanzeigenPage() {
       )}
 
       <BulkImportWizard open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
+      <RematchAdsDialog open={rematchOpen} onClose={() => setRematchOpen(false)} onDone={load} />
     </ShowcasePageWrapper>
   );
 }
