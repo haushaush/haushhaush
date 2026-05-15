@@ -259,10 +259,15 @@ export default function ReferenzWebsiteDetail() {
           </Button>
         </section>
       }
-    >
-      {editOpen ? null : null}
-    </DetailPageLayout>
-    {/* modal rendered separately */}
+    />
+    {editOpen && (
+      <AddWebsiteModal
+        open={editOpen}
+        editing={item}
+        onClose={() => setEditOpen(false)}
+        onSaved={() => { setEditOpen(false); load(); }}
+      />
+    )}
     </>
   );
 }
