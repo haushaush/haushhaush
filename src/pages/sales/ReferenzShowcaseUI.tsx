@@ -1,30 +1,27 @@
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeft, ChevronDown, Search, Star, ExternalLink,
-  Image as ImageIcon, Globe, Video, BarChart3, Inbox, Check, Flame, Euro,
+  ChevronDown, Search, Star, ExternalLink,
+  Image as ImageIcon, Video, BarChart3, Inbox, Check, Flame, Euro,
 } from 'lucide-react';
 import type React from 'react';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
+import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { SurfaceCard } from '@/components/ui/SurfaceCard';
 
 export type AnyItem = Record<string, any> & {
   _type: 'website' | 'werbeanzeige' | 'campaign';
 };
 
 /* ------------------------------------------------------------------ */
-/* Layout wrapper                                                     */
+/* Layout wrapper — delegates to PageShell                            */
 /* ------------------------------------------------------------------ */
 export function ShowcasePageWrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 pb-32">
-      <main className="w-full pt-10">
-        <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16 xl:px-20">{children}</div>
-      </main>
-    </div>
-  );
+  return <PageShell>{children}</PageShell>;
 }
 
 /* ------------------------------------------------------------------ */
-/* SubPageHeader                                                      */
+/* SubPageHeader — delegates to PageHeader (size="lg")                */
 /* ------------------------------------------------------------------ */
 export function SubPageHeader({
   title, subtitle, actions,
@@ -35,26 +32,16 @@ export function SubPageHeader({
 }) {
   const isPublic = useIsPublicView();
   return (
-    <header className="mb-10">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-        <div>
-          <Link
-            to={isPublic ? '/showcase' : '/sales/referenz-showcase'}
-            className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-3 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Referenz Showcase
-          </Link>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
-            {title}
-          </h1>
-          <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 mt-2 font-normal">
-            {subtitle}
-          </p>
-        </div>
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
-      </div>
-    </header>
+    <PageHeader
+      breadcrumb={{
+        label: 'Referenz Showcase',
+        href: isPublic ? '/showcase' : '/sales/referenz-showcase',
+      }}
+      title={title}
+      description={subtitle}
+      actions={actions}
+      size="lg"
+    />
   );
 }
 
@@ -136,12 +123,12 @@ export function ShowcaseEmptyState({
   action,
 }: { title?: string; subtitle?: string; action?: React.ReactNode }) {
   return (
-    <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+    <SurfaceCard padding="none" className="text-center py-20">
       <Inbox className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{title}</h3>
       <p className="text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
       {action && <div className="mt-5">{action}</div>}
-    </div>
+    </SurfaceCard>
   );
 }
 
@@ -220,9 +207,12 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
   const title = getShowcaseTitle(item);
 
   return (
-    <Link
+    <SurfaceCard
+      as={Link}
       to={detailHref}
-      className="group h-full flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
+      interactive
+      padding="none"
+      className="group h-full flex flex-col overflow-hidden"
     >
       <div className="relative bg-gray-50 dark:bg-gray-800 overflow-hidden shrink-0" style={{ aspectRatio: '16 / 9' }}>
         {item._type === 'campaign'
@@ -296,7 +286,7 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
           ) : null}
         </div>
       </div>
-    </Link>
+    </SurfaceCard>
   );
 }
 
@@ -569,9 +559,12 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
   const ctrDisplay = ctr == null ? '—' : ctr <= 1 ? `${(ctr * 100).toFixed(1)}%` : `${ctr.toFixed(1)}%`;
 
   return (
-    <Link
+    <SurfaceCard
+      as={Link}
       to={detailHref}
-      className="group h-full flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
+      interactive
+      padding="none"
+      className="group h-full flex flex-col overflow-hidden"
     >
       <div className="relative aspect-square bg-gray-50 dark:bg-gray-800 shrink-0 overflow-hidden">
         {isVideo && item.video_url ? (
@@ -664,6 +657,6 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
           ) : null}
         </div>
       </div>
-    </Link>
+    </SurfaceCard>
   );
 }

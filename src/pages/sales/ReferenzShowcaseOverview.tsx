@@ -8,6 +8,9 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
+import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { SurfaceCard } from '@/components/ui/SurfaceCard';
 
 type AnyItem = Record<string, any> & { _type: 'website' | 'werbeanzeige' | 'campaign' };
 
@@ -328,16 +331,13 @@ export default function ReferenzShowcaseOverview() {
     typeFilter !== 'all' || brancheFilter || unternehmenFilter || searchQuery;
 
   return (
-    <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 pb-32">
-      <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16 xl:px-20 pt-10">
-        <header className="text-center max-w-3xl mx-auto mb-16 pt-8">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-[1.05]">
-            Referenz Showcase
-          </h1>
-          <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 mt-5 font-normal">
-            Alle bisherigen Projekte für Sales-Pitches und Calls
-          </p>
-        </header>
+    <PageShell>
+      <PageHeader
+        title="Referenz Showcase"
+        description="Alle bisherigen Projekte für Sales-Pitches und Calls"
+        size="xl"
+        centered
+      />
 
         {/* Category tiles */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
@@ -414,9 +414,9 @@ export default function ReferenzShowcaseOverview() {
         </div>
 
         {filteredItems.length === 0 ? (
-          <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+          <SurfaceCard padding="none" className="text-center py-20">
             <p className="text-sm text-gray-500 dark:text-gray-400">Keine Referenzen gefunden.</p>
-          </div>
+          </SurfaceCard>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
             {filteredItems.map(item => (
@@ -431,8 +431,7 @@ export default function ReferenzShowcaseOverview() {
             ))}
           </div>
         )}
-      </div>
-    </div>
+    </PageShell>
   );
 }
 
@@ -445,9 +444,12 @@ function CategoryTile({
   icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <Link
+    <SurfaceCard
+      as={Link}
       to={href}
-      className="group block bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 px-8 py-12 text-center shadow-sm hover:shadow-lg hover:border-teal-300 dark:hover:border-teal-700 hover:-translate-y-1 transition-all duration-200"
+      interactive
+      padding="none"
+      className="group block px-8 py-12 text-center hover:border-teal-300 dark:hover:border-teal-700"
     >
       <Icon className="w-8 h-8 mx-auto mb-4 text-gray-400 dark:text-gray-500 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors" />
       <h3 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
@@ -456,7 +458,7 @@ function CategoryTile({
       <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-normal">
         {count} {count === 1 ? 'Referenz' : 'Referenzen'}
       </p>
-    </Link>
+    </SurfaceCard>
   );
 }
 
@@ -547,9 +549,12 @@ function ShowcaseCard({
 
 
   return (
-    <Link
+    <SurfaceCard
+      as={Link}
       to={detailHref}
-      className="group h-full flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
+      interactive
+      padding="none"
+      className="group h-full flex flex-col overflow-hidden"
     >
       <div className="relative bg-gray-50 dark:bg-gray-800 overflow-hidden shrink-0" style={{ aspectRatio: '16 / 9' }}>
         {item._type === 'campaign'
@@ -633,7 +638,7 @@ function ShowcaseCard({
           )}
         </div>
       </div>
-    </Link>
+    </SurfaceCard>
   );
 }
 

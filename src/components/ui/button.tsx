@@ -16,6 +16,8 @@ const buttonVariants = cva(
         ghost: "text-muted-foreground hover:bg-accent hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         "destructive-ghost": "text-destructive hover:bg-destructive/10",
+        // Apple-style accent (teal) — used by Showcase primary actions.
+        accent: "bg-teal-600 hover:bg-teal-700 text-white font-bold shadow-sm",
       },
       size: {
         default: "h-10 px-4 py-2",

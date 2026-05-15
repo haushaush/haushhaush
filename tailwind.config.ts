@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { tokens } from "./src/styles/tokens";
 
 export default {
   darkMode: ["class"],
@@ -75,6 +76,10 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        // Apple-style shadow tokens (additive — Tailwind defaults remain).
+        ...tokens.shadow,
       },
       keyframes: {
         "accordion-down": {
