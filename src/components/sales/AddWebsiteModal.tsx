@@ -463,14 +463,13 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
               <Label>
                 Highlights <span className="text-gray-400 text-xs font-normal">(optional, max 6)</span>
               </Label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                z.B. "Live-Chat integriert", "Multi-Step-Funnel", "Calendly-Buchung"
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Wähle aus bestehenden Highlights oder lege neue an
               </p>
-              <TagInput
-                value={keyFeatures}
+              <HighlightsPicker
+                selected={keyFeatures}
                 onChange={setKeyFeatures}
                 max={6}
-                placeholder="Highlight eingeben + Enter"
               />
             </div>
             <div className="flex items-center gap-2">
