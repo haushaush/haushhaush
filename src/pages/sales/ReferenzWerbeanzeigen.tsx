@@ -320,9 +320,11 @@ export default function ReferenzWerbeanzeigenPage() {
       />
 
       <div className="space-y-4 mb-8">
-        <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
+        <div className="max-w-2xl mx-auto">
+          <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
+        </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-2 max-w-5xl mx-auto">
           <DropdownPill
             label="Sortieren"
             value={sortBy === 'performance' ? '' : sortBy}
@@ -334,6 +336,40 @@ export default function ReferenzWerbeanzeigenPage() {
               { value: 'spend', label: 'Höchster Spend' },
               { value: 'roas', label: 'ROAS (hoch)' },
               { value: 'created', label: 'Importdatum' },
+            ]}
+          />
+          <DropdownPill
+            label="Branche"
+            value={brancheFilter}
+            onChange={setStandaloneFilter('branche')}
+            options={branchen}
+          />
+          <DropdownPill
+            label="Kunde"
+            value={kundeFilter}
+            onChange={setStandaloneFilter('kunde')}
+            options={kunden}
+          />
+          <DropdownPill
+            label="Unternehmen"
+            value={unternehmenFilter}
+            onChange={setStandaloneFilter('unternehmen')}
+            options={unternehmen}
+          />
+          <DropdownPill
+            label="Werbekonto"
+            value={werbekontoFilter}
+            onChange={setStandaloneFilter('werbekonto')}
+            options={werbekonten}
+          />
+          <DropdownPill
+            label="Format"
+            value={formatFilter}
+            onChange={setStandaloneFilter('format')}
+            options={[
+              { value: 'image', label: 'Bild' },
+              { value: 'video', label: 'Video' },
+              { value: 'carousel', label: 'Karussell' },
             ]}
           />
           {categories.map(cat => {
