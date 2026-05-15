@@ -522,6 +522,22 @@ function MetricMini({
   );
 }
 
+function LiveStatusBadge({ ad }: { ad: any }) {
+  const status: AdLiveStatus = getAdLiveStatus(ad);
+  if (status === 'unknown') return null;
+  const config = {
+    live:    { label: 'Live',     bg: 'bg-emerald-500/95', pulse: true },
+    paused:  { label: 'Pausiert', bg: 'bg-amber-500/95',   pulse: false },
+    offline: { label: 'Offline',  bg: 'bg-gray-700/95',    pulse: false },
+  }[status];
+  return (
+    <div className={`absolute top-3 left-3 z-10 inline-flex items-center gap-1 ${config.bg} backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm`}>
+      <span className={`w-1.5 h-1.5 rounded-full bg-white ${config.pulse ? 'animate-pulse' : ''}`} />
+      {config.label}
+    </div>
+  );
+}
+
 export function AdCreativeCard({ item }: { item: AnyItem }) {
   const isPublic = useIsPublicView();
   const basePath = isPublic ? '/showcase' : '/sales/referenz-showcase';
