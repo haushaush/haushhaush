@@ -8,6 +8,9 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
+import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { SurfaceCard } from '@/components/ui/SurfaceCard';
 
 type AnyItem = Record<string, any> & { _type: 'website' | 'werbeanzeige' | 'campaign' };
 
