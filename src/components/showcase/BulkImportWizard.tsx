@@ -7,8 +7,11 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
   X, Check, Facebook, Calendar, Activity, Filter, Flame, Loader2,
-  Download, Search as SearchIcon, Sparkles,
+  Download, Search as SearchIcon, Sparkles, Zap, Wand2, HelpCircle,
 } from 'lucide-react';
+import { Combobox } from '@/components/ui/Combobox';
+import { useBranchen, useUnternehmen } from '@/hooks/useBranchenUnternehmen';
+import { useKundenMapping, guessBrancheFromText, type KundeMatch } from '@/hooks/useKundenMapping';
 
 // ───────────────────────────────────────────────────────────────────
 // Types
