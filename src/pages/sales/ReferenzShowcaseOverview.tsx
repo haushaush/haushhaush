@@ -328,16 +328,13 @@ export default function ReferenzShowcaseOverview() {
     typeFilter !== 'all' || brancheFilter || unternehmenFilter || searchQuery;
 
   return (
-    <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 pb-32">
-      <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16 xl:px-20 pt-10">
-        <header className="text-center max-w-3xl mx-auto mb-16 pt-8">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-[1.05]">
-            Referenz Showcase
-          </h1>
-          <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 mt-5 font-normal">
-            Alle bisherigen Projekte für Sales-Pitches und Calls
-          </p>
-        </header>
+    <PageShell>
+      <PageHeader
+        title="Referenz Showcase"
+        description="Alle bisherigen Projekte für Sales-Pitches und Calls"
+        size="xl"
+        centered
+      />
 
         {/* Category tiles */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
