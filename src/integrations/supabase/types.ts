@@ -631,6 +631,24 @@ export type Database = {
         }
         Relationships: []
       }
+      branches: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       bug_reports: {
         Row: {
           browser_info: string | null
@@ -781,12 +799,14 @@ export type Database = {
           ampelstatus: string | null
           art: string | null
           assigned_to: string | null
+          branch_id: string | null
           branche: string[] | null
           cash_collect_offen: number | null
           client_name: string
           close_lead_id: string | null
           close_opportunity_url: string | null
           clv: number | null
+          company_id: string | null
           created_at: string
           crm_kosten: number | null
           deadline: string | null
@@ -826,12 +846,14 @@ export type Database = {
           ampelstatus?: string | null
           art?: string | null
           assigned_to?: string | null
+          branch_id?: string | null
           branche?: string[] | null
           cash_collect_offen?: number | null
           client_name: string
           close_lead_id?: string | null
           close_opportunity_url?: string | null
           clv?: number | null
+          company_id?: string | null
           created_at?: string
           crm_kosten?: number | null
           deadline?: string | null
@@ -871,12 +893,14 @@ export type Database = {
           ampelstatus?: string | null
           art?: string | null
           assigned_to?: string | null
+          branch_id?: string | null
           branche?: string[] | null
           cash_collect_offen?: number | null
           client_name?: string
           close_lead_id?: string | null
           close_opportunity_url?: string | null
           clv?: number | null
+          company_id?: string | null
           created_at?: string
           crm_kosten?: number | null
           deadline?: string | null
@@ -910,7 +934,22 @@ export type Database = {
           wert_eur?: number | null
           zahlstatus?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "close_deals_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "close_deals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       close_leads: {
         Row: {
@@ -1023,6 +1062,24 @@ export type Database = {
           value_currency?: string | null
           value_formatted?: string | null
           value_period?: string | null
+        }
+        Relationships: []
+      }
+      companies: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }
