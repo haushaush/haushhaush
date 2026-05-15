@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
-import { Plus, Upload, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Upload, Sparkles, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon } from "lucide-react";
 import { BulkImportWizard } from "@/components/showcase/BulkImportWizard";
 import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
 import { AdCreativeFilters, ActiveFilterChips, type AdFilters } from "@/components/sales/AdCreativeFilters";
