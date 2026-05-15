@@ -10,7 +10,7 @@ import { AdCreativeFilters, ActiveFilterChips, TOP_CPL_THRESHOLDS, type AdFilter
 import { useToast } from "@/hooks/use-toast";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
-  ShowcaseCard, ShowcaseEmptyState, ResultCount, PrimaryActionButton, SecondaryActionButton,
+  ShowcaseCard, ShowcaseEmptyState, PrimaryActionButton, SecondaryActionButton,
   type AnyItem,
 } from "./ReferenzShowcaseUI";
 
