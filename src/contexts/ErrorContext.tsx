@@ -38,7 +38,19 @@ export function ErrorProvider({ children }: { children: ReactNode }) {
 
   // Global error interceptors
   useEffect(() => {
+    const isCrossOriginIframeError = (msg: string, filename?: string, lineno?: number, colno?: number) =>
+      msg === 'Script error.' ||
+      msg === 'Script error' ||
+      msg.includes('cross-origin') ||
+      msg.includes('SecurityError') ||
+      (!filename && !lineno && !colno);
+
     const handleError = (event: ErrorEvent) => {
+      if (isCrossOriginIframeError(event.message, event.filename, event.lineno, event.colno)) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === 'IFRAME') return;
       showErrorCard({
         message: event.message,
         code: `ERR_${Date.now().toString(36).toUpperCase()}`,
@@ -48,8 +60,10 @@ export function ErrorProvider({ children }: { children: ReactNode }) {
     };
 
     const handleRejection = (event: PromiseRejectionEvent) => {
+      const message = event.reason?.message || String(event.reason);
+      if (isCrossOriginIframeError(message)) return;
       showErrorCard({
-        message: event.reason?.message || String(event.reason),
+        message,
         code: `REJ_${Date.now().toString(36).toUpperCase()}`,
         stack: event.reason?.stack,
         source: 'Promise',
