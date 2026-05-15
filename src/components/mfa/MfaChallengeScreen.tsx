@@ -102,14 +102,19 @@ export function MfaChallengeScreen({ factorId, userId, onSuccess, onRecoverySucc
             autoFocus
             className="h-14 text-center text-2xl tracking-[0.4em] font-mono tabular-nums"
           />
-          <label className="flex items-center gap-2 mt-4 text-sm cursor-pointer">
+          <label className="flex items-start gap-3 mt-4 p-3 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
             <input
               type="checkbox"
               checked={trustDevice}
               onChange={(e) => setTrustDevice(e.target.checked)}
-              className="rounded border-border"
+              className="mt-0.5 w-4 h-4 rounded border-border accent-primary cursor-pointer"
             />
-            Diesem Gerät 30 Tage vertrauen
+            <div className="flex-1 text-left">
+              <div className="text-sm font-medium">Dieses Gerät 30 Tage merken</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Bei nächsten Logins von diesem Browser kein Code mehr nötig
+              </div>
+            </div>
           </label>
           <Button
             onClick={verify}
