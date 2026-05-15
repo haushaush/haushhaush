@@ -459,7 +459,7 @@ export function CreateTeamMemberTab() {
 
       {/* Success Modal */}
       <Dialog open={!!successData} onOpenChange={(o) => !o && setSuccessData(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent persistent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Check className="h-5 w-5 text-primary" /> Mitarbeiter erfolgreich angelegt

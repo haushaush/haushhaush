@@ -294,7 +294,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && canCloseRequest) onClose(); }}>
-      <DialogContent className="max-w-6xl h-[88vh] flex flex-col p-0 overflow-hidden gap-0">
+      <DialogContent persistent className="max-w-6xl h-[88vh] flex flex-col p-0 overflow-hidden gap-0">
         {/* HEADER */}
         <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
           <div>

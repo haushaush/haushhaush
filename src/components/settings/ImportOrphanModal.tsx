@@ -81,7 +81,7 @@ export function ImportOrphanModal({ open, onOpenChange, email, onImported }: Pro
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent persistent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Verwaisten User importieren</DialogTitle>
           <DialogDescription>

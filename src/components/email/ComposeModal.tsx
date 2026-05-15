@@ -80,7 +80,7 @@ export function ComposeModal({ open, onClose, accounts, defaultAccountId, prefil
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
+      <DialogContent persistent className="max-w-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Send className="h-5 w-5" /> Neue Nachricht</DialogTitle>
         </DialogHeader>
