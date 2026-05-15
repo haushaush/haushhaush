@@ -388,13 +388,19 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
               ads={ads.filter(a => selected.has(a.meta_ad_id))}
               enrichment={enrichment}
               onEnrichmentChange={setEnrichment}
-              brancheOpts={brancheOpts}
-              unternehmenOpts={unternehmenOpts}
+              branchen={branchen}
+              unternehmenPool={unternehmenPool}
+              createBranche={createBranche}
+              createUnternehmen={createUnternehmen}
               bulkBranche={bulkBranche}
               setBulkBranche={setBulkBranche}
               bulkUnternehmen={bulkUnternehmen}
               setBulkUnternehmen={setBulkUnternehmen}
               onApplyBulk={applyBulk}
+              onRerunAutoMatch={() => {
+                const r = runAutoMatch(true);
+                toast({ title: 'Auto-Match aktualisiert', description: `${r.matched} via Kunde · ${r.guessed} aus Name` });
+              }}
             />
           )}
           {step === 'import' && <ImportStep progress={progress} />}
