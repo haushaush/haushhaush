@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Globe, Sparkles, TrendingUp, Search, ChevronRight,
+  Globe, Sparkles, TrendingUp, Search, ChevronRight, Lightbulb, Upload, Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
