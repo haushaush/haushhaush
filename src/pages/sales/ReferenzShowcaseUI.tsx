@@ -123,12 +123,12 @@ export function ShowcaseEmptyState({
   action,
 }: { title?: string; subtitle?: string; action?: React.ReactNode }) {
   return (
-    <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+    <SurfaceCard padding="none" className="text-center py-20">
       <Inbox className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{title}</h3>
       <p className="text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
       {action && <div className="mt-5">{action}</div>}
-    </div>
+    </SurfaceCard>
   );
 }
 
