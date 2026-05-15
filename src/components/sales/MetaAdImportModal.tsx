@@ -113,7 +113,7 @@ export function MetaAdImportModal({ open, onClose, onImported }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && !importing && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+      <DialogContent persistent className="max-w-3xl max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Aus Meta Ads importieren</DialogTitle>
         </DialogHeader>

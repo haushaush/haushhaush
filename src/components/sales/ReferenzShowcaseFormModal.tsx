@@ -123,7 +123,7 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent persistent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editing ? 'Referenz bearbeiten' : 'Referenz hinzufügen'}</DialogTitle>
         </DialogHeader>
