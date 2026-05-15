@@ -116,7 +116,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   const [bulkUnternehmen, setBulkUnternehmen] = useState('');
 
   const [progress, setProgress] = useState<ImportProgress>({
-    done: 0, total: 0, recent: [], errors: [],
+    done: 0, total: 0, recent: [], errors: [], skipped: [],
   });
 
   // Reset on open
