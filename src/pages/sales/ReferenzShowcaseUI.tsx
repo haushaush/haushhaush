@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import {
-  ChevronDown, Search, Star, ExternalLink,
+  ChevronDown, Search, Star, ExternalLink, X,
   Image as ImageIcon, Video, BarChart3, Inbox, Check, Flame, Euro,
   Tag, Building2,
 } from 'lucide-react';
-import type React from 'react';
+import * as React from 'react';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
