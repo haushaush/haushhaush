@@ -420,6 +420,7 @@ Deno.serve(async (req) => {
       try {
         const adFields = [
           "id", "name", "account_id",
+          "status", "effective_status",
           `creative{${creativeFields}}`,
         ].join(",");
         const adData = await metaGet(`/${r.meta_ad_id}`, { fields: adFields });
