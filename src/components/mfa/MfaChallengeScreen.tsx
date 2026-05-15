@@ -16,7 +16,7 @@ interface Props {
 
 export function MfaChallengeScreen({ factorId, userId, onSuccess, onRecoverySuccess, onCancel }: Props) {
   const [code, setCode] = useState('');
-  const [trustDevice, setTrustDevice] = useState(false);
+  const [trustDevice, setTrustDevice] = useState(true);
   const [showRecovery, setShowRecovery] = useState(false);
   const [recoveryCode, setRecoveryCode] = useState('');
   const [busy, setBusy] = useState(false);
