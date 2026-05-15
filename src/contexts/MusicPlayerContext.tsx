@@ -141,8 +141,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     fetchCategoryTracks(CATEGORIES[0]).then(vids => {
       setTracks(vids);
       setLoadingCategory(null);
-      if (playerRef.current && !playingRef.current) {
-        playerRef.current.cueVideoById(vids[0]?.id);
+      const vid = vids[0]?.id;
+      if (vid && playerRef.current && !playingRef.current && typeof playerRef.current.cueVideoById === 'function') {
+        try { playerRef.current.cueVideoById(vid); } catch {}
       }
     });
   }, []);
