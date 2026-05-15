@@ -141,8 +141,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     fetchCategoryTracks(CATEGORIES[0]).then(vids => {
       setTracks(vids);
       setLoadingCategory(null);
-      if (playerRef.current && !playingRef.current) {
-        playerRef.current.cueVideoById(vids[0]?.id);
+      const vid = vids[0]?.id;
+      if (vid && playerRef.current && !playingRef.current && typeof playerRef.current.cueVideoById === 'function') {
+        try { playerRef.current.cueVideoById(vid); } catch {}
       }
     });
   }, []);
@@ -214,7 +215,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       fetchCategoryTracks(nextCat).then(vids => {
         setTracks(vids);
         setLoadingCategory(null);
-        if (playerRef.current) playerRef.current.loadVideoById(vids[0]?.id);
+        const vid = vids[0]?.id;
+        if (vid && playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+          try { playerRef.current.loadVideoById(vid); } catch {}
+        }
       });
     }
   }, []);
@@ -251,8 +255,13 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     if (!playerReady || !playerRef.current) return;
     const vid = tracks[trackIndex]?.id;
     if (!vid) return;
-    if (playingRef.current) playerRef.current.loadVideoById(vid);
-    else playerRef.current.cueVideoById(vid);
+    try {
+      if (playingRef.current && typeof playerRef.current.loadVideoById === 'function') {
+        playerRef.current.loadVideoById(vid);
+      } else if (typeof playerRef.current.cueVideoById === 'function') {
+        playerRef.current.cueVideoById(vid);
+      }
+    } catch {}
   }, [trackIndex, playerReady, tracks]);
 
   const togglePlay = useCallback(() => {
