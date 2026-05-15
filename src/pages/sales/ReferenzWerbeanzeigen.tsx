@@ -11,9 +11,10 @@ import { AdCreativeFilters, ActiveFilterChips, type AdFilters } from "@/componen
 import { useToast } from "@/hooks/use-toast";
 import { SHOWCASE_COPY } from "@/copy/showcase";
 import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
-import { getAdLiveStatus } from "@/lib/adStatus";
+import { getAdLiveStatus, isAdActive } from "@/lib/adStatus";
 import { useFilterOptions } from "@/hooks/useFilterOptions";
 import { normalizeBranche } from "@/lib/branchen";
+import { SyncStatusBanner } from "@/components/admin/SyncStatusBanner";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
   ShowcaseCard, ShowcaseEmptyState, PrimaryActionButton, SecondaryActionButton,
@@ -205,7 +206,7 @@ export default function ReferenzWerbeanzeigenPage() {
       if (adFilters.has_leads && !(leads != null && leads > 0)) return false;
       if (adFilters.has_video && fmt !== "video" && fmt !== "reel") return false;
       if (adFilters.top_performers && !isTopPerformer(x as any)) return false;
-      if (adFilters.is_active && getAdLiveStatus(x as any) !== 'live') return false;
+      if (adFilters.is_active && !isAdActive(x as any).active) return false;
       if (adFilters.high_spend && (spend == null || spend < 500)) return false;
       if (adFilters.recent && !isWithinDays(x.imported_at ?? x.created_at ?? null, 30)) return false;
       if (adFilters.featured && !x.is_featured) return false;
@@ -342,7 +343,10 @@ export default function ReferenzWerbeanzeigenPage() {
         )}
       />
 
+      {isAdmin && <SyncStatusBanner />}
+
       <div className="space-y-4 mb-8">
+
         <div className="max-w-2xl mx-auto">
           <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
         </div>
@@ -429,6 +433,26 @@ export default function ReferenzWerbeanzeigenPage() {
             : `${filtered.length} Anzeigen`}
         </p>
       </div>
+
+      {searchParams.get('debug') === 'true' && (
+        <div className="mb-6 p-4 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 font-mono text-xs">
+          <h3 className="font-bold mb-2 text-gray-900 dark:text-white">Debug · Ad-Status-Distribution</h3>
+          <pre className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{JSON.stringify(
+            rows.reduce<Record<string, number>>((acc, ad) => {
+              const key = (ad as any).effective_status || (ad as any).status || 'null';
+              acc[key] = (acc[key] || 0) + 1;
+              return acc;
+            }, {}),
+            null, 2
+          )}</pre>
+          <p className="mt-2 text-gray-900 dark:text-white">last_synced_at:</p>
+          <pre className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{JSON.stringify({
+            with: rows.filter(a => a.last_synced_at).length,
+            without: rows.filter(a => !a.last_synced_at).length,
+            newest: rows.map(a => a.last_synced_at).filter(Boolean).sort().pop() ?? null,
+          }, null, 2)}</pre>
+        </div>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
