@@ -115,60 +115,63 @@ Deno.serve(async (req) => {
     } catch { /* ignore */ }
 
     // Pull insights in parallel (batched) per ad
-    const enriched = await Promise.all(
-      ads.map(async (ad) => {
-        const alreadyImported = importedSet.has(ad.id);
-        let metrics: any = null;
-        if (!alreadyImported) {
-          try {
-            const ins = await metaGet(`/${ad.id}/insights`, {
-              fields: "spend,impressions,clicks,ctr,cpm,actions,action_values",
-              date_preset: datePreset,
-            });
-            const row = ins?.data?.[0];
-            if (row) {
-              const leadAction = (row.actions ?? []).find((a: any) =>
-                ["lead", "offsite_conversion.fb_pixel_lead", "onsite_conversion.lead_grouped"].includes(a.action_type)
-              );
-              const purchaseValue = (row.action_values ?? []).find((a: any) =>
-                ["purchase", "offsite_conversion.fb_pixel_purchase"].includes(a.action_type)
-              );
-              const leads = leadAction ? Number(leadAction.value) : 0;
-              const spend = Number(row.spend ?? 0);
-              metrics = {
-                spend,
-                impressions: Number(row.impressions ?? 0),
-                clicks: Number(row.clicks ?? 0),
-                ctr: row.ctr ? Number(row.ctr) : null,
-                cpm: row.cpm ? Number(row.cpm) : null,
-                leads,
-                cpl: leads > 0 ? +(spend / leads).toFixed(2) : null,
-                roas: purchaseValue && spend > 0 ? +(Number(purchaseValue.value) / spend).toFixed(2) : null,
-              };
-            }
-          } catch { /* ignore individual insight failures */ }
+    const enriched: any[] = [];
+    for (const ad of ads) {
+      const alreadyImported = importedSet.has(ad.id);
+      let metrics: any = null;
+      if (!alreadyImported) {
+        try {
+          const ins = await metaGet(`/${ad.id}/insights`, {
+            fields: "spend,impressions,clicks,ctr,cpm,actions,action_values",
+            date_preset: datePreset,
+          });
+          const row = ins?.data?.[0];
+          if (row) {
+            const leadAction = (row.actions ?? []).find((a: any) =>
+              ["lead", "offsite_conversion.fb_pixel_lead", "onsite_conversion.lead_grouped"].includes(a.action_type)
+            );
+            const purchaseValue = (row.action_values ?? []).find((a: any) =>
+              ["purchase", "offsite_conversion.fb_pixel_purchase"].includes(a.action_type)
+            );
+            const leads = leadAction ? Number(leadAction.value) : 0;
+            const spend = Number(row.spend ?? 0);
+            metrics = {
+              spend,
+              impressions: Number(row.impressions ?? 0),
+              clicks: Number(row.clicks ?? 0),
+              ctr: row.ctr ? Number(row.ctr) : null,
+              cpm: row.cpm ? Number(row.cpm) : null,
+              leads,
+              cpl: leads > 0 ? +(spend / leads).toFixed(2) : null,
+              roas: purchaseValue && spend > 0 ? +(Number(purchaseValue.value) / spend).toFixed(2) : null,
+            };
+          }
+        } catch (e) {
+          console.warn(`insights skipped for ${ad.id}:`, (e as Error).message);
         }
-        const creative = ad.creative ?? {};
-        const thumbnail = creative.thumbnail_url || creative.image_url || null;
-        const adFormat = creative.video_id ? "video" : "image";
-        return {
-          meta_ad_id: ad.id,
-          meta_ad_name: ad.name,
-          meta_account_id: accountId,
-          meta_account_name: accountName,
-          meta_campaign_id: ad.campaign_id,
-          meta_campaign_name: ad.campaign?.name,
-          meta_adset_id: ad.adset_id,
-          meta_adset_name: ad.adset?.name,
-          meta_creative_id: creative.id,
-          status: ad.effective_status ?? ad.status,
-          ad_format: adFormat,
-          thumbnail_url: thumbnail,
-          metrics,
-          already_imported: alreadyImported,
-        };
-      })
-    );
+        // Throttle to avoid Meta "User request limit reached"
+        await new Promise((r) => setTimeout(r, 120));
+      }
+      const creative = ad.creative ?? {};
+      const thumbnail = creative.thumbnail_url || creative.image_url || null;
+      const adFormat = creative.video_id ? "video" : "image";
+      enriched.push({
+        meta_ad_id: ad.id,
+        meta_ad_name: ad.name,
+        meta_account_id: accountId,
+        meta_account_name: accountName,
+        meta_campaign_id: ad.campaign_id,
+        meta_campaign_name: ad.campaign?.name,
+        meta_adset_id: ad.adset_id,
+        meta_adset_name: ad.adset?.name,
+        meta_creative_id: creative.id,
+        status: ad.effective_status ?? ad.status,
+        ad_format: adFormat,
+        thumbnail_url: thumbnail,
+        metrics,
+        already_imported: alreadyImported,
+      });
+    }
 
     return new Response(
       JSON.stringify({
