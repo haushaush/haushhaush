@@ -148,7 +148,7 @@ export default function ReferenzWerbeanzeigeDetail() {
           <Button variant="outline" size="sm" onClick={() => refresh(true)} disabled={refreshing}>
             <DownloadCloud className="w-3.5 h-3.5 mr-1.5" /> Force
           </Button>
-          <Button variant="ghost" size="sm" onClick={remove} className="text-red-600 dark:text-red-400">
+          <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)} className="text-red-600 dark:text-red-400">
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </>
