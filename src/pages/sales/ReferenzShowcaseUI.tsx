@@ -496,3 +496,174 @@ export function SecondaryActionButton({
     </button>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* AdCreativeCard — 1:1 square w/ sales metrics                       */
+/* ------------------------------------------------------------------ */
+const TOP_CPL_THRESHOLDS: Record<string, number> = {
+  PKV: 50,
+  BU: 40,
+  KFZ: 8,
+  Tierkrankenversicherung: 12,
+  Rechtsschutz: 15,
+  default: 10,
+};
+
+function MetricMini({
+  label, value, highlight,
+}: { label: string; value: string; highlight?: 'green' | 'red' | null }) {
+  const valueClass =
+    highlight === 'green' ? 'text-emerald-600 dark:text-emerald-400' :
+    highlight === 'red' ? 'text-red-600 dark:text-red-400' :
+    'text-gray-900 dark:text-white';
+  return (
+    <div className="text-center min-w-0">
+      <div className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 mb-0.5">
+        {label}
+      </div>
+      <div className={`text-sm font-extrabold tabular-nums truncate ${valueClass}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+export function AdCreativeCard({ item }: { item: AnyItem }) {
+  const isPublic = useIsPublicView();
+  const basePath = isPublic ? '/showcase' : '/sales/referenz-showcase';
+  const detailHref = `${basePath}/werbeanzeigen/${item.id}`;
+
+  const eyebrowText = (getShowcaseKundenname(item) || 'Anzeige').toUpperCase();
+  const titleText = getShowcaseTitle(item);
+  const branche = getShowcaseBranche(item);
+
+  const m = item.metrics || item.meta_metrics || {};
+  const num = (v: any): number | null => {
+    if (v == null || v === '') return null;
+    const n = Number(v);
+    return isNaN(n) ? null : n;
+  };
+  const cpl = num(m.cpl) ?? num(item.cpl);
+  const leads = num(m.leads) ?? num(item.leads);
+  const ctr = num(m.ctr) ?? num(item.ctr);
+  const spend = num(m.spend) ?? num(item.spend);
+
+  const threshold = TOP_CPL_THRESHOLDS[branche || ''] ?? TOP_CPL_THRESHOLDS.default;
+  const isWinning = cpl != null && cpl < threshold;
+
+  const isVideo = item.ad_format === 'video' || item.ad_format === 'reel' || item.creative_format === 'video';
+  const isCarousel = item.ad_format === 'carousel' || item.creative_format === 'carousel';
+  const formatLabel = isVideo ? 'Video' : isCarousel ? 'Carousel' : 'Image';
+  const FormatIcon = isVideo ? Video : ImageIcon;
+
+  const imageUrl =
+    item.thumbnail_url_persisted ||
+    item.thumbnail_url ||
+    item.thumbnail_url_meta ||
+    item.fallback_image_url ||
+    item.preview_image_url;
+
+  const hasMetrics = cpl != null || leads != null || ctr != null;
+
+  // CTR may be stored as 0-1 or as percentage. Heuristic: if <=1, treat as fraction.
+  const ctrDisplay = ctr == null ? '—' : ctr <= 1 ? `${(ctr * 100).toFixed(1)}%` : `${ctr.toFixed(1)}%`;
+
+  return (
+    <Link
+      to={detailHref}
+      className="group h-full flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
+    >
+      <div className="relative aspect-square bg-gray-50 dark:bg-gray-800 shrink-0 overflow-hidden">
+        {isVideo && item.video_url ? (
+          <video
+            src={item.video_url}
+            poster={imageUrl}
+            className="w-full h-full object-cover"
+            muted
+            playsInline
+          />
+        ) : imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={titleText}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ImageIcon className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+          </div>
+        )}
+
+        <div className="absolute top-3 right-3 flex items-center gap-1 bg-purple-600/95 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm">
+          <FormatIcon className="w-2.5 h-2.5" />
+          {formatLabel}
+        </div>
+
+        {isWinning && (
+          <div className="absolute top-3 left-3 flex items-center gap-1 bg-emerald-500/95 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm">
+            <Flame className="w-2.5 h-2.5" />
+            Top
+          </div>
+        )}
+
+        {item.is_featured && (
+          <div className="absolute bottom-3 left-3 w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center shadow-md">
+            <Star className="w-4 h-4 text-white" fill="currentColor" />
+          </div>
+        )}
+
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+      </div>
+
+      <div className="p-5 flex flex-col flex-1">
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] truncate">
+            {eyebrowText}
+          </p>
+          <h3 className="text-base font-extrabold text-gray-900 dark:text-white leading-tight line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
+            {titleText}
+          </h3>
+          {branche && (
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 pt-0.5">
+              <span className="capitalize truncate">{branche}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1" />
+
+        {hasMetrics && (
+          <div className="mt-4 grid grid-cols-3 gap-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+            <MetricMini
+              label="CPL"
+              value={cpl != null ? `€${cpl.toFixed(2)}` : '—'}
+              highlight={isWinning ? 'green' : null}
+            />
+            <MetricMini
+              label="Leads"
+              value={leads != null ? leads.toLocaleString('de-DE') : '—'}
+            />
+            <MetricMini label="CTR" value={ctrDisplay} />
+          </div>
+        )}
+
+        <div className="border-t border-gray-100 dark:border-gray-800 mt-4 pt-3 flex items-center justify-between">
+          <span className="text-sm font-bold text-teal-600 dark:text-teal-400 group-hover:translate-x-0.5 transition-transform">
+            Ansehen →
+          </span>
+          {spend != null ? (
+            <span className="text-[11px] text-gray-400 dark:text-gray-500 flex items-center gap-1 tabular-nums">
+              <Euro className="w-3 h-3" />
+              {Math.round(spend).toLocaleString('de-DE')} Spend
+            </span>
+          ) : item.created_at ? (
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">
+              {new Date(item.created_at).toLocaleDateString('de-DE', { month: 'short', year: 'numeric' })}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </Link>
+  );
+}
