@@ -341,5 +341,15 @@ export default function ReferenzWerbeanzeigeDetail() {
         </div>
       }
     />
+    {ad && (
+      <DeleteAdDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        adIds={[ad.id]}
+        adLabel={ad.custom_title || ad.meta_ad_name || undefined}
+        onDeleted={() => navigate(backHref)}
+      />
+    )}
+    </>
   );
 }
