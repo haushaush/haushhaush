@@ -428,8 +428,7 @@ export default function ReferenzShowcaseOverview() {
             ))}
           </div>
         )}
-      </div>
-    </div>
+    </PageShell>
   );
 }
 
