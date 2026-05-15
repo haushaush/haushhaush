@@ -331,6 +331,16 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
         });
         if (error) throw error;
         const res = data as any;
+        const skip = (res?.skipped ?? []).find((s: any) => s.id === adId || s.adId === adId);
+        if (skip) {
+          setProgress(prev => ({
+            ...prev,
+            done: prev.done + 1,
+            skipped: [...prev.skipped, { adId, adName, reason: skip.reason || 'Blacklist' }],
+            recent: [{ adId, adName, status: 'error' as const, message: `⊘ ${adName}: ${skip.reason || 'Blacklist'}` }, ...prev.recent].slice(0, 20),
+          }));
+          continue;
+        }
         if (res?.errors?.length) {
           throw new Error(res.errors[0]?.error || 'Unbekannter Fehler');
         }
