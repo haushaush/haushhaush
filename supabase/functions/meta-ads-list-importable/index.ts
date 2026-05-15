@@ -210,8 +210,16 @@ Deno.serve(async (req) => {
     );
   } catch (err) {
     console.error("meta-ads-list-importable", err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const msg = (err as Error).message;
+    const rl = isRateLimitErr(err);
+    return new Response(JSON.stringify({
+      error: rl
+        ? "Meta API Rate-Limit erreicht. Bitte 5–10 Minuten warten und erneut versuchen."
+        : msg,
+      rate_limited: rl,
+    }), {
+      status: rl ? 429 : 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
