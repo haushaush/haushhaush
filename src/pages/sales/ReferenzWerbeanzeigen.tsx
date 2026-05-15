@@ -13,6 +13,7 @@ import { SHOWCASE_COPY } from "@/copy/showcase";
 import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
 import { getAdLiveStatus } from "@/lib/adStatus";
 import { useFilterOptions } from "@/hooks/useFilterOptions";
+import { normalizeBranche } from "@/lib/branchen";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
   ShowcaseCard, ShowcaseEmptyState, PrimaryActionButton, SecondaryActionButton,
