@@ -254,7 +254,7 @@ export function AdCreativeFilters({
       {showAdvanced && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 p-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl">
           <RangeFilter
-            label="CPL-Bereich"
+            label="Kosten pro Lead (CPL)"
             prefix="€"
             min={CPL_BOUNDS[0]}
             max={CPL_BOUNDS[1]}
