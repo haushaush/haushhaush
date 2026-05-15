@@ -19,6 +19,8 @@ interface PageHeaderProps {
   className?: string;
   /** Centered hero variant (used by main showcase page). */
   centered?: boolean;
+  /** Alignment for sub-pages. `center` mirrors hero with breadcrumb + actions. */
+  align?: 'left' | 'center';
 }
 
 const titleSize: Record<'lg' | 'xl', string> = {
