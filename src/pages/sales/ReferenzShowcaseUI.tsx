@@ -590,17 +590,20 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
           </div>
         )}
 
-        <div className="absolute top-3 right-3 flex items-center gap-1 bg-purple-600/95 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm">
-          <FormatIcon className="w-2.5 h-2.5" />
-          {formatLabel}
+        {/* Single hero badge: Top OR Format */}
+        <div className="absolute top-3 right-3">
+          {isWinning ? (
+            <span className="inline-flex items-center gap-1 bg-emerald-500/95 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm">
+              <Flame className="w-2.5 h-2.5" />
+              Top
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 bg-gray-900/85 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm">
+              <FormatIcon className="w-2.5 h-2.5" />
+              {formatLabel}
+            </span>
+          )}
         </div>
-
-        {isWinning && (
-          <div className="absolute top-3 left-3 flex items-center gap-1 bg-emerald-500/95 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm">
-            <Flame className="w-2.5 h-2.5" />
-            Top
-          </div>
-        )}
 
         {item.is_featured && (
           <div className="absolute bottom-3 left-3 w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center shadow-md">
@@ -612,6 +615,7 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
       </div>
 
       <div className="p-5 flex flex-col flex-1">
+        {/* SECTION 1: Identity */}
         <div className="space-y-1.5">
           <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] truncate">
             {eyebrowText}
@@ -619,12 +623,25 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
           <h3 className="text-base font-extrabold text-gray-900 dark:text-white leading-tight line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
             {titleText}
           </h3>
-          {branche && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 pt-0.5">
-              <span className="capitalize truncate">{branche}</span>
-            </div>
-          )}
         </div>
+
+        {/* SECTION 2: Meta-Pills (Branche + Unternehmen) */}
+        {(branche || item.linked_kunde?.unternehmen) && (
+          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+            {branche && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-[11px] font-semibold rounded-md">
+                <Tag className="w-2.5 h-2.5 text-gray-400" />
+                <span className="capitalize truncate max-w-[100px]">{branche}</span>
+              </span>
+            )}
+            {item.linked_kunde?.unternehmen && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-[11px] font-semibold rounded-md">
+                <Building2 className="w-2.5 h-2.5 text-gray-400" />
+                <span className="truncate max-w-[100px]">{item.linked_kunde.unternehmen}</span>
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="flex-1" />
 
