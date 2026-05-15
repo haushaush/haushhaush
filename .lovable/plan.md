@@ -1,71 +1,79 @@
-# Apple-Style Design-System Refactor
+# Showcase Production-Ready: Bulk-Import & Polish
 
-Ziel: Single source of truth für Tokens, Cards, Page-Shell, Headers und Buttons. Alle 7 Showcase-Pages auf dieses System migrieren.
+Sehr großer Scope. Ich schlage vor in **3 zusammenhängenden Lieferungen** umzusetzen, alle in einem Build-Lauf, aber technisch entkoppelt damit nichts kippt.
 
-## Scope
+## Bestehende Infrastruktur (wird wiederverwendet)
 
-**Foundation-Files (neu):**
-- `src/styles/tokens.ts` — Radius/Spacing/Shadow/Typography/Motion-Tokens
-- `src/styles/colors.ts` — semantische Color-Klassen (surface/border/text/accent)
-- `src/components/ui/SurfaceCard.tsx` — primitive Card (Name `SurfaceCard` um Kollision mit shadcn `Card` zu vermeiden)
-- `src/components/layout/PageShell.tsx` — Page-Container mit max-width
-- `src/components/layout/PageHeader.tsx` — einheitlicher Header (size lg/xl, breadcrumb, actions)
+- Edge: `meta-ads-list-importable` (paginiert Ads aus Meta) ✓
+- Edge: `meta-ads-import-to-showcase` (importiert Selektion mit Bild-Persistierung) ✓
+- Modal: `src/components/sales/MetaAdImportModal.tsx` (Single-Screen-Variante, wird ersetzt)
 
-**Tailwind-Config:**
-- `tailwind.config.ts`: borderRadius + boxShadow aus tokens importieren (additiv, ohne shadcn semantic tokens zu zerstören)
+## Lieferung 1 — Bulk-Import-Wizard
 
-**Button-System:**
-- `src/components/ui/button.tsx` erweitern: zusätzliche Varianten `accent`, neue Size-Skala kompatibel halten (bestehende `default/sm/lg/icon` bleiben für Rückwärtskompatibilität, neue `accent`-Variant ergänzt). Keine Breaking-Changes für Rest der App.
+**Neue Komponente:** `src/components/showcase/BulkImportWizard.tsx`
 
-**Migration der 7 Showcase-Pages:**
-1. `src/pages/sales/ReferenzShowcaseOverview.tsx` — Hauptseite, PageHeader size=xl
-2. `src/pages/sales/ReferenzWebsites.tsx` — Sub-Page, size=lg
-3. `src/pages/sales/ReferenzWerbeanzeigen.tsx` — Sub-Page, size=lg
-4. `src/pages/sales/AdPerformance.tsx` — Sub-Page, size=lg
-5. `src/pages/sales/ReferenzWebsiteDetail.tsx` — Detail
-6. `src/pages/sales/ReferenzWerbeanzeigeDetail.tsx` — Detail
-7. `src/pages/sales/AdPerformanceDetail.tsx` — Detail
+5 Steps mit Apple-Style StepperBar oben:
 
-Pro Page:
-- Eigenen Page-Container durch `<PageShell>` ersetzen
-- Eigene Header-Section durch `<PageHeader>` ersetzen
-- `rounded-xl/2xl/3xl + border + bg-white` Container durch `<SurfaceCard>` ersetzen
-- Card-Komponenten in `ReferenzShowcaseUI.tsx` (ShowcaseCard/AdCreativeCard/WebsiteCard/CampaignCard) auf `<SurfaceCard interactive>` umstellen — gleiche visuelle Tokens, nur einheitliche Basis
-
-**Außerhalb Scope (NICHT angefasst):**
-- shadcn UI-Primitives (`src/components/ui/card.tsx` etc.) — bleiben für Rest der App
-- Andere Pages (Dashboard, CRM, Finanzen, Meta) — kein Mass-Replace außerhalb Showcase
-- `index.css` semantic tokens — unverändert
-
-## Technische Details
-
-### tokens.ts → tailwind.config.ts
-Nur `borderRadius` und `boxShadow` werden in Tailwind injected. Spacing/Typography/Motion-Tokens sind String-Helper für direkten Import in Komponenten (keine Tailwind-Override, um shadcn nicht zu brechen).
-
-### SurfaceCard
-```tsx
-<SurfaceCard padding="md" interactive href="/foo">…</SurfaceCard>
 ```
-- default: `rounded-2xl border border-gray-200/80 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm`
-- interactive: `+ hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ease-out`
-- padding presets: none/sm(p-4)/md(p-5)/lg(p-8)
-- as: ElementType (default `div`, oder `'a'`/`Link`)
+Quelle → Filter → Auswahl → Anreichern → Import
+```
 
-### PageHeader
-- size `xl`: `text-4xl md:text-5xl`, mehr vertical-spacing
-- size `lg`: `text-2xl md:text-3xl`
-- Optional: 1 Breadcrumb, Description, Actions-Slot rechts
+- **Quelle:** Account-Cards (aus `useMetaAds().accounts`), Click-to-select
+- **Filter:** Zeitraum (Quick-Toggles 30/90/180/Jahr), Status-Radio, Min-Leads, Min-Budget. Triggert `meta-ads-list-importable` mit `datePreset` und `status`. Frontend-Filter für minLeads/minSpend
+- **Auswahl:** Visuelles Grid (3-5 cols), Cards mit Thumbnail + CPL/Leads-Overlay, Checkbox-Animation. Top-Actions: "Alle / Top-Performer / Keine"
+- **Anreichern:** Bulk-Apply-Card oben (Branche/Kunde/Unternehmen), darunter scrollbare Per-Ad-Tabelle mit Combobox-Override
+- **Import:** Iteriert pro Ad, ruft pro Aufruf `meta-ads-import-to-showcase` mit `[adId]`. Frontend-State trackt `done/total/recent[]/errors[]` für echten Live-Progress (kein SSE nötig — single-ad-calls geben Real-Time-Feedback und nutzen die bestehende Edge ohne Änderung)
+- **Done:** Erfolgs-Card + Fehler-Liste, Close-Button mit Refresh-Callback
 
-### PageShell
-`min-h-screen bg-[#fafaf7] dark:bg-gray-950` + `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8`
+**Trigger:** Replace bestehenden "Importieren"-Button auf `ReferenzWerbeanzeigen.tsx` mit dem neuen Wizard. Alter `MetaAdImportModal` bleibt vorerst als Fallback (nicht gelöscht).
 
-### Button-Erweiterung
-Neue Variant `accent` (teal). Bestehende `default` bleibt unverändert. Bestehende Verwendungen brechen nicht.
+## Lieferung 2 — Empty-States & Onboarding-Hint
 
-## Test
-1. Build grün
-2. Alle 7 Showcase-Pages laden, gleiche Header-Höhe-Skala
-3. Cards überall gleich rund (rounded-2xl), gleicher Border, gleicher Shadow
-4. Hover-Lift konsistent
-5. Dark-Mode überall gleich
-6. Andere Pages (Dashboard etc.) unverändert
+**Neue Komponente:** `src/components/showcase/EmptyState.tsx` (icon-circle + title + description + action)
+
+Eingesetzt auf:
+- `ReferenzShowcaseOverview.tsx` (0 items) → Onboarding-Hint-Card mit 3-Step Erklärung + 2 CTAs
+- `ReferenzWerbeanzeigen.tsx` (0 items) → "Keine Anzeigen importiert" + Bulk-Import-CTA
+- `ReferenzWebsites.tsx` (0 items) → "Noch keine Websites" + Add-CTA
+- Filter-leer Cases: "Nichts gefunden" + Reset-Button
+
+## Lieferung 3 — AddWebsiteModal Refresh
+
+Bestehendes `AddWebsiteModal.tsx` → 2-Step-Flow:
+- **Step 1 (URL):** URL-Input + Auto-Screenshot-Preview, "Weiter"-Button
+- **Step 2 (Details):** Titel, Kunde, Branche, Highlights, Beschreibung, Tags
+
+Header zeigt "Schritt X von 2", Footer hat Back/Next/Save. Alle bestehenden Felder bleiben — nur in 2 Screens aufgeteilt.
+
+## Bewusst NICHT enthalten (Scope-Empfehlung)
+
+1. **SSE-Streaming-Edge-Function:** Nicht nötig. Iterative Single-Ad-Calls aus dem Frontend liefern echtes Live-Feedback ohne neue Edge-Function-Komplexität (kein neuer Code in Supabase, keine Auth-Edge-Cases, kein Timeout-Risk). Falls später echte Server-Streams gewünscht: separate Phase.
+2. **Audit-Log RPC `log_audit`:** Keine Tabelle in der DB sichtbar — würde fehlschlagen. Skippen oder später einbauen wenn Audit-System steht.
+3. **`<Combobox>` mit `compact` prop / Branchen-/Kunden-/Unternehmens-Optionen:** Nutze bestehende `Combobox`-Komponente + `useLookups`/Close-Deals-Query.
+
+## Geänderte/Neue Dateien
+
+```
+NEU:
+  src/components/showcase/BulkImportWizard.tsx     (~600 LoC, 6 Sub-Komponenten in einer Datei)
+  src/components/showcase/EmptyState.tsx           (~40 LoC)
+
+GEÄNDERT:
+  src/pages/sales/ReferenzWerbeanzeigen.tsx        (Wizard einbinden, Empty-State)
+  src/pages/sales/ReferenzWebsites.tsx             (Empty-State)
+  src/pages/sales/ReferenzShowcaseOverview.tsx     (Onboarding-Hint + Empty-State)
+  src/components/sales/AddWebsiteModal.tsx         (2-Step-Flow Wrapper, Felder unverändert)
+```
+
+## Reihenfolge
+
+1. EmptyState-Primitive
+2. BulkImportWizard mit allen Steps
+3. AddWebsiteModal 2-Step-Refactor
+4. Pages-Integration + Onboarding-Hint
+
+## Bestätigungen
+
+- OK so umzusetzen ohne SSE-Edge-Function?
+- OK den alten `MetaAdImportModal` zu behalten (nicht löschen) als Fallback?
+- Auto-Screenshot im AddWebsite-Step1: bestehende Logik verwenden (du hattest dort schon Thumbnail-Generation)?
