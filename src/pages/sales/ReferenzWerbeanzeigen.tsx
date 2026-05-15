@@ -254,7 +254,7 @@ export default function ReferenzWerbeanzeigenPage() {
       }
     });
     return sorted;
-  }, [rows, search, activeFilters, sortBy, adFilters]);
+  }, [rows, search, activeFilters, sortBy, adFilters, brancheFilter, kundeFilter, unternehmenFilter, werbekontoFilter, formatFilter]);
 
   const items: AnyItem[] = useMemo(
     () => filtered.map(a => ({
@@ -265,10 +265,13 @@ export default function ReferenzWerbeanzeigenPage() {
     [filtered],
   );
 
+  const { branchen, unternehmen, kunden, werbekonten } = useFilterOptions('werbeanzeige');
+
   const hasActiveFilters =
     !!search ||
     Object.values(activeFilters).some(Boolean) ||
-    Object.keys(adFilters).length > 0;
+    Object.keys(adFilters).length > 0 ||
+    !!brancheFilter || !!kundeFilter || !!unternehmenFilter || !!werbekontoFilter || !!formatFilter;
   const resetFilters = () => updateParams(p => { Array.from(p.keys()).forEach(k => p.delete(k)); });
 
   const dropdownLabels = useMemo(() => {
