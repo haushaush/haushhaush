@@ -286,7 +286,7 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
           ) : null}
         </div>
       </div>
-    </Link>
+    </SurfaceCard>
   );
 }
 
