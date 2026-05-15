@@ -263,7 +263,7 @@ export default function ReferenzWerbeanzeigenPage() {
       }
     });
     return sorted;
-  }, [rows, search, activeFilters, sortBy, adFilters, brancheFilter, kundeFilter, unternehmenFilter, werbekontoFilter, formatFilter]);
+  }, [rows, search, activeFilters, sortBy, adFilters, brancheFilter, kundeFilter, unternehmenFilter, werbekontoFilter, formatFilter, kunden]);
 
   const items: AnyItem[] = useMemo(
     () => filtered.map(a => ({
