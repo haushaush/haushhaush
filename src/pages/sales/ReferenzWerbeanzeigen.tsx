@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Plus, Settings2, Sparkles, Loader2 } from "lucide-react";
 import { MetaAdImportModal } from "@/components/sales/MetaAdImportModal";
 import { ShowcaseFilterManagementModal, type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
+import { AdCreativeFilters, ActiveFilterChips, TOP_CPL_THRESHOLDS, type AdFilters } from "@/components/sales/AdCreativeFilters";
 import { useToast } from "@/hooks/use-toast";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
-  ShowcaseCard, ShowcaseEmptyState, ResultCount, PrimaryActionButton, SecondaryActionButton,
+  ShowcaseCard, ShowcaseEmptyState, PrimaryActionButton, SecondaryActionButton,
   type AnyItem,
 } from "./ReferenzShowcaseUI";
 
@@ -43,7 +45,7 @@ export interface MetaAdRow {
   created_at?: string | null;
 }
 
-type SortKey = "performance" | "created" | "cpl" | "roas" | "leads";
+type SortKey = "performance" | "created" | "cpl" | "roas" | "leads" | "spend" | "ctr";
 
 export default function ReferenzWerbeanzeigenPage() {
   const { hasRole } = useAuth();
@@ -54,9 +56,62 @@ export default function ReferenzWerbeanzeigenPage() {
 
   const [rows, setRows] = useState<MetaAdRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
-  const [sortBy, setSortBy] = useState<SortKey>("performance");
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read state from URL
+  const search = searchParams.get("q") ?? "";
+  const sortBy = (searchParams.get("sort") as SortKey) || "performance";
+  const activeFilters: Record<string, string> = useMemo(() => {
+    const out: Record<string, string> = {};
+    searchParams.forEach((v, k) => {
+      if (k.startsWith("f.") && v) out[k.slice(2)] = v;
+    });
+    return out;
+  }, [searchParams]);
+  const adFilters: AdFilters = useMemo(() => {
+    const f: AdFilters = {};
+    if (searchParams.get("has_leads") === "1") f.has_leads = true;
+    if (searchParams.get("top") === "1") f.top_performers = true;
+    if (searchParams.get("video") === "1") f.has_video = true;
+    const cplMin = searchParams.get("cpl_min");
+    const cplMax = searchParams.get("cpl_max");
+    if (cplMin || cplMax) f.cpl_range = [Number(cplMin ?? 0), Number(cplMax ?? 100)];
+    const spMin = searchParams.get("sp_min");
+    const spMax = searchParams.get("sp_max");
+    if (spMin || spMax) f.spend_range = [Number(spMin ?? 0), Number(spMax ?? 50000)];
+    const ml = searchParams.get("min_leads");
+    if (ml) f.min_leads = Number(ml);
+    const mc = searchParams.get("min_ctr");
+    if (mc) f.min_ctr = Number(mc);
+    return f;
+  }, [searchParams]);
+
+  const updateParams = useCallback((mut: (p: URLSearchParams) => void) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      mut(next);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const setSearch = (v: string) =>
+    updateParams(p => { v ? p.set("q", v) : p.delete("q"); });
+  const setSortBy = (v: SortKey) =>
+    updateParams(p => { v && v !== "performance" ? p.set("sort", v) : p.delete("sort"); });
+  const setDropdownFilter = (k: string, v: string) =>
+    updateParams(p => { v ? p.set(`f.${k}`, v) : p.delete(`f.${k}`); });
+  const setAdFilters = (next: AdFilters) =>
+    updateParams(p => {
+      ["has_leads", "top", "video", "cpl_min", "cpl_max", "sp_min", "sp_max", "min_leads", "min_ctr"].forEach(k => p.delete(k));
+      if (next.has_leads) p.set("has_leads", "1");
+      if (next.top_performers) p.set("top", "1");
+      if (next.has_video) p.set("video", "1");
+      if (next.cpl_range) { p.set("cpl_min", String(next.cpl_range[0])); p.set("cpl_max", String(next.cpl_range[1])); }
+      if (next.spend_range) { p.set("sp_min", String(next.spend_range[0])); p.set("sp_max", String(next.spend_range[1])); }
+      if (next.min_leads != null) p.set("min_leads", String(next.min_leads));
+      if (next.min_ctr != null) p.set("min_ctr", String(next.min_ctr));
+    });
 
   const [importOpen, setImportOpen] = useState(false);
   const [filterMgmtOpen, setFilterMgmtOpen] = useState(false);
@@ -99,6 +154,52 @@ export default function ReferenzWerbeanzeigenPage() {
       r = r.filter(x => (x.filter_values ?? {})[catKey] === val);
     });
 
+    // Performance / Ad-specific filters
+    const num = (v: any): number | null => {
+      if (v == null || v === "") return null;
+      const n = Number(v);
+      return isNaN(n) ? null : n;
+    };
+    const ctrPct = (v: any): number | null => {
+      const n = num(v);
+      if (n == null) return null;
+      return n <= 1 ? n * 100 : n;
+    };
+
+    r = r.filter(x => {
+      const m = x.meta_metrics ?? {};
+      const cpl = num(m.cpl);
+      const leads = num(m.leads);
+      const ctr = ctrPct(m.ctr);
+      const spend = num(m.spend);
+
+      if (adFilters.has_leads && !(leads != null && leads > 0)) return false;
+      if (adFilters.has_video) {
+        const f = (x.ad_format || "").toLowerCase();
+        if (f !== "video" && f !== "reel") return false;
+      }
+      if (adFilters.top_performers) {
+        const branche = x.linked_kunde?.branche ?? null;
+        const threshold = TOP_CPL_THRESHOLDS[branche || ""] ?? TOP_CPL_THRESHOLDS.default;
+        const isTop =
+          (cpl != null && cpl < threshold) ||
+          (ctr != null && ctr > 3) ||
+          (leads != null && leads > 20);
+        if (!isTop) return false;
+      }
+      if (adFilters.cpl_range) {
+        const [lo, hi] = adFilters.cpl_range;
+        if (cpl == null || cpl < lo || cpl > hi) return false;
+      }
+      if (adFilters.spend_range) {
+        const [lo, hi] = adFilters.spend_range;
+        if (spend == null || spend < lo || spend > hi) return false;
+      }
+      if (adFilters.min_leads != null && (leads ?? 0) < adFilters.min_leads) return false;
+      if (adFilters.min_ctr != null && (ctr ?? 0) < adFilters.min_ctr) return false;
+      return true;
+    });
+
     const sorted = [...r];
     sorted.sort((a, b) => {
       if (a.is_featured !== b.is_featured) return a.is_featured ? -1 : 1;
@@ -112,20 +213,14 @@ export default function ReferenzWerbeanzeigenPage() {
         case "cpl": return (am.cpl ?? Infinity) - (bm.cpl ?? Infinity);
         case "roas": return (bm.roas ?? 0) - (am.roas ?? 0);
         case "leads": return (bm.leads ?? 0) - (am.leads ?? 0);
+        case "spend": return (bm.spend ?? 0) - (am.spend ?? 0);
+        case "ctr": return (bm.ctr ?? 0) - (am.ctr ?? 0);
         case "created":
         default: return 0;
       }
     });
     return sorted;
-  }, [rows, search, activeFilters, sortBy]);
-
-  const setFilter = (k: string, v: string) => {
-    setActiveFilters(prev => {
-      const next = { ...prev };
-      if (v) next[k] = v; else delete next[k];
-      return next;
-    });
-  };
+  }, [rows, search, activeFilters, sortBy, adFilters]);
 
   const items: AnyItem[] = useMemo(
     () => filtered.map(a => ({
@@ -136,8 +231,21 @@ export default function ReferenzWerbeanzeigenPage() {
     [filtered],
   );
 
-  const hasActiveFilters = !!search || Object.values(activeFilters).some(Boolean);
-  const resetFilters = () => { setSearch(''); setActiveFilters({}); };
+  const hasActiveFilters =
+    !!search ||
+    Object.values(activeFilters).some(Boolean) ||
+    Object.keys(adFilters).length > 0;
+  const resetFilters = () => updateParams(p => { Array.from(p.keys()).forEach(k => p.delete(k)); });
+
+  const dropdownLabels = useMemo(() => {
+    const out: Record<string, { catLabel: string; optLabel: string }> = {};
+    categories.forEach(cat => {
+      options.filter(o => o.category_id === cat.id).forEach(o => {
+        out[`${cat.key}:${o.key}`] = { catLabel: cat.label, optLabel: o.label };
+      });
+    });
+    return out;
+  }, [categories, options]);
 
   return (
     <ShowcasePageWrapper>
@@ -177,7 +285,7 @@ export default function ReferenzWerbeanzeigenPage() {
         )}
       />
 
-      <div className="space-y-3 mb-8">
+      <div className="space-y-4 mb-8">
         <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
 
         <div className="flex flex-wrap items-center gap-3">
@@ -187,7 +295,9 @@ export default function ReferenzWerbeanzeigenPage() {
             onChange={v => setSortBy((v || 'performance') as SortKey)}
             options={[
               { value: 'leads', label: 'Meiste Leads' },
-              { value: 'cpl', label: 'CPL (niedrig)' },
+              { value: 'cpl', label: 'Bester CPL' },
+              { value: 'ctr', label: 'Höchste CTR' },
+              { value: 'spend', label: 'Höchster Spend' },
               { value: 'roas', label: 'ROAS (hoch)' },
               { value: 'created', label: 'Importdatum' },
             ]}
@@ -203,20 +313,38 @@ export default function ReferenzWerbeanzeigenPage() {
                 key={cat.id}
                 label={cat.label}
                 value={activeFilters[cat.key] ?? ''}
-                onChange={v => setFilter(cat.key, v)}
+                onChange={v => setDropdownFilter(cat.key, v)}
                 options={catOpts}
               />
             );
           })}
-          {hasActiveFilters && (
-            <button onClick={resetFilters} className="ml-auto text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline">
-              Filter zurücksetzen
-            </button>
-          )}
         </div>
+
+        <AdCreativeFilters filters={adFilters} onChange={setAdFilters} />
+
+        <ActiveFilterChips
+          search={search}
+          dropdownFilters={activeFilters}
+          dropdownLabels={dropdownLabels}
+          adFilters={adFilters}
+          onRemoveSearch={() => setSearch('')}
+          onRemoveDropdown={(k) => setDropdownFilter(k, '')}
+          onRemoveAdFilter={(k) => {
+            const next = { ...adFilters };
+            delete next[k];
+            setAdFilters(next);
+          }}
+          onResetAll={resetFilters}
+        />
       </div>
 
-      <ResultCount count={filtered.length} singular="Anzeige" plural="Anzeigen" />
+      <div className="flex items-center justify-between mb-6">
+        <p className="text-sm text-gray-500 dark:text-gray-400 tabular-nums">
+          {hasActiveFilters
+            ? `${filtered.length} von ${rows.length} Anzeigen`
+            : `${filtered.length} Anzeigen`}
+        </p>
+      </div>
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -226,12 +354,21 @@ export default function ReferenzWerbeanzeigenPage() {
         </div>
       ) : items.length === 0 ? (
         <ShowcaseEmptyState
-          subtitle={rows.length === 0 ? 'Noch keine Anzeigen importiert.' : undefined}
-          action={isAdmin && rows.length === 0 ? (
-            <PrimaryActionButton onClick={() => setImportOpen(true)}>
-              <Plus className="w-4 h-4" /> Erste Anzeigen importieren
-            </PrimaryActionButton>
-          ) : undefined}
+          subtitle={rows.length === 0 ? 'Noch keine Anzeigen importiert.' : 'Keine Treffer für deine Filter.'}
+          action={
+            rows.length === 0 && isAdmin ? (
+              <PrimaryActionButton onClick={() => setImportOpen(true)}>
+                <Plus className="w-4 h-4" /> Erste Anzeigen importieren
+              </PrimaryActionButton>
+            ) : hasActiveFilters ? (
+              <button
+                onClick={resetFilters}
+                className="text-sm font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+              >
+                Filter zurücksetzen
+              </button>
+            ) : undefined
+          }
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 auto-rows-fr">
