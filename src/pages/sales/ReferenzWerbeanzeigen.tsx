@@ -138,6 +138,7 @@ export default function ReferenzWerbeanzeigenPage() {
     });
 
   const [importOpen, setImportOpen] = useState(false);
+  const [rematchOpen, setRematchOpen] = useState(false);
 
   const [categories, setCategories] = useState<FilterCategory[]>([]);
   const [options, setOptions] = useState<FilterOption[]>([]);
