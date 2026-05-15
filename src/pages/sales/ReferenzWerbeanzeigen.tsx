@@ -148,6 +148,7 @@ export default function ReferenzWerbeanzeigenPage() {
       supabase.from("referenz_meta_ads" as any)
         .select(isPublic ? '*' : '*, linked_kunde:close_deals(client_name, unternehmen, branche)')
         .eq("is_active", true)
+        .is("deleted_at", null)
         .order("is_featured", { ascending: false })
         .order("imported_at", { ascending: false }),
       supabase.from("showcase_filter_categories" as any).select("*")
