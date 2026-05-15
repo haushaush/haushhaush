@@ -59,7 +59,7 @@ export function DetailPageLayout({
   };
 
   return (
-    <PageShell className="pt-0" innerClassName="pt-0">
+    <ShellNoPad>
       {/* STICKY HEADER */}
       <div className="sticky top-0 z-20 -mx-6 md:-mx-10 lg:-mx-16 xl:-mx-20 px-6 md:px-10 lg:px-16 xl:px-20 mb-8 bg-[#fafaf7]/85 dark:bg-gray-950/85 backdrop-blur-md border-b border-gray-200/60 dark:border-gray-800/60">
         <div className="flex items-center justify-between py-4 gap-3">
@@ -122,7 +122,7 @@ export function DetailPageLayout({
           {editForm}
         </div>
       )}
-    </PageShell>
+    </ShellNoPad>
   );
 }
 
@@ -268,7 +268,7 @@ export function DetailRow({
 
 export function DetailPageSkeleton() {
   return (
-    <PageShell>
+    <ShellNoPad>
       <div className="animate-pulse">
         <div className="flex items-center justify-between py-4 mb-8">
           <div className="h-5 w-24 bg-gray-200 dark:bg-gray-800 rounded" />
@@ -296,6 +296,6 @@ export function DetailPageSkeleton() {
           </div>
         </div>
       </div>
-    </PageShell>
+    </ShellNoPad>
   );
 }
