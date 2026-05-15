@@ -285,7 +285,7 @@ export default function ReferenzWerbeanzeigenPage() {
         )}
       />
 
-      <div className="space-y-3 mb-8">
+      <div className="space-y-4 mb-8">
         <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
 
         <div className="flex flex-wrap items-center gap-3">
@@ -295,7 +295,9 @@ export default function ReferenzWerbeanzeigenPage() {
             onChange={v => setSortBy((v || 'performance') as SortKey)}
             options={[
               { value: 'leads', label: 'Meiste Leads' },
-              { value: 'cpl', label: 'CPL (niedrig)' },
+              { value: 'cpl', label: 'Bester CPL' },
+              { value: 'ctr', label: 'Höchste CTR' },
+              { value: 'spend', label: 'Höchster Spend' },
               { value: 'roas', label: 'ROAS (hoch)' },
               { value: 'created', label: 'Importdatum' },
             ]}
@@ -311,20 +313,38 @@ export default function ReferenzWerbeanzeigenPage() {
                 key={cat.id}
                 label={cat.label}
                 value={activeFilters[cat.key] ?? ''}
-                onChange={v => setFilter(cat.key, v)}
+                onChange={v => setDropdownFilter(cat.key, v)}
                 options={catOpts}
               />
             );
           })}
-          {hasActiveFilters && (
-            <button onClick={resetFilters} className="ml-auto text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline">
-              Filter zurücksetzen
-            </button>
-          )}
         </div>
+
+        <AdCreativeFilters filters={adFilters} onChange={setAdFilters} />
+
+        <ActiveFilterChips
+          search={search}
+          dropdownFilters={activeFilters}
+          dropdownLabels={dropdownLabels}
+          adFilters={adFilters}
+          onRemoveSearch={() => setSearch('')}
+          onRemoveDropdown={(k) => setDropdownFilter(k, '')}
+          onRemoveAdFilter={(k) => {
+            const next = { ...adFilters };
+            delete next[k];
+            setAdFilters(next);
+          }}
+          onResetAll={resetFilters}
+        />
       </div>
 
-      <ResultCount count={filtered.length} singular="Anzeige" plural="Anzeigen" />
+      <div className="flex items-center justify-between mb-6">
+        <p className="text-sm text-gray-500 dark:text-gray-400 tabular-nums">
+          {hasActiveFilters
+            ? `${filtered.length} von ${rows.length} Anzeigen`
+            : `${filtered.length} Anzeigen`}
+        </p>
+      </div>
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -334,12 +354,21 @@ export default function ReferenzWerbeanzeigenPage() {
         </div>
       ) : items.length === 0 ? (
         <ShowcaseEmptyState
-          subtitle={rows.length === 0 ? 'Noch keine Anzeigen importiert.' : undefined}
-          action={isAdmin && rows.length === 0 ? (
-            <PrimaryActionButton onClick={() => setImportOpen(true)}>
-              <Plus className="w-4 h-4" /> Erste Anzeigen importieren
-            </PrimaryActionButton>
-          ) : undefined}
+          subtitle={rows.length === 0 ? 'Noch keine Anzeigen importiert.' : 'Keine Treffer für deine Filter.'}
+          action={
+            rows.length === 0 && isAdmin ? (
+              <PrimaryActionButton onClick={() => setImportOpen(true)}>
+                <Plus className="w-4 h-4" /> Erste Anzeigen importieren
+              </PrimaryActionButton>
+            ) : hasActiveFilters ? (
+              <button
+                onClick={resetFilters}
+                className="text-sm font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+              >
+                Filter zurücksetzen
+              </button>
+            ) : undefined
+          }
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 auto-rows-fr">
