@@ -368,6 +368,9 @@ export default function ReferenzShowcaseOverview() {
         />
       </div>
 
+      {counts.websites + counts.ads + counts.performance === 0 && (
+        <OnboardingHint isPublic={isPublic} />
+      )}
       <div className="mb-8 space-y-3">
         {/* Row 1: Search full-width */}
         <div className="relative w-full">
