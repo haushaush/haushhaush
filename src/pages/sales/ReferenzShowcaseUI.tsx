@@ -10,6 +10,7 @@ import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { isTopPerformer } from '@/lib/topPerformer';
+import { getAdLiveStatus, type AdLiveStatus } from '@/lib/adStatus';
 
 export type AnyItem = Record<string, any> & {
   _type: 'website' | 'werbeanzeige' | 'campaign';
