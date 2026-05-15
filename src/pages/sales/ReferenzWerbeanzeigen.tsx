@@ -235,7 +235,17 @@ export default function ReferenzWerbeanzeigenPage() {
     !!search ||
     Object.values(activeFilters).some(Boolean) ||
     Object.keys(adFilters).length > 0;
-  const resetFilters = () => { setSearch(''); setActiveFilters({}); };
+  const resetFilters = () => updateParams(p => { Array.from(p.keys()).forEach(k => p.delete(k)); });
+
+  const dropdownLabels = useMemo(() => {
+    const out: Record<string, { catLabel: string; optLabel: string }> = {};
+    categories.forEach(cat => {
+      options.filter(o => o.category_id === cat.id).forEach(o => {
+        out[`${cat.key}:${o.key}`] = { catLabel: cat.label, optLabel: o.label };
+      });
+    });
+    return out;
+  }, [categories, options]);
 
   return (
     <ShowcasePageWrapper>
