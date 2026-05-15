@@ -169,6 +169,7 @@ const App = () => (
                 <Route path="/sales/referenz-showcase/ad-creatives/:id" element={<ShowcaseAuthRedirect><DL><ReferenzWerbeanzeigeDetail /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/ad-performance" element={<ShowcaseAuthRedirect><DL><AdPerformancePage /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/ad-performance/:id" element={<ShowcaseAuthRedirect><DL><AdPerformanceDetail /></DL></ShowcaseAuthRedirect>} />
+                <Route path="/admin/import-blacklist" element={<AdminRoute><DL><ImportBlacklist /></DL></AdminRoute>} />
 
                 {/* Public showcase (no auth required) */}
                 <Route path="/showcase" element={<PublicShowcaseLayout />}>
