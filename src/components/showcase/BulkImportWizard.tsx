@@ -180,7 +180,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
     (async () => {
       const { data } = await supabase.from('import_blacklist' as any).select('scope, target_id');
       const set: BlacklistSet = { accounts: new Set(), ads: new Set(), campaigns: new Set(), keywords: [] };
-      for (const b of (data ?? []) as Array<{ scope: string; target_id: string }>) {
+      for (const b of ((data ?? []) as any[]) as Array<{ scope: string; target_id: string }>) {
         if (b.scope === 'meta_account') set.accounts.add(b.target_id);
         else if (b.scope === 'meta_ad') set.ads.add(b.target_id);
         else if (b.scope === 'meta_campaign') set.campaigns.add(b.target_id);
