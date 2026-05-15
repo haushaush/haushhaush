@@ -122,6 +122,7 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
   const { data: unternehmenList = [] } = useUnternehmen();
   const createBranche = useCreateBranche();
   const createUnternehmen = useCreateUnternehmen();
+  const { incrementUsage: incrementHighlights } = useHighlights();
   const [description, setDescription] = useState(editing?.description ?? '');
   const [isFeatured, setIsFeatured] = useState(editing?.is_featured ?? false);
   const [keyFeatures, setKeyFeatures] = useState<string[]>(((editing as any)?.key_features as string[]) ?? []);
