@@ -414,9 +414,9 @@ export default function ReferenzShowcaseOverview() {
         </div>
 
         {filteredItems.length === 0 ? (
-          <div className="text-center py-20 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+          <SurfaceCard padding="none" className="text-center py-20">
             <p className="text-sm text-gray-500 dark:text-gray-400">Keine Referenzen gefunden.</p>
-          </div>
+          </SurfaceCard>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
             {filteredItems.map(item => (
@@ -444,9 +444,12 @@ function CategoryTile({
   icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <Link
+    <SurfaceCard
+      as={Link}
       to={href}
-      className="group block bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 px-8 py-12 text-center shadow-sm hover:shadow-lg hover:border-teal-300 dark:hover:border-teal-700 hover:-translate-y-1 transition-all duration-200"
+      interactive
+      padding="none"
+      className="group block px-8 py-12 text-center hover:border-teal-300 dark:hover:border-teal-700"
     >
       <Icon className="w-8 h-8 mx-auto mb-4 text-gray-400 dark:text-gray-500 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors" />
       <h3 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
@@ -455,7 +458,7 @@ function CategoryTile({
       <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-normal">
         {count} {count === 1 ? 'Referenz' : 'Referenzen'}
       </p>
-    </Link>
+    </SurfaceCard>
   );
 }
 
@@ -546,9 +549,12 @@ function ShowcaseCard({
 
 
   return (
-    <Link
+    <SurfaceCard
+      as={Link}
       to={detailHref}
-      className="group h-full flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200 overflow-hidden"
+      interactive
+      padding="none"
+      className="group h-full flex flex-col overflow-hidden"
     >
       <div className="relative bg-gray-50 dark:bg-gray-800 overflow-hidden shrink-0" style={{ aspectRatio: '16 / 9' }}>
         {item._type === 'campaign'
