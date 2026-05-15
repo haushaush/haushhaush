@@ -345,19 +345,12 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && canCloseRequest) onClose(); }}>
       <DialogContent persistent className="max-w-6xl h-[88vh] flex flex-col p-0 overflow-hidden gap-0">
-        {/* HEADER */}
-        <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-              Anzeigen aus Meta importieren
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
-          </div>
-          {canCloseRequest && (
-            <button onClick={onClose} className="w-9 h-9 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500">
-              <X className="w-4 h-4" />
-            </button>
-          )}
+        {/* HEADER (Radix Dialog renders its own close button automatically) */}
+        <div className="px-6 py-5 pr-14 border-b border-gray-200 dark:border-gray-800 shrink-0">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+            Anzeigen aus Meta importieren
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
         </div>
 
         {/* STEPPER */}
