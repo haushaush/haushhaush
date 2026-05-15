@@ -200,11 +200,13 @@ export function getShowcaseBranche(i: AnyItem): string | null {
 /* ShowcaseCard                                                        */
 /* ------------------------------------------------------------------ */
 export function ShowcaseCard({ item }: { item: AnyItem }) {
+  if (item._type === 'werbeanzeige') {
+    return <AdCreativeCard item={item} />;
+  }
   const isPublic = useIsPublicView();
   const basePath = isPublic ? '/showcase' : '/sales/referenz-showcase';
   const detailHref =
     item._type === 'website' ? `${basePath}/websites/${item.id}` :
-    item._type === 'werbeanzeige' ? `${basePath}/werbeanzeigen/${item.id}` :
     `${basePath}/ad-performance/${item.id}`;
 
   const kunde = getShowcaseKundenname(item);
