@@ -7,8 +7,11 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
   X, Check, Facebook, Calendar, Activity, Filter, Flame, Loader2,
-  Download, Search as SearchIcon, Sparkles,
+  Download, Search as SearchIcon, Sparkles, Zap, Wand2, HelpCircle,
 } from 'lucide-react';
+import { Combobox, type ComboboxOption } from '@/components/ui/Combobox';
+import { useBranchen, useUnternehmen } from '@/hooks/useBranchenUnternehmen';
+import { useKundenMapping, guessBrancheFromText, type KundeMatch } from '@/hooks/useKundenMapping';
 
 // ───────────────────────────────────────────────────────────────────
 // Types
@@ -31,6 +34,9 @@ interface ImportableAd {
 interface Enrichment {
   branche?: string;
   unternehmen?: string;
+  auto_matched?: boolean;
+  match_reason?: string;
+  kunde_id?: string | null;
 }
 
 interface FilterState {
@@ -81,6 +87,9 @@ const DATE_PRESETS = [
 export function BulkImportWizard({ open, onClose, onImported }: Props) {
   const { accounts, loadingAccounts } = useMetaAds();
   const { toast } = useToast();
+  const { branchen, createBranche } = useBranchen();
+  const { unternehmen: unternehmenPool, createUnternehmen } = useUnternehmen();
+  const { matchKunde } = useKundenMapping();
 
   const [step, setStep] = useState<Step>('source');
   const [accountId, setAccountId] = useState<string>('');
@@ -112,6 +121,47 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       if (!accountId && accounts[0]) setAccountId(accounts[0].id);
     }
   }, [open, accounts]);
+
+  // Auto-match enrichment when entering enrich step
+  const runAutoMatch = (force = false) => {
+    const selectedAds = ads.filter(a => selected.has(a.meta_ad_id));
+    const next: Record<string, Enrichment> = force ? {} : { ...enrichment };
+    let matched = 0;
+    let guessed = 0;
+    for (const ad of selectedAds) {
+      if (!force && next[ad.meta_ad_id]?.branche) continue;
+      const k = matchKunde(ad);
+      if (k && (k.branche || k.unternehmen)) {
+        next[ad.meta_ad_id] = {
+          branche: k.branche,
+          unternehmen: k.unternehmen,
+          kunde_id: k.kunde_id,
+          auto_matched: true,
+          match_reason: `Über Werbekonto ${ad.meta_account_name || ad.meta_account_id}${k.kundenname ? ` → ${k.kundenname}` : ''}`,
+        };
+        matched++;
+        continue;
+      }
+      const guess = guessBrancheFromText(`${ad.meta_ad_name} ${ad.meta_campaign_name ?? ''}`);
+      if (guess) {
+        next[ad.meta_ad_id] = {
+          branche: guess,
+          unternehmen: '',
+          auto_matched: false,
+          match_reason: 'Aus Anzeigen-Name erkannt',
+        };
+        guessed++;
+      }
+    }
+    setEnrichment(next);
+    return { matched, guessed };
+  };
+
+  useEffect(() => {
+    if (step !== 'enrich') return;
+    runAutoMatch(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   // Lookups for enrichment dropdowns (close_deals)
   const [brancheOpts, setBrancheOpts] = useState<string[]>([]);
@@ -338,13 +388,19 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
               ads={ads.filter(a => selected.has(a.meta_ad_id))}
               enrichment={enrichment}
               onEnrichmentChange={setEnrichment}
-              brancheOpts={brancheOpts}
-              unternehmenOpts={unternehmenOpts}
+              branchen={branchen}
+              unternehmenPool={unternehmenPool}
+              createBranche={createBranche}
+              createUnternehmen={createUnternehmen}
               bulkBranche={bulkBranche}
               setBulkBranche={setBulkBranche}
               bulkUnternehmen={bulkUnternehmen}
               setBulkUnternehmen={setBulkUnternehmen}
               onApplyBulk={applyBulk}
+              onRerunAutoMatch={() => {
+                const r = runAutoMatch(true);
+                toast({ title: 'Auto-Match aktualisiert', description: `${r.matched} via Kunde · ${r.guessed} aus Name` });
+              }}
             />
           )}
           {step === 'import' && <ImportStep progress={progress} />}
@@ -736,26 +792,91 @@ function SelectableAdCard({ ad, selected, onToggle }: {
 // Step: Enrich
 // ───────────────────────────────────────────────────────────────────
 function EnrichStep({
-  ads, enrichment, onEnrichmentChange, brancheOpts, unternehmenOpts,
-  bulkBranche, setBulkBranche, bulkUnternehmen, setBulkUnternehmen, onApplyBulk,
+  ads, enrichment, onEnrichmentChange, branchen, unternehmenPool,
+  createBranche, createUnternehmen,
+  bulkBranche, setBulkBranche, bulkUnternehmen, setBulkUnternehmen,
+  onApplyBulk, onRerunAutoMatch,
 }: {
   ads: ImportableAd[];
   enrichment: Record<string, Enrichment>;
   onEnrichmentChange: (e: Record<string, Enrichment>) => void;
-  brancheOpts: string[];
-  unternehmenOpts: string[];
+  branchen: ComboboxOption[];
+  unternehmenPool: ComboboxOption[];
+  createBranche: (name: string) => Promise<unknown>;
+  createUnternehmen: (name: string, brancheId?: string) => Promise<unknown>;
   bulkBranche: string;
   setBulkBranche: (v: string) => void;
   bulkUnternehmen: string;
   setBulkUnternehmen: (v: string) => void;
   onApplyBulk: () => void;
+  onRerunAutoMatch: () => void;
 }) {
+  const [showOnlyUnmatched, setShowOnlyUnmatched] = useState(false);
+
   const setOne = (id: string, patch: Enrichment) => {
-    onEnrichmentChange({ ...enrichment, [id]: { ...enrichment[id], ...patch } });
+    onEnrichmentChange({
+      ...enrichment,
+      [id]: { ...enrichment[id], ...patch, auto_matched: false },
+    });
   };
+
+  const matchedCount = ads.filter(a => enrichment[a.meta_ad_id]?.auto_matched).length;
+  const guessedCount = ads.filter(a => {
+    const e = enrichment[a.meta_ad_id];
+    return e && !e.auto_matched && (e.branche || e.unternehmen);
+  }).length;
+  const unmatchedCount = ads.length - matchedCount - guessedCount;
+
+  const visibleAds = showOnlyUnmatched
+    ? ads.filter(a => {
+        const e = enrichment[a.meta_ad_id];
+        return !e || (!e.branche && !e.unternehmen);
+      })
+    : ads;
 
   return (
     <div className="space-y-5 max-w-4xl mx-auto">
+      {/* MATCH OVERVIEW BANNER */}
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-950 p-5">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gray-900 dark:bg-white flex items-center justify-center shrink-0">
+            <Wand2 className="w-5 h-5 text-white dark:text-gray-900" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-1">
+              Automatisches Matching
+            </h4>
+            <div className="text-xs text-gray-600 dark:text-gray-400 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+              {matchedCount > 0 && (
+                <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
+                  <Zap className="w-3 h-3" /> {matchedCount} via Kunde
+                </span>
+              )}
+              {matchedCount > 0 && (guessedCount > 0 || unmatchedCount > 0) && <span className="text-gray-300">·</span>}
+              {guessedCount > 0 && (
+                <span className="font-semibold text-blue-700 dark:text-blue-400">
+                  {guessedCount} aus Name erkannt
+                </span>
+              )}
+              {guessedCount > 0 && unmatchedCount > 0 && <span className="text-gray-300">·</span>}
+              {unmatchedCount > 0 && (
+                <span className="font-semibold text-amber-700 dark:text-amber-400">
+                  {unmatchedCount} manuell zuordnen
+                </span>
+              )}
+              {ads.length === 0 && <span>Keine Anzeigen ausgewählt.</span>}
+            </div>
+          </div>
+          <button
+            onClick={onRerunAutoMatch}
+            className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline shrink-0"
+          >
+            Erneut auto-matchen
+          </button>
+        </div>
+      </div>
+
+      {/* BULK APPLY */}
       <div className="rounded-2xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 p-5">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -764,87 +885,107 @@ function EnrichStep({
           </span>
         </div>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-          Setze diese Werte für alle {ads.length} Anzeigen auf einmal. Optional — der Server versucht automatisch zu matchen.
+          Setze diese Werte für alle {ads.length} Anzeigen. Überschreibt auch Auto-Matches.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <SelectField label="Branche" value={bulkBranche} onChange={setBulkBranche} options={brancheOpts} />
-          <SelectField label="Unternehmen" value={bulkUnternehmen} onChange={setBulkUnternehmen} options={unternehmenOpts} />
-          <div className="flex items-end">
-            <Button
-              variant="default"
-              onClick={onApplyBulk}
-              disabled={!bulkBranche && !bulkUnternehmen}
-              className="w-full"
-            >
-              Übernehmen
-            </Button>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <Combobox
+            label="Branche"
+            value={bulkBranche}
+            onChange={(v) => setBulkBranche(v)}
+            options={branchen}
+            onCreate={createBranche}
+            placeholder="z.B. PKV"
+          />
+          <Combobox
+            label="Unternehmen"
+            value={bulkUnternehmen}
+            onChange={(v) => setBulkUnternehmen(v)}
+            options={unternehmenPool}
+            onCreate={createUnternehmen}
+            placeholder="z.B. Allianz"
+          />
+          <Button
+            variant="default"
+            onClick={onApplyBulk}
+            disabled={!bulkBranche && !bulkUnternehmen}
+            className="w-full h-10"
+          >
+            Übernehmen
+          </Button>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
+      {/* PER-AD TABLE */}
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-visible">
+        <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
           <h4 className="text-sm font-bold text-gray-900 dark:text-white">Pro Anzeige anpassen</h4>
+          {unmatchedCount > 0 && (
+            <button
+              onClick={() => setShowOnlyUnmatched(v => !v)}
+              className="text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            >
+              {showOnlyUnmatched ? 'Alle anzeigen' : `Nur ${unmatchedCount} ohne Match`}
+            </button>
+          )}
         </div>
-        <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[420px] overflow-y-auto">
-          {ads.map(ad => {
+        <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[480px] overflow-y-auto overflow-x-visible">
+          {visibleAds.map(ad => {
             const enr = enrichment[ad.meta_ad_id] ?? {};
+            const isAuto = !!enr.auto_matched;
+            const isGuessed = !isAuto && !!(enr.branche || enr.unternehmen);
+            const isUnmatched = !enr.branche && !enr.unternehmen;
             return (
-              <div key={ad.meta_ad_id} className="px-5 py-3 flex items-center gap-3">
+              <div key={ad.meta_ad_id} className="px-5 py-3 flex items-start gap-3">
                 <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden shrink-0">
                   {ad.thumbnail_url ? <img src={ad.thumbnail_url} alt="" className="w-full h-full object-cover" /> : null}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{ad.meta_ad_name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{ad.meta_campaign_name ?? '—'}</p>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <SelectField
-                    value={enr.branche ?? ''}
-                    onChange={v => setOne(ad.meta_ad_id, { branche: v })}
-                    options={brancheOpts}
-                    placeholder="Branche"
-                    compact
-                  />
-                  <SelectField
-                    value={enr.unternehmen ?? ''}
-                    onChange={v => setOne(ad.meta_ad_id, { unternehmen: v })}
-                    options={unternehmenOpts}
-                    placeholder="Unternehmen"
-                    compact
-                  />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{ad.meta_ad_name}</p>
+                    {isAuto && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                        <Zap className="w-2.5 h-2.5" /> Auto
+                      </span>
+                    )}
+                    {isGuessed && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 text-[10px] font-bold uppercase tracking-wider">
+                        Geraten
+                      </span>
+                    )}
+                    {isUnmatched && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+                        <HelpCircle className="w-2.5 h-2.5" /> Manuell
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                    {ad.meta_account_name || ad.meta_campaign_name || '—'}
+                    {enr.match_reason && <span className="ml-1">· {enr.match_reason}</span>}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <Combobox
+                      value={enr.branche ?? ''}
+                      onChange={(v) => setOne(ad.meta_ad_id, { branche: v })}
+                      options={branchen}
+                      onCreate={createBranche}
+                      placeholder="Branche"
+                      compact
+                    />
+                    <Combobox
+                      value={enr.unternehmen ?? ''}
+                      onChange={(v) => setOne(ad.meta_ad_id, { unternehmen: v })}
+                      options={unternehmenPool}
+                      onCreate={createUnternehmen}
+                      placeholder="Unternehmen"
+                      compact
+                    />
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       </div>
-    </div>
-  );
-}
-
-function SelectField({ label, value, onChange, options, placeholder, compact }: {
-  label?: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-  placeholder?: string;
-  compact?: boolean;
-}) {
-  return (
-    <div>
-      {label && <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">{label}</label>}
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className={cn(
-          'rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm outline-none focus:border-gray-400',
-          compact ? 'h-8 px-2 text-xs w-32' : 'w-full px-3 py-2',
-        )}
-      >
-        <option value="">{placeholder ?? '—'}</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
     </div>
   );
 }
