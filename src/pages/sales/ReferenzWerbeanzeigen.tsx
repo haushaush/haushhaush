@@ -77,6 +77,10 @@ export default function ReferenzWerbeanzeigenPage() {
     if (searchParams.get("has_leads") === "1") f.has_leads = true;
     if (searchParams.get("top") === "1") f.top_performers = true;
     if (searchParams.get("video") === "1") f.has_video = true;
+    if (searchParams.get("active") === "1") f.is_active = true;
+    if (searchParams.get("high_spend") === "1") f.high_spend = true;
+    if (searchParams.get("recent") === "1") f.recent = true;
+    if (searchParams.get("featured") === "1") f.featured = true;
     const cplMin = searchParams.get("cpl_min");
     const cplMax = searchParams.get("cpl_max");
     if (cplMin || cplMax) f.cpl_range = [Number(cplMin ?? 0), Number(cplMax ?? 100)];
@@ -89,6 +93,13 @@ export default function ReferenzWerbeanzeigenPage() {
     if (mc) f.min_ctr = Number(mc);
     return f;
   }, [searchParams]);
+
+  // Standalone dropdown filters (in addition to dynamic filter_categories)
+  const brancheFilter = searchParams.get("branche") ?? "";
+  const kundeFilter = searchParams.get("kunde") ?? "";
+  const unternehmenFilter = searchParams.get("unternehmen") ?? "";
+  const werbekontoFilter = searchParams.get("werbekonto") ?? "";
+  const formatFilter = searchParams.get("format") ?? "";
 
   const updateParams = useCallback((mut: (p: URLSearchParams) => void) => {
     setSearchParams(prev => {
@@ -104,12 +115,19 @@ export default function ReferenzWerbeanzeigenPage() {
     updateParams(p => { v && v !== "performance" ? p.set("sort", v) : p.delete("sort"); });
   const setDropdownFilter = (k: string, v: string) =>
     updateParams(p => { v ? p.set(`f.${k}`, v) : p.delete(`f.${k}`); });
+  const setStandaloneFilter = (key: string) => (v: string) =>
+    updateParams(p => { v ? p.set(key, v) : p.delete(key); });
   const setAdFilters = (next: AdFilters) =>
     updateParams(p => {
-      ["has_leads", "top", "video", "cpl_min", "cpl_max", "sp_min", "sp_max", "min_leads", "min_ctr"].forEach(k => p.delete(k));
+      ["has_leads", "top", "video", "active", "high_spend", "recent", "featured",
+       "cpl_min", "cpl_max", "sp_min", "sp_max", "min_leads", "min_ctr"].forEach(k => p.delete(k));
       if (next.has_leads) p.set("has_leads", "1");
       if (next.top_performers) p.set("top", "1");
       if (next.has_video) p.set("video", "1");
+      if (next.is_active) p.set("active", "1");
+      if (next.high_spend) p.set("high_spend", "1");
+      if (next.recent) p.set("recent", "1");
+      if (next.featured) p.set("featured", "1");
       if (next.cpl_range) { p.set("cpl_min", String(next.cpl_range[0])); p.set("cpl_max", String(next.cpl_range[1])); }
       if (next.spend_range) { p.set("sp_min", String(next.spend_range[0])); p.set("sp_max", String(next.spend_range[1])); }
       if (next.min_leads != null) p.set("min_leads", String(next.min_leads));
