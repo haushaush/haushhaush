@@ -460,6 +460,9 @@ Deno.serve(async (req) => {
 
         await svc.from("referenz_meta_ads").update({
           meta_metrics: metrics,
+          status: adData.status ?? null,
+          effective_status: adData.effective_status ?? null,
+          status_last_checked_at: new Date().toISOString(),
           campaign_period_start: row?.date_start ?? null,
           campaign_period_end: row?.date_stop ?? null,
           metrics_last_refreshed_at: new Date().toISOString(),
