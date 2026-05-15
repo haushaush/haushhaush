@@ -171,6 +171,34 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  // Blacklist (loaded once when wizard opens)
+  const [blacklist, setBlacklist] = useState<BlacklistSet>({
+    accounts: new Set(), ads: new Set(), campaigns: new Set(), keywords: [],
+  });
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase.from('import_blacklist' as any).select('scope, target_id');
+      const set: BlacklistSet = { accounts: new Set(), ads: new Set(), campaigns: new Set(), keywords: [] };
+      for (const b of (data ?? []) as Array<{ scope: string; target_id: string }>) {
+        if (b.scope === 'meta_account') set.accounts.add(b.target_id);
+        else if (b.scope === 'meta_ad') set.ads.add(b.target_id);
+        else if (b.scope === 'meta_campaign') set.campaigns.add(b.target_id);
+        else if (b.scope === 'keyword') set.keywords.push(b.target_id.toLowerCase());
+      }
+      setBlacklist(set);
+    })();
+  }, [open]);
+
+  const isBlacklisted = (ad: ImportableAd): string | null => {
+    if (blacklist.ads.has(ad.meta_ad_id)) return 'Anzeige';
+    if (blacklist.accounts.has(ad.meta_account_id)) return 'Werbekonto';
+    const name = (ad.meta_ad_name || '').toLowerCase();
+    const kw = blacklist.keywords.find(k => name.includes(k));
+    if (kw) return `Keyword "${kw}"`;
+    return null;
+  };
+
   // Lookups for enrichment dropdowns (close_deals)
   const [brancheOpts, setBrancheOpts] = useState<string[]>([]);
   const [unternehmenOpts, setUnternehmenOpts] = useState<string[]>([]);
