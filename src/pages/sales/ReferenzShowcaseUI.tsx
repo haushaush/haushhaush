@@ -540,8 +540,7 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
   const ctr = num(m.ctr) ?? num(item.ctr);
   const spend = num(m.spend) ?? num(item.spend);
 
-  const threshold = TOP_CPL_THRESHOLDS[branche || ''] ?? TOP_CPL_THRESHOLDS.default;
-  const isWinning = cpl != null && cpl < threshold;
+  const isWinning = isTopPerformer(item as any);
 
   const isVideo = item.ad_format === 'video' || item.ad_format === 'reel' || item.creative_format === 'video';
   const isCarousel = item.ad_format === 'carousel' || item.creative_format === 'carousel';
