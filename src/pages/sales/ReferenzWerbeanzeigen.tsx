@@ -3,13 +3,14 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
-import { Plus, Upload, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Upload, Sparkles, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon } from "lucide-react";
 import { BulkImportWizard } from "@/components/showcase/BulkImportWizard";
 import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
 import { AdCreativeFilters, ActiveFilterChips, type AdFilters } from "@/components/sales/AdCreativeFilters";
 import { useToast } from "@/hooks/use-toast";
 import { SHOWCASE_COPY } from "@/copy/showcase";
 import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
+import { getAdLiveStatus } from "@/lib/adStatus";
 import { useFilterOptions } from "@/hooks/useFilterOptions";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
@@ -199,7 +200,7 @@ export default function ReferenzWerbeanzeigenPage() {
       if (adFilters.has_leads && !(leads != null && leads > 0)) return false;
       if (adFilters.has_video && fmt !== "video" && fmt !== "reel") return false;
       if (adFilters.top_performers && !isTopPerformer(x as any)) return false;
-      if (adFilters.is_active && status !== "ACTIVE") return false;
+      if (adFilters.is_active && getAdLiveStatus(x as any) !== 'live') return false;
       if (adFilters.high_spend && (spend == null || spend < 500)) return false;
       if (adFilters.recent && !isWithinDays(x.imported_at ?? x.created_at ?? null, 30)) return false;
       if (adFilters.featured && !x.is_featured) return false;
@@ -324,9 +325,11 @@ export default function ReferenzWerbeanzeigenPage() {
           <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-2 max-w-5xl mx-auto">
+        {/* Equal-width dropdown grid: 5 columns */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 max-w-5xl mx-auto">
           <DropdownPill
             label="Sortieren"
+            icon={ArrowUpDown}
             value={sortBy === 'performance' ? '' : sortBy}
             onChange={v => setSortBy((v || 'performance') as SortKey)}
             options={[
@@ -338,32 +341,12 @@ export default function ReferenzWerbeanzeigenPage() {
               { value: 'created', label: 'Importdatum' },
             ]}
           />
-          <DropdownPill
-            label="Branche"
-            value={brancheFilter}
-            onChange={setStandaloneFilter('branche')}
-            options={branchen}
-          />
-          <DropdownPill
-            label="Kunde"
-            value={kundeFilter}
-            onChange={setStandaloneFilter('kunde')}
-            options={kunden}
-          />
-          <DropdownPill
-            label="Unternehmen"
-            value={unternehmenFilter}
-            onChange={setStandaloneFilter('unternehmen')}
-            options={unternehmen}
-          />
-          <DropdownPill
-            label="Werbekonto"
-            value={werbekontoFilter}
-            onChange={setStandaloneFilter('werbekonto')}
-            options={werbekonten}
-          />
+          <DropdownPill label="Branche" icon={Tag} value={brancheFilter} onChange={setStandaloneFilter('branche')} options={branchen} />
+          <DropdownPill label="Kunde" icon={User} value={kundeFilter} onChange={setStandaloneFilter('kunde')} options={kunden} />
+          <DropdownPill label="Unternehmen" icon={Building2} value={unternehmenFilter} onChange={setStandaloneFilter('unternehmen')} options={unternehmen} />
           <DropdownPill
             label="Format"
+            icon={ImageIcon}
             value={formatFilter}
             onChange={setStandaloneFilter('format')}
             options={[
@@ -372,23 +355,30 @@ export default function ReferenzWerbeanzeigenPage() {
               { value: 'carousel', label: 'Karussell' },
             ]}
           />
-          {categories.map(cat => {
-            const catOpts = options
-              .filter(o => o.category_id === cat.id && o.is_active)
-              .map(o => ({ value: o.key, label: o.label }))
-              .sort((a, b) => a.label.localeCompare(b.label));
-            if (catOpts.length === 0) return null;
-            return (
-              <DropdownPill
-                key={cat.id}
-                label={cat.label}
-                value={activeFilters[cat.key] ?? ''}
-                onChange={v => setDropdownFilter(cat.key, v)}
-                options={catOpts}
-              />
-            );
-          })}
         </div>
+
+        {/* Werbekonto + dynamic categories: second row, equal columns */}
+        {(werbekonten.length > 0 || categories.length > 0) && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 max-w-5xl mx-auto">
+            <DropdownPill label="Werbekonto" icon={Wallet} value={werbekontoFilter} onChange={setStandaloneFilter('werbekonto')} options={werbekonten} />
+            {categories.map(cat => {
+              const catOpts = options
+                .filter(o => o.category_id === cat.id && o.is_active)
+                .map(o => ({ value: o.key, label: o.label }))
+                .sort((a, b) => a.label.localeCompare(b.label));
+              if (catOpts.length === 0) return null;
+              return (
+                <DropdownPill
+                  key={cat.id}
+                  label={cat.label}
+                  value={activeFilters[cat.key] ?? ''}
+                  onChange={v => setDropdownFilter(cat.key, v)}
+                  options={catOpts}
+                />
+              );
+            })}
+          </div>
+        )}
 
         <AdCreativeFilters filters={adFilters} onChange={setAdFilters} />
 

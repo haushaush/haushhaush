@@ -3214,6 +3214,7 @@ export type Database = {
           custom_tags: string[] | null
           custom_title: string | null
           display_order: number | null
+          effective_status: string | null
           filter_values: Json | null
           id: string
           imported_at: string | null
@@ -3235,6 +3236,8 @@ export type Database = {
           meta_metrics: Json | null
           metrics_last_refreshed_at: string | null
           preview_url: string | null
+          status: string | null
+          status_last_checked_at: string | null
           sync_details: Json | null
           sync_strategy: string | null
           thumbnail_url: string | null
@@ -3253,6 +3256,7 @@ export type Database = {
           custom_tags?: string[] | null
           custom_title?: string | null
           display_order?: number | null
+          effective_status?: string | null
           filter_values?: Json | null
           id?: string
           imported_at?: string | null
@@ -3274,6 +3278,8 @@ export type Database = {
           meta_metrics?: Json | null
           metrics_last_refreshed_at?: string | null
           preview_url?: string | null
+          status?: string | null
+          status_last_checked_at?: string | null
           sync_details?: Json | null
           sync_strategy?: string | null
           thumbnail_url?: string | null
@@ -3292,6 +3298,7 @@ export type Database = {
           custom_tags?: string[] | null
           custom_title?: string | null
           display_order?: number | null
+          effective_status?: string | null
           filter_values?: Json | null
           id?: string
           imported_at?: string | null
@@ -3313,6 +3320,8 @@ export type Database = {
           meta_metrics?: Json | null
           metrics_last_refreshed_at?: string | null
           preview_url?: string | null
+          status?: string | null
+          status_last_checked_at?: string | null
           sync_details?: Json | null
           sync_strategy?: string | null
           thumbnail_url?: string | null
