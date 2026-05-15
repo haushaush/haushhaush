@@ -58,6 +58,14 @@ interface ImportProgress {
   total: number;
   recent: ProgressEntry[];
   errors: { adId: string; adName: string; message: string }[];
+  skipped: { adId: string; adName: string; reason: string }[];
+}
+
+interface BlacklistSet {
+  accounts: Set<string>;
+  ads: Set<string>;
+  campaigns: Set<string>;
+  keywords: string[];
 }
 
 // ───────────────────────────────────────────────────────────────────
