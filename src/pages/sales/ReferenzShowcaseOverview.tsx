@@ -638,7 +638,7 @@ function ShowcaseCard({
           )}
         </div>
       </div>
-    </Link>
+    </SurfaceCard>
   );
 }
 
