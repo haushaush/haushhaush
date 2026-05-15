@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
-import { Plus, Settings2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { MetaCampaignImportModal } from "@/components/sales/MetaCampaignImportModal";
-import { ShowcaseFilterManagementModal, type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
+import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
+import { SHOWCASE_COPY } from "@/copy/showcase";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
-  ShowcaseCard, ShowcaseEmptyState, ResultCount, PrimaryActionButton, SecondaryActionButton,
+  ShowcaseCard, ShowcaseEmptyState, ResultCount, PrimaryActionButton,
   type AnyItem,
 } from "./ReferenzShowcaseUI";
 
@@ -50,7 +51,6 @@ export default function AdPerformancePage() {
   const [sortBy, setSortBy] = useState<SortKey>("best_roas");
 
   const [importOpen, setImportOpen] = useState(false);
-  const [filterMgmtOpen, setFilterMgmtOpen] = useState(false);
 
   const [categories, setCategories] = useState<FilterCategory[]>([]);
   const [options, setOptions] = useState<FilterOption[]>([]);
@@ -126,17 +126,12 @@ export default function AdPerformancePage() {
   return (
     <ShowcasePageWrapper>
       <SubPageHeader
-        title="Ad Performance"
-        subtitle="Top-Kampagnen mit echten Performance-Zahlen für Sales-Pitches"
+        title={SHOWCASE_COPY.adPerformance.title}
+        subtitle={SHOWCASE_COPY.adPerformance.description}
         actions={isAdmin && (
-          <>
-            <SecondaryActionButton onClick={() => setFilterMgmtOpen(true)}>
-              <Settings2 className="w-4 h-4" /> Filter verwalten
-            </SecondaryActionButton>
-            <PrimaryActionButton onClick={() => setImportOpen(true)}>
-              <Plus className="w-4 h-4" /> Aus Meta importieren
-            </PrimaryActionButton>
-          </>
+          <PrimaryActionButton onClick={() => setImportOpen(true)}>
+            <Plus className="w-4 h-4" /> {SHOWCASE_COPY.adPerformance.importLabel}
+          </PrimaryActionButton>
         )}
       />
 
