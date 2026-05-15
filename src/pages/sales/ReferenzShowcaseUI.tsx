@@ -9,6 +9,7 @@ import { useIsPublicView } from '@/hooks/useIsPublicView';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
+import { isTopPerformer } from '@/lib/topPerformer';
 
 export type AnyItem = Record<string, any> & {
   _type: 'website' | 'werbeanzeige' | 'campaign';
