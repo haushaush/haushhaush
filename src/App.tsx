@@ -68,6 +68,7 @@ import ReferenzWerbeanzeigenPage from "./pages/sales/ReferenzWerbeanzeigen.tsx";
 import ReferenzWerbeanzeigeDetail from "./pages/sales/ReferenzWerbeanzeigeDetail.tsx";
 import AdPerformancePage from "./pages/sales/AdPerformance.tsx";
 import AdPerformanceDetail from "./pages/sales/AdPerformanceDetail.tsx";
+import ImportBlacklist from "./pages/ImportBlacklist.tsx";
 import PublicShowcaseView from "./pages/PublicShowcaseView.tsx";
 import PublicShowcaseLayout from "./pages/PublicShowcaseLayout.tsx";
 import { ShowcaseAuthRedirect } from "./components/ShowcaseAuthRedirect";
