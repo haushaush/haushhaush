@@ -41,6 +41,7 @@ export function SubPageHeader({
       description={subtitle}
       actions={actions}
       size="lg"
+      align="center"
     />
   );
 }
