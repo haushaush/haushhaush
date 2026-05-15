@@ -302,29 +302,29 @@ export default function ReferenzWerbeanzeigenPage() {
             >
               <ShieldOff className="w-4 h-4" /> Blacklist
             </Link>
-            <SecondaryActionButton onClick={() => setRematchOpen(true)}>
-              <Wand2 className="w-4 h-4" /> Neu matchen
-            </SecondaryActionButton>
             <SecondaryActionButton
               disabled={reenriching}
               onClick={async () => {
+                if (!confirm('Alle nicht-zugeordneten Anzeigen automatisch über Werbekonten und Ad-Namen zu Kunden zuordnen?')) return;
                 setReenriching(true);
-                const { data, error } = await supabase.functions.invoke("meta-ads-bulk-reenrich");
+                const { data, error } = await supabase.functions.invoke('rematch-all-ads', {
+                  body: { only_unmatched: true, override_manual: false },
+                });
                 setReenriching(false);
                 if (error) {
-                  toast({ title: "Fehler", description: error.message, variant: "destructive" });
+                  toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
                 } else {
-                  const d = data as any;
+                  const s = (data as any)?.stats ?? {};
                   toast({
-                    title: "Anreicherung fertig",
-                    description: `${d.enriched ?? 0} Anzeigen aktualisiert · ${d.linked ?? 0} mit Kunde verknüpft`,
+                    title: 'Auto-Zuordnung fertig',
+                    description: `${s.matched_by_account ?? 0} über Werbekonto · ${s.matched_by_keyword ?? 0} aus Ad-Name · ${s.no_match ?? 0} ohne Treffer`,
                   });
                   load();
                 }
               }}
             >
-              {reenriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              {SHOWCASE_COPY.werbeanzeigen.enrichLabel}
+              {reenriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+              Auto-Zuordnen
             </SecondaryActionButton>
             <PrimaryActionButton onClick={() => setImportOpen(true)}>
               <Upload className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importLabel}
