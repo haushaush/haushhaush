@@ -591,7 +591,10 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
           </div>
         )}
 
-        {/* Single hero badge: Top OR Format */}
+        {/* Top-LEFT: Live status */}
+        <LiveStatusBadge ad={item as any} />
+
+        {/* Top-RIGHT: Top OR Format */}
         <div className="absolute top-3 right-3">
           {isWinning ? (
             <span className="inline-flex items-center gap-1 bg-emerald-500/95 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm">
