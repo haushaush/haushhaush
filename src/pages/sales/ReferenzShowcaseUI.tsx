@@ -1,30 +1,27 @@
 import { Link } from 'react-router-dom';
 import {
-  ArrowLeft, ChevronDown, Search, Star, ExternalLink,
-  Image as ImageIcon, Globe, Video, BarChart3, Inbox, Check, Flame, Euro,
+  ChevronDown, Search, Star, ExternalLink,
+  Image as ImageIcon, Video, BarChart3, Inbox, Check, Flame, Euro,
 } from 'lucide-react';
 import type React from 'react';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
+import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { SurfaceCard } from '@/components/ui/SurfaceCard';
 
 export type AnyItem = Record<string, any> & {
   _type: 'website' | 'werbeanzeige' | 'campaign';
 };
 
 /* ------------------------------------------------------------------ */
-/* Layout wrapper                                                     */
+/* Layout wrapper — delegates to PageShell                            */
 /* ------------------------------------------------------------------ */
 export function ShowcasePageWrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 pb-32">
-      <main className="w-full pt-10">
-        <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16 xl:px-20">{children}</div>
-      </main>
-    </div>
-  );
+  return <PageShell>{children}</PageShell>;
 }
 
 /* ------------------------------------------------------------------ */
-/* SubPageHeader                                                      */
+/* SubPageHeader — delegates to PageHeader (size="lg")                */
 /* ------------------------------------------------------------------ */
 export function SubPageHeader({
   title, subtitle, actions,
@@ -35,26 +32,16 @@ export function SubPageHeader({
 }) {
   const isPublic = useIsPublicView();
   return (
-    <header className="mb-10">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-        <div>
-          <Link
-            to={isPublic ? '/showcase' : '/sales/referenz-showcase'}
-            className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-3 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Referenz Showcase
-          </Link>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
-            {title}
-          </h1>
-          <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 mt-2 font-normal">
-            {subtitle}
-          </p>
-        </div>
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
-      </div>
-    </header>
+    <PageHeader
+      breadcrumb={{
+        label: 'Referenz Showcase',
+        href: isPublic ? '/showcase' : '/sales/referenz-showcase',
+      }}
+      title={title}
+      description={subtitle}
+      actions={actions}
+      size="lg"
+    />
   );
 }
 
