@@ -455,21 +455,8 @@ function PerformanceHero({ campaign }: { campaign: AnyItem }) {
 
 function TypeIndicator({ item }: { item: AnyItem }) {
   if (item._type === 'website') {
-    const isLive = item.is_iframe_blocked !== true;
-    if (isLive) {
-      return (
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-emerald-500/95 backdrop-blur-md text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-sm">
-          <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
-          Live
-        </div>
-      );
-    }
-    return (
-      <div className="absolute top-3 right-3 flex items-center gap-1 bg-gray-700/95 dark:bg-gray-800/95 backdrop-blur-md text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-sm">
-        <ImageIcon className="w-2.5 h-2.5" />
-        Bild
-      </div>
-    );
+    // No badges on website cards (cleaner look)
+    return null;
   }
   const config = {
     werbeanzeige: { label: 'Ad', Icon: Video, color: 'bg-purple-600/95' },
