@@ -295,14 +295,14 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
             {item.key_features.slice(0, 3).map((feat: string, i: number) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-[11px] font-medium rounded-md"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg"
               >
-                <Check className="w-2.5 h-2.5 text-teal-600 dark:text-teal-400 shrink-0" />
-                <span className="truncate max-w-[120px]">{feat}</span>
+                <Check className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
+                <span className="truncate max-w-[140px]">{feat}</span>
               </span>
             ))}
             {item.key_features.length > 3 && (
-              <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium text-gray-400 dark:text-gray-500">
+              <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium text-gray-400 dark:text-gray-500 rounded-lg">
                 +{item.key_features.length - 3}
               </span>
             )}
@@ -348,26 +348,10 @@ function PrimaryHighlight({ item, branche }: { item: AnyItem; branche?: string |
     return null;
   }
   if (item._type === 'website') {
-    const isLive = item.is_iframe_blocked !== true;
+    if (!branche) return null;
     return (
       <div className="flex items-center gap-1.5 text-sm">
-        {isLive ? (
-          <>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Live</span>
-          </>
-        ) : (
-          <>
-            <ImageIcon className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-            <span className="text-gray-600 dark:text-gray-400 font-semibold">Screenshot</span>
-          </>
-        )}
-        {branche && (
-          <>
-            <span className="text-gray-300 dark:text-gray-700">·</span>
-            <span className="text-gray-500 dark:text-gray-400 capitalize truncate">{branche}</span>
-          </>
-        )}
+        <span className="text-gray-500 dark:text-gray-400 capitalize truncate">{branche}</span>
       </div>
     );
   }
@@ -471,21 +455,8 @@ function PerformanceHero({ campaign }: { campaign: AnyItem }) {
 
 function TypeIndicator({ item }: { item: AnyItem }) {
   if (item._type === 'website') {
-    const isLive = item.is_iframe_blocked !== true;
-    if (isLive) {
-      return (
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-emerald-500/95 backdrop-blur-md text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-sm">
-          <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
-          Live
-        </div>
-      );
-    }
-    return (
-      <div className="absolute top-3 right-3 flex items-center gap-1 bg-gray-700/95 dark:bg-gray-800/95 backdrop-blur-md text-white text-[11px] font-semibold px-2 py-1 rounded-md shadow-sm">
-        <ImageIcon className="w-2.5 h-2.5" />
-        Bild
-      </div>
-    );
+    // No badges on website cards (cleaner look)
+    return null;
   }
   const config = {
     werbeanzeige: { label: 'Ad', Icon: Video, color: 'bg-purple-600/95' },
