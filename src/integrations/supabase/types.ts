@@ -607,21 +607,27 @@ export type Database = {
       branchen: {
         Row: {
           created_at: string
+          display_name: string
           display_order: number | null
           id: string
           name: string
+          usage_count: number
         }
         Insert: {
           created_at?: string
+          display_name: string
           display_order?: number | null
           id?: string
           name: string
+          usage_count?: number
         }
         Update: {
           created_at?: string
+          display_name?: string
           display_order?: number | null
           id?: string
           name?: string
+          usage_count?: number
         }
         Relationships: []
       }
@@ -4314,21 +4320,38 @@ export type Database = {
       }
       unternehmen: {
         Row: {
+          branche_id: string | null
           created_at: string
+          display_name: string
           id: string
           name: string
+          usage_count: number
         }
         Insert: {
+          branche_id?: string | null
           created_at?: string
+          display_name: string
           id?: string
           name: string
+          usage_count?: number
         }
         Update: {
+          branche_id?: string | null
           created_at?: string
+          display_name?: string
           id?: string
           name?: string
+          usage_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "unternehmen_branche_id_fkey"
+            columns: ["branche_id"]
+            isOneToOne: false
+            referencedRelation: "branchen"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_mfa_status: {
         Row: {
@@ -4571,6 +4594,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_branche_usage: {
+        Args: { branche_name: string }
+        Returns: string
+      }
+      increment_unternehmen_usage: {
+        Args: { branche_id_in?: string; unt_name: string }
+        Returns: string
       }
       is_admin_or_manager: { Args: { _user_id: string }; Returns: boolean }
     }
