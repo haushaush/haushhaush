@@ -274,7 +274,6 @@ export default function ReferenzWerbeanzeigenPage() {
     [filtered],
   );
 
-  const { branchen, unternehmen, kunden, werbekonten } = useFilterOptions('werbeanzeige');
 
   const hasActiveFilters =
     !!search ||
