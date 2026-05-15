@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Plus, Settings2, Sparkles, Loader2 } from "lucide-react";
 import { MetaAdImportModal } from "@/components/sales/MetaAdImportModal";
 import { ShowcaseFilterManagementModal, type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
+import { AdCreativeFilters, ActiveFilterChips, TOP_CPL_THRESHOLDS, type AdFilters } from "@/components/sales/AdCreativeFilters";
 import { useToast } from "@/hooks/use-toast";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
