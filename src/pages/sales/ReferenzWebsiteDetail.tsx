@@ -1,27 +1,31 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import {
-  ArrowLeft,
   ExternalLink,
-  Copy,
-  Share2,
-  Pencil,
   Trash2,
-  Tag,
-  Calendar,
-  Building2,
-  Briefcase,
   RefreshCw,
   Check,
   Image as ImageIcon,
+  Sparkles,
+  Info,
 } from 'lucide-react';
 import { WebsiteEmbed } from '@/components/sales/WebsiteEmbed';
 import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
+import {
+  DetailPageLayout,
+  DetailHero,
+  DetailInfoPanel,
+  InfoSection,
+  InfoSectionTitle,
+  DetailRowList,
+  DetailRow,
+  DetailPageSkeleton,
+} from '@/components/showcase/DetailPageLayout';
 import type { ShowcaseRow } from './ReferenzShowcaseShared';
 
 export default function ReferenzWebsiteDetail() {
@@ -33,6 +37,7 @@ export default function ReferenzWebsiteDetail() {
   const [item, setItem] = useState<ShowcaseRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [isShowingFallback, setIsShowingFallback] = useState(false);
 
   useEffect(() => {
@@ -52,52 +57,22 @@ export default function ReferenzWebsiteDetail() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    load();
-  }, [id]);
+  useEffect(() => { load(); }, [id]);
+
+  const backHref = `${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`;
 
   async function handleDelete() {
     if (!item || !confirm('Diese Website wirklich löschen?')) return;
     const { error } = await supabase.from('referenz_showcase' as any).delete().eq('id', item.id);
     if (error) toast.error('Löschen fehlgeschlagen', { description: error.message });
-    else {
-      toast.success('Gelöscht');
-      navigate(`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`);
-    }
-  }
-
-  async function handleShare() {
-    if (!item) return;
-    const url = `${window.location.origin}/showcase/${item.id}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success('Teilen-Link kopiert');
-    } catch {
-      toast.info(url);
-    }
-  }
-
-  async function handleCopyUrl() {
-    if (!item?.website_url) return;
-    try {
-      await navigator.clipboard.writeText(item.website_url);
-      toast.success('Link kopiert');
-    } catch {
-      toast.error('Kopieren fehlgeschlagen');
-    }
+    else { toast.success('Gelöscht'); navigate(backHref); }
   }
 
   async function handleRecheck() {
     if (!item?.website_url) return;
     const promise = supabase.functions
-      .invoke('check-website-embeddable', {
-        body: { showcase_id: item.id, url: item.website_url },
-      })
-      .then(({ data, error }) => {
-        if (error) throw error;
-        load();
-        return data;
-      });
+      .invoke('check-website-embeddable', { body: { showcase_id: item.id, url: item.website_url } })
+      .then(({ data, error }) => { if (error) throw error; load(); return data; });
     toast.promise(promise, {
       loading: 'Prüfe Embed-Status…',
       success: (d: any) => (d?.is_blocked ? 'Website blockiert Embedding' : 'Embedding möglich'),
@@ -105,273 +80,194 @@ export default function ReferenzWebsiteDetail() {
     });
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="h-[500px] rounded-2xl bg-gray-100 dark:bg-gray-900 animate-pulse" />
-        </div>
-      </div>
-    );
-  }
-
+  if (loading) return <DetailPageSkeleton />;
   if (!item) {
     return (
-      <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 p-6">
-        <div className="max-w-7xl mx-auto">
-          <Button variant="ghost" onClick={() => navigate(`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`)}>
-            <ArrowLeft className="w-4 h-4 mr-2" /> Zurück
-          </Button>
-          <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">Website nicht gefunden.</p>
-        </div>
-      </div>
+      <DetailPageLayout
+        backHref={backHref}
+        backLabel="Websites"
+        hero={<DetailHero><div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">Nicht gefunden</div></DetailHero>}
+        infoPanel={<DetailInfoPanel><InfoSection><p className="text-sm text-gray-500">Website nicht gefunden.</p></InfoSection></DetailInfoPanel>}
+      />
     );
   }
 
   const displayUrl = item.website_url?.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') ?? '';
   const fallback = item.thumbnail_url || item.preview_image_url || item.fallback_image_url || null;
-  const hasDescription = !!item.description;
-  const tags = item.tags ?? [];
-  const hasTags = tags.length > 0;
   const keyFeatures = ((item as any).key_features as string[] | null) ?? [];
-  const hasKeyFeatures = keyFeatures.length > 0;
+  const linkedKunde = (item as any).linked_kunde as { unternehmen?: string; branche?: string } | null;
 
   return (
-    <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950">
-      {/* Back-Bar */}
-      <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16 xl:px-20 py-4 flex items-center justify-between">
-          <Link
-            to={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`}
-            className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Websites
-          </Link>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="sm" onClick={handleShare}>
-              <Share2 className="w-4 h-4 mr-2" /> Teilen
-            </Button>
-            {isAdmin && (
-              <>
-                <Button variant="ghost" size="sm" onClick={handleRecheck} title="Embed-Status neu prüfen">
-                  <RefreshCw className="w-4 h-4 mr-2" /> Status neu prüfen
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
-                  <Pencil className="w-4 h-4 mr-2" /> Bearbeiten
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDelete}
-                  className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-700 dark:hover:text-red-300"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" /> Löschen
-                </Button>
-              </>
+    <>
+    <DetailPageLayout
+      backHref={backHref}
+      backLabel="Websites"
+      isAdmin={isAdmin}
+      editMode={editMode}
+      onEditToggle={() => setEditMode(!editMode)}
+      editActions={
+        <>
+          <Button variant="outline" size="sm" onClick={handleRecheck}>
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Status prüfen
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+            Daten bearbeiten
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleDelete} className="text-red-600 dark:text-red-400">
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </>
+      }
+      hero={
+        <DetailHero aspect="adaptive">
+          {item.website_url ? (
+            <div className="absolute inset-0">
+              <WebsiteEmbed
+                url={item.website_url}
+                title={item.title}
+                fallbackImageUrl={fallback}
+                height="100%"
+                showcaseId={item.id}
+                initialIsBlocked={item.is_iframe_blocked ?? null}
+                hasChecked={!!item.iframe_check_at}
+                onFallbackActivated={() => setIsShowingFallback(true)}
+                onLiveActivated={() => setIsShowingFallback(false)}
+              />
+            </div>
+          ) : fallback ? (
+            <img src={fallback} alt={item.title} className="absolute inset-0 w-full h-full object-cover object-top" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 dark:text-gray-600">
+              Keine Vorschau
+            </div>
+          )}
+
+          {item.website_url && (
+            <div className="absolute bottom-4 left-4">
+              {isShowingFallback ? (
+                <div className="flex items-center gap-1.5 bg-gray-700/95 dark:bg-gray-800/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-md shadow-lg pointer-events-none">
+                  <ImageIcon className="w-3 h-3" /> Screenshot
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 bg-emerald-500/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-md shadow-lg pointer-events-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> Live
+                </div>
+              )}
+            </div>
+          )}
+        </DetailHero>
+      }
+      infoPanel={
+        <DetailInfoPanel>
+          <InfoSection>
+            <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] mb-1.5">
+              {item.client_name || 'Kunde'}
+            </p>
+            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white leading-tight tracking-tight">
+              {item.title}
+            </h1>
+            {item.website_url && (
+              <a
+                href={item.website_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-teal-600 dark:text-teal-400 hover:underline truncate max-w-full"
+              >
+                <span className="truncate">{displayUrl}</span>
+                <ExternalLink className="w-3 h-3 shrink-0" />
+              </a>
             )}
-          </div>
-        </div>
-      </div>
+          </InfoSection>
 
-      {/* Main */}
-      <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16 xl:px-20 py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
-          {/* Hero */}
-          <div className="lg:col-span-3 flex flex-col">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm flex flex-col">
-              <div className="relative aspect-video bg-gray-50 dark:bg-gray-800">
-                {item.website_url ? (
-                  <div className="absolute inset-0">
-                    <WebsiteEmbed
-                      url={item.website_url}
-                      title={item.title}
-                      fallbackImageUrl={fallback}
-                      height="100%"
-                      showcaseId={item.id}
-                      initialIsBlocked={item.is_iframe_blocked ?? null}
-                      hasChecked={!!item.iframe_check_at}
-                      onFallbackActivated={() => setIsShowingFallback(true)}
-                      onLiveActivated={() => setIsShowingFallback(false)}
-                    />
-                  </div>
-                ) : fallback ? (
-                  <img src={fallback} alt={item.title} className="absolute inset-0 w-full h-full object-cover object-top" />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 dark:text-gray-600">
-                    Keine Vorschau
-                  </div>
-                )}
+          {item.website_url && (
+            <InfoSection>
+              <a
+                href={item.website_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 font-bold py-3 rounded-xl transition-all hover:scale-[1.01] active:scale-[0.99]"
+              >
+                Website öffnen
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </InfoSection>
+          )}
 
-                {item.website_url && (
-                  isShowingFallback ? (
-                    <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-gray-700/95 dark:bg-gray-800/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-md shadow-lg z-20 pointer-events-none">
-                      <ImageIcon className="w-3 h-3" />
-                      Bild
-                    </div>
-                  ) : (
-                    <div className="absolute top-4 right-4 flex items-center gap-2 bg-emerald-500/95 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-md shadow-lg z-20 pointer-events-none">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                      Live
-                    </div>
-                  )
-                )}
-              </div>
-
-            </div>
-          </div>
-
-          {/* Info-Panel */}
-          <div className="lg:col-span-2 flex flex-col">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm flex-1">
-              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                {(item.client_name || 'Kunde').toUpperCase()}
-              </p>
-
-              <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white leading-tight mb-4">
-                {item.title}
-              </h1>
-
-              {item.website_url && (
-                <a
-                  href={item.website_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-lg font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 mb-6 truncate"
-                >
-                  {displayUrl}
-                </a>
-              )}
-
-              {item.website_url && (
-                <a
-                  href={item.website_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3.5 rounded-xl transition-colors mb-3"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Website öffnen
-                </a>
-              )}
-
-              {item.website_url && (
-                <button
-                  onClick={handleCopyUrl}
-                  className="flex items-center justify-center gap-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium py-3 rounded-xl transition-colors mb-6"
-                >
-                  <Copy className="w-4 h-4" />
-                  Link kopieren
-                </button>
-              )}
-
-              <div className="border-t border-gray-200 dark:border-gray-800 pt-5 space-y-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white">Projekt-Details</h3>
-
-                {item.branche && (
-                  <div className="flex items-start gap-3 text-sm">
-                    <Tag className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500 shrink-0" />
-                    <div>
-                      <div className="text-gray-500 dark:text-gray-400 text-xs">Branche</div>
-                      <div className="text-gray-900 dark:text-white font-medium">{item.branche}</div>
-                    </div>
-                  </div>
-                )}
-
-                {item.client_name && (
-                  <div className="flex items-start gap-3 text-sm">
-                    <Building2 className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500 shrink-0" />
-                    <div>
-                      <div className="text-gray-500 dark:text-gray-400 text-xs">Kunde</div>
-                      <div className="text-gray-900 dark:text-white font-medium">{item.client_name}</div>
-                    </div>
-                  </div>
-                )}
-
-                {(item as any).linked_kunde?.unternehmen && (
-                  <div className="flex items-start gap-3 text-sm">
-                    <Briefcase className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500 shrink-0" />
-                    <div>
-                      <div className="text-gray-500 dark:text-gray-400 text-xs">Unternehmen</div>
-                      <div className="text-gray-900 dark:text-white font-medium">{(item as any).linked_kunde.unternehmen}</div>
-                    </div>
-                  </div>
-                )}
-
-                {item.created_at && (
-                  <div className="flex items-start gap-3 text-sm">
-                    <Calendar className="w-4 h-4 mt-0.5 text-gray-400 dark:text-gray-500 shrink-0" />
-                    <div>
-                      <div className="text-gray-500 dark:text-gray-400 text-xs">Erstellt</div>
-                      <div className="text-gray-900 dark:text-white font-medium">
-                        {new Date(item.created_at).toLocaleDateString('de-DE', {
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric',
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom: full-width sections */}
-        <div className="space-y-6">
-          {hasKeyFeatures && (
-            <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-6">Highlights</h2>
-              <ul className={`grid gap-3 ${keyFeatures.length > 4 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                {keyFeatures.map((feat, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <Check className="w-5 h-5 mt-0.5 text-teal-600 dark:text-teal-400 shrink-0" />
-                    <span className="text-gray-700 dark:text-gray-300">{feat}</span>
+          {keyFeatures.length > 0 && (
+            <InfoSection>
+              <InfoSectionTitle icon={Sparkles}>Highlights</InfoSectionTitle>
+              <ul className="space-y-2.5">
+                {keyFeatures.slice(0, 5).map((feat, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+                    <Check className="w-4 h-4 mt-0.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                    <span>{feat}</span>
                   </li>
                 ))}
               </ul>
-            </section>
+            </InfoSection>
           )}
 
-          {hasDescription && (
-            <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Beschreibung</h2>
-              <div className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+          <InfoSection>
+            <InfoSectionTitle icon={Info}>Details</InfoSectionTitle>
+            <DetailRowList>
+              {(item.branche || linkedKunde?.branche) && (
+                <DetailRow label="Branche" value={item.branche || linkedKunde?.branche} capitalize />
+              )}
+              {linkedKunde?.unternehmen && <DetailRow label="Unternehmen" value={linkedKunde.unternehmen} />}
+              {item.client_name && <DetailRow label="Kunde" value={item.client_name} />}
+              {item.created_at && (
+                <DetailRow
+                  label="Erstellt"
+                  value={new Date(item.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
+                />
+              )}
+            </DetailRowList>
+          </InfoSection>
+        </DetailInfoPanel>
+      }
+      belowContent={
+        <>
+          {item.description && (
+            <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
+              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Über das Projekt</h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                 {item.description}
+              </p>
+            </section>
+          )}
+          {item.tags && item.tags.length > 0 && (
+            <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
+              <h2 className="text-base font-bold text-gray-900 dark:text-white mb-3">Tags</h2>
+              <div className="flex flex-wrap gap-2">
+                {item.tags.map((tag) => (
+                  <span key={tag} className="px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs rounded-md">
+                    {tag}
+                  </span>
+                ))}
               </div>
             </section>
           )}
-        </div>
-
-        {hasTags && (
-          <section className="mt-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8">
-            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Tags</h2>
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm rounded-md"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
-
-      {editOpen && (
-        <AddWebsiteModal
-          open={editOpen}
-          editing={item}
-          onClose={() => setEditOpen(false)}
-          onSaved={() => {
-            setEditOpen(false);
-            load();
-          }}
-        />
-      )}
-    </div>
+        </>
+      }
+      editForm={
+        <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Bearbeite die Showcase-Daten dieser Website über den Modal-Dialog.
+          </p>
+          <Button className="mt-4" onClick={() => setEditOpen(true)}>
+            Daten bearbeiten
+          </Button>
+        </section>
+      }
+    />
+    {editOpen && (
+      <AddWebsiteModal
+        open={editOpen}
+        editing={item}
+        onClose={() => setEditOpen(false)}
+        onSaved={() => { setEditOpen(false); load(); }}
+      />
+    )}
+    </>
   );
 }
