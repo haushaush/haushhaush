@@ -13,6 +13,7 @@ import { SHOWCASE_COPY } from "@/copy/showcase";
 import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
 import { getAdLiveStatus } from "@/lib/adStatus";
 import { useFilterOptions } from "@/hooks/useFilterOptions";
+import { normalizeBranche } from "@/lib/branchen";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
   ShowcaseCard, ShowcaseEmptyState, PrimaryActionButton, SecondaryActionButton,
@@ -211,8 +212,13 @@ export default function ReferenzWerbeanzeigenPage() {
 
       // Standalone dropdown filters
       if (brancheFilter) {
-        const b = (x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? "").toString();
-        if (b !== brancheFilter) return false;
+        const raw = (x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? '').toString();
+        const canonical = normalizeBranche(raw);
+        // Filter holds either a canonical id (e.g. 'pkv') or a raw unknown label
+        const matches =
+          (canonical && canonical === brancheFilter) ||
+          raw.trim().toLowerCase() === brancheFilter.toLowerCase();
+        if (!matches) return false;
       }
       if (kundeFilter) {
         const entry = kunden.find(k => k.value === kundeFilter);
@@ -377,7 +383,9 @@ export default function ReferenzWerbeanzeigenPage() {
         {(werbekonten.length > 0 || categories.length > 0) && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 max-w-5xl mx-auto">
             <DropdownPill label="Werbekonto" icon={Wallet} value={werbekontoFilter} onChange={setStandaloneFilter('werbekonto')} options={werbekonten} />
-            {categories.map(cat => {
+            {categories
+              .filter(cat => !['branche', 'kunde', 'unternehmen', 'zielgruppe', 'format', 'werbekonto'].includes(cat.key.toLowerCase()))
+              .map(cat => {
               const catOpts = options
                 .filter(o => o.category_id === cat.id && o.is_active)
                 .map(o => ({ value: o.key, label: o.label }))
