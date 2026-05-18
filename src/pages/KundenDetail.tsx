@@ -1,28 +1,33 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useEffect, useState, useMemo } from 'react';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Progress } from '@/components/ui/progress';
 import { DriveBrowser } from '@/components/DriveBrowser';
-import { KundenBudgetCard } from '@/components/finanzen/KundenBudgetCard';
-import { ChevronLeft, ChevronDown, ExternalLink, Plus, CalendarPlus, AlertTriangle, BarChart3, Star, Target } from 'lucide-react';
-import { useMetaInsights } from '@/hooks/useMetaInsights';
-import { useToast } from '@/hooks/use-toast';
-import { useSearchParams } from 'react-router-dom';
+import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
+import { ChevronLeft, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { getBranche } from '@/lib/branchen';
 
 const AMPEL_DOT: Record<string, string> = { 'Grün': 'bg-success', 'Gelb': 'bg-warning', 'Rot': 'bg-destructive' };
 const STATUS_STYLES: Record<string, string> = {
-  'Aktiv': 'bg-success/20 text-success', 'Pausiert': 'bg-warning/20 text-warning',
-  'Churned': 'bg-destructive/20 text-destructive',
+  'In Betreuung': 'bg-success/20 text-success',
+  'Onboarding': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  'Lead': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  'Done': 'bg-muted text-muted-foreground',
+};
+
+const fmtMoney = (v: number | null | undefined) =>
+  v == null ? '–' : `€${Number(v).toLocaleString('de-DE', { maximumFractionDigits: 0 })}`;
+const fmtDate = (d: string | null | undefined) => {
+  if (!d) return '–';
+  try { return new Date(d).toLocaleDateString('de-DE'); } catch { return '–'; }
 };
 
 export default function KundenDetail() {
@@ -30,139 +35,121 @@ export default function KundenDetail() {
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'uebersicht';
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { isAdminOrManager } = useAuth();
+
   const [loading, setLoading] = useState(true);
-  const [deal, setDeal] = useState<any>(null);
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [client, setClient] = useState<any>(null);
+  const [deals, setDeals] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [recurring, setRecurring] = useState<any[]>([]);
-  const [team, setTeam] = useState<any[]>([]);
-  const [updates, setUpdates] = useState<{ text: string; ts: string }[]>([]);
-  const [newUpdate, setNewUpdate] = useState('');
-  const [metaAccountId, setMetaAccountId] = useState<string | null>(null);
-  const [pipedriveAccount, setPipedriveAccount] = useState<any | null>(null);
-  const [pipedriveDeals, setPipedriveDeals] = useState<any[]>([]);
+  const [onepageProjects, setOnepageProjects] = useState<any[]>([]);
+  const [websites, setWebsites] = useState<any[]>([]);
+  const [ads, setAds] = useState<any[]>([]);
+  const [unternehmen, setUnternehmen] = useState<{ id: string; display_name: string } | null>(null);
+  const [openDealId, setOpenDealId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ email: '', phone: '', branche_id: '', unternehmen_id: '', notes: '' });
 
-  // Load linked Pipedrive account + deals for this kunde
-  useEffect(() => {
+  const load = async () => {
     if (!id) return;
-    let mounted = true;
-    (async () => {
-      const { data: acc } = await supabase
-        .from('pipedrive_accounts' as any)
-        .select('*')
-        .eq('linked_kunde_id', id)
-        .eq('is_active', true)
-        .maybeSingle();
-      if (!mounted) return;
-      setPipedriveAccount(acc || null);
-      if (acc) {
-        const { data: dealsData } = await supabase
-          .from('pipedrive_deals')
-          .select('*')
-          .eq('account_id', (acc as any).id)
-          .order('pipedrive_updated_at', { ascending: false })
-          .limit(50);
-        if (mounted) setPipedriveDeals(dealsData || []);
-      } else {
-        setPipedriveDeals([]);
-      }
-    })();
-    return () => { mounted = false; };
-  }, [id]);
+    setLoading(true);
+    const [c, d, p, op, w, a] = await Promise.all([
+      supabase.from('clients').select('*').eq('id', id).maybeSingle(),
+      supabase.from('close_deals').select('*').eq('client_id', id).order('created_at', { ascending: false }),
+      supabase.from('projects').select('*').eq('client_id', id).order('created_at', { ascending: false }),
+      supabase.from('onepage_projects').select('*').eq('client_id_fk', id).order('created_at', { ascending: false }),
+      supabase.from('referenz_showcase' as any).select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
+      supabase.from('referenz_meta_ads').select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
+    ]);
+    const cli = c.data || null;
+    setClient(cli);
+    setDeals(d.data || []);
+    setProjects(p.data || []);
+    setOnepageProjects(op.data || []);
+    setWebsites(w.data || []);
+    setAds(a.data || []);
 
-  useEffect(() => {
-    if (!id) return;
-    const load = async () => {
-      const [d, tk, p, inv, rec, t] = await Promise.all([
-        supabase.from('close_deals').select('*').eq('id', id).single(),
-        supabase.from('tasks').select('*').eq('client_id', id).order('due_date', { ascending: true }),
-        supabase.from('projects').select('*').eq('client_id', id).order('created_at', { ascending: false }),
-        supabase.from('invoices').select('*').eq('close_deal_id', id).order('created_at', { ascending: false }),
-        supabase.from('recurring_revenues').select('*').eq('close_deal_id', id),
-        supabase.from('team').select('id, name'),
-      ]);
-      if (d.data) {
-        setDeal(d.data);
-        // Load notes from deal
-        if (Array.isArray(d.data.notes)) {
-          setUpdates(d.data.notes as any[]);
-        }
-      }
-      setTasks(tk.data || []);
-      setProjects(p.data || []);
-      setInvoices(inv.data || []);
-      setRecurring(rec.data || []);
-      setTeam(t.data || []);
-      setLoading(false);
-    };
-    load();
-  }, [id]);
-
-  // Load Meta account mapping for this deal
-  useEffect(() => {
-    const loadMetaMapping = async () => {
-      const { data: setting } = await supabase
-        .from('integration_settings')
-        .select('config')
-        .eq('provider', 'meta_ads')
-        .maybeSingle();
-      
-      if (setting?.config) {
-        const cfg = setting.config as any;
-        if (cfg.account_mappings) {
-          const mappings = cfg.account_mappings as Record<string, string>;
-          const accountId = Object.entries(mappings).find(([, dealId]) => dealId === id)?.[0];
-          if (accountId) setMetaAccountId(accountId);
-        }
-      }
-    };
-    if (id) loadMetaMapping();
-  }, [id]);
-
-  const metaInsights = useMetaInsights({ adAccountId: metaAccountId || undefined });
-  const metaSpend = metaInsights.data.reduce((s: number, r: any) => s + Number(r.spend || 0), 0);
-  const metaLeads = metaInsights.data.reduce((s: number, r: any) => s + Number(r.leads || 0), 0);
-  const metaCpl = metaLeads > 0 ? metaSpend / metaLeads : 0;
-
-  const getName = (tid: string | null) => team.find(t => t.id === tid)?.name || '–';
-  const totalInvoiced = invoices.reduce((s, i) => s + Number(i.brutto || 0), 0);
-  const totalPaid = invoices.filter(i => i.status === 'Bezahlt').reduce((s, i) => s + Number(i.brutto || 0), 0);
-  const mrr = recurring.reduce((s, r) => s + Number(r.monthly_amount || 0), 0);
-
-  // Laufzeit progress
-  const laufzeitProgress = useMemo(() => {
-    if (!deal?.start_datum || !deal?.laufzeit_monate) return null;
-    const start = new Date(deal.start_datum).getTime();
-    const end = new Date(deal.start_datum);
-    end.setMonth(end.getMonth() + deal.laufzeit_monate);
-    const total = end.getTime() - start;
-    const elapsed = Date.now() - start;
-    return { pct: Math.min(100, Math.max(0, (elapsed / total) * 100)), endDate: end.toLocaleDateString('de-DE') };
-  }, [deal]);
-
-  const addUpdate = async () => {
-    if (!newUpdate.trim() || !id) return;
-    const newNote = { text: newUpdate.trim(), ts: new Date().toLocaleString('de-DE') };
-    const updated = [newNote, ...updates];
-    setUpdates(updated);
-    setNewUpdate('');
-    await supabase.from('close_deals').update({ notes: updated }).eq('id', id);
-    toast({ title: 'Update hinzugefügt' });
+    if (cli?.unternehmen_id) {
+      const { data: u } = await supabase.from('unternehmen').select('id, display_name').eq('id', cli.unternehmen_id).maybeSingle();
+      setUnternehmen(u || null);
+    }
+    if (cli) {
+      setEditForm({
+        email: cli.email || '',
+        phone: cli.phone || '',
+        branche_id: cli.branche_id || '',
+        unternehmen_id: cli.unternehmen_id || '',
+        notes: cli.notes || '',
+      });
+    }
+    setLoading(false);
   };
 
-  if (loading) return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-32" /><Skeleton className="h-64" /></div>;
+  useEffect(() => { load(); }, [id]);
 
-  if (!deal) {
+  const totals = useMemo(() => {
+    const dealsValue = deals.reduce((s, x) => s + Number(x.wert_eur || 0), 0);
+    return {
+      dealCount: deals.length,
+      dealValue: dealsValue,
+      projectCount: projects.length,
+      showcaseCount: websites.length + ads.length,
+    };
+  }, [deals, projects, websites, ads]);
+
+  const activity = useMemo(() => {
+    const items: { text: string; ts: string }[] = [];
+    deals.forEach(d => items.push({ text: `Deal: ${d.client_name || ''} · ${d.status || ''}`, ts: d.updated_at || d.created_at }));
+    projects.forEach(p => items.push({ text: `Projekt: ${p.name}`, ts: p.updated_at || p.created_at }));
+    onepageProjects.forEach(o => items.push({ text: `Onepage-Lead: ${o.name}`, ts: o.updated_at || o.created_at }));
+    websites.forEach(w => items.push({ text: `Showcase Website: ${w.titel || w.url || w.id}`, ts: w.updated_at || w.created_at }));
+    ads.forEach(a => items.push({ text: `Showcase Ad: ${a.ad_name || a.id}`, ts: a.updated_at || a.created_at }));
+    return items
+      .filter(x => x.ts)
+      .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+      .slice(0, 5);
+  }, [deals, projects, onepageProjects, websites, ads]);
+
+  const handleSaveEdit = async () => {
+    if (!id) return;
+    const { error } = await supabase.from('clients').update({
+      email: editForm.email || null,
+      phone: editForm.phone || null,
+      branche_id: editForm.branche_id || null,
+      unternehmen_id: editForm.unternehmen_id || null,
+      notes: editForm.notes || null,
+    }).eq('id', id);
+    if (error) {
+      toast.error('Speichern fehlgeschlagen', { description: error.message });
+      return;
+    }
+    toast.success('Kunde aktualisiert');
+    setEditing(false);
+    load();
+  };
+
+  if (loading) {
     return (
-      <div className="space-y-4">
-        <Button variant="ghost" onClick={() => navigate('/kunden')} className="gap-1"><ChevronLeft className="h-4 w-4" /> Zurück</Button>
-        <p className="text-muted-foreground">Deal nicht gefunden.</p>
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-32" />
+        <Skeleton className="h-64" />
       </div>
     );
   }
+
+  if (!client) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" onClick={() => navigate('/kunden')} className="gap-1">
+          <ChevronLeft className="h-4 w-4" /> Zurück
+        </Button>
+        <p className="text-muted-foreground">Kunde nicht gefunden.</p>
+      </div>
+    );
+  }
+
+  const brancheLabel = client.branche_id
+    ? getBranche(client.branche_id)?.label || client.branche_id
+    : client.branche || null;
 
   return (
     <div className="space-y-6">
@@ -170,408 +157,204 @@ export default function KundenDetail() {
         <ChevronLeft className="h-4 w-4" /> Zurück zu Kunden
       </Button>
 
-      {/* Header */}
+      {/* Master Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-heading font-bold">{deal.client_name}</h1>
-            <Badge variant="outline" className="text-xs">{deal.art}</Badge>
-            <Badge variant="secondary" className={STATUS_STYLES[deal.status]}>{deal.status}</Badge>
-            <span className="flex items-center gap-1.5" aria-label={`Ampelstatus: ${deal.ampelstatus}`}>
-              <span className={`h-2.5 w-2.5 rounded-full ${AMPEL_DOT[deal.ampelstatus]}`} aria-hidden="true" />
-              <span className="text-xs text-muted-foreground">{deal.ampelstatus}</span>
+            <h1 className="text-2xl font-heading font-bold">{client.name}</h1>
+            <Badge variant="secondary" className={STATUS_STYLES[client.kundenstatus] || 'bg-muted'}>
+              {client.kundenstatus}
+            </Badge>
+            <span className="flex items-center gap-1.5">
+              <span className={`h-2.5 w-2.5 rounded-full ${AMPEL_DOT[client.ampelstatus] || 'bg-muted'}`} aria-hidden />
+              <span className="text-xs text-muted-foreground">{client.ampelstatus}</span>
             </span>
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            <span>€{Number(deal.wert_eur || 0).toLocaleString('de-DE')}</span>
-            {deal.laufzeit_monate && <span>{deal.laufzeit_monate} Monate{laufzeitProgress ? ` · endet ${laufzeitProgress.endDate}` : ''}</span>}
+            {brancheLabel && <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />{brancheLabel}</span>}
+            {unternehmen && <span className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{unternehmen.display_name}</span>}
+            {client.email && <a href={`mailto:${client.email}`} className="flex items-center gap-1 hover:text-primary"><Mail className="h-3.5 w-3.5" />{client.email}</a>}
+            {client.phone && <a href={`tel:${client.phone}`} className="flex items-center gap-1 hover:text-primary"><Phone className="h-3.5 w-3.5" />{client.phone}</a>}
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {deal.close_opportunity_url && (
-            <Button size="sm" variant="outline" className="min-h-[44px]" onClick={() => window.open(deal.close_opportunity_url, '_blank')}>
-              <ExternalLink className="h-4 w-4 mr-1" />Close CRM
-            </Button>
-          )}
-          {deal.onepage_url && (
-            <Button size="sm" variant="outline" className="min-h-[44px]" onClick={() => window.open(deal.onepage_url, '_blank')}>
-              <ExternalLink className="h-4 w-4 mr-1" />OnePage
-            </Button>
-          )}
-        </div>
+        <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+          <Pencil className="h-4 w-4 mr-1" /> Bearbeiten
+        </Button>
       </div>
 
-      {/* Quick stats */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold text-primary">€{Number(deal.wert_eur || 0).toLocaleString('de-DE')}</p><p className="text-xs text-muted-foreground">Deal-Wert</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold">{projects.length}</p><p className="text-xs text-muted-foreground">Projekte</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold">{tasks.filter(t => t.status !== 'Erledigt').length}</p><p className="text-xs text-muted-foreground">Offene Aufgaben</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold">€{mrr.toLocaleString('de-DE')}</p><p className="text-xs text-muted-foreground">MRR</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold text-primary">{totals.dealCount}</p><p className="text-xs text-muted-foreground">Deals</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold">{fmtMoney(totals.dealValue)}</p><p className="text-xs text-muted-foreground">Gesamtwert</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold">{totals.projectCount}</p><p className="text-xs text-muted-foreground">Aktive Projekte</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold">{totals.showcaseCount}</p><p className="text-xs text-muted-foreground">Showcase-Items</p></CardContent></Card>
       </div>
 
-      {laufzeitProgress && (
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Laufzeit</span><span>{laufzeitProgress.pct.toFixed(0)}%</span>
-          </div>
-          <Progress value={laufzeitProgress.pct} className="h-2" />
-        </div>
+      {/* Edit Form */}
+      {editing && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Kunde bearbeiten</CardTitle>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}><X className="h-4 w-4" /></Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div><label className="text-xs text-muted-foreground">Email</label><Input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /></div>
+              <div><label className="text-xs text-muted-foreground">Telefon</label><Input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} /></div>
+              <div><label className="text-xs text-muted-foreground">Branche</label><Input value={editForm.branche_id} onChange={e => setEditForm({ ...editForm, branche_id: e.target.value })} placeholder="z.B. PKV" /></div>
+              <div><label className="text-xs text-muted-foreground">Unternehmen-ID</label><Input value={editForm.unternehmen_id} onChange={e => setEditForm({ ...editForm, unternehmen_id: e.target.value })} placeholder="uuid" /></div>
+            </div>
+            <div><label className="text-xs text-muted-foreground">Notizen</label><Textarea rows={4} value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} /></div>
+            <Button size="sm" onClick={handleSaveEdit}><Save className="h-4 w-4 mr-1" /> Speichern</Button>
+          </CardContent>
+        </Card>
       )}
 
-      {/* 7 Tabs */}
+      {/* Tabs */}
       <Tabs defaultValue={defaultTab}>
         <TabsList className="flex flex-wrap h-auto gap-1">
-          <TabsTrigger value="uebersicht" className="min-h-[44px]">Übersicht</TabsTrigger>
-          <TabsTrigger value="projekte" className="min-h-[44px]">Projekte ({projects.length})</TabsTrigger>
-          <TabsTrigger value="aufgaben" className="min-h-[44px]">Aufgaben ({tasks.length})</TabsTrigger>
-          <TabsTrigger value="cs" className="min-h-[44px]">Customer Success</TabsTrigger>
-          <TabsTrigger value="dateien" className="min-h-[44px]">Dateien</TabsTrigger>
-          <TabsTrigger value="finanzen" className="min-h-[44px]">Finanzen</TabsTrigger>
-          <TabsTrigger value="metaads" className="min-h-[44px]">Meta Ads</TabsTrigger>
-          {pipedriveAccount && (
-            <TabsTrigger value="pipedrive" className="min-h-[44px]">📊 Pipedrive</TabsTrigger>
-          )}
+          <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
+          <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
+          <TabsTrigger value="onepage">Onepage-Leads ({onepageProjects.length})</TabsTrigger>
+          <TabsTrigger value="showcase">Showcase ({totals.showcaseCount})</TabsTrigger>
+          <TabsTrigger value="projekte">Projekte ({projects.length})</TabsTrigger>
+          <TabsTrigger value="dateien">Dateien</TabsTrigger>
         </TabsList>
 
-        {/* TAB 1: ÜBERSICHT */}
-        <TabsContent value="uebersicht" className="space-y-4 mt-4">
+        {/* ÜBERSICHT */}
+        <TabsContent value="uebersicht" className="mt-4 space-y-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Kundeninfo</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Letzte Aktivität</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-y-2 text-sm">
-                <span className="text-muted-foreground">Art</span><span>{deal.art}</span>
-                <span className="text-muted-foreground">Deal-Typ</span><span>{deal.deal_type}</span>
-                <span className="text-muted-foreground">Zugewiesen</span><span>{getName(deal.assigned_to)}</span>
-                <span className="text-muted-foreground">Zahlstatus</span><span>{deal.zahlstatus || '–'}</span>
-                <span className="text-muted-foreground">Health Score</span>
-                <span className="flex gap-0.5">{[1,2,3,4,5].map(i => <Star key={i} className={`h-4 w-4 ${i <= (deal.health_score || 3) ? 'text-primary fill-primary' : 'text-muted'}`} />)}</span>
-              </div>
+              {activity.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Keine Aktivität.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {activity.map((a, i) => (
+                    <li key={i} className="flex justify-between text-sm border-b border-border/50 pb-2 last:border-0">
+                      <span>{a.text}</span>
+                      <span className="text-xs text-muted-foreground shrink-0 ml-3">{fmtDate(a.ts)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
 
-          {Array.isArray(deal.leistungen) && deal.leistungen.length > 0 && (
+          {client.notes && (
             <Card>
-              <CardHeader><CardTitle className="text-base">Leistungen</CardTitle></CardHeader>
-              <CardContent><div className="flex flex-wrap gap-2">{deal.leistungen.map((l: string, i: number) => <Badge key={i} variant="secondary">{l}</Badge>)}</div></CardContent>
+              <CardHeader><CardTitle className="text-base">Notizen</CardTitle></CardHeader>
+              <CardContent><p className="text-sm whitespace-pre-wrap text-muted-foreground">{client.notes}</p></CardContent>
             </Card>
           )}
-
-          <Card>
-            <CardHeader><CardTitle className="text-base">Roadmap</CardTitle></CardHeader>
-            <CardContent>
-              <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                <li>Onboarding & Zugänge einrichten</li>
-                <li>Kampagnen-Setup & Launch</li>
-                <li>Optimierung & Skalierung</li>
-              </ol>
-            </CardContent>
-          </Card>
-
-          <Collapsible>
-            <Card>
-              <CollapsibleTrigger className="w-full">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-base">Zugänge & Tools</CardTitle>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                    <p>Meta Business Manager: –</p><p>Google Ads: –</p>
-                    <p>CRM-Zugang: –</p><p>Analytics: –</p>
-                  </div>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-
-          {metaAccountId && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Target className="h-4 w-4 text-primary" />
-                  Meta Ads Performance (30d)
-                  {metaInsights.loading && <span className="text-xs text-muted-foreground font-normal ml-2">lädt...</span>}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {metaInsights.data.length === 0 && !metaInsights.loading ? (
-                  <p className="text-sm text-muted-foreground">Noch keine Sync-Daten. Sync in Einstellungen → Meta Ads starten.</p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-4">
-                    {[
-                      { label: 'Spend', value: `€${metaSpend.toLocaleString('de-DE', { minimumFractionDigits: 0 })}` },
-                      { label: 'Leads', value: metaLeads.toString() },
-                      { label: 'Ø CPL', value: `€${metaCpl.toFixed(2)}` },
-                    ].map(m => (
-                      <div key={m.label} className="text-center">
-                        <p className="text-xl font-bold text-foreground">{m.value}</p>
-                        <p className="text-xs text-muted-foreground">{m.label}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader><CardTitle className="text-base">Wichtige Updates</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex gap-2">
-                <Input placeholder="Update hinzufügen..." value={newUpdate} onChange={e => setNewUpdate(e.target.value)} onKeyDown={e => e.key === 'Enter' && addUpdate()} />
-                <Button size="sm" onClick={addUpdate} className="min-h-[44px]">Hinzufügen</Button>
-              </div>
-              {updates.length === 0 && <p className="text-sm text-muted-foreground">Noch keine Updates.</p>}
-              {updates.map((u, i) => (
-                <div key={i} className="border border-border rounded-md p-3">
-                  <p className="text-sm">{u.text}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{u.ts}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
         </TabsContent>
 
-        {/* TAB 2: PROJEKTE */}
-        <TabsContent value="projekte" className="mt-4 space-y-4">
-          {isAdminOrManager && (
-            <Button variant="outline" className="min-h-[44px]" onClick={() => toast({ title: 'Projekt erstellen', description: 'Wird mit diesem Kunden verknüpft' })}>
-              <Plus className="h-4 w-4 mr-1" />Neues Projekt
-            </Button>
-          )}
-          {projects.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-muted-foreground">Keine Projekte</CardContent></Card>
-          ) : projects.map(p => (
-            <Card key={p.id}>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div><p className="font-medium">{p.name}</p><p className="text-xs text-muted-foreground">{p.projekttyp || '–'} · {p.startdatum || '–'}</p></div>
-                  <Badge variant="secondary" className="text-xs">{p.status}</Badge>
-                </div>
-                <Separator className="my-3" />
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div><span className="text-muted-foreground">Ads Budget</span><p className="font-medium">€{Number(p.ads_budget || 0).toLocaleString('de-DE')}</p></div>
-                  <div><span className="text-muted-foreground">Laufzeit</span><p className="font-medium">{p.startdatum || '–'}</p></div>
-                  <div><span className="text-muted-foreground">Saldo</span><p className="font-medium">€{Number(p.gesamt_saldo || 0).toLocaleString('de-DE')}</p></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        {/* TAB 3: AUFGABEN */}
-        <TabsContent value="aufgaben" className="mt-4">
-          {isAdminOrManager && (
-            <Button variant="outline" className="min-h-[44px] mb-4" onClick={() => toast({ title: 'Aufgabe erstellen' })}>
-              <Plus className="h-4 w-4 mr-1" />Neue Aufgabe
-            </Button>
-          )}
+        {/* DEALS */}
+        <TabsContent value="deals" className="mt-4">
           <Card><CardContent className="p-0"><div className="overflow-x-auto">
             <Table>
-              <caption className="sr-only">Aufgaben für {deal.client_name}</caption>
               <TableHeader><TableRow>
-                <TableHead scope="col">Aufgabe</TableHead><TableHead scope="col">Status</TableHead><TableHead scope="col">Zugewiesen</TableHead>
-                <TableHead scope="col">Geplant</TableHead><TableHead scope="col">Fällig</TableHead>
+                <TableHead>Art</TableHead><TableHead>Status</TableHead><TableHead>Wert</TableHead>
+                <TableHead>Laufzeit</TableHead><TableHead>Startdatum</TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {tasks.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Keine Aufgaben</TableCell></TableRow>
-                ) : tasks.map(t => {
-                  const overdue = t.status !== 'Erledigt' && t.due_date && new Date(t.due_date) < new Date();
-                  return (
-                    <TableRow key={t.id}>
-                      <TableCell className="font-medium">{t.title}</TableCell>
-                      <TableCell><Badge variant="secondary" className="text-xs">{t.status}</Badge></TableCell>
-                      <TableCell className="text-muted-foreground">{getName(t.assignee_id)}</TableCell>
-                      <TableCell className="text-muted-foreground">{Number(t.geplante_zeit || 0).toFixed(1)}h</TableCell>
-                      <TableCell className={overdue ? 'text-destructive font-medium' : 'text-muted-foreground'}>
-                        {t.due_date || '–'}{overdue && <AlertTriangle className="inline h-3 w-3 ml-1" />}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div></CardContent></Card>
-        </TabsContent>
-
-        {/* TAB 4: CUSTOMER SUCCESS */}
-        <TabsContent value="cs" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Health Score</CardTitle></CardHeader>
-            <CardContent>
-              <div className="flex gap-1">{[1,2,3,4,5].map(i => <Star key={i} className={`h-6 w-6 cursor-pointer ${i <= (deal.health_score || 3) ? 'text-primary fill-primary' : 'text-muted'}`} />)}</div>
-            </CardContent>
-          </Card>
-          <Card><CardContent className="py-12 text-center text-muted-foreground">
-            <CalendarPlus className="h-12 w-12 mx-auto mb-3 opacity-30" aria-hidden="true" />
-            <p className="font-medium">Meeting-Protokolle & Next Steps</p>
-            <p className="text-sm mt-1">Meetings mit Datum, Thema, Teilnehmern und Notizen.</p>
-            <Button variant="outline" className="mt-4 min-h-[44px]" onClick={() => toast({ title: 'Meeting geloggt' })}>
-              <Plus className="h-4 w-4 mr-1" />Meeting loggen
-            </Button>
-          </CardContent></Card>
-        </TabsContent>
-
-        {/* TAB 5: DATEIEN */}
-        <TabsContent value="dateien" className="mt-4">
-          <DriveBrowser folderId={id} showUpload={true} showPin={true} folderChips={['Ad Creatives', 'Berichte', 'Verträge', 'Sonstiges']} />
-        </TabsContent>
-
-        {/* TAB 6: FINANZEN */}
-        <TabsContent value="finanzen" className="mt-4 space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <Card><CardContent className="p-4 text-center"><p className="text-lg font-heading font-bold text-success">€{totalPaid.toLocaleString('de-DE')}</p><p className="text-xs text-muted-foreground">Bezahlt</p></CardContent></Card>
-            <Card><CardContent className="p-4 text-center"><p className="text-lg font-heading font-bold text-destructive">€{(totalInvoiced - totalPaid).toLocaleString('de-DE')}</p><p className="text-xs text-muted-foreground">Offen</p></CardContent></Card>
-            <Card><CardContent className="p-4 text-center"><p className="text-lg font-heading font-bold text-primary">€{mrr.toLocaleString('de-DE')}</p><p className="text-xs text-muted-foreground">MRR</p></CardContent></Card>
-          </div>
-          <Card><CardContent className="p-0"><div className="overflow-x-auto">
-            <Table>
-              <caption className="sr-only">Rechnungen für {deal.client_name}</caption>
-              <TableHeader><TableRow>
-                <TableHead scope="col">Nr.</TableHead><TableHead scope="col">Brutto</TableHead><TableHead scope="col">Status</TableHead><TableHead scope="col">Fällig</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {invoices.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Keine Rechnungen</TableCell></TableRow>
-                ) : invoices.map(i => (
-                  <TableRow key={i.id}>
-                    <TableCell className="font-medium">{i.invoice_nr}</TableCell>
-                    <TableCell className="font-medium">€{Number(i.brutto || 0).toLocaleString('de-DE')}</TableCell>
-                    <TableCell><Badge variant={i.status === 'Bezahlt' ? 'secondary' : 'destructive'} className="text-xs">{i.status}</Badge></TableCell>
-                    <TableCell className="text-muted-foreground">{i.faelligkeitsdatum || '–'}</TableCell>
+                {deals.length === 0 ? (
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Keine Deals</TableCell></TableRow>
+                ) : deals.map(d => (
+                  <TableRow key={d.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setOpenDealId(d.id)}>
+                    <TableCell><Badge variant="outline">{d.art || '–'}</Badge></TableCell>
+                    <TableCell><Badge variant="secondary">{d.status || '–'}</Badge></TableCell>
+                    <TableCell className="font-medium">{fmtMoney(d.wert_eur)}</TableCell>
+                    <TableCell className="text-muted-foreground">{d.laufzeit || (d.laufzeit_monate ? `${d.laufzeit_monate} Mon.` : '–')}</TableCell>
+                    <TableCell className="text-muted-foreground">{fmtDate(d.start_datum)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div></CardContent></Card>
-
-          {/* Werbebudget Card */}
-          <KundenBudgetCard dealId={id!} clientName={deal.client_name} />
         </TabsContent>
 
-        {/* TAB 7: META ADS */}
-        <TabsContent value="metaads" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" />Meta Ads</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Ad Account ID</p>
-                <Input value={deal.meta_ad_account_id || ''} placeholder="act_123456..." readOnly />
-              </div>
-              {deal.meta_ad_account_id ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Live-Daten werden mit Meta API Anbindung verfügbar.</p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="min-h-[44px]" onClick={() => toast({ title: 'KI Analyse', description: 'Meta API Anbindung erforderlich' })}>KI Analyse</Button>
-                    <Button variant="outline" className="min-h-[44px]" onClick={() => window.open('https://adsmanager.facebook.com', '_blank')}>
-                      <ExternalLink className="h-4 w-4 mr-1" />In Meta öffnen
-                    </Button>
-                  </div>
+        {/* ONEPAGE LEADS */}
+        <TabsContent value="onepage" className="mt-4 space-y-2">
+          {onepageProjects.length === 0 ? (
+            <Card><CardContent className="py-8 text-center text-muted-foreground">Keine Onepage-Leads</CardContent></Card>
+          ) : onepageProjects.map(o => (
+            <Card key={o.id}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <Link to={`/onepage-leads/kunden/${o.id}`} className="font-medium hover:underline">{o.name}</Link>
+                  <p className="text-xs text-muted-foreground">{o.status}{o.page_url ? ` · ${o.page_url}` : ''}</p>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Kein Ad Account verknüpft. In Einstellungen → Integrationen konfigurieren.</p>
-              )}
-            </CardContent>
-          </Card>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          ))}
         </TabsContent>
 
-        {/* TAB 8: PIPEDRIVE (only if linked) */}
-        {pipedriveAccount && (
-          <TabsContent value="pipedrive" className="mt-4">
-            <PipedriveKundeView account={pipedriveAccount} deals={pipedriveDeals} />
-          </TabsContent>
-        )}
-      </Tabs>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Pipedrive view embedded in Kunde detail (only when a Pipedrive account is linked)
-// ─────────────────────────────────────────────────────────────────────────────
-function PipedriveKundeView({ account, deals }: { account: any; deals: any[] }) {
-  const totalValue = deals.reduce((s, d) => s + Number(d.value || 0), 0);
-  const wonDeals = deals.filter(d => d.status === 'won');
-  const openDeals = deals.filter(d => d.status === 'open');
-  const lostDeals = deals.filter(d => d.status === 'lost');
-
-  const byStage: Record<string, any[]> = {};
-  openDeals.forEach(d => {
-    const k = d.stage_name || '—';
-    (byStage[k] ||= []).push(d);
-  });
-
-  const KpiBox = ({ label, value, color }: { label: string; value: string | number; color?: string }) => (
-    <div className="rounded-lg border border-border p-3 text-center bg-card">
-      <p className={`text-xl font-semibold tabular-nums ${color || ''}`}>{value}</p>
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-    </div>
-  );
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="w-2.5 h-2.5 rounded-full" style={{ background: account.color_hex || '#0EA5E9' }} />
-        <span className="font-medium text-foreground">{account.name}</span>
-        <span>· {account.domain}.pipedrive.com</span>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <KpiBox label="Deals gesamt" value={deals.length} />
-        <KpiBox label="Pipeline-Wert" value={`€${(totalValue / 1000).toFixed(0)}k`} />
-        <KpiBox label="Won" value={wonDeals.length} color="text-success" />
-        <KpiBox label="Lost" value={lostDeals.length} color="text-destructive" />
-      </div>
-
-      {Object.keys(byStage).length > 0 && (
-        <div>
-          <h4 className="font-semibold text-sm mb-2">Aktive Deals nach Stage</h4>
-          <div className="space-y-1 rounded-lg border border-border bg-card p-2">
-            {Object.entries(byStage).map(([stage, list]) => (
-              <div key={stage} className="flex justify-between text-sm py-1.5 px-2 border-b border-border last:border-0">
-                <span>{stage}</span>
-                <span className="text-muted-foreground tabular-nums">
-                  {list.length} Deals · €{(list.reduce((s, d) => s + Number(d.value || 0), 0) / 1000).toFixed(0)}k
-                </span>
+        {/* SHOWCASE */}
+        <TabsContent value="showcase" className="mt-4 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold mb-2">Websites ({websites.length})</h3>
+            {websites.length === 0 ? <p className="text-sm text-muted-foreground">Keine Websites</p> : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {websites.map(w => (
+                  <Link key={w.id} to={`/sales/referenz-showcase/websites/${w.id}`} className="block">
+                    <Card className="hover:bg-muted/30 transition-colors">
+                      <CardContent className="p-4">
+                        <p className="font-medium truncate">{w.titel || w.url || w.id}</p>
+                        <p className="text-xs text-muted-foreground truncate">{w.url || '–'}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      )}
-
-      <div>
-        <h4 className="font-semibold text-sm mb-2">Letzte Deals</h4>
-        <div className="space-y-2">
-          {deals.slice(0, 10).map(d => (
-            <div key={d.id} className="border border-border rounded-md p-3 text-sm bg-card">
-              <div className="flex justify-between mb-1 gap-2">
-                <span className="font-medium truncate">{d.title || '—'}</span>
-                <span className={`text-[10px] px-2 py-0.5 rounded shrink-0 ${
-                  d.status === 'won' ? 'bg-success/15 text-success' :
-                  d.status === 'lost' ? 'bg-destructive/15 text-destructive' :
-                  'bg-primary/15 text-primary'
-                }`}>{d.status || '—'}</span>
+          <div>
+            <h3 className="text-sm font-semibold mb-2">Anzeigen ({ads.length})</h3>
+            {ads.length === 0 ? <p className="text-sm text-muted-foreground">Keine Anzeigen</p> : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {ads.map(a => (
+                  <Link key={a.id} to={`/sales/referenz-showcase/werbeanzeigen/${a.id}`} className="block">
+                    <Card className="hover:bg-muted/30 transition-colors">
+                      <CardContent className="p-4">
+                        <p className="font-medium truncate">{a.ad_name || a.id}</p>
+                        <p className="text-xs text-muted-foreground truncate">{a.headline || '–'}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {d.stage_name || '—'} · €{Number(d.value || 0).toLocaleString('de-DE')} · {d.person_name || '—'}
-              </p>
-            </div>
-          ))}
-          {!deals.length && (
-            <p className="text-sm text-muted-foreground text-center py-6">Noch keine synchronisierten Deals</p>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
+        </TabsContent>
 
-      <Link
-        to={`/pipedrive?account=${account.id}`}
-        className="block text-center text-sm text-primary hover:underline pt-2"
-      >
-        → Alle Daten in Pipedrive-Übersicht anzeigen
-      </Link>
+        {/* PROJEKTE */}
+        <TabsContent value="projekte" className="mt-4 space-y-2">
+          {projects.length === 0 ? (
+            <Card><CardContent className="py-8 text-center text-muted-foreground">Keine Projekte</CardContent></Card>
+          ) : projects.map(p => (
+            <Card key={p.id}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">{p.projekttyp || '–'} · {fmtDate(p.startdatum)}</p>
+                  </div>
+                  <Badge variant="secondary">{p.status}</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+
+        {/* DATEIEN */}
+        <TabsContent value="dateien" className="mt-4">
+          <DriveBrowser folderId={id} showUpload showPin folderChips={['Ad Creatives', 'Berichte', 'Verträge', 'Sonstiges']} />
+        </TabsContent>
+      </Tabs>
+
+      <CloseDealDetailPanel dealId={openDealId} open={!!openDealId} onOpenChange={(o) => !o && setOpenDealId(null)} />
     </div>
   );
 }

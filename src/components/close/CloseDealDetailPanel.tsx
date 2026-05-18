@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExternalLink, Mail, Phone } from 'lucide-react';
+import { ExternalLink, Mail, Phone, User } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { CloseLeadDetailPanel } from './CloseLeadDetailPanel';
@@ -30,6 +31,7 @@ export function CloseDealDetailPanel({ dealId, open, onOpenChange }: Props) {
   const [notes, setNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showLead, setShowLead] = useState<string | null>(null);
+  const [clientLink, setClientLink] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!open || !dealId) return;
@@ -78,6 +80,23 @@ export function CloseDealDetailPanel({ dealId, open, onOpenChange }: Props) {
       }
 
       dealCache.set(dealId, { deal: dealData, lead: leadData, notes: notesData });
+
+      // Lookup our DB client_id via close_lead_id (most reliable) or by name
+      setClientLink(null);
+      const leadName = dealData?.lead_name || leadData?.display_name;
+      if (leadId || leadName) {
+        let q = supabase.from('close_deals').select('client_id, client_name, clients:client_id(id, name)').limit(1);
+        if (leadId) q = q.eq('close_lead_id', leadId);
+        else if (leadName) q = q.ilike('client_name', leadName);
+        const { data: row } = await q.maybeSingle();
+        const c: any = (row as any)?.clients;
+        if (c?.id) setClientLink({ id: c.id, name: c.name });
+        else if (leadName) {
+          const { data: cli } = await supabase.from('clients').select('id, name').ilike('name', leadName).limit(1).maybeSingle();
+          if (cli) setClientLink({ id: cli.id, name: cli.name });
+        }
+      }
+
       setLoading(false);
     })();
   }, [dealId, open]);
@@ -117,6 +136,14 @@ export function CloseDealDetailPanel({ dealId, open, onOpenChange }: Props) {
                 <SheetTitle className="flex items-start justify-between gap-4">
                   <div className="flex flex-col gap-2">
                     <span className="text-xl font-bold">{dealTitle}</span>
+                    {clientLink && (
+                      <Link
+                        to={`/kunden/${clientLink.id}`}
+                        className="text-sm text-primary hover:underline flex items-center gap-1 font-normal"
+                      >
+                        <User className="h-3 w-3" /> {clientLink.name}
+                      </Link>
+                    )}
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge className={STATUS_COLORS[deal.status_type] || 'bg-muted'}>
                         {deal.status_label || deal.status_type}
