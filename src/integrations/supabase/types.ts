@@ -739,17 +739,24 @@ export type Database = {
         Row: {
           ampelstatus: Database["public"]["Enums"]["ampelstatus"]
           branche: string | null
+          branche_id: string | null
           clv: number | null
           created_at: string
+          created_by: string | null
+          deleted_at: string | null
           email: string | null
           enddatum: string | null
           id: string
           kundenstatus: Database["public"]["Enums"]["kundenstatus"]
           laufzeit: string | null
+          meta_account_id: string | null
+          meta_account_ids: string[] | null
           name: string
+          notes: string | null
           phone: string | null
           projekttyp: string | null
           startdatum: string | null
+          unternehmen_id: string | null
           updated_at: string
           website: string | null
           zahlstatus: string | null
@@ -757,17 +764,24 @@ export type Database = {
         Insert: {
           ampelstatus?: Database["public"]["Enums"]["ampelstatus"]
           branche?: string | null
+          branche_id?: string | null
           clv?: number | null
           created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
           email?: string | null
           enddatum?: string | null
           id?: string
           kundenstatus?: Database["public"]["Enums"]["kundenstatus"]
           laufzeit?: string | null
+          meta_account_id?: string | null
+          meta_account_ids?: string[] | null
           name: string
+          notes?: string | null
           phone?: string | null
           projekttyp?: string | null
           startdatum?: string | null
+          unternehmen_id?: string | null
           updated_at?: string
           website?: string | null
           zahlstatus?: string | null
@@ -775,22 +789,37 @@ export type Database = {
         Update: {
           ampelstatus?: Database["public"]["Enums"]["ampelstatus"]
           branche?: string | null
+          branche_id?: string | null
           clv?: number | null
           created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
           email?: string | null
           enddatum?: string | null
           id?: string
           kundenstatus?: Database["public"]["Enums"]["kundenstatus"]
           laufzeit?: string | null
+          meta_account_id?: string | null
+          meta_account_ids?: string[] | null
           name?: string
+          notes?: string | null
           phone?: string | null
           projekttyp?: string | null
           startdatum?: string | null
+          unternehmen_id?: string | null
           updated_at?: string
           website?: string | null
           zahlstatus?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_clients_unternehmen"
+            columns: ["unternehmen_id"]
+            isOneToOne: false
+            referencedRelation: "unternehmen"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       close_deals: {
         Row: {
@@ -801,7 +830,9 @@ export type Database = {
           assigned_to: string | null
           branch_id: string | null
           branche: string[] | null
+          branche_id: string | null
           cash_collect_offen: number | null
+          client_id: string | null
           client_name: string
           close_lead_id: string | null
           close_opportunity_url: string | null
@@ -833,6 +864,7 @@ export type Database = {
           superchat_kosten: number | null
           telefon: string | null
           unternehmen: string | null
+          unternehmen_id: string | null
           updated_at: string
           vor_nachname: string | null
           website_kosten: number | null
@@ -848,7 +880,9 @@ export type Database = {
           assigned_to?: string | null
           branch_id?: string | null
           branche?: string[] | null
+          branche_id?: string | null
           cash_collect_offen?: number | null
+          client_id?: string | null
           client_name: string
           close_lead_id?: string | null
           close_opportunity_url?: string | null
@@ -880,6 +914,7 @@ export type Database = {
           superchat_kosten?: number | null
           telefon?: string | null
           unternehmen?: string | null
+          unternehmen_id?: string | null
           updated_at?: string
           vor_nachname?: string | null
           website_kosten?: number | null
@@ -895,7 +930,9 @@ export type Database = {
           assigned_to?: string | null
           branch_id?: string | null
           branche?: string[] | null
+          branche_id?: string | null
           cash_collect_offen?: number | null
+          client_id?: string | null
           client_name?: string
           close_lead_id?: string | null
           close_opportunity_url?: string | null
@@ -927,6 +964,7 @@ export type Database = {
           superchat_kosten?: number | null
           telefon?: string | null
           unternehmen?: string | null
+          unternehmen_id?: string | null
           updated_at?: string
           vor_nachname?: string | null
           website_kosten?: number | null
@@ -943,10 +981,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "close_deals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "close_deals_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "close_deals_unternehmen_id_fkey"
+            columns: ["unternehmen_id"]
+            isOneToOne: false
+            referencedRelation: "unternehmen"
             referencedColumns: ["id"]
           },
         ]
@@ -2551,7 +2603,9 @@ export type Database = {
       }
       onepage_projects: {
         Row: {
+          branche_id: string | null
           client_id: string | null
+          client_id_fk: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -2559,11 +2613,14 @@ export type Database = {
           notes: string | null
           page_url: string | null
           status: string
+          unternehmen_id: string | null
           updated_at: string
           webhook_secret: string
         }
         Insert: {
+          branche_id?: string | null
           client_id?: string | null
+          client_id_fk?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -2571,11 +2628,14 @@ export type Database = {
           notes?: string | null
           page_url?: string | null
           status?: string
+          unternehmen_id?: string | null
           updated_at?: string
           webhook_secret?: string
         }
         Update: {
+          branche_id?: string | null
           client_id?: string | null
+          client_id_fk?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -2583,10 +2643,26 @@ export type Database = {
           notes?: string | null
           page_url?: string | null
           status?: string
+          unternehmen_id?: string | null
           updated_at?: string
           webhook_secret?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "onepage_projects_client_id_fk_fkey"
+            columns: ["client_id_fk"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onepage_projects_unternehmen_id_fkey"
+            columns: ["unternehmen_id"]
+            isOneToOne: false
+            referencedRelation: "unternehmen"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onepage_webhook_logs: {
         Row: {
@@ -3314,7 +3390,10 @@ export type Database = {
           last_matched_at: string | null
           last_sync_error: string | null
           last_synced_at: string | null
+          linked_branche_id: string | null
+          linked_client_id: string | null
           linked_kunde_id: string | null
+          linked_unternehmen_id: string | null
           match_method: string | null
           meta_account_id: string
           meta_account_name: string | null
@@ -3361,7 +3440,10 @@ export type Database = {
           last_matched_at?: string | null
           last_sync_error?: string | null
           last_synced_at?: string | null
+          linked_branche_id?: string | null
+          linked_client_id?: string | null
           linked_kunde_id?: string | null
+          linked_unternehmen_id?: string | null
           match_method?: string | null
           meta_account_id: string
           meta_account_name?: string | null
@@ -3408,7 +3490,10 @@ export type Database = {
           last_matched_at?: string | null
           last_sync_error?: string | null
           last_synced_at?: string | null
+          linked_branche_id?: string | null
+          linked_client_id?: string | null
           linked_kunde_id?: string | null
+          linked_unternehmen_id?: string | null
           match_method?: string | null
           meta_account_id?: string
           meta_account_name?: string | null
@@ -3434,10 +3519,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "referenz_meta_ads_linked_client_id_fkey"
+            columns: ["linked_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "referenz_meta_ads_linked_kunde_id_fkey"
             columns: ["linked_kunde_id"]
             isOneToOne: false
             referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referenz_meta_ads_linked_unternehmen_id_fkey"
+            columns: ["linked_unternehmen_id"]
+            isOneToOne: false
+            referencedRelation: "unternehmen"
             referencedColumns: ["id"]
           },
         ]
@@ -3459,7 +3558,10 @@ export type Database = {
           is_active: boolean | null
           is_featured: boolean | null
           is_public: boolean | null
+          linked_branche_id: string | null
+          linked_client_id: string | null
           linked_kunde_id: string | null
+          linked_unternehmen_id: string | null
           meta_account_id: string
           meta_account_name: string | null
           meta_campaign_id: string
@@ -3488,7 +3590,10 @@ export type Database = {
           is_active?: boolean | null
           is_featured?: boolean | null
           is_public?: boolean | null
+          linked_branche_id?: string | null
+          linked_client_id?: string | null
           linked_kunde_id?: string | null
+          linked_unternehmen_id?: string | null
           meta_account_id: string
           meta_account_name?: string | null
           meta_campaign_id: string
@@ -3517,7 +3622,10 @@ export type Database = {
           is_active?: boolean | null
           is_featured?: boolean | null
           is_public?: boolean | null
+          linked_branche_id?: string | null
+          linked_client_id?: string | null
           linked_kunde_id?: string | null
+          linked_unternehmen_id?: string | null
           meta_account_id?: string
           meta_account_name?: string | null
           meta_campaign_id?: string
@@ -3532,10 +3640,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "referenz_meta_campaigns_linked_client_id_fkey"
+            columns: ["linked_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "referenz_meta_campaigns_linked_kunde_id_fkey"
             columns: ["linked_kunde_id"]
             isOneToOne: false
             referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referenz_meta_campaigns_linked_unternehmen_id_fkey"
+            columns: ["linked_unternehmen_id"]
+            isOneToOne: false
+            referencedRelation: "unternehmen"
             referencedColumns: ["id"]
           },
         ]
@@ -3560,7 +3682,10 @@ export type Database = {
           is_iframe_blocked: boolean | null
           is_public: boolean | null
           key_features: string[] | null
+          linked_branche_id: string | null
+          linked_client_id: string | null
           linked_kunde_id: string | null
+          linked_unternehmen_id: string | null
           metrics: Json | null
           preview_image_url: string | null
           tags: string[] | null
@@ -3591,7 +3716,10 @@ export type Database = {
           is_iframe_blocked?: boolean | null
           is_public?: boolean | null
           key_features?: string[] | null
+          linked_branche_id?: string | null
+          linked_client_id?: string | null
           linked_kunde_id?: string | null
+          linked_unternehmen_id?: string | null
           metrics?: Json | null
           preview_image_url?: string | null
           tags?: string[] | null
@@ -3622,7 +3750,10 @@ export type Database = {
           is_iframe_blocked?: boolean | null
           is_public?: boolean | null
           key_features?: string[] | null
+          linked_branche_id?: string | null
+          linked_client_id?: string | null
           linked_kunde_id?: string | null
+          linked_unternehmen_id?: string | null
           metrics?: Json | null
           preview_image_url?: string | null
           tags?: string[] | null
@@ -3636,10 +3767,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "referenz_showcase_linked_client_id_fkey"
+            columns: ["linked_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "referenz_showcase_linked_kunde_id_fkey"
             columns: ["linked_kunde_id"]
             isOneToOne: false
             referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referenz_showcase_linked_unternehmen_id_fkey"
+            columns: ["linked_unternehmen_id"]
+            isOneToOne: false
+            referencedRelation: "unternehmen"
             referencedColumns: ["id"]
           },
         ]
@@ -4712,12 +4857,17 @@ export type Database = {
       }
     }
     Functions: {
+      create_or_get_unternehmen: { Args: { p_name: string }; Returns: string }
       decrypt_imap_password: {
         Args: { encrypted: string; encryption_key: string }
         Returns: string
       }
       encrypt_imap_password: {
         Args: { encryption_key: string; password: string }
+        Returns: string
+      }
+      find_client_by_meta_account: {
+        Args: { p_account_id: string }
         Returns: string
       }
       has_role: {
