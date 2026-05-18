@@ -145,9 +145,9 @@ export default function ReferenzWebsitesPage() {
     const days30 = 30 * 24 * 60 * 60 * 1000;
     let out = items.filter(i => {
       if (brancheFilter && getShowcaseBranche(i) !== brancheFilter) return false;
-      const k = (i as any).linked_kunde?.client_name || (i as any).client_name;
+      const k = pickClientName(i as any) || (i as any).linked_kunde?.client_name || (i as any).client_name;
       if (kundeFilter && k !== kundeFilter) return false;
-      const u = (i as any).linked_kunde?.unternehmen || (i as any).unternehmen;
+      const u = pickUnternehmenLabel(i as any) || (i as any).linked_kunde?.unternehmen || (i as any).unternehmen;
       if (unternehmenFilter && u !== unternehmenFilter) return false;
       const features = ((i as any).key_features as string[] | null) || [];
       if (highlightFilter && !features.includes(highlightFilter)) return false;
