@@ -186,10 +186,10 @@ export default function Kunden() {
         {filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground col-span-full text-center py-8">Keine Kunden gefunden.</p>
         ) : filtered.map(c => (
-          <button
+          <div
             key={c.id}
-            onClick={() => navigate(`/kunden/${c.id}`)}
-            className="text-left rounded-lg border border-border bg-card p-4 hover:border-primary/40 hover:bg-muted/30 transition-colors"
+            onClick={() => setSelectedKunde(c)}
+            className="group relative text-left rounded-lg border border-border bg-card p-4 hover:border-primary/40 hover:bg-muted/30 transition-colors cursor-pointer"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -206,9 +206,24 @@ export default function Kunden() {
                 {c.deal_count} Deals · €{(c.deal_total || 0).toLocaleString('de-DE', { maximumFractionDigits: 0 })}
               </span>
             </div>
-          </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/kunden/${c.id}`); }}
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+              aria-label="Details öffnen"
+              title="Master-Detail öffnen"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         ))}
       </div>
+
+      <KundenSlidePanel
+        client={selectedKunde}
+        open={!!selectedKunde}
+        onOpenChange={(open) => !open && setSelectedKunde(null)}
+        onSaved={() => { setSelectedKunde(null); load(); }}
+      />
     </div>
   );
 }
