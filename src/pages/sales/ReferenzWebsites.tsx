@@ -100,7 +100,7 @@ export default function ReferenzWebsitesPage() {
   const kundeOptions = useMemo(() => {
     const map = new Map<string, number>();
     items.forEach(i => {
-      const k = (i as any).linked_kunde?.client_name || (i as any).client_name;
+      const k = pickClientName(i as any) || (i as any).linked_kunde?.client_name || (i as any).client_name;
       if (typeof k === 'string' && k.trim()) map.set(k.trim(), (map.get(k.trim()) ?? 0) + 1);
     });
     return Array.from(map.entries())
@@ -111,7 +111,7 @@ export default function ReferenzWebsitesPage() {
   const unternehmenOptions = useMemo(() => {
     const map = new Map<string, number>();
     items.forEach(i => {
-      const u = (i as any).linked_kunde?.unternehmen || (i as any).unternehmen;
+      const u = pickUnternehmenLabel(i as any) || (i as any).linked_kunde?.unternehmen || (i as any).unternehmen;
       if (typeof u === 'string' && u.trim()) map.set(u.trim(), (map.get(u.trim()) ?? 0) + 1);
     });
     return Array.from(map.entries())
