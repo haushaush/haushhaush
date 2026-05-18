@@ -10,13 +10,9 @@ import { toast } from 'sonner';
 import { Loader2, ImageIcon, X, Plus, Camera, RefreshCw, Upload } from 'lucide-react';
 import { WebsiteEmbed } from './WebsiteEmbed';
 import type { ShowcaseRow } from '@/pages/sales/ReferenzShowcaseShared';
-import { Combobox } from '@/components/ui/Combobox';
-import {
-  useBranchen,
-  useCreateBranche,
-  useUnternehmen,
-  useCreateUnternehmen,
-} from '@/hooks/useLookups';
+import { ClientPicker } from '@/components/pickers/ClientPicker';
+import { BranchePicker } from '@/components/pickers/BranchePicker';
+import { UnternehmenPicker } from '@/components/pickers/UnternehmenPicker';
 import { HighlightsPicker } from '@/components/ui/HighlightsPicker';
 import { useHighlights } from '@/hooks/useHighlights';
 
@@ -115,13 +111,10 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
   const [url, setUrl] = useState(editing?.website_url ?? '');
   const [title, setTitle] = useState(editing?.title ?? '');
   const [clientName, setClientName] = useState(editing?.client_name ?? '');
-  const [branche, setBranche] = useState(editing?.branche ?? '');
-  const [unternehmen, setUnternehmen] = useState((editing as any)?.unternehmen ?? '');
+  const [linkedClientId, setLinkedClientId] = useState<string | null>((editing as any)?.linked_client_id ?? null);
+  const [brancheId, setBrancheId] = useState<string | null>((editing as any)?.linked_branche_id ?? null);
+  const [unternehmenId, setUnternehmenId] = useState<string | null>((editing as any)?.linked_unternehmen_id ?? null);
 
-  const { data: branchen = [] } = useBranchen();
-  const { data: unternehmenList = [] } = useUnternehmen();
-  const createBranche = useCreateBranche();
-  const createUnternehmen = useCreateUnternehmen();
   const { incrementUsage: incrementHighlights } = useHighlights();
   const [description, setDescription] = useState(editing?.description ?? '');
   const [isFeatured, setIsFeatured] = useState(editing?.is_featured ?? false);
@@ -256,8 +249,9 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
         type: 'website',
         title: title.trim(),
         client_name: clientName.trim() || null,
-        branche: branche.trim() || null,
-        unternehmen: (unternehmen || '').trim() || null,
+        linked_client_id: linkedClientId,
+        linked_branche_id: brancheId,
+        linked_unternehmen_id: unternehmenId,
         description: description.trim() || null,
         website_url: cleanUrl,
         fallback_image_url: fallbackUrl,
@@ -431,28 +425,27 @@ export function AddWebsiteModal({ open, editing, onClose, onSaved }: Props) {
             </div>
             <div>
               <Label>Kunde</Label>
+              <ClientPicker
+                value={linkedClientId}
+                onChange={(id, name) => {
+                  setLinkedClientId(id);
+                  if (name && !clientName) setClientName(name);
+                }}
+                placeholder="Kunde wählen..."
+              />
+            </div>
+            <div>
+              <Label>Anzeige-Name (optional)</Label>
               <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Marvin Rixen" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Branche</Label>
-                <Combobox
-                  value={branche}
-                  onChange={setBranche}
-                  options={branchen}
-                  onCreateNew={(name) => createBranche.mutateAsync(name)}
-                  placeholder="Wählen..."
-                />
+                <BranchePicker value={brancheId} onChange={setBrancheId} placeholder="Wählen..." />
               </div>
               <div>
                 <Label>Unternehmen</Label>
-                <Combobox
-                  value={unternehmen}
-                  onChange={setUnternehmen}
-                  options={unternehmenList}
-                  onCreateNew={(name) => createUnternehmen.mutateAsync(name)}
-                  placeholder="Wählen..."
-                />
+                <UnternehmenPicker value={unternehmenId} onChange={setUnternehmenId} placeholder="Wählen..." />
               </div>
             </div>
             <div>
