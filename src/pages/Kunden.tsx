@@ -8,8 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Users } from 'lucide-react';
+import { Plus, Search, Users, RefreshCw, Loader2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import KundenSlidePanel from '@/components/kunden/KundenSlidePanel';
 
 const STATUS_STYLES: Record<string, string> = {
   'In Betreuung': 'bg-success/20 text-success',
@@ -43,6 +44,8 @@ export default function Kunden() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
+  const [syncing, setSyncing] = useState(false);
+  const [selectedKunde, setSelectedKunde] = useState<ClientRow | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -85,6 +88,21 @@ export default function Kunden() {
     if (data?.id) navigate(`/kunden/${data.id}`);
   };
 
+  const handleNotionSync = async () => {
+    setSyncing(true);
+    const toastId = toast.loading('Notion-Import läuft…');
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-notion', { body: { target: 'kunden' } });
+      if (error) throw error;
+      toast.success(`${data?.synced?.kunden ?? '?'} Kunden synchronisiert`, { id: toastId });
+      await load();
+    } catch (e: any) {
+      toast.error(`Sync fehlgeschlagen: ${e.message}`, { id: toastId });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     return clients.filter(c => {
       const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase());
@@ -118,20 +136,26 @@ export default function Kunden() {
           </div>
         </div>
         {isAdminOrManager && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" />Neuer Kunde</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader><DialogTitle>Kunde anlegen</DialogTitle></DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-3">
-                <div><Label>Name *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
-                <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
-                <div><Label>Telefon</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
-                <Button type="submit" className="w-full">Anlegen</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleNotionSync} disabled={syncing}>
+              {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+              Notion-Import
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" />Neuer Kunde</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader><DialogTitle>Kunde anlegen</DialogTitle></DialogHeader>
+                <form onSubmit={handleCreate} className="space-y-3">
+                  <div><Label>Name *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
+                  <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+                  <div><Label>Telefon</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+                  <Button type="submit" className="w-full">Anlegen</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </div>
 
@@ -162,10 +186,10 @@ export default function Kunden() {
         {filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground col-span-full text-center py-8">Keine Kunden gefunden.</p>
         ) : filtered.map(c => (
-          <button
+          <div
             key={c.id}
-            onClick={() => navigate(`/kunden/${c.id}`)}
-            className="text-left rounded-lg border border-border bg-card p-4 hover:border-primary/40 hover:bg-muted/30 transition-colors"
+            onClick={() => setSelectedKunde(c)}
+            className="group relative text-left rounded-lg border border-border bg-card p-4 hover:border-primary/40 hover:bg-muted/30 transition-colors cursor-pointer"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -182,9 +206,24 @@ export default function Kunden() {
                 {c.deal_count} Deals · €{(c.deal_total || 0).toLocaleString('de-DE', { maximumFractionDigits: 0 })}
               </span>
             </div>
-          </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/kunden/${c.id}`); }}
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+              aria-label="Details öffnen"
+              title="Master-Detail öffnen"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         ))}
       </div>
+
+      <KundenSlidePanel
+        client={selectedKunde}
+        open={!!selectedKunde}
+        onOpenChange={(open) => !open && setSelectedKunde(null)}
+        onSaved={() => { setSelectedKunde(null); load(); }}
+      />
     </div>
   );
 }
