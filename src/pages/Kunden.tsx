@@ -134,6 +134,31 @@ export default function Kunden() {
     }
   };
 
+  const handleAutoLink = async () => {
+    setLinking(true);
+    const toastId = toast.loading('Auto-Zuordnen läuft…');
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-link-all', {
+        body: { target: 'all', only_unmatched: true }
+      });
+      if (error) throw error;
+      const s = data?.stats || {};
+      const onepage = s.onepage?.matched_by_name || 0;
+      const showcase = (s.showcase?.matched_by_account || 0) + (s.showcase?.matched_by_name || 0);
+      const campaigns = (s.campaigns?.matched_by_account || 0) + (s.campaigns?.matched_by_name || 0);
+      const total = onepage + showcase + campaigns;
+      toast.success(`${total} Datensätze automatisch zugeordnet`, {
+        id: toastId,
+        description: `Onepage: ${onepage} · Showcase: ${showcase} · Campaigns: ${campaigns}`,
+      });
+      await load();
+    } catch (e: any) {
+      toast.error(`Fehler: ${e.message}`, { id: toastId });
+    } finally {
+      setLinking(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     return clients.filter(c => {
       const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase());
