@@ -14,6 +14,7 @@ import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
 import { getAdLiveStatus, isAdActive } from "@/lib/adStatus";
 import { useFilterOptions } from "@/hooks/useFilterOptions";
 import { normalizeBranche } from "@/lib/branchen";
+import { FK_EMBED_ALL, pickBrancheValue, pickUnternehmenLabel, pickClientId } from "@/lib/showcaseFkSelect";
 import { SyncStatusBanner } from "@/components/admin/SyncStatusBanner";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
