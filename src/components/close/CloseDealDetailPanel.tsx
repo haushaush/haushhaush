@@ -31,6 +31,7 @@ export function CloseDealDetailPanel({ dealId, open, onOpenChange }: Props) {
   const [notes, setNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showLead, setShowLead] = useState<string | null>(null);
+  const [clientLink, setClientLink] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!open || !dealId) return;
