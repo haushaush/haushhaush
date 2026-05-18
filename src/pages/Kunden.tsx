@@ -23,14 +23,35 @@ const AMPEL_DOT: Record<string, string> = { 'Grün': 'bg-success', 'Gelb': 'bg-w
 interface ClientRow {
   id: string;
   name: string;
+  vor_nachname?: string | null;
   email: string | null;
   phone: string | null;
-  kundenstatus: string;
-  ampelstatus: string;
+  website_url?: string | null;
   branche_id: string | null;
   branche: string | null;
   unternehmen_id: string | null;
   unternehmen?: { display_name: string } | null;
+  meta_account_id?: string | null;
+  kundenstatus: string;
+  ampelstatus: string;
+  zahlstatus?: string | null;
+  projekttyp?: string[] | string | null;
+  laufzeit?: string | null;
+  startdatum?: string | null;
+  enddatum?: string | null;
+  deadline?: string | null;
+  laufzeit_in_14t?: boolean | null;
+  clv?: number | null;
+  gesamt_saldo?: number | null;
+  ads_budget?: number | null;
+  cash_collect_offen?: number | null;
+  meta_kosten?: number | null;
+  crm_kosten?: number | null;
+  superchat_kosten?: number | null;
+  website_kosten?: number | null;
+  notes?: string | null;
+  notion_id?: string | null;
+  notion_url?: string | null;
   deal_count?: number;
   deal_total?: number;
 }
