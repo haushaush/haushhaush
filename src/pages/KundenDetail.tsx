@@ -148,7 +148,7 @@ export default function KundenDetail() {
   }
 
   const brancheLabel = client.branche_id
-    ? getBranche(client.branche_id)?.display_name || client.branche_id
+    ? getBranche(client.branche_id)?.label || client.branche_id
     : client.branche || null;
 
   return (
