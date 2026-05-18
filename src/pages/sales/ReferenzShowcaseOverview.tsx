@@ -33,7 +33,8 @@ const KUNDE_SELECT = 'linked_kunde:close_deals(client_name, unternehmen, branche
 export default function ReferenzShowcaseOverview() {
   const queryClient = useQueryClient();
   const isPublic = useIsPublicView();
-  const kundeJoin = isPublic ? '' : `, ${KUNDE_SELECT}`;
+  // FK joins are safe in public view too (read-only RLS-controlled).
+  const kundeJoin = isPublic ? `, ${FK_EMBED_ALL}` : `, ${KUNDE_SELECT}, ${FK_EMBED_ALL}`;
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'website' | 'werbeanzeige' | 'campaign'>('all');
   const [brancheFilter, setBrancheFilter] = useState('');
