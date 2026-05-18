@@ -71,7 +71,16 @@ export default function Kunden() {
   const load = async () => {
     setLoading(true);
     const [{ data: cs }, { data: ds }] = await Promise.all([
-      supabase.from('clients').select('id, name, email, phone, kundenstatus, ampelstatus, branche_id, branche, unternehmen_id, unternehmen:unternehmen_id(display_name)').is('deleted_at', null).order('name'),
+      supabase.from('clients').select(`
+        id, name, vor_nachname, email, phone, website_url,
+        branche_id, branche, unternehmen_id, meta_account_id,
+        kundenstatus, ampelstatus, zahlstatus,
+        projekttyp, laufzeit, startdatum, enddatum, deadline, laufzeit_in_14t,
+        clv, gesamt_saldo, ads_budget, cash_collect_offen,
+        meta_kosten, crm_kosten, superchat_kosten, website_kosten,
+        notes, notion_id, notion_url,
+        unternehmen:unternehmen_id(display_name)
+      `).is('deleted_at', null).order('name'),
       supabase.from('close_deals').select('client_id, wert_eur'),
     ]);
     const aggMap = new Map<string, { count: number; total: number }>();
