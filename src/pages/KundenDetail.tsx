@@ -223,6 +223,63 @@ export default function KundenDetail() {
 
         {/* ÜBERSICHT */}
         <TabsContent value="uebersicht" className="mt-4 space-y-4">
+          {/* KPI-Karten */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KpiCard label="CLV" value={fmtEur(client.clv)} />
+            <KpiCard label="Gesamt-Saldo" value={fmtEur(client.gesamt_saldo)} />
+            <KpiCard label="Ads-Budget" value={fmtEur(client.ads_budget)} />
+            <KpiCard label="Cash Collect offen" value={fmtEur(client.cash_collect_offen)} />
+          </div>
+
+          {/* Stammdaten */}
+          <Card>
+            <CardHeader><CardTitle className="text-base">Stammdaten</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+              <InfoField label="Name" value={client.name} />
+              <InfoField label="Vor- & Nachname" value={client.vor_nachname} />
+              <InfoField label="E-Mail" value={client.email} type="email" />
+              <InfoField label="Telefon" value={client.phone} type="phone" />
+              <InfoField label="Website" value={client.website_url} type="url" />
+              <InfoField label="Branche" value={getBrancheLabel(client.branche_id) || client.branche} />
+              <InfoField label="Unternehmen" value={unternehmen?.display_name} />
+              <InfoField label="Meta Account ID" value={client.meta_account_id} />
+            </CardContent>
+          </Card>
+
+          {/* Status */}
+          <Card>
+            <CardHeader><CardTitle className="text-base">Status</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-3">
+              <InfoField label="Kundenstatus" value={client.kundenstatus} />
+              <InfoField label="Ampel" value={client.ampelstatus} />
+              <InfoField label="Zahlstatus" value={client.zahlstatus} />
+            </CardContent>
+          </Card>
+
+          {/* Zeitraum & Laufzeit */}
+          <Card>
+            <CardHeader><CardTitle className="text-base">Zeitraum & Laufzeit</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+              <InfoField label="Startdatum" value={fmtDate(client.startdatum)} />
+              <InfoField label="Enddatum" value={fmtDate(client.enddatum)} />
+              <InfoField label="Deadline" value={fmtDate(client.deadline)} />
+              <InfoField label="Laufzeit" value={client.laufzeit} />
+              <InfoField label="Laufzeit in 14T" value={client.laufzeit_in_14t ? 'Ja' : 'Nein'} />
+            </CardContent>
+          </Card>
+
+          {/* Kosten */}
+          <Card>
+            <CardHeader><CardTitle className="text-base">Kosten</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
+              <InfoField label="Meta-Kosten" value={fmtEur(client.meta_kosten)} />
+              <InfoField label="CRM-Kosten" value={fmtEur(client.crm_kosten)} />
+              <InfoField label="Superchat-Kosten" value={fmtEur(client.superchat_kosten)} />
+              <InfoField label="Website-Kosten" value={fmtEur(client.website_kosten)} />
+            </CardContent>
+          </Card>
+
+          {/* Letzte Aktivität */}
           <Card>
             <CardHeader><CardTitle className="text-base">Letzte Aktivität</CardTitle></CardHeader>
             <CardContent>
@@ -246,6 +303,18 @@ export default function KundenDetail() {
               <CardHeader><CardTitle className="text-base">Notizen</CardTitle></CardHeader>
               <CardContent><p className="text-sm whitespace-pre-wrap text-muted-foreground">{client.notes}</p></CardContent>
             </Card>
+          )}
+
+          {client.notion_url && (
+            <a
+              href={client.notion_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <ExternalLink className="w-4 h-4" />
+              In Notion öffnen
+            </a>
           )}
         </TabsContent>
 
