@@ -24,10 +24,14 @@ const trimOrNull = (v: any): string | null => {
   return t || null;
 };
 
-/** Display label for branche — prefers FK, falls back to legacy text. */
+/** Display label for branche — resolves canonical id via BRANCHEN const, falls back to legacy text. */
 export function pickBrancheLabel(i: any): string | null {
-  const fk = i?.linked_branche;
-  if (fk) return trimOrNull(fk.display_name) ?? trimOrNull(fk.name);
+  // linked_branche_id is a TEXT field holding the canonical branche id (no FK join possible)
+  const brancheId = trimOrNull(i?.linked_branche_id);
+  if (brancheId) {
+    const b = getBrancheById(brancheId);
+    if (b) return b.label;
+  }
   const fromClientFk = i?.linked_client?.branche;
   if (fromClientFk) {
     const id = trimOrNull(fromClientFk);
@@ -46,8 +50,8 @@ export function pickBrancheLabel(i: any): string | null {
 
 /** Normalized (lowercased) branche value for filter comparisons. */
 export function pickBrancheValue(i: any): string | null {
-  const fk = i?.linked_branche;
-  if (fk) return trimOrNull(fk.name)?.toLowerCase() ?? null;
+  const brancheId = trimOrNull(i?.linked_branche_id);
+  if (brancheId) return brancheId.toLowerCase();
   const label = pickBrancheLabel(i);
   return label ? label.toLowerCase() : null;
 }
