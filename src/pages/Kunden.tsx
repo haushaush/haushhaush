@@ -23,14 +23,35 @@ const AMPEL_DOT: Record<string, string> = { 'Grün': 'bg-success', 'Gelb': 'bg-w
 interface ClientRow {
   id: string;
   name: string;
+  vor_nachname?: string | null;
   email: string | null;
   phone: string | null;
-  kundenstatus: string;
-  ampelstatus: string;
+  website_url?: string | null;
   branche_id: string | null;
   branche: string | null;
   unternehmen_id: string | null;
   unternehmen?: { display_name: string } | null;
+  meta_account_id?: string | null;
+  kundenstatus: string;
+  ampelstatus: string;
+  zahlstatus?: string | null;
+  projekttyp?: string[] | string | null;
+  laufzeit?: string | null;
+  startdatum?: string | null;
+  enddatum?: string | null;
+  deadline?: string | null;
+  laufzeit_in_14t?: boolean | null;
+  clv?: number | null;
+  gesamt_saldo?: number | null;
+  ads_budget?: number | null;
+  cash_collect_offen?: number | null;
+  meta_kosten?: number | null;
+  crm_kosten?: number | null;
+  superchat_kosten?: number | null;
+  website_kosten?: number | null;
+  notes?: string | null;
+  notion_id?: string | null;
+  notion_url?: string | null;
   deal_count?: number;
   deal_total?: number;
 }
@@ -50,7 +71,16 @@ export default function Kunden() {
   const load = async () => {
     setLoading(true);
     const [{ data: cs }, { data: ds }] = await Promise.all([
-      supabase.from('clients').select('id, name, email, phone, kundenstatus, ampelstatus, branche_id, branche, unternehmen_id, unternehmen:unternehmen_id(display_name)').is('deleted_at', null).order('name'),
+      supabase.from('clients').select(`
+        id, name, vor_nachname, email, phone, website_url,
+        branche_id, branche, unternehmen_id, meta_account_id,
+        kundenstatus, ampelstatus, zahlstatus,
+        projekttyp, laufzeit, startdatum, enddatum, deadline, laufzeit_in_14t,
+        clv, gesamt_saldo, ads_budget, cash_collect_offen,
+        meta_kosten, crm_kosten, superchat_kosten, website_kosten,
+        notes, notion_id, notion_url,
+        unternehmen:unternehmen_id(display_name)
+      `).is('deleted_at', null).order('name'),
       supabase.from('close_deals').select('client_id, wert_eur'),
     ]);
     const aggMap = new Map<string, { count: number; total: number }>();
