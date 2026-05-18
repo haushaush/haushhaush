@@ -186,8 +186,8 @@ export function ShowcaseGridPage({ type, title }: Props) {
                 </div>
                 <div className="p-3">
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-1">
-                    {item.client_name && <span className="truncate">{item.client_name}</span>}
-                    {item.branche && <><span>·</span><span className="truncate">{item.branche}</span></>}
+                    {displayClient(item) && <span className="truncate">{displayClient(item)}</span>}
+                    {displayBranche(item) && <><span>·</span><span className="truncate">{displayBranche(item)}</span></>}
                   </div>
                   <h3 className="text-sm font-medium truncate">{item.title}</h3>
                   {Object.keys(m).length > 0 && (
