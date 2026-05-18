@@ -29,6 +29,45 @@ const fmtDate = (d: string | null | undefined) => {
   if (!d) return '–';
   try { return new Date(d).toLocaleDateString('de-DE'); } catch { return '–'; }
 };
+const fmtEur = (v: any): string => {
+  if (v == null || v === '') return '—';
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(v));
+};
+const getBrancheLabel = (id: string | null | undefined) => id ? (getBranche(id)?.label || id) : null;
+
+function KpiCard({ label, value }: { label: string; value: string }) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
+        <p className="text-2xl font-bold tabular-nums mt-1">{value}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function InfoField({ label, value, type }: { label: string; value: any; type?: 'email' | 'phone' | 'url' }) {
+  const empty = value == null || value === '';
+  const labelEl = <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>;
+  if (empty) {
+    return <div><>{labelEl}<p className="text-sm mt-0.5 text-muted-foreground">—</p></></div>;
+  }
+  let content: React.ReactNode = <p className="text-sm mt-0.5 font-medium break-words">{value}</p>;
+  if (type === 'email') {
+    content = <a href={`mailto:${value}`} className="text-sm mt-0.5 font-medium text-primary hover:underline break-all block">{value}</a>;
+  } else if (type === 'phone') {
+    content = <a href={`tel:${value}`} className="text-sm mt-0.5 font-medium text-primary hover:underline block">{value}</a>;
+  } else if (type === 'url') {
+    const href = String(value).startsWith('http') ? value : `https://${value}`;
+    content = (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="text-sm mt-0.5 font-medium text-primary hover:underline inline-flex items-center gap-1 break-all">
+        {value} <ExternalLink className="w-3 h-3 shrink-0" />
+      </a>
+    );
+  }
+  return <div>{labelEl}{content}</div>;
+}
+
 
 export default function KundenDetail() {
   const { id } = useParams<{ id: string }>();
