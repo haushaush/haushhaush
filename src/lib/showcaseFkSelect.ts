@@ -10,12 +10,12 @@ import { getBranche as getBrancheById } from '@/lib/branchen';
 // with the legacy `linked_kunde:close_deals(...)` join that still ships.
 export const FK_EMBED_CLIENT =
   'linked_client:clients!linked_client_id(id, name, branche, unternehmen:unternehmen_id(id, display_name, name))';
-export const FK_EMBED_BRANCHE =
-  'linked_branche:branchen!linked_branche_id(id, name, display_name)';
 export const FK_EMBED_UNTERNEHMEN =
   'linked_unternehmen:unternehmen!linked_unternehmen_id(id, name, display_name)';
 
-export const FK_EMBED_ALL = `${FK_EMBED_CLIENT}, ${FK_EMBED_BRANCHE}, ${FK_EMBED_UNTERNEHMEN}`;
+// NOTE: `branchen` is NOT a DB table — branches live as a TS constant in src/lib/branchen.ts.
+// `linked_branche_id` is a plain TEXT column holding the canonical branche id and is read directly.
+export const FK_EMBED_ALL = `linked_branche_id, ${FK_EMBED_CLIENT}, ${FK_EMBED_UNTERNEHMEN}`;
 
 const trimOrNull = (v: any): string | null => {
   if (Array.isArray(v)) v = v[0];
