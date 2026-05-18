@@ -249,8 +249,7 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
 
   const kunde = getShowcaseKundenname(item);
   const branche = getShowcaseBranche(item);
-  const unternehmen =
-    item.linked_kunde?.unternehmen || item.filter_values?.unternehmen || item.unternehmen || null;
+  const unternehmen = getShowcaseUnternehmen(item);
   const externalLink =
     item.external_link || item.website_url || item.notion_url || item.original_url || null;
 
