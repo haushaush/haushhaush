@@ -9,6 +9,9 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Upload } from 'lucide-react';
 import type { ShowcaseRow } from '@/pages/sales/ReferenzShowcaseShared';
+import { ClientPicker } from '@/components/pickers/ClientPicker';
+import { BranchePicker } from '@/components/pickers/BranchePicker';
+import { UnternehmenPicker } from '@/components/pickers/UnternehmenPicker';
 
 interface Props {
   open: boolean;
@@ -22,8 +25,9 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
   const [type, setType] = useState<'website' | 'werbeanzeige'>(editing?.type ?? initialType);
   const [title, setTitle] = useState(editing?.title ?? '');
   const [clientName, setClientName] = useState(editing?.client_name ?? '');
-  const [linkedKundeId, setLinkedKundeId] = useState<string | ''>(editing?.linked_kunde_id ?? '');
-  const [branche, setBranche] = useState(editing?.branche ?? '');
+  const [linkedClientId, setLinkedClientId] = useState<string | null>((editing as any)?.linked_client_id ?? null);
+  const [brancheId, setBrancheId] = useState<string | null>((editing as any)?.linked_branche_id ?? null);
+  const [unternehmenId, setUnternehmenId] = useState<string | null>((editing as any)?.linked_unternehmen_id ?? null);
   const [description, setDescription] = useState(editing?.description ?? '');
   const [websiteUrl, setWebsiteUrl] = useState(editing?.website_url ?? '');
   const [previewImageUrl, setPreviewImageUrl] = useState(editing?.preview_image_url ?? '');
@@ -40,16 +44,8 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
   const [tagsInput, setTagsInput] = useState((editing?.tags ?? []).join(', '));
   const [isFeatured, setIsFeatured] = useState(editing?.is_featured ?? false);
   const [isPublic, setIsPublic] = useState<boolean>((editing as any)?.is_public ?? true);
-  const [kunden, setKunden] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-
-  useEffect(() => {
-    supabase.from('close_deals').select('id, client_name').limit(500).then(({ data }) => {
-      const list = (data ?? []).map((d: any) => ({ id: d.id, name: d.client_name ?? d.id }));
-      setKunden(list);
-    });
-  }, []);
 
   const handleUpload = async (file: File, target: 'preview' | 'thumbnail') => {
     setUploading(true);
@@ -85,8 +81,9 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
       type,
       title: title.trim(),
       client_name: clientName.trim() || null,
-      linked_kunde_id: linkedKundeId || null,
-      branche: branche.trim() || null,
+      linked_client_id: linkedClientId,
+      linked_branche_id: brancheId,
+      linked_unternehmen_id: unternehmenId,
       description: description.trim() || null,
       website_url: type === 'website' ? (websiteUrl.trim() || null) : null,
       preview_image_url: type === 'website' ? (previewImageUrl || null) : null,
