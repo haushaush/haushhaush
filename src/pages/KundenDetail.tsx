@@ -50,7 +50,7 @@ function InfoField({ label, value, type }: { label: string; value: any; type?: '
   const empty = value == null || value === '';
   const labelEl = <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>;
   if (empty) {
-    return <div><>{labelEl}<p className="text-sm mt-0.5 text-muted-foreground">—</p></></div>;
+    return <div>{labelEl}<p className="text-sm mt-0.5 text-muted-foreground">—</p></div>;
   }
   let content: React.ReactNode = <p className="text-sm mt-0.5 font-medium break-words">{value}</p>;
   if (type === 'email') {
