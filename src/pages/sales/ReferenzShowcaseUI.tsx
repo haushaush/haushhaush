@@ -8,6 +8,7 @@ import * as React from 'react';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
 import { PageShell } from '@/components/layout/PageShell';
 import { getBrancheDisplay } from '@/lib/branchen';
+import { pickBrancheLabel, pickClientName, pickUnternehmenLabel } from '@/lib/showcaseFkSelect';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { isTopPerformer } from '@/lib/topPerformer';
@@ -217,15 +218,20 @@ export function getShowcaseTitle(i: AnyItem): string {
 }
 
 export function getShowcaseKundenname(i: AnyItem): string | null {
-  return i.linked_kunde?.client_name || i.client_name || i.meta_account_name || null;
+  return pickClientName(i) || i.linked_kunde?.client_name || i.client_name || i.meta_account_name || null;
 }
 
 export function getShowcaseBranche(i: AnyItem): string | null {
+  const fk = pickBrancheLabel(i);
+  if (fk) return getBrancheDisplay(fk, 'short') ?? fk;
   const raw = i.linked_kunde?.branche ?? i.filter_values?.branche ?? i.branche ?? null;
   const value = Array.isArray(raw) ? raw[0] : raw;
   if (typeof value !== 'string' || !value.trim()) return null;
-  // Use canonical short label when raw value matches a known alias
   return getBrancheDisplay(value, 'short') ?? value.trim();
+}
+
+export function getShowcaseUnternehmen(i: AnyItem): string | null {
+  return pickUnternehmenLabel(i) || i.linked_kunde?.unternehmen || i.filter_values?.unternehmen || i.unternehmen || null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -243,8 +249,7 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
 
   const kunde = getShowcaseKundenname(item);
   const branche = getShowcaseBranche(item);
-  const unternehmen =
-    item.linked_kunde?.unternehmen || item.filter_values?.unternehmen || item.unternehmen || null;
+  const unternehmen = getShowcaseUnternehmen(item);
   const externalLink =
     item.external_link || item.website_url || item.notion_url || item.original_url || null;
 

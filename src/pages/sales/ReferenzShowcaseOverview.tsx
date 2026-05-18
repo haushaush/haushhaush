@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { ShowcaseCard } from './ReferenzShowcaseUI';
 import { SHOWCASE_COPY } from '@/copy/showcase';
+import { FK_EMBED_ALL, pickBrancheLabel, pickBrancheValue, pickUnternehmenLabel, pickUnternehmenValue, pickClientName } from '@/lib/showcaseFkSelect';
 
 type AnyItem = Record<string, any> & { _type: 'website' | 'werbeanzeige' | 'campaign' };
 
@@ -32,7 +33,8 @@ const KUNDE_SELECT = 'linked_kunde:close_deals(client_name, unternehmen, branche
 export default function ReferenzShowcaseOverview() {
   const queryClient = useQueryClient();
   const isPublic = useIsPublicView();
-  const kundeJoin = isPublic ? '' : `, ${KUNDE_SELECT}`;
+  // FK joins are safe in public view too (read-only RLS-controlled).
+  const kundeJoin = isPublic ? `, ${FK_EMBED_ALL}` : `, ${KUNDE_SELECT}, ${FK_EMBED_ALL}`;
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'website' | 'werbeanzeige' | 'campaign'>('all');
   const [brancheFilter, setBrancheFilter] = useState('');
@@ -161,6 +163,8 @@ export default function ReferenzShowcaseOverview() {
   };
 
   const getBrancheValue = (i: AnyItem): string | null => {
+    const fk = pickBrancheValue(i);
+    if (fk) return fk;
     const tags: string[] = i.custom_tags || i.tags || [];
     const fromTags = tags
       .filter(t => typeof t === 'string' && t.toLowerCase().startsWith('branche-'))
@@ -179,6 +183,8 @@ export default function ReferenzShowcaseOverview() {
   };
 
   const getUnternehmenValue = (i: AnyItem): string | null => {
+    const fk = pickUnternehmenValue(i);
+    if (fk) return fk;
     const tags: string[] = i.custom_tags || i.tags || [];
     const fromTags = tags
       .filter(t => typeof t === 'string' && (t.toLowerCase().startsWith('versicherer-') || t.toLowerCase().startsWith('unternehmen-')))
@@ -198,6 +204,8 @@ export default function ReferenzShowcaseOverview() {
 
   // Display-friendly version (preserves original casing from first occurrence)
   const getBranche = (i: AnyItem): string | null => {
+    const fk = pickBrancheLabel(i);
+    if (fk) return fk;
     const tags: string[] = i.custom_tags || i.tags || [];
     const fromTags = tags
       .filter(t => typeof t === 'string' && t.toLowerCase().startsWith('branche-'))
@@ -207,11 +215,13 @@ export default function ReferenzShowcaseOverview() {
     return (typeof raw === 'string' && raw.trim()) ? raw.trim() : null;
   };
   const getUnternehmen = (i: AnyItem): string | null => {
+    const fk = pickUnternehmenLabel(i);
+    if (fk) return fk;
     const raw = i.linked_kunde?.unternehmen || i.filter_values?.unternehmen || i.unternehmen || null;
     return (typeof raw === 'string' && raw.trim()) ? raw.trim() : null;
   };
   const getKundenname = (i: AnyItem) =>
-    i.linked_kunde?.client_name || i.client_name || i.meta_account_name || null;
+    pickClientName(i) || i.linked_kunde?.client_name || i.client_name || i.meta_account_name || null;
   const getTitle = (i: AnyItem) => {
     if (i.custom_title) return i.custom_title;
     if (i._type === 'campaign') {

@@ -11,6 +11,7 @@ import {
   ShowcaseCard, ShowcaseEmptyState, ResultCount, PrimaryActionButton,
   getShowcaseBranche, type AnyItem,
 } from './ReferenzShowcaseUI';
+import { FK_EMBED_ALL, pickClientName, pickUnternehmenLabel } from '@/lib/showcaseFkSelect';
 import { cn } from '@/lib/utils';
 
 function QuickToggle({
@@ -68,7 +69,7 @@ export default function ReferenzWebsitesPage() {
     setLoading(true);
     const { data } = await supabase
       .from('referenz_showcase' as any)
-      .select(isPublic ? '*' : '*, linked_kunde:close_deals(client_name, unternehmen, branche)')
+      .select(isPublic ? `*, ${FK_EMBED_ALL}` : `*, linked_kunde:close_deals(client_name, unternehmen, branche), ${FK_EMBED_ALL}`)
       .eq('type', 'website')
       .eq('is_active', true)
       .order('is_featured', { ascending: false })
@@ -99,7 +100,7 @@ export default function ReferenzWebsitesPage() {
   const kundeOptions = useMemo(() => {
     const map = new Map<string, number>();
     items.forEach(i => {
-      const k = (i as any).linked_kunde?.client_name || (i as any).client_name;
+      const k = pickClientName(i as any) || (i as any).linked_kunde?.client_name || (i as any).client_name;
       if (typeof k === 'string' && k.trim()) map.set(k.trim(), (map.get(k.trim()) ?? 0) + 1);
     });
     return Array.from(map.entries())
@@ -110,7 +111,7 @@ export default function ReferenzWebsitesPage() {
   const unternehmenOptions = useMemo(() => {
     const map = new Map<string, number>();
     items.forEach(i => {
-      const u = (i as any).linked_kunde?.unternehmen || (i as any).unternehmen;
+      const u = pickUnternehmenLabel(i as any) || (i as any).linked_kunde?.unternehmen || (i as any).unternehmen;
       if (typeof u === 'string' && u.trim()) map.set(u.trim(), (map.get(u.trim()) ?? 0) + 1);
     });
     return Array.from(map.entries())
@@ -144,9 +145,9 @@ export default function ReferenzWebsitesPage() {
     const days30 = 30 * 24 * 60 * 60 * 1000;
     let out = items.filter(i => {
       if (brancheFilter && getShowcaseBranche(i) !== brancheFilter) return false;
-      const k = (i as any).linked_kunde?.client_name || (i as any).client_name;
+      const k = pickClientName(i as any) || (i as any).linked_kunde?.client_name || (i as any).client_name;
       if (kundeFilter && k !== kundeFilter) return false;
-      const u = (i as any).linked_kunde?.unternehmen || (i as any).unternehmen;
+      const u = pickUnternehmenLabel(i as any) || (i as any).linked_kunde?.unternehmen || (i as any).unternehmen;
       if (unternehmenFilter && u !== unternehmenFilter) return false;
       const features = ((i as any).key_features as string[] | null) || [];
       if (highlightFilter && !features.includes(highlightFilter)) return false;

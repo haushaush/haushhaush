@@ -2,25 +2,26 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUnternehmen } from '@/hooks/useBranchenUnternehmen';
 import { normalizeBranche, getBranche, BRANCHEN } from '@/lib/branchen';
+import { FK_EMBED_ALL, pickBrancheValue, pickClientId, pickClientName } from '@/lib/showcaseFkSelect';
 
 export type FilterOption = { value: string; label: string; count?: number; allIds?: string[]; short?: string; isUnknown?: boolean };
 
 export function useFilterOptions(itemType: 'werbeanzeige' | 'website' | 'campaign') {
   const { unternehmen } = useUnternehmen();
 
-  // Branchen normalisiert aus tatsächlichen Ad-Daten (kanonische IDs + unbekannte als Fallback)
+  // Branchen normalisiert aus tatsächlichen Ad-Daten (FK-first, legacy fallback)
   const { data: branchen = [] } = useQuery<FilterOption[]>({
     queryKey: ['branchen-normalized-for-filter', itemType],
     queryFn: async () => {
       const { data } = await supabase
         .from('referenz_meta_ads' as any)
-        .select('filter_values, linked_kunde:close_deals(branche)')
+        .select(`filter_values, linked_kunde:close_deals(branche), ${FK_EMBED_ALL}`)
         .is('deleted_at', null);
 
       const knownCounts = new Map<string, number>();
       const unknownCounts = new Map<string, number>();
       for (const ad of (data ?? []) as any[]) {
-        const raw = ad.linked_kunde?.branche || ad.filter_values?.branche;
+        const raw = pickBrancheValue(ad) ?? ad.linked_kunde?.branche ?? ad.filter_values?.branche;
         if (!raw) continue;
         const id = normalizeBranche(raw);
         if (id) {
@@ -47,23 +48,19 @@ export function useFilterOptions(itemType: 'werbeanzeige' | 'website' | 'campaig
   const { data: kunden = [] } = useQuery<FilterOption[]>({
     queryKey: ['kunden-for-filter', itemType],
     queryFn: async () => {
-      // Source kunden from ads that actually link to a customer, then dedupe by normalized name.
+      // FK-first: prefer linked_client_id, fall back to legacy linked_kunde_id.
       const { data } = await supabase
         .from('referenz_meta_ads' as any)
-        .select('linked_kunde_id, linked_kunde:close_deals(id, client_name)')
-        .not('linked_kunde_id', 'is', null)
+        .select(`linked_kunde_id, linked_client_id, linked_kunde:close_deals(id, client_name), ${FK_EMBED_ALL}`)
+        .or('linked_kunde_id.not.is.null,linked_client_id.not.is.null')
         .is('deleted_at', null);
 
       const rawRows = (data ?? []) as any[];
-      const uniqueIds = new Set(rawRows.map(r => r.linked_kunde_id).filter(Boolean));
-      // eslint-disable-next-line no-console
-      console.log('[FilterOptions] raw kunden rows:', rawRows.length, 'unique kunde_ids:', uniqueIds.size);
 
       const nameMap = new Map<string, FilterOption>();
       for (const ad of rawRows) {
-        const k = ad.linked_kunde;
-        const name = (k?.client_name ?? '').trim();
-        const id = k?.id ?? ad.linked_kunde_id;
+        const name = pickClientName(ad);
+        const id = pickClientId(ad);
         if (!name || !id) continue;
         const key = name.toLowerCase();
         const existing = nameMap.get(key);
@@ -79,7 +76,7 @@ export function useFilterOptions(itemType: 'werbeanzeige' | 'website' | 'campaig
         return a.label.localeCompare(b.label, 'de');
       });
       // eslint-disable-next-line no-console
-      console.log('[FilterOptions] deduplicated kunden:', result.length);
+      console.log('[FilterOptions] FK-first kunden:', result.length);
       return result;
     },
     staleTime: 60_000,

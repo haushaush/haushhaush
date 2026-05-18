@@ -14,6 +14,7 @@ import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
 import { getAdLiveStatus, isAdActive } from "@/lib/adStatus";
 import { useFilterOptions } from "@/hooks/useFilterOptions";
 import { normalizeBranche } from "@/lib/branchen";
+import { FK_EMBED_ALL, pickBrancheValue, pickUnternehmenLabel, pickClientId } from "@/lib/showcaseFkSelect";
 import { SyncStatusBanner } from "@/components/admin/SyncStatusBanner";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
@@ -147,7 +148,9 @@ export default function ReferenzWerbeanzeigenPage() {
     setLoading(true);
     const [{ data: ads }, { data: cats }, { data: opts }] = await Promise.all([
       supabase.from("referenz_meta_ads" as any)
-        .select(isPublic ? '*' : '*, linked_kunde:close_deals(client_name, unternehmen, branche)')
+        .select(isPublic
+          ? `*, ${FK_EMBED_ALL}`
+          : `*, linked_kunde:close_deals(client_name, unternehmen, branche), ${FK_EMBED_ALL}`)
         .eq("is_active", true)
         .is("deleted_at", null)
         .order("is_featured", { ascending: false })
@@ -213,9 +216,9 @@ export default function ReferenzWerbeanzeigenPage() {
 
       // Standalone dropdown filters
       if (brancheFilter) {
-        const raw = (x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? '').toString();
+        const fkVal = pickBrancheValue(x as any);
+        const raw = (fkVal ?? x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? '').toString();
         const canonical = normalizeBranche(raw);
-        // Filter holds either a canonical id (e.g. 'pkv') or a raw unknown label
         const matches =
           (canonical && canonical === brancheFilter) ||
           raw.trim().toLowerCase() === brancheFilter.toLowerCase();
@@ -224,10 +227,13 @@ export default function ReferenzWerbeanzeigenPage() {
       if (kundeFilter) {
         const entry = kunden.find(k => k.value === kundeFilter);
         const ids = entry?.allIds ?? [kundeFilter];
-        if (!x.linked_kunde_id || !ids.includes(x.linked_kunde_id)) return false;
+        const xClientId = pickClientId(x as any);
+        const matchesFk = xClientId && ids.includes(xClientId);
+        const matchesLegacy = x.linked_kunde_id && ids.includes(x.linked_kunde_id);
+        if (!matchesFk && !matchesLegacy) return false;
       }
       if (unternehmenFilter) {
-        const u = (x.linked_kunde?.unternehmen ?? (x.filter_values ?? {}).unternehmen ?? "").toString();
+        const u = (pickUnternehmenLabel(x as any) ?? x.linked_kunde?.unternehmen ?? (x.filter_values ?? {}).unternehmen ?? "").toString();
         if (u !== unternehmenFilter) return false;
       }
       if (werbekontoFilter && x.meta_account_id !== werbekontoFilter) return false;

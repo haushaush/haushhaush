@@ -11,6 +11,7 @@ import {
   ShowcaseCard, ShowcaseEmptyState, ResultCount, PrimaryActionButton,
   type AnyItem,
 } from "./ReferenzShowcaseUI";
+import { FK_EMBED_ALL } from "@/lib/showcaseFkSelect";
 
 export interface CampaignRow {
   id: string;
@@ -59,7 +60,7 @@ export default function AdPerformancePage() {
     setLoading(true);
     const [{ data: camps }, { data: cats }, { data: opts }] = await Promise.all([
       supabase.from("referenz_meta_campaigns" as any)
-        .select(isPublic ? '*' : '*, linked_kunde:close_deals(client_name, unternehmen, branche)')
+        .select(isPublic ? `*, ${FK_EMBED_ALL}` : `*, linked_kunde:close_deals(client_name, unternehmen, branche), ${FK_EMBED_ALL}`)
         .eq("is_active", true)
         .order("is_featured", { ascending: false })
         .order("imported_at", { ascending: false }),
