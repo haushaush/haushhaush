@@ -56,7 +56,7 @@ export function ShowcaseGridPage({ type, title }: Props) {
     setLoading(true);
     const { data } = await supabase
       .from('referenz_showcase' as any)
-      .select('*')
+      .select(`*, ${FK_EMBED_ALL}`)
       .eq('type', type)
       .eq('is_active', true)
       .order('is_featured', { ascending: false })
@@ -68,12 +68,21 @@ export function ShowcaseGridPage({ type, title }: Props) {
 
   useEffect(() => { load(); }, [type]);
 
-  const branches = useMemo(() => Array.from(new Set(rows.map(r => r.branche).filter(Boolean))) as string[], [rows]);
+  // FK-first: prefer linked_branche / linked_client labels, fall back to legacy text.
+  const displayBranche = (r: any): string | null => pickBrancheLabel(r) ?? r.branche ?? null;
+  const displayClient = (r: any): string | null => pickClientName(r) ?? r.client_name ?? null;
+
+  const branches = useMemo(
+    () => Array.from(new Set(rows.map(r => displayBranche(r)).filter(Boolean))) as string[],
+    [rows],
+  );
   const platforms = useMemo(() => Array.from(new Set(rows.map(r => r.ad_platform).filter(Boolean))) as string[], [rows]);
 
   const filtered = rows.filter(r => {
-    if (search && !(`${r.title} ${r.client_name ?? ''} ${r.branche ?? ''}`.toLowerCase().includes(search.toLowerCase()))) return false;
-    if (brancheFilter && r.branche !== brancheFilter) return false;
+    const branche = displayBranche(r);
+    const client = displayClient(r);
+    if (search && !(`${r.title} ${client ?? ''} ${branche ?? ''}`.toLowerCase().includes(search.toLowerCase()))) return false;
+    if (brancheFilter && branche !== brancheFilter) return false;
     if (platformFilter && r.ad_platform !== platformFilter) return false;
     return true;
   });
