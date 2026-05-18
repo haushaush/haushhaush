@@ -45,59 +45,68 @@ export function CloseDealDetailPanel({ dealId, open, onOpenChange }: Props) {
     setLoading(true);
     setDeal(null); setLead(null); setNotes([]);
 
+    const safeInvoke = async (endpoint: string) => {
+      try {
+        const { data, error } = await supabase.functions.invoke('close-proxy', {
+          body: { endpoint, method: 'GET' },
+        });
+        if (error) return null;
+        return data?.error ? null : data;
+      } catch {
+        return null;
+      }
+    };
+
     (async () => {
-      const { data: d } = await supabase.functions.invoke('close-proxy', {
-        body: { endpoint: `/opportunity/${dealId}/`, method: 'GET' },
-      });
-      const dealData = d?.error ? null : d;
-      setDeal(dealData);
+      try {
+        const dealData = await safeInvoke(`/opportunity/${dealId}/`);
+        setDeal(dealData);
 
-      const leadId = dealData?.lead_id;
-      let leadData = null;
-      let notesData: any[] = [];
+        const leadId = dealData?.lead_id;
+        let leadData = null;
+        let notesData: any[] = [];
 
-      if (leadId) {
-        const cachedLead = leadCache.get(leadId);
-        if (cachedLead) leadData = cachedLead;
-        else {
-          const { data: l } = await supabase.functions.invoke('close-proxy', {
-            body: { endpoint: `/lead/${leadId}/`, method: 'GET' },
-          });
-          if (l && !l.error) { leadData = l; leadCache.set(leadId, l); }
+        if (leadId) {
+          const cachedLead = leadCache.get(leadId);
+          if (cachedLead) leadData = cachedLead;
+          else {
+            const l = await safeInvoke(`/lead/${leadId}/`);
+            if (l) { leadData = l; leadCache.set(leadId, l); }
+          }
+          setLead(leadData);
+
+          const cachedNotes = notesCache.get(leadId);
+          if (cachedNotes) notesData = cachedNotes;
+          else {
+            const n = await safeInvoke(`/activity/note/?lead_id=${leadId}`);
+            notesData = n?.data || [];
+            notesCache.set(leadId, notesData);
+          }
+          setNotes(notesData);
         }
-        setLead(leadData);
 
-        const cachedNotes = notesCache.get(leadId);
-        if (cachedNotes) notesData = cachedNotes;
-        else {
-          const { data: n } = await supabase.functions.invoke('close-proxy', {
-            body: { endpoint: `/activity/note/?lead_id=${leadId}`, method: 'GET' },
-          });
-          notesData = n?.data || [];
-          notesCache.set(leadId, notesData);
+        dealCache.set(dealId, { deal: dealData, lead: leadData, notes: notesData });
+
+        // Lookup our DB client_id via close_lead_id (most reliable) or by name
+        setClientLink(null);
+        const leadName = dealData?.lead_name || leadData?.display_name;
+        if (leadId || leadName) {
+          let q = supabase.from('close_deals').select('client_id, client_name, clients:client_id(id, name)').limit(1);
+          if (leadId) q = q.eq('close_lead_id', leadId);
+          else if (leadName) q = q.ilike('client_name', leadName);
+          const { data: row } = await q.maybeSingle();
+          const c: any = (row as any)?.clients;
+          if (c?.id) setClientLink({ id: c.id, name: c.name });
+          else if (leadName) {
+            const { data: cli } = await supabase.from('clients').select('id, name').ilike('name', leadName).limit(1).maybeSingle();
+            if (cli) setClientLink({ id: cli.id, name: cli.name });
+          }
         }
-        setNotes(notesData);
+      } catch (e) {
+        console.error('CloseDealDetailPanel load error', e);
+      } finally {
+        setLoading(false);
       }
-
-      dealCache.set(dealId, { deal: dealData, lead: leadData, notes: notesData });
-
-      // Lookup our DB client_id via close_lead_id (most reliable) or by name
-      setClientLink(null);
-      const leadName = dealData?.lead_name || leadData?.display_name;
-      if (leadId || leadName) {
-        let q = supabase.from('close_deals').select('client_id, client_name, clients:client_id(id, name)').limit(1);
-        if (leadId) q = q.eq('close_lead_id', leadId);
-        else if (leadName) q = q.ilike('client_name', leadName);
-        const { data: row } = await q.maybeSingle();
-        const c: any = (row as any)?.clients;
-        if (c?.id) setClientLink({ id: c.id, name: c.name });
-        else if (leadName) {
-          const { data: cli } = await supabase.from('clients').select('id, name').ilike('name', leadName).limit(1).maybeSingle();
-          if (cli) setClientLink({ id: cli.id, name: cli.name });
-        }
-      }
-
-      setLoading(false);
     })();
   }, [dealId, open]);
 
