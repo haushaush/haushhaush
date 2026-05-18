@@ -44,6 +44,8 @@ export default function Kunden() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
+  const [syncing, setSyncing] = useState(false);
+  const [selectedKunde, setSelectedKunde] = useState<ClientRow | null>(null);
 
   const load = async () => {
     setLoading(true);
