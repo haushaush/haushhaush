@@ -36,6 +36,9 @@ export function CloseLeadDetailPanel({ leadId, open, onOpenChange, onCreateKunde
         detailCache.set(leadId, data);
         setLead(data);
       }
+    }).catch(() => {
+      setLead(null);
+    }).finally(() => {
       setLoading(false);
     });
   }, [leadId, open]);
