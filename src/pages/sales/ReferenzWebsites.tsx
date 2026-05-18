@@ -11,6 +11,7 @@ import {
   ShowcaseCard, ShowcaseEmptyState, ResultCount, PrimaryActionButton,
   getShowcaseBranche, type AnyItem,
 } from './ReferenzShowcaseUI';
+import { FK_EMBED_ALL, pickClientName, pickUnternehmenLabel } from '@/lib/showcaseFkSelect';
 import { cn } from '@/lib/utils';
 
 function QuickToggle({
