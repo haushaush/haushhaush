@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, Search, Star, Play } from 'lucide-react';
 import { ReferenzShowcaseFormModal } from '@/components/sales/ReferenzShowcaseFormModal';
 import { ReferenzShowcaseDetailPanel } from '@/components/sales/ReferenzShowcaseDetailPanel';
+import { FK_EMBED_ALL, pickBrancheLabel, pickClientName } from '@/lib/showcaseFkSelect';
 
 export type ShowcaseRow = {
   id: string;
