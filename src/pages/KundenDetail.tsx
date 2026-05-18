@@ -13,7 +13,7 @@ import { DriveBrowser } from '@/components/DriveBrowser';
 import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
 import { ChevronLeft, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { getBrancheById } from '@/lib/branchen';
+import { getBranche } from '@/lib/branchen';
 
 const AMPEL_DOT: Record<string, string> = { 'Grün': 'bg-success', 'Gelb': 'bg-warning', 'Rot': 'bg-destructive' };
 const STATUS_STYLES: Record<string, string> = {
