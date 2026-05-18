@@ -356,11 +356,12 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
       const brancheArr = Array.isArray(payload.branche) ? payload.branche : [];
       if (brancheArr[0]) {
         const { normalizeBranche } = await import('@/lib/branchen');
-        payload.linked_branche_id = normalizeBranche(brancheArr[0]) || brancheArr[0];
+        const bid = normalizeBranche(brancheArr[0]);
+        if (bid) payload.branche_id = bid;
       }
       if (payload.unternehmen && typeof payload.unternehmen === 'string') {
         const { data: uId } = await supabase.rpc('create_or_get_unternehmen' as any, { p_name: payload.unternehmen });
-        if (uId) payload.linked_unternehmen_id = uId;
+        if (uId) payload.unternehmen_id = uId;
       }
     } catch (e) { console.warn('FK dual-write failed', e); }
 
