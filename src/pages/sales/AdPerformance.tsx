@@ -11,6 +11,7 @@ import {
   ShowcaseCard, ShowcaseEmptyState, ResultCount, PrimaryActionButton,
   type AnyItem,
 } from "./ReferenzShowcaseUI";
+import { FK_EMBED_ALL } from "@/lib/showcaseFkSelect";
 
 export interface CampaignRow {
   id: string;
