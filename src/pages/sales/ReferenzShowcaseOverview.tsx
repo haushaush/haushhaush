@@ -163,6 +163,8 @@ export default function ReferenzShowcaseOverview() {
   };
 
   const getBrancheValue = (i: AnyItem): string | null => {
+    const fk = pickBrancheValue(i);
+    if (fk) return fk;
     const tags: string[] = i.custom_tags || i.tags || [];
     const fromTags = tags
       .filter(t => typeof t === 'string' && t.toLowerCase().startsWith('branche-'))
@@ -181,6 +183,8 @@ export default function ReferenzShowcaseOverview() {
   };
 
   const getUnternehmenValue = (i: AnyItem): string | null => {
+    const fk = pickUnternehmenValue(i);
+    if (fk) return fk;
     const tags: string[] = i.custom_tags || i.tags || [];
     const fromTags = tags
       .filter(t => typeof t === 'string' && (t.toLowerCase().startsWith('versicherer-') || t.toLowerCase().startsWith('unternehmen-')))
@@ -200,6 +204,8 @@ export default function ReferenzShowcaseOverview() {
 
   // Display-friendly version (preserves original casing from first occurrence)
   const getBranche = (i: AnyItem): string | null => {
+    const fk = pickBrancheLabel(i);
+    if (fk) return fk;
     const tags: string[] = i.custom_tags || i.tags || [];
     const fromTags = tags
       .filter(t => typeof t === 'string' && t.toLowerCase().startsWith('branche-'))
@@ -209,11 +215,13 @@ export default function ReferenzShowcaseOverview() {
     return (typeof raw === 'string' && raw.trim()) ? raw.trim() : null;
   };
   const getUnternehmen = (i: AnyItem): string | null => {
+    const fk = pickUnternehmenLabel(i);
+    if (fk) return fk;
     const raw = i.linked_kunde?.unternehmen || i.filter_values?.unternehmen || i.unternehmen || null;
     return (typeof raw === 'string' && raw.trim()) ? raw.trim() : null;
   };
   const getKundenname = (i: AnyItem) =>
-    i.linked_kunde?.client_name || i.client_name || i.meta_account_name || null;
+    pickClientName(i) || i.linked_kunde?.client_name || i.client_name || i.meta_account_name || null;
   const getTitle = (i: AnyItem) => {
     if (i.custom_title) return i.custom_title;
     if (i._type === 'campaign') {
