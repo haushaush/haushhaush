@@ -8,6 +8,7 @@ import * as React from 'react';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
 import { PageShell } from '@/components/layout/PageShell';
 import { getBrancheDisplay } from '@/lib/branchen';
+import { pickBrancheLabel, pickClientName, pickUnternehmenLabel } from '@/lib/showcaseFkSelect';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { isTopPerformer } from '@/lib/topPerformer';
