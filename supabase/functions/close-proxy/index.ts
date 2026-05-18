@@ -48,8 +48,8 @@ Deno.serve(async (req) => {
     try { data = JSON.parse(text); } catch { data = text; }
 
     return new Response(JSON.stringify(data), {
-      status: res.status,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Upstream-Status': String(res.status) },
     });
   } catch (err) {
     return new Response(
