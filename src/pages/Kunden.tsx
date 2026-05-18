@@ -193,6 +193,10 @@ export default function Kunden() {
         </div>
         {isAdminOrManager && (
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleAutoLink} disabled={linking}>
+              {linking ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+              Auto-Zuordnen
+            </Button>
             <Button variant="outline" size="sm" onClick={handleNotionSync} disabled={syncing}>
               {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
               Notion-Import
