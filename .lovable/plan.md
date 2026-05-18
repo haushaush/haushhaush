@@ -1,79 +1,64 @@
-# Showcase Production-Ready: Bulk-Import & Polish
+# Sprint: Zentrale Personen-Datenbank über `clients`
 
-Sehr großer Scope. Ich schlage vor in **3 zusammenhängenden Lieferungen** umzusetzen, alle in einem Build-Lauf, aber technisch entkoppelt damit nichts kippt.
+## Erkannte Konflikte mit dem aktuellen Schema (vor Umsetzung wichtig)
 
-## Bestehende Infrastruktur (wird wiederverwendet)
+1. **`unternehmen` existiert bereits** (Legacy, 85 rows) mit Spalten `name, display_name, branche_id, usage_count` und passender RPC `increment_unternehmen_usage`. Plan-Teil 1.2 (`CREATE TABLE unternehmen`) entfällt — wir **nutzen die existierende Tabelle**. `create_or_get_unternehmen` wird als dünner Wrapper um die existierende RPC angelegt (signatur-kompatibel zum Plan).
+2. **`branches` + `companies` neu** (aus Sprint vor 2 Iterationen, 18/29 rows) sowie `close_deals.branch_id`/`company_id` bleiben **unbenutzt** liegen — Branche ist laut Plan ein TEXT-Enum (BRANCHEN const), nicht FK. Wir lassen die Tabellen drin, schreiben aber nicht hinein. Keine Drops in diesem Sprint.
+3. **`close_deals.branche` ist `ARRAY`**, nicht `text`. Backfill 2.7 für close_deals nutzt `art` (text) statt `branche`, passt also bereits.
+4. **`close_deals.unternehmen` (text)** existiert — wird zusätzlich zu `art` als Quelle für Unternehmen-Backfill genutzt.
+5. **`onepage_projects.client_id`** ist bereits UUID — 2.9 Logik passt.
+6. **RLS-Policy für `unternehmen`** entfällt (existiert schon). Falls fehlt: nachrüsten.
 
-- Edge: `meta-ads-list-importable` (paginiert Ads aus Meta) ✓
-- Edge: `meta-ads-import-to-showcase` (importiert Selektion mit Bild-Persistierung) ✓
-- Modal: `src/components/sales/MetaAdImportModal.tsx` (Single-Screen-Variante, wird ersetzt)
+## Vorgehen (Phasen-weise — pro Phase commit-fähig)
 
-## Lieferung 1 — Bulk-Import-Wizard
+### Phase A — DB Foundation (Teile 1–3, ein Migration-Call)
+- `ALTER TABLE clients` + Indexes (1.1)
+- Skip 1.2 (`unternehmen` existiert)
+- 1.4 FK-Spalten auf `referenz_websites`, `referenz_meta_ads`, `referenz_meta_campaigns`, `close_deals`, `onepage_projects` (Plan-Naming `linked_client_id`, `client_id`, `client_id_fk`, `linked_branche_id`, `linked_unternehmen_id`)
+- 1.5 Indexes
+- 2.1–2.9 Backfill (siehe Anmerkungen unten)
+- 3.1 `create_or_get_unternehmen` (Wrapper um `increment_unternehmen_usage` mit display_name), 3.2 `find_client_by_meta_account`
 
-**Neue Komponente:** `src/components/showcase/BulkImportWizard.tsx`
+Anmerkungen Backfill:
+- 2.1: Quellen erweitern um `close_deals.unternehmen`
+- 2.2: Endkunden aus `close_deals` in `clients` einfügen, dedupe per lower(trim(name)). `kundenstatus` = `'Lead'` (Enum-Wert prüfen; falls nicht vorhanden, NULL lassen)
+- 2.7: `close_deals.branche_id` zusätzlich aus erstem Element des `branche` ARRAY ableiten
 
-5 Steps mit Apple-Style StepperBar oben:
+### Phase B — Generic Combobox + 3 Picker (Teil 4)
+- `src/components/ui/Combobox.tsx` existiert bereits und ist generisch + create-fähig — **wiederverwenden statt neu**.
+- Neu anlegen:
+  - `src/components/pickers/ClientPicker.tsx` (Query: `clients` + join `unternehmen`)
+  - `src/components/pickers/BranchePicker.tsx` (statisch aus `src/lib/branchen.ts`)
+  - `src/components/pickers/UnternehmenPicker.tsx` (RPC `create_or_get_unternehmen`)
+- `getBrancheLabel()` aus `src/lib/branchen.ts` nutzen (falls fehlt: ergänzen)
 
-```
-Quelle → Filter → Auswahl → Anreichern → Import
-```
+### Phase C — Forms umstellen (Teil 5)
+Alle in Teil 5 aufgelisteten Files: Text-Inputs/Selects durch die 3 Picker ersetzen, Save-Payload schreibt nur noch `linked_client_id` / `linked_branche_id` / `linked_unternehmen_id` (Legacy-Felder bleiben unverändert wenn schon gesetzt, werden aber nicht mehr aktiv geschrieben).
 
-- **Quelle:** Account-Cards (aus `useMetaAds().accounts`), Click-to-select
-- **Filter:** Zeitraum (Quick-Toggles 30/90/180/Jahr), Status-Radio, Min-Leads, Min-Budget. Triggert `meta-ads-list-importable` mit `datePreset` und `status`. Frontend-Filter für minLeads/minSpend
-- **Auswahl:** Visuelles Grid (3-5 cols), Cards mit Thumbnail + CPL/Leads-Overlay, Checkbox-Animation. Top-Actions: "Alle / Top-Performer / Keine"
-- **Anreichern:** Bulk-Apply-Card oben (Branche/Kunde/Unternehmen), darunter scrollbare Per-Ad-Tabelle mit Combobox-Override
-- **Import:** Iteriert pro Ad, ruft pro Aufruf `meta-ads-import-to-showcase` mit `[adId]`. Frontend-State trackt `done/total/recent[]/errors[]` für echten Live-Progress (kein SSE nötig — single-ad-calls geben Real-Time-Feedback und nutzen die bestehende Edge ohne Änderung)
-- **Done:** Erfolgs-Card + Fehler-Liste, Close-Button mit Refresh-Callback
+### Phase D — Display + Filter-Optionen (Teile 6 + 7)
+- Alle Cards/Detail-Panels: JOIN-Queries mit `linked_client:clients!linked_client_id(...)` und `linked_unternehmen:unternehmen!linked_unternehmen_id(...)`
+- Legacy-Fallback-Pattern beim Render (`item.linked_client?.name || item.client_name || …`)
+- `useShowcaseFilterOptions` und Filter-Toolbars auf FK-basierte unique-Counts umstellen → entfernt Marvin-Rixen-Duplikat-Problem
 
-**Trigger:** Replace bestehenden "Importieren"-Button auf `ReferenzWerbeanzeigen.tsx` mit dem neuen Wizard. Alter `MetaAdImportModal` bleibt vorerst als Fallback (nicht gelöscht).
+### Phase E — Edge Function (Teil 8)
+- `supabase/functions/rematch-all-ads/index.ts` schreibt `linked_client_id` (statt `linked_kunde_id`!), `linked_branche_id`, `linked_unternehmen_id`. Branche-Alias-Map in Function dupliziert (oder shared helper).
+- **Achtung**: Function nutzt aktuell `linked_kunde_id` und `kunde_meta_accounts` Link-Tabelle. Wir behalten den Link-Mechanismus, mappen aber zusätzlich auf `clients.id` über `find_client_by_meta_account`.
 
-## Lieferung 2 — Empty-States & Onboarding-Hint
+### Phase F — Verifizierung (Teil 9)
+SQL-Checks 1–4 + UI-Walkthrough für AddWebsiteModal, Werbeanzeigen-Filter, CloseDealDetail.
 
-**Neue Komponente:** `src/components/showcase/EmptyState.tsx` (icon-circle + title + description + action)
+## Empfohlene Ausführungs-Reihenfolge
 
-Eingesetzt auf:
-- `ReferenzShowcaseOverview.tsx` (0 items) → Onboarding-Hint-Card mit 3-Step Erklärung + 2 CTAs
-- `ReferenzWerbeanzeigen.tsx` (0 items) → "Keine Anzeigen importiert" + Bulk-Import-CTA
-- `ReferenzWebsites.tsx` (0 items) → "Noch keine Websites" + Add-CTA
-- Filter-leer Cases: "Nichts gefunden" + Reset-Button
+Ich empfehle **Phase A jetzt als einzelnen Migration-Call**, dann nach Approval B–F in einem Build-Loop. Das gibt dir einen sicheren Rollback-Punkt nach der Migration.
 
-## Lieferung 3 — AddWebsiteModal Refresh
+## Was NICHT gemacht wird
+- Keine Drops alter Spalten (laut Spec)
+- Keine Drops von `branches`/`companies` Tabellen (separater Cleanup-Sprint)
+- Keine Änderung an `kunde_meta_accounts` Link-Tabelle
+- Keine Auth/RLS-Änderungen außer für neu hinzugefügte Spalten
 
-Bestehendes `AddWebsiteModal.tsx` → 2-Step-Flow:
-- **Step 1 (URL):** URL-Input + Auto-Screenshot-Preview, "Weiter"-Button
-- **Step 2 (Details):** Titel, Kunde, Branche, Highlights, Beschreibung, Tags
+## Offene Punkte zur Bestätigung
 
-Header zeigt "Schritt X von 2", Footer hat Back/Next/Save. Alle bestehenden Felder bleiben — nur in 2 Screens aufgeteilt.
-
-## Bewusst NICHT enthalten (Scope-Empfehlung)
-
-1. **SSE-Streaming-Edge-Function:** Nicht nötig. Iterative Single-Ad-Calls aus dem Frontend liefern echtes Live-Feedback ohne neue Edge-Function-Komplexität (kein neuer Code in Supabase, keine Auth-Edge-Cases, kein Timeout-Risk). Falls später echte Server-Streams gewünscht: separate Phase.
-2. **Audit-Log RPC `log_audit`:** Keine Tabelle in der DB sichtbar — würde fehlschlagen. Skippen oder später einbauen wenn Audit-System steht.
-3. **`<Combobox>` mit `compact` prop / Branchen-/Kunden-/Unternehmens-Optionen:** Nutze bestehende `Combobox`-Komponente + `useLookups`/Close-Deals-Query.
-
-## Geänderte/Neue Dateien
-
-```
-NEU:
-  src/components/showcase/BulkImportWizard.tsx     (~600 LoC, 6 Sub-Komponenten in einer Datei)
-  src/components/showcase/EmptyState.tsx           (~40 LoC)
-
-GEÄNDERT:
-  src/pages/sales/ReferenzWerbeanzeigen.tsx        (Wizard einbinden, Empty-State)
-  src/pages/sales/ReferenzWebsites.tsx             (Empty-State)
-  src/pages/sales/ReferenzShowcaseOverview.tsx     (Onboarding-Hint + Empty-State)
-  src/components/sales/AddWebsiteModal.tsx         (2-Step-Flow Wrapper, Felder unverändert)
-```
-
-## Reihenfolge
-
-1. EmptyState-Primitive
-2. BulkImportWizard mit allen Steps
-3. AddWebsiteModal 2-Step-Refactor
-4. Pages-Integration + Onboarding-Hint
-
-## Bestätigungen
-
-- OK so umzusetzen ohne SSE-Edge-Function?
-- OK den alten `MetaAdImportModal` zu behalten (nicht löschen) als Fallback?
-- Auto-Screenshot im AddWebsite-Step1: bestehende Logik verwenden (du hattest dort schon Thumbnail-Generation)?
+1. **`clients.kundenstatus` Enum**: gibt es Wert `'Lead'`? Wenn nein → für Endkunden-Import NULL nehmen.
+2. **Bestehende `referenz_meta_ads.linked_kunde_id`** Spalte: laut existing edge function existiert sie. Behalten wir als zweiten Slot oder benennen um zu `linked_client_id`? Empfehlung: **neue Spalte `linked_client_id` zusätzlich**, alte bleibt Legacy.
+3. Phase B–F sollen in **einem** Folge-Loop oder einzeln laufen?
