@@ -147,7 +147,9 @@ export default function ReferenzWerbeanzeigenPage() {
     setLoading(true);
     const [{ data: ads }, { data: cats }, { data: opts }] = await Promise.all([
       supabase.from("referenz_meta_ads" as any)
-        .select(isPublic ? '*' : '*, linked_kunde:close_deals(client_name, unternehmen, branche)')
+        .select(isPublic
+          ? `*, ${FK_EMBED_ALL}`
+          : `*, linked_kunde:close_deals(client_name, unternehmen, branche), ${FK_EMBED_ALL}`)
         .eq("is_active", true)
         .is("deleted_at", null)
         .order("is_featured", { ascending: false })
