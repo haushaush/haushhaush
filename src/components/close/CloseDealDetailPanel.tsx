@@ -136,6 +136,14 @@ export function CloseDealDetailPanel({ dealId, open, onOpenChange }: Props) {
                 <SheetTitle className="flex items-start justify-between gap-4">
                   <div className="flex flex-col gap-2">
                     <span className="text-xl font-bold">{dealTitle}</span>
+                    {clientLink && (
+                      <Link
+                        to={`/kunden/${clientLink.id}`}
+                        className="text-sm text-primary hover:underline flex items-center gap-1 font-normal"
+                      >
+                        <User className="h-3 w-3" /> {clientLink.name}
+                      </Link>
+                    )}
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge className={STATUS_COLORS[deal.status_type] || 'bg-muted'}>
                         {deal.status_label || deal.status_type}
