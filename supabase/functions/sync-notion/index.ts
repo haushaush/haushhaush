@@ -125,6 +125,48 @@ Deno.serve(async (req) => {
         .upsert(rows, { onConflict: "notion_id", ignoreDuplicates: false });
       if (error) throw new Error(`Kunden: ${error.message}`);
       results.kunden = rows.length;
+
+      // Spiegel-upsert in clients (Master-Tabelle)
+      const clientStatusMap: Record<string, string> = {
+        "In Betreuung": "In Betreuung",
+        "Onboarding": "In Betreuung",
+        "Done": "Churned",
+        "Follow Up": "Pausiert",
+        "Offen": "Pausiert",
+      };
+      const clientRows = pages.map((p: any) => {
+        const pr = p.properties;
+        const kundenstatus = gs(pr["Kundenstatus"]);
+        const branche = gm(pr["Branche"]);
+        const ampel = gs(pr["Ampelstatus"]);
+        const ampelMap: Record<string, string> = {
+          "AA": "Grün", "A": "Grün", "Grün": "Grün",
+          "BB": "Gelb", "B": "Gelb", "Gelb": "Gelb",
+          "CC": "Rot", "C": "Rot", "Rot": "Rot",
+        };
+        return {
+          notion_id: p.id,
+          notion_url: p.url,
+          name: gt(pr["Kunde"]) || grt(pr["Vor- & Nachname"]) || "Unbekannt",
+          email: ge(pr["Email"]),
+          phone: gp(pr["Telefon"]),
+          website: gu(pr["Website URL"]),
+          kundenstatus: (clientStatusMap[kundenstatus || ""] || "Lead"),
+          ampelstatus: ampelMap[ampel || ""] || "Grün",
+          zahlstatus: gs(pr["Zahlstatus"]),
+          branche: branche[0] || null,
+          projekttyp: gm(pr["Projekttyp"])[0] || null,
+          laufzeit: gs(pr["Laufzeit"]) || grt(pr["Laufzeit"]),
+          startdatum: gd(pr["Startdatum"]),
+          enddatum: gd(pr["Enddatum"]),
+          clv: gn(pr["CLV (Customer Lifetime Value)"]),
+          updated_at: new Date().toISOString(),
+        };
+      });
+      const { error: clientsErr } = await supabase
+        .from("clients")
+        .upsert(clientRows, { onConflict: "notion_id", ignoreDuplicates: false });
+      if (clientsErr) throw new Error(`Clients (Notion): ${clientsErr.message}`);
     }
 
     // ── PROJEKTE ──
