@@ -272,9 +272,12 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
       if (form.cash_collect) insertData.cash_collect = parseFloat(form.cash_collect);
       if (form.mitarbeiter.length > 0) insertData.mitarbeiter = form.mitarbeiter;
 
-      // Link customer via verknuepfte_kunden_ids
+      // Link customer via verknuepfte_kunden_ids (Notion legacy) + central client_id
       if (selectedCustomer?.notion_id) {
         insertData.verknuepfte_kunden_ids = [selectedCustomer.notion_id];
+      }
+      if (selectedCustomer?.id) {
+        insertData.client_id = selectedCustomer.id;
       }
 
       const { error } = await supabase.from('projects').insert(insertData as any);
