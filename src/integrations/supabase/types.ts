@@ -737,20 +737,27 @@ export type Database = {
       }
       clients: {
         Row: {
+          ads_budget: number | null
           ampelstatus: Database["public"]["Enums"]["ampelstatus"]
           branche: string | null
           branche_id: string | null
+          cash_collect_offen: number | null
           clv: number | null
           created_at: string
           created_by: string | null
+          crm_kosten: number | null
+          deadline: string | null
           deleted_at: string | null
           email: string | null
           enddatum: string | null
+          gesamt_saldo: number | null
           id: string
           kundenstatus: Database["public"]["Enums"]["kundenstatus"]
           laufzeit: string | null
+          laufzeit_in_14t: boolean | null
           meta_account_id: string | null
           meta_account_ids: string[] | null
+          meta_kosten: number | null
           name: string
           notes: string | null
           notion_id: string | null
@@ -758,26 +765,37 @@ export type Database = {
           phone: string | null
           projekttyp: string | null
           startdatum: string | null
+          superchat_kosten: number | null
           unternehmen_id: string | null
           updated_at: string
+          vor_nachname: string | null
           website: string | null
+          website_kosten: number | null
+          website_url: string | null
           zahlstatus: string | null
         }
         Insert: {
+          ads_budget?: number | null
           ampelstatus?: Database["public"]["Enums"]["ampelstatus"]
           branche?: string | null
           branche_id?: string | null
+          cash_collect_offen?: number | null
           clv?: number | null
           created_at?: string
           created_by?: string | null
+          crm_kosten?: number | null
+          deadline?: string | null
           deleted_at?: string | null
           email?: string | null
           enddatum?: string | null
+          gesamt_saldo?: number | null
           id?: string
           kundenstatus?: Database["public"]["Enums"]["kundenstatus"]
           laufzeit?: string | null
+          laufzeit_in_14t?: boolean | null
           meta_account_id?: string | null
           meta_account_ids?: string[] | null
+          meta_kosten?: number | null
           name: string
           notes?: string | null
           notion_id?: string | null
@@ -785,26 +803,37 @@ export type Database = {
           phone?: string | null
           projekttyp?: string | null
           startdatum?: string | null
+          superchat_kosten?: number | null
           unternehmen_id?: string | null
           updated_at?: string
+          vor_nachname?: string | null
           website?: string | null
+          website_kosten?: number | null
+          website_url?: string | null
           zahlstatus?: string | null
         }
         Update: {
+          ads_budget?: number | null
           ampelstatus?: Database["public"]["Enums"]["ampelstatus"]
           branche?: string | null
           branche_id?: string | null
+          cash_collect_offen?: number | null
           clv?: number | null
           created_at?: string
           created_by?: string | null
+          crm_kosten?: number | null
+          deadline?: string | null
           deleted_at?: string | null
           email?: string | null
           enddatum?: string | null
+          gesamt_saldo?: number | null
           id?: string
           kundenstatus?: Database["public"]["Enums"]["kundenstatus"]
           laufzeit?: string | null
+          laufzeit_in_14t?: boolean | null
           meta_account_id?: string | null
           meta_account_ids?: string[] | null
+          meta_kosten?: number | null
           name?: string
           notes?: string | null
           notion_id?: string | null
@@ -812,9 +841,13 @@ export type Database = {
           phone?: string | null
           projekttyp?: string | null
           startdatum?: string | null
+          superchat_kosten?: number | null
           unternehmen_id?: string | null
           updated_at?: string
+          vor_nachname?: string | null
           website?: string | null
+          website_kosten?: number | null
+          website_url?: string | null
           zahlstatus?: string | null
         }
         Relationships: [
