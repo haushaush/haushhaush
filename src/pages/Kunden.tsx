@@ -8,8 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Users } from 'lucide-react';
+import { Plus, Search, Users, RefreshCw, Loader2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import KundenSlidePanel from '@/components/kunden/KundenSlidePanel';
 
 const STATUS_STYLES: Record<string, string> = {
   'In Betreuung': 'bg-success/20 text-success',
