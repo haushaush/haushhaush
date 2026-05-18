@@ -753,6 +753,8 @@ export type Database = {
           meta_account_ids: string[] | null
           name: string
           notes: string | null
+          notion_id: string | null
+          notion_url: string | null
           phone: string | null
           projekttyp: string | null
           startdatum: string | null
@@ -778,6 +780,8 @@ export type Database = {
           meta_account_ids?: string[] | null
           name: string
           notes?: string | null
+          notion_id?: string | null
+          notion_url?: string | null
           phone?: string | null
           projekttyp?: string | null
           startdatum?: string | null
@@ -803,6 +807,8 @@ export type Database = {
           meta_account_ids?: string[] | null
           name?: string
           notes?: string | null
+          notion_id?: string | null
+          notion_url?: string | null
           phone?: string | null
           projekttyp?: string | null
           startdatum?: string | null
