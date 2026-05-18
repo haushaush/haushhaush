@@ -80,6 +80,23 @@ export function CloseDealDetailPanel({ dealId, open, onOpenChange }: Props) {
       }
 
       dealCache.set(dealId, { deal: dealData, lead: leadData, notes: notesData });
+
+      // Lookup our DB client_id via close_lead_id (most reliable) or by name
+      setClientLink(null);
+      const leadName = dealData?.lead_name || leadData?.display_name;
+      if (leadId || leadName) {
+        let q = supabase.from('close_deals').select('client_id, client_name, clients:client_id(id, name)').limit(1);
+        if (leadId) q = q.eq('close_lead_id', leadId);
+        else if (leadName) q = q.ilike('client_name', leadName);
+        const { data: row } = await q.maybeSingle();
+        const c: any = (row as any)?.clients;
+        if (c?.id) setClientLink({ id: c.id, name: c.name });
+        else if (leadName) {
+          const { data: cli } = await supabase.from('clients').select('id, name').ilike('name', leadName).limit(1).maybeSingle();
+          if (cli) setClientLink({ id: cli.id, name: cli.name });
+        }
+      }
+
       setLoading(false);
     })();
   }, [dealId, open]);
