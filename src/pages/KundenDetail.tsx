@@ -56,7 +56,7 @@ export default function KundenDetail() {
       supabase.from('close_deals').select('*').eq('client_id', id).order('created_at', { ascending: false }),
       supabase.from('projects').select('*').eq('client_id', id).order('created_at', { ascending: false }),
       supabase.from('onepage_projects').select('*').eq('client_id_fk', id).order('created_at', { ascending: false }),
-      supabase.from('referenz_websites').select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
+      supabase.from('referenz_showcase' as any).select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
       supabase.from('referenz_meta_ads').select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
     ]);
     const cli = c.data || null;
