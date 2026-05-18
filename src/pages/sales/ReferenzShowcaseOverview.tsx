@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { ShowcaseCard } from './ReferenzShowcaseUI';
 import { SHOWCASE_COPY } from '@/copy/showcase';
+import { FK_EMBED_ALL, pickBrancheLabel, pickBrancheValue, pickUnternehmenLabel, pickUnternehmenValue, pickClientName } from '@/lib/showcaseFkSelect';
 
 type AnyItem = Record<string, any> & { _type: 'website' | 'werbeanzeige' | 'campaign' };
 
