@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Users, RefreshCw, Loader2, ArrowRight } from 'lucide-react';
+import { Plus, Search, Users, RefreshCw, Loader2, ArrowRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import KundenSlidePanel from '@/components/kunden/KundenSlidePanel';
 
@@ -66,6 +66,7 @@ export default function Kunden() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [syncing, setSyncing] = useState(false);
+  const [linking, setLinking] = useState(false);
   const [selectedKunde, setSelectedKunde] = useState<ClientRow | null>(null);
 
   const load = async () => {
@@ -133,6 +134,31 @@ export default function Kunden() {
     }
   };
 
+  const handleAutoLink = async () => {
+    setLinking(true);
+    const toastId = toast.loading('Auto-Zuordnen läuft…');
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-link-all', {
+        body: { target: 'all', only_unmatched: true }
+      });
+      if (error) throw error;
+      const s = data?.stats || {};
+      const onepage = s.onepage?.matched_by_name || 0;
+      const showcase = (s.showcase?.matched_by_account || 0) + (s.showcase?.matched_by_name || 0);
+      const campaigns = (s.campaigns?.matched_by_account || 0) + (s.campaigns?.matched_by_name || 0);
+      const total = onepage + showcase + campaigns;
+      toast.success(`${total} Datensätze automatisch zugeordnet`, {
+        id: toastId,
+        description: `Onepage: ${onepage} · Showcase: ${showcase} · Campaigns: ${campaigns}`,
+      });
+      await load();
+    } catch (e: any) {
+      toast.error(`Fehler: ${e.message}`, { id: toastId });
+    } finally {
+      setLinking(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     return clients.filter(c => {
       const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase());
@@ -167,6 +193,10 @@ export default function Kunden() {
         </div>
         {isAdminOrManager && (
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleAutoLink} disabled={linking}>
+              {linking ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+              Auto-Zuordnen
+            </Button>
             <Button variant="outline" size="sm" onClick={handleNotionSync} disabled={syncing}>
               {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
               Notion-Import
