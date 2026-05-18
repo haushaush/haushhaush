@@ -142,19 +142,14 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Kunde (Close Deal)</Label>
-              <select
-                value={linkedKundeId}
-                onChange={e => {
-                  setLinkedKundeId(e.target.value);
-                  const k = kunden.find(x => x.id === e.target.value);
-                  if (k && !clientName) setClientName(k.name);
+              <Label>Kunde</Label>
+              <ClientPicker
+                value={linkedClientId}
+                onChange={(id, name) => {
+                  setLinkedClientId(id);
+                  if (name && !clientName) setClientName(name);
                 }}
-                className="w-full h-10 bg-background border border-input rounded-md px-3 text-sm"
-              >
-                <option value="">— keiner —</option>
-                {kunden.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
-              </select>
+              />
             </div>
             <div>
               <Label>Kundenname (Anzeige)</Label>
@@ -162,9 +157,15 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
             </div>
           </div>
 
-          <div>
-            <Label>Branche</Label>
-            <Input value={branche} onChange={e => setBranche(e.target.value)} placeholder="z.B. Versicherung - PKV" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Branche</Label>
+              <BranchePicker value={brancheId} onChange={setBrancheId} />
+            </div>
+            <div>
+              <Label>Unternehmen</Label>
+              <UnternehmenPicker value={unternehmenId} onChange={setUnternehmenId} />
+            </div>
           </div>
 
           <div>
