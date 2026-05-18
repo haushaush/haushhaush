@@ -262,7 +262,14 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
       };
       if (form.prioritaet) insertData.prioritaet = form.prioritaet;
       if (form.typ.length > 0) insertData.typ = form.typ;
-      if (form.branche.length > 0) insertData.branche = form.branche;
+      if (form.branche.length > 0) {
+        insertData.branche = form.branche;
+        try {
+          const { normalizeBranche } = await import('@/lib/branchen');
+          const bid = normalizeBranche(form.branche[0]);
+          if (bid) insertData.linked_branche_id = bid;
+        } catch {}
+      }
       if (form.laufzeit) insertData.laufzeit = form.laufzeit;
       if (form.zahlstatus) insertData.zahlstatus = form.zahlstatus;
       if (form.startdatum) insertData.startdatum = form.startdatum;
@@ -272,9 +279,12 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
       if (form.cash_collect) insertData.cash_collect = parseFloat(form.cash_collect);
       if (form.mitarbeiter.length > 0) insertData.mitarbeiter = form.mitarbeiter;
 
-      // Link customer via verknuepfte_kunden_ids
+      // Link customer via verknuepfte_kunden_ids + FK
       if (selectedCustomer?.notion_id) {
         insertData.verknuepfte_kunden_ids = [selectedCustomer.notion_id];
+      }
+      if (selectedCustomer?.id) {
+        insertData.linked_client_id = selectedCustomer.id;
       }
 
       const { error } = await supabase.from('projects').insert(insertData as any);

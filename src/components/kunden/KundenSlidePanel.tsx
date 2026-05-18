@@ -350,6 +350,20 @@ export default function KundenSlidePanel({ deal: d, onClose, onDelete }: KundenS
     setSaving(true);
     const payload = { ...editData };
     ['start_datum', 'end_datum', 'deadline'].forEach(f => { if (payload[f] === '') payload[f] = null; });
+
+    // Dual-write FK ids (Plan: zentrale Personen-DB)
+    try {
+      const brancheArr = Array.isArray(payload.branche) ? payload.branche : [];
+      if (brancheArr[0]) {
+        const { normalizeBranche } = await import('@/lib/branchen');
+        payload.linked_branche_id = normalizeBranche(brancheArr[0]) || brancheArr[0];
+      }
+      if (payload.unternehmen && typeof payload.unternehmen === 'string') {
+        const { data: uId } = await supabase.rpc('create_or_get_unternehmen' as any, { p_name: payload.unternehmen });
+        if (uId) payload.linked_unternehmen_id = uId;
+      }
+    } catch (e) { console.warn('FK dual-write failed', e); }
+
     const { error } = await supabase.from('close_deals').update(payload as any).eq('id', d.id);
     setSaving(false);
     if (error) { toast.error('Fehler beim Speichern'); console.error(error); }
