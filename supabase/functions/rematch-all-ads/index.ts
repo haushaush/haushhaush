@@ -121,8 +121,15 @@ Deno.serve(async (req) => {
         const fv = { ...(ad.filter_values || {}) } as Record<string, string>;
         if (k.branche && !fv.branche) fv.branche = k.branche;
         if (k.unternehmen && !fv.unternehmen) fv.unternehmen = k.unternehmen;
+
+        // Resolve central clients.id via meta_account_id (new FK model)
+        const { data: clientId } = await svc.rpc("find_client_by_meta_account", {
+          p_account_id: String(ad.meta_account_id),
+        });
+
         const { error } = await svc.from("referenz_meta_ads").update({
           linked_kunde_id: k.id,
+          linked_client_id: clientId ?? null,
           filter_values: fv,
           match_method: "auto_account",
           last_matched_at: nowIso,
