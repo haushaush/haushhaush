@@ -88,6 +88,21 @@ export default function Kunden() {
     if (data?.id) navigate(`/kunden/${data.id}`);
   };
 
+  const handleNotionSync = async () => {
+    setSyncing(true);
+    const toastId = toast.loading('Notion-Import läuft…');
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-notion', { body: { target: 'kunden' } });
+      if (error) throw error;
+      toast.success(`${data?.synced?.kunden ?? '?'} Kunden synchronisiert`, { id: toastId });
+      await load();
+    } catch (e: any) {
+      toast.error(`Sync fehlgeschlagen: ${e.message}`, { id: toastId });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     return clients.filter(c => {
       const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase());
