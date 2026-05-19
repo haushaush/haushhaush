@@ -193,13 +193,15 @@ Deno.serve(async (req) => {
           "CC": "Rot", "C": "Rot", "Rot": "Rot",
         };
         const notionUnternehmen = gs(pr["Unternehmen"]);
-        const unternehmen_id = notionUnternehmen && notionUnternehmen.trim()
-          ? (unternehmenMap.get(notionUnternehmen.trim().toLowerCase()) || null)
+        const normalized = notionUnternehmen ? notionUnternehmen.trim().replace(/\s+/g, " ") : "";
+        const unternehmen_id = normalized
+          ? (unternehmenMap.get(normalized.toLowerCase()) || null)
           : null;
-        console.log("[Unternehmen]", {
+        console.log("[Sync Unternehmen]", {
           notion_value: notionUnternehmen,
-          found_id: unternehmen_id,
-          action: !notionUnternehmen ? "null" : (unternehmen_id ? "reuse" : "insert"),
+          normalized,
+          unternehmen_id,
+          action: !normalized ? "null" : (unternehmen_id ? "reuse" : "insert"),
         });
         return {
           notion_id: p.id,
