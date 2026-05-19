@@ -324,6 +324,22 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 
+          {/* HAUPTKUNDE */}
+          {directClient && (
+            <section className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5" /> Hauptkunde
+              </h3>
+              <button
+                onClick={() => { onClose(); navigate(`/kunden/${directClient.id}`); }}
+                className="text-sm font-medium px-3 py-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors inline-flex items-center gap-1.5"
+              >
+                {directClient.name}
+                <ExternalLink className="h-3 w-3" />
+              </button>
+            </section>
+          )}
+
           {/* VERKNÜPFTE KUNDEN */}
           {linkedKunden.length > 0 && (
             <section className="space-y-2">
@@ -332,7 +348,11 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {linkedKunden.map(k => (
-                  <button key={k.id} onClick={() => { onClose(); navigate(`/kunden?kunde=${k.id}`); }}
+                  <button key={k.id} onClick={() => {
+                    onClose();
+                    if (k.client_id) navigate(`/kunden/${k.client_id}`);
+                    else navigate(`/kunden?kunde=${k.id}`);
+                  }}
                     className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer">
                     {k.client_name}
                   </button>
