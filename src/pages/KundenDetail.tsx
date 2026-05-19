@@ -122,7 +122,7 @@ export default function KundenDetail() {
     if (!id) return;
     setLoading(true);
     // 1. Erst client laden, um notion_id für Projekt-Query zu erhalten
-    const { data: cli } = await supabase.from('clients').select('*').eq('id', id).maybeSingle();
+    const { data: cli } = await supabase.from('clients').select('*, unternehmen:unternehmen_id(id, name, display_name)').eq('id', id).maybeSingle();
     setClient(cli || null);
 
     // 2. Projekt-Query: über client_id ODER notion_id-Array (verknuepfte_kunden_ids)
@@ -174,7 +174,9 @@ export default function KundenDetail() {
       clientMetaAccountId: cli?.meta_account_id,
     });
 
-    if (cli?.unternehmen_id) {
+    if (cli?.unternehmen) {
+      setUnternehmen({ id: cli.unternehmen.id, display_name: cli.unternehmen.display_name || cli.unternehmen.name });
+    } else if (cli?.unternehmen_id) {
       const { data: u } = await supabase.from('unternehmen').select('id, display_name').eq('id', cli.unternehmen_id).maybeSingle();
       setUnternehmen(u || null);
     }

@@ -134,6 +134,28 @@ Deno.serve(async (req) => {
         "Follow Up": "Pausiert",
         "Offen": "Pausiert",
       };
+      // 1) Collect unique Unternehmen names from Notion pages and upsert them
+      const unternehmenNames = new Set<string>();
+      for (const p of pages) {
+        const v = gs(p.properties["Unternehmen"]);
+        if (v && v.trim()) unternehmenNames.add(v.trim());
+      }
+      const unternehmenMap = new Map<string, string>(); // lowercased name -> id
+      if (unternehmenNames.size > 0) {
+        const upsertRows = Array.from(unternehmenNames).map((n) => ({
+          name: n.toLowerCase(),
+          display_name: n,
+        }));
+        const { data: upserted, error: uErr } = await supabase
+          .from("unternehmen")
+          .upsert(upsertRows, { onConflict: "name", ignoreDuplicates: false })
+          .select("id, name");
+        if (uErr) throw new Error(`Unternehmen upsert: ${uErr.message}`);
+        for (const row of upserted || []) {
+          unternehmenMap.set((row as any).name, (row as any).id);
+        }
+      }
+
       const clientRows = pages.map((p: any) => {
         const pr = p.properties;
         const kundenstatus = gs(pr["Kundenstatus"]);
@@ -144,6 +166,15 @@ Deno.serve(async (req) => {
           "BB": "Gelb", "B": "Gelb", "Gelb": "Gelb",
           "CC": "Rot", "C": "Rot", "Rot": "Rot",
         };
+        const notionUnternehmen = gs(pr["Unternehmen"]);
+        const unternehmen_id = notionUnternehmen && notionUnternehmen.trim()
+          ? (unternehmenMap.get(notionUnternehmen.trim().toLowerCase()) || null)
+          : null;
+        console.log("[Unternehmen]", {
+          notion_value: notionUnternehmen,
+          found_id: unternehmen_id,
+          action: !notionUnternehmen ? "null" : (unternehmen_id ? "reuse" : "insert"),
+        });
         return {
           notion_id: p.id,
           notion_url: p.url,
@@ -156,6 +187,7 @@ Deno.serve(async (req) => {
           ampelstatus: ampelMap[ampel || ""] || "Grün",
           zahlstatus: gs(pr["Zahlstatus"]),
           branche: branche[0] || null,
+          unternehmen_id,
           projekttyp: gm(pr["Projekttyp"])[0] || null,
           laufzeit: gs(pr["Laufzeit"]) || grt(pr["Laufzeit"]),
           startdatum: gd(pr["Startdatum"]),
