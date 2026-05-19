@@ -233,7 +233,8 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
   const navigate = useNavigate();
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
-  const [linkedKunden, setLinkedKunden] = useState<{ id: string; client_name: string }[]>([]);
+  const [linkedKunden, setLinkedKunden] = useState<{ id: string; client_id: string | null; client_name: string }[]>([]);
+  const [directClient, setDirectClient] = useState<{ id: string; name: string } | null>(null);
   const [allTeamMembers, setAllTeamMembers] = useState<{ id: string; name: string; email: string; position?: string; avatar_url?: string }[]>([]);
 
   useEffect(() => { setEditData({ ...p }); }, [p.id]);
