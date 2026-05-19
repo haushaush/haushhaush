@@ -167,6 +167,13 @@ export default function KundenDetail() {
     setWebsites(allShowcase.filter((s: any) => s.type === 'website'));
     setAds(a.data || []);
     setCampaigns(cam.data || []);
+    // eslint-disable-next-line no-console
+    console.log('[KundenDetail] Showcase ads loaded:', (a.data || []).length, 'for client:', id, {
+      conditions: buildMetaConditions(),
+      adsError: (a as any).error,
+      campaignsError: (cam as any).error,
+      clientMetaAccountId: cli?.meta_account_id,
+    });
 
     if (cli?.unternehmen_id) {
       const { data: u } = await supabase.from('unternehmen').select('id, display_name').eq('id', cli.unternehmen_id).maybeSingle();
