@@ -11,11 +11,35 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DriveBrowser } from '@/components/DriveBrowser';
 import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
-import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X, Loader2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { getBranche } from '@/lib/branchen';
 import { useMetaAds } from '@/contexts/MetaAdsContext';
 import ProjekteSlidePanel from '@/components/projekte/ProjekteSlidePanel';
+import { BranchePicker } from '@/components/pickers/BranchePicker';
+import { UnternehmenPicker } from '@/components/pickers/UnternehmenPicker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+
+const KUNDENSTATUS_OPTIONS = ['Lead', 'In Betreuung', 'Pausiert', 'Churned'];
+const AMPEL_OPTIONS = ['Grün', 'Gelb', 'Rot', 'CC'];
+const ZAHLSTATUS_OPTIONS = ['Offen', 'In Bearbeitung', 'Rechnung zu erstellen', 'VC an HHS', 'DONE'];
+
+const EDITABLE_FIELDS = [
+  'name','vor_nachname','email','phone','website_url','branche_id','unternehmen_id',
+  'kundenstatus','ampelstatus','zahlstatus',
+  'ads_budget','gesamt_saldo','cash_collect_offen','meta_kosten','crm_kosten','superchat_kosten','website_kosten',
+  'deadline','startdatum','enddatum','laufzeit_in_14t','notes',
+] as const;
+type EditableField = typeof EDITABLE_FIELDS[number];
+type EditForm = Record<EditableField, any>;
+
+const emptyForm = (): EditForm => EDITABLE_FIELDS.reduce((a, k) => ({ ...a, [k]: '' }), {} as EditForm);
+const formFromClient = (c: any): EditForm => EDITABLE_FIELDS.reduce((a, k) => {
+  const v = c?.[k];
+  (a as any)[k] = v == null ? (k === 'laufzeit_in_14t' ? false : '') : v;
+  return a;
+}, {} as EditForm);
 
 const AMPEL_DOT: Record<string, string> = { 'Grün': 'bg-success', 'Gelb': 'bg-warning', 'Rot': 'bg-destructive' };
 const STATUS_STYLES: Record<string, string> = {
