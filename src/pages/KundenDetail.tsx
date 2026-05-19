@@ -87,6 +87,7 @@ export default function KundenDetail() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [unternehmen, setUnternehmen] = useState<{ id: string; display_name: string } | null>(null);
   const [openDealId, setOpenDealId] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ email: '', phone: '', branche_id: '', unternehmen_id: '', notes: '' });
 
