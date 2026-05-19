@@ -426,13 +426,15 @@ export default function KundenDetail() {
 
         {/* META ADS */}
         <TabsContent value="meta-ads" className="mt-4 space-y-4">
-          {campaigns.length === 0 ? (
+          {(campaigns.length === 0 && ads.length === 0) ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                Keine Meta-Kampagnen verknüpft. Stelle sicher dass die Meta Account ID gesetzt ist.
+                Keine Meta-Daten verknüpft. Stelle sicher dass die Meta Account ID gesetzt ist.
               </CardContent>
             </Card>
           ) : (
+            <>
+            {campaigns.length > 0 && (
             <>
               {/* Aggregierte Performance oben */}
               {(() => {
