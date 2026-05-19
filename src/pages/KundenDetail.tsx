@@ -456,7 +456,7 @@ export default function KundenDetail() {
 
             {/* Status & Ampel */}
             <section>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Status</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">Status {client.notion_id && <Cloud className="h-3 w-3 text-warning"><title>Wird aus Notion gesynct — Änderungen werden beim nächsten Sync überschrieben</title></Cloud>}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs text-muted-foreground">Kundenstatus</label>
