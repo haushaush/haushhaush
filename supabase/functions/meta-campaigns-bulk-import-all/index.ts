@@ -51,109 +51,101 @@ Deno.serve(async (req) => {
       }
     }
 
-    const stats = {
-      clients_processed: clients.length,
-      accounts_total: accountToClient.size,
-      accounts_processed: 0,
-      campaigns_imported: 0,
-      campaigns_skipped: 0,
-      errors: 0,
-      error_details: [] as Array<{ account_id: string; error: string }>,
-    };
+    // Run the heavy work in the background so we return immediately
+    // and avoid the 150s edge-function idle timeout.
+    const work = async () => {
+      const stats = {
+        clients_processed: clients.length,
+        accounts_total: accountToClient.size,
+        accounts_processed: 0,
+        campaigns_imported: 0,
+        campaigns_skipped: 0,
+        errors: 0,
+      };
 
-    for (const [accountId, _clientId] of accountToClient.entries()) {
-      try {
-        // 1. List importable campaigns for this account
-        const listResp = await fetch(
-          `${SUPABASE_URL}/functions/v1/meta-campaigns-list-importable`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: authHeader,
-              "Content-Type": "application/json",
+      for (const [accountId] of accountToClient.entries()) {
+        try {
+          const listResp = await fetch(
+            `${SUPABASE_URL}/functions/v1/meta-campaigns-list-importable`,
+            {
+              method: "POST",
+              headers: { Authorization: authHeader, "Content-Type": "application/json" },
+              body: JSON.stringify({ accountId, limit: 50, status: "ALL" }),
             },
-            body: JSON.stringify({ accountId, limit: 50, status: "ALL" }),
-          },
-        );
-
-        if (!listResp.ok) {
-          const txt = await listResp.text();
-          stats.errors++;
-          stats.error_details.push({ account_id: accountId, error: `list ${listResp.status}: ${txt.slice(0, 200)}` });
-          continue;
-        }
-
-        const listData = await listResp.json();
-        const importable = (listData.campaigns || []).filter((c: any) => !c.already_imported);
-
-        if (importable.length === 0) {
+          );
+          if (!listResp.ok) {
+            stats.errors++;
+            console.warn(`[bulk] list failed ${accountId}: ${listResp.status}`);
+            continue;
+          }
+          const listData = await listResp.json();
+          const importable = (listData.campaigns || []).filter((c: any) => !c.already_imported);
+          if (importable.length === 0) {
+            stats.accounts_processed++;
+            continue;
+          }
+          const campaignIds = importable.map((c: any) => c.meta_campaign_id);
+          const importResp = await fetch(
+            `${SUPABASE_URL}/functions/v1/meta-campaigns-import-to-showcase`,
+            {
+              method: "POST",
+              headers: { Authorization: authHeader, "Content-Type": "application/json" },
+              body: JSON.stringify({ campaignIds, datePreset: "maximum" }),
+            },
+          );
+          if (importResp.ok) {
+            const d = await importResp.json();
+            stats.campaigns_imported += (d.imported || []).length;
+            stats.campaigns_skipped += (d.errors || []).length;
+          } else {
+            stats.errors++;
+          }
           stats.accounts_processed++;
-          continue;
-        }
-
-        const campaignIds = importable.map((c: any) => c.meta_campaign_id);
-
-        // 2. Import campaigns in one call
-        const importResp = await fetch(
-          `${SUPABASE_URL}/functions/v1/meta-campaigns-import-to-showcase`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: authHeader,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ campaignIds, datePreset: "maximum" }),
-          },
-        );
-
-        if (importResp.ok) {
-          const importData = await importResp.json();
-          stats.campaigns_imported += (importData.imported || []).length;
-          stats.campaigns_skipped += (importData.errors || []).length;
-        } else {
-          const txt = await importResp.text();
+        } catch (e: any) {
           stats.errors++;
-          stats.error_details.push({ account_id: accountId, error: `import ${importResp.status}: ${txt.slice(0, 200)}` });
+          console.warn(`[bulk] account ${accountId} failed:`, e.message);
         }
-
-        stats.accounts_processed++;
-      } catch (e: any) {
-        stats.errors++;
-        stats.error_details.push({ account_id: accountId, error: e.message });
       }
-    }
 
-    // 3. Backfill linked_client_id for all campaigns where missing
-    try {
-      const { data: campaigns } = await svc
-        .from("referenz_meta_campaigns")
-        .select("id, meta_account_id")
-        .is("linked_client_id", null);
-
-      if (campaigns && campaigns.length > 0) {
-        let backfilled = 0;
-        for (const camp of campaigns as any[]) {
+      // Backfill linked_client_id
+      try {
+        const { data: campaigns } = await svc
+          .from("referenz_meta_campaigns")
+          .select("id, meta_account_id")
+          .is("linked_client_id", null);
+        for (const camp of (campaigns ?? []) as any[]) {
           const acc = camp.meta_account_id;
           if (!acc) continue;
-          const variants = [acc, acc.replace(/^act_/, ""), acc.startsWith("act_") ? acc : `act_${acc}`];
-          const clientId = variants.map((v) => accountToClient.get(v.startsWith("act_") ? v : `act_${v}`)).find(Boolean);
+          const norm = acc.startsWith("act_") ? acc : `act_${acc}`;
+          const clientId = accountToClient.get(norm);
           if (clientId) {
-            const { error } = await svc
-              .from("referenz_meta_campaigns")
-              .update({ linked_client_id: clientId })
-              .eq("id", camp.id);
-            if (!error) backfilled++;
+            await svc.from("referenz_meta_campaigns").update({ linked_client_id: clientId }).eq("id", camp.id);
           }
         }
-        (stats as any).backfilled_links = backfilled;
+      } catch (e) {
+        console.warn("[bulk] backfill failed:", (e as Error).message);
       }
-    } catch (e) {
-      console.warn("backfill failed:", (e as Error).message);
+
+      console.log("[bulk] done", stats);
+    };
+
+    // @ts-ignore EdgeRuntime is provided by the Supabase Edge runtime
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(work());
+    } else {
+      work();
     }
 
-    return new Response(JSON.stringify({ ok: true, stats }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        queued: true,
+        accounts_total: accountToClient.size,
+        message: "Import läuft im Hintergrund. Prüfe in 2-5 Minuten referenz_meta_campaigns.",
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e: any) {
     return new Response(JSON.stringify({ error: e.message }), {
       status: 500,
@@ -161,3 +153,4 @@ Deno.serve(async (req) => {
     });
   }
 });
+
