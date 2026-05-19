@@ -596,6 +596,89 @@ export default function KundenDetail() {
                 </details>
               )}
             </>
+            )}
+
+            {ads.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2 mt-4">
+                  <h3 className="text-sm font-semibold">Anzeigen ({ads.length})</h3>
+                  <p className="text-xs text-muted-foreground">Einzelne Creatives</p>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {ads.slice(0, 12).map((ad: any) => {
+                    const name = ad.meta_ad_name || ad.ad_name || 'Unbenannte Anzeige';
+                    const status = ad.meta_status || ad.effective_status || ad.status;
+                    const statusCls = status === 'ACTIVE' ? 'bg-green-500/15 text-green-500'
+                                    : status === 'PAUSED' ? 'bg-yellow-500/15 text-yellow-500'
+                                    : 'bg-muted text-muted-foreground';
+                    return (
+                      <Link key={ad.id} to={`/sales/referenz-showcase/werbeanzeigen/${ad.id}`} className="block">
+                        <Card className="hover:bg-muted/30 transition-colors overflow-hidden">
+                          {ad.thumbnail_url && (
+                            <div className="aspect-video bg-muted overflow-hidden">
+                              <img src={ad.thumbnail_url} alt={name} className="w-full h-full object-cover" loading="lazy" />
+                            </div>
+                          )}
+                          <CardContent className="p-3">
+                            <p className="text-sm font-medium truncate" title={name}>{name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {ad.meta_campaign_name || ad.meta_account_name || ''}
+                            </p>
+                            {status && (
+                              <span className={`inline-block mt-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${statusCls}`}>
+                                {status}
+                              </span>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {ads.length > 12 && (
+                  <details className="group mt-3">
+                    <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground py-2 list-none flex items-center gap-1">
+                      <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
+                      Alle {ads.length - 12} weiteren Anzeigen anzeigen
+                    </summary>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-2">
+                      {ads.slice(12).map((ad: any) => {
+                        const name = ad.meta_ad_name || ad.ad_name || 'Unbenannte Anzeige';
+                        const status = ad.meta_status || ad.effective_status || ad.status;
+                        const statusCls = status === 'ACTIVE' ? 'bg-green-500/15 text-green-500'
+                                        : status === 'PAUSED' ? 'bg-yellow-500/15 text-yellow-500'
+                                        : 'bg-muted text-muted-foreground';
+                        return (
+                          <Link key={ad.id} to={`/sales/referenz-showcase/werbeanzeigen/${ad.id}`} className="block">
+                            <Card className="hover:bg-muted/30 transition-colors overflow-hidden">
+                              {ad.thumbnail_url && (
+                                <div className="aspect-video bg-muted overflow-hidden">
+                                  <img src={ad.thumbnail_url} alt={name} className="w-full h-full object-cover" loading="lazy" />
+                                </div>
+                              )}
+                              <CardContent className="p-3">
+                                <p className="text-sm font-medium truncate" title={name}>{name}</p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {ad.meta_campaign_name || ad.meta_account_name || ''}
+                                </p>
+                                {status && (
+                                  <span className={`inline-block mt-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${statusCls}`}>
+                                    {status}
+                                  </span>
+                                )}
+                              </CardContent>
+                            </Card>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </details>
+                )}
+              </div>
+            )}
+            </>
           )}
         </TabsContent>
 
