@@ -83,6 +83,7 @@ export default function KundenDetail() {
   const [projects, setProjects] = useState<any[]>([]);
   const [onepageProjects, setOnepageProjects] = useState<any[]>([]);
   const [websites, setWebsites] = useState<any[]>([]);
+  const [showcaseAds, setShowcaseAds] = useState<any[]>([]);
   const [ads, setAds] = useState<any[]>([]);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [unternehmen, setUnternehmen] = useState<{ id: string; display_name: string } | null>(null);
