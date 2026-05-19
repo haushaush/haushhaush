@@ -89,6 +89,33 @@ export default function KundenDetail() {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ email: '', phone: '', branche_id: '', unternehmen_id: '', notes: '' });
 
+  const { callMeta } = useMetaAds();
+  const [liveCampaigns, setLiveCampaigns] = useState<any[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!client?.meta_account_id) {
+      setLiveCampaigns([]);
+      return;
+    }
+    const raw = String(client.meta_account_id);
+    const accountId = raw.startsWith('act_') ? raw : `act_${raw}`;
+
+    setLiveLoading(true);
+    setLiveError(null);
+    callMeta<any>(`/${accountId}/campaigns`, {
+      fields: 'id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,insights{spend,impressions,reach,clicks,ctr,cpc}',
+      limit: 50,
+    })
+      .then((data: any) => setLiveCampaigns(data?.data || []))
+      .catch((e: Error) => {
+        setLiveError(e.message);
+        console.error('Meta API fetch failed:', e);
+      })
+      .finally(() => setLiveLoading(false));
+  }, [client?.meta_account_id, callMeta]);
+
   const load = async () => {
     if (!id) return;
     setLoading(true);
