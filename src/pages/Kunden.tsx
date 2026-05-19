@@ -168,6 +168,28 @@ export default function Kunden() {
     }
   };
 
+  const handleMetaBulkImport = async () => {
+    setImportingMeta(true);
+    const toastId = toast.loading('Meta-Kampagnen werden importiert… (kann 1-2 Min dauern)');
+    try {
+      const { data, error } = await supabase.functions.invoke('meta-campaigns-bulk-import-all');
+      if (error) throw error;
+      const s = data?.stats || {};
+      toast.success(`${s.campaigns_imported || 0} Kampagnen importiert`, {
+        id: toastId,
+        description: `Aus ${s.accounts_processed || 0}/${s.accounts_total || 0} Accounts · ${s.backfilled_links || 0} verknüpft · ${s.errors || 0} Fehler`,
+        duration: 8000,
+      });
+      await load();
+    } catch (e: any) {
+      toast.error(`Import fehlgeschlagen: ${e.message}`, { id: toastId });
+    } finally {
+      setImportingMeta(false);
+    }
+  };
+
+
+
   const filtered = useMemo(() => {
     return clients.filter(c => {
       const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase());
