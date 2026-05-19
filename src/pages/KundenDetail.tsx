@@ -635,6 +635,12 @@ export default function KundenDetail() {
       </Tabs>
 
       <CloseDealDetailPanel dealId={openDealId} open={!!openDealId} onOpenChange={(o) => !o && setOpenDealId(null)} />
+      {selectedProject && (
+        <ProjekteSlidePanel
+          project={selectedProject}
+          onClose={() => { setSelectedProject(null); load(); }}
+        />
+      )}
     </div>
   );
 }
