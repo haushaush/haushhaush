@@ -133,13 +133,35 @@ export default function KundenDetail() {
           .order('created_at', { ascending: false })
       : supabase.from('projects').select('*').eq('client_id', id).order('created_at', { ascending: false });
 
+    // Multi-Strategy OR-Filter für meta ads/campaigns (linked_client_id ODER meta_account_id ODER Name-Match)
+    const buildMetaConditions = () => {
+      const conditions: string[] = [`linked_client_id.eq.${id}`];
+      if (cli?.meta_account_id) {
+        const raw = String(cli.meta_account_id).replace(/^act_/, '');
+        conditions.push(`meta_account_id.eq.${cli.meta_account_id}`);
+        conditions.push(`meta_account_id.eq.${raw}`);
+        conditions.push(`meta_account_id.eq.act_${raw}`);
+      }
+      if (cli?.name && cli.name.length >= 5) {
+        conditions.push(`meta_account_name.ilike.%${cli.name}%`);
+      }
+      return conditions.join(',');
+    };
+
+    const adsQuery = cli
+      ? supabase.from('referenz_meta_ads').select('*').or(buildMetaConditions()).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] } as any);
+    const campaignsQuery = cli
+      ? supabase.from('referenz_meta_campaigns').select('*').or(buildMetaConditions()).order('campaign_period_start', { ascending: false })
+      : Promise.resolve({ data: [] } as any);
+
     const [d, p, op, w, a, cam] = await Promise.all([
       supabase.from('close_deals').select('*').eq('client_id', id).order('created_at', { ascending: false }),
       projectsQuery,
       supabase.from('onepage_projects').select('*').eq('client_id_fk', id).order('created_at', { ascending: false }),
       supabase.from('referenz_showcase' as any).select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
-      supabase.from('referenz_meta_ads').select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
-      supabase.from('referenz_meta_campaigns').select('*').eq('linked_client_id', id).order('campaign_period_start', { ascending: false }),
+      adsQuery,
+      campaignsQuery,
     ]);
     setDeals(d.data || []);
     setProjects(p.data || []);
