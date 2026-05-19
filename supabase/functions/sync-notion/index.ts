@@ -237,6 +237,12 @@ Deno.serve(async (req) => {
         .from("clients")
         .upsert(clientRows, { onConflict: "notion_id", ignoreDuplicates: false });
       if (clientsErr) throw new Error(`Clients (Notion): ${clientsErr.message}`);
+      console.log("[Sync Summary]", {
+        total_processed: clientRows.length,
+        unternehmen_inserted: unternehmenInserted,
+        unternehmen_reused: unternehmenReused,
+        errors: 0,
+      });
     }
 
     // ── PROJEKTE ──
