@@ -82,6 +82,7 @@ export default function KundenDetail() {
   const [onepageProjects, setOnepageProjects] = useState<any[]>([]);
   const [websites, setWebsites] = useState<any[]>([]);
   const [ads, setAds] = useState<any[]>([]);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
   const [unternehmen, setUnternehmen] = useState<{ id: string; display_name: string } | null>(null);
   const [openDealId, setOpenDealId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -90,13 +91,14 @@ export default function KundenDetail() {
   const load = async () => {
     if (!id) return;
     setLoading(true);
-    const [c, d, p, op, w, a] = await Promise.all([
+    const [c, d, p, op, w, a, cam] = await Promise.all([
       supabase.from('clients').select('*').eq('id', id).maybeSingle(),
       supabase.from('close_deals').select('*').eq('client_id', id).order('created_at', { ascending: false }),
       supabase.from('projects').select('*').eq('client_id', id).order('created_at', { ascending: false }),
       supabase.from('onepage_projects').select('*').eq('client_id_fk', id).order('created_at', { ascending: false }),
       supabase.from('referenz_showcase' as any).select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
       supabase.from('referenz_meta_ads').select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
+      supabase.from('referenz_meta_campaigns').select('*').eq('linked_client_id', id).is('deleted_at', null).order('campaign_period_start', { ascending: false }),
     ]);
     const cli = c.data || null;
     setClient(cli);
@@ -105,6 +107,7 @@ export default function KundenDetail() {
     setOnepageProjects(op.data || []);
     setWebsites(w.data || []);
     setAds(a.data || []);
+    setCampaigns(cam.data || []);
 
     if (cli?.unternehmen_id) {
       const { data: u } = await supabase.from('unternehmen').select('id, display_name').eq('id', cli.unternehmen_id).maybeSingle();
@@ -130,9 +133,9 @@ export default function KundenDetail() {
       dealCount: deals.length,
       dealValue: dealsValue,
       projectCount: projects.length,
-      showcaseCount: websites.length + ads.length,
+      showcaseCount: websites.length,
     };
-  }, [deals, projects, websites, ads]);
+  }, [deals, projects, websites]);
 
   const activity = useMemo(() => {
     const items: { text: string; ts: string }[] = [];
