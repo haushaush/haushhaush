@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Users, RefreshCw, Loader2, ArrowRight, Sparkles } from 'lucide-react';
+import { Plus, Search, Users, RefreshCw, Loader2, ArrowRight, Sparkles, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import KundenSlidePanel from '@/components/kunden/KundenSlidePanel';
 
@@ -67,6 +67,7 @@ export default function Kunden() {
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [syncing, setSyncing] = useState(false);
   const [linking, setLinking] = useState(false);
+  const [importingMeta, setImportingMeta] = useState(false);
   const [selectedKunde, setSelectedKunde] = useState<ClientRow | null>(null);
 
   const load = async () => {
@@ -167,6 +168,28 @@ export default function Kunden() {
     }
   };
 
+  const handleMetaBulkImport = async () => {
+    setImportingMeta(true);
+    const toastId = toast.loading('Meta-Kampagnen werden importiert… (kann 1-2 Min dauern)');
+    try {
+      const { data, error } = await supabase.functions.invoke('meta-campaigns-bulk-import-all');
+      if (error) throw error;
+      const s = data?.stats || {};
+      toast.success(`${s.campaigns_imported || 0} Kampagnen importiert`, {
+        id: toastId,
+        description: `Aus ${s.accounts_processed || 0}/${s.accounts_total || 0} Accounts · ${s.backfilled_links || 0} verknüpft · ${s.errors || 0} Fehler`,
+        duration: 8000,
+      });
+      await load();
+    } catch (e: any) {
+      toast.error(`Import fehlgeschlagen: ${e.message}`, { id: toastId });
+    } finally {
+      setImportingMeta(false);
+    }
+  };
+
+
+
   const filtered = useMemo(() => {
     return clients.filter(c => {
       const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase());
@@ -204,6 +227,10 @@ export default function Kunden() {
             <Button variant="outline" size="sm" onClick={handleAutoLink} disabled={linking}>
               {linking ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
               Auto-Zuordnen
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleMetaBulkImport} disabled={importingMeta}>
+              {importingMeta ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+              Meta-Kampagnen importieren
             </Button>
             <Button variant="outline" size="sm" onClick={handleNotionSync} disabled={syncing}>
               {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
