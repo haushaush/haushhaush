@@ -446,22 +446,84 @@ export default function KundenDetail() {
         </TabsContent>
 
         {/* SHOWCASE */}
-        <TabsContent value="showcase" className="mt-4 space-y-4">
+        <TabsContent value="showcase" className="mt-4 space-y-6">
+          {/* WEBSITES */}
           <div>
             <h3 className="text-sm font-semibold mb-2">Websites ({websites.length})</h3>
-            {websites.length === 0 ? <p className="text-sm text-muted-foreground">Keine Websites</p> : (
+            {websites.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Keine Websites</p>
+            ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {websites.map(w => (
                   <Link key={w.id} to={`/sales/referenz-showcase/websites/${w.id}`} className="block">
-                    <Card className="hover:bg-muted/30 transition-colors">
-                      <CardContent className="p-4">
-                        <p className="font-medium truncate">{w.titel || w.url || w.id}</p>
+                    <Card className="hover:bg-muted/30 transition-colors overflow-hidden">
+                      {w.thumbnail_url && (
+                        <div className="aspect-video bg-muted overflow-hidden">
+                          <img src={w.thumbnail_url} alt={w.title} className="w-full h-full object-cover" loading="lazy" />
+                        </div>
+                      )}
+                      <CardContent className="p-3">
+                        <p className="text-sm font-medium truncate">{w.titel || w.url || w.id}</p>
                         <p className="text-xs text-muted-foreground truncate">{w.url || '–'}</p>
                       </CardContent>
                     </Card>
                   </Link>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* ANZEIGEN (referenz_showcase mit type='werbeanzeige') */}
+          <div>
+            <h3 className="text-sm font-semibold mb-2">Anzeigen ({showcaseAds.length})</h3>
+            {showcaseAds.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Keine Anzeigen</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {showcaseAds.slice(0, 12).map(ad => (
+                    <Link key={ad.id} to={`/sales/referenz-showcase/werbeanzeige/${ad.id}`} className="block">
+                      <Card className="hover:bg-muted/30 transition-colors overflow-hidden">
+                        {ad.thumbnail_url && (
+                          <div className="aspect-square bg-muted overflow-hidden">
+                            <img src={ad.thumbnail_url} alt={ad.title} className="w-full h-full object-cover" loading="lazy" />
+                          </div>
+                        )}
+                        <CardContent className="p-3">
+                          <p className="text-sm font-medium truncate">{ad.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {ad.branche || ad.custom_branche || '–'}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+                {showcaseAds.length > 12 && (
+                  <details className="group mt-3">
+                    <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground py-2 list-none flex items-center gap-1">
+                      <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
+                      Alle {showcaseAds.length - 12} weiteren Anzeigen anzeigen
+                    </summary>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-2">
+                      {showcaseAds.slice(12).map(ad => (
+                        <Link key={ad.id} to={`/sales/referenz-showcase/werbeanzeige/${ad.id}`} className="block">
+                          <Card className="hover:bg-muted/30 transition-colors overflow-hidden">
+                            {ad.thumbnail_url && (
+                              <div className="aspect-square bg-muted overflow-hidden">
+                                <img src={ad.thumbnail_url} alt={ad.title} className="w-full h-full object-cover" loading="lazy" />
+                              </div>
+                            )}
+                            <CardContent className="p-3">
+                              <p className="text-sm font-medium truncate">{ad.title}</p>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </>
             )}
           </div>
         </TabsContent>
