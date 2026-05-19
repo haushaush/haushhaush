@@ -171,7 +171,7 @@ export default function KundenDetail() {
     return {
       dealCount: deals.length,
       dealValue: dealsValue,
-      projectCount: projects.length,
+      projectCount: projects.filter(p => ['In Bearbeitung', 'Aktiv', 'Laufzeitbetreuung'].includes(p.projektstatus || p.status)).length,
       showcaseCount: websites.length,
     };
   }, [deals, projects, websites]);
