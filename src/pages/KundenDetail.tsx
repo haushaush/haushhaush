@@ -15,6 +15,7 @@ import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Sa
 import { toast } from 'sonner';
 import { getBranche } from '@/lib/branchen';
 import { useMetaAds } from '@/contexts/MetaAdsContext';
+import ProjekteSlidePanel from '@/components/projekte/ProjekteSlidePanel';
 
 const AMPEL_DOT: Record<string, string> = { 'Grün': 'bg-success', 'Gelb': 'bg-warning', 'Rot': 'bg-destructive' };
 const STATUS_STYLES: Record<string, string> = {
@@ -86,6 +87,7 @@ export default function KundenDetail() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [unternehmen, setUnternehmen] = useState<{ id: string; display_name: string } | null>(null);
   const [openDealId, setOpenDealId] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ email: '', phone: '', branche_id: '', unternehmen_id: '', notes: '' });
 
@@ -608,14 +610,18 @@ export default function KundenDetail() {
           {projects.length === 0 ? (
             <Card><CardContent className="py-8 text-center text-muted-foreground">Keine Projekte</CardContent></Card>
           ) : projects.map(p => (
-            <Card key={p.id}>
+            <Card
+              key={p.id}
+              onClick={() => setSelectedProject(p)}
+              className="cursor-pointer hover:bg-muted/40 hover:border-primary/40 transition-colors"
+            >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-medium">{p.name}</p>
+                    <p className="font-medium">{p.projektname || p.name}</p>
                     <p className="text-xs text-muted-foreground">{p.projekttyp || '–'} · {fmtDate(p.startdatum)}</p>
                   </div>
-                  <Badge variant="secondary">{p.status}</Badge>
+                  <Badge variant="secondary">{p.projektstatus || p.status}</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -629,6 +635,12 @@ export default function KundenDetail() {
       </Tabs>
 
       <CloseDealDetailPanel dealId={openDealId} open={!!openDealId} onOpenChange={(o) => !o && setOpenDealId(null)} />
+      {selectedProject && (
+        <ProjekteSlidePanel
+          project={selectedProject}
+          onClose={() => { setSelectedProject(null); load(); }}
+        />
+      )}
     </div>
   );
 }
