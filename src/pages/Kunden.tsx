@@ -67,6 +67,7 @@ export default function Kunden() {
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [syncing, setSyncing] = useState(false);
   const [linking, setLinking] = useState(false);
+  const [importingMeta, setImportingMeta] = useState(false);
   const [selectedKunde, setSelectedKunde] = useState<ClientRow | null>(null);
 
   const load = async () => {
