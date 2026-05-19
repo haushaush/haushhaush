@@ -121,17 +121,26 @@ export default function KundenDetail() {
   const load = async () => {
     if (!id) return;
     setLoading(true);
-    const [c, d, p, op, w, a, cam] = await Promise.all([
-      supabase.from('clients').select('*').eq('id', id).maybeSingle(),
+    // 1. Erst client laden, um notion_id für Projekt-Query zu erhalten
+    const { data: cli } = await supabase.from('clients').select('*').eq('id', id).maybeSingle();
+    setClient(cli || null);
+
+    // 2. Projekt-Query: über client_id ODER notion_id-Array (verknuepfte_kunden_ids)
+    const projectsQuery = cli?.notion_id
+      ? supabase.from('projects')
+          .select('*')
+          .or(`client_id.eq.${id},verknuepfte_kunden_ids.cs.{${cli.notion_id}}`)
+          .order('created_at', { ascending: false })
+      : supabase.from('projects').select('*').eq('client_id', id).order('created_at', { ascending: false });
+
+    const [d, p, op, w, a, cam] = await Promise.all([
       supabase.from('close_deals').select('*').eq('client_id', id).order('created_at', { ascending: false }),
-      supabase.from('projects').select('*').eq('client_id', id).order('created_at', { ascending: false }),
+      projectsQuery,
       supabase.from('onepage_projects').select('*').eq('client_id_fk', id).order('created_at', { ascending: false }),
       supabase.from('referenz_showcase' as any).select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
       supabase.from('referenz_meta_ads').select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
       supabase.from('referenz_meta_campaigns').select('*').eq('linked_client_id', id).is('deleted_at', null).order('campaign_period_start', { ascending: false }),
     ]);
-    const cli = c.data || null;
-    setClient(cli);
     setDeals(d.data || []);
     setProjects(p.data || []);
     setOnepageProjects(op.data || []);
