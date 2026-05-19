@@ -413,6 +413,27 @@ export default function KundenDetail() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
+            {client.notion_id && (
+              <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-foreground">
+                <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-medium">Dieser Kunde wird mit Notion synchronisiert.</p>
+                  <p className="text-muted-foreground mt-0.5">
+                    Bearbeite die unten markierten Felder lieber direkt in Notion — sonst werden deine Änderungen beim nächsten Sync überschrieben. Nicht-gesyncte Felder (z.B. Notizen) bleiben erhalten.
+                  </p>
+                  {client.notion_url && (
+                    <a
+                      href={client.notion_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 mt-1.5 text-primary hover:underline"
+                    >
+                      In Notion öffnen <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
             {/* Stammdaten */}
             <section>
               <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Stammdaten</h4>
