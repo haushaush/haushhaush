@@ -145,7 +145,9 @@ export default function KundenDetail() {
     setDeals(d.data || []);
     setProjects(p.data || []);
     setOnepageProjects(op.data || []);
-    setWebsites(w.data || []);
+    const allShowcase = (w.data || []) as any[];
+    setWebsites(allShowcase.filter((s: any) => s.type === 'website'));
+    setShowcaseAds(allShowcase.filter((s: any) => s.type === 'werbeanzeige'));
     setAds(a.data || []);
     setCampaigns(cam.data || []);
 
