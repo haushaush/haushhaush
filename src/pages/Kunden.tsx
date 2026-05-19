@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Search, Users, RefreshCw, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
-
 const STATUS_STYLES: Record<string, string> = {
   'In Betreuung': 'bg-success/20 text-success',
   'Onboarding': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
@@ -67,6 +66,8 @@ export default function Kunden() {
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [syncing, setSyncing] = useState(false);
   const [linking, setLinking] = useState(false);
+
+  const load = async () => {
     setLoading(true);
     const [{ data: cs }, { data: ds }] = await Promise.all([
       supabase.from('clients').select(`
@@ -161,9 +162,6 @@ export default function Kunden() {
       setLinking(false);
     }
   };
-
-
-
 
   const filtered = useMemo(() => {
     return clients.filter(c => {
@@ -272,15 +270,9 @@ export default function Kunden() {
                 {c.deal_count} Deals · €{(c.deal_total || 0).toLocaleString('de-DE', { maximumFractionDigits: 0 })}
               </span>
             </div>
+          </div>
         ))}
       </div>
-
-      <KundenSlidePanel
-        client={selectedKunde}
-        open={!!selectedKunde}
-        onOpenChange={(open) => !open && setSelectedKunde(null)}
-        onSaved={() => { setSelectedKunde(null); load(); }}
-      />
     </div>
   );
 }
