@@ -142,9 +142,8 @@ export default function KundenDetail() {
         conditions.push(`meta_account_id.eq.${raw}`);
         conditions.push(`meta_account_id.eq.act_${raw}`);
       }
-      if (cli?.name && cli.name.length >= 5) {
-        conditions.push(`meta_account_name.ilike.%${cli.name}%`);
-      }
+      // Name-Match entfernt: PostgREST OR mit Leerzeichen-Werten ist fehleranfällig.
+      // linked_client_id + meta_account_id reichen aus.
       return conditions.join(',');
     };
 
