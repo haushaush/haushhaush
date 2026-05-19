@@ -15,6 +15,7 @@ import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Sa
 import { toast } from 'sonner';
 import { getBranche } from '@/lib/branchen';
 import { useMetaAds } from '@/contexts/MetaAdsContext';
+import ProjekteSlidePanel from '@/components/projekte/ProjekteSlidePanel';
 
 const AMPEL_DOT: Record<string, string> = { 'Grün': 'bg-success', 'Gelb': 'bg-warning', 'Rot': 'bg-destructive' };
 const STATUS_STYLES: Record<string, string> = {
