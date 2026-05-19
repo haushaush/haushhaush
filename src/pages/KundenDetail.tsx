@@ -133,7 +133,7 @@ export default function KundenDetail() {
           .order('created_at', { ascending: false })
       : supabase.from('projects').select('*').eq('client_id', id).order('created_at', { ascending: false });
 
-    // Multi-Strategy OR-Filter für meta ads/campaigns (linked_client_id ODER meta_account_id ODER Name-Match)
+    // Multi-Strategy OR-Filter für meta ads/campaigns (linked_client_id ODER meta_account_id)
     const buildMetaConditions = () => {
       const conditions: string[] = [`linked_client_id.eq.${id}`];
       if (cli?.meta_account_id) {
@@ -142,8 +142,6 @@ export default function KundenDetail() {
         conditions.push(`meta_account_id.eq.${raw}`);
         conditions.push(`meta_account_id.eq.act_${raw}`);
       }
-      // Name-Match entfernt: PostgREST OR mit Leerzeichen-Werten ist fehleranfällig.
-      // linked_client_id + meta_account_id reichen aus.
       return conditions.join(',');
     };
 
