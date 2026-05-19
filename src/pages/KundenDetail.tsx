@@ -259,7 +259,7 @@ export default function KundenDetail() {
           <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
           <TabsTrigger value="onepage">Onepage-Leads ({onepageProjects.length})</TabsTrigger>
           <TabsTrigger value="showcase">Showcase ({totals.showcaseCount})</TabsTrigger>
-          <TabsTrigger value="meta-ads">Meta Ads ({campaigns.length})</TabsTrigger>
+          <TabsTrigger value="meta-ads">Meta Ads ({campaigns.length + ads.length})</TabsTrigger>
           <TabsTrigger value="projekte">Projekte ({projects.length})</TabsTrigger>
           <TabsTrigger value="dateien">Dateien</TabsTrigger>
         </TabsList>
