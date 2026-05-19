@@ -90,10 +90,12 @@ Deno.serve(async (req) => {
       return null;
     };
 
-    const stats = {
+    const stats: any = {
       onepage: { total: 0, matched_by_name: 0, no_match: 0 },
       showcase: { total: 0, matched_by_account: 0, matched_by_name: 0, no_match: 0 },
+      meta_ads: { total: 0, matched_by_account: 0, matched_by_name: 0, no_match: 0 },
       campaigns: { total: 0, matched_by_account: 0, matched_by_name: 0, no_match: 0 },
+      projects: { total: 0, matched_by_name: 0, no_match: 0 },
     };
 
     if (target === 'all' || target === 'onepage') {
@@ -134,8 +136,37 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (target === 'all' || target === 'meta_ads') {
+      let q = svc.from('referenz_meta_ads').select(
+        'id, meta_account_id, meta_account_name, meta_ad_name, meta_campaign_name, meta_adset_name, linked_client_id'
+      ).is('deleted_at', null);
+      if (onlyUnmatched) q = q.is('linked_client_id', null);
+      const { data: rows } = await q;
+      stats.meta_ads.total = rows?.length || 0;
+      for (const r of rows || []) {
+        let client = matchByAccount(r.meta_account_id);
+        let method = 'auto_account';
+        if (!client) {
+          client = matchByName(r.meta_account_name)
+                || matchByName(r.meta_campaign_name)
+                || matchByName(r.meta_adset_name)
+                || matchByName(r.meta_ad_name);
+          method = 'auto_name';
+        }
+        if (client) {
+          await svc.from('referenz_meta_ads').update({ linked_client_id: client.id }).eq('id', r.id);
+          if (method === 'auto_account') stats.meta_ads.matched_by_account++;
+          else stats.meta_ads.matched_by_name++;
+        } else {
+          stats.meta_ads.no_match++;
+        }
+      }
+    }
+
     if (target === 'all' || target === 'campaigns') {
-      let q = svc.from('referenz_meta_campaigns').select('id, campaign_name, meta_account_id, linked_client_id').is('deleted_at', null);
+      let q = svc.from('referenz_meta_campaigns').select(
+        'id, meta_account_id, meta_account_name, meta_campaign_name, linked_client_id'
+      );
       if (onlyUnmatched) q = q.is('linked_client_id', null);
       const { data: rows } = await q;
       stats.campaigns.total = rows?.length || 0;
@@ -143,7 +174,7 @@ Deno.serve(async (req) => {
         let client = matchByAccount(r.meta_account_id);
         let method = 'auto_account';
         if (!client) {
-          client = matchByName(r.campaign_name);
+          client = matchByName(r.meta_account_name) || matchByName(r.meta_campaign_name);
           method = 'auto_name';
         }
         if (client) {
@@ -152,6 +183,22 @@ Deno.serve(async (req) => {
           else stats.campaigns.matched_by_name++;
         } else {
           stats.campaigns.no_match++;
+        }
+      }
+    }
+
+    if (target === 'all' || target === 'projects') {
+      let q = svc.from('projects').select('id, name, client_id');
+      if (onlyUnmatched) q = q.is('client_id', null);
+      const { data: rows } = await q;
+      stats.projects.total = rows?.length || 0;
+      for (const r of rows || []) {
+        const client = matchByName(r.name);
+        if (client) {
+          await svc.from('projects').update({ client_id: client.id }).eq('id', r.id);
+          stats.projects.matched_by_name++;
+        } else {
+          stats.projects.no_match++;
         }
       }
     }

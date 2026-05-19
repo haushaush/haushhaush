@@ -421,16 +421,24 @@ export default function KundenDetail() {
           <div>
             <h3 className="text-sm font-semibold mb-2">Anzeigen ({ads.length})</h3>
             {ads.length === 0 ? <p className="text-sm text-muted-foreground">Keine Anzeigen</p> : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {ads.map(a => (
-                  <Link key={a.id} to={`/sales/referenz-showcase/werbeanzeigen/${a.id}`} className="block">
-                    <Card className="hover:bg-muted/30 transition-colors">
-                      <CardContent className="p-4">
-                        <p className="font-medium truncate">{a.ad_name || a.id}</p>
-                        <p className="text-xs text-muted-foreground truncate">{a.headline || '–'}</p>
-                      </CardContent>
-                    </Card>
-                  </Link>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {ads.map((a: any) => (
+                  <Card key={a.id} className="hover:bg-muted/30 transition-colors overflow-hidden">
+                    <CardContent className="p-3">
+                      {a.thumbnail_url_persisted || a.thumbnail_url ? (
+                        <img
+                          src={a.thumbnail_url_persisted || a.thumbnail_url}
+                          alt=""
+                          className="w-full aspect-square object-cover rounded mb-2"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full aspect-square bg-muted rounded mb-2" />
+                      )}
+                      <p className="text-sm font-medium truncate">{a.meta_ad_name || a.custom_title || a.id}</p>
+                      <p className="text-xs text-muted-foreground truncate">{a.meta_campaign_name || 'Meta Anzeige'}</p>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}

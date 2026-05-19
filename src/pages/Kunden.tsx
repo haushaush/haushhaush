@@ -145,11 +145,19 @@ export default function Kunden() {
       const s = data?.stats || {};
       const onepage = s.onepage?.matched_by_name || 0;
       const showcase = (s.showcase?.matched_by_account || 0) + (s.showcase?.matched_by_name || 0);
+      const metaAds = (s.meta_ads?.matched_by_account || 0) + (s.meta_ads?.matched_by_name || 0);
       const campaigns = (s.campaigns?.matched_by_account || 0) + (s.campaigns?.matched_by_name || 0);
-      const total = onepage + showcase + campaigns;
+      const projects = s.projects?.matched_by_name || 0;
+      const total = onepage + showcase + metaAds + campaigns + projects;
       toast.success(`${total} Datensätze automatisch zugeordnet`, {
         id: toastId,
-        description: `Onepage: ${onepage} · Showcase: ${showcase} · Campaigns: ${campaigns}`,
+        description: [
+          s.onepage && `Onepage: ${onepage}`,
+          s.showcase && `Showcase: ${showcase}`,
+          s.meta_ads && `Meta Ads: ${metaAds}`,
+          s.campaigns && `Campaigns: ${campaigns}`,
+          s.projects && `Projects: ${projects}`,
+        ].filter(Boolean).join(' · '),
       });
       await load();
     } catch (e: any) {
