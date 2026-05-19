@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DriveBrowser } from '@/components/DriveBrowser';
 import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
-import { ChevronLeft, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getBranche } from '@/lib/branchen';
 
@@ -425,90 +425,175 @@ export default function KundenDetail() {
         </TabsContent>
 
         {/* META ADS */}
-        <TabsContent value="meta-ads" className="mt-4 space-y-3">
+        <TabsContent value="meta-ads" className="mt-4 space-y-4">
           {campaigns.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                Keine Meta-Kampagnen verknüpft
+                Keine Meta-Kampagnen verknüpft. Stelle sicher dass die Meta Account ID gesetzt ist.
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {campaigns.map((c: any) => {
-                const metrics = c.metrics || {};
-                const spend = metrics.spend ? Number(metrics.spend) : null;
-                const impressions = metrics.impressions ? Number(metrics.impressions) : null;
-                const reach = metrics.reach ? Number(metrics.reach) : null;
-                const clicks = metrics.clicks ? Number(metrics.clicks) : null;
-                const statusColor = c.meta_status === 'ACTIVE' ? 'bg-green-500/15 text-green-500'
-                                  : c.meta_status === 'PAUSED' ? 'bg-yellow-500/15 text-yellow-500'
-                                  : 'bg-muted text-muted-foreground';
+            <>
+              {/* Aggregierte Performance oben */}
+              {(() => {
+                const totals = campaigns.reduce((acc, c) => {
+                  const m = c.metrics || {};
+                  acc.spend += Number(m.spend || 0);
+                  acc.impressions += Number(m.impressions || 0);
+                  acc.reach += Number(m.reach || 0);
+                  acc.clicks += Number(m.clicks || 0);
+                  return acc;
+                }, { spend: 0, impressions: 0, reach: 0, clicks: 0 });
+
+                const cpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0;
+                const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
 
                 return (
-                  <Link
-                    key={c.id}
-                    to={`/sales/referenz-showcase/kampagnen/${c.id}`}
-                    className="block"
-                  >
-                    <Card className="hover:bg-muted/30 transition-colors h-full">
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-sm truncate" title={c.meta_campaign_name}>
-                              {c.meta_campaign_name || c.meta_campaign_id}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {c.meta_account_name || c.meta_account_id}
-                            </p>
-                          </div>
-                          {c.meta_status && (
-                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${statusColor}`}>
-                              {c.meta_status}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Kampagnen-Metrics in 4er-Grid */}
-                        <div className="grid grid-cols-4 gap-2 text-center pt-2 border-t border-border/50">
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase">Spend</p>
-                            <p className="text-xs font-semibold">
-                              {spend !== null ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(spend) : '—'}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase">Reach</p>
-                            <p className="text-xs font-semibold">
-                              {reach !== null ? new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(reach) : '—'}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase">Impr.</p>
-                            <p className="text-xs font-semibold">
-                              {impressions !== null ? new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(impressions) : '—'}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase">Clicks</p>
-                            <p className="text-xs font-semibold">
-                              {clicks !== null ? new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(clicks) : '—'}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Anzeigen-Count + Zeitraum */}
-                        <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-                          <span>{c.total_ads_count || 0} Anzeigen</span>
-                          {c.campaign_period_start && (
-                            <span>{fmtDate(c.campaign_period_start)} – {c.campaign_period_end ? fmtDate(c.campaign_period_end) : 'laufend'}</span>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Card><CardContent className="p-3">
+                      <p className="text-xs text-muted-foreground uppercase">Gesamt-Spend</p>
+                      <p className="text-lg font-semibold tabular-nums">
+                        {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(totals.spend)}
+                      </p>
+                    </CardContent></Card>
+                    <Card><CardContent className="p-3">
+                      <p className="text-xs text-muted-foreground uppercase">Impressions</p>
+                      <p className="text-lg font-semibold tabular-nums">
+                        {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(totals.impressions)}
+                      </p>
+                    </CardContent></Card>
+                    <Card><CardContent className="p-3">
+                      <p className="text-xs text-muted-foreground uppercase">Reach</p>
+                      <p className="text-lg font-semibold tabular-nums">
+                        {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(totals.reach)}
+                      </p>
+                    </CardContent></Card>
+                    <Card><CardContent className="p-3">
+                      <p className="text-xs text-muted-foreground uppercase">Clicks · CPC · CTR</p>
+                      <p className="text-lg font-semibold tabular-nums">
+                        {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(totals.clicks)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        CPC {cpc.toFixed(2)}€ · CTR {ctr.toFixed(2)}%
+                      </p>
+                    </CardContent></Card>
+                  </div>
                 );
-              })}
-            </div>
+              })()}
+
+              {/* Top 5 Kampagnen */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold">Top 5 nach Spend</h3>
+                  <p className="text-xs text-muted-foreground">{campaigns.length} Kampagnen gesamt</p>
+                </div>
+
+                <div className="space-y-2">
+                  {[...campaigns]
+                    .sort((a, b) => Number(b.metrics?.spend || 0) - Number(a.metrics?.spend || 0))
+                    .slice(0, 5)
+                    .map((c: any, idx: number) => {
+                      const m = c.metrics || {};
+                      const spend = Number(m.spend || 0);
+                      const impressions = Number(m.impressions || 0);
+                      const reach = Number(m.reach || 0);
+                      const clicks = Number(m.clicks || 0);
+                      const statusColor = c.meta_status === 'ACTIVE' ? 'bg-green-500/15 text-green-500'
+                                        : c.meta_status === 'PAUSED' ? 'bg-yellow-500/15 text-yellow-500'
+                                        : 'bg-muted text-muted-foreground';
+
+                      return (
+                        <Link
+                          key={c.id}
+                          to={`/sales/referenz-showcase/kampagnen/${c.id}`}
+                          className="block"
+                        >
+                          <Card className="hover:bg-muted/30 transition-colors">
+                            <CardContent className="p-4">
+                              <div className="flex items-center gap-3">
+                                {/* Rank-Badge */}
+                                <div className="text-2xl font-bold text-muted-foreground/40 w-8 shrink-0">
+                                  #{idx + 1}
+                                </div>
+
+                                {/* Name + Account */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium truncate">{c.meta_campaign_name || c.meta_campaign_id}</p>
+                                    {c.meta_status && (
+                                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${statusColor}`}>
+                                        {c.meta_status}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {c.meta_account_name || c.meta_account_id} · {c.total_ads_count || 0} Anzeigen
+                                  </p>
+                                </div>
+
+                                {/* Metrics rechts in 4 Spalten */}
+                                <div className="grid grid-cols-4 gap-4 text-right shrink-0">
+                                  <div>
+                                    <p className="text-[10px] text-muted-foreground uppercase">Spend</p>
+                                    <p className="text-sm font-semibold tabular-nums">
+                                      {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(spend)}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-muted-foreground uppercase">Reach</p>
+                                    <p className="text-sm font-semibold tabular-nums">
+                                      {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(reach)}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-muted-foreground uppercase">Impr.</p>
+                                    <p className="text-sm font-semibold tabular-nums">
+                                      {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(impressions)}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-muted-foreground uppercase">Clicks</p>
+                                    <p className="text-sm font-semibold tabular-nums">
+                                      {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(clicks)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Alle Kampagnen ausklappen wenn > 5 */}
+              {campaigns.length > 5 && (
+                <details className="group">
+                  <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground py-2 list-none flex items-center gap-1">
+                    <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
+                    Alle {campaigns.length - 5} weiteren Kampagnen anzeigen
+                  </summary>
+                  <div className="space-y-2 mt-2">
+                    {[...campaigns]
+                      .sort((a, b) => Number(b.metrics?.spend || 0) - Number(a.metrics?.spend || 0))
+                      .slice(5)
+                      .map((c: any) => (
+                        <Link key={c.id} to={`/sales/referenz-showcase/kampagnen/${c.id}`} className="block">
+                          <Card className="hover:bg-muted/30 transition-colors">
+                            <CardContent className="p-3 flex items-center justify-between">
+                              <p className="text-sm truncate flex-1">{c.meta_campaign_name}</p>
+                              <p className="text-sm font-semibold tabular-nums shrink-0 ml-3">
+                                {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(c.metrics?.spend || 0))}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                  </div>
+                </details>
+              )}
+            </>
           )}
         </TabsContent>
 
