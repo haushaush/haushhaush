@@ -206,13 +206,7 @@ export default function KundenDetail() {
       setUnternehmen(u || null);
     }
     if (cli) {
-      setEditForm({
-        email: cli.email || '',
-        phone: cli.phone || '',
-        branche_id: cli.branche_id || '',
-        unternehmen_id: cli.unternehmen_id || '',
-        notes: cli.notes || '',
-      });
+      setEditForm(formFromClient(cli));
     }
     setLoading(false);
   };
