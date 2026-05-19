@@ -610,14 +610,18 @@ export default function KundenDetail() {
           {projects.length === 0 ? (
             <Card><CardContent className="py-8 text-center text-muted-foreground">Keine Projekte</CardContent></Card>
           ) : projects.map(p => (
-            <Card key={p.id}>
+            <Card
+              key={p.id}
+              onClick={() => setSelectedProject(p)}
+              className="cursor-pointer hover:bg-muted/40 hover:border-primary/40 transition-colors"
+            >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-medium">{p.name}</p>
+                    <p className="font-medium">{p.projektname || p.name}</p>
                     <p className="text-xs text-muted-foreground">{p.projekttyp || '–'} · {fmtDate(p.startdatum)}</p>
                   </div>
-                  <Badge variant="secondary">{p.status}</Badge>
+                  <Badge variant="secondary">{p.projektstatus || p.status}</Badge>
                 </div>
               </CardContent>
             </Card>
