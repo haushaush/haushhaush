@@ -11,9 +11,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DriveBrowser } from '@/components/DriveBrowser';
 import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
-import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { getBranche } from '@/lib/branchen';
+import { useMetaAds } from '@/contexts/MetaAdsContext';
 
 const AMPEL_DOT: Record<string, string> = { 'Grün': 'bg-success', 'Gelb': 'bg-warning', 'Rot': 'bg-destructive' };
 const STATUS_STYLES: Record<string, string> = {
@@ -87,6 +88,33 @@ export default function KundenDetail() {
   const [openDealId, setOpenDealId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ email: '', phone: '', branche_id: '', unternehmen_id: '', notes: '' });
+
+  const { callMeta } = useMetaAds();
+  const [liveCampaigns, setLiveCampaigns] = useState<any[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!client?.meta_account_id) {
+      setLiveCampaigns([]);
+      return;
+    }
+    const raw = String(client.meta_account_id);
+    const accountId = raw.startsWith('act_') ? raw : `act_${raw}`;
+
+    setLiveLoading(true);
+    setLiveError(null);
+    callMeta<any>(`/${accountId}/campaigns`, {
+      fields: 'id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,insights{spend,impressions,reach,clicks,ctr,cpc}',
+      limit: 50,
+    })
+      .then((data: any) => setLiveCampaigns(data?.data || []))
+      .catch((e: Error) => {
+        setLiveError(e.message);
+        console.error('Meta API fetch failed:', e);
+      })
+      .finally(() => setLiveLoading(false));
+  }, [client?.meta_account_id, callMeta]);
 
   const load = async () => {
     if (!id) return;
@@ -259,7 +287,7 @@ export default function KundenDetail() {
           <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
           <TabsTrigger value="onepage">Onepage-Leads ({onepageProjects.length})</TabsTrigger>
           <TabsTrigger value="showcase">Showcase ({totals.showcaseCount})</TabsTrigger>
-          <TabsTrigger value="meta-ads">Meta Ads ({campaigns.length + ads.length})</TabsTrigger>
+          <TabsTrigger value="meta-ads">Meta Ads ({liveCampaigns.length})</TabsTrigger>
           <TabsTrigger value="projekte">Projekte ({projects.length})</TabsTrigger>
           <TabsTrigger value="dateien">Dateien</TabsTrigger>
         </TabsList>
@@ -426,30 +454,48 @@ export default function KundenDetail() {
 
         {/* META ADS */}
         <TabsContent value="meta-ads" className="mt-4 space-y-4">
-          {(campaigns.length === 0 && ads.length === 0) ? (
+          {!client?.meta_account_id ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
-                Keine Meta-Daten verknüpft. Stelle sicher dass die Meta Account ID gesetzt ist.
+                Keine Meta Account ID hinterlegt. Bitte im Bearbeiten-Panel ergänzen.
+              </CardContent>
+            </Card>
+          ) : liveLoading ? (
+            <Card>
+              <CardContent className="py-12 flex items-center justify-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Lade Meta-Daten...
+              </CardContent>
+            </Card>
+          ) : liveError ? (
+            <Card>
+              <CardContent className="py-6 space-y-2">
+                <div className="flex items-center gap-2 text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <p className="font-medium text-sm">Fehler beim Laden von Meta-Daten</p>
+                </div>
+                <p className="text-xs text-muted-foreground break-words">{liveError}</p>
+                <p className="text-xs text-muted-foreground">Account ID: {client.meta_account_id}</p>
+              </CardContent>
+            </Card>
+          ) : liveCampaigns.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Keine Kampagnen für diesen Account
               </CardContent>
             </Card>
           ) : (
             <>
-            {campaigns.length > 0 && (
-            <>
-              {/* Aggregierte Performance oben */}
               {(() => {
-                const totals = campaigns.reduce((acc, c) => {
-                  const m = c.metrics || {};
-                  acc.spend += Number(m.spend || 0);
-                  acc.impressions += Number(m.impressions || 0);
-                  acc.reach += Number(m.reach || 0);
-                  acc.clicks += Number(m.clicks || 0);
+                const totals = liveCampaigns.reduce((acc, c: any) => {
+                  const ins = c.insights?.data?.[0] || {};
+                  acc.spend += Number(ins.spend || 0);
+                  acc.impressions += Number(ins.impressions || 0);
+                  acc.reach += Number(ins.reach || 0);
+                  acc.clicks += Number(ins.clicks || 0);
                   return acc;
                 }, { spend: 0, impressions: 0, reach: 0, clicks: 0 });
-
-                const cpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0;
                 const ctr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0;
-
                 return (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <Card><CardContent className="p-3">
@@ -471,213 +517,88 @@ export default function KundenDetail() {
                       </p>
                     </CardContent></Card>
                     <Card><CardContent className="p-3">
-                      <p className="text-xs text-muted-foreground uppercase">Clicks · CPC · CTR</p>
+                      <p className="text-xs text-muted-foreground uppercase">Clicks · CTR</p>
                       <p className="text-lg font-semibold tabular-nums">
                         {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(totals.clicks)}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        CPC {cpc.toFixed(2)}€ · CTR {ctr.toFixed(2)}%
-                      </p>
+                      <p className="text-[10px] text-muted-foreground">CTR {ctr.toFixed(2)}%</p>
                     </CardContent></Card>
                   </div>
                 );
               })()}
 
-              {/* Top 5 Kampagnen */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold">Top 5 nach Spend</h3>
-                  <p className="text-xs text-muted-foreground">{campaigns.length} Kampagnen gesamt</p>
+                  <Link to="/meta/kampagnen" className="text-xs text-primary hover:underline">
+                    Alle {liveCampaigns.length} im Ads Manager →
+                  </Link>
                 </div>
 
                 <div className="space-y-2">
-                  {[...campaigns]
-                    .sort((a, b) => Number(b.metrics?.spend || 0) - Number(a.metrics?.spend || 0))
+                  {[...liveCampaigns]
+                    .sort((a: any, b: any) => Number(b.insights?.data?.[0]?.spend || 0) - Number(a.insights?.data?.[0]?.spend || 0))
                     .slice(0, 5)
                     .map((c: any, idx: number) => {
-                      const m = c.metrics || {};
-                      const spend = Number(m.spend || 0);
-                      const impressions = Number(m.impressions || 0);
-                      const reach = Number(m.reach || 0);
-                      const clicks = Number(m.clicks || 0);
-                      const statusColor = c.meta_status === 'ACTIVE' ? 'bg-green-500/15 text-green-500'
-                                        : c.meta_status === 'PAUSED' ? 'bg-yellow-500/15 text-yellow-500'
+                      const ins = c.insights?.data?.[0] || {};
+                      const spend = Number(ins.spend || 0);
+                      const impressions = Number(ins.impressions || 0);
+                      const reach = Number(ins.reach || 0);
+                      const clicks = Number(ins.clicks || 0);
+                      const statusColor = c.status === 'ACTIVE' ? 'bg-green-500/15 text-green-500'
+                                        : c.status === 'PAUSED' ? 'bg-yellow-500/15 text-yellow-500'
                                         : 'bg-muted text-muted-foreground';
-
                       return (
-                        <Link
-                          key={c.id}
-                          to={`/sales/referenz-showcase/kampagnen/${c.id}`}
-                          className="block"
-                        >
-                          <Card className="hover:bg-muted/30 transition-colors">
-                            <CardContent className="p-4">
-                              <div className="flex items-center gap-3">
-                                {/* Rank-Badge */}
-                                <div className="text-2xl font-bold text-muted-foreground/40 w-8 shrink-0">
-                                  #{idx + 1}
+                        <Card key={c.id} className="hover:bg-muted/30 transition-colors">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="text-2xl font-bold text-muted-foreground/40 w-8 shrink-0">
+                                #{idx + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium truncate">{c.name}</p>
+                                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${statusColor}`}>
+                                    {c.status}
+                                  </span>
                                 </div>
-
-                                {/* Name + Account */}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-medium truncate">{c.meta_campaign_name || c.meta_campaign_id}</p>
-                                    {c.meta_status && (
-                                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${statusColor}`}>
-                                        {c.meta_status}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {c.meta_account_name || c.meta_account_id} · {c.total_ads_count || 0} Anzeigen
+                                {c.objective && (
+                                  <p className="text-xs text-muted-foreground truncate">{c.objective}</p>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-4 gap-4 text-right shrink-0">
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase">Spend</p>
+                                  <p className="text-sm font-semibold tabular-nums">
+                                    {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(spend)}
                                   </p>
                                 </div>
-
-                                {/* Metrics rechts in 4 Spalten */}
-                                <div className="grid grid-cols-4 gap-4 text-right shrink-0">
-                                  <div>
-                                    <p className="text-[10px] text-muted-foreground uppercase">Spend</p>
-                                    <p className="text-sm font-semibold tabular-nums">
-                                      {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(spend)}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-muted-foreground uppercase">Reach</p>
-                                    <p className="text-sm font-semibold tabular-nums">
-                                      {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(reach)}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-muted-foreground uppercase">Impr.</p>
-                                    <p className="text-sm font-semibold tabular-nums">
-                                      {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(impressions)}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-muted-foreground uppercase">Clicks</p>
-                                    <p className="text-sm font-semibold tabular-nums">
-                                      {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(clicks)}
-                                    </p>
-                                  </div>
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase">Reach</p>
+                                  <p className="text-sm font-semibold tabular-nums">
+                                    {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(reach)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase">Impr.</p>
+                                  <p className="text-sm font-semibold tabular-nums">
+                                    {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(impressions)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] text-muted-foreground uppercase">Clicks</p>
+                                  <p className="text-sm font-semibold tabular-nums">
+                                    {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(clicks)}
+                                  </p>
                                 </div>
                               </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
+                            </div>
+                          </CardContent>
+                        </Card>
                       );
                     })}
                 </div>
               </div>
-
-              {/* Alle Kampagnen ausklappen wenn > 5 */}
-              {campaigns.length > 5 && (
-                <details className="group">
-                  <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground py-2 list-none flex items-center gap-1">
-                    <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
-                    Alle {campaigns.length - 5} weiteren Kampagnen anzeigen
-                  </summary>
-                  <div className="space-y-2 mt-2">
-                    {[...campaigns]
-                      .sort((a, b) => Number(b.metrics?.spend || 0) - Number(a.metrics?.spend || 0))
-                      .slice(5)
-                      .map((c: any) => (
-                        <Link key={c.id} to={`/sales/referenz-showcase/kampagnen/${c.id}`} className="block">
-                          <Card className="hover:bg-muted/30 transition-colors">
-                            <CardContent className="p-3 flex items-center justify-between">
-                              <p className="text-sm truncate flex-1">{c.meta_campaign_name}</p>
-                              <p className="text-sm font-semibold tabular-nums shrink-0 ml-3">
-                                {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(c.metrics?.spend || 0))}
-                              </p>
-                            </CardContent>
-                          </Card>
-                        </Link>
-                      ))}
-                  </div>
-                </details>
-              )}
-            </>
-            )}
-
-            {ads.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-2 mt-4">
-                  <h3 className="text-sm font-semibold">Anzeigen ({ads.length})</h3>
-                  <p className="text-xs text-muted-foreground">Einzelne Creatives</p>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {ads.slice(0, 12).map((ad: any) => {
-                    const name = ad.meta_ad_name || ad.ad_name || 'Unbenannte Anzeige';
-                    const status = ad.meta_status || ad.effective_status || ad.status;
-                    const statusCls = status === 'ACTIVE' ? 'bg-green-500/15 text-green-500'
-                                    : status === 'PAUSED' ? 'bg-yellow-500/15 text-yellow-500'
-                                    : 'bg-muted text-muted-foreground';
-                    return (
-                      <Link key={ad.id} to={`/sales/referenz-showcase/werbeanzeigen/${ad.id}`} className="block">
-                        <Card className="hover:bg-muted/30 transition-colors overflow-hidden">
-                          {ad.thumbnail_url && (
-                            <div className="aspect-video bg-muted overflow-hidden">
-                              <img src={ad.thumbnail_url} alt={name} className="w-full h-full object-cover" loading="lazy" />
-                            </div>
-                          )}
-                          <CardContent className="p-3">
-                            <p className="text-sm font-medium truncate" title={name}>{name}</p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {ad.meta_campaign_name || ad.meta_account_name || ''}
-                            </p>
-                            {status && (
-                              <span className={`inline-block mt-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${statusCls}`}>
-                                {status}
-                              </span>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    );
-                  })}
-                </div>
-
-                {ads.length > 12 && (
-                  <details className="group mt-3">
-                    <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground py-2 list-none flex items-center gap-1">
-                      <ChevronDown className="h-4 w-4 group-open:rotate-180 transition-transform" />
-                      Alle {ads.length - 12} weiteren Anzeigen anzeigen
-                    </summary>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-2">
-                      {ads.slice(12).map((ad: any) => {
-                        const name = ad.meta_ad_name || ad.ad_name || 'Unbenannte Anzeige';
-                        const status = ad.meta_status || ad.effective_status || ad.status;
-                        const statusCls = status === 'ACTIVE' ? 'bg-green-500/15 text-green-500'
-                                        : status === 'PAUSED' ? 'bg-yellow-500/15 text-yellow-500'
-                                        : 'bg-muted text-muted-foreground';
-                        return (
-                          <Link key={ad.id} to={`/sales/referenz-showcase/werbeanzeigen/${ad.id}`} className="block">
-                            <Card className="hover:bg-muted/30 transition-colors overflow-hidden">
-                              {ad.thumbnail_url && (
-                                <div className="aspect-video bg-muted overflow-hidden">
-                                  <img src={ad.thumbnail_url} alt={name} className="w-full h-full object-cover" loading="lazy" />
-                                </div>
-                              )}
-                              <CardContent className="p-3">
-                                <p className="text-sm font-medium truncate" title={name}>{name}</p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {ad.meta_campaign_name || ad.meta_account_name || ''}
-                                </p>
-                                {status && (
-                                  <span className={`inline-block mt-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${statusCls}`}>
-                                    {status}
-                                  </span>
-                                )}
-                              </CardContent>
-                            </Card>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </details>
-                )}
-              </div>
-            )}
             </>
           )}
         </TabsContent>
