@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Users, RefreshCw, Loader2, ArrowRight, Sparkles, Download } from 'lucide-react';
+import { Plus, Search, Users, RefreshCw, Loader2, ArrowRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import KundenSlidePanel from '@/components/kunden/KundenSlidePanel';
 
@@ -67,7 +67,6 @@ export default function Kunden() {
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [syncing, setSyncing] = useState(false);
   const [linking, setLinking] = useState(false);
-  const [importingMeta, setImportingMeta] = useState(false);
   const [selectedKunde, setSelectedKunde] = useState<ClientRow | null>(null);
 
   const load = async () => {
@@ -147,16 +146,14 @@ export default function Kunden() {
       const onepage = s.onepage?.matched_by_name || 0;
       const showcase = (s.showcase?.matched_by_account || 0) + (s.showcase?.matched_by_name || 0);
       const metaAds = (s.meta_ads?.matched_by_account || 0) + (s.meta_ads?.matched_by_name || 0);
-      const campaigns = (s.campaigns?.matched_by_account || 0) + (s.campaigns?.matched_by_name || 0);
       const projects = s.projects?.matched_by_name || 0;
-      const total = onepage + showcase + metaAds + campaigns + projects;
+      const total = onepage + showcase + metaAds + projects;
       toast.success(`${total} Datensätze automatisch zugeordnet`, {
         id: toastId,
         description: [
           s.onepage && `Onepage: ${onepage}`,
           s.showcase && `Showcase: ${showcase}`,
           s.meta_ads && `Meta Ads: ${metaAds}`,
-          s.campaigns && `Campaigns: ${campaigns}`,
           s.projects && `Projects: ${projects}`,
         ].filter(Boolean).join(' · '),
       });
@@ -168,24 +165,6 @@ export default function Kunden() {
     }
   };
 
-  const handleMetaBulkImport = async () => {
-    setImportingMeta(true);
-    const toastId = toast.loading('Meta-Kampagnen werden importiert… (kann 1-2 Min dauern)');
-    try {
-      const { data, error } = await supabase.functions.invoke('meta-campaigns-bulk-import-all');
-      if (error) throw error;
-      toast.success('Import gestartet', {
-        id: toastId,
-        description: `${data?.accounts_total || 0} Accounts werden im Hintergrund verarbeitet. In 2-5 Min erneut laden.`,
-        duration: 8000,
-      });
-      setTimeout(() => { load(); }, 60_000);
-    } catch (e: any) {
-      toast.error(`Import fehlgeschlagen: ${e.message}`, { id: toastId });
-    } finally {
-      setImportingMeta(false);
-    }
-  };
 
 
 
@@ -226,10 +205,6 @@ export default function Kunden() {
             <Button variant="outline" size="sm" onClick={handleAutoLink} disabled={linking}>
               {linking ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
               Auto-Zuordnen
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleMetaBulkImport} disabled={importingMeta}>
-              {importingMeta ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
-              Meta-Kampagnen importieren
             </Button>
             <Button variant="outline" size="sm" onClick={handleNotionSync} disabled={syncing}>
               {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}

@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const target: 'all' | 'onepage' | 'showcase' | 'campaigns' = body.target || 'all';
+    const target: 'all' | 'onepage' | 'showcase' | 'meta_ads' = body.target || 'all';
     const onlyUnmatched = body.only_unmatched !== false;
 
     const { data: clients } = await svc
@@ -94,7 +94,6 @@ Deno.serve(async (req) => {
       onepage: { total: 0, matched_by_name: 0, no_match: 0 },
       showcase: { total: 0, matched_by_account: 0, matched_by_name: 0, no_match: 0 },
       meta_ads: { total: 0, matched_by_account: 0, matched_by_name: 0, no_match: 0 },
-      campaigns: { total: 0, matched_by_account: 0, matched_by_name: 0, no_match: 0 },
       projects: { total: 0, matched_by_name: 0, no_match: 0 },
     };
 
@@ -163,29 +162,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (target === 'all' || target === 'campaigns') {
-      let q = svc.from('referenz_meta_campaigns').select(
-        'id, meta_account_id, meta_account_name, meta_campaign_name, linked_client_id'
-      );
-      if (onlyUnmatched) q = q.is('linked_client_id', null);
-      const { data: rows } = await q;
-      stats.campaigns.total = rows?.length || 0;
-      for (const r of rows || []) {
-        let client = matchByAccount(r.meta_account_id);
-        let method = 'auto_account';
-        if (!client) {
-          client = matchByName(r.meta_account_name) || matchByName(r.meta_campaign_name);
-          method = 'auto_name';
-        }
-        if (client) {
-          await svc.from('referenz_meta_campaigns').update({ linked_client_id: client.id }).eq('id', r.id);
-          if (method === 'auto_account') stats.campaigns.matched_by_account++;
-          else stats.campaigns.matched_by_name++;
-        } else {
-          stats.campaigns.no_match++;
-        }
-      }
-    }
 
     if (target === 'all' || target === 'projects') {
       let q = svc.from('projects').select('id, name, client_id');
