@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DriveBrowser } from '@/components/DriveBrowser';
 import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
-import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X, Loader2, AlertCircle, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X, Loader2, AlertCircle, AlertTriangle, Cloud } from 'lucide-react';
 import { toast } from 'sonner';
 import { getBranche } from '@/lib/branchen';
 import { useMetaAds } from '@/contexts/MetaAdsContext';
@@ -413,9 +413,30 @@ export default function KundenDetail() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
+            {client.notion_id && (
+              <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-foreground">
+                <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-medium">Dieser Kunde wird mit Notion synchronisiert.</p>
+                  <p className="text-muted-foreground mt-0.5">
+                    Bearbeite die unten markierten Felder lieber direkt in Notion — sonst werden deine Änderungen beim nächsten Sync überschrieben. Nicht-gesyncte Felder (z.B. Notizen) bleiben erhalten.
+                  </p>
+                  {client.notion_url && (
+                    <a
+                      href={client.notion_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 mt-1.5 text-primary hover:underline"
+                    >
+                      In Notion öffnen <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
             {/* Stammdaten */}
             <section>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Stammdaten</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">Stammdaten {client.notion_id && <Cloud className="h-3 w-3 text-warning" aria-label="Wird aus Notion gesynct — Änderungen werden beim nächsten Sync überschrieben"><title>Wird aus Notion gesynct — Änderungen werden beim nächsten Sync überschrieben</title></Cloud>}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="text-xs text-muted-foreground">Name</label><Input value={editForm.name} onChange={e => updateField('name', e.target.value)} /></div>
                 <div><label className="text-xs text-muted-foreground">Vor- & Nachname</label><Input value={editForm.vor_nachname} onChange={e => updateField('vor_nachname', e.target.value)} /></div>
@@ -435,7 +456,7 @@ export default function KundenDetail() {
 
             {/* Status & Ampel */}
             <section>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Status</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">Status {client.notion_id && <Cloud className="h-3 w-3 text-warning"><title>Wird aus Notion gesynct — Änderungen werden beim nächsten Sync überschrieben</title></Cloud>}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs text-muted-foreground">Kundenstatus</label>
@@ -463,7 +484,7 @@ export default function KundenDetail() {
 
             {/* Finanzen */}
             <section>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Finanzen (€)</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">Finanzen (€) {client.notion_id && <Cloud className="h-3 w-3 text-warning"><title>Wird aus Notion gesynct — Änderungen werden beim nächsten Sync überschrieben</title></Cloud>}</h4>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {NUMBER_FIELDS.map(k => (
                   <div key={k}>
@@ -476,7 +497,7 @@ export default function KundenDetail() {
 
             {/* Zeitraum */}
             <section>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Zeitraum</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">Zeitraum {client.notion_id && <Cloud className="h-3 w-3 text-warning"><title>Wird aus Notion gesynct — Änderungen werden beim nächsten Sync überschrieben</title></Cloud>}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><label className="text-xs text-muted-foreground">Startdatum</label><Input type="date" value={editForm.startdatum || ''} onChange={e => updateField('startdatum', e.target.value)} /></div>
                 <div><label className="text-xs text-muted-foreground">Enddatum</label><Input type="date" value={editForm.enddatum || ''} onChange={e => updateField('enddatum', e.target.value)} /></div>

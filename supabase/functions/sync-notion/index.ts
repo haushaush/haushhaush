@@ -134,26 +134,52 @@ Deno.serve(async (req) => {
         "Follow Up": "Pausiert",
         "Offen": "Pausiert",
       };
-      // 1) Collect unique Unternehmen names from Notion pages and upsert them
+      // 1) Resolve each unique Unternehmen name case-insensitively
+      //    (select-then-insert, with race-condition retry on 23505)
       const unternehmenNames = new Set<string>();
       for (const p of pages) {
         const v = gs(p.properties["Unternehmen"]);
-        if (v && v.trim()) unternehmenNames.add(v.trim());
+        if (v && v.trim()) {
+          unternehmenNames.add(v.trim().replace(/\s+/g, " "));
+        }
       }
       const unternehmenMap = new Map<string, string>(); // lowercased name -> id
-      if (unternehmenNames.size > 0) {
-        const upsertRows = Array.from(unternehmenNames).map((n) => ({
-          name: n.toLowerCase(),
-          display_name: n,
-        }));
-        const { data: upserted, error: uErr } = await supabase
+      let unternehmenInserted = 0;
+      let unternehmenReused = 0;
+      for (const normalized of unternehmenNames) {
+        const lower = normalized.toLowerCase();
+        const { data: existing } = await supabase
           .from("unternehmen")
-          .upsert(upsertRows, { onConflict: "name", ignoreDuplicates: false })
-          .select("id, name");
-        if (uErr) throw new Error(`Unternehmen upsert: ${uErr.message}`);
-        for (const row of upserted || []) {
-          unternehmenMap.set((row as any).name, (row as any).id);
+          .select("id, name")
+          .ilike("name", normalized)
+          .maybeSingle();
+        if (existing) {
+          unternehmenMap.set(lower, (existing as any).id);
+          unternehmenReused++;
+          continue;
         }
+        const { data: inserted, error: insErr } = await supabase
+          .from("unternehmen")
+          .insert({ name: normalized, display_name: normalized })
+          .select("id")
+          .single();
+        if (insErr) {
+          if ((insErr as any).code === "23505") {
+            const { data: retry } = await supabase
+              .from("unternehmen")
+              .select("id")
+              .ilike("name", normalized)
+              .maybeSingle();
+            if (retry) {
+              unternehmenMap.set(lower, (retry as any).id);
+              unternehmenReused++;
+              continue;
+            }
+          }
+          throw new Error(`Unternehmen upsert failed for "${normalized}": ${insErr.message}`);
+        }
+        unternehmenMap.set(lower, (inserted as any).id);
+        unternehmenInserted++;
       }
 
       const clientRows = pages.map((p: any) => {
@@ -167,13 +193,15 @@ Deno.serve(async (req) => {
           "CC": "Rot", "C": "Rot", "Rot": "Rot",
         };
         const notionUnternehmen = gs(pr["Unternehmen"]);
-        const unternehmen_id = notionUnternehmen && notionUnternehmen.trim()
-          ? (unternehmenMap.get(notionUnternehmen.trim().toLowerCase()) || null)
+        const normalized = notionUnternehmen ? notionUnternehmen.trim().replace(/\s+/g, " ") : "";
+        const unternehmen_id = normalized
+          ? (unternehmenMap.get(normalized.toLowerCase()) || null)
           : null;
-        console.log("[Unternehmen]", {
+        console.log("[Sync Unternehmen]", {
           notion_value: notionUnternehmen,
-          found_id: unternehmen_id,
-          action: !notionUnternehmen ? "null" : (unternehmen_id ? "reuse" : "insert"),
+          normalized,
+          unternehmen_id,
+          action: !normalized ? "null" : (unternehmen_id ? "reuse" : "insert"),
         });
         return {
           notion_id: p.id,
@@ -209,6 +237,12 @@ Deno.serve(async (req) => {
         .from("clients")
         .upsert(clientRows, { onConflict: "notion_id", ignoreDuplicates: false });
       if (clientsErr) throw new Error(`Clients (Notion): ${clientsErr.message}`);
+      console.log("[Sync Summary]", {
+        total_processed: clientRows.length,
+        unternehmen_inserted: unternehmenInserted,
+        unternehmen_reused: unternehmenReused,
+        errors: 0,
+      });
     }
 
     // ── PROJEKTE ──
