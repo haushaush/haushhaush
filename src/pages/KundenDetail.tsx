@@ -237,22 +237,76 @@ export default function KundenDetail() {
   }, [deals, projects, onepageProjects, websites, ads]);
 
   const handleSaveEdit = async () => {
-    if (!id) return;
-    const { error } = await supabase.from('clients').update({
-      email: editForm.email || null,
-      phone: editForm.phone || null,
-      branche_id: editForm.branche_id || null,
-      unternehmen_id: editForm.unternehmen_id || null,
-      notes: editForm.notes || null,
-    }).eq('id', id);
-    if (error) {
-      toast.error('Speichern fehlgeschlagen', { description: error.message });
+  const NUMBER_FIELDS: EditableField[] = ['ads_budget','gesamt_saldo','cash_collect_offen','meta_kosten','crm_kosten','superchat_kosten','website_kosten'];
+  const DATE_FIELDS: EditableField[] = ['deadline','startdatum','enddatum'];
+
+  const normalize = (k: EditableField, v: any): any => {
+    if (v === '' || v == null) return null;
+    if (NUMBER_FIELDS.includes(k)) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    }
+    if (k === 'laufzeit_in_14t') return !!v;
+    return v;
+  };
+
+  const handleSaveEdit = async () => {
+    if (!id || !client) return;
+    if (client.deleted_at) {
+      toast.error('Soft-deleted, zuerst wiederherstellen');
       return;
     }
-    toast.success('Kunde aktualisiert');
-    setEditing(false);
-    load();
+    setSaving(true);
+    try {
+      // Concurrent-Update-Check
+      const { data: latest, error: chkErr } = await supabase
+        .from('clients').select('updated_at').eq('id', id).single();
+      if (chkErr) throw chkErr;
+      if (latest?.updated_at && client.updated_at && latest.updated_at !== client.updated_at) {
+        toast.error('Daten wurden zwischenzeitlich geändert, bitte neu laden');
+        setSaving(false);
+        return;
+      }
+
+      // Diff: nur geänderte Felder
+      const patch: Record<string, any> = {};
+      for (const k of EDITABLE_FIELDS) {
+        const next = normalize(k, editForm[k]);
+        const prev = client[k] ?? (k === 'laufzeit_in_14t' ? false : null);
+        const prevNorm = prev === '' ? null : prev;
+        if (JSON.stringify(next) !== JSON.stringify(prevNorm)) {
+          patch[k] = next;
+        }
+      }
+      if (Object.keys(patch).length === 0) {
+        toast.info('Keine Änderungen');
+        setEditing(false);
+        setSaving(false);
+        return;
+      }
+
+      // Optimistic Update
+      const prevClient = client;
+      setClient({ ...client, ...patch });
+
+      const { error } = await supabase.from('clients').update(patch).eq('id', id);
+      if (error) {
+        setClient(prevClient);
+        toast.error('Fehler beim Speichern: ' + error.message, { description: (error as any).hint || undefined });
+        setSaving(false);
+        return;
+      }
+      toast.success('Gespeichert');
+      setEditing(false);
+      await load();
+    } catch (e: any) {
+      toast.error('Fehler beim Speichern: ' + (e?.message || 'unbekannt'));
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const updateField = (k: EditableField, v: any) => setEditForm(f => ({ ...f, [k]: v }));
 
   if (loading) {
     return (
