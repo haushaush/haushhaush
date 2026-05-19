@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DriveBrowser } from '@/components/DriveBrowser';
 import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
-import { ChevronLeft, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getBranche } from '@/lib/branchen';
 
