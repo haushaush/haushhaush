@@ -497,7 +497,7 @@ export default function KundenDetail() {
 
             {/* Zeitraum */}
             <section>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Zeitraum</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">Zeitraum {client.notion_id && <Cloud className="h-3 w-3 text-warning"><title>Wird aus Notion gesynct — Änderungen werden beim nächsten Sync überschrieben</title></Cloud>}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><label className="text-xs text-muted-foreground">Startdatum</label><Input type="date" value={editForm.startdatum || ''} onChange={e => updateField('startdatum', e.target.value)} /></div>
                 <div><label className="text-xs text-muted-foreground">Enddatum</label><Input type="date" value={editForm.enddatum || ''} onChange={e => updateField('enddatum', e.target.value)} /></div>
