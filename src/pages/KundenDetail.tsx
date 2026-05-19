@@ -259,6 +259,7 @@ export default function KundenDetail() {
           <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
           <TabsTrigger value="onepage">Onepage-Leads ({onepageProjects.length})</TabsTrigger>
           <TabsTrigger value="showcase">Showcase ({totals.showcaseCount})</TabsTrigger>
+          <TabsTrigger value="meta-ads">Meta Ads ({campaigns.length})</TabsTrigger>
           <TabsTrigger value="projekte">Projekte ({projects.length})</TabsTrigger>
           <TabsTrigger value="dateien">Dateien</TabsTrigger>
         </TabsList>
@@ -421,31 +422,94 @@ export default function KundenDetail() {
               </div>
             )}
           </div>
-          <div>
-            <h3 className="text-sm font-semibold mb-2">Anzeigen ({ads.length})</h3>
-            {ads.length === 0 ? <p className="text-sm text-muted-foreground">Keine Anzeigen</p> : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {ads.map((a: any) => (
-                  <Card key={a.id} className="hover:bg-muted/30 transition-colors overflow-hidden">
-                    <CardContent className="p-3">
-                      {a.thumbnail_url_persisted || a.thumbnail_url ? (
-                        <img
-                          src={a.thumbnail_url_persisted || a.thumbnail_url}
-                          alt=""
-                          className="w-full aspect-square object-cover rounded mb-2"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full aspect-square bg-muted rounded mb-2" />
-                      )}
-                      <p className="text-sm font-medium truncate">{a.meta_ad_name || a.custom_title || a.id}</p>
-                      <p className="text-xs text-muted-foreground truncate">{a.meta_campaign_name || 'Meta Anzeige'}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
+        </TabsContent>
+
+        {/* META ADS */}
+        <TabsContent value="meta-ads" className="mt-4 space-y-3">
+          {campaigns.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Keine Meta-Kampagnen verknüpft
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {campaigns.map((c: any) => {
+                const metrics = c.metrics || {};
+                const spend = metrics.spend ? Number(metrics.spend) : null;
+                const impressions = metrics.impressions ? Number(metrics.impressions) : null;
+                const reach = metrics.reach ? Number(metrics.reach) : null;
+                const clicks = metrics.clicks ? Number(metrics.clicks) : null;
+                const statusColor = c.meta_status === 'ACTIVE' ? 'bg-green-500/15 text-green-500'
+                                  : c.meta_status === 'PAUSED' ? 'bg-yellow-500/15 text-yellow-500'
+                                  : 'bg-muted text-muted-foreground';
+
+                return (
+                  <Link
+                    key={c.id}
+                    to={`/sales/referenz-showcase/kampagnen/${c.id}`}
+                    className="block"
+                  >
+                    <Card className="hover:bg-muted/30 transition-colors h-full">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm truncate" title={c.meta_campaign_name}>
+                              {c.meta_campaign_name || c.meta_campaign_id}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {c.meta_account_name || c.meta_account_id}
+                            </p>
+                          </div>
+                          {c.meta_status && (
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${statusColor}`}>
+                              {c.meta_status}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Kampagnen-Metrics in 4er-Grid */}
+                        <div className="grid grid-cols-4 gap-2 text-center pt-2 border-t border-border/50">
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase">Spend</p>
+                            <p className="text-xs font-semibold">
+                              {spend !== null ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(spend) : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase">Reach</p>
+                            <p className="text-xs font-semibold">
+                              {reach !== null ? new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(reach) : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase">Impr.</p>
+                            <p className="text-xs font-semibold">
+                              {impressions !== null ? new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(impressions) : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase">Clicks</p>
+                            <p className="text-xs font-semibold">
+                              {clicks !== null ? new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(clicks) : '—'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Anzeigen-Count + Zeitraum */}
+                        <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                          <span>{c.total_ads_count || 0} Anzeigen</span>
+                          {c.campaign_period_start && (
+                            <span>{fmtDate(c.campaign_period_start)} – {c.campaign_period_end ? fmtDate(c.campaign_period_end) : 'laufend'}</span>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
 
         {/* PROJEKTE */}
