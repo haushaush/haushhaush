@@ -135,14 +135,13 @@ export default function KundenDetail() {
 
     // Multi-Strategy OR-Filter für meta ads/campaigns (linked_client_id ODER meta_account_id)
     const buildMetaConditions = () => {
-      const conditions: string[] = [`linked_client_id.eq.${id}`];
+      const set = new Set<string>([`linked_client_id.eq.${id}`]);
       if (cli?.meta_account_id) {
         const raw = String(cli.meta_account_id).replace(/^act_/, '');
-        conditions.push(`meta_account_id.eq.${cli.meta_account_id}`);
-        conditions.push(`meta_account_id.eq.${raw}`);
-        conditions.push(`meta_account_id.eq.act_${raw}`);
+        set.add(`meta_account_id.eq.${raw}`);
+        set.add(`meta_account_id.eq.act_${raw}`);
       }
-      return conditions.join(',');
+      return Array.from(set).join(',');
     };
 
     const adsQuery = cli
@@ -167,6 +166,13 @@ export default function KundenDetail() {
     setWebsites(allShowcase.filter((s: any) => s.type === 'website'));
     setAds(a.data || []);
     setCampaigns(cam.data || []);
+    // eslint-disable-next-line no-console
+    console.log('[KundenDetail] Showcase ads loaded:', (a.data || []).length, 'for client:', id, {
+      conditions: buildMetaConditions(),
+      adsError: (a as any).error,
+      campaignsError: (cam as any).error,
+      clientMetaAccountId: cli?.meta_account_id,
+    });
 
     if (cli?.unternehmen_id) {
       const { data: u } = await supabase.from('unternehmen').select('id, display_name').eq('id', cli.unternehmen_id).maybeSingle();
