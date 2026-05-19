@@ -484,7 +484,7 @@ export default function KundenDetail() {
 
             {/* Finanzen */}
             <section>
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Finanzen (€)</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5">Finanzen (€) {client.notion_id && <Cloud className="h-3 w-3 text-warning"><title>Wird aus Notion gesynct — Änderungen werden beim nächsten Sync überschrieben</title></Cloud>}</h4>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {NUMBER_FIELDS.map(k => (
                   <div key={k}>
