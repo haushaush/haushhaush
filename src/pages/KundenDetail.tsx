@@ -358,9 +358,35 @@ export default function KundenDetail() {
             {client.phone && <a href={`tel:${client.phone}`} className="flex items-center gap-1 hover:text-primary"><Phone className="h-3.5 w-3.5" />{client.phone}</a>}
           </div>
         </div>
-        <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-          <Pencil className="h-4 w-4 mr-1" /> Bearbeiten
-        </Button>
+        <div className="flex flex-col items-end gap-2">
+          {editing ? (
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setEditForm(formFromClient(client)); }} disabled={saving}>
+                <X className="h-4 w-4 mr-1" /> Abbrechen
+              </Button>
+              <Button size="sm" onClick={handleSaveEdit} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+                Speichern
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setEditForm(formFromClient(client)); setEditing(true); }}
+              disabled={!!client.deleted_at}
+              title={client.deleted_at ? 'Soft-deleted, zuerst wiederherstellen' : ''}
+            >
+              <Pencil className="h-4 w-4 mr-1" /> Bearbeiten
+            </Button>
+          )}
+          {client.notion_id && (
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-warning/10 border border-warning/30 rounded-full px-2.5 py-1">
+              <AlertTriangle className="h-3 w-3 text-warning" />
+              <span>Notion-synct: Edits werden ggf. beim nächsten Sync überschrieben.</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -374,19 +400,99 @@ export default function KundenDetail() {
       {/* Edit Form */}
       {editing && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-base">Kunde bearbeiten</CardTitle>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}><X className="h-4 w-4" /></Button>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label className="text-xs text-muted-foreground">Email</label><Input value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Telefon</label><Input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} /></div>
-              <div><label className="text-xs text-muted-foreground">Branche</label><Input value={editForm.branche_id} onChange={e => setEditForm({ ...editForm, branche_id: e.target.value })} placeholder="z.B. PKV" /></div>
-              <div><label className="text-xs text-muted-foreground">Unternehmen-ID</label><Input value={editForm.unternehmen_id} onChange={e => setEditForm({ ...editForm, unternehmen_id: e.target.value })} placeholder="uuid" /></div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setEditForm(formFromClient(client)); }} disabled={saving}>
+                <X className="h-4 w-4 mr-1" /> Abbrechen
+              </Button>
+              <Button size="sm" onClick={handleSaveEdit} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+                Speichern
+              </Button>
             </div>
-            <div><label className="text-xs text-muted-foreground">Notizen</label><Textarea rows={4} value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} /></div>
-            <Button size="sm" onClick={handleSaveEdit}><Save className="h-4 w-4 mr-1" /> Speichern</Button>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Stammdaten */}
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Stammdaten</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><label className="text-xs text-muted-foreground">Name</label><Input value={editForm.name} onChange={e => updateField('name', e.target.value)} /></div>
+                <div><label className="text-xs text-muted-foreground">Vor- & Nachname</label><Input value={editForm.vor_nachname} onChange={e => updateField('vor_nachname', e.target.value)} /></div>
+                <div><label className="text-xs text-muted-foreground">E-Mail</label><Input type="email" value={editForm.email} onChange={e => updateField('email', e.target.value)} /></div>
+                <div><label className="text-xs text-muted-foreground">Telefon</label><Input value={editForm.phone} onChange={e => updateField('phone', e.target.value)} /></div>
+                <div className="sm:col-span-2"><label className="text-xs text-muted-foreground">Website</label><Input value={editForm.website_url} onChange={e => updateField('website_url', e.target.value)} placeholder="https://…" /></div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Branche</label>
+                  <BranchePicker value={editForm.branche_id || null} onChange={(v) => updateField('branche_id', v || '')} compact />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Unternehmen</label>
+                  <UnternehmenPicker value={editForm.unternehmen_id || null} onChange={(v) => updateField('unternehmen_id', v || '')} compact />
+                </div>
+              </div>
+            </section>
+
+            {/* Status & Ampel */}
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Status</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground">Kundenstatus</label>
+                  <Select value={editForm.kundenstatus || ''} onValueChange={(v) => updateField('kundenstatus', v)}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>{KUNDENSTATUS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Ampel</label>
+                  <Select value={editForm.ampelstatus || ''} onValueChange={(v) => updateField('ampelstatus', v)}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>{AMPEL_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Zahlstatus</label>
+                  <Select value={editForm.zahlstatus || ''} onValueChange={(v) => updateField('zahlstatus', v)}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>{ZAHLSTATUS_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </section>
+
+            {/* Finanzen */}
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Finanzen (€)</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {NUMBER_FIELDS.map(k => (
+                  <div key={k}>
+                    <label className="text-xs text-muted-foreground capitalize">{k.replace(/_/g, ' ')}</label>
+                    <Input type="number" min={0} step="0.01" value={editForm[k] ?? ''} onChange={e => updateField(k, e.target.value)} />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Zeitraum */}
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Zeitraum</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div><label className="text-xs text-muted-foreground">Startdatum</label><Input type="date" value={editForm.startdatum || ''} onChange={e => updateField('startdatum', e.target.value)} /></div>
+                <div><label className="text-xs text-muted-foreground">Enddatum</label><Input type="date" value={editForm.enddatum || ''} onChange={e => updateField('enddatum', e.target.value)} /></div>
+                <div><label className="text-xs text-muted-foreground">Deadline</label><Input type="date" value={editForm.deadline || ''} onChange={e => updateField('deadline', e.target.value)} /></div>
+                <div className="flex items-center gap-2 pt-5">
+                  <Switch checked={!!editForm.laufzeit_in_14t} onCheckedChange={(v) => updateField('laufzeit_in_14t', v)} />
+                  <label className="text-xs text-muted-foreground">Laufzeit in 14T</label>
+                </div>
+              </div>
+            </section>
+
+            {/* Notizen */}
+            <section>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Notizen</h4>
+              <Textarea rows={4} value={editForm.notes} onChange={e => updateField('notes', e.target.value)} />
+            </section>
           </CardContent>
         </Card>
       )}
