@@ -288,7 +288,7 @@ export default function KundenDetail() {
       const prevClient = client;
       setClient({ ...client, ...patch });
 
-      const { error } = await supabase.from('clients').update(patch).eq('id', id);
+      const { error } = await supabase.from('clients').update(patch as any).eq('id', id);
       if (error) {
         setClient(prevClient);
         toast.error('Fehler beim Speichern: ' + error.message, { description: (error as any).hint || undefined });
