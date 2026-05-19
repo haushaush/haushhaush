@@ -236,7 +236,6 @@ export default function KundenDetail() {
       .slice(0, 5);
   }, [deals, projects, onepageProjects, websites, ads]);
 
-  const handleSaveEdit = async () => {
   const NUMBER_FIELDS: EditableField[] = ['ads_budget','gesamt_saldo','cash_collect_offen','meta_kosten','crm_kosten','superchat_kosten','website_kosten'];
   const DATE_FIELDS: EditableField[] = ['deadline','startdatum','enddatum'];
 
