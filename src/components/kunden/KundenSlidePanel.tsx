@@ -39,6 +39,7 @@ interface ClientLike {
   zahlstatus?: string | null;
   notes?: string | null;
   meta_account_id?: string | null;
+  meta_account_ids?: string[] | null;
   projekttyp?: string[] | string | null;
   laufzeit?: string | null;
   startdatum?: string | null;
@@ -104,6 +105,7 @@ export default function KundenSlidePanel({ client, open, onOpenChange, onSaved }
       branche_id: client.branche_id ?? null,
       unternehmen_id: client.unternehmen_id ?? null,
       meta_account_id: client.meta_account_id ?? '',
+      meta_account_ids: client.meta_account_ids ?? [],
       projekttyp: pt,
       kundenstatus: client.kundenstatus ?? 'Lead',
       ampelstatus: client.ampelstatus ?? 'Grün',
@@ -265,6 +267,11 @@ export default function KundenSlidePanel({ client, open, onOpenChange, onSaved }
               <div>
                 <Label>Meta Account ID</Label>
                 <Input value={form.meta_account_id || ''} onChange={e => upd('meta_account_id', e.target.value)} placeholder="act_…" />
+                {Array.isArray(form.meta_account_ids) && form.meta_account_ids.length > 1 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    +{form.meta_account_ids.length - 1} weitere verknüpfte Accounts
+                  </p>
+                )}
               </div>
               <div>
                 <Label>Projekttyp <span className="text-xs text-muted-foreground">(Komma-getrennt)</span></Label>
