@@ -628,7 +628,7 @@ export default function KundenDetail() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-medium">{p.projektname || p.name}</p>
-                    <p className="text-xs text-muted-foreground">{p.projekttyp || '–'} · {fmtDate(p.startdatum)}</p>
+                    <p className="text-xs text-muted-foreground">{p.typ || p.projekttyp || '–'} · {fmtDate(p.startdatum)}</p>
                   </div>
                   <Badge variant="secondary">{p.projektstatus || p.status}</Badge>
                 </div>
