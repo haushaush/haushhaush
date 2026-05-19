@@ -139,7 +139,7 @@ export default function KundenDetail() {
       supabase.from('onepage_projects').select('*').eq('client_id_fk', id).order('created_at', { ascending: false }),
       supabase.from('referenz_showcase' as any).select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
       supabase.from('referenz_meta_ads').select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
-      supabase.from('referenz_meta_campaigns').select('*').eq('linked_client_id', id).is('deleted_at', null).order('campaign_period_start', { ascending: false }),
+      supabase.from('referenz_meta_campaigns').select('*').eq('linked_client_id', id).order('campaign_period_start', { ascending: false }),
     ]);
     setDeals(d.data || []);
     setProjects(p.data || []);
