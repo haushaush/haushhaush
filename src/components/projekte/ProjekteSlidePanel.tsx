@@ -249,9 +249,15 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
   useEffect(() => {
     const ids = p.verknuepfte_kunden_ids || p.verknuepfte_kunden || [];
     if (ids.length === 0) { setLinkedKunden([]); return; }
-    supabase.from('close_deals').select('id, client_name, notion_id').in('notion_id', ids)
-      .then(({ data }) => setLinkedKunden(data || []));
+    supabase.from('close_deals').select('id, client_id, client_name, notion_id').in('notion_id', ids)
+      .then(({ data }) => setLinkedKunden((data || []) as any));
   }, [p.id]);
+
+  useEffect(() => {
+    if (!p?.client_id) { setDirectClient(null); return; }
+    supabase.from('clients').select('id, name').eq('id', p.client_id).maybeSingle()
+      .then(({ data }) => setDirectClient(data || null));
+  }, [p?.client_id]);
 
   const upd = (k: string, v: any) => setEditData(prev => ({ ...prev, [k]: v }));
 
