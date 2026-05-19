@@ -174,13 +174,12 @@ export default function Kunden() {
     try {
       const { data, error } = await supabase.functions.invoke('meta-campaigns-bulk-import-all');
       if (error) throw error;
-      const s = data?.stats || {};
-      toast.success(`${s.campaigns_imported || 0} Kampagnen importiert`, {
+      toast.success('Import gestartet', {
         id: toastId,
-        description: `Aus ${s.accounts_processed || 0}/${s.accounts_total || 0} Accounts · ${s.backfilled_links || 0} verknüpft · ${s.errors || 0} Fehler`,
+        description: `${data?.accounts_total || 0} Accounts werden im Hintergrund verarbeitet. In 2-5 Min erneut laden.`,
         duration: 8000,
       });
-      await load();
+      setTimeout(() => { load(); }, 60_000);
     } catch (e: any) {
       toast.error(`Import fehlgeschlagen: ${e.message}`, { id: toastId });
     } finally {
