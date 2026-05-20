@@ -262,6 +262,36 @@ export function CloseSyncCard() {
     await runBatchSync(ids);
   };
 
+  const runResetAndResync = async () => {
+    setResetStage(0);
+    setResetConfirmText('');
+    setResetRunning(true);
+    const tId = toast.loading('Lösche alle Close-Daten…');
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-close-data');
+      if (error) throw error;
+      const d = data?.deleted ?? {};
+      toast.success(
+        `Reset OK: ${d.leads ?? 0} Leads, ${d.opps ?? 0} Opps, ${d.activities ?? 0} Activities gelöscht. Starte Re-Sync…`,
+        { id: tId, duration: 4000 },
+      );
+      await load();
+      // Trigger same bulk-sync flow as Button 2
+      if (linked.length > 0 || (data?.linked_clients_count ?? 0) > 0) {
+        await runSyncAllLinked();
+      } else {
+        toast.info('Keine verlinkten Kunden — nichts zu syncen.');
+      }
+    } catch (e: any) {
+      toast.error(`Reset fehlgeschlagen: ${e.message}`, { id: tId });
+    } finally {
+      setResetRunning(false);
+    }
+  };
+
+
+
+
 
 
   const syncOne = async (clientId: string) => {
