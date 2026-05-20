@@ -8,7 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Users, RefreshCw, Loader2, Sparkles } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { Plus, Search, Users, RefreshCw, Loader2, Sparkles, Cloud, ChevronDown, Settings as SettingsIcon, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -66,6 +73,8 @@ export default function Kunden() {
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [syncing, setSyncing] = useState(false);
   const [linking, setLinking] = useState(false);
+  const [closeSyncing, setCloseSyncing] = useState(false);
+  const [confirmResync, setConfirmResync] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -163,6 +172,69 @@ export default function Kunden() {
     }
   };
 
+  const MAX_BATCH = 30;
+
+  const handleCloseMatchAll = async () => {
+    setCloseSyncing(true);
+    const toastId = toast.loading('Matche unverlinkte Kunden mit Close…');
+    const start = Date.now();
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-close-link');
+      if (error) throw error;
+      const dur = ((Date.now() - start) / 1000).toFixed(1);
+      toast.success(`Matching fertig in ${dur}s · ${data?.matched ?? 0} neu, ${data?.unmatched ?? 0} ohne Treffer`, { id: toastId });
+    } catch (e: any) {
+      toast.error(`Matching fehlgeschlagen: ${e.message}`, {
+        id: toastId,
+        action: { label: 'Details', onClick: () => navigate('/einstellungen?tab=verknuepfungen#close') },
+      });
+    } finally {
+      setCloseSyncing(false);
+    }
+  };
+
+  const handleCloseResyncAll = async () => {
+    setConfirmResync(false);
+    const { data: links } = await supabase.from('close_link' as any).select('client_id');
+    const ids = ((links || []) as any[]).map((l) => l.client_id);
+    if (ids.length === 0) { toast.info('Keine verlinkten Kunden vorhanden.'); return; }
+    if (ids.length > MAX_BATCH) {
+      toast.error(`Max ${MAX_BATCH} pro Run, bitte in Batches aufteilen.`, {
+        action: { label: 'Einstellungen', onClick: () => navigate('/einstellungen?tab=verknuepfungen#close') },
+      });
+      return;
+    }
+    setCloseSyncing(true);
+    const toastId = toast.loading(`Syncing 0 von ${ids.length}…`);
+    const start = Date.now();
+    let tick = 0;
+    const ticker = setInterval(() => {
+      tick = Math.min(tick + 1, ids.length - 1);
+      toast.loading(`Syncing ${tick} von ${ids.length}…`, { id: toastId });
+    }, 1200);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-close-batch', { body: { client_ids: ids } });
+      clearInterval(ticker);
+      if (error) throw error;
+      const ok = data?.success?.length ?? 0;
+      const failed = data?.failed?.length ?? 0;
+      const dur = ((Date.now() - start) / 1000).toFixed(1);
+      if (failed === 0) {
+        toast.success(`${ok} Kunden synct in ${dur}s`, { id: toastId });
+      } else {
+        toast.error(`${ok} OK, ${failed} Fehler in ${dur}s`, {
+          id: toastId,
+          action: { label: 'Details', onClick: () => navigate('/einstellungen?tab=verknuepfungen#close') },
+        });
+      }
+    } catch (e: any) {
+      clearInterval(ticker);
+      toast.error(`Bulk-Sync fehlgeschlagen: ${e.message}`, { id: toastId });
+    } finally {
+      setCloseSyncing(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     return clients.filter(c => {
       const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase());
@@ -205,6 +277,44 @@ export default function Kunden() {
               {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
               Notion-Import
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={closeSyncing}>
+                  {closeSyncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Cloud className="h-3.5 w-3.5 mr-1.5" />}
+                  Close-Sync
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuItem onClick={handleCloseMatchAll} disabled={closeSyncing}>
+                  <Link2 className="h-3.5 w-3.5 mr-2" />
+                  Alle nicht-verlinkten matchen
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setConfirmResync(true)} disabled={closeSyncing}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                  Alle verlinkten neu syncen
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/einstellungen?tab=verknuepfungen#close')}>
+                  <SettingsIcon className="h-3.5 w-3.5 mr-2" />
+                  Sync-Einstellungen öffnen
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialog open={confirmResync} onOpenChange={setConfirmResync}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Alle verlinkten Kunden neu syncen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Das kann mehrere Minuten dauern. Bei mehr als {MAX_BATCH} verlinkten Kunden bitte den Bereich „Einstellungen → Verknüpfungen" nutzen und in Batches arbeiten.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleCloseResyncAll}>Sync starten</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" />Neuer Kunde</Button>

@@ -26,6 +26,7 @@ import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
 import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
 import { CloseMatchingCard } from '@/components/integrations/CloseMatchingCard';
+import { CloseSyncCard } from '@/components/integrations/CloseSyncCard';
 
 interface EmployeeRequest {
   id: string;
@@ -952,6 +953,7 @@ export default function Einstellungen() {
 
           <MetaMatchingCard />
           <CloseMatchingCard />
+          <CloseSyncCard />
         </TabsContent>
         )}
 
