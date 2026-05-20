@@ -20,6 +20,7 @@ import { BranchePicker } from '@/components/pickers/BranchePicker';
 import { UnternehmenPicker } from '@/components/pickers/UnternehmenPicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const KUNDENSTATUS_OPTIONS = ['Lead', 'In Betreuung', 'Pausiert', 'Churned'];
 const AMPEL_OPTIONS = ['Grün', 'Gelb', 'Rot', 'CC'];
