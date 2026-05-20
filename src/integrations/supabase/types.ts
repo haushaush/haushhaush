@@ -860,6 +860,62 @@ export type Database = {
           },
         ]
       }
+      close_activities: {
+        Row: {
+          activity_type: string | null
+          body_preview: string | null
+          client_id: string | null
+          close_activity_id: string
+          close_lead_id: string
+          date_created: string | null
+          direction: string | null
+          duration_seconds: number | null
+          id: string
+          raw_data: Json | null
+          subject: string | null
+          synced_at: string | null
+          user_name: string | null
+        }
+        Insert: {
+          activity_type?: string | null
+          body_preview?: string | null
+          client_id?: string | null
+          close_activity_id: string
+          close_lead_id: string
+          date_created?: string | null
+          direction?: string | null
+          duration_seconds?: number | null
+          id?: string
+          raw_data?: Json | null
+          subject?: string | null
+          synced_at?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          activity_type?: string | null
+          body_preview?: string | null
+          client_id?: string | null
+          close_activity_id?: string
+          close_lead_id?: string
+          date_created?: string | null
+          direction?: string | null
+          duration_seconds?: number | null
+          id?: string
+          raw_data?: Json | null
+          subject?: string | null
+          synced_at?: string | null
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "close_activities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       close_deals: {
         Row: {
           ads_budget: number | null
@@ -1090,8 +1146,47 @@ export type Database = {
         }
         Relationships: []
       }
+      close_link: {
+        Row: {
+          client_id: string
+          close_lead_id: string
+          created_at: string | null
+          id: string
+          last_synced_at: string | null
+          match_confidence: number | null
+          matched_via: string
+        }
+        Insert: {
+          client_id: string
+          close_lead_id: string
+          created_at?: string | null
+          id?: string
+          last_synced_at?: string | null
+          match_confidence?: number | null
+          matched_via: string
+        }
+        Update: {
+          client_id?: string
+          close_lead_id?: string
+          created_at?: string | null
+          id?: string
+          last_synced_at?: string | null
+          match_confidence?: number | null
+          matched_via?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "close_link_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       close_opportunities: {
         Row: {
+          client_id: string | null
           confidence: number | null
           date_created: string | null
           date_lost: string | null
@@ -1107,12 +1202,15 @@ export type Database = {
           status_label: string | null
           status_type: string | null
           synced_at: string | null
+          user_name: string | null
           value: number | null
+          value_cents: number | null
           value_currency: string | null
           value_formatted: string | null
           value_period: string | null
         }
         Insert: {
+          client_id?: string | null
           confidence?: number | null
           date_created?: string | null
           date_lost?: string | null
@@ -1128,12 +1226,15 @@ export type Database = {
           status_label?: string | null
           status_type?: string | null
           synced_at?: string | null
+          user_name?: string | null
           value?: number | null
+          value_cents?: number | null
           value_currency?: string | null
           value_formatted?: string | null
           value_period?: string | null
         }
         Update: {
+          client_id?: string | null
           confidence?: number | null
           date_created?: string | null
           date_lost?: string | null
@@ -1149,12 +1250,22 @@ export type Database = {
           status_label?: string | null
           status_type?: string | null
           synced_at?: string | null
+          user_name?: string | null
           value?: number | null
+          value_cents?: number | null
           value_currency?: string | null
           value_formatted?: string | null
           value_period?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "close_opportunities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       companies: {
         Row: {
