@@ -60,7 +60,13 @@ export function CloseSyncCard() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const bulkCancelRef = useRef(false);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
-  const [unlinkedSort, setUnlinkedSort] = useState<'confidence' | 'alpha'>('confidence');
+  const [unlinkedSort, setUnlinkedSort] = useState<'confidence' | 'alpha' | 'only_100'>('confidence');
+  const [autoLinking, setAutoLinking] = useState(false);
+  const autoLinkCancelRef = useRef(false);
+  const [autoLinkProgress, setAutoLinkProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+  const [autoConfirmOpen, setAutoConfirmOpen] = useState(false);
+  const [autoFailed, setAutoFailed] = useState<Array<{ id: string; name: string; error: string }>>([]);
+  const [autoFailedOpen, setAutoFailedOpen] = useState(false);
   // TODO: Multi-Select Bulk-Link in nächstem Sprint — Checkbox visuell, noch nicht funktional
   const [selectedUnlinked, setSelectedUnlinked] = useState<Set<string>>(new Set());
 
