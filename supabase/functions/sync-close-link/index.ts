@@ -88,6 +88,37 @@ Deno.serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     let body: any = {};
     try { body = await req.json(); } catch {}
+
+    // ───── MANUAL MODE: direct link via { client_id, manual_close_lead_id } ─────
+    if (body?.manual_close_lead_id && body?.client_id) {
+      const { error: insErr } = await supabase.from("close_link").insert({
+        client_id: body.client_id,
+        close_lead_id: body.manual_close_lead_id,
+        matched_via: body.matched_via || "manual",
+        match_confidence: 1.0,
+      });
+      if (insErr && !String(insErr.message).includes("duplicate")) {
+        return new Response(JSON.stringify({ error: insErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      let immediate_sync_triggered = false;
+      try {
+        const supaUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        fetch(`${supaUrl}/functions/v1/sync-close-lead-full`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+          body: JSON.stringify({ client_id: body.client_id }),
+        }).catch(() => {});
+        immediate_sync_triggered = true;
+      } catch {}
+      console.log("[sync-close-link] manual link", { client_id: body.client_id, lead: body.manual_close_lead_id });
+      return new Response(JSON.stringify({ success: true, manual: true, immediate_sync_triggered }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const requestedIds: string[] | undefined = Array.isArray(body?.client_ids) ? body.client_ids : undefined;
 
     const { data: existingLinks } = await supabase.from("close_link").select("client_id");
