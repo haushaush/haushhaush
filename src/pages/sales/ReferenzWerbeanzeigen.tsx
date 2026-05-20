@@ -147,7 +147,7 @@ export default function ReferenzWerbeanzeigenPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: ads }, { data: cats }, { data: opts }] = await Promise.all([
+    const [{ data: ads }, { data: cats }, { data: opts }, { data: bl }] = await Promise.all([
       supabase.from("referenz_meta_ads" as any)
         .select(isPublic
           ? `*, ${FK_EMBED_ALL}`
@@ -159,10 +159,12 @@ export default function ReferenzWerbeanzeigenPage() {
       supabase.from("showcase_filter_categories" as any).select("*")
         .in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
       supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
+      supabase.from("import_blacklist" as any).select("scope, target_id"),
     ]);
     setRows(((ads ?? []) as any[]) as MetaAdRow[]);
     setCategories((cats ?? []) as any);
     setOptions((opts ?? []) as any);
+    setBlacklist(((bl ?? []) as any[]) as { scope: string; target_id: string }[]);
     setLoading(false);
   };
 
