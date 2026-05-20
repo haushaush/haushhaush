@@ -189,7 +189,7 @@ export default function KundenDetail() {
       ? supabase.from('referenz_meta_campaigns').select('*').or(buildMetaConditions()).order('campaign_period_start', { ascending: false })
       : Promise.resolve({ data: [] } as any);
 
-    const [d, p, op, w, a, cam, link, opps, acts] = await Promise.all([
+    const [d, p, op, w, a, cam, link, opps, acts, lead, contacts, tasks] = await Promise.all([
       supabase.from('close_deals').select('*').eq('client_id', id).order('created_at', { ascending: false }),
       projectsQuery,
       supabase.from('onepage_projects').select('*').eq('client_id_fk', id).order('created_at', { ascending: false }),
@@ -198,7 +198,10 @@ export default function KundenDetail() {
       campaignsQuery,
       supabase.from('close_link' as any).select('*').eq('client_id', id).maybeSingle(),
       supabase.from('close_opportunities' as any).select('*').eq('client_id', id).order('date_won', { ascending: false, nullsFirst: false }),
-      supabase.from('close_activities' as any).select('*').eq('client_id', id).order('date_created', { ascending: false }).limit(50),
+      supabase.from('close_activities' as any).select('*').eq('client_id', id).order('date_created', { ascending: false }).limit(200),
+      supabase.from('close_leads' as any).select('*').eq('client_id', id).maybeSingle(),
+      supabase.from('close_contacts' as any).select('*').eq('client_id', id).order('date_created', { ascending: true }),
+      supabase.from('close_tasks' as any).select('*').eq('client_id', id).order('is_complete', { ascending: true }).order('due_date', { ascending: true, nullsFirst: false }),
     ]);
     setDeals(d.data || []);
     setProjects(p.data || []);
@@ -210,6 +213,9 @@ export default function KundenDetail() {
     setCloseLink(link?.data || null);
     setCloseOpps((opps as any)?.data || []);
     setCloseActs((acts as any)?.data || []);
+    setCloseLead((lead as any)?.data || null);
+    setCloseContacts((contacts as any)?.data || []);
+    setCloseTasks((tasks as any)?.data || []);
     // eslint-disable-next-line no-console
     console.log('[KundenDetail] Showcase ads loaded:', (a.data || []).length, 'for client:', id, {
       conditions: buildMetaConditions(),
