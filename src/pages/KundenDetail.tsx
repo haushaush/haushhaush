@@ -1241,6 +1241,37 @@ export default function KundenDetail() {
           </Card>
         </TabsContent>
 
+        {/* TASKS */}
+        {closeTasks.length > 0 && (
+          <TabsContent value="tasks" className="mt-4 space-y-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Cloud className="h-4 w-4 text-primary" /> Tasks aus Close.com
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="divide-y divide-border/50">
+                  {closeTasks.map((t: any) => (
+                    <li key={t.close_task_id} className="flex items-start gap-3 py-2.5">
+                      <span className={`mt-0.5 h-4 w-4 rounded border flex items-center justify-center text-[10px] ${t.is_complete ? 'bg-success/20 border-success/40 text-success' : 'border-border'}`}>
+                        {t.is_complete ? '✓' : ''}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm ${t.is_complete ? 'line-through text-muted-foreground' : ''}`}>{t.text || '—'}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {t.due_date ? `Fällig: ${fmtDate(t.due_date)}` : 'Kein Fälligkeitsdatum'}
+                          {t.assigned_to ? ` · ${t.assigned_to}` : ''}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
         {/* PROJEKTE */}
         <TabsContent value="projekte" className="mt-4 space-y-2">
           {projects.length === 0 ? (
