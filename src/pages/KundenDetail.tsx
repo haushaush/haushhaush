@@ -250,6 +250,61 @@ export default function KundenDetail() {
       .slice(0, 5);
   }, [deals, projects, onepageProjects, websites, ads]);
 
+  // ===== Close.com helpers =====
+  const closeStats = useMemo(() => {
+    const won = closeOpps.filter((o: any) => o.status_type === 'won');
+    const active = closeOpps.filter((o: any) => o.status_type === 'active');
+    const wonSum = won.reduce((s, o) => s + Number(o.value_cents || 0), 0) / 100;
+    const lastWon = won.reduce((m: string | null, o: any) => {
+      if (!o.date_won) return m;
+      if (!m || new Date(o.date_won) > new Date(m)) return o.date_won;
+      return m;
+    }, null);
+    return { wonCount: won.length, wonSum, lastWon, activeCount: active.length };
+  }, [closeOpps]);
+
+  const filteredOpps = useMemo(
+    () => oppFilter === 'won' ? closeOpps.filter((o: any) => o.status_type === 'won') : closeOpps,
+    [closeOpps, oppFilter]
+  );
+
+  const filteredActs = useMemo(() => {
+    if (actFilter === 'all') return closeActs;
+    return closeActs.filter((a: any) => (a.activity_type || '').toLowerCase().includes(actFilter.toLowerCase()));
+  }, [closeActs, actFilter]);
+
+  const syncFreshness = useMemo(() => {
+    if (!closeLink?.last_synced_at) return { color: 'destructive', label: 'Close: kein Sync' } as const;
+    const ageH = (Date.now() - new Date(closeLink.last_synced_at).getTime()) / 3600000;
+    if (ageH < 36) return { color: 'success', label: `Close synct (${fmtDate(closeLink.last_synced_at)})` } as const;
+    if (ageH < 72) return { color: 'warning', label: `Close: Sync alt (${fmtDate(closeLink.last_synced_at)})` } as const;
+    return { color: 'destructive', label: `Close: Sync veraltet (${fmtDate(closeLink.last_synced_at)})` } as const;
+  }, [closeLink]);
+
+  const handleResyncClose = async () => {
+    setCloseSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-close', { body: { client_id: id } });
+      if (error) throw error;
+      toast.success(`Close-Sync OK · ${data?.opps_upserted ?? 0} Deals, ${data?.activities_upserted ?? 0} Aktivitäten`);
+      await load();
+    } catch (e: any) {
+      toast.error(`Close-Sync fehlgeschlagen: ${e.message}`);
+    } finally {
+      setCloseSyncing(false);
+    }
+  };
+
+  const activityIcon = (type: string | null) => {
+    const t = (type || '').toLowerCase();
+    if (t.includes('email')) return <MailIcon className="h-3.5 w-3.5" />;
+    if (t.includes('call')) return <PhoneCall className="h-3.5 w-3.5" />;
+    if (t.includes('note')) return <StickyNote className="h-3.5 w-3.5" />;
+    if (t.includes('meeting')) return <CalIcon className="h-3.5 w-3.5" />;
+    if (t.includes('sms')) return <MessageSquare className="h-3.5 w-3.5" />;
+    return <Activity className="h-3.5 w-3.5" />;
+  };
+
   const NUMBER_FIELDS: EditableField[] = ['ads_budget','gesamt_saldo','cash_collect_offen','meta_kosten','crm_kosten','superchat_kosten','website_kosten'];
   const DATE_FIELDS: EditableField[] = ['deadline','startdatum','enddatum'];
 
