@@ -329,26 +329,60 @@ export function CloseSyncCard() {
           <StatTile icon={<Briefcase className="h-3.5 w-3.5" />} label="Opportunities" value={loading ? '…' : stats.opportunities.toLocaleString('de-DE')} />
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={matchUnlinked} disabled={matching || syncing} variant="outline" size="sm">
-            {matching ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
-            Alle nicht-verlinkten matchen
-          </Button>
-          <Button
-            onClick={() => runBatchSync(Array.from(selected))}
-            disabled={syncing || matching || selected.size === 0}
-            size="sm"
-          >
-            {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-            Ausgewählte syncen ({selected.size})
-          </Button>
-          {progress && (
-            <span className="text-xs text-muted-foreground tabular-nums">
-              Syncing {progress.current} von {progress.total}…
-            </span>
-          )}
-        </div>
+        {/* Primary actions */}
+        <TooltipProvider delayDuration={200}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={matchUnlinked} disabled={matching || syncing || syncAllRunning} size="sm">
+                  {matching ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
+                  Alle nicht-verlinkten matchen
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Sucht Close-Leads für Kunden ohne Verknüpfung. Schnell.</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={startSyncAllLinked} disabled={matching || syncing || syncAllRunning || linked.length === 0} size="sm">
+                  {syncAllRunning ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5 mr-1.5" />}
+                  Alle verlinkten Kunden neu syncen
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                Holt aktuelle Daten aus Close für alle verlinkten Kunden (Won-Deals, Activities, Custom Fields). Dauert bei 220 Kunden ca. 5–10 Min.
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+
+        {/* Progress for sync-all */}
+        {syncAllRunning && (
+          <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="tabular-nums font-medium">
+                Synct… {syncAllProgress.current} / {syncAllProgress.total}
+                {syncAllProgress.total > 0 && ` (${Math.round((syncAllProgress.current / syncAllProgress.total) * 100)}%)`}
+              </span>
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={cancelSyncAll}>
+                <X className="h-3 w-3 mr-1" /> Abbrechen
+              </Button>
+            </div>
+            <Progress value={syncAllProgress.total ? (syncAllProgress.current / syncAllProgress.total) * 100 : 0} className="h-1.5" />
+            {recent.length > 0 && (
+              <ul className="text-xs space-y-0.5 mt-2">
+                {recent.map((r, i) => (
+                  <li key={i} className="flex items-center gap-1.5 text-muted-foreground">
+                    {r.status === 'ok' && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                    {r.status === 'warn' && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                    {r.status === 'err' && <XCircle className="h-3 w-3 text-destructive" />}
+                    <span className="truncate">{r.name}{r.note ? ` — ${r.note}` : ''}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {/* Linked table */}
         <div className="rounded-lg border border-border overflow-hidden">
