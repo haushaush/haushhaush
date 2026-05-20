@@ -410,6 +410,128 @@ export function CloseSyncCard() {
     setSelected(new Set(ids));
   };
 
+  // ───────── Suggestions ─────────
+  const loadSuggestionsFor = async (clientId: string) => {
+    setSuggestions((s) => ({ ...s, [clientId]: 'loading' }));
+    try {
+      const { data, error } = await supabase.functions.invoke('search-close-suggestions', {
+        body: { client_id: clientId },
+      });
+      if (error) throw error;
+      const arr: Suggestion[] = data?.suggestions ?? [];
+      setSuggestions((s) => ({ ...s, [clientId]: arr.length ? arr : 'empty' }));
+    } catch (e: any) {
+      console.error('[suggestions] fail', e);
+      setSuggestions((s) => ({ ...s, [clientId]: 'error' }));
+      toast.error(`Vorschläge fehlgeschlagen: ${e.message}`);
+    }
+  };
+
+  const loadAllSuggestions = async () => {
+    if (unlinked.length === 0) return;
+    bulkCancelRef.current = false;
+    setBulkLoading(true);
+    setBulkProgress({ done: 0, total: unlinked.length });
+    const ids = unlinked.map((u) => u.id);
+    const BATCH = 20;
+    let done = 0;
+    try {
+      for (let i = 0; i < ids.length; i += BATCH) {
+        if (bulkCancelRef.current) break;
+        const batch = ids.slice(i, i + BATCH);
+        // mark loading
+        setSuggestions((prev) => {
+          const next = { ...prev };
+          for (const id of batch) if (!next[id] || next[id] === 'error') next[id] = 'loading';
+          return next;
+        });
+        try {
+          const { data, error } = await supabase.functions.invoke('search-close-suggestions-batch', {
+            body: { client_ids: batch },
+          });
+          if (error) throw error;
+          const results: Array<{ client_id: string; suggestions?: Suggestion[]; error?: string }> = data?.results ?? [];
+          setSuggestions((prev) => {
+            const next = { ...prev };
+            for (const r of results) {
+              if (r.error) next[r.client_id] = 'error';
+              else {
+                const arr = r.suggestions ?? [];
+                next[r.client_id] = arr.length ? arr : 'empty';
+              }
+            }
+            return next;
+          });
+        } catch (e: any) {
+          console.warn('[bulk suggestions] batch fail', e);
+          setSuggestions((prev) => {
+            const next = { ...prev };
+            for (const id of batch) next[id] = 'error';
+            return next;
+          });
+        }
+        done += batch.length;
+        setBulkProgress({ done, total: ids.length });
+      }
+      if (bulkCancelRef.current) toast.info(`Abgebrochen — ${done}/${ids.length} Vorschläge geladen.`);
+      else toast.success(`Vorschläge geladen für ${done} Kunden.`);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const linkSuggestion = async (clientId: string, leadId: string, displayName: string) => {
+    const key = `${clientId}:${leadId}`;
+    setLinkingPair(key);
+    // Optimistic: ausgrauen + nach 1.5s entfernen
+    setRecentlyLinked((s) => new Set(s).add(clientId));
+    try {
+      const { error } = await supabase.functions.invoke('sync-close-link', {
+        body: { client_id: clientId, manual_close_lead_id: leadId, matched_via: 'manual' },
+      });
+      if (error) throw error;
+      toast.success(`Verlinkt mit ${displayName}`);
+      setTimeout(() => {
+        setUnlinked((u) => u.filter((c) => c.id !== clientId));
+        setSuggestions((s) => { const n = { ...s }; delete n[clientId]; return n; });
+        setRecentlyLinked((s) => { const n = new Set(s); n.delete(clientId); return n; });
+        setStats((st) => ({ ...st, linked: st.linked + 1 }));
+        load();
+      }, 1500);
+    } catch (e: any) {
+      // Rollback
+      setRecentlyLinked((s) => { const n = new Set(s); n.delete(clientId); return n; });
+      toast.error(`Verlinken fehlgeschlagen: ${e.message}`);
+    } finally {
+      setLinkingPair(null);
+    }
+  };
+
+  const sortedUnlinked = useMemo(() => {
+    const arr = [...unlinked];
+    if (unlinkedSort === 'alpha') {
+      arr.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    } else {
+      arr.sort((a, b) => {
+        const ca = suggestions[a.id];
+        const cb = suggestions[b.id];
+        const va = Array.isArray(ca) ? (ca[0]?.confidence ?? 0) : -1;
+        const vb = Array.isArray(cb) ? (cb[0]?.confidence ?? 0) : -1;
+        if (vb !== va) return vb - va;
+        return a.name.localeCompare(b.name, 'de');
+      });
+    }
+    // Linked-pending zum Schluss
+    arr.sort((a, b) => Number(recentlyLinked.has(a.id)) - Number(recentlyLinked.has(b.id)));
+    return arr;
+  }, [unlinked, suggestions, unlinkedSort, recentlyLinked]);
+
+  const confidenceColor = (c: number) =>
+    c >= 0.85 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+    : c >= 0.65 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+    : 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30';
+
+
   return (
     <Card id="close-sync-card" className="border-border bg-card">
       <CardHeader>
