@@ -214,7 +214,6 @@ export default function ReferenzWebsiteDetail() {
               {(item.branche || linkedKunde?.branche) && (
                 <DetailRow label="Branche" value={getBrancheDisplay(item.branche || linkedKunde?.branche, 'long') ?? (item.branche || linkedKunde?.branche)} capitalize />
               )}
-              )}
               {linkedKunde?.unternehmen && <DetailRow label="Unternehmen" value={linkedKunde.unternehmen} />}
               {item.client_name && <DetailRow label="Kunde" value={item.client_name} />}
               {item.created_at && (
