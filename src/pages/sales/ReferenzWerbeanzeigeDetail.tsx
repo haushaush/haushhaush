@@ -244,6 +244,21 @@ export default function ReferenzWerbeanzeigeDetail() {
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed italic whitespace-pre-wrap">{(ad as any).custom_performance_notes}</p>
             </section>
           )}
+          {tags.length > 0 && (
+            <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
+              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Tags</h2>
+              <div className="flex flex-wrap gap-1.5">
+                {tags.map(t => {
+                  const isAutoTag = t.startsWith("kunde-") || t.startsWith("unternehmen-") || t.startsWith("versicherer-");
+                  return (
+                    <span key={t} className={`text-xs px-2.5 py-1 rounded-full inline-flex items-center gap-1 border ${isAutoTag ? "bg-primary/10 text-primary border-primary/30" : "bg-muted border-transparent text-muted-foreground"}`}>
+                      {isAutoTag && <Sparkles className="w-3 h-3" />}#{t}
+                    </span>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </>
       }
       editForm={
