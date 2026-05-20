@@ -12,7 +12,8 @@ const MAX_CLIENTS = 30;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const mem = () => Math.round((Deno.memoryUsage?.().heapUsed ?? 0) / 1024 / 1024);
 
-const normalizeName = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+const normalizeName = (s: string) =>
+  s.trim().toLowerCase().replace(/\s+/g, " ");
 
 function levenshtein(a: string, b: string): number {
   if (a === b) return 0;
@@ -54,6 +55,32 @@ async function closeFetch(path: string, attempt = 1): Promise<any> {
   return res.json();
 }
 
+// Search Close with smart natural-language query (over all fields incl. contacts)
+async function searchLeads(rawQuery: string, limit = 5): Promise<any[]> {
+  const q = encodeURIComponent(`"${rawQuery}"`);
+  const data = await closeFetch(
+    `/lead/?query=${q}&_limit=${limit}&_fields=id,display_name,contacts`,
+  );
+  return data.data || [];
+}
+
+async function searchByEmailExact(email: string, limit = 2): Promise<any[]> {
+  const q = encodeURIComponent(`email:"${email}"`);
+  const data = await closeFetch(
+    `/lead/?query=${q}&_limit=${limit}&_fields=id,display_name,contacts`,
+  );
+  return data.data || [];
+}
+
+function leadCandidateNames(lead: any): string[] {
+  const out: string[] = [];
+  if (lead.display_name) out.push(lead.display_name);
+  for (const c of lead.contacts || []) {
+    if (c?.name) out.push(c.name);
+  }
+  return out.filter(Boolean);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const t0 = Date.now();
@@ -75,7 +102,13 @@ Deno.serve(async (req) => {
     const targets = candidates.slice(0, MAX_CLIENTS);
     const remaining_ids = candidates.slice(MAX_CLIENTS).map((c: any) => c.id);
 
-    let processed = 0, email_matched = 0, name_fallback_exact = 0, name_fuzzy = 0, ambiguous = 0, no_match = 0;
+    let processed = 0,
+      email_matched = 0,
+      email_variant_matched = 0,
+      name_fallback_exact = 0,
+      name_fuzzy = 0,
+      ambiguous = 0,
+      no_match = 0;
     const errors: string[] = [];
 
     for (let i = 0; i < targets.length; i++) {
@@ -84,81 +117,137 @@ Deno.serve(async (req) => {
       let linkedNow = false;
 
       try {
-        // STEP 1 — EMAIL MATCH
+        // ───── STEP 1: EMAIL MATCH (with variants) ─────
         if (c.email) {
-          const q = encodeURIComponent(`email:"${c.email}"`);
-          const data = await closeFetch(`/lead/?query=${q}&_limit=2&_fields=id,display_name`);
-          const leads: any[] = data.data || [];
-          if (leads.length === 1) {
+          const baseEmail = String(c.email).toLowerCase().trim();
+          const variants = Array.from(new Set([
+            baseEmail,
+            baseEmail.replace(/\./g, "-"),
+            baseEmail.replace(/-/g, "."),
+          ]));
+
+          let emailMatched: any = null;
+          let emailMatchedVia: "email" | "email_variant" = "email";
+          let totalEmailResults = 0;
+
+          for (let vi = 0; vi < variants.length && !emailMatched; vi++) {
+            const v = variants[vi];
+            const leads = await searchByEmailExact(v, 2);
+            totalEmailResults = leads.length;
+            if (leads.length === 1) {
+              emailMatched = leads[0];
+              emailMatchedVia = vi === 0 ? "email" : "email_variant";
+            }
+            await sleep(200);
+          }
+
+          console.log("[Email Step]", {
+            client: c.name,
+            email: c.email,
+            variants_tried: variants.length,
+            last_results_count: totalEmailResults,
+            matched: !!emailMatched,
+            via: emailMatched ? emailMatchedVia : null,
+          });
+
+          if (emailMatched) {
             const { error: insErr } = await supabase.from("close_link").insert({
               client_id: c.id,
-              close_lead_id: leads[0].id,
-              matched_via: "email",
-              match_confidence: 1.0,
+              close_lead_id: emailMatched.id,
+              matched_via: emailMatchedVia,
+              match_confidence: emailMatchedVia === "email" ? 1.0 : 0.95,
             });
             if (insErr && !String(insErr.message).includes("duplicate")) {
               errors.push(`${c.name}: ${insErr.message}`);
             } else {
-              email_matched++;
+              if (emailMatchedVia === "email") email_matched++;
+              else email_variant_matched++;
               linkedNow = true;
             }
           }
-          await sleep(250);
         }
 
-        // STEP 2 — NAME FALLBACK
+        // ───── STEP 2: NAME FALLBACK (smart search + contacts) ─────
         if (!linkedNow && c.name) {
           const normalized = normalizeName(c.name);
-          const q = encodeURIComponent(`display_name:"${normalized}"`);
-          const data = await closeFetch(`/lead/?query=${q}&_limit=5&_fields=id,display_name`);
-          const leads: any[] = data.data || [];
+          const leads = await searchLeads(c.name, 5);
 
-          if (leads.length === 1) {
-            const leadName = normalizeName(leads[0].display_name || "");
-            if (leadName === normalized) {
+          console.log("[Name Step]", {
+            client: c.name,
+            normalized,
+            query: `"${c.name}"`,
+            results_count: leads.length,
+          });
+
+          // Exact match across display_name OR any contact name
+          const exact = leads.find((l) =>
+            leadCandidateNames(l).some((n) => normalizeName(n) === normalized),
+          );
+
+          if (exact) {
+            const { error: insErr } = await supabase.from("close_link").insert({
+              client_id: c.id,
+              close_lead_id: exact.id,
+              matched_via: "name_fallback",
+              match_confidence: 0.9,
+            });
+            if (insErr && !String(insErr.message).includes("duplicate")) {
+              errors.push(`${c.name}: ${insErr.message}`);
+            } else {
+              name_fallback_exact++;
+              linkedNow = true;
+              console.log("[Name Step] exact match", { client: c.name, lead: exact.display_name });
+            }
+          } else if (leads.length > 0) {
+            // Fuzzy across display_name + contact names
+            let best: { lead: any; sim: number; via: string } | null = null;
+            for (const l of leads) {
+              for (const candidate of leadCandidateNames(l)) {
+                const sim = similarity(normalized, normalizeName(candidate));
+                if (!best || sim > best.sim) best = { lead: l, sim, via: candidate };
+              }
+            }
+            if (best && best.sim >= 0.75) {
               const { error: insErr } = await supabase.from("close_link").insert({
                 client_id: c.id,
-                close_lead_id: leads[0].id,
-                matched_via: "name_fallback",
-                match_confidence: 0.9,
+                close_lead_id: best.lead.id,
+                matched_via: "name_fuzzy",
+                match_confidence: Number(best.sim.toFixed(2)),
               });
               if (insErr && !String(insErr.message).includes("duplicate")) {
                 errors.push(`${c.name}: ${insErr.message}`);
               } else {
-                name_fallback_exact++;
-              }
-            } else {
-              const sim = similarity(normalized, leadName);
-              if (sim >= 0.7) {
-                const { error: insErr } = await supabase.from("close_link").insert({
-                  client_id: c.id,
-                  close_lead_id: leads[0].id,
-                  matched_via: "name_fuzzy",
-                  match_confidence: Number(sim.toFixed(2)),
+                name_fuzzy++;
+                linkedNow = true;
+                console.log("[Name Step] fuzzy match", {
+                  client: c.name,
+                  matched: best.via,
+                  sim: best.sim.toFixed(2),
                 });
-                if (insErr && !String(insErr.message).includes("duplicate")) {
-                  errors.push(`${c.name}: ${insErr.message}`);
-                } else {
-                  name_fuzzy++;
-                  console.log(`[name_fuzzy] ${c.name} -> ${leads[0].display_name} (sim=${sim.toFixed(2)})`);
-                }
-              } else {
-                no_match++;
-                console.log(`[no_match] ${c.name}, ${c.email || "no-email"} (best sim=${sim.toFixed(2)})`);
               }
+            } else if (leads.length >= 3) {
+              ambiguous++;
+              console.log("[Name Step] ambiguous", {
+                client: c.name,
+                candidates: leads.map((l) => l.display_name).slice(0, 5),
+                best_sim: best?.sim.toFixed(2),
+              });
+            } else {
+              no_match++;
+              console.log("[Name Step] no_match (low sim)", {
+                client: c.name,
+                best_sim: best?.sim.toFixed(2),
+              });
             }
-          } else if (leads.length === 0) {
-            no_match++;
-            console.log(`[no_match] ${c.name}, ${c.email || "no-email"}`);
           } else {
-            ambiguous++;
-            const names = leads.map((l) => l.display_name).slice(0, 5);
-            console.log(`[ambiguous_name] ${c.name}, candidates:`, names);
+            no_match++;
+            console.log("[Name Step] no_match (no results)", { client: c.name });
           }
           await sleep(250);
         }
       } catch (e: any) {
         errors.push(`${c.name}: ${e.message}`);
+        console.error("[link error]", c.name, e.message);
       }
 
       if (i % 10 === 9) console.log(`[link] ${i + 1}/${targets.length}, mem ${mem()}MB`);
@@ -167,6 +256,7 @@ Deno.serve(async (req) => {
     const summary = {
       processed,
       email_matched,
+      email_variant_matched,
       name_fallback_exact,
       name_fuzzy,
       ambiguous,
@@ -177,13 +267,15 @@ Deno.serve(async (req) => {
       mem_mb: mem(),
     };
     console.log("[Sync Link Summary]", summary);
-    return new Response(JSON.stringify({ success: true, ...summary, remaining_ids, error_samples: errors.slice(0, 5) }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ success: true, ...summary, remaining_ids, error_samples: errors.slice(0, 5) }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (err: any) {
     console.error("[sync-close-link] fatal:", err.message);
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
