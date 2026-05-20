@@ -2411,6 +2411,7 @@ export type Database = {
       }
       kunde_close_deals: {
         Row: {
+          client_id: string | null
           close_lead_id: string
           close_lead_name: string | null
           close_opportunity_id: string
@@ -2427,6 +2428,7 @@ export type Database = {
           status_category: string | null
         }
         Insert: {
+          client_id?: string | null
           close_lead_id: string
           close_lead_name?: string | null
           close_opportunity_id: string
@@ -2443,6 +2445,7 @@ export type Database = {
           status_category?: string | null
         }
         Update: {
+          client_id?: string | null
           close_lead_id?: string
           close_lead_name?: string | null
           close_opportunity_id?: string
@@ -2460,6 +2463,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "kunde_close_deals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "kunde_close_deals_kunde_id_fkey"
             columns: ["kunde_id"]
             isOneToOne: false
@@ -2470,6 +2480,7 @@ export type Database = {
       }
       kunde_meta_accounts: {
         Row: {
+          client_id: string | null
           id: string
           kunde_id: string
           match_confidence: number | null
@@ -2480,6 +2491,7 @@ export type Database = {
           meta_account_name: string | null
         }
         Insert: {
+          client_id?: string | null
           id?: string
           kunde_id: string
           match_confidence?: number | null
@@ -2490,6 +2502,7 @@ export type Database = {
           meta_account_name?: string | null
         }
         Update: {
+          client_id?: string | null
           id?: string
           kunde_id?: string
           match_confidence?: number | null
@@ -2500,6 +2513,13 @@ export type Database = {
           meta_account_name?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "kunde_meta_accounts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "kunde_meta_accounts_kunde_id_fkey"
             columns: ["kunde_id"]
