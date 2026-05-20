@@ -160,9 +160,18 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       }
     };
 
-    // Initial fetch
+    // Initial fetch + kick stale jobs again (e.g. after function timeout/refresh)
     supabase.from('showcase_import_jobs' as any).select('*').eq('id', activeJobId).maybeSingle()
-      .then(({ data }) => apply(data));
+      .then(({ data }) => {
+        apply(data);
+        const row = data as any;
+        if (!row || row.status === 'done') return;
+        const updatedAt = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+        const isStale = Date.now() - updatedAt > 45_000;
+        if (row.status === 'queued' || isStale) {
+          supabase.functions.invoke('process-showcase-import-job', { body: { jobId: activeJobId } });
+        }
+      });
 
     const channel = supabase
       .channel(`showcase-import-job-${activeJobId}`)
@@ -395,9 +404,10 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       setActiveJobId(jobId);
 
       // Kick off background processing — returns immediately (202)
-      await supabase.functions.invoke('process-showcase-import-job', {
+      const { error: invokeErr } = await supabase.functions.invoke('process-showcase-import-job', {
         body: { jobId },
       });
+      if (invokeErr) throw invokeErr;
     } catch (e) {
       toast({ title: 'Fehler', description: (e as Error).message, variant: 'destructive' });
       setStep('enrich');
