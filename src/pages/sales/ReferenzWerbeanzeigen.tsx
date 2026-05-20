@@ -397,9 +397,10 @@ export default function ReferenzWerbeanzeigenPage() {
           return (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 max-w-5xl mx-auto">
               {dynCats.map(cat => {
+                const isBranche = cat.key.toLowerCase() === 'branche';
                 const catOpts = options
                   .filter(o => o.category_id === cat.id && o.is_active)
-                  .map(o => ({ value: o.key, label: o.label }))
+                  .map(o => ({ value: o.key, label: isBranche ? (getBrancheDisplay(o.label, 'long') ?? o.label) : o.label }))
                   .sort((a, b) => a.label.localeCompare(b.label));
                 if (catOpts.length === 0) return null;
                 return (
