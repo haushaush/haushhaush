@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
@@ -48,9 +49,27 @@ export default function AdPerformancePage() {
 
   const [rows, setRows] = useState<CampaignRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
-  const [sortBy, setSortBy] = useState<SortKey>("best_roas");
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('q') ?? '';
+  const sortBy = ((searchParams.get('sort') as SortKey) || 'best_roas') as SortKey;
+  const activeFilters: Record<string, string> = useMemo(() => {
+    const out: Record<string, string> = {};
+    searchParams.forEach((v, k) => { if (k.startsWith('f.') && v) out[k.slice(2)] = v; });
+    return out;
+  }, [searchParams]);
+
+  const updateParams = useCallback((mut: (p: URLSearchParams) => void) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      mut(next);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const setSearch = (v: string) => updateParams(p => { v ? p.set('q', v) : p.delete('q'); });
+  const setSortBy = (v: SortKey) => updateParams(p => { v && v !== 'best_roas' ? p.set('sort', v) : p.delete('sort'); });
+  const setFilter = (k: string, v: string) => updateParams(p => { v ? p.set(`f.${k}`, v) : p.delete(`f.${k}`); });
 
   const [importOpen, setImportOpen] = useState(false);
 
@@ -120,20 +139,8 @@ export default function AdPerformancePage() {
     return sorted;
   }, [rows, search, activeFilters, sortBy]);
 
-  const setFilter = (k: string, v: string) =>
-    setActiveFilters(p => {
-      const n = { ...p };
-      if (v) n[k] = v; else delete n[k];
-      return n;
-    });
-
-  const items: AnyItem[] = useMemo(
-    () => filtered.map(c => ({ ...c, _type: 'campaign' as const })),
-    [filtered],
-  );
-
   const hasActiveFilters = !!search || Object.values(activeFilters).some(Boolean);
-  const resetFilters = () => { setSearch(''); setActiveFilters({}); };
+  const resetFilters = () => updateParams(p => { Array.from(p.keys()).forEach(k => p.delete(k)); });
 
   return (
     <ShowcasePageWrapper>
