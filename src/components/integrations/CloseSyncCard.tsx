@@ -49,6 +49,8 @@ export function CloseSyncCard() {
   const [syncAllProgress, setSyncAllProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
   const [recent, setRecent] = useState<Array<{ name: string; status: 'ok' | 'warn' | 'err'; note?: string }>>([]);
   const cancelRef = useRef(false);
+  const matchCancelRef = useRef(false);
+  const [matchProgress, setMatchProgress] = useState<{ iterations: number; totalMatched: number; remaining: number; unmatched: number; ambiguous: number } | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summary, setSummary] = useState<{ ok: number; warn: number; err: number; failedIds: string[]; cancelled: boolean }>({
     ok: 0, warn: 0, err: 0, failedIds: [], cancelled: false,
@@ -106,18 +108,58 @@ export function CloseSyncCard() {
 
   const matchUnlinked = async () => {
     setMatching(true);
+    matchCancelRef.current = false;
+    setMatchProgress({ iterations: 0, totalMatched: 0, remaining: 0, unmatched: 0, ambiguous: 0 });
     const tId = toast.loading('Matche unverlinkte Kunden…');
     const start = Date.now();
+    const MAX_ITERATIONS = 50;
+    let totalMatched = 0;
+    let iterations = 0;
+    let lastRemaining: number | undefined;
+
     try {
-      const { data, error } = await supabase.functions.invoke('sync-close-link');
-      if (error) throw error;
+      while (iterations < MAX_ITERATIONS) {
+        if (matchCancelRef.current) break;
+        const { data, error } = await supabase.functions.invoke('sync-close-link', { body: {} });
+        if (error) throw error;
+
+        const matched = (data?.email_matched || 0)
+          + (data?.email_variant_matched || 0)
+          + (data?.name_fallback_exact || 0)
+          + (data?.name_fuzzy || 0);
+        totalMatched += matched;
+        iterations++;
+        lastRemaining = data?.remaining;
+
+        setMatchProgress({
+          iterations,
+          totalMatched,
+          remaining: data?.remaining ?? 0,
+          unmatched: data?.no_match ?? 0,
+          ambiguous: data?.ambiguous ?? 0,
+        });
+        toast.loading(`Durchlauf ${iterations} · ${totalMatched} verlinkt · ${data?.remaining ?? 0} verbleibend`, { id: tId });
+
+        // Stop if nothing left or nothing matched this round (avoids infinite loop on ambiguous-only)
+        if (!data?.remaining || data.remaining === 0) break;
+        if (matched === 0 && (data?.processed ?? 0) === 0) break;
+
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+
       const dur = ((Date.now() - start) / 1000).toFixed(1);
-      toast.success(`Matching fertig in ${dur}s · ${data?.matched ?? 0} neu, ${data?.unmatched ?? 0} ohne Treffer, ${data?.ambiguous ?? 0} mehrdeutig`, { id: tId });
+      if (matchCancelRef.current) {
+        toast.warning(`Abgebrochen · ${totalMatched} neu in ${iterations} Durchläufen (${dur}s)`, { id: tId });
+      } else {
+        toast.success(`Fertig · ${totalMatched} neu verlinkt in ${iterations} Durchläufen (${dur}s)`, { id: tId });
+      }
       await load();
     } catch (e: any) {
-      toast.error(`Matching fehlgeschlagen: ${e.message}`, { id: tId });
+      toast.error(`Match-Loop gestoppt: ${e.message}`, { id: tId });
     } finally {
       setMatching(false);
+      matchCancelRef.current = false;
+      setTimeout(() => setMatchProgress(null), 4000);
     }
   };
 
@@ -374,8 +416,19 @@ export function CloseSyncCard() {
                   Alle nicht-verlinkten matchen
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Sucht Close-Leads für Kunden ohne Verknüpfung. Schnell.</TooltipContent>
+              <TooltipContent>Sucht Close-Leads für Kunden ohne Verknüpfung. Läuft automatisch in Schleife bis alle durch sind.</TooltipContent>
             </Tooltip>
+
+            {matching && (
+              <Button
+                onClick={() => { matchCancelRef.current = true; }}
+                size="sm"
+                variant="ghost"
+              >
+                <X className="h-3.5 w-3.5 mr-1.5" />
+                Abbrechen
+              </Button>
+            )}
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -409,8 +462,21 @@ export function CloseSyncCard() {
           </div>
         </TooltipProvider>
 
+        {/* Live progress for match-all loop */}
+        {matchProgress && (matching || matchProgress.iterations > 0) && (
+          <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs tabular-nums flex items-center gap-3 flex-wrap">
+            {matching && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
+            <span className="font-medium">Durchlauf {matchProgress.iterations}</span>
+            <span className="text-muted-foreground">·</span>
+            <span><span className="font-semibold text-emerald-600 dark:text-emerald-400">{matchProgress.totalMatched}</span> verlinkt</span>
+            <span className="text-muted-foreground">·</span>
+            <span>{matchProgress.remaining} verbleibend</span>
+            {matchProgress.ambiguous > 0 && <><span className="text-muted-foreground">·</span><span className="text-amber-600 dark:text-amber-400">{matchProgress.ambiguous} mehrdeutig</span></>}
+          </div>
+        )}
 
         {/* Progress for sync-all */}
+
         {syncAllRunning && (
           <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
             <div className="flex items-center justify-between text-xs">
