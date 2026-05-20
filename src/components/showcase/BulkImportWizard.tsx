@@ -419,7 +419,13 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
         <div className="flex-1 overflow-y-auto px-6 py-6">
           {step === 'source' && (
             <SourceStep
-              accounts={accounts}
+              accounts={accounts.filter((acc: any) => {
+                const raw = String(acc.account_id ?? acc.id ?? '');
+                const noPrefix = raw.replace(/^act_/, '');
+                return !blacklist.accounts.has(raw)
+                  && !blacklist.accounts.has(noPrefix)
+                  && !blacklist.accounts.has(`act_${noPrefix}`);
+              })}
               loading={loadingAccounts}
               selectedAccount={accountId}
               onChange={setAccountId}
