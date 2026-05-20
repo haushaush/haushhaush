@@ -871,7 +871,6 @@ export type Database = {
           direction: string | null
           duration_seconds: number | null
           id: string
-          raw_data: Json | null
           subject: string | null
           synced_at: string | null
           user_name: string | null
@@ -886,7 +885,6 @@ export type Database = {
           direction?: string | null
           duration_seconds?: number | null
           id?: string
-          raw_data?: Json | null
           subject?: string | null
           synced_at?: string | null
           user_name?: string | null
@@ -901,7 +899,6 @@ export type Database = {
           direction?: string | null
           duration_seconds?: number | null
           id?: string
-          raw_data?: Json | null
           subject?: string | null
           synced_at?: string | null
           user_name?: string | null
@@ -1152,6 +1149,8 @@ export type Database = {
           close_lead_id: string
           created_at: string | null
           id: string
+          last_activities_synced_at: string | null
+          last_opps_synced_at: string | null
           last_synced_at: string | null
           match_confidence: number | null
           matched_via: string
@@ -1161,6 +1160,8 @@ export type Database = {
           close_lead_id: string
           created_at?: string | null
           id?: string
+          last_activities_synced_at?: string | null
+          last_opps_synced_at?: string | null
           last_synced_at?: string | null
           match_confidence?: number | null
           matched_via: string
@@ -1170,6 +1171,8 @@ export type Database = {
           close_lead_id?: string
           created_at?: string | null
           id?: string
+          last_activities_synced_at?: string | null
+          last_opps_synced_at?: string | null
           last_synced_at?: string | null
           match_confidence?: number | null
           matched_via?: string
@@ -1198,7 +1201,6 @@ export type Database = {
           note: string | null
           pipeline_id: string | null
           pipeline_name: string | null
-          raw: Json | null
           status_label: string | null
           status_type: string | null
           synced_at: string | null
@@ -1222,7 +1224,6 @@ export type Database = {
           note?: string | null
           pipeline_id?: string | null
           pipeline_name?: string | null
-          raw?: Json | null
           status_label?: string | null
           status_type?: string | null
           synced_at?: string | null
@@ -1246,7 +1247,6 @@ export type Database = {
           note?: string | null
           pipeline_id?: string | null
           pipeline_name?: string | null
-          raw?: Json | null
           status_label?: string | null
           status_type?: string | null
           synced_at?: string | null
