@@ -29,6 +29,16 @@ type LinkedRow = {
 };
 type UnlinkedRow = { id: string; name: string; email: string | null };
 type CloseLead = { id: string; display_name?: string; name?: string; description?: string };
+type Suggestion = {
+  close_lead_id: string;
+  display_name: string;
+  contact_name: string | null;
+  emails: string[];
+  phones: string[];
+  status_label: string;
+  confidence: number;
+  match_reasons: string[];
+};
 
 export function CloseSyncCard() {
   const [stats, setStats] = useState({ linked: 0, totalClients: 0, lastSync: null as string | null, activities: 0, opportunities: 0 });
