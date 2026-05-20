@@ -1312,6 +1312,24 @@ export type Database = {
           },
         ]
       }
+      close_sync_locks: {
+        Row: {
+          acquired_at: string
+          acquired_by: string | null
+          lock_key: string
+        }
+        Insert: {
+          acquired_at?: string
+          acquired_by?: string | null
+          lock_key: string
+        }
+        Update: {
+          acquired_at?: string
+          acquired_by?: string | null
+          lock_key?: string
+        }
+        Relationships: []
+      }
       close_tasks: {
         Row: {
           assigned_to: string | null

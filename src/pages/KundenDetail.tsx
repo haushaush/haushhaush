@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DriveBrowser } from '@/components/DriveBrowser';
 import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
-import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X, Loader2, AlertCircle, AlertTriangle, Cloud, RefreshCw, Mail as MailIcon, PhoneCall, StickyNote, Calendar as CalIcon, MessageSquare, Activity } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X, Loader2, AlertCircle, AlertTriangle, Cloud, RefreshCw, RotateCw, Mail as MailIcon, PhoneCall, StickyNote, Calendar as CalIcon, MessageSquare, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import { getBranche } from '@/lib/branchen';
 import { useMetaAds } from '@/contexts/MetaAdsContext';
@@ -311,6 +311,24 @@ export default function KundenDetail() {
     }
   };
 
+  const handleResetSingleClose = async () => {
+    if (!closeLink?.close_lead_id) return;
+    if (!confirm(`Close-Daten für ${client?.name ?? 'diesen Kunden'} löschen und neu holen?`)) return;
+    setCloseSyncing(true);
+    const tId = toast.loading('Reset & Re-Sync läuft…');
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-close-data-single', { body: { client_id: id } });
+      if (error) throw error;
+      const d = data?.deleted_counts ?? {};
+      toast.success(`Reset OK · ${d.close_activities ?? 0} Activities, ${d.close_opportunities ?? 0} Opps neu geladen`, { id: tId });
+      await load();
+    } catch (e: any) {
+      toast.error(`Reset fehlgeschlagen: ${e.message}`, { id: tId });
+    } finally {
+      setCloseSyncing(false);
+    }
+  };
+
   const handleUnlinkClose = async () => {
     if (!closeLink?.client_id) return;
     if (!confirm('Verknüpfung zu Close.com wirklich lösen?')) return;
@@ -469,6 +487,11 @@ export default function KundenDetail() {
                 <DropdownMenuItem onClick={handleResyncClose} disabled={closeSyncing || !closeLink}>
                   <RefreshCw className="h-3.5 w-3.5 mr-2" /> Jetzt syncen
                 </DropdownMenuItem>
+                {closeLink && (
+                  <DropdownMenuItem onClick={handleResetSingleClose} disabled={closeSyncing} className="text-destructive focus:text-destructive">
+                    <RotateCw className="h-3.5 w-3.5 mr-2" /> Daten zurücksetzen &amp; neu holen
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={() => closeLink && window.open(`https://app.close.com/lead/${closeLink.close_lead_id}/`, '_blank')}
                   disabled={!closeLink}

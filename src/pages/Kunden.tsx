@@ -15,7 +15,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Search, Users, RefreshCw, Loader2, Sparkles, Cloud, ChevronDown, Settings as SettingsIcon, Link2 } from 'lucide-react';
+import { Plus, Search, Users, RefreshCw, Loader2, Sparkles, Cloud, ChevronDown, Settings as SettingsIcon, Link2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -294,8 +294,16 @@ export default function Kunden() {
                   <RefreshCw className="h-3.5 w-3.5 mr-2" />
                   Alle verlinkten neu syncen
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate('/einstellungen?tab=verknuepfungen#close-sync-card')}
+                  disabled={closeSyncing}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <AlertTriangle className="h-3.5 w-3.5 mr-2" />
+                  Daten zurücksetzen &amp; neu holen
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/einstellungen?tab=verknuepfungen#close')}>
+                <DropdownMenuItem onClick={() => navigate('/einstellungen?tab=verknuepfungen#close-sync-card')}>
                   <SettingsIcon className="h-3.5 w-3.5 mr-2" />
                   Sync-Einstellungen öffnen
                 </DropdownMenuItem>

@@ -54,6 +54,11 @@ export function CloseSyncCard() {
     ok: 0, warn: 0, err: 0, failedIds: [], cancelled: false,
   });
 
+  // Reset & re-sync state
+  const [resetStage, setResetStage] = useState<0 | 1 | 2>(0);
+  const [resetConfirmText, setResetConfirmText] = useState('');
+  const [resetRunning, setResetRunning] = useState(false);
+
   const load = async () => {
     setLoading(true);
     const [{ data: links }, { count: cntClients }, { count: cntActivities }, { count: cntOpps }] = await Promise.all([
@@ -257,6 +262,36 @@ export function CloseSyncCard() {
     await runBatchSync(ids);
   };
 
+  const runResetAndResync = async () => {
+    setResetStage(0);
+    setResetConfirmText('');
+    setResetRunning(true);
+    const tId = toast.loading('Lösche alle Close-Daten…');
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-close-data');
+      if (error) throw error;
+      const d = data?.deleted ?? {};
+      toast.success(
+        `Reset OK: ${d.leads ?? 0} Leads, ${d.opps ?? 0} Opps, ${d.activities ?? 0} Activities gelöscht. Starte Re-Sync…`,
+        { id: tId, duration: 4000 },
+      );
+      await load();
+      // Trigger same bulk-sync flow as Button 2
+      if (linked.length > 0 || (data?.linked_clients_count ?? 0) > 0) {
+        await runSyncAllLinked();
+      } else {
+        toast.info('Keine verlinkten Kunden — nichts zu syncen.');
+      }
+    } catch (e: any) {
+      toast.error(`Reset fehlgeschlagen: ${e.message}`, { id: tId });
+    } finally {
+      setResetRunning(false);
+    }
+  };
+
+
+
+
 
 
   const syncOne = async (clientId: string) => {
@@ -353,8 +388,27 @@ export function CloseSyncCard() {
                 Holt aktuelle Daten aus Close für alle verlinkten Kunden (Won-Deals, Activities, Custom Fields). Dauert bei 220 Kunden ca. 5–10 Min.
               </TooltipContent>
             </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => setResetStage(1)}
+                  disabled={matching || syncing || syncAllRunning || resetRunning}
+                  size="sm"
+                  variant="destructive"
+                  className="ml-auto"
+                >
+                  {resetRunning ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />}
+                  Alle Close-Daten zurücksetzen &amp; neu holen
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                Löscht alle Close-Daten (Leads, Contacts, Opps, Activities, Tasks). Verknüpfungen bleiben. Anschließend werden alle verlinkten Kunden frisch gesynct.
+              </TooltipContent>
+            </Tooltip>
           </div>
         </TooltipProvider>
+
 
         {/* Progress for sync-all */}
         {syncAllRunning && (
@@ -559,8 +613,61 @@ export function CloseSyncCard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Reset Stage 1: warn modal */}
+        <AlertDialog open={resetStage === 1} onOpenChange={(o) => !o && setResetStage(0)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                Alle Close-Daten zurücksetzen?
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm">
+                  <p><strong>Folgende Daten werden gelöscht:</strong> close_leads, close_contacts, close_opportunities, close_activities, close_tasks.</p>
+                  <p><strong>NICHT gelöscht:</strong> close_link (Verknüpfungen bleiben bestehen).</p>
+                  <p>Anschließend werden alle <strong>{stats.linked} verlinkten Kunden</strong> frisch gesynct. Dauer ca. {Math.max(1, Math.ceil(stats.linked * 2.5 / 60))} Min.</p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction onClick={(e) => { e.preventDefault(); setResetStage(2); }}>Weiter</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Reset Stage 2: type-to-confirm */}
+        <AlertDialog open={resetStage === 2} onOpenChange={(o) => !o && setResetStage(0)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Bestätigung erforderlich</AlertDialogTitle>
+              <AlertDialogDescription>
+                Bitte <code className="font-mono font-semibold">RESET CLOSE</code> eingeben, um fortzufahren.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <Input
+              autoFocus
+              value={resetConfirmText}
+              onChange={(e) => setResetConfirmText(e.target.value)}
+              placeholder="RESET CLOSE"
+              className="font-mono"
+            />
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setResetConfirmText('')}>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={resetConfirmText.trim() !== 'RESET CLOSE'}
+                onClick={(e) => { e.preventDefault(); runResetAndResync(); }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Reset &amp; neu syncen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
+
   );
 }
 
