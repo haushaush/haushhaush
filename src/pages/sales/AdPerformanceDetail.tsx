@@ -18,6 +18,7 @@ import {
   DetailPageLayout, DetailHero, DetailInfoPanel, InfoSection, InfoSectionTitle,
   DetailRowList, DetailRow, MetricLarge, DetailPageSkeleton,
 } from "@/components/showcase/DetailPageLayout";
+import { getBrancheDisplay } from "@/lib/branchen";
 
 type LinkedKunde = { id?: string; client_name?: string; unternehmen?: string; branche?: string } | null;
 
