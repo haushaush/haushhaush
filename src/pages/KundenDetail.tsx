@@ -662,6 +662,7 @@ export default function KundenDetail() {
           <TabsTrigger value="showcase">Showcase ({totals.showcaseCount})</TabsTrigger>
           <TabsTrigger value="meta-ads">Meta Ads ({liveCampaigns.length})</TabsTrigger>
           <TabsTrigger value="aktivitaeten">Aktivitäten ({closeActs.length})</TabsTrigger>
+          {closeTasks.length > 0 && <TabsTrigger value="tasks">Tasks ({closeTasks.length})</TabsTrigger>}
           <TabsTrigger value="projekte">Projekte ({projects.length})</TabsTrigger>
           <TabsTrigger value="dateien">Dateien</TabsTrigger>
         </TabsList>
