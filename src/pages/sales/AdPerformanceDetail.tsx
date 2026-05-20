@@ -249,6 +249,7 @@ export default function AdPerformanceDetail() {
             <DetailRowList>
               {branche && <DetailRow label="Branche" value={branche} capitalize />}
               {unternehmen && <DetailRow label="Unternehmen" value={unternehmen} />}
+              {linkedKunde?.client_name && <DetailRow label="Kunde" value={linkedKunde.client_name} />}
               {campaign.meta_account_name && <DetailRow label="Account" value={campaign.meta_account_name} />}
               {campaign.total_ads_count != null && <DetailRow label="Ads" value={`${campaign.total_ads_count} aktiv`} />}
               {campaign.meta_objective && <DetailRow label="Objective" value={campaign.meta_objective.replace("OUTCOME_", "")} />}
