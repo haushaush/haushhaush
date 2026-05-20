@@ -913,6 +913,42 @@ export type Database = {
           },
         ]
       }
+      close_contacts: {
+        Row: {
+          client_id: string | null
+          close_contact_id: string
+          close_lead_id: string
+          date_created: string | null
+          emails: Json | null
+          name: string | null
+          phones: Json | null
+          synced_at: string | null
+          title: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          close_contact_id: string
+          close_lead_id: string
+          date_created?: string | null
+          emails?: Json | null
+          name?: string | null
+          phones?: Json | null
+          synced_at?: string | null
+          title?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          close_contact_id?: string
+          close_lead_id?: string
+          date_created?: string | null
+          emails?: Json | null
+          name?: string | null
+          phones?: Json | null
+          synced_at?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
       close_deals: {
         Row: {
           ads_budget: number | null
@@ -1191,6 +1227,7 @@ export type Database = {
         Row: {
           client_id: string | null
           confidence: number | null
+          custom_fields: Json | null
           date_created: string | null
           date_lost: string | null
           date_updated: string | null
@@ -1214,6 +1251,7 @@ export type Database = {
         Insert: {
           client_id?: string | null
           confidence?: number | null
+          custom_fields?: Json | null
           date_created?: string | null
           date_lost?: string | null
           date_updated?: string | null
@@ -1237,6 +1275,7 @@ export type Database = {
         Update: {
           client_id?: string | null
           confidence?: number | null
+          custom_fields?: Json | null
           date_created?: string | null
           date_lost?: string | null
           date_updated?: string | null
@@ -1266,6 +1305,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      close_tasks: {
+        Row: {
+          assigned_to: string | null
+          client_id: string | null
+          close_lead_id: string
+          close_task_id: string
+          date_created: string | null
+          due_date: string | null
+          is_complete: boolean | null
+          synced_at: string | null
+          text: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          client_id?: string | null
+          close_lead_id: string
+          close_task_id: string
+          date_created?: string | null
+          due_date?: string | null
+          is_complete?: boolean | null
+          synced_at?: string | null
+          text?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          client_id?: string | null
+          close_lead_id?: string
+          close_task_id?: string
+          date_created?: string | null
+          due_date?: string | null
+          is_complete?: boolean | null
+          synced_at?: string | null
+          text?: string | null
+        }
+        Relationships: []
       }
       companies: {
         Row: {
