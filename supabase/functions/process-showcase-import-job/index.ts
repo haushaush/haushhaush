@@ -42,11 +42,17 @@ async function processJob(jobId: string) {
         headers: {
           Authorization: `Bearer ${SERVICE_KEY}`,
           "Content-Type": "application/json",
+          "x-internal-user-id": job.user_id,
         },
         body: JSON.stringify({ adIds: [adId] }),
       });
       const data = await res.json().catch(() => ({}));
 
+      if (!res.ok) {
+        const msg = data?.error || `HTTP ${res.status}`;
+        errors.push({ adId, message: msg });
+        recent.unshift({ adId, status: "error", message: `✗ ${adId}: ${msg}` });
+      } else {
       const skip = (data?.skipped ?? []).find((s: any) => s.id === adId || s.adId === adId);
       if (skip) {
         skipped.push({ adId, reason: skip.reason || "Blacklist" });
@@ -64,6 +70,7 @@ async function processJob(jobId: string) {
           await admin.from("referenz_meta_ads").update(update).eq("meta_ad_id", adId);
         }
         recent.unshift({ adId, status: "success", message: `✓ ${adId}` });
+      }
       }
     } catch (e) {
       const msg = (e as Error).message;

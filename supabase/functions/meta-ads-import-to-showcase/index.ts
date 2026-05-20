@@ -386,22 +386,34 @@ Deno.serve(async (req) => {
   try {
     if (!ACCESS_TOKEN) throw new Error("META_ACCESS_TOKEN not configured");
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } }
-    );
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    const userId = user.id;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY not configured");
     const svc = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKey);
-    const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", userId);
-    if (!(roles ?? []).some((r: any) => r.role === "admin")) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    // Internal service-to-service call (e.g. from process-showcase-import-job).
+    // Trust the call when it bears the service-role key as Bearer.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const internalToken = authHeader.replace(/^Bearer\s+/i, "");
+    const isInternal = !!internalToken && internalToken === serviceRoleKey;
+
+    let userId: string;
+    if (isInternal) {
+      userId = req.headers.get("x-internal-user-id") ?? "system";
+    } else {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: { user }, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      userId = user.id;
+      const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", userId);
+      if (!(roles ?? []).some((r: any) => r.role === "admin")) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     const { adIds, datePreset = "maximum" } = await req.json();
@@ -559,7 +571,10 @@ Deno.serve(async (req) => {
           linked_kunde_id: enrichment.linked_kunde_id,
           custom_tags: enrichment.custom_tags,
           filter_values: enrichment.filter_values,
-          created_by: userId,
+          created_by: userId === "system" ? null : userId,
+          deleted_at: null,
+          delete_mode: null,
+          is_active: true,
         }, { onConflict: "meta_ad_id" });
 
         if (error) errors.push({ id: adId, error: error.message });
