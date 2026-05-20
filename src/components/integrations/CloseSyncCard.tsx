@@ -731,6 +731,7 @@ export function CloseSyncCard() {
         </div>
 
         {/* Unmatched — mit Suggestions */}
+        <TooltipProvider delayDuration={200}>
         <Collapsible defaultOpen>
           <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground w-full">
             <ChevronDown className="h-4 w-4" />
