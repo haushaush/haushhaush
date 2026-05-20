@@ -189,11 +189,29 @@ export default function KundenDetail() {
       ? supabase.from('referenz_meta_campaigns').select('*').or(buildMetaConditions()).order('campaign_period_start', { ascending: false })
       : Promise.resolve({ data: [] } as any);
 
+    // Showcase: über linked_client_id (neu), linked_kunde_id (legacy via close_deals)
+    // ODER client_name match (manueller Eintrag)
+    const showcaseConditions = new Set<string>([`linked_client_id.eq.${id}`]);
+    if (cli?.name) {
+      const safeName = String(cli.name).replace(/[(),]/g, '');
+      showcaseConditions.add(`client_name.ilike.${safeName}`);
+    }
+    // Legacy: linked_kunde_id zeigt auf close_deals(id) — finde alle close_deals dieses Clients
+    const { data: relatedDeals } = await supabase.from('close_deals').select('id').eq('client_id', id);
+    const dealIds = (relatedDeals || []).map((d: any) => d.id);
+    if (dealIds.length > 0) {
+      showcaseConditions.add(`linked_kunde_id.in.(${dealIds.join(',')})`);
+    }
+    const showcaseQuery = supabase.from('referenz_showcase' as any)
+      .select('*')
+      .or(Array.from(showcaseConditions).join(','))
+      .order('created_at', { ascending: false });
+
     const [d, p, op, w, a, cam, link, opps, acts, lead, contacts, tasks] = await Promise.all([
       supabase.from('close_deals').select('*').eq('client_id', id).order('created_at', { ascending: false }),
       projectsQuery,
       supabase.from('onepage_projects').select('*').eq('client_id_fk', id).order('created_at', { ascending: false }),
-      supabase.from('referenz_showcase' as any).select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
+      showcaseQuery,
       adsQuery,
       campaignsQuery,
       supabase.from('close_link' as any).select('*').eq('client_id', id).maybeSingle(),
@@ -208,7 +226,8 @@ export default function KundenDetail() {
     setOnepageProjects(op.data || []);
     const allShowcase = (w.data || []) as any[];
     setWebsites(allShowcase.filter((s: any) => s.type === 'website'));
-    setAds(a.data || []);
+    setAds(allShowcase.filter((s: any) => s.type === 'werbeanzeige'));
+
     setCampaigns(cam.data || []);
     setCloseLink(link?.data || null);
     setCloseOpps((opps as any)?.data || []);
