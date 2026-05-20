@@ -67,10 +67,16 @@ export default function CloseSync() {
           <h1 className="text-2xl font-heading font-bold">Close-Sync · Unmatched Kunden</h1>
           <p className="text-sm text-muted-foreground">Kunden ohne Verknüpfung zu einem Close-Lead.</p>
         </div>
-        <Button onClick={triggerFullSync} disabled={syncing}>
-          {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-          Vollständigen Sync starten
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={triggerFullSync} disabled={syncing} variant="outline">
+            {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Unverlinkte matchen
+          </Button>
+          <Button onClick={bulkSyncLinked} disabled={syncing}>
+            {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Bulk-Sync (max 30)
+          </Button>
+        </div>
       </div>
 
       <Card>
