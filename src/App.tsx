@@ -69,6 +69,7 @@ import ReferenzWerbeanzeigeDetail from "./pages/sales/ReferenzWerbeanzeigeDetail
 import AdPerformancePage from "./pages/sales/AdPerformance.tsx";
 import AdPerformanceDetail from "./pages/sales/AdPerformanceDetail.tsx";
 import ImportBlacklist from "./pages/ImportBlacklist.tsx";
+import CloseSync from "./pages/admin/CloseSync.tsx";
 import PublicShowcaseView from "./pages/PublicShowcaseView.tsx";
 import PublicShowcaseLayout from "./pages/PublicShowcaseLayout.tsx";
 import { ShowcaseAuthRedirect } from "./components/ShowcaseAuthRedirect";
@@ -170,6 +171,7 @@ const App = () => (
                 <Route path="/sales/referenz-showcase/ad-performance" element={<ShowcaseAuthRedirect><DL><AdPerformancePage /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/ad-performance/:id" element={<ShowcaseAuthRedirect><DL><AdPerformanceDetail /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/admin/import-blacklist" element={<AdminRoute><DL><ImportBlacklist /></DL></AdminRoute>} />
+                <Route path="/admin/close-sync" element={<AdminRoute><DL><CloseSync /></DL></AdminRoute>} />
 
                 {/* Public showcase (no auth required) */}
                 <Route path="/showcase" element={<PublicShowcaseLayout />}>

@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DriveBrowser } from '@/components/DriveBrowser';
 import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
-import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X, Loader2, AlertCircle, AlertTriangle, Cloud } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X, Loader2, AlertCircle, AlertTriangle, Cloud, RefreshCw, Mail as MailIcon, PhoneCall, StickyNote, Calendar as CalIcon, MessageSquare, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import { getBranche } from '@/lib/branchen';
 import { useMetaAds } from '@/contexts/MetaAdsContext';
@@ -116,6 +116,14 @@ export default function KundenDetail() {
   const [editForm, setEditForm] = useState<EditForm>(emptyForm());
   const [saving, setSaving] = useState(false);
 
+  // Close.com direct sync data
+  const [closeOpps, setCloseOpps] = useState<any[]>([]);
+  const [closeActs, setCloseActs] = useState<any[]>([]);
+  const [closeLink, setCloseLink] = useState<any | null>(null);
+  const [closeSyncing, setCloseSyncing] = useState(false);
+  const [oppFilter, setOppFilter] = useState<'won' | 'all'>('won');
+  const [actFilter, setActFilter] = useState<string>('all');
+
   const { callMeta } = useMetaAds();
   const [liveCampaigns, setLiveCampaigns] = useState<any[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
@@ -176,13 +184,16 @@ export default function KundenDetail() {
       ? supabase.from('referenz_meta_campaigns').select('*').or(buildMetaConditions()).order('campaign_period_start', { ascending: false })
       : Promise.resolve({ data: [] } as any);
 
-    const [d, p, op, w, a, cam] = await Promise.all([
+    const [d, p, op, w, a, cam, link, opps, acts] = await Promise.all([
       supabase.from('close_deals').select('*').eq('client_id', id).order('created_at', { ascending: false }),
       projectsQuery,
       supabase.from('onepage_projects').select('*').eq('client_id_fk', id).order('created_at', { ascending: false }),
       supabase.from('referenz_showcase' as any).select('*').eq('linked_client_id', id).order('created_at', { ascending: false }),
       adsQuery,
       campaignsQuery,
+      supabase.from('close_link' as any).select('*').eq('client_id', id).maybeSingle(),
+      supabase.from('close_opportunities' as any).select('*').eq('client_id', id).order('date_won', { ascending: false, nullsFirst: false }),
+      supabase.from('close_activities' as any).select('*').eq('client_id', id).order('date_created', { ascending: false }).limit(50),
     ]);
     setDeals(d.data || []);
     setProjects(p.data || []);
@@ -191,6 +202,9 @@ export default function KundenDetail() {
     setWebsites(allShowcase.filter((s: any) => s.type === 'website'));
     setAds(a.data || []);
     setCampaigns(cam.data || []);
+    setCloseLink(link?.data || null);
+    setCloseOpps((opps as any)?.data || []);
+    setCloseActs((acts as any)?.data || []);
     // eslint-disable-next-line no-console
     console.log('[KundenDetail] Showcase ads loaded:', (a.data || []).length, 'for client:', id, {
       conditions: buildMetaConditions(),
@@ -235,6 +249,61 @@ export default function KundenDetail() {
       .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
       .slice(0, 5);
   }, [deals, projects, onepageProjects, websites, ads]);
+
+  // ===== Close.com helpers =====
+  const closeStats = useMemo(() => {
+    const won = closeOpps.filter((o: any) => o.status_type === 'won');
+    const active = closeOpps.filter((o: any) => o.status_type === 'active');
+    const wonSum = won.reduce((s, o) => s + Number(o.value_cents || 0), 0) / 100;
+    const lastWon = won.reduce((m: string | null, o: any) => {
+      if (!o.date_won) return m;
+      if (!m || new Date(o.date_won) > new Date(m)) return o.date_won;
+      return m;
+    }, null);
+    return { wonCount: won.length, wonSum, lastWon, activeCount: active.length };
+  }, [closeOpps]);
+
+  const filteredOpps = useMemo(
+    () => oppFilter === 'won' ? closeOpps.filter((o: any) => o.status_type === 'won') : closeOpps,
+    [closeOpps, oppFilter]
+  );
+
+  const filteredActs = useMemo(() => {
+    if (actFilter === 'all') return closeActs;
+    return closeActs.filter((a: any) => (a.activity_type || '').toLowerCase().includes(actFilter.toLowerCase()));
+  }, [closeActs, actFilter]);
+
+  const syncFreshness = useMemo(() => {
+    if (!closeLink?.last_synced_at) return { color: 'destructive', label: 'Close: kein Sync' } as const;
+    const ageH = (Date.now() - new Date(closeLink.last_synced_at).getTime()) / 3600000;
+    if (ageH < 36) return { color: 'success', label: `Close synct (${fmtDate(closeLink.last_synced_at)})` } as const;
+    if (ageH < 72) return { color: 'warning', label: `Close: Sync alt (${fmtDate(closeLink.last_synced_at)})` } as const;
+    return { color: 'destructive', label: `Close: Sync veraltet (${fmtDate(closeLink.last_synced_at)})` } as const;
+  }, [closeLink]);
+
+  const handleResyncClose = async () => {
+    setCloseSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-close', { body: { client_id: id } });
+      if (error) throw error;
+      toast.success(`Close-Sync OK · ${data?.opps_upserted ?? 0} Deals, ${data?.activities_upserted ?? 0} Aktivitäten`);
+      await load();
+    } catch (e: any) {
+      toast.error(`Close-Sync fehlgeschlagen: ${e.message}`);
+    } finally {
+      setCloseSyncing(false);
+    }
+  };
+
+  const activityIcon = (type: string | null) => {
+    const t = (type || '').toLowerCase();
+    if (t.includes('email')) return <MailIcon className="h-3.5 w-3.5" />;
+    if (t.includes('call')) return <PhoneCall className="h-3.5 w-3.5" />;
+    if (t.includes('note')) return <StickyNote className="h-3.5 w-3.5" />;
+    if (t.includes('meeting')) return <CalIcon className="h-3.5 w-3.5" />;
+    if (t.includes('sms')) return <MessageSquare className="h-3.5 w-3.5" />;
+    return <Activity className="h-3.5 w-3.5" />;
+  };
 
   const NUMBER_FIELDS: EditableField[] = ['ads_budget','gesamt_saldo','cash_collect_offen','meta_kosten','crm_kosten','superchat_kosten','website_kosten'];
   const DATE_FIELDS: EditableField[] = ['deadline','startdatum','enddatum'];
@@ -350,6 +419,20 @@ export default function KundenDetail() {
               <span className={`h-2.5 w-2.5 rounded-full ${AMPEL_DOT[client.ampelstatus] || 'bg-muted'}`} aria-hidden />
               <span className="text-xs text-muted-foreground">{client.ampelstatus}</span>
             </span>
+            <button
+              type="button"
+              onClick={handleResyncClose}
+              disabled={closeSyncing}
+              title="Klick: Close-Sync manuell auslösen"
+              className={`inline-flex items-center gap-1.5 text-[11px] rounded-full px-2.5 py-1 border transition-colors disabled:opacity-60 ${
+                syncFreshness.color === 'success' ? 'bg-success/10 border-success/30 text-success hover:bg-success/20' :
+                syncFreshness.color === 'warning' ? 'bg-warning/10 border-warning/30 text-warning hover:bg-warning/20' :
+                'bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20'
+              }`}
+            >
+              {closeSyncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              <span>{syncFreshness.label}</span>
+            </button>
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             {brancheLabel && <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />{brancheLabel}</span>}
@@ -522,10 +605,11 @@ export default function KundenDetail() {
       <Tabs defaultValue={defaultTab}>
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
-          <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
+          <TabsTrigger value="deals">Deals ({deals.length + closeOpps.length})</TabsTrigger>
           <TabsTrigger value="onepage">Onepage-Leads ({onepageProjects.length})</TabsTrigger>
           <TabsTrigger value="showcase">Showcase ({totals.showcaseCount})</TabsTrigger>
           <TabsTrigger value="meta-ads">Meta Ads ({liveCampaigns.length})</TabsTrigger>
+          <TabsTrigger value="aktivitaeten">Aktivitäten ({closeActs.length})</TabsTrigger>
           <TabsTrigger value="projekte">Projekte ({projects.length})</TabsTrigger>
           <TabsTrigger value="dateien">Dateien</TabsTrigger>
         </TabsList>
@@ -628,8 +712,79 @@ export default function KundenDetail() {
         </TabsContent>
 
         {/* DEALS */}
-        <TabsContent value="deals" className="mt-4">
-          <Card><CardContent className="p-0"><div className="overflow-x-auto">
+        <TabsContent value="deals" className="mt-4 space-y-6">
+          {/* Aus Close.com synct */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Cloud className="h-4 w-4 text-primary" />
+                  Aus Close.com synct
+                  {closeLink?.last_synced_at && (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      · letzter Sync: {fmtDate(closeLink.last_synced_at)}
+                    </span>
+                  )}
+                </CardTitle>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <button
+                    onClick={() => setOppFilter('won')}
+                    className={`px-2 py-1 rounded ${oppFilter === 'won' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+                  >Won</button>
+                  <button
+                    onClick={() => setOppFilter('all')}
+                    className={`px-2 py-1 rounded ${oppFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+                  >Alle</button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!closeLink ? (
+                <p className="text-sm text-muted-foreground">Kein Close-Link vorhanden. Manuell verlinken in <Link to="/admin/close-sync" className="text-primary hover:underline">/admin/close-sync</Link>.</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <KpiCard label="Won-Deals" value={String(closeStats.wonCount)} />
+                    <KpiCard label="Gesamt-Wert Won" value={fmtEur(closeStats.wonSum)} />
+                    <KpiCard label="Letzter Won-Deal" value={fmtDate(closeStats.lastWon)} />
+                    <KpiCard label="Offene Deals" value={String(closeStats.activeCount)} />
+                  </div>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader><TableRow>
+                        <TableHead>Status</TableHead><TableHead>Wert</TableHead><TableHead>Label</TableHead>
+                        <TableHead>Datum</TableHead><TableHead>Closed by</TableHead>
+                      </TableRow></TableHeader>
+                      <TableBody>
+                        {filteredOpps.length === 0 ? (
+                          <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Keine {oppFilter === 'won' ? 'Won-' : ''}Deals</TableCell></TableRow>
+                        ) : filteredOpps.map((o: any) => (
+                          <TableRow key={o.id}>
+                            <TableCell>
+                              <Badge variant={o.status_type === 'won' ? 'default' : o.status_type === 'lost' ? 'destructive' : 'secondary'}>
+                                {o.status_type || '–'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-medium tabular-nums">
+                              {o.value_formatted || (o.value_cents != null ? fmtEur(o.value_cents / 100) : '–')}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{o.status_label || '–'}</TableCell>
+                            <TableCell className="text-muted-foreground">{fmtDate(o.date_won || o.date_created)}</TableCell>
+                            <TableCell className="text-muted-foreground">{o.user_name || '–'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Bestehende close_deals (Notion) */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base text-muted-foreground">Notion-Deals (legacy)</CardTitle></CardHeader>
+            <CardContent className="p-0"><div className="overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Art</TableHead><TableHead>Status</TableHead><TableHead>Wert</TableHead>
@@ -906,6 +1061,67 @@ export default function KundenDetail() {
               </div>
             </>
           )}
+        </TabsContent>
+
+        {/* PROJEKTE */}
+        {/* AKTIVITÄTEN (Close.com) */}
+        <TabsContent value="aktivitaeten" className="mt-4 space-y-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Cloud className="h-4 w-4 text-primary" />
+                  Aktivitäten aus Close.com
+                  {closeLink?.last_synced_at && (
+                    <span className="text-xs font-normal text-muted-foreground">· {fmtDate(closeLink.last_synced_at)}</span>
+                  )}
+                </CardTitle>
+                <div className="flex items-center gap-1.5 text-xs flex-wrap">
+                  {[
+                    { k: 'all', l: 'Alle' },
+                    { k: 'email', l: 'Emails' },
+                    { k: 'call', l: 'Calls' },
+                    { k: 'note', l: 'Notes' },
+                    { k: 'meeting', l: 'Meetings' },
+                    { k: 'sms', l: 'SMS' },
+                  ].map(f => (
+                    <button
+                      key={f.k}
+                      onClick={() => setActFilter(f.k)}
+                      className={`px-2 py-1 rounded ${actFilter === f.k ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+                    >{f.l}</button>
+                  ))}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!closeLink ? (
+                <p className="text-sm text-muted-foreground">Kein Close-Link vorhanden.</p>
+              ) : filteredActs.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Keine Aktivitäten synct — siehe Sync-Status.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {filteredActs.map((a: any) => (
+                    <li key={a.id}>
+                      <details className="group rounded border border-border/50 px-3 py-2 hover:bg-muted/30">
+                        <summary className="flex items-center gap-3 cursor-pointer list-none">
+                          <span className="text-muted-foreground shrink-0">{activityIcon(a.activity_type)}</span>
+                          <span className="text-xs text-muted-foreground tabular-nums w-24 shrink-0">{fmtDate(a.date_created)}</span>
+                          <span className="text-sm font-medium truncate flex-1">
+                            {a.subject || a.activity_type || 'Aktivität'}
+                          </span>
+                          <span className="text-xs text-muted-foreground shrink-0">{a.user_name || '–'}</span>
+                        </summary>
+                        {a.body_preview && (
+                          <p className="mt-2 pl-7 text-xs text-muted-foreground whitespace-pre-wrap">{a.body_preview}</p>
+                        )}
+                      </details>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* PROJEKTE */}
