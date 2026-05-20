@@ -1,15 +1,21 @@
 // Bulk Close.com sync UI — used in Einstellungen → Verknüpfungen.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Progress } from '@/components/ui/progress';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Loader2, RefreshCw, Search, Link2, Unlink, ChevronDown, Cloud,
-  Users2, Calendar, Activity, Briefcase,
+  Users2, Calendar, Activity, Briefcase, RotateCw, X, CheckCircle2, AlertTriangle, XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -36,6 +42,17 @@ export function CloseSyncCard() {
   const [failedList, setFailedList] = useState<Array<{ client_id: string; name: string; error: string }>>([]);
   const [showFailed, setShowFailed] = useState(false);
   const [pickClient, setPickClient] = useState<UnlinkedRow | null>(null);
+
+  // Sync-all-linked state
+  const [confirmAllOpen, setConfirmAllOpen] = useState(false);
+  const [syncAllRunning, setSyncAllRunning] = useState(false);
+  const [syncAllProgress, setSyncAllProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
+  const [recent, setRecent] = useState<Array<{ name: string; status: 'ok' | 'warn' | 'err'; note?: string }>>([]);
+  const cancelRef = useRef(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summary, setSummary] = useState<{ ok: number; warn: number; err: number; failedIds: string[]; cancelled: boolean }>({
+    ok: 0, warn: 0, err: 0, failedIds: [], cancelled: false,
+  });
 
   const load = async () => {
     setLoading(true);
@@ -154,6 +171,94 @@ export function CloseSyncCard() {
     }
   };
 
+  const chunk = <T,>(arr: T[], n: number): T[][] => {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+    return out;
+  };
+
+  const startSyncAllLinked = () => {
+    if (linked.length === 0) { toast.info('Keine verlinkten Kunden.'); return; }
+    setConfirmAllOpen(true);
+  };
+
+  const runSyncAllLinked = async () => {
+    setConfirmAllOpen(false);
+    const ids = linked.map((l) => l.client_id);
+    const nameMap = new Map(linked.map((l) => [l.client_id, l.client?.name ?? l.client_id]));
+    const total = ids.length;
+    const chunks = chunk(ids, MAX_BATCH);
+
+    cancelRef.current = false;
+    setSyncAllRunning(true);
+    setSyncAllProgress({ current: 0, total });
+    setRecent([]);
+    let ok = 0, warn = 0, err = 0;
+    const failedIds: string[] = [];
+    let consecutiveBatchFailures = 0;
+    let processed = 0;
+
+    for (let i = 0; i < chunks.length; i++) {
+      if (cancelRef.current) break;
+      const batch = chunks[i];
+      try {
+        const { data, error } = await supabase.functions.invoke('sync-close-batch', { body: { client_ids: batch } });
+        if (error) throw error;
+
+        const successArr: any[] = data?.success ?? [];
+        const failedArr: Array<{ client_id: string; error?: string }> = data?.failed ?? [];
+        consecutiveBatchFailures = 0;
+
+        const newRecent: typeof recent = [];
+        for (const s of successArr) {
+          const id = typeof s === 'string' ? s : s?.client_id;
+          if (!id) continue;
+          ok++;
+          newRecent.push({ name: nameMap.get(id) ?? id, status: 'ok' });
+        }
+        for (const f of failedArr) {
+          const isWarn = /needs_review|ambiguous|no_lead|no_link/i.test(f.error ?? '');
+          if (isWarn) warn++; else { err++; failedIds.push(f.client_id); }
+          newRecent.push({ name: nameMap.get(f.client_id) ?? f.client_id, status: isWarn ? 'warn' : 'err', note: f.error });
+        }
+        setRecent((prev) => [...newRecent.reverse(), ...prev].slice(0, 5));
+      } catch (e: any) {
+        consecutiveBatchFailures++;
+        err += batch.length;
+        for (const id of batch) failedIds.push(id);
+        setRecent((prev) => [
+          { name: `Batch ${i + 1}`, status: 'err' as const, note: e.message },
+          ...prev,
+        ].slice(0, 5));
+        if (consecutiveBatchFailures >= 3) {
+          toast.error('3 Batches in Folge fehlgeschlagen — Stop.');
+          break;
+        }
+      }
+      processed += batch.length;
+      setSyncAllProgress({ current: Math.min(processed, total), total });
+    }
+
+    setSummary({ ok, warn, err, failedIds, cancelled: cancelRef.current });
+    setSummaryOpen(true);
+    setSyncAllRunning(false);
+    await load();
+  };
+
+  const cancelSyncAll = () => {
+    cancelRef.current = true;
+    toast.info('Wird nach aktuellem Batch beendet…');
+  };
+
+  const retryFailed = async () => {
+    setSummaryOpen(false);
+    const ids = summary.failedIds.slice(0, MAX_BATCH);
+    if (ids.length === 0) return;
+    await runBatchSync(ids);
+  };
+
+
+
   const syncOne = async (clientId: string) => {
     setSyncing(true);
     const tId = toast.loading('Sync läuft…');
@@ -224,26 +329,85 @@ export function CloseSyncCard() {
           <StatTile icon={<Briefcase className="h-3.5 w-3.5" />} label="Opportunities" value={loading ? '…' : stats.opportunities.toLocaleString('de-DE')} />
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={matchUnlinked} disabled={matching || syncing} variant="outline" size="sm">
-            {matching ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
-            Alle nicht-verlinkten matchen
-          </Button>
-          <Button
-            onClick={() => runBatchSync(Array.from(selected))}
-            disabled={syncing || matching || selected.size === 0}
-            size="sm"
-          >
-            {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-            Ausgewählte syncen ({selected.size})
-          </Button>
-          {progress && (
-            <span className="text-xs text-muted-foreground tabular-nums">
-              Syncing {progress.current} von {progress.total}…
-            </span>
-          )}
-        </div>
+        {/* Primary actions */}
+        <TooltipProvider delayDuration={200}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={matchUnlinked} disabled={matching || syncing || syncAllRunning} size="sm">
+                  {matching ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5 mr-1.5" />}
+                  Alle nicht-verlinkten matchen
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Sucht Close-Leads für Kunden ohne Verknüpfung. Schnell.</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={startSyncAllLinked} disabled={matching || syncing || syncAllRunning || linked.length === 0} size="sm">
+                  {syncAllRunning ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5 mr-1.5" />}
+                  Alle verlinkten Kunden neu syncen
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                Holt aktuelle Daten aus Close für alle verlinkten Kunden (Won-Deals, Activities, Custom Fields). Dauert bei 220 Kunden ca. 5–10 Min.
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+
+        {/* Progress for sync-all */}
+        {syncAllRunning && (
+          <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="tabular-nums font-medium">
+                Synct… {syncAllProgress.current} / {syncAllProgress.total}
+                {syncAllProgress.total > 0 && ` (${Math.round((syncAllProgress.current / syncAllProgress.total) * 100)}%)`}
+              </span>
+              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={cancelSyncAll}>
+                <X className="h-3 w-3 mr-1" /> Abbrechen
+              </Button>
+            </div>
+            <Progress value={syncAllProgress.total ? (syncAllProgress.current / syncAllProgress.total) * 100 : 0} className="h-1.5" />
+            {recent.length > 0 && (
+              <ul className="text-xs space-y-0.5 mt-2">
+                {recent.map((r, i) => (
+                  <li key={i} className="flex items-center gap-1.5 text-muted-foreground">
+                    {r.status === 'ok' && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                    {r.status === 'warn' && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                    {r.status === 'err' && <XCircle className="h-3 w-3 text-destructive" />}
+                    <span className="truncate">{r.name}{r.note ? ` — ${r.note}` : ''}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* Selected-sync action above table */}
+        <TooltipProvider delayDuration={200}>
+          <div className="flex items-center justify-between">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => runBatchSync(Array.from(selected))}
+                  disabled={syncing || matching || syncAllRunning || selected.size === 0}
+                  size="sm"
+                  variant="outline"
+                >
+                  {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                  Ausgewählte Kunden syncen ({selected.size})
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Frisch syncen für ausgewählte Kunden (max {MAX_BATCH}).</TooltipContent>
+            </Tooltip>
+            {progress && (
+              <span className="text-xs text-muted-foreground tabular-nums">
+                Syncing {progress.current} / {progress.total}…
+              </span>
+            )}
+          </div>
+        </TooltipProvider>
 
         {/* Linked table */}
         <div className="rounded-lg border border-border overflow-hidden">
@@ -345,6 +509,54 @@ export function CloseSyncCard() {
                 </div>
               ))}
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Confirm sync-all */}
+        <AlertDialog open={confirmAllOpen} onOpenChange={setConfirmAllOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Alle verlinkten Kunden neu syncen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Es werden {linked.length} Kunden synct — das kann ca. {Math.max(1, Math.round((linked.length * 2.5) / 60))} Minuten dauern.
+                Sicher?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction onClick={runSyncAllLinked}>Starten</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Summary */}
+        <Dialog open={summaryOpen} onOpenChange={setSummaryOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Sync abgeschlossen{summary.cancelled ? ' (abgebrochen)' : ''}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Erfolgreich: <span className="tabular-nums font-medium">{summary.ok}</span></div>
+              <div className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-500" /> Mit Warnung: <span className="tabular-nums font-medium">{summary.warn}</span></div>
+              <div className="flex items-center gap-2"><XCircle className="h-4 w-4 text-destructive" /> Fehlgeschlagen: <span className="tabular-nums font-medium">{summary.err}</span></div>
+              {summary.failedIds.length > 0 && (
+                <div className="mt-3 max-h-40 overflow-y-auto rounded border border-border bg-muted/20 p-2 text-xs">
+                  {summary.failedIds.slice(0, 50).map((id) => {
+                    const name = linked.find((l) => l.client_id === id)?.client?.name ?? id;
+                    return <div key={id} className="truncate">{name}</div>;
+                  })}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              {summary.failedIds.length > 0 && (
+                <Button variant="outline" size="sm" onClick={retryFailed} disabled={syncing || syncAllRunning}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  Erneut versuchen (max {MAX_BATCH})
+                </Button>
+              )}
+              <Button size="sm" onClick={() => setSummaryOpen(false)}>Schließen</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </CardContent>
