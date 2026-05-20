@@ -513,8 +513,21 @@ export function CloseSyncCard() {
     }
   };
 
+  const safeMatches = useMemo(() => {
+    return unlinked.filter((c) => {
+      if (recentlyLinked.has(c.id)) return false;
+      const s = suggestions[c.id];
+      if (!Array.isArray(s) || s.length === 0) return false;
+      return (s[0]?.confidence ?? 0) >= 1.0;
+    });
+  }, [unlinked, suggestions, recentlyLinked]);
+
   const sortedUnlinked = useMemo(() => {
-    const arr = [...unlinked];
+    let arr = [...unlinked];
+    if (unlinkedSort === 'only_100') {
+      const ids = new Set(safeMatches.map((c) => c.id));
+      arr = arr.filter((c) => ids.has(c.id) || recentlyLinked.has(c.id));
+    }
     if (unlinkedSort === 'alpha') {
       arr.sort((a, b) => a.name.localeCompare(b.name, 'de'));
     } else {
@@ -527,10 +540,56 @@ export function CloseSyncCard() {
         return a.name.localeCompare(b.name, 'de');
       });
     }
-    // Linked-pending zum Schluss
     arr.sort((a, b) => Number(recentlyLinked.has(a.id)) - Number(recentlyLinked.has(b.id)));
     return arr;
-  }, [unlinked, suggestions, unlinkedSort, recentlyLinked]);
+  }, [unlinked, suggestions, unlinkedSort, recentlyLinked, safeMatches]);
+
+  const runAutoLink100 = async () => {
+    setAutoConfirmOpen(false);
+    if (safeMatches.length === 0) return;
+    autoLinkCancelRef.current = false;
+    setAutoLinking(true);
+    setAutoLinkProgress({ done: 0, total: safeMatches.length });
+    setAutoFailed([]);
+    const failed: Array<{ id: string; name: string; error: string }> = [];
+    let success = 0;
+    const targets = [...safeMatches];
+
+    for (let i = 0; i < targets.length; i++) {
+      if (autoLinkCancelRef.current) break;
+      const c = targets[i];
+      const sugg = suggestions[c.id];
+      const top = Array.isArray(sugg) ? sugg[0] : null;
+      if (!top) continue;
+      try {
+        const { error } = await supabase.functions.invoke('sync-close-link', {
+          body: { client_id: c.id, manual_close_lead_id: top.close_lead_id, matched_via: 'auto_100' },
+        });
+        if (error) throw error;
+        success++;
+        // Optimistic: ausblenden
+        setRecentlyLinked((s) => new Set(s).add(c.id));
+        setUnlinked((u) => u.filter((x) => x.id !== c.id));
+        setSuggestions((s) => { const n = { ...s }; delete n[c.id]; return n; });
+        setStats((st) => ({ ...st, linked: st.linked + 1 }));
+      } catch (e: any) {
+        failed.push({ id: c.id, name: c.name, error: e.message ?? 'unknown' });
+      }
+      setAutoLinkProgress({ done: i + 1, total: targets.length });
+      if (i < targets.length - 1) await new Promise((r) => setTimeout(r, 300));
+    }
+
+    setAutoFailed(failed);
+    if (failed.length === 0) {
+      toast.success(`✅ ${success} Kunden automatisch verlinkt`);
+    } else {
+      toast.error(`${success} verlinkt · ${failed.length} fehlgeschlagen`, {
+        action: { label: 'Details', onClick: () => setAutoFailedOpen(true) },
+      });
+    }
+    setAutoLinking(false);
+    await load();
+  };
 
   const confidenceColor = (c: number) =>
     c >= 0.85 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
