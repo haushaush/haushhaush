@@ -1,64 +1,61 @@
-# Sprint: Zentrale Personen-Datenbank über `clients`
+## Voller Close.com-Sync pro Kunde
 
-## Erkannte Konflikte mit dem aktuellen Schema (vor Umsetzung wichtig)
+Implementiert manueller Full-Sync für Close-Daten (Lead, Custom Fields, Contacts, Opps, Activities, Tasks) mit Resource-Guards.
 
-1. **`unternehmen` existiert bereits** (Legacy, 85 rows) mit Spalten `name, display_name, branche_id, usage_count` und passender RPC `increment_unternehmen_usage`. Plan-Teil 1.2 (`CREATE TABLE unternehmen`) entfällt — wir **nutzen die existierende Tabelle**. `create_or_get_unternehmen` wird als dünner Wrapper um die existierende RPC angelegt (signatur-kompatibel zum Plan).
-2. **`branches` + `companies` neu** (aus Sprint vor 2 Iterationen, 18/29 rows) sowie `close_deals.branch_id`/`company_id` bleiben **unbenutzt** liegen — Branche ist laut Plan ein TEXT-Enum (BRANCHEN const), nicht FK. Wir lassen die Tabellen drin, schreiben aber nicht hinein. Keine Drops in diesem Sprint.
-3. **`close_deals.branche` ist `ARRAY`**, nicht `text`. Backfill 2.7 für close_deals nutzt `art` (text) statt `branche`, passt also bereits.
-4. **`close_deals.unternehmen` (text)** existiert — wird zusätzlich zu `art` als Quelle für Unternehmen-Backfill genutzt.
-5. **`onepage_projects.client_id`** ist bereits UUID — 2.9 Logik passt.
-6. **RLS-Policy für `unternehmen`** entfällt (existiert schon). Falls fehlt: nachrüsten.
+### 1. SQL Migration (eine Migration, additiv)
 
-## Vorgehen (Phasen-weise — pro Phase commit-fähig)
+- `close_link` existiert bereits → SKIP CREATE, ensure UNIQUE(client_id), UNIQUE(close_lead_id) bestehen
+- NEU: `close_leads` (PK close_lead_id, custom_fields jsonb)
+- NEU: `close_contacts` (PK close_contact_id, emails/phones jsonb)
+- ALTER `close_opportunities` (existiert): Spalten ergänzen falls fehlen (`value_formatted`, `value_currency`, `value_period`, `confidence`, `note`, `date_won`, `date_lost`, `date_updated`, `custom_fields`) — NICHT droppen
+- ALTER `close_activities` (existiert): kompatibel halten, keine Drops
+- NEU: `close_tasks`
+- Alle neuen Tabellen: RLS enable + Policy "authenticated read" (insert/update nur service_role)
+- Indexe wie spezifiziert
 
-### Phase A — DB Foundation (Teile 1–3, ein Migration-Call)
-- `ALTER TABLE clients` + Indexes (1.1)
-- Skip 1.2 (`unternehmen` existiert)
-- 1.4 FK-Spalten auf `referenz_websites`, `referenz_meta_ads`, `referenz_meta_campaigns`, `close_deals`, `onepage_projects` (Plan-Naming `linked_client_id`, `client_id`, `client_id_fk`, `linked_branche_id`, `linked_unternehmen_id`)
-- 1.5 Indexes
-- 2.1–2.9 Backfill (siehe Anmerkungen unten)
-- 3.1 `create_or_get_unternehmen` (Wrapper um `increment_unternehmen_usage` mit display_name), 3.2 `find_client_by_meta_account`
+### 2. Edge Functions (3 neue)
 
-Anmerkungen Backfill:
-- 2.1: Quellen erweitern um `close_deals.unternehmen`
-- 2.2: Endkunden aus `close_deals` in `clients` einfügen, dedupe per lower(trim(name)). `kundenstatus` = `'Lead'` (Enum-Wert prüfen; falls nicht vorhanden, NULL lassen)
-- 2.7: `close_deals.branche_id` zusätzlich aus erstem Element des `branche` ARRAY ableiten
+**`sync-close-link`** — Email-basiertes Matching, max 50 Clients/Lauf, sleep 500ms zw. Batches. Returns `{processed, matched, unmatched, ambiguous}`.
 
-### Phase B — Generic Combobox + 3 Picker (Teil 4)
-- `src/components/ui/Combobox.tsx` existiert bereits und ist generisch + create-fähig — **wiederverwenden statt neu**.
-- Neu anlegen:
-  - `src/components/pickers/ClientPicker.tsx` (Query: `clients` + join `unternehmen`)
-  - `src/components/pickers/BranchePicker.tsx` (statisch aus `src/lib/branchen.ts`)
-  - `src/components/pickers/UnternehmenPicker.tsx` (RPC `create_or_get_unternehmen`)
-- `getBrancheLabel()` aus `src/lib/branchen.ts` nutzen (falls fehlt: ergänzen)
+**`sync-close-lead-full`** — Pro Client: GET `/lead/{id}` (mit `_fields=*` für Custom Fields + inline contacts/opportunities), GET `/activity/?lead_id=…&date_created__gte=180d&_limit=200`, GET `/task/?lead_id=…&_limit=100`. Per-section try/catch, 429 backoff 2/4/8s, 404 → close_link löschen. Truncate body_preview auf 1000 chars. Delete-then-reinsert für contacts/activities/tasks. Update `close_link.last_synced_at`.
 
-### Phase C — Forms umstellen (Teil 5)
-Alle in Teil 5 aufgelisteten Files: Text-Inputs/Selects durch die 3 Picker ersetzen, Save-Payload schreibt nur noch `linked_client_id` / `linked_branche_id` / `linked_unternehmen_id` (Legacy-Felder bleiben unverändert wenn schon gesetzt, werden aber nicht mehr aktiv geschrieben).
+**`sync-close-batch`** — Max 30 client_ids, sequentiell `sync-close-lead-full` aufrufen mit sleep 800ms. Returns `{success, failed}`.
 
-### Phase D — Display + Filter-Optionen (Teile 6 + 7)
-- Alle Cards/Detail-Panels: JOIN-Queries mit `linked_client:clients!linked_client_id(...)` und `linked_unternehmen:unternehmen!linked_unternehmen_id(...)`
-- Legacy-Fallback-Pattern beim Render (`item.linked_client?.name || item.client_name || …`)
-- `useShowcaseFilterOptions` und Filter-Toolbars auf FK-basierte unique-Counts umstellen → entfernt Marvin-Rixen-Duplikat-Problem
+Alle 3 Functions: CORS, kein raw_data, console.log mit Mem-Counter alle 10 Items.
 
-### Phase E — Edge Function (Teil 8)
-- `supabase/functions/rematch-all-ads/index.ts` schreibt `linked_client_id` (statt `linked_kunde_id`!), `linked_branche_id`, `linked_unternehmen_id`. Branche-Alias-Map in Function dupliziert (oder shared helper).
-- **Achtung**: Function nutzt aktuell `linked_kunde_id` und `kunde_meta_accounts` Link-Tabelle. Wir behalten den Link-Mechanismus, mappen aber zusätzlich auf `clients.id` über `find_client_by_meta_account`.
+### 3. Frontend `src/pages/KundenDetail.tsx`
 
-### Phase F — Verifizierung (Teil 9)
-SQL-Checks 1–4 + UI-Walkthrough für AddWebsiteModal, Werbeanzeigen-Filter, CloseDealDetail.
+- **Sync-Pill** im Header: Grün <24h / Gelb 1-3d / Rot >3d / Grau pulsing während Sync. Dropdown: "Jetzt syncen", "In Close öffnen", "Verknüpfung lösen". (Pill teilweise schon vorhanden aus früherem Sync — erweitern statt neu.)
+- **Card "Close.com Daten"** im Übersicht-Tab unter Stammdaten: Lead-Infos / Custom Fields (loop jsonb) / Kontaktpersonen (mailto/tel).
+- **Neuer Tab "Aktivitäten"**: Liste sortiert DESC, Filter-Pills (Alle/Email/Call/Note/Meeting/SMS), expandable body, Empty-State.
+- **Neuer Tab "Tasks"** (conditional, nur wenn Tasks vorhanden): Offene oben sortiert by due_date ASC.
+- **Deals-Tab erweitern**: Section "Aus Close.com" mit KPI-Karten (Won-Count+Sum, Active-Count, Letzter Won) + Liste sortiert (won → active → lost).
 
-## Empfohlene Ausführungs-Reihenfolge
+### 4. Admin-Sub-Page `/einstellungen/close-sync`
 
-Ich empfehle **Phase A jetzt als einzelnen Migration-Call**, dann nach Approval B–F in einem Build-Loop. Das gibt dir einen sicheren Rollback-Punkt nach der Migration.
+Erweitert `src/pages/admin/CloseSync.tsx` (existiert) bzw. mountet zusätzlich unter Einstellungen-Route:
 
-## Was NICHT gemacht wird
-- Keine Drops alter Spalten (laut Spec)
-- Keine Drops von `branches`/`companies` Tabellen (separater Cleanup-Sprint)
-- Keine Änderung an `kunde_meta_accounts` Link-Tabelle
-- Keine Auth/RLS-Änderungen außer für neu hinzugefügte Spalten
+- Stat-Cards: verlinkte Kunden X/Y, letzter globaler Sync, total Activities
+- Button "Alle nicht-verlinkten matchen" → `sync-close-link` ohne body
+- Tabelle verlinkter Kunden mit Multi-Select-Checkbox (max 30) → "Ausgewählte syncen" → `sync-close-batch`
+- Bestehende Unmatched-Liste + Manual-Link-Modal bleibt
 
-## Offene Punkte zur Bestätigung
+### 5. Smoke-Test nach Deploy
 
-1. **`clients.kundenstatus` Enum**: gibt es Wert `'Lead'`? Wenn nein → für Endkunden-Import NULL nehmen.
-2. **Bestehende `referenz_meta_ads.linked_kunde_id`** Spalte: laut existing edge function existiert sie. Behalten wir als zweiten Slot oder benennen um zu `linked_client_id`? Empfehlung: **neue Spalte `linked_client_id` zusätzlich**, alte bleibt Legacy.
-3. Phase B–F sollen in **einem** Folge-Loop oder einzeln laufen?
+- `sync-close-link` mit Stefan-ID → 1 Link
+- `sync-close-lead-full` mit Stefan-ID → Daten in 5 Tabellen
+- UI-Check auf `/kunden/{stefan}`
+- SQL-Count-Check
+
+### Out of Scope
+
+- Kein Cron, kein Write-Back, keine Webhooks
+- `sync-notion`, `close_deals`, RLS-Defaults bleiben unverändert
+- Bestehende `sync-close-*`-Functions (orchestrator/match-leads/opportunities/activities) bleiben unangetastet — Parallelbetrieb
+
+### Technische Notizen
+
+- Close API: Basic Auth `btoa(API_KEY + ':')`
+- `/lead/{id}` liefert standardmäßig Custom Fields als `custom.cf_*` Keys → in jsonb mappen
+- Activities-Endpoint: `_type` Filter optional, holen ALLE Types, im Frontend filtern
+- Memory: `Deno.memoryUsage?.().heapUsed` (optional chain, fallback 0)
