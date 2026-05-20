@@ -818,6 +818,35 @@ export function CloseSyncCard() {
                 {bulkLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Search className="h-3.5 w-3.5 mr-1.5" />}
                 Vorschläge für alle {unlinked.length} laden
               </Button>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      size="sm"
+                      onClick={() => setAutoConfirmOpen(true)}
+                      disabled={autoLinking || bulkLoading || safeMatches.length === 0}
+                      className="bg-emerald-600 hover:bg-emerald-600/90 text-white"
+                    >
+                      {autoLinking
+                        ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        : <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />}
+                      {autoLinking
+                        ? `Verlinke ${autoLinkProgress.done}/${autoLinkProgress.total}…`
+                        : `Alle 100%-Matches verlinken (${safeMatches.length})`}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {safeMatches.length === 0 && (
+                  <TooltipContent>Erst Vorschläge laden, dann werden 100%-Matches sichtbar</TooltipContent>
+                )}
+              </Tooltip>
+              {autoLinking && (
+                <Button size="sm" variant="ghost" onClick={() => { autoLinkCancelRef.current = true; }}>
+                  <X className="h-3.5 w-3.5 mr-1.5" /> Abbrechen
+                </Button>
+              )}
+
               {bulkLoading && (
                 <Button size="sm" variant="ghost" onClick={() => { bulkCancelRef.current = true; }}>
                   <X className="h-3.5 w-3.5 mr-1.5" /> Abbrechen
@@ -836,6 +865,7 @@ export function CloseSyncCard() {
                 >
                   <option value="confidence">Sortierung: beste Treffer zuerst</option>
                   <option value="alpha">Sortierung: alphabetisch</option>
+                  <option value="only_100">Nur 100%-Matches anzeigen</option>
                 </select>
                 <Button
                   size="sm"
