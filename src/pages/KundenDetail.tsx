@@ -1064,6 +1064,67 @@ export default function KundenDetail() {
         </TabsContent>
 
         {/* PROJEKTE */}
+        {/* AKTIVITÄTEN (Close.com) */}
+        <TabsContent value="aktivitaeten" className="mt-4 space-y-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Cloud className="h-4 w-4 text-primary" />
+                  Aktivitäten aus Close.com
+                  {closeLink?.last_synced_at && (
+                    <span className="text-xs font-normal text-muted-foreground">· {fmtDate(closeLink.last_synced_at)}</span>
+                  )}
+                </CardTitle>
+                <div className="flex items-center gap-1.5 text-xs flex-wrap">
+                  {[
+                    { k: 'all', l: 'Alle' },
+                    { k: 'email', l: 'Emails' },
+                    { k: 'call', l: 'Calls' },
+                    { k: 'note', l: 'Notes' },
+                    { k: 'meeting', l: 'Meetings' },
+                    { k: 'sms', l: 'SMS' },
+                  ].map(f => (
+                    <button
+                      key={f.k}
+                      onClick={() => setActFilter(f.k)}
+                      className={`px-2 py-1 rounded ${actFilter === f.k ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+                    >{f.l}</button>
+                  ))}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!closeLink ? (
+                <p className="text-sm text-muted-foreground">Kein Close-Link vorhanden.</p>
+              ) : filteredActs.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Keine Aktivitäten synct — siehe Sync-Status.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {filteredActs.map((a: any) => (
+                    <li key={a.id}>
+                      <details className="group rounded border border-border/50 px-3 py-2 hover:bg-muted/30">
+                        <summary className="flex items-center gap-3 cursor-pointer list-none">
+                          <span className="text-muted-foreground shrink-0">{activityIcon(a.activity_type)}</span>
+                          <span className="text-xs text-muted-foreground tabular-nums w-24 shrink-0">{fmtDate(a.date_created)}</span>
+                          <span className="text-sm font-medium truncate flex-1">
+                            {a.subject || a.activity_type || 'Aktivität'}
+                          </span>
+                          <span className="text-xs text-muted-foreground shrink-0">{a.user_name || '–'}</span>
+                        </summary>
+                        {a.body_preview && (
+                          <p className="mt-2 pl-7 text-xs text-muted-foreground whitespace-pre-wrap">{a.body_preview}</p>
+                        )}
+                      </details>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* PROJEKTE */}
         <TabsContent value="projekte" className="mt-4 space-y-2">
           {projects.length === 0 ? (
             <Card><CardContent className="py-8 text-center text-muted-foreground">Keine Projekte</CardContent></Card>
