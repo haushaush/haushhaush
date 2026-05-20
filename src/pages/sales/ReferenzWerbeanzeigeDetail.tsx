@@ -129,7 +129,7 @@ export default function ReferenzWerbeanzeigeDetail() {
   const eyebrow = linkedKunde?.unternehmen || linkedKunde?.client_name || ad.meta_account_name || "Anzeige";
   const title = ad.custom_title || ad.meta_ad_name || "Unbenannt";
   const thumb = (ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta;
-  const branche = linkedKunde?.branche || ad.filter_values?.branche || "";
+  const branche = getBrancheDisplay(linkedKunde?.branche || ad.filter_values?.branche, 'long') || linkedKunde?.branche || ad.filter_values?.branche || "";
   const unternehmen = linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
   const cpl = m.cpl != null ? Number(m.cpl) : null;
   const isWinning = !!(cpl != null && cpl > 0 && cpl < 5);
