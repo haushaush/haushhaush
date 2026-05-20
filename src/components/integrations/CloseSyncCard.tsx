@@ -384,6 +384,31 @@ export function CloseSyncCard() {
           </div>
         )}
 
+        {/* Selected-sync action above table */}
+        <TooltipProvider delayDuration={200}>
+          <div className="flex items-center justify-between">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => runBatchSync(Array.from(selected))}
+                  disabled={syncing || matching || syncAllRunning || selected.size === 0}
+                  size="sm"
+                  variant="outline"
+                >
+                  {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                  Ausgewählte Kunden syncen ({selected.size})
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Frisch syncen für ausgewählte Kunden (max {MAX_BATCH}).</TooltipContent>
+            </Tooltip>
+            {progress && (
+              <span className="text-xs text-muted-foreground tabular-nums">
+                Syncing {progress.current} / {progress.total}…
+              </span>
+            )}
+          </div>
+        </TooltipProvider>
+
         {/* Linked table */}
         <div className="rounded-lg border border-border overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border">
