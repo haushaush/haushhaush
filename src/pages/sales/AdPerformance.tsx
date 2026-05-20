@@ -12,6 +12,7 @@ import {
   type AnyItem,
 } from "./ReferenzShowcaseUI";
 import { FK_EMBED_ALL } from "@/lib/showcaseFkSelect";
+import { getBrancheDisplay } from "@/lib/branchen";
 
 export interface CampaignRow {
   id: string;
