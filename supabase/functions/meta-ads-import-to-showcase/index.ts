@@ -571,7 +571,10 @@ Deno.serve(async (req) => {
           linked_kunde_id: enrichment.linked_kunde_id,
           custom_tags: enrichment.custom_tags,
           filter_values: enrichment.filter_values,
-          created_by: userId,
+          created_by: userId === "system" ? null : userId,
+          deleted_at: null,
+          delete_mode: null,
+          is_active: true,
         }, { onConflict: "meta_ad_id" });
 
         if (error) errors.push({ id: adId, error: error.message });
