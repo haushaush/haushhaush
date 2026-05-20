@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Globe, Sparkles, TrendingUp, Search, ChevronRight, Lightbulb, Upload, Plus,
@@ -35,12 +35,29 @@ export default function ReferenzShowcaseOverview() {
   const isPublic = useIsPublicView();
   // FK joins are safe in public view too (read-only RLS-controlled).
   const kundeJoin = isPublic ? `, ${FK_EMBED_ALL}` : `, ${KUNDE_SELECT}, ${FK_EMBED_ALL}`;
-  const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'website' | 'werbeanzeige' | 'campaign'>('all');
-  const [brancheFilter, setBrancheFilter] = useState('');
-  const [unternehmenFilter, setUnternehmenFilter] = useState('');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'featured' | 'kunde'>('newest');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get('q') ?? '';
+  const typeFilter = (searchParams.get('type') as 'all' | 'website' | 'werbeanzeige' | 'campaign') || 'all';
+  const brancheFilter = searchParams.get('branche') ?? '';
+  const unternehmenFilter = searchParams.get('unternehmen') ?? '';
+  const sortBy = (searchParams.get('sort') as 'newest' | 'oldest' | 'featured' | 'kunde') || 'newest';
   const [syncing, setSyncing] = useState(false);
+
+  const updateParams = useCallback((mut: (p: URLSearchParams) => void) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      mut(next);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const setSearchQuery = (v: string) => updateParams(p => { v ? p.set('q', v) : p.delete('q'); });
+  const setTypeFilter = (v: 'all' | 'website' | 'werbeanzeige' | 'campaign') =>
+    updateParams(p => { v && v !== 'all' ? p.set('type', v) : p.delete('type'); });
+  const setBrancheFilter = (v: string) => updateParams(p => { v ? p.set('branche', v) : p.delete('branche'); });
+  const setUnternehmenFilter = (v: string) => updateParams(p => { v ? p.set('unternehmen', v) : p.delete('unternehmen'); });
+  const setSortBy = (v: 'newest' | 'oldest' | 'featured' | 'kunde') =>
+    updateParams(p => { v && v !== 'newest' ? p.set('sort', v) : p.delete('sort'); });
 
   const { data: websites = [] } = useQuery({
     queryKey: ['showcase-websites', isPublic],
@@ -331,13 +348,7 @@ export default function ReferenzShowcaseOverview() {
     performance: campaigns.length,
   };
 
-  const resetFilters = () => {
-    setTypeFilter('all');
-    setBrancheFilter('');
-    setUnternehmenFilter('');
-    setSearchQuery('');
-    setSortBy('newest');
-  };
+  const resetFilters = () => updateParams(p => { ['q','type','branche','unternehmen','sort'].forEach(k => p.delete(k)); });
 
   const hasActiveFilters =
     typeFilter !== 'all' || brancheFilter || unternehmenFilter || searchQuery;
