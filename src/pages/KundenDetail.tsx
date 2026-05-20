@@ -605,10 +605,11 @@ export default function KundenDetail() {
       <Tabs defaultValue={defaultTab}>
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
-          <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
+          <TabsTrigger value="deals">Deals ({deals.length + closeOpps.length})</TabsTrigger>
           <TabsTrigger value="onepage">Onepage-Leads ({onepageProjects.length})</TabsTrigger>
           <TabsTrigger value="showcase">Showcase ({totals.showcaseCount})</TabsTrigger>
           <TabsTrigger value="meta-ads">Meta Ads ({liveCampaigns.length})</TabsTrigger>
+          <TabsTrigger value="aktivitaeten">Aktivitäten ({closeActs.length})</TabsTrigger>
           <TabsTrigger value="projekte">Projekte ({projects.length})</TabsTrigger>
           <TabsTrigger value="dateien">Dateien</TabsTrigger>
         </TabsList>
