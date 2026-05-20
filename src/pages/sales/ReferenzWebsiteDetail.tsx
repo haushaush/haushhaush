@@ -15,6 +15,7 @@ import {
   Info,
 } from 'lucide-react';
 import { WebsiteEmbed } from '@/components/sales/WebsiteEmbed';
+import { getBrancheDisplay } from '@/lib/branchen';
 import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
 import {
   DetailPageLayout,
