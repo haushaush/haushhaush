@@ -233,9 +233,12 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         };
       });
-      const { error: clientsErr } = await supabase
-        .from("clients")
-        .upsert(clientRows, { onConflict: "notion_id", ignoreDuplicates: false });
+      // Dedupe per row via RPC: matches existing client by notion_id OR by lower(trim(name))
+      let clientsErr: any = null;
+      for (const row of clientRows) {
+        const { error: rpcErr } = await supabase.rpc("upsert_client_from_notion", { p: row as any });
+        if (rpcErr) { clientsErr = rpcErr; break; }
+      }
       if (clientsErr) throw new Error(`Clients (Notion): ${clientsErr.message}`);
       console.log("[Sync Summary]", {
         total_processed: clientRows.length,
