@@ -730,49 +730,192 @@ export function CloseSyncCard() {
           </div>
         </div>
 
-        {/* Unmatched */}
-        <Collapsible>
+        {/* Unmatched — mit Suggestions */}
+        <Collapsible defaultOpen>
           <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground w-full">
             <ChevronDown className="h-4 w-4" />
             Nicht verlinkte Kunden ({unlinked.length})
           </CollapsibleTrigger>
-          <CollapsibleContent className="mt-3 space-y-2">
-            <div className="flex justify-end">
+          <CollapsibleContent className="mt-3 space-y-3">
+            {/* Multi-Select-Vorschau Banner */}
+            <div className="rounded-md border border-dashed border-border bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
+              💡 In Kürze: Mehrere Kunden auf einmal verlinken via Checkbox-Auswahl.
+            </div>
+
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
-                variant="outline"
-                disabled={unlinked.length === 0}
-                onClick={() => {
-                  const lines = unlinked.map((c) => `${c.name} | ${c.email ?? ''}`).join('\n');
-                  const blob = new Blob([lines + '\n'], { type: 'text/plain;charset=utf-8' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `unlinked-clients-${new Date().toISOString().slice(0, 10)}.txt`;
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                  URL.revokeObjectURL(url);
-                }}
+                onClick={loadAllSuggestions}
+                disabled={bulkLoading || unlinked.length === 0}
               >
-                Als TXT exportieren
+                {bulkLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Search className="h-3.5 w-3.5 mr-1.5" />}
+                Vorschläge für alle {unlinked.length} laden
               </Button>
+              {bulkLoading && (
+                <Button size="sm" variant="ghost" onClick={() => { bulkCancelRef.current = true; }}>
+                  <X className="h-3.5 w-3.5 mr-1.5" /> Abbrechen
+                </Button>
+              )}
+              {bulkLoading && (
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {bulkProgress.done}/{bulkProgress.total}
+                </span>
+              )}
+              <div className="ml-auto flex items-center gap-2">
+                <select
+                  className="text-xs bg-background border border-border rounded px-2 py-1"
+                  value={unlinkedSort}
+                  onChange={(e) => setUnlinkedSort(e.target.value as any)}
+                >
+                  <option value="confidence">Sortierung: beste Treffer zuerst</option>
+                  <option value="alpha">Sortierung: alphabetisch</option>
+                </select>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={unlinked.length === 0}
+                  onClick={() => {
+                    const lines = unlinked.map((c) => `${c.name} | ${c.email ?? ''}`).join('\n');
+                    const blob = new Blob([lines + '\n'], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `unlinked-clients-${new Date().toISOString().slice(0, 10)}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Als TXT exportieren
+                </Button>
+              </div>
             </div>
-            <div className="rounded-lg border border-border max-h-72 overflow-y-auto divide-y divide-border/50">
+            {bulkLoading && (
+              <Progress value={bulkProgress.total ? (bulkProgress.done / bulkProgress.total) * 100 : 0} className="h-1.5" />
+            )}
+
+            <div className="rounded-lg border border-border max-h-[640px] overflow-y-auto divide-y divide-border/50">
               {unlinked.length === 0 ? (
                 <p className="text-xs text-muted-foreground p-4 text-center">Alle Kunden sind verlinkt.</p>
-              ) : unlinked.map((c) => (
-                <div key={c.id} className="flex items-center justify-between px-3 py-2 gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{c.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{c.email ?? 'keine Email'}</p>
+              ) : sortedUnlinked.map((c) => {
+                const sug = suggestions[c.id];
+                const isLinkedPending = recentlyLinked.has(c.id);
+                return (
+                  <div
+                    key={c.id}
+                    className={`px-3 py-3 space-y-2 transition-opacity ${isLinkedPending ? 'opacity-50' : ''}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={selectedUnlinked.has(c.id)}
+                        onCheckedChange={() => {
+                          setSelectedUnlinked((p) => {
+                            const n = new Set(p);
+                            if (n.has(c.id)) n.delete(c.id); else n.add(c.id);
+                            return n;
+                          });
+                        }}
+                        disabled
+                        aria-label="Mehrfachauswahl (bald)"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate flex items-center gap-2">
+                          {c.name}
+                          {isLinkedPending && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">{c.email ?? 'keine Email'}</p>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => setPickClient(c)}>
+                        Andere suchen →
+                      </Button>
+                    </div>
+
+                    {/* Suggestions area */}
+                    {!sug ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="ml-7"
+                        onClick={() => loadSuggestionsFor(c.id)}
+                        disabled={bulkLoading}
+                      >
+                        <Search className="h-3 w-3 mr-1.5" />
+                        Vorschläge laden
+                      </Button>
+                    ) : sug === 'loading' ? (
+                      <div className="ml-7 space-y-1.5">
+                        <div className="h-12 rounded bg-muted/40 animate-pulse" />
+                        <div className="h-12 rounded bg-muted/40 animate-pulse" />
+                      </div>
+                    ) : sug === 'error' ? (
+                      <div className="ml-7 flex items-center gap-2 text-xs text-destructive">
+                        <XCircle className="h-3 w-3" />
+                        Vorschläge konnten nicht geladen werden.
+                        <Button size="sm" variant="ghost" className="h-6 px-1.5" onClick={() => loadSuggestionsFor(c.id)}>
+                          Erneut
+                        </Button>
+                      </div>
+                    ) : sug === 'empty' ? (
+                      <div className="ml-7 rounded border border-dashed border-border bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
+                        Keine Vorschläge — {c.name} wurde in Close nicht gefunden. Eventuell nicht im verbundenen Workspace oder mit abweichendem Namen.
+                        <a
+                          href={`https://app.close.com/search/${encodeURIComponent(c.name)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 ml-2 text-primary hover:underline"
+                        >
+                          In Close prüfen →
+                        </a>
+                      </div>
+                    ) : (
+                      <ul className="ml-7 space-y-1.5">
+                        {sug.slice(0, 3).map((s) => {
+                          const isLinking = linkingPair === `${c.id}:${s.close_lead_id}`;
+                          return (
+                            <li
+                              key={s.close_lead_id}
+                              className="rounded-md border border-border bg-background px-3 py-2 flex items-center gap-3"
+                            >
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border tabular-nums ${confidenceColor(s.confidence)}`}>
+                                    {Math.round(s.confidence * 100)}%
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p className="text-xs font-medium mb-1">Match-Gründe</p>
+                                  <ul className="text-xs space-y-0.5">
+                                    {s.match_reasons.length ? s.match_reasons.map((r, i) => <li key={i}>• {r}</li>) : <li>—</li>}
+                                  </ul>
+                                </TooltipContent>
+                              </Tooltip>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">{s.display_name}</p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {s.contact_name && <span className="mr-2">{s.contact_name}</span>}
+                                  {s.emails[0] && <span className="mr-2">{s.emails[0]}</span>}
+                                  {s.status_label !== '—' && <span className="opacity-70">· {s.status_label}</span>}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isLinking || isLinkedPending}
+                                onClick={() => linkSuggestion(c.id, s.close_lead_id, s.display_name)}
+                              >
+                                {isLinking ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> : <Link2 className="h-3 w-3 mr-1.5" />}
+                                Verlinken
+                              </Button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => setPickClient(c)}>
-                    <Search className="h-3 w-3 mr-1.5" />
-                    Manuell suchen
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CollapsibleContent>
         </Collapsible>
