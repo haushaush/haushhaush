@@ -47,14 +47,10 @@ Deno.serve(async (req) => {
       tasks: tasksC.count ?? 0,
     };
 
-    // 3) delete all rows (RLS service role bypasses)
+    // 3) delete all rows (service role bypasses RLS)
     for (const t of ["close_leads", "close_contacts", "close_opportunities", "close_activities", "close_tasks"]) {
-      const { error } = await supabase.from(t).delete().not("close_lead_id".startsWith("close_lead") ? "close_lead_id" : "id", "is", null);
-      // safer: blanket delete via filter that always true
-      if (error) {
-        const { error: e2 } = await supabase.from(t).delete().gte("synced_at", "1900-01-01");
-        if (e2) console.error(`[reset] ${t}: ${e2.message}`);
-      }
+      const { error } = await supabase.from(t).delete().gte("synced_at", "1900-01-01");
+      if (error) console.error(`[reset] ${t}: ${error.message}`);
     }
 
     // 4) clear last_synced_at on links
