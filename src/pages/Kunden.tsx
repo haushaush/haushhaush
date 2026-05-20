@@ -73,6 +73,8 @@ export default function Kunden() {
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [syncing, setSyncing] = useState(false);
   const [linking, setLinking] = useState(false);
+  const [closeSyncing, setCloseSyncing] = useState(false);
+  const [confirmResync, setConfirmResync] = useState(false);
 
   const load = async () => {
     setLoading(true);
