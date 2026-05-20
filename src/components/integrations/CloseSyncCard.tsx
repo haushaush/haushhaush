@@ -388,8 +388,27 @@ export function CloseSyncCard() {
                 Holt aktuelle Daten aus Close für alle verlinkten Kunden (Won-Deals, Activities, Custom Fields). Dauert bei 220 Kunden ca. 5–10 Min.
               </TooltipContent>
             </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => setResetStage(1)}
+                  disabled={matching || syncing || syncAllRunning || resetRunning}
+                  size="sm"
+                  variant="destructive"
+                  className="ml-auto"
+                >
+                  {resetRunning ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />}
+                  Alle Close-Daten zurücksetzen &amp; neu holen
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                Löscht alle Close-Daten (Leads, Contacts, Opps, Activities, Tasks). Verknüpfungen bleiben. Anschließend werden alle verlinkten Kunden frisch gesynct.
+              </TooltipContent>
+            </Tooltip>
           </div>
         </TooltipProvider>
+
 
         {/* Progress for sync-all */}
         {syncAllRunning && (
