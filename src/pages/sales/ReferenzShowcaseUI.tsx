@@ -223,11 +223,11 @@ export function getShowcaseKundenname(i: AnyItem): string | null {
 
 export function getShowcaseBranche(i: AnyItem): string | null {
   const fk = pickBrancheLabel(i);
-  if (fk) return getBrancheDisplay(fk, 'short') ?? fk;
+  if (fk) return getBrancheDisplay(fk, 'long') ?? fk;
   const raw = i.linked_kunde?.branche ?? i.filter_values?.branche ?? i.branche ?? null;
   const value = Array.isArray(raw) ? raw[0] : raw;
   if (typeof value !== 'string' || !value.trim()) return null;
-  return getBrancheDisplay(value, 'short') ?? value.trim();
+  return getBrancheDisplay(value, 'long') ?? value.trim();
 }
 
 export function getShowcaseUnternehmen(i: AnyItem): string | null {
