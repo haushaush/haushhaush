@@ -29,6 +29,16 @@ type LinkedRow = {
 };
 type UnlinkedRow = { id: string; name: string; email: string | null };
 type CloseLead = { id: string; display_name?: string; name?: string; description?: string };
+type Suggestion = {
+  close_lead_id: string;
+  display_name: string;
+  contact_name: string | null;
+  emails: string[];
+  phones: string[];
+  status_label: string;
+  confidence: number;
+  match_reasons: string[];
+};
 
 export function CloseSyncCard() {
   const [stats, setStats] = useState({ linked: 0, totalClients: 0, lastSync: null as string | null, activities: 0, opportunities: 0 });
@@ -42,6 +52,17 @@ export function CloseSyncCard() {
   const [failedList, setFailedList] = useState<Array<{ client_id: string; name: string; error: string }>>([]);
   const [showFailed, setShowFailed] = useState(false);
   const [pickClient, setPickClient] = useState<UnlinkedRow | null>(null);
+
+  // Suggestions cache + bulk-load
+  const [suggestions, setSuggestions] = useState<Record<string, Suggestion[] | 'loading' | 'error' | 'empty'>>({});
+  const [linkingPair, setLinkingPair] = useState<string | null>(null);
+  const [recentlyLinked, setRecentlyLinked] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const bulkCancelRef = useRef(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+  const [unlinkedSort, setUnlinkedSort] = useState<'confidence' | 'alpha'>('confidence');
+  // TODO: Multi-Select Bulk-Link in nächstem Sprint — Checkbox visuell, noch nicht funktional
+  const [selectedUnlinked, setSelectedUnlinked] = useState<Set<string>>(new Set());
 
   // Sync-all-linked state
   const [confirmAllOpen, setConfirmAllOpen] = useState(false);
@@ -389,6 +410,128 @@ export function CloseSyncCard() {
     setSelected(new Set(ids));
   };
 
+  // ───────── Suggestions ─────────
+  const loadSuggestionsFor = async (clientId: string) => {
+    setSuggestions((s) => ({ ...s, [clientId]: 'loading' }));
+    try {
+      const { data, error } = await supabase.functions.invoke('search-close-suggestions', {
+        body: { client_id: clientId },
+      });
+      if (error) throw error;
+      const arr: Suggestion[] = data?.suggestions ?? [];
+      setSuggestions((s) => ({ ...s, [clientId]: arr.length ? arr : 'empty' }));
+    } catch (e: any) {
+      console.error('[suggestions] fail', e);
+      setSuggestions((s) => ({ ...s, [clientId]: 'error' }));
+      toast.error(`Vorschläge fehlgeschlagen: ${e.message}`);
+    }
+  };
+
+  const loadAllSuggestions = async () => {
+    if (unlinked.length === 0) return;
+    bulkCancelRef.current = false;
+    setBulkLoading(true);
+    setBulkProgress({ done: 0, total: unlinked.length });
+    const ids = unlinked.map((u) => u.id);
+    const BATCH = 20;
+    let done = 0;
+    try {
+      for (let i = 0; i < ids.length; i += BATCH) {
+        if (bulkCancelRef.current) break;
+        const batch = ids.slice(i, i + BATCH);
+        // mark loading
+        setSuggestions((prev) => {
+          const next = { ...prev };
+          for (const id of batch) if (!next[id] || next[id] === 'error') next[id] = 'loading';
+          return next;
+        });
+        try {
+          const { data, error } = await supabase.functions.invoke('search-close-suggestions-batch', {
+            body: { client_ids: batch },
+          });
+          if (error) throw error;
+          const results: Array<{ client_id: string; suggestions?: Suggestion[]; error?: string }> = data?.results ?? [];
+          setSuggestions((prev) => {
+            const next = { ...prev };
+            for (const r of results) {
+              if (r.error) next[r.client_id] = 'error';
+              else {
+                const arr = r.suggestions ?? [];
+                next[r.client_id] = arr.length ? arr : 'empty';
+              }
+            }
+            return next;
+          });
+        } catch (e: any) {
+          console.warn('[bulk suggestions] batch fail', e);
+          setSuggestions((prev) => {
+            const next = { ...prev };
+            for (const id of batch) next[id] = 'error';
+            return next;
+          });
+        }
+        done += batch.length;
+        setBulkProgress({ done, total: ids.length });
+      }
+      if (bulkCancelRef.current) toast.info(`Abgebrochen — ${done}/${ids.length} Vorschläge geladen.`);
+      else toast.success(`Vorschläge geladen für ${done} Kunden.`);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const linkSuggestion = async (clientId: string, leadId: string, displayName: string) => {
+    const key = `${clientId}:${leadId}`;
+    setLinkingPair(key);
+    // Optimistic: ausgrauen + nach 1.5s entfernen
+    setRecentlyLinked((s) => new Set(s).add(clientId));
+    try {
+      const { error } = await supabase.functions.invoke('sync-close-link', {
+        body: { client_id: clientId, manual_close_lead_id: leadId, matched_via: 'manual' },
+      });
+      if (error) throw error;
+      toast.success(`Verlinkt mit ${displayName}`);
+      setTimeout(() => {
+        setUnlinked((u) => u.filter((c) => c.id !== clientId));
+        setSuggestions((s) => { const n = { ...s }; delete n[clientId]; return n; });
+        setRecentlyLinked((s) => { const n = new Set(s); n.delete(clientId); return n; });
+        setStats((st) => ({ ...st, linked: st.linked + 1 }));
+        load();
+      }, 1500);
+    } catch (e: any) {
+      // Rollback
+      setRecentlyLinked((s) => { const n = new Set(s); n.delete(clientId); return n; });
+      toast.error(`Verlinken fehlgeschlagen: ${e.message}`);
+    } finally {
+      setLinkingPair(null);
+    }
+  };
+
+  const sortedUnlinked = useMemo(() => {
+    const arr = [...unlinked];
+    if (unlinkedSort === 'alpha') {
+      arr.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    } else {
+      arr.sort((a, b) => {
+        const ca = suggestions[a.id];
+        const cb = suggestions[b.id];
+        const va = Array.isArray(ca) ? (ca[0]?.confidence ?? 0) : -1;
+        const vb = Array.isArray(cb) ? (cb[0]?.confidence ?? 0) : -1;
+        if (vb !== va) return vb - va;
+        return a.name.localeCompare(b.name, 'de');
+      });
+    }
+    // Linked-pending zum Schluss
+    arr.sort((a, b) => Number(recentlyLinked.has(a.id)) - Number(recentlyLinked.has(b.id)));
+    return arr;
+  }, [unlinked, suggestions, unlinkedSort, recentlyLinked]);
+
+  const confidenceColor = (c: number) =>
+    c >= 0.85 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+    : c >= 0.65 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+    : 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30';
+
+
   return (
     <Card id="close-sync-card" className="border-border bg-card">
       <CardHeader>
@@ -587,52 +730,197 @@ export function CloseSyncCard() {
           </div>
         </div>
 
-        {/* Unmatched */}
-        <Collapsible>
+        {/* Unmatched — mit Suggestions */}
+        <TooltipProvider delayDuration={200}>
+        <Collapsible defaultOpen>
           <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground w-full">
             <ChevronDown className="h-4 w-4" />
             Nicht verlinkte Kunden ({unlinked.length})
           </CollapsibleTrigger>
-          <CollapsibleContent className="mt-3 space-y-2">
-            <div className="flex justify-end">
+          <CollapsibleContent className="mt-3 space-y-3">
+            {/* Multi-Select-Vorschau Banner */}
+            <div className="rounded-md border border-dashed border-border bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
+              💡 In Kürze: Mehrere Kunden auf einmal verlinken via Checkbox-Auswahl.
+            </div>
+
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
-                variant="outline"
-                disabled={unlinked.length === 0}
-                onClick={() => {
-                  const lines = unlinked.map((c) => `${c.name} | ${c.email ?? ''}`).join('\n');
-                  const blob = new Blob([lines + '\n'], { type: 'text/plain;charset=utf-8' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `unlinked-clients-${new Date().toISOString().slice(0, 10)}.txt`;
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                  URL.revokeObjectURL(url);
-                }}
+                onClick={loadAllSuggestions}
+                disabled={bulkLoading || unlinked.length === 0}
               >
-                Als TXT exportieren
+                {bulkLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Search className="h-3.5 w-3.5 mr-1.5" />}
+                Vorschläge für alle {unlinked.length} laden
               </Button>
+              {bulkLoading && (
+                <Button size="sm" variant="ghost" onClick={() => { bulkCancelRef.current = true; }}>
+                  <X className="h-3.5 w-3.5 mr-1.5" /> Abbrechen
+                </Button>
+              )}
+              {bulkLoading && (
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {bulkProgress.done}/{bulkProgress.total}
+                </span>
+              )}
+              <div className="ml-auto flex items-center gap-2">
+                <select
+                  className="text-xs bg-background border border-border rounded px-2 py-1"
+                  value={unlinkedSort}
+                  onChange={(e) => setUnlinkedSort(e.target.value as any)}
+                >
+                  <option value="confidence">Sortierung: beste Treffer zuerst</option>
+                  <option value="alpha">Sortierung: alphabetisch</option>
+                </select>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={unlinked.length === 0}
+                  onClick={() => {
+                    const lines = unlinked.map((c) => `${c.name} | ${c.email ?? ''}`).join('\n');
+                    const blob = new Blob([lines + '\n'], { type: 'text/plain;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `unlinked-clients-${new Date().toISOString().slice(0, 10)}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Als TXT exportieren
+                </Button>
+              </div>
             </div>
-            <div className="rounded-lg border border-border max-h-72 overflow-y-auto divide-y divide-border/50">
+            {bulkLoading && (
+              <Progress value={bulkProgress.total ? (bulkProgress.done / bulkProgress.total) * 100 : 0} className="h-1.5" />
+            )}
+
+            <div className="rounded-lg border border-border max-h-[640px] overflow-y-auto divide-y divide-border/50">
               {unlinked.length === 0 ? (
                 <p className="text-xs text-muted-foreground p-4 text-center">Alle Kunden sind verlinkt.</p>
-              ) : unlinked.map((c) => (
-                <div key={c.id} className="flex items-center justify-between px-3 py-2 gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{c.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{c.email ?? 'keine Email'}</p>
+              ) : sortedUnlinked.map((c) => {
+                const sug = suggestions[c.id];
+                const isLinkedPending = recentlyLinked.has(c.id);
+                return (
+                  <div
+                    key={c.id}
+                    className={`px-3 py-3 space-y-2 transition-opacity ${isLinkedPending ? 'opacity-50' : ''}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={selectedUnlinked.has(c.id)}
+                        onCheckedChange={() => {
+                          setSelectedUnlinked((p) => {
+                            const n = new Set(p);
+                            if (n.has(c.id)) n.delete(c.id); else n.add(c.id);
+                            return n;
+                          });
+                        }}
+                        disabled
+                        aria-label="Mehrfachauswahl (bald)"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate flex items-center gap-2">
+                          {c.name}
+                          {isLinkedPending && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">{c.email ?? 'keine Email'}</p>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => setPickClient(c)}>
+                        Andere suchen →
+                      </Button>
+                    </div>
+
+                    {/* Suggestions area */}
+                    {!sug ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="ml-7"
+                        onClick={() => loadSuggestionsFor(c.id)}
+                        disabled={bulkLoading}
+                      >
+                        <Search className="h-3 w-3 mr-1.5" />
+                        Vorschläge laden
+                      </Button>
+                    ) : sug === 'loading' ? (
+                      <div className="ml-7 space-y-1.5">
+                        <div className="h-12 rounded bg-muted/40 animate-pulse" />
+                        <div className="h-12 rounded bg-muted/40 animate-pulse" />
+                      </div>
+                    ) : sug === 'error' ? (
+                      <div className="ml-7 flex items-center gap-2 text-xs text-destructive">
+                        <XCircle className="h-3 w-3" />
+                        Vorschläge konnten nicht geladen werden.
+                        <Button size="sm" variant="ghost" className="h-6 px-1.5" onClick={() => loadSuggestionsFor(c.id)}>
+                          Erneut
+                        </Button>
+                      </div>
+                    ) : sug === 'empty' ? (
+                      <div className="ml-7 rounded border border-dashed border-border bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
+                        Keine Vorschläge — {c.name} wurde in Close nicht gefunden. Eventuell nicht im verbundenen Workspace oder mit abweichendem Namen.
+                        <a
+                          href={`https://app.close.com/search/${encodeURIComponent(c.name)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 ml-2 text-primary hover:underline"
+                        >
+                          In Close prüfen →
+                        </a>
+                      </div>
+                    ) : (
+                      <ul className="ml-7 space-y-1.5">
+                        {sug.slice(0, 3).map((s) => {
+                          const isLinking = linkingPair === `${c.id}:${s.close_lead_id}`;
+                          return (
+                            <li
+                              key={s.close_lead_id}
+                              className="rounded-md border border-border bg-background px-3 py-2 flex items-center gap-3"
+                            >
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border tabular-nums ${confidenceColor(s.confidence)}`}>
+                                    {Math.round(s.confidence * 100)}%
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p className="text-xs font-medium mb-1">Match-Gründe</p>
+                                  <ul className="text-xs space-y-0.5">
+                                    {s.match_reasons.length ? s.match_reasons.map((r, i) => <li key={i}>• {r}</li>) : <li>—</li>}
+                                  </ul>
+                                </TooltipContent>
+                              </Tooltip>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">{s.display_name}</p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {s.contact_name && <span className="mr-2">{s.contact_name}</span>}
+                                  {s.emails[0] && <span className="mr-2">{s.emails[0]}</span>}
+                                  {s.status_label !== '—' && <span className="opacity-70">· {s.status_label}</span>}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isLinking || isLinkedPending}
+                                onClick={() => linkSuggestion(c.id, s.close_lead_id, s.display_name)}
+                              >
+                                {isLinking ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> : <Link2 className="h-3 w-3 mr-1.5" />}
+                                Verlinken
+                              </Button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => setPickClient(c)}>
-                    <Search className="h-3 w-3 mr-1.5" />
-                    Manuell suchen
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CollapsibleContent>
         </Collapsible>
+        </TooltipProvider>
 
         <ManualLinkModal client={pickClient} onClose={(linkedNow) => { setPickClient(null); if (linkedNow) load(); }} />
 
