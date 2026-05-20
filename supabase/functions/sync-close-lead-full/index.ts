@@ -70,20 +70,21 @@ Deno.serve(async (req) => {
     if (lead.custom && typeof lead.custom === "object") Object.assign(custom, lead.custom);
 
     const leadRow = {
-      close_lead_id: leadId,
+      id: leadId,
       client_id,
       display_name: lead.display_name || lead.name || null,
       description: truncate(lead.description, 2000),
       url: lead.url || null,
       status_id: lead.status_id || null,
       status_label: lead.status_label || null,
+      custom: Object.keys(custom).length ? custom : {},
       custom_fields: Object.keys(custom).length ? custom : null,
       date_created: lead.date_created || null,
       date_updated: lead.date_updated || null,
       synced_at: new Date().toISOString(),
     };
     {
-      const { error } = await supabase.from("close_leads").upsert(leadRow, { onConflict: "close_lead_id" });
+      const { error } = await supabase.from("close_leads").upsert(leadRow, { onConflict: "id" });
       if (error) sectionErrors.lead = error.message;
       else stats.lead = 1;
     }
