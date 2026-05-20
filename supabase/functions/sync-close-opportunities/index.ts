@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
           client_id: leadToClient.get(item.lead_id) || null,
           status_type: item.status_type || null,
           status_label: item.status_label || null,
-          status_id: item.status_id || null,
+          
           pipeline_id: item.pipeline_id || null,
           pipeline_name: item.pipeline_name || null,
           value: item.value ?? null,
