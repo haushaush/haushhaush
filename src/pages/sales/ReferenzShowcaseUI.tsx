@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import * as React from 'react';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { PageShell } from '@/components/layout/PageShell';
 import { getBrancheDisplay } from '@/lib/branchen';
 import { pickBrancheLabel, pickClientName, pickUnternehmenLabel } from '@/lib/showcaseFkSelect';
@@ -13,6 +16,65 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { isTopPerformer } from '@/lib/topPerformer';
 import { getAdLiveStatus, type AdLiveStatus } from '@/lib/adStatus';
+
+/* ------------------------------------------------------------------ */
+/* FeaturedToggle — clickable star (admin) or static badge (public)   */
+/* ------------------------------------------------------------------ */
+export function FeaturedToggle({ item, position = 'top-left' }: { item: AnyItem; position?: 'top-left' | 'bottom-left' }) {
+  const isPublic = useIsPublicView();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('admin') && !isPublic;
+  const [featured, setFeatured] = React.useState<boolean>(!!item.is_featured);
+  const [busy, setBusy] = React.useState(false);
+  React.useEffect(() => { setFeatured(!!item.is_featured); }, [item.is_featured]);
+
+  const table =
+    item._type === 'website' ? 'referenz_showcase' :
+    item._type === 'werbeanzeige' ? 'referenz_meta_ads' :
+    'referenz_meta_campaigns';
+
+  const handle = async (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!isAdmin || busy) return;
+    const next = !featured;
+    setFeatured(next); setBusy(true);
+    (item as any).is_featured = next;
+    const { error } = await supabase.from(table as any).update({ is_featured: next }).eq('id', item.id);
+    setBusy(false);
+    if (error) {
+      setFeatured(!next); (item as any).is_featured = !next;
+      toast.error('Konnte Featured nicht ändern');
+    } else {
+      toast.success(next ? 'Als Featured markiert' : 'Featured entfernt');
+    }
+  };
+
+  const pos = position === 'top-left' ? 'top-3 left-3' : 'bottom-3 left-3';
+
+  if (!isAdmin) {
+    if (!featured) return null;
+    return (
+      <div className={`absolute ${pos} w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center shadow-md z-10`}>
+        <Star className="w-4 h-4 text-white" fill="currentColor" />
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={handle}
+      title={featured ? 'Featured entfernen' : 'Als Featured markieren'}
+      className={`absolute ${pos} w-8 h-8 rounded-full flex items-center justify-center shadow-md z-10 transition-all ${
+        featured
+          ? 'bg-yellow-400 hover:bg-yellow-500'
+          : 'bg-white/90 hover:bg-white border border-gray-200 opacity-0 group-hover:opacity-100'
+      } ${busy ? 'opacity-50 pointer-events-none' : ''}`}
+    >
+      <Star className={`w-4 h-4 ${featured ? 'text-white' : 'text-gray-500'}`} fill={featured ? 'currentColor' : 'none'} />
+    </button>
+  );
+}
+
 
 export type AnyItem = Record<string, any> & {
   _type: 'website' | 'werbeanzeige' | 'campaign';
@@ -269,11 +331,7 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
           ? <PerformanceHero campaign={item} />
           : <ImageContent item={item} />}
         <TypeIndicator item={item} />
-        {item.is_featured && (
-          <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center shadow-md">
-            <Star className="w-4 h-4 text-white" fill="currentColor" />
-          </div>
-        )}
+        <FeaturedToggle item={item} position="top-left" />
       </div>
 
       <div className="p-5 flex flex-col flex-1">
@@ -642,11 +700,7 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
           )}
         </div>
 
-        {item.is_featured && (
-          <div className="absolute bottom-3 left-3 w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center shadow-md">
-            <Star className="w-4 h-4 text-white" fill="currentColor" />
-          </div>
-        )}
+        <FeaturedToggle item={item} position="bottom-left" />
 
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
       </div>
