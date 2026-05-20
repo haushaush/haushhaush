@@ -108,18 +108,58 @@ export function CloseSyncCard() {
 
   const matchUnlinked = async () => {
     setMatching(true);
+    matchCancelRef.current = false;
+    setMatchProgress({ iterations: 0, totalMatched: 0, remaining: 0, unmatched: 0, ambiguous: 0 });
     const tId = toast.loading('Matche unverlinkte Kunden…');
     const start = Date.now();
+    const MAX_ITERATIONS = 50;
+    let totalMatched = 0;
+    let iterations = 0;
+    let lastRemaining: number | undefined;
+
     try {
-      const { data, error } = await supabase.functions.invoke('sync-close-link');
-      if (error) throw error;
+      while (iterations < MAX_ITERATIONS) {
+        if (matchCancelRef.current) break;
+        const { data, error } = await supabase.functions.invoke('sync-close-link', { body: {} });
+        if (error) throw error;
+
+        const matched = (data?.email_matched || 0)
+          + (data?.email_variant_matched || 0)
+          + (data?.name_fallback_exact || 0)
+          + (data?.name_fuzzy || 0);
+        totalMatched += matched;
+        iterations++;
+        lastRemaining = data?.remaining;
+
+        setMatchProgress({
+          iterations,
+          totalMatched,
+          remaining: data?.remaining ?? 0,
+          unmatched: data?.no_match ?? 0,
+          ambiguous: data?.ambiguous ?? 0,
+        });
+        toast.loading(`Durchlauf ${iterations} · ${totalMatched} verlinkt · ${data?.remaining ?? 0} verbleibend`, { id: tId });
+
+        // Stop if nothing left or nothing matched this round (avoids infinite loop on ambiguous-only)
+        if (!data?.remaining || data.remaining === 0) break;
+        if (matched === 0 && (data?.processed ?? 0) === 0) break;
+
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+
       const dur = ((Date.now() - start) / 1000).toFixed(1);
-      toast.success(`Matching fertig in ${dur}s · ${data?.matched ?? 0} neu, ${data?.unmatched ?? 0} ohne Treffer, ${data?.ambiguous ?? 0} mehrdeutig`, { id: tId });
+      if (matchCancelRef.current) {
+        toast.warning(`Abgebrochen · ${totalMatched} neu in ${iterations} Durchläufen (${dur}s)`, { id: tId });
+      } else {
+        toast.success(`Fertig · ${totalMatched} neu verlinkt in ${iterations} Durchläufen (${dur}s)`, { id: tId });
+      }
       await load();
     } catch (e: any) {
-      toast.error(`Matching fehlgeschlagen: ${e.message}`, { id: tId });
+      toast.error(`Match-Loop gestoppt: ${e.message}`, { id: tId });
     } finally {
       setMatching(false);
+      matchCancelRef.current = false;
+      setTimeout(() => setMatchProgress(null), 4000);
     }
   };
 
