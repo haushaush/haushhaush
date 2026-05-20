@@ -8,7 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Search, Users, RefreshCw, Loader2, Sparkles } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { Plus, Search, Users, RefreshCw, Loader2, Sparkles, Cloud, ChevronDown, Settings as SettingsIcon, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STATUS_STYLES: Record<string, string> = {
