@@ -60,7 +60,13 @@ export function CloseSyncCard() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const bulkCancelRef = useRef(false);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
-  const [unlinkedSort, setUnlinkedSort] = useState<'confidence' | 'alpha'>('confidence');
+  const [unlinkedSort, setUnlinkedSort] = useState<'confidence' | 'alpha' | 'only_100'>('confidence');
+  const [autoLinking, setAutoLinking] = useState(false);
+  const autoLinkCancelRef = useRef(false);
+  const [autoLinkProgress, setAutoLinkProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+  const [autoConfirmOpen, setAutoConfirmOpen] = useState(false);
+  const [autoFailed, setAutoFailed] = useState<Array<{ id: string; name: string; error: string }>>([]);
+  const [autoFailedOpen, setAutoFailedOpen] = useState(false);
   // TODO: Multi-Select Bulk-Link in nächstem Sprint — Checkbox visuell, noch nicht funktional
   const [selectedUnlinked, setSelectedUnlinked] = useState<Set<string>>(new Set());
 
@@ -507,8 +513,21 @@ export function CloseSyncCard() {
     }
   };
 
+  const safeMatches = useMemo(() => {
+    return unlinked.filter((c) => {
+      if (recentlyLinked.has(c.id)) return false;
+      const s = suggestions[c.id];
+      if (!Array.isArray(s) || s.length === 0) return false;
+      return (s[0]?.confidence ?? 0) >= 1.0;
+    });
+  }, [unlinked, suggestions, recentlyLinked]);
+
   const sortedUnlinked = useMemo(() => {
-    const arr = [...unlinked];
+    let arr = [...unlinked];
+    if (unlinkedSort === 'only_100') {
+      const ids = new Set(safeMatches.map((c) => c.id));
+      arr = arr.filter((c) => ids.has(c.id) || recentlyLinked.has(c.id));
+    }
     if (unlinkedSort === 'alpha') {
       arr.sort((a, b) => a.name.localeCompare(b.name, 'de'));
     } else {
@@ -521,10 +540,56 @@ export function CloseSyncCard() {
         return a.name.localeCompare(b.name, 'de');
       });
     }
-    // Linked-pending zum Schluss
     arr.sort((a, b) => Number(recentlyLinked.has(a.id)) - Number(recentlyLinked.has(b.id)));
     return arr;
-  }, [unlinked, suggestions, unlinkedSort, recentlyLinked]);
+  }, [unlinked, suggestions, unlinkedSort, recentlyLinked, safeMatches]);
+
+  const runAutoLink100 = async () => {
+    setAutoConfirmOpen(false);
+    if (safeMatches.length === 0) return;
+    autoLinkCancelRef.current = false;
+    setAutoLinking(true);
+    setAutoLinkProgress({ done: 0, total: safeMatches.length });
+    setAutoFailed([]);
+    const failed: Array<{ id: string; name: string; error: string }> = [];
+    let success = 0;
+    const targets = [...safeMatches];
+
+    for (let i = 0; i < targets.length; i++) {
+      if (autoLinkCancelRef.current) break;
+      const c = targets[i];
+      const sugg = suggestions[c.id];
+      const top = Array.isArray(sugg) ? sugg[0] : null;
+      if (!top) continue;
+      try {
+        const { error } = await supabase.functions.invoke('sync-close-link', {
+          body: { client_id: c.id, manual_close_lead_id: top.close_lead_id, matched_via: 'auto_100' },
+        });
+        if (error) throw error;
+        success++;
+        // Optimistic: ausblenden
+        setRecentlyLinked((s) => new Set(s).add(c.id));
+        setUnlinked((u) => u.filter((x) => x.id !== c.id));
+        setSuggestions((s) => { const n = { ...s }; delete n[c.id]; return n; });
+        setStats((st) => ({ ...st, linked: st.linked + 1 }));
+      } catch (e: any) {
+        failed.push({ id: c.id, name: c.name, error: e.message ?? 'unknown' });
+      }
+      setAutoLinkProgress({ done: i + 1, total: targets.length });
+      if (i < targets.length - 1) await new Promise((r) => setTimeout(r, 300));
+    }
+
+    setAutoFailed(failed);
+    if (failed.length === 0) {
+      toast.success(`✅ ${success} Kunden automatisch verlinkt`);
+    } else {
+      toast.error(`${success} verlinkt · ${failed.length} fehlgeschlagen`, {
+        action: { label: 'Details', onClick: () => setAutoFailedOpen(true) },
+      });
+    }
+    setAutoLinking(false);
+    await load();
+  };
 
   const confidenceColor = (c: number) =>
     c >= 0.85 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
@@ -753,6 +818,35 @@ export function CloseSyncCard() {
                 {bulkLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Search className="h-3.5 w-3.5 mr-1.5" />}
                 Vorschläge für alle {unlinked.length} laden
               </Button>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      size="sm"
+                      onClick={() => setAutoConfirmOpen(true)}
+                      disabled={autoLinking || bulkLoading || safeMatches.length === 0}
+                      className="bg-emerald-600 hover:bg-emerald-600/90 text-white"
+                    >
+                      {autoLinking
+                        ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        : <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />}
+                      {autoLinking
+                        ? `Verlinke ${autoLinkProgress.done}/${autoLinkProgress.total}…`
+                        : `Alle 100%-Matches verlinken (${safeMatches.length})`}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {safeMatches.length === 0 && (
+                  <TooltipContent>Erst Vorschläge laden, dann werden 100%-Matches sichtbar</TooltipContent>
+                )}
+              </Tooltip>
+              {autoLinking && (
+                <Button size="sm" variant="ghost" onClick={() => { autoLinkCancelRef.current = true; }}>
+                  <X className="h-3.5 w-3.5 mr-1.5" /> Abbrechen
+                </Button>
+              )}
+
               {bulkLoading && (
                 <Button size="sm" variant="ghost" onClick={() => { bulkCancelRef.current = true; }}>
                   <X className="h-3.5 w-3.5 mr-1.5" /> Abbrechen
@@ -771,6 +865,7 @@ export function CloseSyncCard() {
                 >
                   <option value="confidence">Sortierung: beste Treffer zuerst</option>
                   <option value="alpha">Sortierung: alphabetisch</option>
+                  <option value="only_100">Nur 100%-Matches anzeigen</option>
                 </select>
                 <Button
                   size="sm"
@@ -921,6 +1016,40 @@ export function CloseSyncCard() {
           </CollapsibleContent>
         </Collapsible>
         </TooltipProvider>
+
+        {/* Confirm Auto-100 Link */}
+        <AlertDialog open={autoConfirmOpen} onOpenChange={setAutoConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Alle 100%-Matches verlinken?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Es werden {safeMatches.length} Kunden automatisch mit dem 100%-Match aus Close verlinkt.
+                Du kannst die Verlinkungen nachher in der Tabelle „Verlinkte Kunden" wieder lösen.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction onClick={runAutoLink100}>Verlinken</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Auto-100 Failed Details */}
+        <Dialog open={autoFailedOpen} onOpenChange={setAutoFailedOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Fehlgeschlagene Auto-Verlinkungen ({autoFailed.length})</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-96 overflow-y-auto divide-y divide-border/50">
+              {autoFailed.map((f) => (
+                <div key={f.id} className="py-2">
+                  <p className="text-sm font-medium">{f.name}</p>
+                  <p className="text-xs text-destructive break-all">{f.error}</p>
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <ManualLinkModal client={pickClient} onClose={(linkedNow) => { setPickClient(null); if (linkedNow) load(); }} />
 
