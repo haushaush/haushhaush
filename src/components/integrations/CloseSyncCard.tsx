@@ -527,15 +527,36 @@ export function CloseSyncCard() {
             <ChevronDown className="h-4 w-4" />
             Nicht verlinkte Kunden ({unlinked.length})
           </CollapsibleTrigger>
-          <CollapsibleContent className="mt-3">
+          <CollapsibleContent className="mt-3 space-y-2">
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={unlinked.length === 0}
+                onClick={() => {
+                  const lines = unlinked.map((c) => `${c.name} | ${c.email ?? ''}`).join('\n');
+                  const blob = new Blob([lines + '\n'], { type: 'text/plain;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `unlinked-clients-${new Date().toISOString().slice(0, 10)}.txt`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                Als TXT exportieren
+              </Button>
+            </div>
             <div className="rounded-lg border border-border max-h-72 overflow-y-auto divide-y divide-border/50">
               {unlinked.length === 0 ? (
-                <p className="text-xs text-muted-foreground p-4 text-center">Alle Kunden mit Email sind verlinkt.</p>
+                <p className="text-xs text-muted-foreground p-4 text-center">Alle Kunden sind verlinkt.</p>
               ) : unlinked.map((c) => (
                 <div key={c.id} className="flex items-center justify-between px-3 py-2 gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{c.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{c.email}</p>
+                    <p className="text-xs text-muted-foreground truncate">{c.email ?? 'keine Email'}</p>
                   </div>
                   <Button size="sm" variant="outline" onClick={() => setPickClient(c)}>
                     <Search className="h-3 w-3 mr-1.5" />
