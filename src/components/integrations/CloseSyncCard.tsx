@@ -462,8 +462,21 @@ export function CloseSyncCard() {
           </div>
         </TooltipProvider>
 
+        {/* Live progress for match-all loop */}
+        {matchProgress && (matching || matchProgress.iterations > 0) && (
+          <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs tabular-nums flex items-center gap-3 flex-wrap">
+            {matching && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
+            <span className="font-medium">Durchlauf {matchProgress.iterations}</span>
+            <span className="text-muted-foreground">·</span>
+            <span><span className="font-semibold text-emerald-600 dark:text-emerald-400">{matchProgress.totalMatched}</span> verlinkt</span>
+            <span className="text-muted-foreground">·</span>
+            <span>{matchProgress.remaining} verbleibend</span>
+            {matchProgress.ambiguous > 0 && <><span className="text-muted-foreground">·</span><span className="text-amber-600 dark:text-amber-400">{matchProgress.ambiguous} mehrdeutig</span></>}
+          </div>
+        )}
 
         {/* Progress for sync-all */}
+
         {syncAllRunning && (
           <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
             <div className="flex items-center justify-between text-xs">
