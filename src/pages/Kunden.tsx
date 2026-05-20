@@ -172,6 +172,69 @@ export default function Kunden() {
     }
   };
 
+  const MAX_BATCH = 30;
+
+  const handleCloseMatchAll = async () => {
+    setCloseSyncing(true);
+    const toastId = toast.loading('Matche unverlinkte Kunden mit Close…');
+    const start = Date.now();
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-close-link');
+      if (error) throw error;
+      const dur = ((Date.now() - start) / 1000).toFixed(1);
+      toast.success(`Matching fertig in ${dur}s · ${data?.matched ?? 0} neu, ${data?.unmatched ?? 0} ohne Treffer`, { id: toastId });
+    } catch (e: any) {
+      toast.error(`Matching fehlgeschlagen: ${e.message}`, {
+        id: toastId,
+        action: { label: 'Details', onClick: () => navigate('/einstellungen?tab=verknuepfungen#close') },
+      });
+    } finally {
+      setCloseSyncing(false);
+    }
+  };
+
+  const handleCloseResyncAll = async () => {
+    setConfirmResync(false);
+    const { data: links } = await supabase.from('close_link' as any).select('client_id');
+    const ids = ((links || []) as any[]).map((l) => l.client_id);
+    if (ids.length === 0) { toast.info('Keine verlinkten Kunden vorhanden.'); return; }
+    if (ids.length > MAX_BATCH) {
+      toast.error(`Max ${MAX_BATCH} pro Run, bitte in Batches aufteilen.`, {
+        action: { label: 'Einstellungen', onClick: () => navigate('/einstellungen?tab=verknuepfungen#close') },
+      });
+      return;
+    }
+    setCloseSyncing(true);
+    const toastId = toast.loading(`Syncing 0 von ${ids.length}…`);
+    const start = Date.now();
+    let tick = 0;
+    const ticker = setInterval(() => {
+      tick = Math.min(tick + 1, ids.length - 1);
+      toast.loading(`Syncing ${tick} von ${ids.length}…`, { id: toastId });
+    }, 1200);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-close-batch', { body: { client_ids: ids } });
+      clearInterval(ticker);
+      if (error) throw error;
+      const ok = data?.success?.length ?? 0;
+      const failed = data?.failed?.length ?? 0;
+      const dur = ((Date.now() - start) / 1000).toFixed(1);
+      if (failed === 0) {
+        toast.success(`${ok} Kunden synct in ${dur}s`, { id: toastId });
+      } else {
+        toast.error(`${ok} OK, ${failed} Fehler in ${dur}s`, {
+          id: toastId,
+          action: { label: 'Details', onClick: () => navigate('/einstellungen?tab=verknuepfungen#close') },
+        });
+      }
+    } catch (e: any) {
+      clearInterval(ticker);
+      toast.error(`Bulk-Sync fehlgeschlagen: ${e.message}`, { id: toastId });
+    } finally {
+      setCloseSyncing(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     return clients.filter(c => {
       const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase());
