@@ -43,6 +43,17 @@ export function CloseSyncCard() {
   const [showFailed, setShowFailed] = useState(false);
   const [pickClient, setPickClient] = useState<UnlinkedRow | null>(null);
 
+  // Suggestions cache + bulk-load
+  const [suggestions, setSuggestions] = useState<Record<string, Suggestion[] | 'loading' | 'error' | 'empty'>>({});
+  const [linkingPair, setLinkingPair] = useState<string | null>(null);
+  const [recentlyLinked, setRecentlyLinked] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const bulkCancelRef = useRef(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+  const [unlinkedSort, setUnlinkedSort] = useState<'confidence' | 'alpha'>('confidence');
+  // TODO: Multi-Select Bulk-Link in nächstem Sprint — Checkbox visuell, noch nicht funktional
+  const [selectedUnlinked, setSelectedUnlinked] = useState<Set<string>>(new Set());
+
   // Sync-all-linked state
   const [confirmAllOpen, setConfirmAllOpen] = useState(false);
   const [syncAllRunning, setSyncAllRunning] = useState(false);
