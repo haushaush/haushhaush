@@ -121,6 +121,10 @@ export default function KundenDetail() {
   const [closeOpps, setCloseOpps] = useState<any[]>([]);
   const [closeActs, setCloseActs] = useState<any[]>([]);
   const [closeLink, setCloseLink] = useState<any | null>(null);
+  const [closeLead, setCloseLead] = useState<any | null>(null);
+  const [closeContacts, setCloseContacts] = useState<any[]>([]);
+  const [closeTasks, setCloseTasks] = useState<any[]>([]);
+  const [expandedActId, setExpandedActId] = useState<string | null>(null);
   const [closeSyncing, setCloseSyncing] = useState(false);
   const [oppFilter, setOppFilter] = useState<'won' | 'all'>('won');
   const [actFilter, setActFilter] = useState<string>('all');
