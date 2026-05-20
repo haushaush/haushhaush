@@ -71,24 +71,24 @@ async function processJob(jobId: string) {
         errors.push({ adId, message: msg });
         recent.unshift({ adId, status: "error", message: `✗ ${adId}: ${msg}` });
       } else {
-      const skip = (data?.skipped ?? []).find((s: any) => s.id === adId || s.adId === adId);
-      if (skip) {
-        skipped.push({ adId, reason: skip.reason || "Blacklist" });
-        recent.unshift({ adId, status: "error", message: `⊘ ${adId}: ${skip.reason || "Blacklist"}` });
-      } else if (data?.errors?.length) {
-        const msg = data.errors[0]?.error || "Unbekannter Fehler";
-        errors.push({ adId, message: msg });
-        recent.unshift({ adId, status: "error", message: `✗ ${adId}: ${msg}` });
-      } else {
-        const enr = enrichment[adId];
-        if (enr && (enr.branche || enr.unternehmen)) {
-          const update: Record<string, any> = {};
-          if (enr.branche) update.custom_branche = enr.branche;
-          if (enr.unternehmen) update.custom_unternehmen = enr.unternehmen;
-          await admin.from("referenz_meta_ads").update(update).eq("meta_ad_id", adId);
+        const skip = (data?.skipped ?? []).find((s: any) => s.id === adId || s.adId === adId);
+        if (skip) {
+          skipped.push({ adId, reason: skip.reason || "Blacklist" });
+          recent.unshift({ adId, status: "error", message: `⊘ ${adId}: ${skip.reason || "Blacklist"}` });
+        } else if (data?.errors?.length) {
+          const msg = data.errors[0]?.error || "Unbekannter Fehler";
+          errors.push({ adId, message: msg });
+          recent.unshift({ adId, status: "error", message: `✗ ${adId}: ${msg}` });
+        } else {
+          const enr = enrichment[adId];
+          if (enr && (enr.branche || enr.unternehmen)) {
+            const update: Record<string, any> = {};
+            if (enr.branche) update.custom_branche = enr.branche;
+            if (enr.unternehmen) update.custom_unternehmen = enr.unternehmen;
+            await admin.from("referenz_meta_ads").update(update).eq("meta_ad_id", adId);
+          }
+          recent.unshift({ adId, status: "success", message: `✓ ${adId}` });
         }
-        recent.unshift({ adId, status: "success", message: `✓ ${adId}` });
-      }
       }
     } catch (e) {
       const msg = (e as Error).message;
@@ -106,11 +106,11 @@ async function processJob(jobId: string) {
       .eq("id", jobId);
   }
 
-  await admin
-    .from("showcase_import_jobs")
-    .update({ status: "done", finished_at: new Date().toISOString() })
-    .eq("id", jobId);
-
+  if (done >= adIds.length) {
+    await admin
+      .from("showcase_import_jobs")
+      .update({ status: "done", done, recent, errors, skipped, finished_at: new Date().toISOString() })
+      .eq("id", jobId);
     console.log("[import-job] finished", jobId, { done, errors: errors.length, skipped: skipped.length });
     return;
   }
