@@ -43,6 +43,17 @@ export function CloseSyncCard() {
   const [showFailed, setShowFailed] = useState(false);
   const [pickClient, setPickClient] = useState<UnlinkedRow | null>(null);
 
+  // Sync-all-linked state
+  const [confirmAllOpen, setConfirmAllOpen] = useState(false);
+  const [syncAllRunning, setSyncAllRunning] = useState(false);
+  const [syncAllProgress, setSyncAllProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
+  const [recent, setRecent] = useState<Array<{ name: string; status: 'ok' | 'warn' | 'err'; note?: string }>>([]);
+  const cancelRef = useRef(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summary, setSummary] = useState<{ ok: number; warn: number; err: number; failedIds: string[]; cancelled: boolean }>({
+    ok: 0, warn: 0, err: 0, failedIds: [], cancelled: false,
+  });
+
   const load = async () => {
     setLoading(true);
     const [{ data: links }, { count: cntClients }, { count: cntActivities }, { count: cntOpps }] = await Promise.all([
