@@ -113,9 +113,10 @@ Deno.serve(async (req) => {
       sectionErrors.contacts = e.message;
     }
 
-    // 3. OPPORTUNITIES — inline on lead
+    // 3. OPPORTUNITIES — only won, fetched via dedicated API call
     try {
-      const opps: any[] = lead.opportunities || [];
+      const data = await closeFetch(`/opportunity/?lead_id=${leadId}&status_type=won&_limit=100`);
+      const opps: any[] = data.data || [];
       if (opps.length) {
         const rows = opps.map((o) => {
           const oCustom: Record<string, any> = {};
