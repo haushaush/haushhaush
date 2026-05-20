@@ -24,7 +24,7 @@ interface CloseDeal {
   value_currency: string | null;
   date_created: string | null;
   date_updated: string | null;
-  raw: any;
+  note?: string | null;
 }
 
 interface OppStatus {
