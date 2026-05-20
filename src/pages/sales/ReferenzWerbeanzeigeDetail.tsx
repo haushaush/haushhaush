@@ -20,6 +20,7 @@ import {
   DetailRowList, DetailRow, MetricLarge, DetailPageSkeleton,
 } from "@/components/showcase/DetailPageLayout";
 import { DeleteAdDialog } from "@/components/showcase/DeleteAdDialog";
+import { getBrancheDisplay } from "@/lib/branchen";
 
 export default function ReferenzWerbeanzeigeDetail() {
   const { id } = useParams<{ id: string }>();
