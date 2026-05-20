@@ -277,6 +277,44 @@ export default function Kunden() {
               {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
               Notion-Import
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={closeSyncing}>
+                  {closeSyncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Cloud className="h-3.5 w-3.5 mr-1.5" />}
+                  Close-Sync
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuItem onClick={handleCloseMatchAll} disabled={closeSyncing}>
+                  <Link2 className="h-3.5 w-3.5 mr-2" />
+                  Alle nicht-verlinkten matchen
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setConfirmResync(true)} disabled={closeSyncing}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                  Alle verlinkten neu syncen
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/einstellungen?tab=verknuepfungen#close')}>
+                  <SettingsIcon className="h-3.5 w-3.5 mr-2" />
+                  Sync-Einstellungen öffnen
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialog open={confirmResync} onOpenChange={setConfirmResync}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Alle verlinkten Kunden neu syncen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Das kann mehrere Minuten dauern. Bei mehr als {MAX_BATCH} verlinkten Kunden bitte den Bereich „Einstellungen → Verknüpfungen" nutzen und in Batches arbeiten.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleCloseResyncAll}>Sync starten</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" />Neuer Kunde</Button>
