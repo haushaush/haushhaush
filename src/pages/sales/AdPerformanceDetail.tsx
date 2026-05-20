@@ -153,13 +153,14 @@ export default function AdPerformanceDetail() {
   const primaryLabel = showRoas ? "ROAS" : cpl != null ? "CPL" : "LEADS";
 
   const linkedKunde = (campaign as any).linked_kunde as LinkedKunde;
-  const branche = linkedKunde?.branche || (campaign.filter_values as any)?.branche || "";
+  const brancheRaw = linkedKunde?.branche || (campaign.filter_values as any)?.branche || "";
+  const branche = getBrancheDisplay(brancheRaw, 'long') || brancheRaw;
   const unternehmen = linkedKunde?.unternehmen || (campaign.filter_values as any)?.unternehmen || "";
   const eyebrow = linkedKunde?.unternehmen || linkedKunde?.client_name || campaign.meta_account_name || "Kampagne";
   const dateRange = fmtPeriod(campaign.campaign_period_start, campaign.campaign_period_end);
   const readableTitle = campaign.custom_title
     || (linkedKunde?.client_name && campaign.campaign_period_start
-        ? `${linkedKunde.branche || "Kampagne"} · ${new Date(campaign.campaign_period_start).toLocaleDateString("de-DE", { month: "long", year: "numeric" })}`
+        ? `${branche || "Kampagne"} · ${new Date(campaign.campaign_period_start).toLocaleDateString("de-DE", { month: "long", year: "numeric" })}`
         : campaign.meta_campaign_name || "Kampagne");
 
   return (
