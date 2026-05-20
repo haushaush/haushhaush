@@ -57,9 +57,11 @@ for (const b of BRANCHEN) {
   aliasToId.set(b.short.toLowerCase(), b.id);
 }
 
-export function normalizeBranche(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const n = raw.toLowerCase().trim().replace(/\s+/g, ' ');
+export function normalizeBranche(raw: unknown): string | null {
+  if (raw == null) return null;
+  const str = Array.isArray(raw) ? String(raw[0] ?? '') : String(raw);
+  if (!str) return null;
+  const n = str.toLowerCase().trim().replace(/\s+/g, ' ');
   return aliasToId.get(n) ?? null;
 }
 
