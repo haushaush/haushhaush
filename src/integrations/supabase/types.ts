@@ -5214,6 +5214,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      merge_duplicate_clients: {
+        Args: never
+        Returns: {
+          merged_name: string
+          primary_id: string
+          removed_count: number
+        }[]
+      }
+      upsert_client_from_notion: { Args: { p: Json }; Returns: string }
     }
     Enums: {
       ampelstatus: "Grün" | "Gelb" | "Rot" | "CC"
