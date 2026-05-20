@@ -64,6 +64,7 @@ export default function ReferenzWerbeanzeigenPage() {
 
   const [rows, setRows] = useState<MetaAdRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [blacklist, setBlacklist] = useState<{ scope: string; target_id: string }[]>([]);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
