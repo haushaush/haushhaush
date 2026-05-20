@@ -225,8 +225,20 @@ export default function KundenDetail() {
     setProjects(p.data || []);
     setOnepageProjects(op.data || []);
     const allShowcase = (w.data || []) as any[];
+    // Websites kommen aus referenz_showcase (Typ 'website')
     setWebsites(allShowcase.filter((s: any) => s.type === 'website'));
-    setAds(allShowcase.filter((s: any) => s.type === 'werbeanzeige'));
+    // Anzeigen kommen aus referenz_meta_ads (das ist die echte Quelle für /sales/referenz-showcase/werbeanzeigen/:id)
+    // Plus Legacy-Einträge aus referenz_showcase mit type='werbeanzeige' (falls vorhanden)
+    const metaAds = ((a as any).data || []) as any[];
+    const legacyShowcaseAds = allShowcase.filter((s: any) => s.type === 'werbeanzeige');
+    // Dedupe nach id
+    const seen = new Set<string>();
+    const merged = [...metaAds, ...legacyShowcaseAds].filter((ad: any) => {
+      if (seen.has(ad.id)) return false;
+      seen.add(ad.id);
+      return true;
+    });
+    setAds(merged);
 
     setCampaigns(cam.data || []);
     setCloseLink(link?.data || null);
