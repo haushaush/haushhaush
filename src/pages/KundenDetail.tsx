@@ -712,8 +712,79 @@ export default function KundenDetail() {
         </TabsContent>
 
         {/* DEALS */}
-        <TabsContent value="deals" className="mt-4">
-          <Card><CardContent className="p-0"><div className="overflow-x-auto">
+        <TabsContent value="deals" className="mt-4 space-y-6">
+          {/* Aus Close.com synct */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Cloud className="h-4 w-4 text-primary" />
+                  Aus Close.com synct
+                  {closeLink?.last_synced_at && (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      · letzter Sync: {fmtDate(closeLink.last_synced_at)}
+                    </span>
+                  )}
+                </CardTitle>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <button
+                    onClick={() => setOppFilter('won')}
+                    className={`px-2 py-1 rounded ${oppFilter === 'won' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+                  >Won</button>
+                  <button
+                    onClick={() => setOppFilter('all')}
+                    className={`px-2 py-1 rounded ${oppFilter === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+                  >Alle</button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!closeLink ? (
+                <p className="text-sm text-muted-foreground">Kein Close-Link vorhanden. Manuell verlinken in <Link to="/admin/close-sync" className="text-primary hover:underline">/admin/close-sync</Link>.</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <KpiCard label="Won-Deals" value={String(closeStats.wonCount)} />
+                    <KpiCard label="Gesamt-Wert Won" value={fmtEur(closeStats.wonSum)} />
+                    <KpiCard label="Letzter Won-Deal" value={fmtDate(closeStats.lastWon)} />
+                    <KpiCard label="Offene Deals" value={String(closeStats.activeCount)} />
+                  </div>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader><TableRow>
+                        <TableHead>Status</TableHead><TableHead>Wert</TableHead><TableHead>Label</TableHead>
+                        <TableHead>Datum</TableHead><TableHead>Closed by</TableHead>
+                      </TableRow></TableHeader>
+                      <TableBody>
+                        {filteredOpps.length === 0 ? (
+                          <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Keine {oppFilter === 'won' ? 'Won-' : ''}Deals</TableCell></TableRow>
+                        ) : filteredOpps.map((o: any) => (
+                          <TableRow key={o.id}>
+                            <TableCell>
+                              <Badge variant={o.status_type === 'won' ? 'default' : o.status_type === 'lost' ? 'destructive' : 'secondary'}>
+                                {o.status_type || '–'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-medium tabular-nums">
+                              {o.value_formatted || (o.value_cents != null ? fmtEur(o.value_cents / 100) : '–')}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{o.status_label || '–'}</TableCell>
+                            <TableCell className="text-muted-foreground">{fmtDate(o.date_won || o.date_created)}</TableCell>
+                            <TableCell className="text-muted-foreground">{o.user_name || '–'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Bestehende close_deals (Notion) */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-base text-muted-foreground">Notion-Deals (legacy)</CardTitle></CardHeader>
+            <CardContent className="p-0"><div className="overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Art</TableHead><TableHead>Status</TableHead><TableHead>Wert</TableHead>
