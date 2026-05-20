@@ -920,6 +920,7 @@ export function CloseSyncCard() {
             </div>
           </CollapsibleContent>
         </Collapsible>
+        </TooltipProvider>
 
         <ManualLinkModal client={pickClient} onClose={(linkedNow) => { setPickClient(null); if (linkedNow) load(); }} />
 
