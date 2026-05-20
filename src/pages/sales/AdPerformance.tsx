@@ -154,9 +154,12 @@ export default function AdPerformancePage() {
           />
           {categories.map(cat => {
             const isBranche = cat.key.toLowerCase() === 'branche';
-            const catOpts = options
+            const mapped = options
               .filter(o => o.category_id === cat.id && o.is_active)
-              .map(o => ({ value: o.key, label: isBranche ? (getBrancheDisplay(o.label, 'long') ?? o.label) : o.label }))
+              .map(o => ({ value: o.key, label: isBranche ? (getBrancheDisplay(o.label, 'long') ?? o.label) : o.label }));
+            const seen = new Set<string>();
+            const catOpts = mapped
+              .filter(o => { const k = o.label.toLowerCase().trim(); if (seen.has(k)) return false; seen.add(k); return true; })
               .sort((a, b) => a.label.localeCompare(b.label));
             if (catOpts.length === 0) return null;
             return (
