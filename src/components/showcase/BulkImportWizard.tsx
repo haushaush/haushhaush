@@ -119,16 +119,63 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
     done: 0, total: 0, recent: [], errors: [], skipped: [],
   });
 
-  // Reset on open
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+
+  // Reset on open — but if there's an active job in localStorage, resume it
   useEffect(() => {
     if (open) {
-      setStep('source');
-      setSelected(new Set());
-      setEnrichment({});
-      setProgress({ done: 0, total: 0, recent: [], errors: [], skipped: [] });
+      const existingJobId = localStorage.getItem('showcase_import_active_job');
+      if (existingJobId) {
+        setActiveJobId(existingJobId);
+        setStep('import');
+      } else {
+        setStep('source');
+        setSelected(new Set());
+        setEnrichment({});
+        setProgress({ done: 0, total: 0, recent: [], errors: [], skipped: [] });
+      }
       if (!accountId && accounts[0]) setAccountId(accounts[0].id);
     }
   }, [open, accounts]);
+
+  // Subscribe to active job updates (refresh-safe)
+  useEffect(() => {
+    if (!activeJobId) return;
+
+    const apply = (row: any) => {
+      if (!row) return;
+      setProgress({
+        done: row.done ?? 0,
+        total: row.total ?? 0,
+        recent: (row.recent ?? []).map((r: any) => ({
+          adId: r.adId, adName: r.adId, status: r.status, message: r.message,
+        })),
+        errors: (row.errors ?? []).map((e: any) => ({ adId: e.adId, adName: e.adId, message: e.message })),
+        skipped: (row.skipped ?? []).map((s: any) => ({ adId: s.adId, adName: s.adId, reason: s.reason })),
+      });
+      if (row.status === 'done') {
+        localStorage.removeItem('showcase_import_active_job');
+        setStep('done');
+        onImported();
+      }
+    };
+
+    // Initial fetch
+    supabase.from('showcase_import_jobs' as any).select('*').eq('id', activeJobId).maybeSingle()
+      .then(({ data }) => apply(data));
+
+    const channel = supabase
+      .channel(`showcase-import-job-${activeJobId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'showcase_import_jobs',
+        filter: `id=eq.${activeJobId}`,
+      }, (payload) => apply(payload.new))
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [activeJobId]);
 
   // Auto-match enrichment when entering enrich step
   const runAutoMatch = (force = false) => {
@@ -297,83 +344,64 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   const runImport = async () => {
     setStep('import');
     const ids = Array.from(selected);
-    setProgress({ done: 0, total: ids.length, recent: [], errors: [], skipped: [] });
 
-    for (let i = 0; i < ids.length; i++) {
-      const adId = ids[i];
+    // Pre-filter blacklisted client-side
+    const allowed: string[] = [];
+    const preSkipped: { adId: string; adName: string; reason: string }[] = [];
+    for (const adId of ids) {
       const ad = ads.find(a => a.meta_ad_id === adId);
       const adName = ad?.meta_ad_name ?? adId;
-
-      // Pre-check blacklist (defense-in-depth alongside backend filter)
-      const blockedReason = ad ? isBlacklisted(ad) : null;
-      if (blockedReason) {
-        setProgress(prev => ({
-          ...prev,
-          done: prev.done + 1,
-          skipped: [...prev.skipped, { adId, adName, reason: blockedReason }],
-          recent: [{ adId, adName, status: 'error' as const, message: `⊘ ${adName}: Blacklist (${blockedReason})` }, ...prev.recent].slice(0, 20),
-        }));
-        continue;
-      }
-
-      setProgress(prev => ({
-        ...prev,
-        recent: [{ adId, adName, status: 'pending' as const, message: `Importiere "${adName}"...` }, ...prev.recent].slice(0, 20),
-      }));
-
-      try {
-        const { data: sess2 } = await supabase.auth.getSession();
-        const token2 = sess2.session?.access_token;
-        if (!token2) throw new Error('Nicht eingeloggt – bitte erneut anmelden.');
-        const { data, error } = await supabase.functions.invoke('meta-ads-import-to-showcase', {
-          body: { adIds: [adId] },
-          headers: { Authorization: `Bearer ${token2}` },
-        });
-        if (error) throw error;
-        const res = data as any;
-        const skip = (res?.skipped ?? []).find((s: any) => s.id === adId || s.adId === adId);
-        if (skip) {
-          setProgress(prev => ({
-            ...prev,
-            done: prev.done + 1,
-            skipped: [...prev.skipped, { adId, adName, reason: skip.reason || 'Blacklist' }],
-            recent: [{ adId, adName, status: 'error' as const, message: `⊘ ${adName}: ${skip.reason || 'Blacklist'}` }, ...prev.recent].slice(0, 20),
-          }));
-          continue;
-        }
-        if (res?.errors?.length) {
-          throw new Error(res.errors[0]?.error || 'Unbekannter Fehler');
-        }
-
-        // Apply per-ad enrichment overrides
-        const enr = enrichment[adId];
-        if (enr && (enr.branche || enr.unternehmen)) {
-          const update: Record<string, any> = {};
-          if (enr.branche) update.custom_branche = enr.branche;
-          if (enr.unternehmen) update.custom_unternehmen = enr.unternehmen;
-          await supabase.from('referenz_meta_ads' as any)
-            .update(update)
-            .eq('meta_ad_id', adId);
-        }
-
-        setProgress(prev => ({
-          ...prev,
-          done: prev.done + 1,
-          recent: [{ adId, adName, status: 'success' as const, message: `✓ ${adName}` }, ...prev.recent].slice(0, 20),
-        }));
-      } catch (e) {
-        const msg = (e as Error).message;
-        setProgress(prev => ({
-          ...prev,
-          done: prev.done + 1,
-          errors: [...prev.errors, { adId, adName, message: msg }],
-          recent: [{ adId, adName, status: 'error' as const, message: `✗ ${adName}: ${msg}` }, ...prev.recent].slice(0, 20),
-        }));
-      }
+      const reason = ad ? isBlacklisted(ad) : null;
+      if (reason) preSkipped.push({ adId, adName, reason });
+      else allowed.push(adId);
     }
 
-    setStep('done');
-    onImported();
+    setProgress({ done: 0, total: ids.length, recent: [], errors: [], skipped: preSkipped });
+
+    if (allowed.length === 0) {
+      setStep('done');
+      onImported();
+      return;
+    }
+
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const userId = sess.session?.user?.id;
+      if (!userId) throw new Error('Nicht eingeloggt – bitte erneut anmelden.');
+
+      const enrichmentPayload: Record<string, { branche?: string; unternehmen?: string }> = {};
+      for (const id of allowed) {
+        const e = enrichment[id];
+        if (e && (e.branche || e.unternehmen)) {
+          enrichmentPayload[id] = { branche: e.branche, unternehmen: e.unternehmen };
+        }
+      }
+
+      const { data: job, error: insErr } = await supabase
+        .from('showcase_import_jobs' as any)
+        .insert({
+          user_id: userId,
+          ad_ids: allowed,
+          enrichment: enrichmentPayload,
+          total: allowed.length,
+        })
+        .select('id')
+        .single();
+
+      if (insErr || !job) throw new Error(insErr?.message || 'Job konnte nicht erstellt werden');
+
+      const jobId = (job as any).id as string;
+      localStorage.setItem('showcase_import_active_job', jobId);
+      setActiveJobId(jobId);
+
+      // Kick off background processing — returns immediately (202)
+      await supabase.functions.invoke('process-showcase-import-job', {
+        body: { jobId },
+      });
+    } catch (e) {
+      toast({ title: 'Fehler', description: (e as Error).message, variant: 'destructive' });
+      setStep('enrich');
+    }
   };
 
   const applyBulk = () => {
