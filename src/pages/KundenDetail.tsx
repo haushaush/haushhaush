@@ -202,6 +202,9 @@ export default function KundenDetail() {
     setWebsites(allShowcase.filter((s: any) => s.type === 'website'));
     setAds(a.data || []);
     setCampaigns(cam.data || []);
+    setCloseLink(link?.data || null);
+    setCloseOpps((opps as any)?.data || []);
+    setCloseActs((acts as any)?.data || []);
     // eslint-disable-next-line no-console
     console.log('[KundenDetail] Showcase ads loaded:', (a.data || []).length, 'for client:', id, {
       conditions: buildMetaConditions(),
