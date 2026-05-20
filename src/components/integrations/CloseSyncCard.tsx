@@ -613,8 +613,61 @@ export function CloseSyncCard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Reset Stage 1: warn modal */}
+        <AlertDialog open={resetStage === 1} onOpenChange={(o) => !o && setResetStage(0)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                Alle Close-Daten zurücksetzen?
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm">
+                  <p><strong>Folgende Daten werden gelöscht:</strong> close_leads, close_contacts, close_opportunities, close_activities, close_tasks.</p>
+                  <p><strong>NICHT gelöscht:</strong> close_link (Verknüpfungen bleiben bestehen).</p>
+                  <p>Anschließend werden alle <strong>{stats.linked} verlinkten Kunden</strong> frisch gesynct. Dauer ca. {Math.max(1, Math.ceil(stats.linked * 2.5 / 60))} Min.</p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction onClick={(e) => { e.preventDefault(); setResetStage(2); }}>Weiter</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Reset Stage 2: type-to-confirm */}
+        <AlertDialog open={resetStage === 2} onOpenChange={(o) => !o && setResetStage(0)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Bestätigung erforderlich</AlertDialogTitle>
+              <AlertDialogDescription>
+                Bitte <code className="font-mono font-semibold">RESET CLOSE</code> eingeben, um fortzufahren.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <Input
+              autoFocus
+              value={resetConfirmText}
+              onChange={(e) => setResetConfirmText(e.target.value)}
+              placeholder="RESET CLOSE"
+              className="font-mono"
+            />
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setResetConfirmText('')}>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={resetConfirmText.trim() !== 'RESET CLOSE'}
+                onClick={(e) => { e.preventDefault(); runResetAndResync(); }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Reset &amp; neu syncen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
+
   );
 }
 
