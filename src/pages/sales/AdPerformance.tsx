@@ -12,7 +12,7 @@ import {
   type AnyItem,
 } from "./ReferenzShowcaseUI";
 import { FK_EMBED_ALL } from "@/lib/showcaseFkSelect";
-import { getBrancheDisplay } from "@/lib/branchen";
+import { getBrancheDisplay, normalizeBranche } from "@/lib/branchen";
 
 export interface CampaignRow {
   id: string;
@@ -90,7 +90,17 @@ export default function AdPerformancePage() {
     }
     Object.entries(activeFilters).forEach(([catKey, val]) => {
       if (!val) return;
-      r = r.filter(x => (x.filter_values ?? {})[catKey] === val);
+      const isBranche = catKey.toLowerCase() === 'branche';
+      if (isBranche) {
+        r = r.filter(x => {
+          const raw = (x.filter_values ?? {})[catKey];
+          if (!raw) return false;
+          const itemId = normalizeBranche(raw) ?? String(raw).toLowerCase().trim();
+          return itemId === val;
+        });
+      } else {
+        r = r.filter(x => (x.filter_values ?? {})[catKey] === val);
+      }
     });
 
     const sorted = [...r];
@@ -154,13 +164,25 @@ export default function AdPerformancePage() {
           />
           {categories.map(cat => {
             const isBranche = cat.key.toLowerCase() === 'branche';
-            const mapped = options
-              .filter(o => o.category_id === cat.id && o.is_active)
-              .map(o => ({ value: o.key, label: isBranche ? (getBrancheDisplay(o.label, 'long') ?? o.label) : o.label }));
-            const seen = new Set<string>();
-            const catOpts = mapped
-              .filter(o => { const k = o.label.toLowerCase().trim(); if (seen.has(k)) return false; seen.add(k); return true; })
-              .sort((a, b) => a.label.localeCompare(b.label));
+            const raw = options
+              .filter(o => o.category_id === cat.id && o.is_active);
+            let catOpts: { value: string; label: string }[];
+            if (isBranche) {
+              const seen = new Set<string>();
+              catOpts = [];
+              for (const o of raw) {
+                const label = getBrancheDisplay(o.label, 'long') ?? o.label;
+                const value = normalizeBranche(o.label) ?? o.key.toLowerCase().trim();
+                if (seen.has(value)) continue;
+                seen.add(value);
+                catOpts.push({ value, label });
+              }
+              catOpts.sort((a, b) => a.label.localeCompare(b.label));
+            } else {
+              catOpts = raw
+                .map(o => ({ value: o.key, label: o.label }))
+                .sort((a, b) => a.label.localeCompare(b.label));
+            }
             if (catOpts.length === 0) return null;
             return (
               <DropdownPill
