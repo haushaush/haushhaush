@@ -293,16 +293,34 @@ export default function KundenDetail() {
   }, [closeLink]);
 
   const handleResyncClose = async () => {
+    if (!closeLink?.close_lead_id) {
+      toast.error('Kein Close-Link — bitte erst verlinken (Admin → Close-Sync).');
+      return;
+    }
     setCloseSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-close', { body: { client_id: id } });
+      const { data, error } = await supabase.functions.invoke('sync-close-lead-full', { body: { client_id: id } });
       if (error) throw error;
-      toast.success(`Close-Sync OK · ${data?.opps_upserted ?? 0} Deals, ${data?.activities_upserted ?? 0} Aktivitäten`);
+      const s = data?.stats || {};
+      toast.success(`Close-Sync OK · ${s.opportunities ?? 0} Deals, ${s.activities ?? 0} Aktivitäten, ${s.contacts ?? 0} Kontakte, ${s.tasks ?? 0} Tasks`);
       await load();
     } catch (e: any) {
       toast.error(`Close-Sync fehlgeschlagen: ${e.message}`);
     } finally {
       setCloseSyncing(false);
+    }
+  };
+
+  const handleUnlinkClose = async () => {
+    if (!closeLink?.client_id) return;
+    if (!confirm('Verknüpfung zu Close.com wirklich lösen?')) return;
+    try {
+      const { error } = await supabase.from('close_link' as any).delete().eq('client_id', closeLink.client_id);
+      if (error) throw error;
+      toast.success('Verknüpfung gelöst');
+      await load();
+    } catch (e: any) {
+      toast.error(`Lösen fehlgeschlagen: ${e.message}`);
     }
   };
 
