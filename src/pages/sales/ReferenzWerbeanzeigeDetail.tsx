@@ -210,6 +210,7 @@ export default function ReferenzWerbeanzeigeDetail() {
             <DetailRowList>
               {branche && <DetailRow label="Branche" value={branche} capitalize />}
               {unternehmen && <DetailRow label="Unternehmen" value={unternehmen} />}
+              {linkedKunde?.client_name && <DetailRow label="Kunde" value={linkedKunde.client_name} />}
               <DetailRow label="Format" value={formatLabel} />
               {ad.meta_account_name && <DetailRow label="Account" value={ad.meta_account_name} />}
               {ad.meta_campaign_name && <DetailRow label="Kampagne" value={ad.meta_campaign_name} />}
