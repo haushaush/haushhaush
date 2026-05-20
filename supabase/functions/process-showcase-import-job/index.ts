@@ -71,7 +71,7 @@ async function processJob(jobId: string) {
         }
         recent.unshift({ adId, status: "success", message: `✓ ${adId}` });
       }
-    } catch (e) {
+      }
       const msg = (e as Error).message;
       errors.push({ adId, message: msg });
       recent.unshift({ adId, status: "error", message: `✗ ${adId}: ${msg}` });
