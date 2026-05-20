@@ -4428,6 +4428,54 @@ export type Database = {
           },
         ]
       }
+      showcase_import_jobs: {
+        Row: {
+          ad_ids: string[]
+          created_at: string
+          done: number
+          enrichment: Json
+          errors: Json
+          finished_at: string | null
+          id: string
+          recent: Json
+          skipped: Json
+          status: string
+          total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ad_ids: string[]
+          created_at?: string
+          done?: number
+          enrichment?: Json
+          errors?: Json
+          finished_at?: string | null
+          id?: string
+          recent?: Json
+          skipped?: Json
+          status?: string
+          total?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ad_ids?: string[]
+          created_at?: string
+          done?: number
+          enrichment?: Json
+          errors?: Json
+          finished_at?: string | null
+          id?: string
+          recent?: Json
+          skipped?: Json
+          status?: string
+          total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       support_tickets: {
         Row: {
           created_at: string | null
