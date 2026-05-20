@@ -33,12 +33,28 @@ export default function CloseSync() {
   const triggerFullSync = async () => {
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-close');
+      const { data, error } = await supabase.functions.invoke('sync-close-link');
       if (error) throw error;
-      toast.success(`Sync OK · ${data?.newly_matched ?? 0} neu, ${data?.opps_upserted ?? 0} Opps, ${data?.activities_upserted ?? 0} Akt.`);
+      toast.success(`Matching OK · ${data?.matched ?? 0} neu, ${data?.unmatched ?? 0} unmatched, ${data?.ambiguous ?? 0} ambig.${data?.overflow ? ' — weitere Batches nötig' : ''}`);
       await load();
     } catch (e: any) {
       toast.error(`Sync fehlgeschlagen: ${e.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const bulkSyncLinked = async () => {
+    const { data: links } = await supabase.from('close_link' as any).select('client_id').limit(30);
+    const ids = (links || []).map((l: any) => l.client_id);
+    if (!ids.length) { toast.info('Keine verlinkten Kunden.'); return; }
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-close-batch', { body: { client_ids: ids } });
+      if (error) throw error;
+      toast.success(`Bulk-Sync · ${data?.success?.length ?? 0} OK, ${data?.failed?.length ?? 0} Fehler`);
+    } catch (e: any) {
+      toast.error(`Bulk fehlgeschlagen: ${e.message}`);
     } finally {
       setSyncing(false);
     }
@@ -51,10 +67,16 @@ export default function CloseSync() {
           <h1 className="text-2xl font-heading font-bold">Close-Sync · Unmatched Kunden</h1>
           <p className="text-sm text-muted-foreground">Kunden ohne Verknüpfung zu einem Close-Lead.</p>
         </div>
-        <Button onClick={triggerFullSync} disabled={syncing}>
-          {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-          Vollständigen Sync starten
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={triggerFullSync} disabled={syncing} variant="outline">
+            {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Unverlinkte matchen
+          </Button>
+          <Button onClick={bulkSyncLinked} disabled={syncing}>
+            {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Bulk-Sync (max 30)
+          </Button>
+        </div>
       </div>
 
       <Card>

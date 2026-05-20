@@ -20,6 +20,7 @@ import { BranchePicker } from '@/components/pickers/BranchePicker';
 import { UnternehmenPicker } from '@/components/pickers/UnternehmenPicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const KUNDENSTATUS_OPTIONS = ['Lead', 'In Betreuung', 'Pausiert', 'Churned'];
 const AMPEL_OPTIONS = ['Grün', 'Gelb', 'Rot', 'CC'];
@@ -120,6 +121,10 @@ export default function KundenDetail() {
   const [closeOpps, setCloseOpps] = useState<any[]>([]);
   const [closeActs, setCloseActs] = useState<any[]>([]);
   const [closeLink, setCloseLink] = useState<any | null>(null);
+  const [closeLead, setCloseLead] = useState<any | null>(null);
+  const [closeContacts, setCloseContacts] = useState<any[]>([]);
+  const [closeTasks, setCloseTasks] = useState<any[]>([]);
+  const [expandedActId, setExpandedActId] = useState<string | null>(null);
   const [closeSyncing, setCloseSyncing] = useState(false);
   const [oppFilter, setOppFilter] = useState<'won' | 'all'>('won');
   const [actFilter, setActFilter] = useState<string>('all');
@@ -184,7 +189,7 @@ export default function KundenDetail() {
       ? supabase.from('referenz_meta_campaigns').select('*').or(buildMetaConditions()).order('campaign_period_start', { ascending: false })
       : Promise.resolve({ data: [] } as any);
 
-    const [d, p, op, w, a, cam, link, opps, acts] = await Promise.all([
+    const [d, p, op, w, a, cam, link, opps, acts, lead, contacts, tasks] = await Promise.all([
       supabase.from('close_deals').select('*').eq('client_id', id).order('created_at', { ascending: false }),
       projectsQuery,
       supabase.from('onepage_projects').select('*').eq('client_id_fk', id).order('created_at', { ascending: false }),
@@ -193,7 +198,10 @@ export default function KundenDetail() {
       campaignsQuery,
       supabase.from('close_link' as any).select('*').eq('client_id', id).maybeSingle(),
       supabase.from('close_opportunities' as any).select('*').eq('client_id', id).order('date_won', { ascending: false, nullsFirst: false }),
-      supabase.from('close_activities' as any).select('*').eq('client_id', id).order('date_created', { ascending: false }).limit(50),
+      supabase.from('close_activities' as any).select('*').eq('client_id', id).order('date_created', { ascending: false }).limit(200),
+      supabase.from('close_leads' as any).select('*').eq('client_id', id).maybeSingle(),
+      supabase.from('close_contacts' as any).select('*').eq('client_id', id).order('date_created', { ascending: true }),
+      supabase.from('close_tasks' as any).select('*').eq('client_id', id).order('is_complete', { ascending: true }).order('due_date', { ascending: true, nullsFirst: false }),
     ]);
     setDeals(d.data || []);
     setProjects(p.data || []);
@@ -205,6 +213,9 @@ export default function KundenDetail() {
     setCloseLink(link?.data || null);
     setCloseOpps((opps as any)?.data || []);
     setCloseActs((acts as any)?.data || []);
+    setCloseLead((lead as any)?.data || null);
+    setCloseContacts((contacts as any)?.data || []);
+    setCloseTasks((tasks as any)?.data || []);
     // eslint-disable-next-line no-console
     console.log('[KundenDetail] Showcase ads loaded:', (a.data || []).length, 'for client:', id, {
       conditions: buildMetaConditions(),
@@ -282,16 +293,34 @@ export default function KundenDetail() {
   }, [closeLink]);
 
   const handleResyncClose = async () => {
+    if (!closeLink?.close_lead_id) {
+      toast.error('Kein Close-Link — bitte erst verlinken (Admin → Close-Sync).');
+      return;
+    }
     setCloseSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-close', { body: { client_id: id } });
+      const { data, error } = await supabase.functions.invoke('sync-close-lead-full', { body: { client_id: id } });
       if (error) throw error;
-      toast.success(`Close-Sync OK · ${data?.opps_upserted ?? 0} Deals, ${data?.activities_upserted ?? 0} Aktivitäten`);
+      const s = data?.stats || {};
+      toast.success(`Close-Sync OK · ${s.opportunities ?? 0} Deals, ${s.activities ?? 0} Aktivitäten, ${s.contacts ?? 0} Kontakte, ${s.tasks ?? 0} Tasks`);
       await load();
     } catch (e: any) {
       toast.error(`Close-Sync fehlgeschlagen: ${e.message}`);
     } finally {
       setCloseSyncing(false);
+    }
+  };
+
+  const handleUnlinkClose = async () => {
+    if (!closeLink?.client_id) return;
+    if (!confirm('Verknüpfung zu Close.com wirklich lösen?')) return;
+    try {
+      const { error } = await supabase.from('close_link' as any).delete().eq('client_id', closeLink.client_id);
+      if (error) throw error;
+      toast.success('Verknüpfung gelöst');
+      await load();
+    } catch (e: any) {
+      toast.error(`Lösen fehlgeschlagen: ${e.message}`);
     }
   };
 
@@ -419,20 +448,43 @@ export default function KundenDetail() {
               <span className={`h-2.5 w-2.5 rounded-full ${AMPEL_DOT[client.ampelstatus] || 'bg-muted'}`} aria-hidden />
               <span className="text-xs text-muted-foreground">{client.ampelstatus}</span>
             </span>
-            <button
-              type="button"
-              onClick={handleResyncClose}
-              disabled={closeSyncing}
-              title="Klick: Close-Sync manuell auslösen"
-              className={`inline-flex items-center gap-1.5 text-[11px] rounded-full px-2.5 py-1 border transition-colors disabled:opacity-60 ${
-                syncFreshness.color === 'success' ? 'bg-success/10 border-success/30 text-success hover:bg-success/20' :
-                syncFreshness.color === 'warning' ? 'bg-warning/10 border-warning/30 text-warning hover:bg-warning/20' :
-                'bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20'
-              }`}
-            >
-              {closeSyncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-              <span>{syncFreshness.label}</span>
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  disabled={closeSyncing}
+                  title="Close-Sync"
+                  className={`inline-flex items-center gap-1.5 text-[11px] rounded-full px-2.5 py-1 border transition-colors disabled:opacity-60 ${
+                    closeSyncing ? 'bg-muted/40 border-border text-muted-foreground animate-pulse' :
+                    syncFreshness.color === 'success' ? 'bg-success/10 border-success/30 text-success hover:bg-success/20' :
+                    syncFreshness.color === 'warning' ? 'bg-warning/10 border-warning/30 text-warning hover:bg-warning/20' :
+                    'bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20'
+                  }`}
+                >
+                  {closeSyncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  <span>{closeSyncing ? 'Sync läuft …' : syncFreshness.label}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuItem onClick={handleResyncClose} disabled={closeSyncing || !closeLink}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-2" /> Jetzt syncen
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => closeLink && window.open(`https://app.close.com/lead/${closeLink.close_lead_id}/`, '_blank')}
+                  disabled={!closeLink}
+                >
+                  <ExternalLink className="h-3.5 w-3.5 mr-2" /> In Close öffnen
+                </DropdownMenuItem>
+                {closeLink && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleUnlinkClose} className="text-destructive focus:text-destructive">
+                      <X className="h-3.5 w-3.5 mr-2" /> Verknüpfung lösen
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             {brancheLabel && <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />{brancheLabel}</span>}
@@ -610,6 +662,7 @@ export default function KundenDetail() {
           <TabsTrigger value="showcase">Showcase ({totals.showcaseCount})</TabsTrigger>
           <TabsTrigger value="meta-ads">Meta Ads ({liveCampaigns.length})</TabsTrigger>
           <TabsTrigger value="aktivitaeten">Aktivitäten ({closeActs.length})</TabsTrigger>
+          {closeTasks.length > 0 && <TabsTrigger value="tasks">Tasks ({closeTasks.length})</TabsTrigger>}
           <TabsTrigger value="projekte">Projekte ({projects.length})</TabsTrigger>
           <TabsTrigger value="dateien">Dateien</TabsTrigger>
         </TabsList>
@@ -638,6 +691,70 @@ export default function KundenDetail() {
               <InfoField label="Meta Account ID" value={client.meta_account_id} />
             </CardContent>
           </Card>
+
+          {/* Close.com Daten */}
+          {(closeLead || closeContacts.length > 0) && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Cloud className="h-4 w-4 text-primary" /> Close.com Daten
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {closeLead && (
+                  <section className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                    <InfoField label="Display Name" value={closeLead.display_name} />
+                    <InfoField label="Status" value={closeLead.status_label} />
+                    <InfoField label="URL" value={closeLead.url} type="url" />
+                    <div className="md:col-span-2">
+                      <InfoField label="Beschreibung" value={closeLead.description} />
+                    </div>
+                  </section>
+                )}
+                {(() => {
+                  const cf = (closeLead?.custom_fields || closeLead?.custom || {}) as Record<string, any>;
+                  const entries = Object.entries(cf).filter(([, v]) => v != null && v !== '');
+                  if (!entries.length) return null;
+                  return (
+                    <section>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Custom Fields</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                        {entries.map(([k, v]) => (
+                          <InfoField key={k} label={k} value={typeof v === 'object' ? JSON.stringify(v) : String(v)} />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })()}
+                {closeContacts.length > 0 && (
+                  <section>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Kontaktpersonen</h4>
+                    <ul className="space-y-3">
+                      {closeContacts.map((c: any) => (
+                        <li key={c.close_contact_id} className="border rounded-lg p-3 bg-card/50">
+                          <p className="text-sm font-medium">{c.name || '—'}</p>
+                          {c.title && <p className="text-xs text-muted-foreground">{c.title}</p>}
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs">
+                            {Array.isArray(c.emails) && c.emails.map((e: any, i: number) => (
+                              <a key={`e${i}`} href={`mailto:${e.email}`} className="text-primary hover:underline inline-flex items-center gap-1">
+                                <Mail className="h-3 w-3" />{e.email}{e.type ? ` · ${e.type}` : ''}
+                              </a>
+                            ))}
+                            {Array.isArray(c.phones) && c.phones.map((p: any, i: number) => (
+                              <a key={`p${i}`} href={`tel:${p.phone}`} className="text-primary hover:underline inline-flex items-center gap-1">
+                                <Phone className="h-3 w-3" />{p.phone}{p.type ? ` · ${p.type}` : ''}
+                              </a>
+                            ))}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
 
           {/* Status */}
           <Card>
@@ -1123,6 +1240,37 @@ export default function KundenDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* TASKS */}
+        {closeTasks.length > 0 && (
+          <TabsContent value="tasks" className="mt-4 space-y-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Cloud className="h-4 w-4 text-primary" /> Tasks aus Close.com
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="divide-y divide-border/50">
+                  {closeTasks.map((t: any) => (
+                    <li key={t.close_task_id} className="flex items-start gap-3 py-2.5">
+                      <span className={`mt-0.5 h-4 w-4 rounded border flex items-center justify-center text-[10px] ${t.is_complete ? 'bg-success/20 border-success/40 text-success' : 'border-border'}`}>
+                        {t.is_complete ? '✓' : ''}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm ${t.is_complete ? 'line-through text-muted-foreground' : ''}`}>{t.text || '—'}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {t.due_date ? `Fällig: ${fmtDate(t.due_date)}` : 'Kein Fälligkeitsdatum'}
+                          {t.assigned_to ? ` · ${t.assigned_to}` : ''}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {/* PROJEKTE */}
         <TabsContent value="projekte" className="mt-4 space-y-2">
