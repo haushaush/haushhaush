@@ -119,16 +119,63 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
     done: 0, total: 0, recent: [], errors: [], skipped: [],
   });
 
-  // Reset on open
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+
+  // Reset on open — but if there's an active job in localStorage, resume it
   useEffect(() => {
     if (open) {
-      setStep('source');
-      setSelected(new Set());
-      setEnrichment({});
-      setProgress({ done: 0, total: 0, recent: [], errors: [], skipped: [] });
+      const existingJobId = localStorage.getItem('showcase_import_active_job');
+      if (existingJobId) {
+        setActiveJobId(existingJobId);
+        setStep('import');
+      } else {
+        setStep('source');
+        setSelected(new Set());
+        setEnrichment({});
+        setProgress({ done: 0, total: 0, recent: [], errors: [], skipped: [] });
+      }
       if (!accountId && accounts[0]) setAccountId(accounts[0].id);
     }
   }, [open, accounts]);
+
+  // Subscribe to active job updates (refresh-safe)
+  useEffect(() => {
+    if (!activeJobId) return;
+
+    const apply = (row: any) => {
+      if (!row) return;
+      setProgress({
+        done: row.done ?? 0,
+        total: row.total ?? 0,
+        recent: (row.recent ?? []).map((r: any) => ({
+          adId: r.adId, adName: r.adId, status: r.status, message: r.message,
+        })),
+        errors: (row.errors ?? []).map((e: any) => ({ adId: e.adId, adName: e.adId, message: e.message })),
+        skipped: (row.skipped ?? []).map((s: any) => ({ adId: s.adId, adName: s.adId, reason: s.reason })),
+      });
+      if (row.status === 'done') {
+        localStorage.removeItem('showcase_import_active_job');
+        setStep('done');
+        onImported();
+      }
+    };
+
+    // Initial fetch
+    supabase.from('showcase_import_jobs' as any).select('*').eq('id', activeJobId).maybeSingle()
+      .then(({ data }) => apply(data));
+
+    const channel = supabase
+      .channel(`showcase-import-job-${activeJobId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'showcase_import_jobs',
+        filter: `id=eq.${activeJobId}`,
+      }, (payload) => apply(payload.new))
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [activeJobId]);
 
   // Auto-match enrichment when entering enrich step
   const runAutoMatch = (force = false) => {
