@@ -487,6 +487,11 @@ export default function KundenDetail() {
                 <DropdownMenuItem onClick={handleResyncClose} disabled={closeSyncing || !closeLink}>
                   <RefreshCw className="h-3.5 w-3.5 mr-2" /> Jetzt syncen
                 </DropdownMenuItem>
+                {closeLink && (
+                  <DropdownMenuItem onClick={handleResetSingleClose} disabled={closeSyncing} className="text-destructive focus:text-destructive">
+                    <RotateCw className="h-3.5 w-3.5 mr-2" /> Daten zurücksetzen &amp; neu holen
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={() => closeLink && window.open(`https://app.close.com/lead/${closeLink.close_lead_id}/`, '_blank')}
                   disabled={!closeLink}
