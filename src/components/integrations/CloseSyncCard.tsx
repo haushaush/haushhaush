@@ -54,6 +54,11 @@ export function CloseSyncCard() {
     ok: 0, warn: 0, err: 0, failedIds: [], cancelled: false,
   });
 
+  // Reset & re-sync state
+  const [resetStage, setResetStage] = useState<0 | 1 | 2>(0);
+  const [resetConfirmText, setResetConfirmText] = useState('');
+  const [resetRunning, setResetRunning] = useState(false);
+
   const load = async () => {
     setLoading(true);
     const [{ data: links }, { count: cntClients }, { count: cntActivities }, { count: cntOpps }] = await Promise.all([
