@@ -1134,8 +1134,10 @@ export type Database = {
       close_leads: {
         Row: {
           addresses: Json | null
+          client_id: string | null
           contacts: Json | null
           custom: Json | null
+          custom_fields: Json | null
           date_created: string | null
           date_updated: string | null
           description: string | null
@@ -1149,8 +1151,10 @@ export type Database = {
         }
         Insert: {
           addresses?: Json | null
+          client_id?: string | null
           contacts?: Json | null
           custom?: Json | null
+          custom_fields?: Json | null
           date_created?: string | null
           date_updated?: string | null
           description?: string | null
@@ -1164,8 +1168,10 @@ export type Database = {
         }
         Update: {
           addresses?: Json | null
+          client_id?: string | null
           contacts?: Json | null
           custom?: Json | null
+          custom_fields?: Json | null
           date_created?: string | null
           date_updated?: string | null
           description?: string | null
