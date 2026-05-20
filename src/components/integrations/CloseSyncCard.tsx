@@ -77,7 +77,7 @@ export function CloseSyncCard() {
 
     const linkedIds = new Set(linkedRows.map((l) => l.client_id));
     const { data: allClients } = await supabase.from('clients').select('id, name, email').is('deleted_at', null).order('name');
-    setUnlinked((allClients || []).filter((c) => !linkedIds.has(c.id) && c.email));
+    setUnlinked((allClients || []).filter((c) => !linkedIds.has(c.id)));
 
     const lastSync = linkedRows.reduce<string | null>((acc, r) => {
       if (!r.last_synced_at) return acc;
