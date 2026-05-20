@@ -116,6 +116,14 @@ export default function KundenDetail() {
   const [editForm, setEditForm] = useState<EditForm>(emptyForm());
   const [saving, setSaving] = useState(false);
 
+  // Close.com direct sync data
+  const [closeOpps, setCloseOpps] = useState<any[]>([]);
+  const [closeActs, setCloseActs] = useState<any[]>([]);
+  const [closeLink, setCloseLink] = useState<any | null>(null);
+  const [closeSyncing, setCloseSyncing] = useState(false);
+  const [oppFilter, setOppFilter] = useState<'won' | 'all'>('won');
+  const [actFilter, setActFilter] = useState<string>('all');
+
   const { callMeta } = useMetaAds();
   const [liveCampaigns, setLiveCampaigns] = useState<any[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
