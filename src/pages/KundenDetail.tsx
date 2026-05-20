@@ -691,6 +691,70 @@ export default function KundenDetail() {
             </CardContent>
           </Card>
 
+          {/* Close.com Daten */}
+          {(closeLead || closeContacts.length > 0) && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Cloud className="h-4 w-4 text-primary" /> Close.com Daten
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {closeLead && (
+                  <section className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                    <InfoField label="Display Name" value={closeLead.display_name} />
+                    <InfoField label="Status" value={closeLead.status_label} />
+                    <InfoField label="URL" value={closeLead.url} type="url" />
+                    <div className="md:col-span-2">
+                      <InfoField label="Beschreibung" value={closeLead.description} />
+                    </div>
+                  </section>
+                )}
+                {(() => {
+                  const cf = (closeLead?.custom_fields || closeLead?.custom || {}) as Record<string, any>;
+                  const entries = Object.entries(cf).filter(([, v]) => v != null && v !== '');
+                  if (!entries.length) return null;
+                  return (
+                    <section>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Custom Fields</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                        {entries.map(([k, v]) => (
+                          <InfoField key={k} label={k} value={typeof v === 'object' ? JSON.stringify(v) : String(v)} />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })()}
+                {closeContacts.length > 0 && (
+                  <section>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Kontaktpersonen</h4>
+                    <ul className="space-y-3">
+                      {closeContacts.map((c: any) => (
+                        <li key={c.close_contact_id} className="border rounded-lg p-3 bg-card/50">
+                          <p className="text-sm font-medium">{c.name || '—'}</p>
+                          {c.title && <p className="text-xs text-muted-foreground">{c.title}</p>}
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs">
+                            {Array.isArray(c.emails) && c.emails.map((e: any, i: number) => (
+                              <a key={`e${i}`} href={`mailto:${e.email}`} className="text-primary hover:underline inline-flex items-center gap-1">
+                                <Mail className="h-3 w-3" />{e.email}{e.type ? ` · ${e.type}` : ''}
+                              </a>
+                            ))}
+                            {Array.isArray(c.phones) && c.phones.map((p: any, i: number) => (
+                              <a key={`p${i}`} href={`tel:${p.phone}`} className="text-primary hover:underline inline-flex items-center gap-1">
+                                <Phone className="h-3 w-3" />{p.phone}{p.type ? ` · ${p.type}` : ''}
+                              </a>
+                            ))}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+
           {/* Status */}
           <Card>
             <CardHeader><CardTitle className="text-base">Status</CardTitle></CardHeader>
