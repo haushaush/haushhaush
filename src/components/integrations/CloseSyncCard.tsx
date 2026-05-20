@@ -1017,6 +1017,40 @@ export function CloseSyncCard() {
         </Collapsible>
         </TooltipProvider>
 
+        {/* Confirm Auto-100 Link */}
+        <AlertDialog open={autoConfirmOpen} onOpenChange={setAutoConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Alle 100%-Matches verlinken?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Es werden {safeMatches.length} Kunden automatisch mit dem 100%-Match aus Close verlinkt.
+                Du kannst die Verlinkungen nachher in der Tabelle „Verlinkte Kunden" wieder lösen.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction onClick={runAutoLink100}>Verlinken</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Auto-100 Failed Details */}
+        <Dialog open={autoFailedOpen} onOpenChange={setAutoFailedOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Fehlgeschlagene Auto-Verlinkungen ({autoFailed.length})</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-96 overflow-y-auto divide-y divide-border/50">
+              {autoFailed.map((f) => (
+                <div key={f.id} className="py-2">
+                  <p className="text-sm font-medium">{f.name}</p>
+                  <p className="text-xs text-destructive break-all">{f.error}</p>
+                </div>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <ManualLinkModal client={pickClient} onClose={(linkedNow) => { setPickClient(null); if (linkedNow) load(); }} />
 
         {/* Failed dialog */}
