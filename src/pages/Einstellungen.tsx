@@ -953,6 +953,7 @@ export default function Einstellungen() {
 
           <MetaMatchingCard />
           <CloseMatchingCard />
+          <CloseSyncCard />
         </TabsContent>
         )}
 
