@@ -139,6 +139,11 @@ export default function AdPerformancePage() {
     return sorted;
   }, [rows, search, activeFilters, sortBy]);
 
+  const items: AnyItem[] = useMemo(
+    () => filtered.map(c => ({ ...c, _type: 'campaign' as const })),
+    [filtered],
+  );
+
   const hasActiveFilters = !!search || Object.values(activeFilters).some(Boolean);
   const resetFilters = () => updateParams(p => { Array.from(p.keys()).forEach(k => p.delete(k)); });
 
