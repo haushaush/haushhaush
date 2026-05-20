@@ -15,6 +15,7 @@ import {
   Info,
 } from 'lucide-react';
 import { WebsiteEmbed } from '@/components/sales/WebsiteEmbed';
+import { getBrancheDisplay } from '@/lib/branchen';
 import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
 import {
   DetailPageLayout,
@@ -211,7 +212,7 @@ export default function ReferenzWebsiteDetail() {
             <InfoSectionTitle icon={Info}>Details</InfoSectionTitle>
             <DetailRowList>
               {(item.branche || linkedKunde?.branche) && (
-                <DetailRow label="Branche" value={item.branche || linkedKunde?.branche} capitalize />
+                <DetailRow label="Branche" value={getBrancheDisplay(item.branche || linkedKunde?.branche, 'long') ?? (item.branche || linkedKunde?.branche)} capitalize />
               )}
               {linkedKunde?.unternehmen && <DetailRow label="Unternehmen" value={linkedKunde.unternehmen} />}
               {item.client_name && <DetailRow label="Kunde" value={item.client_name} />}
