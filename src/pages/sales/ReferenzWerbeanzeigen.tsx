@@ -64,6 +64,7 @@ export default function ReferenzWerbeanzeigenPage() {
 
   const [rows, setRows] = useState<MetaAdRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [blacklist, setBlacklist] = useState<{ scope: string; target_id: string }[]>([]);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -146,7 +147,7 @@ export default function ReferenzWerbeanzeigenPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: ads }, { data: cats }, { data: opts }] = await Promise.all([
+    const [{ data: ads }, { data: cats }, { data: opts }, { data: bl }] = await Promise.all([
       supabase.from("referenz_meta_ads" as any)
         .select(isPublic
           ? `*, ${FK_EMBED_ALL}`
@@ -158,10 +159,12 @@ export default function ReferenzWerbeanzeigenPage() {
       supabase.from("showcase_filter_categories" as any).select("*")
         .in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
       supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
+      supabase.from("import_blacklist" as any).select("scope, target_id"),
     ]);
     setRows(((ads ?? []) as any[]) as MetaAdRow[]);
     setCategories((cats ?? []) as any);
     setOptions((opts ?? []) as any);
+    setBlacklist(((bl ?? []) as any[]) as { scope: string; target_id: string }[]);
     setLoading(false);
   };
 
@@ -171,6 +174,33 @@ export default function ReferenzWerbeanzeigenPage() {
 
   const filtered = useMemo(() => {
     let r = rows;
+    // Apply import_blacklist: hide ads from blacklisted accounts/campaigns/ads/keywords
+    if (blacklist.length) {
+      const blAccount = new Set<string>();
+      const blCampaign = new Set<string>();
+      const blAd = new Set<string>();
+      const blKeyword: string[] = [];
+      for (const b of blacklist) {
+        const id = String(b.target_id);
+        if (b.scope === "meta_account") {
+          blAccount.add(id);
+          blAccount.add(id.replace(/^act_/, ""));
+          blAccount.add(`act_${id.replace(/^act_/, "")}`);
+        } else if (b.scope === "meta_campaign") blCampaign.add(id);
+        else if (b.scope === "meta_ad") blAd.add(id);
+        else if (b.scope === "keyword") blKeyword.push(id.toLowerCase());
+      }
+      r = r.filter((x: any) => {
+        if (x.meta_account_id && (blAccount.has(x.meta_account_id) || blAccount.has(String(x.meta_account_id).replace(/^act_/, "")))) return false;
+        if (x.meta_campaign_id && blCampaign.has(x.meta_campaign_id)) return false;
+        if (x.meta_ad_id && blAd.has(x.meta_ad_id)) return false;
+        if (blKeyword.length) {
+          const name = (x.meta_ad_name ?? x.custom_title ?? "").toString().toLowerCase();
+          if (blKeyword.some(k => name.includes(k))) return false;
+        }
+        return true;
+      });
+    }
     if (search) {
       const q = search.toLowerCase();
       r = r.filter(x =>
@@ -276,7 +306,7 @@ export default function ReferenzWerbeanzeigenPage() {
       }
     });
     return sorted;
-  }, [rows, search, activeFilters, sortBy, adFilters, brancheFilter, kundeFilter, unternehmenFilter, werbekontoFilter, formatFilter, kunden]);
+  }, [rows, blacklist, search, activeFilters, sortBy, adFilters, brancheFilter, kundeFilter, unternehmenFilter, werbekontoFilter, formatFilter, kunden]);
 
   const items: AnyItem[] = useMemo(
     () => filtered.map(a => ({
