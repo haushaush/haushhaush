@@ -419,6 +419,20 @@ export default function KundenDetail() {
               <span className={`h-2.5 w-2.5 rounded-full ${AMPEL_DOT[client.ampelstatus] || 'bg-muted'}`} aria-hidden />
               <span className="text-xs text-muted-foreground">{client.ampelstatus}</span>
             </span>
+            <button
+              type="button"
+              onClick={handleResyncClose}
+              disabled={closeSyncing}
+              title="Klick: Close-Sync manuell auslösen"
+              className={`inline-flex items-center gap-1.5 text-[11px] rounded-full px-2.5 py-1 border transition-colors disabled:opacity-60 ${
+                syncFreshness.color === 'success' ? 'bg-success/10 border-success/30 text-success hover:bg-success/20' :
+                syncFreshness.color === 'warning' ? 'bg-warning/10 border-warning/30 text-warning hover:bg-warning/20' :
+                'bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20'
+              }`}
+            >
+              {closeSyncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              <span>{syncFreshness.label}</span>
+            </button>
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             {brancheLabel && <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />{brancheLabel}</span>}
