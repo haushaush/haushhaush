@@ -511,6 +511,54 @@ export function CloseSyncCard() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Confirm sync-all */}
+        <AlertDialog open={confirmAllOpen} onOpenChange={setConfirmAllOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Alle verlinkten Kunden neu syncen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Es werden {linked.length} Kunden synct — das kann ca. {Math.max(1, Math.round((linked.length * 2.5) / 60))} Minuten dauern.
+                Sicher?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+              <AlertDialogAction onClick={runSyncAllLinked}>Starten</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Summary */}
+        <Dialog open={summaryOpen} onOpenChange={setSummaryOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Sync abgeschlossen{summary.cancelled ? ' (abgebrochen)' : ''}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Erfolgreich: <span className="tabular-nums font-medium">{summary.ok}</span></div>
+              <div className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-500" /> Mit Warnung: <span className="tabular-nums font-medium">{summary.warn}</span></div>
+              <div className="flex items-center gap-2"><XCircle className="h-4 w-4 text-destructive" /> Fehlgeschlagen: <span className="tabular-nums font-medium">{summary.err}</span></div>
+              {summary.failedIds.length > 0 && (
+                <div className="mt-3 max-h-40 overflow-y-auto rounded border border-border bg-muted/20 p-2 text-xs">
+                  {summary.failedIds.slice(0, 50).map((id) => {
+                    const name = linked.find((l) => l.client_id === id)?.client?.name ?? id;
+                    return <div key={id} className="truncate">{name}</div>;
+                  })}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              {summary.failedIds.length > 0 && (
+                <Button variant="outline" size="sm" onClick={retryFailed} disabled={syncing || syncAllRunning}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  Erneut versuchen (max {MAX_BATCH})
+                </Button>
+              )}
+              <Button size="sm" onClick={() => setSummaryOpen(false)}>Schließen</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
