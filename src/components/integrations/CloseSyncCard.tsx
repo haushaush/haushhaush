@@ -171,6 +171,94 @@ export function CloseSyncCard() {
     }
   };
 
+  const chunk = <T,>(arr: T[], n: number): T[][] => {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+    return out;
+  };
+
+  const startSyncAllLinked = () => {
+    if (linked.length === 0) { toast.info('Keine verlinkten Kunden.'); return; }
+    setConfirmAllOpen(true);
+  };
+
+  const runSyncAllLinked = async () => {
+    setConfirmAllOpen(false);
+    const ids = linked.map((l) => l.client_id);
+    const nameMap = new Map(linked.map((l) => [l.client_id, l.client?.name ?? l.client_id]));
+    const total = ids.length;
+    const chunks = chunk(ids, MAX_BATCH);
+
+    cancelRef.current = false;
+    setSyncAllRunning(true);
+    setSyncAllProgress({ current: 0, total });
+    setRecent([]);
+    let ok = 0, warn = 0, err = 0;
+    const failedIds: string[] = [];
+    let consecutiveBatchFailures = 0;
+    let processed = 0;
+
+    for (let i = 0; i < chunks.length; i++) {
+      if (cancelRef.current) break;
+      const batch = chunks[i];
+      try {
+        const { data, error } = await supabase.functions.invoke('sync-close-batch', { body: { client_ids: batch } });
+        if (error) throw error;
+
+        const successArr: any[] = data?.success ?? [];
+        const failedArr: Array<{ client_id: string; error?: string }> = data?.failed ?? [];
+        consecutiveBatchFailures = 0;
+
+        const newRecent: typeof recent = [];
+        for (const s of successArr) {
+          const id = typeof s === 'string' ? s : s?.client_id;
+          if (!id) continue;
+          ok++;
+          newRecent.push({ name: nameMap.get(id) ?? id, status: 'ok' });
+        }
+        for (const f of failedArr) {
+          const isWarn = /needs_review|ambiguous|no_lead|no_link/i.test(f.error ?? '');
+          if (isWarn) warn++; else { err++; failedIds.push(f.client_id); }
+          newRecent.push({ name: nameMap.get(f.client_id) ?? f.client_id, status: isWarn ? 'warn' : 'err', note: f.error });
+        }
+        setRecent((prev) => [...newRecent.reverse(), ...prev].slice(0, 5));
+      } catch (e: any) {
+        consecutiveBatchFailures++;
+        err += batch.length;
+        for (const id of batch) failedIds.push(id);
+        setRecent((prev) => [
+          { name: `Batch ${i + 1}`, status: 'err', note: e.message },
+          ...prev,
+        ].slice(0, 5));
+        if (consecutiveBatchFailures >= 3) {
+          toast.error('3 Batches in Folge fehlgeschlagen — Stop.');
+          break;
+        }
+      }
+      processed += batch.length;
+      setSyncAllProgress({ current: Math.min(processed, total), total });
+    }
+
+    setSummary({ ok, warn, err, failedIds, cancelled: cancelRef.current });
+    setSummaryOpen(true);
+    setSyncAllRunning(false);
+    await load();
+  };
+
+  const cancelSyncAll = () => {
+    cancelRef.current = true;
+    toast.info('Wird nach aktuellem Batch beendet…');
+  };
+
+  const retryFailed = async () => {
+    setSummaryOpen(false);
+    const ids = summary.failedIds.slice(0, MAX_BATCH);
+    if (ids.length === 0) return;
+    await runBatchSync(ids);
+  };
+
+
+
   const syncOne = async (clientId: string) => {
     setSyncing(true);
     const tId = toast.loading('Sync läuft…');
