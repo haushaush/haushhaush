@@ -49,6 +49,8 @@ export function CloseSyncCard() {
   const [syncAllProgress, setSyncAllProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
   const [recent, setRecent] = useState<Array<{ name: string; status: 'ok' | 'warn' | 'err'; note?: string }>>([]);
   const cancelRef = useRef(false);
+  const matchCancelRef = useRef(false);
+  const [matchProgress, setMatchProgress] = useState<{ iterations: number; totalMatched: number; remaining: number; unmatched: number; ambiguous: number } | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summary, setSummary] = useState<{ ok: number; warn: number; err: number; failedIds: string[]; cancelled: boolean }>({
     ok: 0, warn: 0, err: 0, failedIds: [], cancelled: false,
