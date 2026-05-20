@@ -160,8 +160,14 @@ Deno.serve(async (req) => {
     // 4. ACTIVITIES — last 180 days, max 200
     try {
       const since = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
-      const data = await closeFetch(`/activity/?lead_id=${leadId}&date_created__gte=${encodeURIComponent(since)}&_limit=200`);
-      const items: any[] = data.data || [];
+      const items: any[] = [];
+      for (let skip = 0; skip < 200; skip += 100) {
+        const data = await closeFetch(`/activity/?lead_id=${leadId}&date_created__gte=${encodeURIComponent(since)}&_limit=100&_skip=${skip}`);
+        const page: any[] = data.data || [];
+        items.push(...page);
+        if (page.length < 100) break;
+        await sleep(300);
+      }
       await supabase.from("close_activities").delete().eq("close_lead_id", leadId);
       if (items.length) {
         const rows = items.slice(0, 200).map((a) => {
