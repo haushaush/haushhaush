@@ -227,7 +227,7 @@ export function CloseSyncCard() {
         err += batch.length;
         for (const id of batch) failedIds.push(id);
         setRecent((prev) => [
-          { name: `Batch ${i + 1}`, status: 'err', note: e.message },
+          { name: `Batch ${i + 1}`, status: 'err' as const, note: e.message },
           ...prev,
         ].slice(0, 5));
         if (consecutiveBatchFailures >= 3) {
