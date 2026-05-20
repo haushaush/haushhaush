@@ -24,7 +24,7 @@ interface CloseDeal {
   value_currency: string | null;
   date_created: string | null;
   date_updated: string | null;
-  raw: any;
+  note?: string | null;
 }
 
 interface OppStatus {
@@ -111,7 +111,7 @@ export default function CloseDeals() {
           confidence: o.confidence ?? null,
           date_won: o.date_won || null,
           date_lost: o.date_lost || null,
-          raw: o,
+          
           date_created: o.date_created || null,
           date_updated: o.date_updated || null,
           synced_at: new Date().toISOString(),
@@ -247,7 +247,7 @@ export default function CloseDeals() {
                   onClick={() => setSelectedId(deal.id)}
                   className="border-t border-border hover:bg-muted/40 cursor-pointer transition-colors"
                 >
-                  <td className="px-4 py-3 font-medium">{deal.raw?.note?.split('\n')[0]?.slice(0, 60) || deal.lead_name || 'Deal'}</td>
+                  <td className="px-4 py-3 font-medium">{deal.note?.split('\n')[0]?.slice(0, 60) || deal.lead_name || 'Deal'}</td>
                   <td className="px-4 py-3">
                     <Badge className={STATUS_TYPE_COLORS[deal.status_type || ''] || 'bg-muted text-muted-foreground'}>
                       {deal.status_label || deal.status_type || '—'}
