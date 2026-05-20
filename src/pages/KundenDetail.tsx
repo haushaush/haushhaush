@@ -311,6 +311,24 @@ export default function KundenDetail() {
     }
   };
 
+  const handleResetSingleClose = async () => {
+    if (!closeLink?.close_lead_id) return;
+    if (!confirm(`Close-Daten für ${client?.name ?? 'diesen Kunden'} löschen und neu holen?`)) return;
+    setCloseSyncing(true);
+    const tId = toast.loading('Reset & Re-Sync läuft…');
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-close-data-single', { body: { client_id: id } });
+      if (error) throw error;
+      const d = data?.deleted_counts ?? {};
+      toast.success(`Reset OK · ${d.close_activities ?? 0} Activities, ${d.close_opportunities ?? 0} Opps neu geladen`, { id: tId });
+      await load();
+    } catch (e: any) {
+      toast.error(`Reset fehlgeschlagen: ${e.message}`, { id: tId });
+    } finally {
+      setCloseSyncing(false);
+    }
+  };
+
   const handleUnlinkClose = async () => {
     if (!closeLink?.client_id) return;
     if (!confirm('Verknüpfung zu Close.com wirklich lösen?')) return;
