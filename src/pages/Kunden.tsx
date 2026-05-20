@@ -294,8 +294,16 @@ export default function Kunden() {
                   <RefreshCw className="h-3.5 w-3.5 mr-2" />
                   Alle verlinkten neu syncen
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate('/einstellungen?tab=verknuepfungen#close-sync-card')}
+                  disabled={closeSyncing}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <AlertTriangle className="h-3.5 w-3.5 mr-2" />
+                  Daten zurücksetzen &amp; neu holen
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/einstellungen?tab=verknuepfungen#close')}>
+                <DropdownMenuItem onClick={() => navigate('/einstellungen?tab=verknuepfungen#close-sync-card')}>
                   <SettingsIcon className="h-3.5 w-3.5 mr-2" />
                   Sync-Einstellungen öffnen
                 </DropdownMenuItem>
