@@ -416,8 +416,19 @@ export function CloseSyncCard() {
                   Alle nicht-verlinkten matchen
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Sucht Close-Leads für Kunden ohne Verknüpfung. Schnell.</TooltipContent>
+              <TooltipContent>Sucht Close-Leads für Kunden ohne Verknüpfung. Läuft automatisch in Schleife bis alle durch sind.</TooltipContent>
             </Tooltip>
+
+            {matching && (
+              <Button
+                onClick={() => { matchCancelRef.current = true; }}
+                size="sm"
+                variant="ghost"
+              >
+                <X className="h-3.5 w-3.5 mr-1.5" />
+                Abbrechen
+              </Button>
+            )}
 
             <Tooltip>
               <TooltipTrigger asChild>
