@@ -35,8 +35,8 @@ interface SlackListItem {
   synced_at: string;
 }
 
-function cellToString(v: unknown, col?: SlackColumn): string {
-  return renderCellPlain(v, col);
+function cellToString(v: unknown, col?: SlackColumn, listId?: string | null): string {
+  return renderCellPlain(v, col, listId);
 }
 
 export function SlackListsTab() {
