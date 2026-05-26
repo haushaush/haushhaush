@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Bell, Palette, Users, Hash, X, Check, Search, Loader2, Upload, Building2, ImageIcon, Trash2, AlertTriangle, UserPlus, ChevronDown, ChevronRight, GitMerge, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
@@ -1210,6 +1211,49 @@ export default function Einstellungen() {
         {/* ═══════ SICHERHEIT TAB ═══════ */}
         <TabsContent value="sicherheit" className="mt-4 space-y-6">
           <SecuritySettingsTab />
+        </TabsContent>
+
+        {/* ═══════ SLACK TAB ═══════ */}
+        <TabsContent value="slack" className="mt-6 space-y-6">
+          <Card className="border-border bg-card">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-primary" />
+                Slack-Integration
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Verbinde Slack-Channels und richte Event-Notifications ein.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Hier wirst du bald Slack-Channels verbinden, Event-Notifications konfigurieren und Test-Nachrichten senden können.
+              </p>
+              <div className="flex items-center gap-3">
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button disabled size="sm">
+                        <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                        Slack verbinden
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Demnächst verfügbar</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/40 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Aktuell läuft Slack-Forwarding über bestehende Workflows (n8n / Edge Functions).
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Existing webhook config moved here for context */}
+          <SlackWebhookConfig />
         </TabsContent>
       </Tabs>
 
