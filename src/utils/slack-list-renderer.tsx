@@ -1,11 +1,57 @@
 import { ReactNode } from 'react';
 
+export interface SlackChoice {
+  id: string;
+  label?: string;
+  name?: string;
+  value?: string;
+  color?: string;
+}
+
 export interface SlackColumn {
   id: string;
   name: string;
   type?: string;
-  options?: Array<{ value: string; color?: string; label?: string }>;
+  options?: { choices?: SlackChoice[] } | SlackChoice[] | any;
 }
+
+function getChoices(col?: SlackColumn): SlackChoice[] {
+  if (!col?.options) return [];
+  const o: any = col.options;
+  if (Array.isArray(o)) return o;
+  if (Array.isArray(o.choices)) return o.choices;
+  if (Array.isArray(o.values)) return o.values;
+  return [];
+}
+
+function resolveOption(optId: string, choices: SlackChoice[]): SlackChoice | undefined {
+  if (!optId) return undefined;
+  return choices.find((c) => c.id === optId || c.value === optId);
+}
+
+function extractOptionIds(cell: any): string[] {
+  if (cell == null) return [];
+  // Cell can be object with .select, .value (string or array), or primitive string
+  if (typeof cell === 'string') {
+    return /^Opt[A-Z0-9]+$/.test(cell) ? [cell] : [];
+  }
+  if (Array.isArray(cell)) {
+    return cell.filter((v) => typeof v === 'string' && /^Opt[A-Z0-9]+$/.test(v));
+  }
+  if (typeof cell === 'object') {
+    if (Array.isArray(cell.select)) {
+      return cell.select.filter((v: unknown) => typeof v === 'string');
+    }
+    if (Array.isArray(cell.value)) {
+      return cell.value.filter((v: unknown) => typeof v === 'string');
+    }
+    if (typeof cell.value === 'string' && /^Opt[A-Z0-9]+$/.test(cell.value)) {
+      return [cell.value];
+    }
+  }
+  return [];
+}
+
 
 /**
  * Parse a Slack rich_text block tree into plain text.
