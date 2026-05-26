@@ -12,6 +12,8 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+import { renderCellPlain, renderCellNode, getCellPillClass, normalizeColumns, type SlackColumn } from '@/utils/slack-list-renderer';
+
 interface SlackList {
   id: string;
   slack_list_id: string;
@@ -31,32 +33,8 @@ interface SlackListItem {
   synced_at: string;
 }
 
-interface ColumnDef {
-  id: string;
-  name: string;
-}
-
-function normalizeColumns(raw: any): ColumnDef[] {
-  if (!raw) return [];
-  if (Array.isArray(raw)) {
-    return raw.map((c: any) => ({
-      id: c.id || c.column_id || c.key,
-      name: c.name || c.label || c.title || c.id || 'Spalte',
-    })).filter((c) => c.id);
-  }
-  if (typeof raw === 'object') {
-    return Object.entries(raw).map(([id, v]: [string, any]) => ({
-      id,
-      name: typeof v === 'string' ? v : (v?.name || v?.label || id),
-    }));
-  }
-  return [];
-}
-
 function cellToString(v: unknown): string {
-  if (v == null) return '';
-  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
-  return JSON.stringify(v);
+  return renderCellPlain(v);
 }
 
 export function SlackListsTab() {
