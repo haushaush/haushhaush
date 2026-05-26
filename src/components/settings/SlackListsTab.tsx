@@ -468,9 +468,19 @@ export function SlackListsTab() {
             </table>
           </div>
         </Card>
+
+        <SlackAliasEditor
+          open={aliasEditorOpen}
+          onOpenChange={setAliasEditorOpen}
+          slackListId={activeList.slack_list_id}
+          columns={columns}
+          items={items}
+          onSaved={() => setAliasVersion((v) => v + 1)}
+        />
       </div>
     );
   }
+
 
   // ====== List Overview ======
   return (
