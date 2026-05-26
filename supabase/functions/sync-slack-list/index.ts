@@ -150,18 +150,16 @@ serve(async (req) => {
       if (!cursor || cursor === "" || items.length >= 1000 || pageCount > 20) break;
     }
 
-    // 3. Upsert slack_lists row
+    // 3. Upsert slack_lists row — preserve existing columns if schema fetch failed
+    const upsertRow: Record<string, unknown> = {
+      slack_list_id: list_id,
+      last_synced_at: new Date().toISOString(),
+    };
+    if (listName) upsertRow.list_name = listName;
+    if (columns.length > 0) upsertRow.columns = columns;
     await supabase
       .from("slack_lists")
-      .upsert(
-        {
-          slack_list_id: list_id,
-          list_name: listName,
-          columns,
-          last_synced_at: new Date().toISOString(),
-        },
-        { onConflict: "slack_list_id" },
-      );
+      .upsert(upsertRow, { onConflict: "slack_list_id" });
 
     // 4. Map items and upsert
     const rows = items.map((it) => {
