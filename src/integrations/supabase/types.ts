@@ -4476,6 +4476,50 @@ export type Database = {
         }
         Relationships: []
       }
+      slack_list_aliases: {
+        Row: {
+          alias_type: string
+          created_at: string
+          display_color: string | null
+          display_name: string
+          id: string
+          parent_column_id: string | null
+          slack_id: string
+          slack_list_id: string
+          updated_at: string
+        }
+        Insert: {
+          alias_type: string
+          created_at?: string
+          display_color?: string | null
+          display_name: string
+          id?: string
+          parent_column_id?: string | null
+          slack_id: string
+          slack_list_id: string
+          updated_at?: string
+        }
+        Update: {
+          alias_type?: string
+          created_at?: string
+          display_color?: string | null
+          display_name?: string
+          id?: string
+          parent_column_id?: string | null
+          slack_id?: string
+          slack_list_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_list_aliases_slack_list_id_fkey"
+            columns: ["slack_list_id"]
+            isOneToOne: false
+            referencedRelation: "slack_lists"
+            referencedColumns: ["slack_list_id"]
+          },
+        ]
+      }
       slack_list_items: {
         Row: {
           date_created: number | null

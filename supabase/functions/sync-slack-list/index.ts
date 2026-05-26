@@ -353,6 +353,45 @@ serve(async (req) => {
       }
     }
 
+    // 4b. Auto-populate slack_list_aliases for columns/options where Slack
+    //     gave us a real name. Uses upsert so user-set values are not lost
+    //     across syncs (PK conflict updates display_name only when Slack
+    //     still provides a meaningful, non-ID label).
+    const aliasRows: any[] = [];
+    for (const col of columns) {
+      if (col.name && col.name !== col.id && !/^Col[A-Z0-9]+$/.test(col.name)) {
+        aliasRows.push({
+          slack_list_id: list_id,
+          alias_type: "column",
+          slack_id: col.id,
+          parent_column_id: null,
+          display_name: col.name,
+        });
+      }
+      const choices: any[] = Array.isArray((col as any).options?.choices)
+        ? (col as any).options.choices
+        : [];
+      for (const ch of choices) {
+        if (!ch?.id || !ch?.label || ch.label === ch.id) continue;
+        aliasRows.push({
+          slack_list_id: list_id,
+          alias_type: "option",
+          slack_id: ch.id,
+          parent_column_id: col.id,
+          display_name: ch.label,
+          display_color: ch.color || "gray",
+        });
+      }
+    }
+    if (aliasRows.length > 0) {
+      const { error: aliasErr } = await supabase
+        .from("slack_list_aliases")
+        .upsert(aliasRows, { onConflict: "slack_list_id,slack_id,parent_column_id" });
+      if (aliasErr) console.warn("[sync-slack-list] alias upsert failed", aliasErr);
+    }
+
+
+
     const colCount = Array.isArray(columns)
       ? columns.length
       : columns && typeof columns === "object"

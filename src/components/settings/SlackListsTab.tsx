@@ -12,7 +12,9 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-import { renderCellPlain, renderCellNode, getCellPills, normalizeColumns, type SlackColumn } from '@/utils/slack-list-renderer';
+import { renderCellPlain, renderCellNode, getCellPills, normalizeColumns, loadAliases, subscribeAliases, getColumnDisplay, type SlackColumn } from '@/utils/slack-list-renderer';
+import { SlackAliasEditor } from './SlackAliasEditor';
+import { Settings2 } from 'lucide-react';
 
 interface SlackList {
   id: string;
@@ -33,8 +35,8 @@ interface SlackListItem {
   synced_at: string;
 }
 
-function cellToString(v: unknown, col?: SlackColumn): string {
-  return renderCellPlain(v, col);
+function cellToString(v: unknown, col?: SlackColumn, listId?: string | null): string {
+  return renderCellPlain(v, col, listId);
 }
 
 export function SlackListsTab() {
@@ -54,6 +56,8 @@ export function SlackListsTab() {
   const [errorCell, setErrorCell] = useState<string | null>(null);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [aliasEditorOpen, setAliasEditorOpen] = useState(false);
+  const [aliasVersion, setAliasVersion] = useState(0);
 
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
   const columns = useMemo<SlackColumn[]>(() => {
@@ -107,7 +111,13 @@ export function SlackListsTab() {
   };
 
   useEffect(() => { loadLists(); }, []);
-  useEffect(() => { if (activeListId) loadItems(activeListId); }, [activeListId]);
+  useEffect(() => {
+    if (activeListId) {
+      loadItems(activeListId);
+      loadAliases(activeListId).then(() => setAliasVersion((v) => v + 1));
+    }
+  }, [activeListId]);
+  useEffect(() => subscribeAliases(() => setAliasVersion((v) => v + 1)), []);
 
   const addList = async () => {
     const id = newListId.trim();
@@ -225,19 +235,19 @@ export function SlackListsTab() {
     if (search) {
       const q = search.toLowerCase();
       r = r.filter((it) =>
-        columns.some((c) => cellToString(it.fields?.[c.id], c).toLowerCase().includes(q)),
+        columns.some((c) => cellToString(it.fields?.[c.id], c, activeListId).toLowerCase().includes(q)),
       );
     }
     if (sortCol) {
       const sortColDef = columns.find((c) => c.id === sortCol);
       r = [...r].sort((a, b) => {
-        const av = cellToString(a.fields?.[sortCol], sortColDef);
-        const bv = cellToString(b.fields?.[sortCol], sortColDef);
+        const av = cellToString(a.fields?.[sortCol], sortColDef, activeListId);
+        const bv = cellToString(b.fields?.[sortCol], sortColDef, activeListId);
         return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       });
     }
     return r;
-  }, [items, search, sortCol, sortDir, columns]);
+  }, [items, search, sortCol, sortDir, columns, activeListId, aliasVersion]);
 
   const toggleSort = (colId: string) => {
     if (sortCol === colId) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -300,17 +310,27 @@ export function SlackListsTab() {
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => syncList(activeList.slack_list_id)}
-            disabled={syncingId === activeList.slack_list_id}
-          >
-            <RefreshCw
-              className={cn('h-3.5 w-3.5 mr-1.5', syncingId === activeList.slack_list_id && 'animate-spin')}
-            />
-            Aus Slack syncen
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAliasEditorOpen(true)}
+            >
+              <Settings2 className="h-3.5 w-3.5 mr-1.5" />
+              Anzeige anpassen
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => syncList(activeList.slack_list_id)}
+              disabled={syncingId === activeList.slack_list_id}
+            >
+              <RefreshCw
+                className={cn('h-3.5 w-3.5 mr-1.5', syncingId === activeList.slack_list_id && 'animate-spin')}
+              />
+              Aus Slack syncen
+            </Button>
+          </div>
         </div>
 
         <div className="relative">
@@ -337,7 +357,7 @@ export function SlackListsTab() {
                         className="px-4 py-3 text-left cursor-pointer hover:text-primary select-none font-medium"
                       >
                         <span className="inline-flex items-center gap-1.5">
-                          {col.name}
+                          {getColumnDisplay(col.id, activeListId, col.name || col.id)}
                           {active ? (
                             sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                           ) : (
@@ -402,7 +422,7 @@ export function SlackListsTab() {
                                 if (col.type === 'checkbox' || typeof val === 'boolean') {
                                   return renderCellNode(val, col as SlackColumn);
                                 }
-                                const pills = getCellPills(val, col as SlackColumn);
+                                const pills = getCellPills(val, col as SlackColumn, activeListId);
                                 if (pills) {
                                   if (pills.length === 0) {
                                     return <span className="text-muted-foreground/50">↩</span>;
@@ -430,7 +450,7 @@ export function SlackListsTab() {
                                     </div>
                                   );
                                 }
-                                const plain = renderCellPlain(val, col as SlackColumn);
+                                const plain = renderCellPlain(val, col as SlackColumn, activeListId);
                                 if (!plain) {
                                   return <span className="text-muted-foreground/50">↩</span>;
                                 }
@@ -448,9 +468,19 @@ export function SlackListsTab() {
             </table>
           </div>
         </Card>
+
+        <SlackAliasEditor
+          open={aliasEditorOpen}
+          onOpenChange={setAliasEditorOpen}
+          slackListId={activeList.slack_list_id}
+          columns={columns}
+          items={items}
+          onSaved={() => setAliasVersion((v) => v + 1)}
+        />
       </div>
     );
   }
+
 
   // ====== List Overview ======
   return (
