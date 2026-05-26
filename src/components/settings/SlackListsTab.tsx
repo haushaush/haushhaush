@@ -331,11 +331,6 @@ export function SlackListsTab() {
                 )}
                 {!loadingItems && filteredItems.map((it) => (
                   <tr key={it.slack_item_id} className="border-t border-border hover:bg-muted/20">
-                    {columns.length === 0 && (
-                      <td className="px-3 py-2 font-mono text-xs">
-                        {JSON.stringify(it.fields)}
-                      </td>
-                    )}
                     {columns.map((col) => {
                       const cellKey = `${it.slack_item_id}::${col.id}`;
                       const isEditing = editing?.itemId === it.slack_item_id && editing?.colId === col.id;
