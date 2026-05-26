@@ -243,6 +243,41 @@ export function SlackListsTab() {
     else { setSortCol(colId); setSortDir('asc'); }
   };
 
+  const renameOptionLabel = async (colId: string, optId: string, currentLabel: string) => {
+    if (!activeList) return;
+    const next = window.prompt(
+      `Slack stellt das Label dieser Option nicht über die Bot-API bereit.\nVergib hier einen lesbaren Namen für "${optId}":`,
+      currentLabel === optId ? '' : currentLabel,
+    );
+    if (next == null) return;
+    const trimmed = next.trim();
+    if (!trimmed) return;
+
+    const cols: any[] = Array.isArray(activeList.columns) ? [...activeList.columns] : [];
+    const idx = cols.findIndex((c) => c?.id === colId);
+    if (idx === -1) return;
+    const col = { ...cols[idx] };
+    const opts = { ...(col.options || {}) };
+    const choices: any[] = Array.isArray(opts.choices) ? [...opts.choices] : [];
+    const cIdx = choices.findIndex((c) => c?.id === optId);
+    if (cIdx === -1) choices.push({ id: optId, label: trimmed, color: 'gray' });
+    else choices[cIdx] = { ...choices[cIdx], label: trimmed };
+    opts.choices = choices;
+    col.options = opts;
+    cols[idx] = col;
+
+    const { error } = await supabase
+      .from('slack_lists')
+      .update({ columns: cols })
+      .eq('slack_list_id', activeList.slack_list_id);
+    if (error) {
+      toast.error('Umbenennen fehlgeschlagen: ' + error.message);
+      return;
+    }
+    toast.success(`Option-Label gespeichert: ${trimmed}`);
+    await loadLists();
+  };
+
   // ====== Detail View ======
   if (activeList) {
     return (
