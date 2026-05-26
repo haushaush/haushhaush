@@ -79,6 +79,17 @@ serve(async (req) => {
     let columns: any[] = [];
     let listName: string | null = null;
     let rawSchemaSrc: any = null;
+    const debugProbes: any[] = [];
+
+    if (debug) {
+      const probeItems = await slackPost("slackLists.items.list", token, { list_id, limit: 2 });
+      debugProbes.push({ method: "items.list.sample_item", sample: probeItems.items?.[0] || null, env_keys: Object.keys(probeItems) });
+      for (const m of ["slackLists.list","slackLists.get","slackLists.schema","slackLists.fields.list","slackLists.items.info","slackLists.columns","slackLists.metadata"]) {
+        const r = await slackPost(m, token, { list_id, id: probeItems.items?.[0]?.id });
+        debugProbes.push({ method: m, ok: r.ok, error: r.error, keys: r.ok ? Object.keys(r) : null });
+      }
+    }
+
 
     const tryMethods = [
       "slackLists.info",
