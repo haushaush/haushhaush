@@ -183,7 +183,7 @@ export default function KundenDetail() {
     };
 
     const adsQuery = cli
-      ? supabase.from('referenz_meta_ads').select('*').or(buildMetaConditions()).order('created_at', { ascending: false })
+      ? supabase.from('referenz_meta_ads').select('*').or(buildMetaConditions()).eq('is_active', true).order('imported_at', { ascending: false })
       : Promise.resolve({ data: [] } as any);
     const campaignsQuery = cli
       ? supabase.from('referenz_meta_campaigns').select('*').or(buildMetaConditions()).order('campaign_period_start', { ascending: false })
