@@ -4476,6 +4476,71 @@ export type Database = {
         }
         Relationships: []
       }
+      slack_list_items: {
+        Row: {
+          date_created: number | null
+          fields: Json | null
+          id: string
+          slack_item_id: string
+          slack_list_id: string
+          synced_at: string
+        }
+        Insert: {
+          date_created?: number | null
+          fields?: Json | null
+          id?: string
+          slack_item_id: string
+          slack_list_id: string
+          synced_at?: string
+        }
+        Update: {
+          date_created?: number | null
+          fields?: Json | null
+          id?: string
+          slack_item_id?: string
+          slack_list_id?: string
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_list_items_slack_list_id_fkey"
+            columns: ["slack_list_id"]
+            isOneToOne: false
+            referencedRelation: "slack_lists"
+            referencedColumns: ["slack_list_id"]
+          },
+        ]
+      }
+      slack_lists: {
+        Row: {
+          channel_id: string | null
+          columns: Json | null
+          created_at: string
+          id: string
+          last_synced_at: string | null
+          list_name: string | null
+          slack_list_id: string
+        }
+        Insert: {
+          channel_id?: string | null
+          columns?: Json | null
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          list_name?: string | null
+          slack_list_id: string
+        }
+        Update: {
+          channel_id?: string | null
+          columns?: Json | null
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          list_name?: string | null
+          slack_list_id?: string
+        }
+        Relationships: []
+      }
       support_tickets: {
         Row: {
           created_at: string | null

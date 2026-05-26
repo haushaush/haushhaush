@@ -29,6 +29,7 @@ import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
 import { CloseMatchingCard } from '@/components/integrations/CloseMatchingCard';
 import { CloseSyncCard } from '@/components/integrations/CloseSyncCard';
 import { SlackChannelsTab } from '@/components/settings/SlackChannelsTab';
+import { SlackListsTab } from '@/components/settings/SlackListsTab';
 
 
 interface EmployeeRequest {
@@ -1218,6 +1219,7 @@ export default function Einstellungen() {
         {/* ═══════ SLACK TAB ═══════ */}
         <TabsContent value="slack" className="mt-6 space-y-6">
           <SlackChannelsTab />
+          <SlackListsTab />
           <SlackWebhookConfig />
         </TabsContent>
 
