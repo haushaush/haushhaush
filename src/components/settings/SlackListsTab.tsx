@@ -363,7 +363,26 @@ export function SlackListsTab() {
                               onClick={() => startEdit(it.slack_item_id, col.id, val)}
                               className="cursor-text min-h-[28px] flex items-center gap-2 hover:bg-accent/50 rounded px-1 -mx-1"
                             >
-                              <span className="truncate max-w-[300px]">{cellToString(val) || <span className="text-muted-foreground italic">–</span>}</span>
+                              {(() => {
+                                const plain = renderCellPlain(val);
+                                if (col.type === 'checkbox' || typeof val === 'boolean') {
+                                  return renderCellNode(val, col as SlackColumn);
+                                }
+                                if (!plain) {
+                                  return <span className="text-muted-foreground/50">↩</span>;
+                                }
+                                const pillClass = col.type === 'select'
+                                  ? getCellPillClass(plain, (col as SlackColumn).options)
+                                  : null;
+                                if (pillClass) {
+                                  return (
+                                    <span className={cn('inline-flex items-center rounded-full border px-3 h-6 text-xs font-medium', pillClass)}>
+                                      {plain}
+                                    </span>
+                                  );
+                                }
+                                return <span className="truncate max-w-[320px] whitespace-pre-wrap">{plain}</span>;
+                              })()}
                               {isSaving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                             </div>
                           )}
