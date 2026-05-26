@@ -74,12 +74,41 @@ serve(async (req) => {
     );
 
     // 1. Fetch list metadata (info) to get columns + name
-    let columns: unknown = null;
+    let columns: any[] = [];
     let listName: string | null = null;
     const info = await slackPost("slackLists.info", token, { list_id });
     if (info.ok) {
-      columns = info.list?.schema || info.list?.columns || null;
+      const rawSchema: any[] =
+        info.list?.schema ||
+        info.list?.columns ||
+        info.list?.fields ||
+        [];
+      columns = (Array.isArray(rawSchema) ? rawSchema : []).map((c: any) => ({
+        id: c.id || c.key || c.column_id,
+        name:
+          c.name ||
+          c.label ||
+          c.title ||
+          c.display_name ||
+          c.key ||
+          c.id,
+        type: c.type || c.column_type || null,
+        options: c.options || c.choices || null,
+        is_primary_column: c.is_primary_column || false,
+      })).filter((c: any) => c.id);
       listName = info.list?.name || info.list?.title || null;
+      console.log("[sync-slack-list] schema parsed", {
+        list_id,
+        list_name: listName,
+        columns_count: columns.length,
+        column_names: columns.map((c) => c.name),
+        raw_first: rawSchema[0] || null,
+      });
+    } else {
+      console.log("[sync-slack-list] slackLists.info failed", {
+        list_id,
+        error: info.error,
+      });
     }
 
     // 2. Paginate items
@@ -121,18 +150,16 @@ serve(async (req) => {
       if (!cursor || cursor === "" || items.length >= 1000 || pageCount > 20) break;
     }
 
-    // 3. Upsert slack_lists row
+    // 3. Upsert slack_lists row — preserve existing columns if schema fetch failed
+    const upsertRow: Record<string, unknown> = {
+      slack_list_id: list_id,
+      last_synced_at: new Date().toISOString(),
+    };
+    if (listName) upsertRow.list_name = listName;
+    if (columns.length > 0) upsertRow.columns = columns;
     await supabase
       .from("slack_lists")
-      .upsert(
-        {
-          slack_list_id: list_id,
-          list_name: listName,
-          columns,
-          last_synced_at: new Date().toISOString(),
-        },
-        { onConflict: "slack_list_id" },
-      );
+      .upsert(upsertRow, { onConflict: "slack_list_id" });
 
     // 4. Map items and upsert
     const rows = items.map((it) => {
