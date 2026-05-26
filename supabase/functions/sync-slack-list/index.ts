@@ -74,12 +74,41 @@ serve(async (req) => {
     );
 
     // 1. Fetch list metadata (info) to get columns + name
-    let columns: unknown = null;
+    let columns: any[] = [];
     let listName: string | null = null;
     const info = await slackPost("slackLists.info", token, { list_id });
     if (info.ok) {
-      columns = info.list?.schema || info.list?.columns || null;
+      const rawSchema: any[] =
+        info.list?.schema ||
+        info.list?.columns ||
+        info.list?.fields ||
+        [];
+      columns = (Array.isArray(rawSchema) ? rawSchema : []).map((c: any) => ({
+        id: c.id || c.key || c.column_id,
+        name:
+          c.name ||
+          c.label ||
+          c.title ||
+          c.display_name ||
+          c.key ||
+          c.id,
+        type: c.type || c.column_type || null,
+        options: c.options || c.choices || null,
+        is_primary_column: c.is_primary_column || false,
+      })).filter((c: any) => c.id);
       listName = info.list?.name || info.list?.title || null;
+      console.log("[sync-slack-list] schema parsed", {
+        list_id,
+        list_name: listName,
+        columns_count: columns.length,
+        column_names: columns.map((c) => c.name),
+        raw_first: rawSchema[0] || null,
+      });
+    } else {
+      console.log("[sync-slack-list] slackLists.info failed", {
+        list_id,
+        error: info.error,
+      });
     }
 
     // 2. Paginate items
