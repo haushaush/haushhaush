@@ -310,17 +310,27 @@ export function SlackListsTab() {
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => syncList(activeList.slack_list_id)}
-            disabled={syncingId === activeList.slack_list_id}
-          >
-            <RefreshCw
-              className={cn('h-3.5 w-3.5 mr-1.5', syncingId === activeList.slack_list_id && 'animate-spin')}
-            />
-            Aus Slack syncen
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAliasEditorOpen(true)}
+            >
+              <Settings2 className="h-3.5 w-3.5 mr-1.5" />
+              Anzeige anpassen
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => syncList(activeList.slack_list_id)}
+              disabled={syncingId === activeList.slack_list_id}
+            >
+              <RefreshCw
+                className={cn('h-3.5 w-3.5 mr-1.5', syncingId === activeList.slack_list_id && 'animate-spin')}
+              />
+              Aus Slack syncen
+            </Button>
+          </div>
         </div>
 
         <div className="relative">
