@@ -12,6 +12,8 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+import { renderCellPlain, renderCellNode, getCellPillClass, normalizeColumns, type SlackColumn } from '@/utils/slack-list-renderer';
+
 interface SlackList {
   id: string;
   slack_list_id: string;
@@ -31,32 +33,8 @@ interface SlackListItem {
   synced_at: string;
 }
 
-interface ColumnDef {
-  id: string;
-  name: string;
-}
-
-function normalizeColumns(raw: any): ColumnDef[] {
-  if (!raw) return [];
-  if (Array.isArray(raw)) {
-    return raw.map((c: any) => ({
-      id: c.id || c.column_id || c.key,
-      name: c.name || c.label || c.title || c.id || 'Spalte',
-    })).filter((c) => c.id);
-  }
-  if (typeof raw === 'object') {
-    return Object.entries(raw).map(([id, v]: [string, any]) => ({
-      id,
-      name: typeof v === 'string' ? v : (v?.name || v?.label || id),
-    }));
-  }
-  return [];
-}
-
 function cellToString(v: unknown): string {
-  if (v == null) return '';
-  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
-  return JSON.stringify(v);
+  return renderCellPlain(v);
 }
 
 export function SlackListsTab() {
@@ -78,7 +56,14 @@ export function SlackListsTab() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
-  const columns = useMemo(() => normalizeColumns(activeList?.columns), [activeList]);
+  const columns = useMemo<SlackColumn[]>(() => {
+    const fromMeta = normalizeColumns(activeList?.columns);
+    if (fromMeta.length > 0) return fromMeta;
+    // Fallback: derive from first item keys
+    const first = items[0];
+    if (!first?.fields) return [];
+    return Object.keys(first.fields).map((id) => ({ id, name: id }));
+  }, [activeList, items]);
 
   const loadLists = async () => {
     setLoadingLists(true);
@@ -305,25 +290,22 @@ export function SlackListsTab() {
         <Card className="border-border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
+              <thead className="bg-purple-500/10 text-xs uppercase tracking-wider text-purple-200/80">
                 <tr>
-                  {columns.length === 0 && (
-                    <th className="px-3 py-2 text-left">Rohdaten</th>
-                  )}
                   {columns.map((col) => {
                     const active = sortCol === col.id;
                     return (
                       <th
                         key={col.id}
                         onClick={() => toggleSort(col.id)}
-                        className="px-3 py-2 text-left cursor-pointer hover:text-primary select-none"
+                        className="px-4 py-3 text-left cursor-pointer hover:text-primary select-none font-medium"
                       >
-                        <span className="inline-flex items-center gap-1">
+                        <span className="inline-flex items-center gap-1.5">
                           {col.name}
                           {active ? (
                             sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                           ) : (
-                            <ArrowUpDown className="h-3 w-3 opacity-40" />
+                            <ArrowUpDown className="h-3 w-3 opacity-30" />
                           )}
                         </span>
                       </th>
@@ -349,11 +331,6 @@ export function SlackListsTab() {
                 )}
                 {!loadingItems && filteredItems.map((it) => (
                   <tr key={it.slack_item_id} className="border-t border-border hover:bg-muted/20">
-                    {columns.length === 0 && (
-                      <td className="px-3 py-2 font-mono text-xs">
-                        {JSON.stringify(it.fields)}
-                      </td>
-                    )}
                     {columns.map((col) => {
                       const cellKey = `${it.slack_item_id}::${col.id}`;
                       const isEditing = editing?.itemId === it.slack_item_id && editing?.colId === col.id;
@@ -385,7 +362,26 @@ export function SlackListsTab() {
                               onClick={() => startEdit(it.slack_item_id, col.id, val)}
                               className="cursor-text min-h-[28px] flex items-center gap-2 hover:bg-accent/50 rounded px-1 -mx-1"
                             >
-                              <span className="truncate max-w-[300px]">{cellToString(val) || <span className="text-muted-foreground italic">–</span>}</span>
+                              {(() => {
+                                const plain = renderCellPlain(val);
+                                if (col.type === 'checkbox' || typeof val === 'boolean') {
+                                  return renderCellNode(val, col as SlackColumn);
+                                }
+                                if (!plain) {
+                                  return <span className="text-muted-foreground/50">↩</span>;
+                                }
+                                const pillClass = col.type === 'select'
+                                  ? getCellPillClass(plain, (col as SlackColumn).options)
+                                  : null;
+                                if (pillClass) {
+                                  return (
+                                    <span className={cn('inline-flex items-center rounded-full border px-3 h-6 text-xs font-medium', pillClass)}>
+                                      {plain}
+                                    </span>
+                                  );
+                                }
+                                return <span className="truncate max-w-[320px] whitespace-pre-wrap">{plain}</span>;
+                              })()}
                               {isSaving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                             </div>
                           )}
