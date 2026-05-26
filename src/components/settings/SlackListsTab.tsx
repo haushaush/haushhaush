@@ -111,7 +111,13 @@ export function SlackListsTab() {
   };
 
   useEffect(() => { loadLists(); }, []);
-  useEffect(() => { if (activeListId) loadItems(activeListId); }, [activeListId]);
+  useEffect(() => {
+    if (activeListId) {
+      loadItems(activeListId);
+      loadAliases(activeListId).then(() => setAliasVersion((v) => v + 1));
+    }
+  }, [activeListId]);
+  useEffect(() => subscribeAliases(() => setAliasVersion((v) => v + 1)), []);
 
   const addList = async () => {
     const id = newListId.trim();
