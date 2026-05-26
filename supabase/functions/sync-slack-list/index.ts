@@ -262,6 +262,58 @@ serve(async (req) => {
       });
     }
 
+    // 3b. Aggregate observed option_ids per select column → options.choices.
+    //     Slack's bot API does NOT expose option labels/colors, so we store
+    //     the id as a placeholder label. Existing user-renamed labels in DB
+    //     are preserved across syncs.
+    const selectChoiceIds = new Map<string, Set<string>>();
+    for (const it of items) {
+      const cells = (it.fields || it.cells || []) as any[];
+      for (const c of cells) {
+        if (!c.column_id) continue;
+        const sel = (c as any).select;
+        const ids: string[] = Array.isArray(sel)
+          ? sel.filter((x: unknown) => typeof x === "string")
+          : (typeof c.value === "string" && /^Opt[A-Z0-9]+$/.test(c.value) ? [c.value] : []);
+        if (ids.length === 0) continue;
+        const col = columns.find((cc) => cc.id === c.column_id);
+        if (col && !col.type) col.type = "select";
+        if (!selectChoiceIds.has(c.column_id)) selectChoiceIds.set(c.column_id, new Set());
+        for (const id of ids) selectChoiceIds.get(c.column_id)!.add(id);
+      }
+    }
+
+    const { data: existingRow } = await supabase
+      .from("slack_lists")
+      .select("columns")
+      .eq("slack_list_id", list_id)
+      .maybeSingle();
+    const existingChoices = new Map<string, Map<string, any>>();
+    if (existingRow?.columns && Array.isArray(existingRow.columns)) {
+      for (const c of existingRow.columns as any[]) {
+        const choices = c?.options?.choices;
+        if (Array.isArray(choices)) {
+          const m = new Map<string, any>();
+          for (const ch of choices) {
+            if (ch?.id) m.set(ch.id, ch);
+          }
+          existingChoices.set(c.id, m);
+        }
+      }
+    }
+
+    for (const col of columns) {
+      if (col.type !== "select" && col.type !== "multi_select") continue;
+      const seen = selectChoiceIds.get(col.id) || new Set<string>();
+      const prior = existingChoices.get(col.id) || new Map<string, any>();
+      const allIds = new Set<string>([...prior.keys(), ...seen]);
+      const choices = Array.from(allIds).map((id) => {
+        const p = prior.get(id);
+        return { id, label: p?.label || id, color: p?.color || "gray" };
+      });
+      (col as any).options = { choices };
+    }
+
     // 4. Upsert slack_lists row — preserve existing columns if discovery failed
     const upsertRow: Record<string, unknown> = {
       slack_list_id: list_id,
