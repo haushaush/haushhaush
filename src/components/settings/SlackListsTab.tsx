@@ -56,6 +56,8 @@ export function SlackListsTab() {
   const [errorCell, setErrorCell] = useState<string | null>(null);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [aliasEditorOpen, setAliasEditorOpen] = useState(false);
+  const [aliasVersion, setAliasVersion] = useState(0);
 
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
   const columns = useMemo<SlackColumn[]>(() => {
