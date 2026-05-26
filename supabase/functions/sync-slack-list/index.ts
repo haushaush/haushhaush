@@ -64,6 +64,8 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const debug = new URL(req.url).searchParams.get("debug") === "1";
+
 
     const token = Deno.env.get("SLACK_BOT_TOKEN");
     if (!token) throw new Error("SLACK_BOT_TOKEN not configured");
@@ -73,43 +75,77 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // 1. Fetch list metadata (info) to get columns + name
+    // 1. Fetch list metadata — try multiple methods (Slack Lists API is in flux)
     let columns: any[] = [];
     let listName: string | null = null;
-    const info = await slackPost("slackLists.info", token, { list_id });
-    if (info.ok) {
-      const rawSchema: any[] =
-        info.list?.schema ||
-        info.list?.columns ||
-        info.list?.fields ||
-        [];
-      columns = (Array.isArray(rawSchema) ? rawSchema : []).map((c: any) => ({
-        id: c.id || c.key || c.column_id,
-        name:
-          c.name ||
-          c.label ||
-          c.title ||
-          c.display_name ||
-          c.key ||
-          c.id,
-        type: c.type || c.column_type || null,
-        options: c.options || c.choices || null,
-        is_primary_column: c.is_primary_column || false,
-      })).filter((c: any) => c.id);
-      listName = info.list?.name || info.list?.title || null;
-      console.log("[sync-slack-list] schema parsed", {
-        list_id,
-        list_name: listName,
-        columns_count: columns.length,
-        column_names: columns.map((c) => c.name),
-        raw_first: rawSchema[0] || null,
-      });
-    } else {
-      console.log("[sync-slack-list] slackLists.info failed", {
-        list_id,
-        error: info.error,
-      });
+    let rawSchemaSrc: any = null;
+    const debugProbes: any[] = [];
+
+    if (debug) {
+      const probeItems = await slackPost("slackLists.items.list", token, { list_id, limit: 2 });
+      debugProbes.push({ method: "items.list.sample_item", sample: probeItems.items?.[0] || null, env_keys: Object.keys(probeItems) });
+      for (const m of ["slackLists.list","slackLists.get","slackLists.schema","slackLists.fields.list","slackLists.items.info","slackLists.columns","slackLists.metadata"]) {
+        const r = await slackPost(m, token, { list_id, id: probeItems.items?.[0]?.id });
+        debugProbes.push({ method: m, ok: r.ok, error: r.error, keys: r.ok ? Object.keys(r) : null });
+      }
     }
+
+
+    const tryMethods = [
+      "slackLists.info",
+      "slackLists.read",
+      "slackLists.columns.list",
+      "conversations.info",
+    ];
+    for (const method of tryMethods) {
+      const body: Record<string, unknown> = method === "conversations.info"
+        ? { channel: list_id }
+        : { list_id };
+      const resp = await slackPost(method, token, body);
+      console.log("[sync-slack-list] tried", method, {
+        ok: resp.ok,
+        error: resp.error,
+        top_keys: resp.ok ? Object.keys(resp).slice(0, 10) : null,
+      });
+      if (!resp.ok) continue;
+
+      const listObj = resp.list || resp.channel || resp;
+      const rawSchema: any[] =
+        listObj?.schema ||
+        listObj?.columns ||
+        listObj?.fields ||
+        resp.columns ||
+        resp.schema ||
+        [];
+      if (Array.isArray(rawSchema) && rawSchema.length > 0) {
+        rawSchemaSrc = method;
+        columns = rawSchema
+          .map((c: any) => ({
+            id: c.id || c.key || c.column_id,
+            name: c.name || c.label || c.title || c.display_name || c.key || c.id,
+            type: c.type || c.column_type || null,
+            options: c.options || c.choices || null,
+            is_primary_column: c.is_primary_column || false,
+            position: c.position ?? c.order ?? null,
+          }))
+          .filter((c: any) => c.id);
+        columns.sort((a: any, b: any) => (a.position ?? 999) - (b.position ?? 999));
+        listName = listObj?.name || listObj?.title || listName;
+        break;
+      }
+      // even if no schema, capture the name if present
+      if (!listName) listName = listObj?.name || listObj?.title || null;
+    }
+
+    console.log("[sync-slack-list] schema result", {
+      list_id,
+      source: rawSchemaSrc,
+      list_name: listName,
+      columns_count: columns.length,
+      column_names: columns.map((c) => c.name),
+    });
+
+
 
     // 2. Paginate items
     const items: SlackItem[] = [];
@@ -146,11 +182,87 @@ serve(async (req) => {
       items.push(...pageItems);
       pageCount++;
 
+      // First page: try to extract schema from items.list envelope if we still have none
+      if (pageCount === 1 && columns.length === 0) {
+        console.log("[sync-slack-list] items.list envelope keys", Object.keys(data));
+        const envSchema: any[] =
+          data.list?.schema || data.list?.columns || data.schema || data.columns || [];
+        if (Array.isArray(envSchema) && envSchema.length > 0) {
+          columns = envSchema
+            .map((c: any) => ({
+              id: c.id || c.key || c.column_id,
+              name: c.name || c.label || c.title || c.display_name || c.key || c.id,
+              type: c.type || c.column_type || null,
+              options: c.options || c.choices || null,
+              is_primary_column: c.is_primary_column || false,
+              position: c.position ?? c.order ?? null,
+            }))
+            .filter((c: any) => c.id);
+          columns.sort((a: any, b: any) => (a.position ?? 999) - (b.position ?? 999));
+          if (!listName) listName = data.list?.name || data.list?.title || null;
+          console.log("[sync-slack-list] schema from items envelope", {
+            count: columns.length,
+            names: columns.map((c) => c.name),
+          });
+        }
+      }
+
       cursor = data.response_metadata?.next_cursor || undefined;
       if (!cursor || cursor === "" || items.length >= 1000 || pageCount > 20) break;
     }
 
-    // 3. Upsert slack_lists row — preserve existing columns if schema fetch failed
+    // 3. If no schema was retrievable from any metadata endpoint, aggregate
+    //    column definitions from ALL items (so empty columns aren't lost).
+    if (columns.length === 0 && items.length > 0) {
+      const seen = new Map<string, any>();
+      const FRIENDLY: Record<string, string> = {
+        name: "Name",
+        todo_completed: "Erledigt",
+      };
+      let order = 0;
+      for (const it of items) {
+        const cells = it.fields || it.cells || [];
+        for (const c of cells as any[]) {
+          if (!c.column_id) continue;
+          const existing = seen.get(c.column_id);
+          // Infer type from cell shape
+          let type: string | null = existing?.type ?? null;
+          if (!type) {
+            if ("checkbox" in c) type = "checkbox";
+            else if (Array.isArray((c as any).select)) type = "select";
+            else if ((c as any).rich_text) type = "rich_text";
+            else if ((c as any).user) type = "user";
+            else if ((c as any).date) type = "date";
+          }
+          if (!existing) {
+            const key: string | undefined = (c as any).key;
+            const friendly = key && FRIENDLY[key];
+            seen.set(c.column_id, {
+              id: c.column_id,
+              name: friendly || key || c.column_id,
+              type,
+              options: null,
+              is_primary_column: c.column_id === "Col00",
+              position: order++,
+            });
+          } else if (type && !existing.type) {
+            existing.type = type;
+          }
+        }
+      }
+      columns = Array.from(seen.values());
+      // Put primary (system "Col00" completed checkbox) first
+      columns.sort((a, b) =>
+        Number(b.is_primary_column) - Number(a.is_primary_column) || a.position - b.position,
+      );
+      rawSchemaSrc = "items.aggregate";
+      console.log("[sync-slack-list] schema aggregated from items", {
+        count: columns.length,
+        names: columns.map((c) => c.name),
+      });
+    }
+
+    // 4. Upsert slack_lists row — preserve existing columns if discovery failed
     const upsertRow: Record<string, unknown> = {
       slack_list_id: list_id,
       last_synced_at: new Date().toISOString(),
@@ -202,7 +314,8 @@ serve(async (req) => {
         duration_ms: Date.now() - t0,
         list_name: listName,
         remaining_cursor: cursor || null,
-      }),
+        debug_probes: debug ? debugProbes : undefined,
+      }, null, 2),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
