@@ -357,7 +357,7 @@ export function SlackListsTab() {
                         className="px-4 py-3 text-left cursor-pointer hover:text-primary select-none font-medium"
                       >
                         <span className="inline-flex items-center gap-1.5">
-                          {col.name}
+                          {getColumnDisplay(col.id, activeListId, col.name || col.id)}
                           {active ? (
                             sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                           ) : (
