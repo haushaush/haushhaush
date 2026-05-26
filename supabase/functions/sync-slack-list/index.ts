@@ -263,7 +263,8 @@ serve(async (req) => {
         duration_ms: Date.now() - t0,
         list_name: listName,
         remaining_cursor: cursor || null,
-      }),
+        debug_probes: debug ? debugProbes : undefined,
+      }, null, 2),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
