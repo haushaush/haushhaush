@@ -422,7 +422,7 @@ export function SlackListsTab() {
                                 if (col.type === 'checkbox' || typeof val === 'boolean') {
                                   return renderCellNode(val, col as SlackColumn);
                                 }
-                                const pills = getCellPills(val, col as SlackColumn);
+                                const pills = getCellPills(val, col as SlackColumn, activeListId);
                                 if (pills) {
                                   if (pills.length === 0) {
                                     return <span className="text-muted-foreground/50">↩</span>;
