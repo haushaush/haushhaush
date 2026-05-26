@@ -1219,6 +1219,7 @@ export default function Einstellungen() {
         {/* ═══════ SLACK TAB ═══════ */}
         <TabsContent value="slack" className="mt-6 space-y-6">
           <SlackChannelsTab />
+          <SlackListsTab />
           <SlackWebhookConfig />
         </TabsContent>
 
