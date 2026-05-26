@@ -56,7 +56,14 @@ export function SlackListsTab() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
-  const columns = useMemo(() => normalizeColumns(activeList?.columns), [activeList]);
+  const columns = useMemo<SlackColumn[]>(() => {
+    const fromMeta = normalizeColumns(activeList?.columns);
+    if (fromMeta.length > 0) return fromMeta;
+    // Fallback: derive from first item keys
+    const first = items[0];
+    if (!first?.fields) return [];
+    return Object.keys(first.fields).map((id) => ({ id, name: id }));
+  }, [activeList, items]);
 
   const loadLists = async () => {
     setLoadingLists(true);
