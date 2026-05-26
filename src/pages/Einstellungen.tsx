@@ -28,6 +28,8 @@ import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
 import { CloseMatchingCard } from '@/components/integrations/CloseMatchingCard';
 import { CloseSyncCard } from '@/components/integrations/CloseSyncCard';
+import { SlackChannelsTab } from '@/components/settings/SlackChannelsTab';
+
 
 interface EmployeeRequest {
   id: string;
@@ -1215,46 +1217,10 @@ export default function Einstellungen() {
 
         {/* ═══════ SLACK TAB ═══════ */}
         <TabsContent value="slack" className="mt-6 space-y-6">
-          <Card className="border-border bg-card">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-primary" />
-                Slack-Integration
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Verbinde Slack-Channels und richte Event-Notifications ein.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Hier wirst du bald Slack-Channels verbinden, Event-Notifications konfigurieren und Test-Nachrichten senden können.
-              </p>
-              <div className="flex items-center gap-3">
-                <TooltipProvider delayDuration={100}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button disabled size="sm">
-                        <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                        Slack verbinden
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">Demnächst verfügbar</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <div className="rounded-lg border border-border bg-muted/40 p-3">
-                <p className="text-xs text-muted-foreground">
-                  Aktuell läuft Slack-Forwarding über bestehende Workflows (n8n / Edge Functions).
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Existing webhook config moved here for context */}
+          <SlackChannelsTab />
           <SlackWebhookConfig />
         </TabsContent>
+
       </Tabs>
 
       {/* Employee Request Drawer */}
