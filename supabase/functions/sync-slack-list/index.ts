@@ -169,6 +169,31 @@ serve(async (req) => {
       items.push(...pageItems);
       pageCount++;
 
+      // First page: try to extract schema from items.list envelope if we still have none
+      if (pageCount === 1 && columns.length === 0) {
+        console.log("[sync-slack-list] items.list envelope keys", Object.keys(data));
+        const envSchema: any[] =
+          data.list?.schema || data.list?.columns || data.schema || data.columns || [];
+        if (Array.isArray(envSchema) && envSchema.length > 0) {
+          columns = envSchema
+            .map((c: any) => ({
+              id: c.id || c.key || c.column_id,
+              name: c.name || c.label || c.title || c.display_name || c.key || c.id,
+              type: c.type || c.column_type || null,
+              options: c.options || c.choices || null,
+              is_primary_column: c.is_primary_column || false,
+              position: c.position ?? c.order ?? null,
+            }))
+            .filter((c: any) => c.id);
+          columns.sort((a: any, b: any) => (a.position ?? 999) - (b.position ?? 999));
+          if (!listName) listName = data.list?.name || data.list?.title || null;
+          console.log("[sync-slack-list] schema from items envelope", {
+            count: columns.length,
+            names: columns.map((c) => c.name),
+          });
+        }
+      }
+
       cursor = data.response_metadata?.next_cursor || undefined;
       if (!cursor || cursor === "" || items.length >= 1000 || pageCount > 20) break;
     }
