@@ -225,18 +225,19 @@ export function SlackListsTab() {
     if (search) {
       const q = search.toLowerCase();
       r = r.filter((it) =>
-        Object.values(it.fields || {}).some((v) => cellToString(v).toLowerCase().includes(q)),
+        columns.some((c) => cellToString(it.fields?.[c.id], c).toLowerCase().includes(q)),
       );
     }
     if (sortCol) {
+      const sortColDef = columns.find((c) => c.id === sortCol);
       r = [...r].sort((a, b) => {
-        const av = cellToString(a.fields?.[sortCol]);
-        const bv = cellToString(b.fields?.[sortCol]);
+        const av = cellToString(a.fields?.[sortCol], sortColDef);
+        const bv = cellToString(b.fields?.[sortCol], sortColDef);
         return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       });
     }
     return r;
-  }, [items, search, sortCol, sortDir]);
+  }, [items, search, sortCol, sortDir, columns]);
 
   const toggleSort = (colId: string) => {
     if (sortCol === colId) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
