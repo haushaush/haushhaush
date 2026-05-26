@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Bell, Palette, Users, Hash, X, Check, Search, Loader2, Upload, Building2, ImageIcon, Trash2, AlertTriangle, UserPlus, ChevronDown, ChevronRight, GitMerge } from 'lucide-react';
+import { Bell, Palette, Users, Hash, X, Check, Search, Loader2, Upload, Building2, ImageIcon, Trash2, AlertTriangle, UserPlus, ChevronDown, ChevronRight, GitMerge, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { IntegrationCard, type HealthResult } from '@/components/integrations/IntegrationCard';
 import { IntegrationStatusBar } from '@/components/integrations/IntegrationStatusBar';
@@ -268,8 +268,8 @@ export default function Einstellungen() {
   const defaultTab = isAdmin ? 'integrationen' : 'branding';
   const adminOnlyTabs = ['integrationen', 'verknuepfungen', 'mitarbeiter-erstellen'];
   const allowedTabs = isAdmin
-    ? ['integrationen', 'verknuepfungen', 'branding', 'benutzer', 'mitarbeiter-erstellen', 'benachrichtigungen', 'sicherheit']
-    : ['branding', 'benutzer', 'benachrichtigungen', 'sicherheit'];
+    ? ['integrationen', 'verknuepfungen', 'branding', 'benutzer', 'mitarbeiter-erstellen', 'benachrichtigungen', 'sicherheit', 'slack']
+    : ['branding', 'benutzer', 'benachrichtigungen', 'sicherheit', 'slack'];
   const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
 
   // Redirect non-admins away from admin-only tabs
@@ -843,6 +843,10 @@ export default function Einstellungen() {
           )}
           <TabsTrigger value="benachrichtigungen">Benachrichtigungen</TabsTrigger>
           <TabsTrigger value="sicherheit">Sicherheit</TabsTrigger>
+          <TabsTrigger value="slack" className="flex items-center gap-1.5">
+            <MessageSquare className="h-3.5 w-3.5" />
+            Slack
+          </TabsTrigger>
         </TabsList>
 
         {/* ═══════ INTEGRATIONEN TAB ═══════ */}
