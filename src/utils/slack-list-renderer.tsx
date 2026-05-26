@@ -1,4 +1,66 @@
 import { ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+// ============================================================
+//  Alias resolution (user-defined overrides for column/option IDs)
+// ============================================================
+export interface AliasEntry {
+  display_name: string;
+  color?: string | null;
+}
+
+const aliasCache: Map<string, Map<string, AliasEntry>> = new Map();
+const aliasLoadPromises: Map<string, Promise<Map<string, AliasEntry>>> = new Map();
+const aliasListeners = new Set<() => void>();
+
+export function subscribeAliases(cb: () => void): () => void {
+  aliasListeners.add(cb);
+  return () => { aliasListeners.delete(cb); };
+}
+function notifyAliases() { aliasListeners.forEach((f) => { try { f(); } catch {} }); }
+
+export async function loadAliases(slack_list_id: string, force = false): Promise<Map<string, AliasEntry>> {
+  if (!force && aliasCache.has(slack_list_id)) return aliasCache.get(slack_list_id)!;
+  if (!force && aliasLoadPromises.has(slack_list_id)) return aliasLoadPromises.get(slack_list_id)!;
+  const p = (async () => {
+    const { data } = await supabase
+      .from('slack_list_aliases' as any)
+      .select('slack_id, display_name, display_color, parent_column_id, alias_type')
+      .eq('slack_list_id', slack_list_id);
+    const map = new Map<string, AliasEntry>();
+    (data as any[] | null)?.forEach((a) => {
+      const key = a.alias_type === 'column'
+        ? a.slack_id
+        : `${a.parent_column_id || ''}:${a.slack_id}`;
+      map.set(key, { display_name: a.display_name, color: a.display_color });
+    });
+    aliasCache.set(slack_list_id, map);
+    aliasLoadPromises.delete(slack_list_id);
+    notifyAliases();
+    return map;
+  })();
+  aliasLoadPromises.set(slack_list_id, p);
+  return p;
+}
+
+export function getColumnDisplay(slackId: string, slackListId: string | null | undefined, fallback: string): string {
+  if (!slackListId) return fallback;
+  const a = aliasCache.get(slackListId)?.get(slackId);
+  return a?.display_name || fallback;
+}
+
+export function getOptionDisplay(
+  optionId: string,
+  parentColumnId: string,
+  slackListId: string | null | undefined,
+  fallbackLabel: string,
+  fallbackColor: string = 'gray',
+): { label: string; color: string } {
+  if (!slackListId) return { label: fallbackLabel, color: fallbackColor };
+  const a = aliasCache.get(slackListId)?.get(`${parentColumnId}:${optionId}`);
+  return { label: a?.display_name || fallbackLabel, color: a?.color || fallbackColor };
+}
+
 
 export interface SlackChoice {
   id: string;
