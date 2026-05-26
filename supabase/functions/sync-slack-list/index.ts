@@ -140,7 +140,7 @@ serve(async (req) => {
       const fields: Record<string, unknown> = {};
       for (const c of cells) {
         if (!c.column_id) continue;
-        fields[c.column_id] = extractValue(c);
+        fields[c.column_id] = extractCell(c);
       }
       return {
         slack_item_id: it.id,
