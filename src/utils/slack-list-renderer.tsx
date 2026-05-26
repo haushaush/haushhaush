@@ -86,7 +86,22 @@ function richTextToPlain(rich: any): string {
  *  - rich_text JSON string (legacy stored format)
  *  - array of selected option objects
  */
-export function renderCellPlain(cell: any): string {
+export function renderCellPlain(cell: any, col?: SlackColumn): string {
+  // SELECT / MULTI_SELECT — resolve option_id to label via column.options.choices
+  if (col && (col.type === 'select' || col.type === 'multi_select')) {
+    const ids = extractOptionIds(cell);
+    if (ids.length > 0) {
+      const choices = getChoices(col);
+      return ids
+        .map((id) => {
+          const ch = resolveOption(id, choices);
+          return ch?.label || ch?.name || id;
+        })
+        .join(', ');
+    }
+    return '';
+  }
+
   if (cell == null) return '';
   if (typeof cell === 'boolean') return cell ? '✓' : '';
   if (typeof cell === 'number') return String(cell);
@@ -129,7 +144,7 @@ export function renderCellNode(cell: any, col?: SlackColumn): ReactNode {
       ? <span className="inline-flex h-4 w-4 items-center justify-center rounded border border-primary bg-primary/20 text-primary text-[10px]">✓</span>
       : <span className="inline-flex h-4 w-4 rounded border border-border" />;
   }
-  return renderCellPlain(cell);
+  return renderCellPlain(cell, col);
 }
 
 /**
@@ -146,13 +161,45 @@ const PALETTE: Record<string, string> = {
   gray:   'bg-muted text-muted-foreground border-border',
 };
 
-export function getCellPillClass(value: string, options?: SlackColumn['options']): string | null {
+/**
+ * Returns an array of pills (label + tailwind class) for select/multi_select cells,
+ * or null for other column types.
+ */
+export function getCellPills(
+  cell: any,
+  col?: SlackColumn,
+): Array<{ id: string; label: string; className: string }> | null {
+  if (!col || (col.type !== 'select' && col.type !== 'multi_select')) return null;
+  const ids = extractOptionIds(cell);
+  if (ids.length === 0) return [];
+  const choices = getChoices(col);
+  return ids.map((id) => {
+    const ch = resolveOption(id, choices);
+    const color = ch?.color || 'gray';
+    return {
+      id,
+      label: ch?.label || ch?.name || id,
+      className: PALETTE[color] || PALETTE.gray,
+    };
+  });
+}
+
+// Backwards-compat: old call sites pass (plainValue, options)
+export function getCellPillClass(value: string, options?: any): string | null {
   if (!value) return null;
-  const opt = options?.find((o) => o.value?.toLowerCase() === value.toLowerCase());
-  const color = opt?.color || (options ? 'gray' : null);
+  const choices: SlackChoice[] = Array.isArray(options)
+    ? options
+    : Array.isArray(options?.choices)
+      ? options.choices
+      : [];
+  const opt = choices.find(
+    (o) => o.value?.toLowerCase() === value.toLowerCase() || o.id?.toLowerCase() === value.toLowerCase() || o.label?.toLowerCase() === value.toLowerCase(),
+  );
+  const color = opt?.color || (choices.length ? 'gray' : null);
   if (!color) return null;
   return PALETTE[color] || PALETTE.gray;
 }
+
 
 /**
  * Normalize a stored columns blob (array or object) into ColumnDef[].
