@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-import { renderCellPlain, renderCellNode, getCellPillClass, normalizeColumns, type SlackColumn } from '@/utils/slack-list-renderer';
+import { renderCellPlain, renderCellNode, getCellPills, normalizeColumns, type SlackColumn } from '@/utils/slack-list-renderer';
 
 interface SlackList {
   id: string;
