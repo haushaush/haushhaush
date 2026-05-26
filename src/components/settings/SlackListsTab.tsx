@@ -290,25 +290,22 @@ export function SlackListsTab() {
         <Card className="border-border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
+              <thead className="bg-purple-500/10 text-xs uppercase tracking-wider text-purple-200/80">
                 <tr>
-                  {columns.length === 0 && (
-                    <th className="px-3 py-2 text-left">Rohdaten</th>
-                  )}
                   {columns.map((col) => {
                     const active = sortCol === col.id;
                     return (
                       <th
                         key={col.id}
                         onClick={() => toggleSort(col.id)}
-                        className="px-3 py-2 text-left cursor-pointer hover:text-primary select-none"
+                        className="px-4 py-3 text-left cursor-pointer hover:text-primary select-none font-medium"
                       >
-                        <span className="inline-flex items-center gap-1">
+                        <span className="inline-flex items-center gap-1.5">
                           {col.name}
                           {active ? (
                             sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                           ) : (
-                            <ArrowUpDown className="h-3 w-3 opacity-40" />
+                            <ArrowUpDown className="h-3 w-3 opacity-30" />
                           )}
                         </span>
                       </th>
