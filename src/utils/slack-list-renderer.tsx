@@ -148,8 +148,8 @@ function richTextToPlain(rich: any): string {
  *  - rich_text JSON string (legacy stored format)
  *  - array of selected option objects
  */
-export function renderCellPlain(cell: any, col?: SlackColumn): string {
-  // SELECT / MULTI_SELECT — resolve option_id to label via column.options.choices
+export function renderCellPlain(cell: any, col?: SlackColumn, slackListId?: string | null): string {
+  // SELECT / MULTI_SELECT — resolve option_id to label via column.options.choices + aliases
   if (col && (col.type === 'select' || col.type === 'multi_select')) {
     const ids = extractOptionIds(cell);
     if (ids.length > 0) {
@@ -157,12 +157,14 @@ export function renderCellPlain(cell: any, col?: SlackColumn): string {
       return ids
         .map((id) => {
           const ch = resolveOption(id, choices);
-          return ch?.label || ch?.name || id;
+          const fallback = ch?.label || ch?.name || id;
+          return getOptionDisplay(id, col.id, slackListId, fallback).label;
         })
         .join(', ');
     }
     return '';
   }
+
 
   if (cell == null) return '';
   if (typeof cell === 'boolean') return cell ? '✓' : '';
