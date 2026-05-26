@@ -211,7 +211,58 @@ serve(async (req) => {
       if (!cursor || cursor === "" || items.length >= 1000 || pageCount > 20) break;
     }
 
-    // 3. Upsert slack_lists row — preserve existing columns if schema fetch failed
+    // 3. If no schema was retrievable from any metadata endpoint, aggregate
+    //    column definitions from ALL items (so empty columns aren't lost).
+    if (columns.length === 0 && items.length > 0) {
+      const seen = new Map<string, any>();
+      const FRIENDLY: Record<string, string> = {
+        name: "Name",
+        todo_completed: "Erledigt",
+      };
+      let order = 0;
+      for (const it of items) {
+        const cells = it.fields || it.cells || [];
+        for (const c of cells as any[]) {
+          if (!c.column_id) continue;
+          const existing = seen.get(c.column_id);
+          // Infer type from cell shape
+          let type: string | null = existing?.type ?? null;
+          if (!type) {
+            if ("checkbox" in c) type = "checkbox";
+            else if (Array.isArray((c as any).select)) type = "select";
+            else if ((c as any).rich_text) type = "rich_text";
+            else if ((c as any).user) type = "user";
+            else if ((c as any).date) type = "date";
+          }
+          if (!existing) {
+            const key: string | undefined = (c as any).key;
+            const friendly = key && FRIENDLY[key];
+            seen.set(c.column_id, {
+              id: c.column_id,
+              name: friendly || key || c.column_id,
+              type,
+              options: null,
+              is_primary_column: c.column_id === "Col00",
+              position: order++,
+            });
+          } else if (type && !existing.type) {
+            existing.type = type;
+          }
+        }
+      }
+      columns = Array.from(seen.values());
+      // Put primary (system "Col00" completed checkbox) first
+      columns.sort((a, b) =>
+        Number(b.is_primary_column) - Number(a.is_primary_column) || a.position - b.position,
+      );
+      rawSchemaSrc = "items.aggregate";
+      console.log("[sync-slack-list] schema aggregated from items", {
+        count: columns.length,
+        names: columns.map((c) => c.name),
+      });
+    }
+
+    // 4. Upsert slack_lists row — preserve existing columns if discovery failed
     const upsertRow: Record<string, unknown> = {
       slack_list_id: list_id,
       last_synced_at: new Date().toISOString(),
