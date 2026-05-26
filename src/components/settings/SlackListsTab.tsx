@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-import { renderCellPlain, renderCellNode, getCellPillClass, normalizeColumns, type SlackColumn } from '@/utils/slack-list-renderer';
+import { renderCellPlain, renderCellNode, getCellPills, normalizeColumns, type SlackColumn } from '@/utils/slack-list-renderer';
 
 interface SlackList {
   id: string;
@@ -33,8 +33,8 @@ interface SlackListItem {
   synced_at: string;
 }
 
-function cellToString(v: unknown): string {
-  return renderCellPlain(v);
+function cellToString(v: unknown, col?: SlackColumn): string {
+  return renderCellPlain(v, col);
 }
 
 export function SlackListsTab() {
@@ -225,22 +225,58 @@ export function SlackListsTab() {
     if (search) {
       const q = search.toLowerCase();
       r = r.filter((it) =>
-        Object.values(it.fields || {}).some((v) => cellToString(v).toLowerCase().includes(q)),
+        columns.some((c) => cellToString(it.fields?.[c.id], c).toLowerCase().includes(q)),
       );
     }
     if (sortCol) {
+      const sortColDef = columns.find((c) => c.id === sortCol);
       r = [...r].sort((a, b) => {
-        const av = cellToString(a.fields?.[sortCol]);
-        const bv = cellToString(b.fields?.[sortCol]);
+        const av = cellToString(a.fields?.[sortCol], sortColDef);
+        const bv = cellToString(b.fields?.[sortCol], sortColDef);
         return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       });
     }
     return r;
-  }, [items, search, sortCol, sortDir]);
+  }, [items, search, sortCol, sortDir, columns]);
 
   const toggleSort = (colId: string) => {
     if (sortCol === colId) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
     else { setSortCol(colId); setSortDir('asc'); }
+  };
+
+  const renameOptionLabel = async (colId: string, optId: string, currentLabel: string) => {
+    if (!activeList) return;
+    const next = window.prompt(
+      `Slack stellt das Label dieser Option nicht über die Bot-API bereit.\nVergib hier einen lesbaren Namen für "${optId}":`,
+      currentLabel === optId ? '' : currentLabel,
+    );
+    if (next == null) return;
+    const trimmed = next.trim();
+    if (!trimmed) return;
+
+    const cols: any[] = Array.isArray(activeList.columns) ? [...activeList.columns] : [];
+    const idx = cols.findIndex((c) => c?.id === colId);
+    if (idx === -1) return;
+    const col = { ...cols[idx] };
+    const opts = { ...(col.options || {}) };
+    const choices: any[] = Array.isArray(opts.choices) ? [...opts.choices] : [];
+    const cIdx = choices.findIndex((c) => c?.id === optId);
+    if (cIdx === -1) choices.push({ id: optId, label: trimmed, color: 'gray' });
+    else choices[cIdx] = { ...choices[cIdx], label: trimmed };
+    opts.choices = choices;
+    col.options = opts;
+    cols[idx] = col;
+
+    const { error } = await supabase
+      .from('slack_lists')
+      .update({ columns: cols })
+      .eq('slack_list_id', activeList.slack_list_id);
+    if (error) {
+      toast.error('Umbenennen fehlgeschlagen: ' + error.message);
+      return;
+    }
+    toast.success(`Option-Label gespeichert: ${trimmed}`);
+    await loadLists();
   };
 
   // ====== Detail View ======
@@ -363,22 +399,40 @@ export function SlackListsTab() {
                               className="cursor-text min-h-[28px] flex items-center gap-2 hover:bg-accent/50 rounded px-1 -mx-1"
                             >
                               {(() => {
-                                const plain = renderCellPlain(val);
                                 if (col.type === 'checkbox' || typeof val === 'boolean') {
                                   return renderCellNode(val, col as SlackColumn);
                                 }
+                                const pills = getCellPills(val, col as SlackColumn);
+                                if (pills) {
+                                  if (pills.length === 0) {
+                                    return <span className="text-muted-foreground/50">↩</span>;
+                                  }
+                                  return (
+                                    <div className="flex flex-wrap gap-1">
+                                      {pills.map((p) => (
+                                        <button
+                                          key={p.id}
+                                          type="button"
+                                          title={`Alt+Klick um Label umzubenennen (Slack-ID: ${p.id})`}
+                                          onClick={(e) => {
+                                            if (!e.altKey) return;
+                                            e.stopPropagation();
+                                            renameOptionLabel(col.id, p.id, p.label);
+                                          }}
+                                          className={cn(
+                                            'inline-flex items-center rounded-full border px-3 h-6 text-xs font-medium transition-opacity hover:opacity-80',
+                                            p.className,
+                                          )}
+                                        >
+                                          {p.label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  );
+                                }
+                                const plain = renderCellPlain(val, col as SlackColumn);
                                 if (!plain) {
                                   return <span className="text-muted-foreground/50">↩</span>;
-                                }
-                                const pillClass = col.type === 'select'
-                                  ? getCellPillClass(plain, (col as SlackColumn).options)
-                                  : null;
-                                if (pillClass) {
-                                  return (
-                                    <span className={cn('inline-flex items-center rounded-full border px-3 h-6 text-xs font-medium', pillClass)}>
-                                      {plain}
-                                    </span>
-                                  );
                                 }
                                 return <span className="truncate max-w-[320px] whitespace-pre-wrap">{plain}</span>;
                               })()}

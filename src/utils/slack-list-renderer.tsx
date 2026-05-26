@@ -1,11 +1,57 @@
 import { ReactNode } from 'react';
 
+export interface SlackChoice {
+  id: string;
+  label?: string;
+  name?: string;
+  value?: string;
+  color?: string;
+}
+
 export interface SlackColumn {
   id: string;
   name: string;
   type?: string;
-  options?: Array<{ value: string; color?: string; label?: string }>;
+  options?: { choices?: SlackChoice[] } | SlackChoice[] | any;
 }
+
+function getChoices(col?: SlackColumn): SlackChoice[] {
+  if (!col?.options) return [];
+  const o: any = col.options;
+  if (Array.isArray(o)) return o;
+  if (Array.isArray(o.choices)) return o.choices;
+  if (Array.isArray(o.values)) return o.values;
+  return [];
+}
+
+function resolveOption(optId: string, choices: SlackChoice[]): SlackChoice | undefined {
+  if (!optId) return undefined;
+  return choices.find((c) => c.id === optId || c.value === optId);
+}
+
+function extractOptionIds(cell: any): string[] {
+  if (cell == null) return [];
+  // Cell can be object with .select, .value (string or array), or primitive string
+  if (typeof cell === 'string') {
+    return /^Opt[A-Z0-9]+$/.test(cell) ? [cell] : [];
+  }
+  if (Array.isArray(cell)) {
+    return cell.filter((v) => typeof v === 'string' && /^Opt[A-Z0-9]+$/.test(v));
+  }
+  if (typeof cell === 'object') {
+    if (Array.isArray(cell.select)) {
+      return cell.select.filter((v: unknown) => typeof v === 'string');
+    }
+    if (Array.isArray(cell.value)) {
+      return cell.value.filter((v: unknown) => typeof v === 'string');
+    }
+    if (typeof cell.value === 'string' && /^Opt[A-Z0-9]+$/.test(cell.value)) {
+      return [cell.value];
+    }
+  }
+  return [];
+}
+
 
 /**
  * Parse a Slack rich_text block tree into plain text.
@@ -40,7 +86,22 @@ function richTextToPlain(rich: any): string {
  *  - rich_text JSON string (legacy stored format)
  *  - array of selected option objects
  */
-export function renderCellPlain(cell: any): string {
+export function renderCellPlain(cell: any, col?: SlackColumn): string {
+  // SELECT / MULTI_SELECT — resolve option_id to label via column.options.choices
+  if (col && (col.type === 'select' || col.type === 'multi_select')) {
+    const ids = extractOptionIds(cell);
+    if (ids.length > 0) {
+      const choices = getChoices(col);
+      return ids
+        .map((id) => {
+          const ch = resolveOption(id, choices);
+          return ch?.label || ch?.name || id;
+        })
+        .join(', ');
+    }
+    return '';
+  }
+
   if (cell == null) return '';
   if (typeof cell === 'boolean') return cell ? '✓' : '';
   if (typeof cell === 'number') return String(cell);
@@ -83,7 +144,7 @@ export function renderCellNode(cell: any, col?: SlackColumn): ReactNode {
       ? <span className="inline-flex h-4 w-4 items-center justify-center rounded border border-primary bg-primary/20 text-primary text-[10px]">✓</span>
       : <span className="inline-flex h-4 w-4 rounded border border-border" />;
   }
-  return renderCellPlain(cell);
+  return renderCellPlain(cell, col);
 }
 
 /**
@@ -100,13 +161,45 @@ const PALETTE: Record<string, string> = {
   gray:   'bg-muted text-muted-foreground border-border',
 };
 
-export function getCellPillClass(value: string, options?: SlackColumn['options']): string | null {
+/**
+ * Returns an array of pills (label + tailwind class) for select/multi_select cells,
+ * or null for other column types.
+ */
+export function getCellPills(
+  cell: any,
+  col?: SlackColumn,
+): Array<{ id: string; label: string; className: string }> | null {
+  if (!col || (col.type !== 'select' && col.type !== 'multi_select')) return null;
+  const ids = extractOptionIds(cell);
+  if (ids.length === 0) return [];
+  const choices = getChoices(col);
+  return ids.map((id) => {
+    const ch = resolveOption(id, choices);
+    const color = ch?.color || 'gray';
+    return {
+      id,
+      label: ch?.label || ch?.name || id,
+      className: PALETTE[color] || PALETTE.gray,
+    };
+  });
+}
+
+// Backwards-compat: old call sites pass (plainValue, options)
+export function getCellPillClass(value: string, options?: any): string | null {
   if (!value) return null;
-  const opt = options?.find((o) => o.value?.toLowerCase() === value.toLowerCase());
-  const color = opt?.color || (options ? 'gray' : null);
+  const choices: SlackChoice[] = Array.isArray(options)
+    ? options
+    : Array.isArray(options?.choices)
+      ? options.choices
+      : [];
+  const opt = choices.find(
+    (o) => o.value?.toLowerCase() === value.toLowerCase() || o.id?.toLowerCase() === value.toLowerCase() || o.label?.toLowerCase() === value.toLowerCase(),
+  );
+  const color = opt?.color || (choices.length ? 'gray' : null);
   if (!color) return null;
   return PALETTE[color] || PALETTE.gray;
 }
+
 
 /**
  * Normalize a stored columns blob (array or object) into ColumnDef[].
