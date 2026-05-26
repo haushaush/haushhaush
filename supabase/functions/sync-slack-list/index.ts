@@ -36,11 +36,20 @@ async function slackPost(method: string, token: string, body: Record<string, unk
   return res.json();
 }
 
-function extractValue(cell: SlackCell): unknown {
-  if (cell.value !== undefined && cell.value !== null) return cell.value;
-  if (cell.text !== undefined) return cell.text;
-  if (cell.rich_text !== undefined) return cell.rich_text;
-  return null;
+function extractCell(cell: SlackCell): unknown {
+  // Preserve all representations so the frontend can render rich_text,
+  // plain text fallback, booleans, selects, etc.
+  const out: Record<string, unknown> = {};
+  if (cell.value !== undefined) out.value = cell.value;
+  if (cell.text !== undefined) out.text = cell.text;
+  if (cell.rich_text !== undefined) out.rich_text = cell.rich_text;
+  // If only one primitive remains, return it directly
+  const keys = Object.keys(out);
+  if (keys.length === 0) return null;
+  if (keys.length === 1 && (typeof out[keys[0]] === 'string' || typeof out[keys[0]] === 'number' || typeof out[keys[0]] === 'boolean')) {
+    return out[keys[0]];
+  }
+  return out;
 }
 
 serve(async (req) => {
