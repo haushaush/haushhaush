@@ -73,43 +73,66 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // 1. Fetch list metadata (info) to get columns + name
+    // 1. Fetch list metadata — try multiple methods (Slack Lists API is in flux)
     let columns: any[] = [];
     let listName: string | null = null;
-    const info = await slackPost("slackLists.info", token, { list_id });
-    if (info.ok) {
+    let rawSchemaSrc: any = null;
+
+    const tryMethods = [
+      "slackLists.info",
+      "slackLists.read",
+      "slackLists.columns.list",
+      "conversations.info",
+    ];
+    for (const method of tryMethods) {
+      const body: Record<string, unknown> = method === "conversations.info"
+        ? { channel: list_id }
+        : { list_id };
+      const resp = await slackPost(method, token, body);
+      console.log("[sync-slack-list] tried", method, {
+        ok: resp.ok,
+        error: resp.error,
+        top_keys: resp.ok ? Object.keys(resp).slice(0, 10) : null,
+      });
+      if (!resp.ok) continue;
+
+      const listObj = resp.list || resp.channel || resp;
       const rawSchema: any[] =
-        info.list?.schema ||
-        info.list?.columns ||
-        info.list?.fields ||
+        listObj?.schema ||
+        listObj?.columns ||
+        listObj?.fields ||
+        resp.columns ||
+        resp.schema ||
         [];
-      columns = (Array.isArray(rawSchema) ? rawSchema : []).map((c: any) => ({
-        id: c.id || c.key || c.column_id,
-        name:
-          c.name ||
-          c.label ||
-          c.title ||
-          c.display_name ||
-          c.key ||
-          c.id,
-        type: c.type || c.column_type || null,
-        options: c.options || c.choices || null,
-        is_primary_column: c.is_primary_column || false,
-      })).filter((c: any) => c.id);
-      listName = info.list?.name || info.list?.title || null;
-      console.log("[sync-slack-list] schema parsed", {
-        list_id,
-        list_name: listName,
-        columns_count: columns.length,
-        column_names: columns.map((c) => c.name),
-        raw_first: rawSchema[0] || null,
-      });
-    } else {
-      console.log("[sync-slack-list] slackLists.info failed", {
-        list_id,
-        error: info.error,
-      });
+      if (Array.isArray(rawSchema) && rawSchema.length > 0) {
+        rawSchemaSrc = method;
+        columns = rawSchema
+          .map((c: any) => ({
+            id: c.id || c.key || c.column_id,
+            name: c.name || c.label || c.title || c.display_name || c.key || c.id,
+            type: c.type || c.column_type || null,
+            options: c.options || c.choices || null,
+            is_primary_column: c.is_primary_column || false,
+            position: c.position ?? c.order ?? null,
+          }))
+          .filter((c: any) => c.id);
+        columns.sort((a: any, b: any) => (a.position ?? 999) - (b.position ?? 999));
+        listName = listObj?.name || listObj?.title || listName;
+        break;
+      }
+      // even if no schema, capture the name if present
+      if (!listName) listName = listObj?.name || listObj?.title || null;
     }
+
+    console.log("[sync-slack-list] schema result", {
+      list_id,
+      source: rawSchemaSrc,
+      list_name: listName,
+      columns_count: columns.length,
+      column_names: columns.map((c) => c.name),
+    });
+
+
 
     // 2. Paginate items
     const items: SlackItem[] = [];
