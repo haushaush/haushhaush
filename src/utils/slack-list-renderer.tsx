@@ -230,21 +230,31 @@ const PALETTE: Record<string, string> = {
 export function getCellPills(
   cell: any,
   col?: SlackColumn,
-): Array<{ id: string; label: string; className: string }> | null {
+  slackListId?: string | null,
+): Array<{ id: string; label: string; className: string; color: string }> | null {
   if (!col || (col.type !== 'select' && col.type !== 'multi_select')) return null;
   const ids = extractOptionIds(cell);
   if (ids.length === 0) return [];
   const choices = getChoices(col);
   return ids.map((id) => {
     const ch = resolveOption(id, choices);
-    const color = ch?.color || 'gray';
+    const fallbackLabel = ch?.label || ch?.name || id;
+    const fallbackColor = ch?.color || 'gray';
+    const resolved = getOptionDisplay(id, col.id, slackListId, fallbackLabel, fallbackColor);
     return {
       id,
-      label: ch?.label || ch?.name || id,
-      className: PALETTE[color] || PALETTE.gray,
+      label: resolved.label,
+      color: resolved.color,
+      className: PALETTE[resolved.color] || PALETTE.gray,
     };
   });
 }
+
+export const SLACK_COLORS = ['purple', 'green', 'yellow', 'red', 'blue', 'orange', 'pink', 'gray'] as const;
+export function colorPillClass(color: string): string {
+  return PALETTE[color] || PALETTE.gray;
+}
+
 
 // Backwards-compat: old call sites pass (plainValue, options)
 export function getCellPillClass(value: string, options?: any): string | null {
