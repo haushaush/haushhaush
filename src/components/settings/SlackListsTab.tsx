@@ -450,7 +450,7 @@ export function SlackListsTab() {
                                     </div>
                                   );
                                 }
-                                const plain = renderCellPlain(val, col as SlackColumn);
+                                const plain = renderCellPlain(val, col as SlackColumn, activeListId);
                                 if (!plain) {
                                   return <span className="text-muted-foreground/50">↩</span>;
                                 }
