@@ -64,6 +64,8 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const debug = new URL(req.url).searchParams.get("debug") === "1";
+
 
     const token = Deno.env.get("SLACK_BOT_TOKEN");
     if (!token) throw new Error("SLACK_BOT_TOKEN not configured");
