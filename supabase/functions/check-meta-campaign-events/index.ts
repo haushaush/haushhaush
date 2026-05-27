@@ -7,20 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const KAMPAGNEN_STATUS_COLUMN_ID = "Col0B5AR5UJQJ";
-
-function getFieldText(fields: any, columnId: string): string | null {
-  if (!fields) return null;
-  const f = fields[columnId];
-  if (f == null) return null;
-  if (typeof f === "string") return f;
-  if (typeof f === "object") {
-    if (Array.isArray(f.select) && f.select.length > 0) return String(f.select[0]);
-    if (typeof f.text === "string" && f.text.trim()) return f.text;
-    if (typeof f.value === "string") return f.value;
-  }
-  return null;
-}
+const KAMPAGNEN_STATUS_COL = "Col0B5AR5UJQJ";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -32,212 +19,218 @@ serve(async (req) => {
   );
 
   let trigger_source: "cron" | "manual" = "cron";
-  let slack_item_ids: string[] | null = null;
   try {
     const body = await req.json().catch(() => ({}));
     if (body?.trigger_source === "manual") trigger_source = "manual";
-    if (Array.isArray(body?.slack_item_ids) && body.slack_item_ids.length > 0) {
-      slack_item_ids = body.slack_item_ids.map(String);
-    }
-  } catch { /* ignore */ }
+  } catch { /* */ }
 
   try {
     const TOKEN = Deno.env.get("META_ACCESS_TOKEN");
     if (!TOKEN) throw new Error("META_ACCESS_TOKEN not configured");
 
-    // 1) assignments
-    const { data: rawAssignments, error: aErr } = await supabase
-      .from("slack_item_meta_account")
-      .select("slack_item_id, slack_list_id, meta_account_id, meta_account_name");
-    if (aErr) throw aErr;
-
-    const assignments = (rawAssignments || []).filter((a) =>
-      slack_item_ids ? slack_item_ids.includes(a.slack_item_id) : true,
+    // 1) All accounts
+    const accountsRes = await fetch(
+      `https://graph.facebook.com/v19.0/me/adaccounts?fields=id,name,account_status&limit=200&access_token=${TOKEN}`,
     );
+    const accountsData = await accountsRes.json();
+    if (accountsData.error) throw new Error(accountsData.error.message);
+    const accounts = accountsData.data || [];
+    console.log(`[check] Found ${accounts.length} accounts`);
 
-    if (assignments.length === 0) {
-      const duration_ms = Date.now() - startTime;
-      await supabase.from("meta_check_runs").insert({
-        trigger_source,
-        accounts_checked: 0,
-        events_found: 0,
-        items_matched: 0,
-        updates_sent: 0,
-        errors: 0,
-        duration_ms,
-      });
-      return new Response(
-        JSON.stringify({
-          success: true,
-          accounts_checked: 0,
-          items_with_assignment: 0,
-          events_found: 0,
-          items_matched: 0,
-          updates_sent: 0,
-          errors: 0,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    // 2) All campaigns per account
+    const allCampaigns: Array<{
+      campaign_id: string;
+      campaign_name: string;
+      account_id: string;
+      account_name: string;
+      status: string;
+      daily_budget: number | null;
+    }> = [];
+
+    for (const acc of accounts) {
+      try {
+        const url =
+          `https://graph.facebook.com/v19.0/${acc.id}/campaigns` +
+          `?fields=id,name,status,daily_budget,lifetime_budget&limit=100` +
+          `&access_token=${TOKEN}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.error) {
+          console.error(`[${acc.id}]`, data.error.message);
+          continue;
+        }
+        for (const camp of (data.data || [])) {
+          allCampaigns.push({
+            campaign_id: camp.id,
+            campaign_name: camp.name,
+            account_id: acc.id,
+            account_name: acc.name,
+            status: camp.status,
+            daily_budget: camp.daily_budget ? parseInt(camp.daily_budget) : null,
+          });
+        }
+      } catch (e) {
+        console.error(`[${acc.id}] fetch failed:`, (e as Error).message);
+      }
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    console.log(`[check] Found ${allCampaigns.length} campaigns total`);
+
+    // 3) Existing snapshot
+    const { data: oldSnapshot } = await supabase
+      .from("meta_campaign_snapshot")
+      .select("*");
+    const oldMap = new Map<string, any>();
+    for (const old of (oldSnapshot || [])) oldMap.set(old.campaign_id, old);
+
+    // 4) Detect changes
+    const isFirstRun = oldMap.size === 0;
+    const changes: any[] = [];
+    for (const camp of allCampaigns) {
+      const old = oldMap.get(camp.campaign_id);
+      if (!old) {
+        if (!isFirstRun) changes.push({ type: "NEW", ...camp });
+        continue;
+      }
+      if (camp.status !== old.status || camp.campaign_name !== old.campaign_name) {
+        changes.push({
+          type: "UPDATED",
+          ...camp,
+          old_status: old.status,
+          new_status: camp.status,
+          old_name: old.campaign_name,
+          new_name: camp.campaign_name,
+        });
+      }
+    }
+    console.log(`[check] ${changes.length} changes detected (first_run=${isFirstRun})`);
+
+    // 5) Upsert snapshot
+    if (allCampaigns.length > 0) {
+      const nowIso = new Date().toISOString();
+      const rows = allCampaigns.map((c) => ({ ...c, last_seen_at: nowIso }));
+      // chunk upserts to avoid payload limits
+      for (let i = 0; i < rows.length; i += 500) {
+        const chunk = rows.slice(i, i + 500);
+        const { error } = await supabase
+          .from("meta_campaign_snapshot")
+          .upsert(chunk, { onConflict: "campaign_id" });
+        if (error) console.error("[snapshot upsert]", error.message);
+      }
     }
 
-    // 2) current statuses
-    const itemIds = assignments.map((a) => a.slack_item_id);
-    const { data: items } = await supabase
-      .from("slack_list_items")
-      .select("slack_item_id, fields")
-      .in("slack_item_id", itemIds);
-    const itemStatusMap = new Map<string, string | null>();
-    for (const it of items || []) {
-      itemStatusMap.set(it.slack_item_id, getFieldText(it.fields, KAMPAGNEN_STATUS_COLUMN_ID));
+    // 6) Cleanup deleted
+    const currentIds = new Set(allCampaigns.map((c) => c.campaign_id));
+    const deletedIds = [...oldMap.keys()].filter((id) => !currentIds.has(id));
+    if (deletedIds.length > 0) {
+      await supabase
+        .from("meta_campaign_snapshot")
+        .delete()
+        .in("campaign_id", deletedIds);
     }
 
-    // 3) option aliases
+    // 7) Slack-Item ↔ Account assignments
+    const { data: assignments } = await supabase
+      .from("slack_item_meta_account")
+      .select("slack_item_id, slack_list_id, meta_account_id");
+
+    const accountToSlackItems = new Map<string, Array<{ slack_item_id: string; slack_list_id: string }>>();
+    for (const a of (assignments || [])) {
+      const accId = a.meta_account_id.startsWith("act_")
+        ? a.meta_account_id
+        : `act_${a.meta_account_id}`;
+      const arr = accountToSlackItems.get(accId) || [];
+      arr.push({ slack_item_id: a.slack_item_id, slack_list_id: a.slack_list_id });
+      accountToSlackItems.set(accId, arr);
+    }
+
+    // 8) Filter status changes
+    const statusChanges = changes.filter(
+      (c) => c.type === "UPDATED" && c.old_status !== c.new_status,
+    );
+    console.log(`[check] ${statusChanges.length} status changes`);
+
+    // 9) Group by account
+    const byAccount = new Map<string, any[]>();
+    for (const change of statusChanges) {
+      const arr = byAccount.get(change.account_id) || [];
+      arr.push(change);
+      byAccount.set(change.account_id, arr);
+    }
+
+    // 10) Option aliases
     const { data: aliases } = await supabase
       .from("slack_list_aliases")
       .select("slack_id, display_name")
       .eq("alias_type", "option");
-    const optionMap = new Map<string, string>();
-    for (const a of aliases || []) {
-      const key = (a.display_name || "").toLowerCase().trim();
-      if (key && a.slack_id && !optionMap.has(key)) optionMap.set(key, a.slack_id);
-    }
-    const AKTIV_OPT = optionMap.get("aktiv");
-    const INAKTIV_OPT = optionMap.get("inaktiv");
-    if (!AKTIV_OPT || !INAKTIV_OPT) {
+    const AKTIV_OPT = aliases?.find((a: any) => (a.display_name || "").toLowerCase() === "aktiv")?.slack_id;
+    const INAKTIV_OPT = aliases?.find((a: any) => (a.display_name || "").toLowerCase() === "inaktiv")?.slack_id;
+
+    let updatesSent = 0;
+    let errors = 0;
+
+    if (byAccount.size > 0 && (!AKTIV_OPT || !INAKTIV_OPT)) {
       throw new Error("Aliase für Aktiv/Inaktiv fehlen in slack_list_aliases");
     }
 
-    // 4) group by account
-    const byAccount = new Map<string, typeof assignments>();
-    for (const a of assignments) {
-      const arr = byAccount.get(a.meta_account_id) || [];
-      arr.push(a);
-      byAccount.set(a.meta_account_id, arr);
-    }
+    for (const [accountId, accChanges] of byAccount) {
+      const slackItems = accountToSlackItems.get(accountId);
+      if (!slackItems || slackItems.length === 0) continue;
 
-    // 5) per account: latest status-change event
-    const since = Math.floor((Date.now() - 3600 * 1000) / 1000);
-    const updates: Array<{
-      slack_item_id: string;
-      slack_list_id: string;
-      new_option_id: string;
-      meta_account_id: string;
-      meta_account_name: string | null;
-      latest_event: any;
-    }> = [];
+      const lastChange = accChanges[accChanges.length - 1];
+      const newOptId = lastChange.new_status === "ACTIVE" ? AKTIV_OPT! : INAKTIV_OPT!;
 
-    let eventsFound = 0;
+      for (const item of slackItems) {
+        try {
+          const { data, error } = await supabase.functions.invoke("send-slack-list-update", {
+            body: {
+              slack_list_id: item.slack_list_id,
+              slack_item_id: item.slack_item_id,
+              field_updates: { [KAMPAGNEN_STATUS_COL]: newOptId },
+            },
+          });
+          if (error) throw error;
+          if ((data as any)?.error) throw new Error((data as any).error);
+          updatesSent++;
 
-    for (const [accountId, accAssignments] of byAccount) {
-      const cleanAccountId = String(accountId).replace(/^act_/, "");
-      const url =
-        `https://graph.facebook.com/v19.0/act_${cleanAccountId}/activities` +
-        `?fields=event_type,event_time,actor_name,object_name,object_id,extra_data` +
-        `&since=${since}&limit=100&access_token=${TOKEN}`;
-
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.error) {
-          console.error(`[Account ${accountId}]`, data.error?.message || data.error);
-          continue;
-        }
-        const statusEvents = (data.data || []).filter(
-          (e: any) => e.event_type === "update_campaign_run_status",
-        );
-        if (statusEvents.length === 0) {
-          console.log(`[${accountId}] no status changes in last 60 min`);
-          continue;
-        }
-        eventsFound += statusEvents.length;
-        statusEvents.sort(
-          (a: any, b: any) => new Date(b.event_time).getTime() - new Date(a.event_time).getTime(),
-        );
-        const latestEvent = statusEvents[0];
-        let extra: any = {};
-        try { extra = latestEvent.extra_data ? JSON.parse(latestEvent.extra_data) : {}; } catch { /* */ }
-        const newValue = extra.new_value;
-        const newOptId = newValue === "ACTIVE" ? AKTIV_OPT : INAKTIV_OPT;
-
-        for (const a of accAssignments) {
-          const currentStatus = itemStatusMap.get(a.slack_item_id);
-          if (currentStatus === newOptId) {
-            console.log(`[skip] ${a.slack_item_id} already ${newValue}`);
-            continue;
-          }
-          updates.push({
-            slack_item_id: a.slack_item_id,
-            slack_list_id: a.slack_list_id,
-            new_option_id: newOptId,
-            meta_account_id: a.meta_account_id,
-            meta_account_name: a.meta_account_name,
-            latest_event: latestEvent,
+          await supabase.from("meta_campaign_status_log").insert({
+            slack_item_id: item.slack_item_id,
+            slack_list_id: item.slack_list_id,
+            meta_account_id: accountId,
+            meta_campaign_id: lastChange.campaign_id,
+            meta_campaign_name: lastChange.campaign_name,
+            old_value: lastChange.old_status,
+            new_value: lastChange.new_status,
+            slack_status_after: newOptId,
+            trigger_source,
+            webhook_success: true,
+          });
+        } catch (e) {
+          errors++;
+          console.error("[update failed]", item.slack_item_id, (e as Error).message);
+          await supabase.from("meta_campaign_status_log").insert({
+            slack_item_id: item.slack_item_id,
+            slack_list_id: item.slack_list_id,
+            meta_account_id: accountId,
+            meta_campaign_id: lastChange.campaign_id,
+            meta_campaign_name: lastChange.campaign_name,
+            old_value: lastChange.old_status,
+            new_value: lastChange.new_status,
+            trigger_source,
+            webhook_success: false,
+            error_message: (e as Error).message,
           });
         }
-      } catch (e) {
-        console.error(`[${accountId}] fetch failed:`, (e as Error).message);
+        await new Promise((r) => setTimeout(r, 300));
       }
-      await new Promise((r) => setTimeout(r, 250));
-    }
-
-    // 6) dispatch
-    let updatesSent = 0;
-    let errors = 0;
-    for (const upd of updates) {
-      try {
-        const { data, error } = await supabase.functions.invoke("send-slack-list-update", {
-          body: {
-            slack_list_id: upd.slack_list_id,
-            slack_item_id: upd.slack_item_id,
-            field_updates: { [KAMPAGNEN_STATUS_COLUMN_ID]: upd.new_option_id },
-          },
-        });
-        if (error) throw error;
-        if ((data as any)?.error) throw new Error((data as any).error);
-        updatesSent++;
-
-        let extra: any = {};
-        try { extra = upd.latest_event.extra_data ? JSON.parse(upd.latest_event.extra_data) : {}; } catch { /* */ }
-
-        await supabase.from("meta_campaign_status_log").insert({
-          slack_item_id: upd.slack_item_id,
-          slack_list_id: upd.slack_list_id,
-          meta_account_id: upd.meta_account_id,
-          meta_campaign_id: upd.latest_event.object_id,
-          meta_campaign_name: upd.latest_event.object_name,
-          event_time: upd.latest_event.event_time
-            ? new Date(upd.latest_event.event_time).toISOString()
-            : null,
-          actor_name: upd.latest_event.actor_name,
-          old_value: extra.old_value,
-          new_value: extra.new_value,
-          slack_status_after: upd.new_option_id,
-          trigger_source,
-          webhook_success: true,
-        });
-      } catch (e) {
-        errors++;
-        console.error("[update failed]", upd.slack_item_id, (e as Error).message);
-        await supabase.from("meta_campaign_status_log").insert({
-          slack_item_id: upd.slack_item_id,
-          slack_list_id: upd.slack_list_id,
-          meta_account_id: upd.meta_account_id,
-          meta_campaign_id: upd.latest_event?.object_id,
-          meta_campaign_name: upd.latest_event?.object_name,
-          trigger_source,
-          webhook_success: false,
-          error_message: (e as Error).message,
-        });
-      }
-      await new Promise((r) => setTimeout(r, 300));
     }
 
     const duration_ms = Date.now() - startTime;
     await supabase.from("meta_check_runs").insert({
       trigger_source,
-      accounts_checked: byAccount.size,
-      events_found: eventsFound,
-      items_matched: updates.length,
+      accounts_checked: accounts.length,
+      events_found: statusChanges.length,
+      items_matched: statusChanges.length,
       updates_sent: updatesSent,
       errors,
       duration_ms,
@@ -246,12 +239,13 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        accounts_checked: byAccount.size,
-        items_with_assignment: assignments.length,
-        events_found: eventsFound,
-        items_matched: updates.length,
+        accounts_checked: accounts.length,
+        campaigns_checked: allCampaigns.length,
+        changes_detected: changes.length,
+        status_changes: statusChanges.length,
         updates_sent: updatesSent,
         errors,
+        is_first_run: isFirstRun,
         duration_ms,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

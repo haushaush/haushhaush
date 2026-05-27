@@ -2556,6 +2556,36 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_campaign_snapshot: {
+        Row: {
+          account_id: string
+          account_name: string | null
+          campaign_id: string
+          campaign_name: string | null
+          daily_budget: number | null
+          last_seen_at: string
+          status: string
+        }
+        Insert: {
+          account_id: string
+          account_name?: string | null
+          campaign_id: string
+          campaign_name?: string | null
+          daily_budget?: number | null
+          last_seen_at?: string
+          status: string
+        }
+        Update: {
+          account_id?: string
+          account_name?: string | null
+          campaign_id?: string
+          campaign_name?: string | null
+          daily_budget?: number | null
+          last_seen_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       meta_campaign_status_log: {
         Row: {
           actor_name: string | null
