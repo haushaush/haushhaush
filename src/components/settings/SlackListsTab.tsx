@@ -714,6 +714,16 @@ export function SlackListsTab() {
           onSaved={() => setAliasVersion((v) => v + 1)}
         />
 
+        <MetaAccountAssignModal
+          open={assignModalOpen}
+          onOpenChange={(v) => { setAssignModalOpen(v); if (!v) setAssignTarget(null); }}
+          slackItemId={assignTarget?.itemId || null}
+          slackListId={activeListId}
+          slackItemName={assignTarget?.itemName || null}
+          currentAssignment={assignTarget ? assignments[assignTarget.itemId] : null}
+          onSaved={() => { if (activeListId) loadAssignments(activeListId); }}
+        />
+
         <Dialog open={debugOpen} onOpenChange={setDebugOpen}>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
             <DialogHeader>
