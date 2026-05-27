@@ -109,11 +109,11 @@ serve(async (req) => {
     );
 
     const body = {
-      item_id: slack_item_id,
+      zeilenid: slack_item_id,
       ...mappedUpdates,
     };
 
-    console.log("[send-update] Final webhook body:", JSON.stringify(body, null, 2));
+    console.log("[send-update] Webhook body (zeilenid format):", JSON.stringify(body, null, 2));
 
     const response = await fetch(webhookUrl, {
       method: "POST",
