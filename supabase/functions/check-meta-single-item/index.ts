@@ -102,10 +102,22 @@ serve(async (req) => {
       const lastChange = statusChanges[0];
       const { data: aliases } = await supabase
         .from('slack_list_aliases')
-        .select('slack_id, display_name')
-        .eq('alias_type', 'option');
+        .select('slack_id, display_name, parent_column_id')
+        .eq('alias_type', 'option')
+        .eq('parent_column_id', KAMPAGNEN_STATUS_COL);
       const AKTIV_OPT = aliases?.find((a: any) => (a.display_name || '').toLowerCase() === 'aktiv')?.slack_id;
       const INAKTIV_OPT = aliases?.find((a: any) => (a.display_name || '').toLowerCase() === 'inaktiv')?.slack_id;
+      console.log('[option-mapping]', {
+        AKTIV_OPT,
+        INAKTIV_OPT,
+        total_options_found: aliases?.length,
+      });
+      if (!AKTIV_OPT || !INAKTIV_OPT) {
+        throw new Error(
+          `Kampagnen-Status-Aliase fehlen: AKTIV=${AKTIV_OPT}, INAKTIV=${INAKTIV_OPT}. ` +
+          `Bitte in slack_list_aliases anlegen für column ${KAMPAGNEN_STATUS_COL}.`
+        );
+      }
       newOptId = lastChange.new_status === 'ACTIVE' ? AKTIV_OPT : INAKTIV_OPT;
       triggerEvent = lastChange;
     }
