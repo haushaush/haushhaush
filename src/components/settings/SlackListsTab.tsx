@@ -367,6 +367,9 @@ export function SlackListsTab() {
                       >
                         <span className="inline-flex items-center gap-1.5">
                           {getColumnDisplay(col.id, activeListId, col.name || col.id)}
+                          {isColumnEditable(col) && (
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          )}
                           {active ? (
                             sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                           ) : (
