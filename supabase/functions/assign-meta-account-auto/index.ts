@@ -1,10 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 const NAME_COLUMN_ID = "Col0B5BLYQH7B";
@@ -19,7 +20,6 @@ function normalize(s: string): string {
     .trim();
 }
 
-// Simple Dice coefficient on bigrams (no external lib)
 function similarity(a: string, b: string): number {
   if (a === b) return 1;
   if (a.length < 2 || b.length < 2) return 0;
@@ -59,7 +59,10 @@ function getFieldText(fields: any, columnId: string): string | null {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // PREFLIGHT must be checked FIRST
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -165,13 +168,19 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ matched, skipped, total }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      }
     );
-  } catch (e) {
-    console.error("[assign-meta-account-auto] fatal", e);
+  } catch (error) {
+    console.error('[assign-meta-account-auto]', error);
     return new Response(
-      JSON.stringify({ error: (e as Error).message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ error: (error as Error).message }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500
+      }
     );
   }
 });
