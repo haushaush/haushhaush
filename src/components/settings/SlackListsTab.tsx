@@ -243,6 +243,45 @@ export function SlackListsTab() {
     }
   };
 
+  const handleSingleCheck = async (itemId: string, itemName: string | null) => {
+    if (!activeListId) return;
+    setCheckingItems((prev) => { const n = new Set(prev); n.add(itemId); return n; });
+    try {
+      const { data, error } = await supabase.functions.invoke('check-meta-single-item', {
+        body: { slack_item_id: itemId, slack_list_id: activeListId },
+      });
+      if (error) throw error;
+      const d = data as any;
+      if (d?.success === false) throw new Error(d.message || d.error || 'Check fehlgeschlagen');
+      const label = itemName || 'Item';
+      if (d.update_sent) {
+        toast.success(`${label}: Status auf „${d.details.new_status}" gesetzt`, {
+          description: `Kampagne: ${d.details.campaign_name}`,
+        });
+      } else if (d.status_changes_detected === 0) {
+        toast.info(`${label}: Keine Änderungen erkannt`, {
+          description: `${d.campaigns_checked} Kampagnen geprüft`,
+        });
+      } else {
+        toast.info(`${label}: Status bereits aktuell`, {
+          description: `${d.campaigns_checked} Kampagnen geprüft`,
+        });
+      }
+      setCheckResults((prev) => ({ ...prev, [itemId]: 'success' }));
+      await loadItems(activeListId);
+      await loadItemUpdates(activeListId);
+    } catch (e: any) {
+      toast.error(`Check fehlgeschlagen: ${e.message || e}`);
+      setCheckResults((prev) => ({ ...prev, [itemId]: 'error' }));
+    } finally {
+      setCheckingItems((prev) => { const n = new Set(prev); n.delete(itemId); return n; });
+      setTimeout(() => {
+        setCheckResults((prev) => ({ ...prev, [itemId]: null }));
+      }, 3000);
+    }
+  };
+
+
   useEffect(() => { loadLists(); loadLastRun(); }, []);
   useEffect(() => {
     if (activeListId) {
