@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   List, RefreshCw, Plus, Trash2, Eye, ArrowLeft, Search, Loader2,
   ArrowUp, ArrowDown, ArrowUpDown, Pencil, Zap, History, Link2, Sparkles,
+  CheckCircle2, XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -91,6 +92,11 @@ export function SlackListsTab() {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [assignTarget, setAssignTarget] = useState<{ itemId: string; itemName: string | null } | null>(null);
   const [autoAssigning, setAutoAssigning] = useState(false);
+
+  // Per-row single-item check
+  const [checkingItems, setCheckingItems] = useState<Set<string>>(new Set());
+  const [checkResults, setCheckResults] = useState<Record<string, 'success' | 'error' | null>>({});
+
 
 
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
@@ -236,6 +242,45 @@ export function SlackListsTab() {
       setAutoAssigning(false);
     }
   };
+
+  const handleSingleCheck = async (itemId: string, itemName: string | null) => {
+    if (!activeListId) return;
+    setCheckingItems((prev) => { const n = new Set(prev); n.add(itemId); return n; });
+    try {
+      const { data, error } = await supabase.functions.invoke('check-meta-single-item', {
+        body: { slack_item_id: itemId, slack_list_id: activeListId },
+      });
+      if (error) throw error;
+      const d = data as any;
+      if (d?.success === false) throw new Error(d.message || d.error || 'Check fehlgeschlagen');
+      const label = itemName || 'Item';
+      if (d.update_sent) {
+        toast.success(`${label}: Status auf „${d.details.new_status}" gesetzt`, {
+          description: `Kampagne: ${d.details.campaign_name}`,
+        });
+      } else if (d.status_changes_detected === 0) {
+        toast.info(`${label}: Keine Änderungen erkannt`, {
+          description: `${d.campaigns_checked} Kampagnen geprüft`,
+        });
+      } else {
+        toast.info(`${label}: Status bereits aktuell`, {
+          description: `${d.campaigns_checked} Kampagnen geprüft`,
+        });
+      }
+      setCheckResults((prev) => ({ ...prev, [itemId]: 'success' }));
+      await loadItems(activeListId);
+      await loadItemUpdates(activeListId);
+    } catch (e: any) {
+      toast.error(`Check fehlgeschlagen: ${e.message || e}`);
+      setCheckResults((prev) => ({ ...prev, [itemId]: 'error' }));
+    } finally {
+      setCheckingItems((prev) => { const n = new Set(prev); n.delete(itemId); return n; });
+      setTimeout(() => {
+        setCheckResults((prev) => ({ ...prev, [itemId]: null }));
+      }, 3000);
+    }
+  };
+
 
   useEffect(() => { loadLists(); loadLastRun(); }, []);
   useEffect(() => {
@@ -546,20 +591,22 @@ export function SlackListsTab() {
                       <Link2 className="h-3 w-3 text-muted-foreground" />
                     </span>
                   </th>
+                  <th className="px-4 py-3 text-left font-medium w-20">Prüfen</th>
                 </tr>
               </thead>
               <tbody>
                 {loadingItems &&
                   Array.from({ length: 4 }).map((_, i) => (
                     <tr key={i} className="border-t border-border">
-                      <td colSpan={columns.length + 1} className="px-3 py-3">
+                      <td colSpan={columns.length + 2} className="px-3 py-3">
                         <Skeleton className="h-4 w-full" />
                       </td>
                     </tr>
                   ))}
                 {!loadingItems && filteredItems.length === 0 && (
                   <tr className="border-t border-border">
-                    <td colSpan={columns.length + 1} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={columns.length + 2} className="px-3 py-8 text-center text-muted-foreground">
+
                       Keine Items.
                     </td>
                   </tr>
@@ -698,8 +745,52 @@ export function SlackListsTab() {
                         </td>
                       );
                     })()}
+                    {(() => {
+                      const a = assignments[it.slack_item_id];
+                      const nameField: any = it.fields?.[NAME_COLUMN_ID];
+                      const itemName: string | null = typeof nameField === 'string'
+                        ? nameField
+                        : (nameField?.text || nameField?.value || null);
+                      const isChecking = checkingItems.has(it.slack_item_id);
+                      const result = checkResults[it.slack_item_id];
+                      return (
+                        <td className="px-3 py-2 align-top w-20">
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-block">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={!a || isChecking}
+                                    onClick={() => handleSingleCheck(it.slack_item_id, itemName)}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    {isChecking ? (
+                                      <RefreshCw className="h-4 w-4 animate-spin" />
+                                    ) : result === 'success' ? (
+                                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    ) : result === 'error' ? (
+                                      <XCircle className="h-4 w-4 text-red-500" />
+                                    ) : (
+                                      <RefreshCw className={cn('h-4 w-4', !a && 'text-muted-foreground/50')} />
+                                    )}
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {a
+                                  ? `Status für ${itemName || 'dieses Item'} prüfen`
+                                  : 'Erst Meta Account zuweisen'}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </td>
+                      );
+                    })()}
                   </tr>
                 ))}
+
               </tbody>
             </table>
           </div>
