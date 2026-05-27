@@ -7,10 +7,16 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   List, RefreshCw, Plus, Trash2, Eye, ArrowLeft, Search, Loader2,
-  ArrowUp, ArrowDown, ArrowUpDown, Pencil,
+  ArrowUp, ArrowDown, ArrowUpDown, Pencil, Zap, History,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
+import { de } from 'date-fns/locale';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 import { renderCellPlain, renderCellNode, getCellPills, normalizeColumns, loadAliases, subscribeAliases, getColumnDisplay, type SlackColumn } from '@/utils/slack-list-renderer';
 import { SlackAliasEditor } from './SlackAliasEditor';
@@ -69,6 +75,15 @@ export function SlackListsTab() {
   const [aliasEditorOpen, setAliasEditorOpen] = useState(false);
   const [aliasVersion, setAliasVersion] = useState(0);
 
+  // Meta-Status-Check state
+  const [checkingMeta, setCheckingMeta] = useState(false);
+  const [lastRun, setLastRun] = useState<any | null>(null);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [recentRuns, setRecentRuns] = useState<any[]>([]);
+  const [recentLogs, setRecentLogs] = useState<any[]>([]);
+  const [itemLastUpdate, setItemLastUpdate] = useState<Record<string, any>>({});
+
+
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
   const columns = useMemo<SlackColumn[]>(() => {
     const fromMeta = normalizeColumns(activeList?.columns);
@@ -120,14 +135,74 @@ export function SlackListsTab() {
     setLoadingItems(false);
   };
 
-  useEffect(() => { loadLists(); }, []);
+  const loadLastRun = async () => {
+    const { data } = await supabase
+      .from('meta_check_runs')
+      .select('*')
+      .order('triggered_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setLastRun(data);
+  };
+
+  const loadItemUpdates = async (listId: string) => {
+    const cutoff = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const { data } = await supabase
+      .from('meta_campaign_status_log')
+      .select('*')
+      .eq('slack_list_id', listId)
+      .eq('webhook_success', true)
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false });
+    const map: Record<string, any> = {};
+    for (const row of data || []) {
+      if (!map[row.slack_item_id]) map[row.slack_item_id] = row;
+    }
+    setItemLastUpdate(map);
+  };
+
+  const openDebug = async () => {
+    setDebugOpen(true);
+    const [{ data: runs }, { data: logs }] = await Promise.all([
+      supabase.from('meta_check_runs').select('*').order('triggered_at', { ascending: false }).limit(20),
+      supabase.from('meta_campaign_status_log').select('*').order('created_at', { ascending: false }).limit(50),
+    ]);
+    setRecentRuns(runs || []);
+    setRecentLogs(logs || []);
+  };
+
+  const runMetaCheck = async () => {
+    setCheckingMeta(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-meta-campaign-events', {
+        body: { trigger_source: 'manual' },
+      });
+      if (error) throw error;
+      if ((data as any)?.success === false) throw new Error((data as any).error);
+      const d = data as any;
+      toast.success(`${d.updates_sent} Updates · ${d.items_matched} Matches · ${d.events_found} Events`);
+      await loadLastRun();
+      if (activeListId) {
+        await loadItems(activeListId);
+        await loadItemUpdates(activeListId);
+      }
+    } catch (e: any) {
+      toast.error('Meta-Check fehlgeschlagen: ' + (e.message || 'Unbekannt'));
+    } finally {
+      setCheckingMeta(false);
+    }
+  };
+
+  useEffect(() => { loadLists(); loadLastRun(); }, []);
   useEffect(() => {
     if (activeListId) {
       loadItems(activeListId);
       loadAliases(activeListId).then(() => setAliasVersion((v) => v + 1));
+      loadItemUpdates(activeListId);
     }
   }, [activeListId]);
   useEffect(() => subscribeAliases(() => setAliasVersion((v) => v + 1)), []);
+
 
   const addList = async () => {
     const id = newListId.trim();
@@ -314,7 +389,36 @@ export function SlackListsTab() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {lastRun && (() => {
+              const ageMs = Date.now() - new Date(lastRun.triggered_at).getTime();
+              const stale = ageMs > 2 * 3600 * 1000;
+              return (
+                <button
+                  type="button"
+                  onClick={openDebug}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-xs transition-colors',
+                    stale ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-200' : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50',
+                  )}
+                  title="Klick für Run-Historie"
+                >
+                  <History className="h-3 w-3" />
+                  Letzter Auto-Check: {formatDistanceToNow(new Date(lastRun.triggered_at), { locale: de, addSuffix: true })}
+                </button>
+              );
+            })()}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={runMetaCheck}
+              disabled={checkingMeta}
+            >
+              {checkingMeta
+                ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                : <Zap className="h-3.5 w-3.5 mr-1.5" />}
+              Meta-Status prüfen
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -335,6 +439,7 @@ export function SlackListsTab() {
               Aus Slack syncen
             </Button>
           </div>
+
         </div>
 
         <div className="relative">
@@ -471,6 +576,23 @@ export function SlackListsTab() {
                                 return <span className="truncate max-w-[320px] whitespace-pre-wrap">{plain}</span>;
                               })()}
                               {isSaving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                              {editable && itemLastUpdate[it.slack_item_id] && (
+                                <TooltipProvider delayDuration={150}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-1.5 h-5 text-[10px] text-muted-foreground">
+                                        <RefreshCw className="h-2.5 w-2.5" />
+                                        {formatDistanceToNow(new Date(itemLastUpdate[it.slack_item_id].created_at), { locale: de, addSuffix: true })}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      Auto-Update: „{itemLastUpdate[it.slack_item_id].meta_campaign_name}"
+                                      {' '}({itemLastUpdate[it.slack_item_id].old_value} → {itemLastUpdate[it.slack_item_id].new_value})
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+
                             </div>
                           )}
                         </td>
@@ -491,8 +613,83 @@ export function SlackListsTab() {
           items={items}
           onSaved={() => setAliasVersion((v) => v + 1)}
         />
+
+        <Dialog open={debugOpen} onOpenChange={setDebugOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Meta-Status-Check Historie</DialogTitle>
+            </DialogHeader>
+            <Tabs defaultValue="runs" className="flex-1 overflow-hidden flex flex-col">
+              <TabsList>
+                <TabsTrigger value="runs">Runs ({recentRuns.length})</TabsTrigger>
+                <TabsTrigger value="logs">Status-Changes ({recentLogs.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value="runs" className="flex-1 overflow-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/30 text-muted-foreground sticky top-0">
+                    <tr>
+                      <th className="px-2 py-1.5 text-left">Zeit</th>
+                      <th className="px-2 py-1.5 text-left">Trigger</th>
+                      <th className="px-2 py-1.5 text-right">Accs</th>
+                      <th className="px-2 py-1.5 text-right">Events</th>
+                      <th className="px-2 py-1.5 text-right">Matches</th>
+                      <th className="px-2 py-1.5 text-right">Sent</th>
+                      <th className="px-2 py-1.5 text-right">Errors</th>
+                      <th className="px-2 py-1.5 text-right">Dauer</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentRuns.map((r) => (
+                      <tr key={r.id} className="border-t border-border">
+                        <td className="px-2 py-1.5">{new Date(r.triggered_at).toLocaleString('de-DE')}</td>
+                        <td className="px-2 py-1.5">{r.trigger_source}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.accounts_checked ?? 0}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.events_found ?? 0}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.items_matched ?? 0}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.updates_sent ?? 0}</td>
+                        <td className={cn('px-2 py-1.5 text-right tabular-nums', r.errors > 0 && 'text-destructive')}>{r.errors ?? 0}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{r.duration_ms}ms</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TabsContent>
+              <TabsContent value="logs" className="flex-1 overflow-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/30 text-muted-foreground sticky top-0">
+                    <tr>
+                      <th className="px-2 py-1.5 text-left">Zeit</th>
+                      <th className="px-2 py-1.5 text-left">Kampagne</th>
+                      <th className="px-2 py-1.5 text-left">Old → New</th>
+                      <th className="px-2 py-1.5 text-left">Actor</th>
+                      <th className="px-2 py-1.5 text-left">Trigger</th>
+                      <th className="px-2 py-1.5 text-left">OK?</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentLogs.map((l) => (
+                      <tr key={l.id} className="border-t border-border">
+                        <td className="px-2 py-1.5">{new Date(l.created_at).toLocaleString('de-DE')}</td>
+                        <td className="px-2 py-1.5 max-w-[280px] truncate">{l.meta_campaign_name}</td>
+                        <td className="px-2 py-1.5">{l.old_value} → {l.new_value}</td>
+                        <td className="px-2 py-1.5">{l.actor_name || '–'}</td>
+                        <td className="px-2 py-1.5">{l.trigger_source}</td>
+                        <td className="px-2 py-1.5">
+                          {l.webhook_success
+                            ? <span className="text-green-500">✓</span>
+                            : <span className="text-destructive" title={l.error_message}>✗</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
       </div>
     );
+
   }
 
 
