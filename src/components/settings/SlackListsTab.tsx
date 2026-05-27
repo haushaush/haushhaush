@@ -660,6 +660,44 @@ export function SlackListsTab() {
                         </td>
                       );
                     })}
+                    {(() => {
+                      const a = assignments[it.slack_item_id];
+                      const nameField = it.fields?.[NAME_COLUMN_ID];
+                      const itemName = typeof nameField === 'string'
+                        ? nameField
+                        : (nameField?.text || nameField?.value || null);
+                      return (
+                        <td className="px-3 py-2 align-top">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAssignTarget({ itemId: it.slack_item_id, itemName });
+                              setAssignModalOpen(true);
+                            }}
+                            className={cn(
+                              'inline-flex items-center gap-1.5 rounded-md border px-2 h-7 text-xs transition-colors max-w-[260px]',
+                              a
+                                ? 'border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary'
+                                : 'border-dashed border-border bg-muted/30 hover:bg-muted/60 text-muted-foreground',
+                            )}
+                            title={a ? `${a.meta_account_id} (${a.source})` : 'Account zuweisen'}
+                          >
+                            {a ? (
+                              <>
+                                <Link2 className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{a.meta_account_name || a.meta_account_id}</span>
+                                {a.source === 'auto' && <Sparkles className="h-3 w-3 shrink-0 opacity-70" />}
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="h-3 w-3" />
+                                Zuweisen
+                              </>
+                            )}
+                          </button>
+                        </td>
+                      );
+                    })()}
                   </tr>
                 ))}
               </tbody>
