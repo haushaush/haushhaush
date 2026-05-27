@@ -398,21 +398,19 @@ export function SlackListsTab() {
                           )}
                         >
                           {isEditing ? (
-                            <Input
-                              autoFocus
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={saveEdit}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-                                if (e.key === 'Escape') setEditing(null);
+                            <SlackCellEditor
+                              field={val}
+                              column={col as SlackColumn}
+                              slackListId={activeListId}
+                              onSave={async (newValue) => {
+                                await saveCell(it.slack_item_id, col as SlackColumn, newValue);
                               }}
-                              className="h-7 text-sm"
+                              onCancel={() => setEditing(null)}
                             />
                           ) : (
                             <div
-                              onClick={() => startEdit(it.slack_item_id, col.id, val)}
-                              className="cursor-text min-h-[28px] flex items-center gap-2 hover:bg-accent/50 rounded px-1 -mx-1"
+                              onClick={() => setEditing({ itemId: it.slack_item_id, colId: col.id })}
+                              className="cursor-pointer min-h-[28px] flex items-center gap-2 hover:bg-accent/50 rounded px-1 -mx-1"
                             >
                               {(() => {
                                 if (col.type === 'checkbox' || typeof val === 'boolean') {
