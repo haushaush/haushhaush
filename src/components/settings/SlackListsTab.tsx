@@ -347,6 +347,11 @@ export function SlackListsTab() {
           />
         </div>
 
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <span className="inline-block w-1 h-1 rounded-full bg-primary" />
+          Nur die Spalte „Kampagnen Status" kann hier editiert werden. Alle anderen Daten kommen aus Slack.
+        </p>
+
         <Card className="border-border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
