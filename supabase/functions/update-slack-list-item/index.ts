@@ -24,31 +24,45 @@ serve(async (req) => {
 
     const types: Record<string, string> = column_types || {};
 
+    function richText(text: string) {
+      return [{
+        type: "rich_text",
+        elements: [{
+          type: "rich_text_section",
+          elements: [{ type: "text", text }],
+        }],
+      }];
+    }
+
     function buildCell(column_id: string, value: unknown): Record<string, unknown> {
       const t = types[column_id] || "text";
+      const base = { column_id, row_id: slack_item_id };
       switch (t) {
         case "select":
-          return { column_id, select: value ? [String(value)] : [] };
+          return { ...base, select: value ? [String(value)] : [] };
         case "multi_select":
-          return { column_id, select: Array.isArray(value) ? value.map(String) : [] };
+          return { ...base, select: Array.isArray(value) ? value.map(String) : [] };
         case "checkbox":
-          return { column_id, checkbox: value === true };
+          return { ...base, checkbox: value === true };
         case "date": {
-          const n = typeof value === "number"
-            ? value
-            : Math.floor(new Date(String(value)).getTime() / 1000);
-          return { column_id, date: n };
+          let dateStr: string;
+          if (typeof value === "number") {
+            dateStr = new Date(value * 1000).toISOString().slice(0, 10);
+          } else {
+            const d = new Date(String(value));
+            dateStr = isNaN(d.getTime()) ? String(value) : d.toISOString().slice(0, 10);
+          }
+          return { ...base, date: [dateStr] };
         }
         case "number":
-          return { column_id, value: value === null || value === "" ? null : Number(value) };
+          return { ...base, number: value === null || value === "" ? null : Number(value) };
         case "user":
-          return { column_id, user: Array.isArray(value) ? value : [String(value)] };
-        case "link":
-          return { column_id, value: String(value ?? "") };
+          return { ...base, user: Array.isArray(value) ? value.map(String) : [String(value)] };
         case "rich_text":
         case "text":
+        case "link":
         default:
-          return { column_id, text: String(value ?? "") };
+          return { ...base, rich_text: richText(String(value ?? "")) };
       }
     }
 
@@ -62,7 +76,7 @@ serve(async (req) => {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json; charset=utf-8",
       },
-      body: JSON.stringify({ list_id: slack_list_id, id: slack_item_id, cells }),
+      body: JSON.stringify({ list_id: slack_list_id, cells }),
     });
     const data = await res.json();
 
