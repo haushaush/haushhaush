@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const NAME_COLUMN_ID = "Col0B53F5MRD1";
+const NAME_COLUMN_ID = "Col0B5BLYQH7B";
 const KAMPAGNEN_STATUS_COLUMN_ID = "Col0B5AR5UJQJ";
 const MAX_UPDATES_PER_RUN = 100;
 
