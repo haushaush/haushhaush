@@ -2529,6 +2529,102 @@ export type Database = {
           },
         ]
       }
+      meta_campaign_status_log: {
+        Row: {
+          actor_name: string | null
+          created_at: string
+          error_message: string | null
+          event_time: string | null
+          id: string
+          meta_account_id: string | null
+          meta_campaign_id: string | null
+          meta_campaign_name: string | null
+          new_value: string | null
+          old_value: string | null
+          slack_item_id: string
+          slack_list_id: string
+          slack_status_after: string | null
+          slack_status_before: string | null
+          trigger_source: string | null
+          webhook_success: boolean | null
+        }
+        Insert: {
+          actor_name?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_time?: string | null
+          id?: string
+          meta_account_id?: string | null
+          meta_campaign_id?: string | null
+          meta_campaign_name?: string | null
+          new_value?: string | null
+          old_value?: string | null
+          slack_item_id: string
+          slack_list_id: string
+          slack_status_after?: string | null
+          slack_status_before?: string | null
+          trigger_source?: string | null
+          webhook_success?: boolean | null
+        }
+        Update: {
+          actor_name?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_time?: string | null
+          id?: string
+          meta_account_id?: string | null
+          meta_campaign_id?: string | null
+          meta_campaign_name?: string | null
+          new_value?: string | null
+          old_value?: string | null
+          slack_item_id?: string
+          slack_list_id?: string
+          slack_status_after?: string | null
+          slack_status_before?: string | null
+          trigger_source?: string | null
+          webhook_success?: boolean | null
+        }
+        Relationships: []
+      }
+      meta_check_runs: {
+        Row: {
+          accounts_checked: number | null
+          duration_ms: number | null
+          error_details: Json | null
+          errors: number | null
+          events_found: number | null
+          id: string
+          items_matched: number | null
+          trigger_source: string | null
+          triggered_at: string
+          updates_sent: number | null
+        }
+        Insert: {
+          accounts_checked?: number | null
+          duration_ms?: number | null
+          error_details?: Json | null
+          errors?: number | null
+          events_found?: number | null
+          id?: string
+          items_matched?: number | null
+          trigger_source?: string | null
+          triggered_at?: string
+          updates_sent?: number | null
+        }
+        Update: {
+          accounts_checked?: number | null
+          duration_ms?: number | null
+          error_details?: Json | null
+          errors?: number | null
+          events_found?: number | null
+          id?: string
+          items_matched?: number | null
+          trigger_source?: string | null
+          triggered_at?: string
+          updates_sent?: number | null
+        }
+        Relationships: []
+      }
       meta_insights: {
         Row: {
           ad_account_id: string
