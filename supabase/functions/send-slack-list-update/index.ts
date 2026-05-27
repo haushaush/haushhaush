@@ -45,27 +45,30 @@ serve(async (req) => {
     const mappedUpdates: Record<string, unknown> = {};
     for (const [colId, value] of Object.entries(field_updates as Record<string, unknown>)) {
       const column: any = columnsMap.get(colId);
+      const type = column?.type || "text";
       const key = toKey(column?.name || colId);
-      let mapped: unknown = value;
 
-      if (column?.type === "select" || column?.type === "multi_select") {
-        const choices: any[] = column.options?.choices || column.options?.values || column.options || [];
-        const ids = Array.isArray(value) ? value : value == null ? [] : [value];
-        const labels = ids.map((id) => {
-          const choice = Array.isArray(choices) ? choices.find((c: any) => c.id === id) : null;
-          return choice?.label || choice?.name || id;
-        });
-        mapped = labels.join(", ");
-      } else if (column?.type === "checkbox") {
-        mapped = value === true ? "true" : "false";
-      } else if (column?.type === "date") {
-        if (typeof value === "number") {
-          mapped = new Date(value * 1000).toISOString().slice(0, 10);
-        } else {
-          mapped = String(value ?? "");
-        }
-      } else {
-        mapped = value == null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value);
+      let mapped: unknown;
+      switch (type) {
+        case "select":
+          mapped = Array.isArray(value) ? value[0] : value;
+          break;
+        case "multi_select":
+          mapped = Array.isArray(value) ? value : value == null ? [] : [value];
+          break;
+        case "checkbox":
+          mapped = Boolean(value);
+          break;
+        case "number":
+          mapped = value === null || value === "" ? null : Number(value);
+          break;
+        case "date":
+          mapped = typeof value === "number"
+            ? value
+            : Math.floor(new Date(String(value)).getTime() / 1000);
+          break;
+        default:
+          mapped = value == null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value);
       }
 
       mappedUpdates[key] = mapped;
@@ -76,7 +79,13 @@ serve(async (req) => {
       ...mappedUpdates,
     };
 
-    console.log("[send-update]", { slack_item_id, field_updates, webhook_body: body });
+    console.log("[send-update] Webhook-Body:", JSON.stringify(body, null, 2));
+    console.log("[send-update] Column types:",
+      Object.entries(field_updates as Record<string, unknown>).map(([colId]) => ({
+        colId,
+        type: columnsMap.get(colId)?.type,
+      })),
+    );
 
     const response = await fetch(webhookUrl, {
       method: "POST",
