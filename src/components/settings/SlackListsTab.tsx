@@ -93,6 +93,11 @@ export function SlackListsTab() {
   const [assignTarget, setAssignTarget] = useState<{ itemId: string; itemName: string | null } | null>(null);
   const [autoAssigning, setAutoAssigning] = useState(false);
 
+  // Per-row single-item check
+  const [checkingItems, setCheckingItems] = useState<Set<string>>(new Set());
+  const [checkResults, setCheckResults] = useState<Record<string, 'success' | 'error' | null>>({});
+
+
 
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
   const columns = useMemo<SlackColumn[]>(() => {
