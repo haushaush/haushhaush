@@ -202,12 +202,48 @@ export function SlackListsTab() {
     }
   };
 
+  const loadAssignments = async (listId: string) => {
+    const { data } = await supabase
+      .from('slack_item_meta_account')
+      .select('*')
+      .eq('slack_list_id', listId);
+    const map: Record<string, any> = {};
+    for (const a of data || []) map[a.slack_item_id] = a;
+    setAssignments(map);
+  };
+
+  const runAutoAssign = async () => {
+    const unassignedCount = items.filter((it) => !assignments[it.slack_item_id]).length;
+    if (unassignedCount === 0) {
+      toast.info('Alle Items haben bereits einen Account.');
+      return;
+    }
+    if (!confirm(`Auto-Match versuchen für ${unassignedCount} Items ohne Account?`)) return;
+    setAutoAssigning(true);
+    try {
+      // Refresh accounts cache first so name lookups work
+      await supabase.functions.invoke('list-meta-accounts', { body: {} });
+      const { data, error } = await supabase.functions.invoke('assign-meta-account-auto', {
+        body: { force: false },
+      });
+      if (error) throw error;
+      const d = data as any;
+      toast.success(`${d.matched} neu zugewiesen · ${d.skipped} übersprungen`);
+      if (activeListId) await loadAssignments(activeListId);
+    } catch (e: any) {
+      toast.error('Auto-Zuweisen fehlgeschlagen: ' + (e.message || ''));
+    } finally {
+      setAutoAssigning(false);
+    }
+  };
+
   useEffect(() => { loadLists(); loadLastRun(); }, []);
   useEffect(() => {
     if (activeListId) {
       loadItems(activeListId);
       loadAliases(activeListId).then(() => setAliasVersion((v) => v + 1));
       loadItemUpdates(activeListId);
+      loadAssignments(activeListId);
     }
   }, [activeListId]);
   useEffect(() => subscribeAliases(() => setAliasVersion((v) => v + 1)), []);
