@@ -201,12 +201,11 @@ export function SlackListsTab() {
     );
     setEditing(null);
     try {
-      const { data, error } = await supabase.functions.invoke('update-slack-list-item', {
+      const { data, error } = await supabase.functions.invoke('send-slack-list-update', {
         body: {
           slack_item_id: itemId,
           slack_list_id: activeListId,
           field_updates: { [col.id]: newValue },
-          column_types: { [col.id]: col.type || 'text' },
         },
       });
       if (error) throw error;
