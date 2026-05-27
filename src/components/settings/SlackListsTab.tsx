@@ -52,7 +52,7 @@ export function SlackListsTab() {
   const [loadingItems, setLoadingItems] = useState(false);
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<{ itemId: string; colId: string } | null>(null);
-  const [editValue, setEditValue] = useState('');
+  
   const [savingCell, setSavingCell] = useState<string | null>(null);
   const [errorCell, setErrorCell] = useState<string | null>(null);
   const [sortCol, setSortCol] = useState<string | null>(null);
