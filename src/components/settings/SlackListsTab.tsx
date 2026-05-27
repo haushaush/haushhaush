@@ -540,20 +540,26 @@ export function SlackListsTab() {
                       </th>
                     );
                   })}
+                  <th className="px-4 py-3 text-left font-medium">
+                    <span className="inline-flex items-center gap-1.5">
+                      Meta Account
+                      <Link2 className="h-3 w-3 text-muted-foreground" />
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {loadingItems &&
                   Array.from({ length: 4 }).map((_, i) => (
                     <tr key={i} className="border-t border-border">
-                      <td colSpan={Math.max(columns.length, 1)} className="px-3 py-3">
+                      <td colSpan={columns.length + 1} className="px-3 py-3">
                         <Skeleton className="h-4 w-full" />
                       </td>
                     </tr>
                   ))}
                 {!loadingItems && filteredItems.length === 0 && (
                   <tr className="border-t border-border">
-                    <td colSpan={Math.max(columns.length, 1)} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={columns.length + 1} className="px-3 py-8 text-center text-muted-foreground">
                       Keine Items.
                     </td>
                   </tr>
