@@ -11,7 +11,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { slack_item_id, slack_list_id, field_updates } = await req.json();
+    const { slack_item_id, slack_list_id, field_updates, column_types } = await req.json();
     if (!slack_item_id || !slack_list_id || !field_updates) {
       return new Response(JSON.stringify({ error: "missing params" }), {
         status: 400,
@@ -22,8 +22,38 @@ serve(async (req) => {
     const token = Deno.env.get("SLACK_BOT_TOKEN");
     if (!token) throw new Error("SLACK_BOT_TOKEN not configured");
 
+    const types: Record<string, string> = column_types || {};
+
+    function buildCell(column_id: string, value: unknown): Record<string, unknown> {
+      const t = types[column_id] || "text";
+      switch (t) {
+        case "select":
+          return { column_id, select: value ? [String(value)] : [] };
+        case "multi_select":
+          return { column_id, select: Array.isArray(value) ? value.map(String) : [] };
+        case "checkbox":
+          return { column_id, checkbox: value === true };
+        case "date": {
+          const n = typeof value === "number"
+            ? value
+            : Math.floor(new Date(String(value)).getTime() / 1000);
+          return { column_id, date: n };
+        }
+        case "number":
+          return { column_id, value: value === null || value === "" ? null : Number(value) };
+        case "user":
+          return { column_id, user: Array.isArray(value) ? value : [String(value)] };
+        case "link":
+          return { column_id, value: String(value ?? "") };
+        case "rich_text":
+        case "text":
+        default:
+          return { column_id, text: String(value ?? "") };
+      }
+    }
+
     const cells = Object.entries(field_updates as Record<string, unknown>).map(
-      ([column_id, value]) => ({ column_id, value }),
+      ([column_id, value]) => buildCell(column_id, value),
     );
 
     const res = await fetch("https://slack.com/api/slackLists.items.update", {

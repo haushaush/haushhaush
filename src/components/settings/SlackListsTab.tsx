@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 
 import { renderCellPlain, renderCellNode, getCellPills, normalizeColumns, loadAliases, subscribeAliases, getColumnDisplay, type SlackColumn } from '@/utils/slack-list-renderer';
 import { SlackAliasEditor } from './SlackAliasEditor';
+import { SlackCellEditor } from './SlackCellEditor';
 import { Settings2 } from 'lucide-react';
 
 interface SlackList {
@@ -51,7 +52,7 @@ export function SlackListsTab() {
   const [loadingItems, setLoadingItems] = useState(false);
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<{ itemId: string; colId: string } | null>(null);
-  const [editValue, setEditValue] = useState('');
+  
   const [savingCell, setSavingCell] = useState<string | null>(null);
   const [errorCell, setErrorCell] = useState<string | null>(null);
   const [sortCol, setSortCol] = useState<string | null>(null);
@@ -175,30 +176,27 @@ export function SlackListsTab() {
     await loadLists();
   };
 
-  const startEdit = (itemId: string, colId: string, current: unknown) => {
-    setEditing({ itemId, colId });
-    setEditValue(cellToString(current));
-    setErrorCell(null);
-  };
-
-  const saveEdit = async () => {
-    if (!editing || !activeListId) return;
-    const { itemId, colId } = editing;
-    const cellKey = `${itemId}::${colId}`;
+  const saveCell = async (itemId: string, col: SlackColumn, newValue: unknown) => {
+    if (!activeListId) return;
+    const cellKey = `${itemId}::${col.id}`;
     const item = items.find((i) => i.slack_item_id === itemId);
-    const prev = item?.fields?.[colId];
-    const newVal = editValue;
-    if (cellToString(prev) === newVal) {
-      setEditing(null);
-      return;
-    }
+    const prev = item?.fields?.[col.id];
+
+    // Optimistic store — shape mirrors what sync writes back
+    const optimistic = (() => {
+      const t = col.type;
+      if (t === 'select') return { select: newValue ? [newValue as string] : [] };
+      if (t === 'multi_select') return { select: Array.isArray(newValue) ? newValue : [] };
+      if (t === 'checkbox') return { checkbox: !!newValue };
+      if (t === 'date') return { date: newValue as number };
+      if (t === 'number') return { value: newValue };
+      return { text: String(newValue ?? '') };
+    })();
+
     setSavingCell(cellKey);
-    // Optimistic
     setItems((curr) =>
       curr.map((i) =>
-        i.slack_item_id === itemId
-          ? { ...i, fields: { ...i.fields, [colId]: newVal } }
-          : i,
+        i.slack_item_id === itemId ? { ...i, fields: { ...i.fields, [col.id]: optimistic } } : i,
       ),
     );
     setEditing(null);
@@ -207,7 +205,8 @@ export function SlackListsTab() {
         body: {
           slack_item_id: itemId,
           slack_list_id: activeListId,
-          field_updates: { [colId]: newVal },
+          field_updates: { [col.id]: newValue },
+          column_types: { [col.id]: col.type || 'text' },
         },
       });
       if (error) throw error;
@@ -215,12 +214,9 @@ export function SlackListsTab() {
       toast.success('Aktualisiert');
     } catch (e: any) {
       toast.error('Speichern fehlgeschlagen: ' + (e.message || 'Unbekannt'));
-      // Revert
       setItems((curr) =>
         curr.map((i) =>
-          i.slack_item_id === itemId
-            ? { ...i, fields: { ...i.fields, [colId]: prev } }
-            : i,
+          i.slack_item_id === itemId ? { ...i, fields: { ...i.fields, [col.id]: prev } } : i,
         ),
       );
       setErrorCell(cellKey);
@@ -402,21 +398,19 @@ export function SlackListsTab() {
                           )}
                         >
                           {isEditing ? (
-                            <Input
-                              autoFocus
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={saveEdit}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-                                if (e.key === 'Escape') setEditing(null);
+                            <SlackCellEditor
+                              field={val}
+                              column={col as SlackColumn}
+                              slackListId={activeListId}
+                              onSave={async (newValue) => {
+                                await saveCell(it.slack_item_id, col as SlackColumn, newValue);
                               }}
-                              className="h-7 text-sm"
+                              onCancel={() => setEditing(null)}
                             />
                           ) : (
                             <div
-                              onClick={() => startEdit(it.slack_item_id, col.id, val)}
-                              className="cursor-text min-h-[28px] flex items-center gap-2 hover:bg-accent/50 rounded px-1 -mx-1"
+                              onClick={() => setEditing({ itemId: it.slack_item_id, colId: col.id })}
+                              className="cursor-pointer min-h-[28px] flex items-center gap-2 hover:bg-accent/50 rounded px-1 -mx-1"
                             >
                               {(() => {
                                 if (col.type === 'checkbox' || typeof val === 'boolean') {
