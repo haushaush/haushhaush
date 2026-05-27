@@ -70,19 +70,26 @@ serve(async (req) => {
       ([column_id, value]) => buildCell(column_id, value),
     );
 
-    const form = new URLSearchParams();
-    form.set("list_id", slack_list_id);
-    form.set("cells", JSON.stringify(cells));
-
     const res = await fetch("https://slack.com/api/slackLists.items.update", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+        "Content-Type": "application/json",
       },
-      body: form.toString(),
+      body: JSON.stringify({
+        list_id: slack_list_id,
+        id: slack_item_id,
+        cells,
+      }),
     });
-    const data = await res.json();
+    const responseText = await res.text();
+    let data: any;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      throw new Error(`Slack returned non-JSON: ${responseText}`);
+    }
+    console.log("[update] Slack response:", data);
 
     if (!data.ok) {
       console.error("slackLists.items.update failed", { slack_list_id, slack_item_id, cells, error: data.error, response: data });

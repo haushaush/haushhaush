@@ -29,7 +29,7 @@ async function slackPost(method: string, token: string, body: Record<string, unk
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json; charset=utf-8",
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
   });
