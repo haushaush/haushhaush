@@ -62,6 +62,11 @@ serve(async (req) => {
     }
 
     const getVariableKey = (column: any, fallbackId: string) => {
+      // Override hat Priorität (z.B. "Kampagnen Status" → "status")
+      if (VARIABLE_KEY_OVERRIDES[fallbackId]) {
+        return VARIABLE_KEY_OVERRIDES[fallbackId];
+      }
+
       const displayName =
         aliasMap.get(fallbackId) ||
         column?.name ||
