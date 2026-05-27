@@ -70,20 +70,27 @@ serve(async (req) => {
       ([column_id, value]) => buildCell(column_id, value),
     );
 
+    const form = new URLSearchParams();
+    form.set("list_id", slack_list_id);
+    form.set("cells", JSON.stringify(cells));
+
     const res = await fetch("https://slack.com/api/slackLists.items.update", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json; charset=utf-8",
+        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
       },
-      body: JSON.stringify({ list_id: slack_list_id, cells }),
+      body: form.toString(),
     });
     const data = await res.json();
 
     if (!data.ok) {
+      console.error("slackLists.items.update failed", { slack_list_id, slack_item_id, cells, error: data.error, response: data });
       if (data.error === "missing_scope")
-        throw new Error("Bitte lists:write in Slack App ergänzen");
+        throw new Error("Bitte lists:write Scope in Slack App ergänzen und neu autorisieren");
       if (data.error === "invalid_auth") throw new Error("Slack-Token ungültig");
+      if (data.error === "list_not_found")
+        throw new Error("Liste nicht gefunden. Bot muss zur Liste eingeladen werden (in Slack: Liste öffnen → Share → Bot hinzufügen) und 'lists:write' Scope braucht es.");
       throw new Error(`Slack error: ${data.error}`);
     }
 
