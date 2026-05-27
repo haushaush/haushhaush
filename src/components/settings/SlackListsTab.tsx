@@ -662,8 +662,8 @@ export function SlackListsTab() {
                     })}
                     {(() => {
                       const a = assignments[it.slack_item_id];
-                      const nameField = it.fields?.[NAME_COLUMN_ID];
-                      const itemName = typeof nameField === 'string'
+                      const nameField: any = it.fields?.[NAME_COLUMN_ID];
+                      const itemName: string | null = typeof nameField === 'string'
                         ? nameField
                         : (nameField?.text || nameField?.value || null);
                       return (
