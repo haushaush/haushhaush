@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   List, RefreshCw, Plus, Trash2, Eye, ArrowLeft, Search, Loader2,
-  ArrowUp, ArrowDown, ArrowUpDown,
+  ArrowUp, ArrowDown, ArrowUpDown, Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,15 @@ import { renderCellPlain, renderCellNode, getCellPills, normalizeColumns, loadAl
 import { SlackAliasEditor } from './SlackAliasEditor';
 import { SlackCellEditor } from './SlackCellEditor';
 import { Settings2 } from 'lucide-react';
+
+const EDITABLE_COLUMN_IDS = ['Col0B5AR5UJQJ'];
+const EDITABLE_COLUMN_NAMES = ['kampagnen status', 'kampagnenstatus'];
+
+const isColumnEditable = (col: SlackColumn) => {
+  const name = (col.name || '').toLowerCase().trim();
+  return EDITABLE_COLUMN_IDS.includes(col.id) ||
+         EDITABLE_COLUMN_NAMES.includes(name);
+};
 
 interface SlackList {
   id: string;
