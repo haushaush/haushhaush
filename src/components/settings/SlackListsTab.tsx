@@ -86,6 +86,12 @@ export function SlackListsTab() {
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [itemLastUpdate, setItemLastUpdate] = useState<Record<string, any>>({});
 
+  // Meta-Account assignments
+  const [assignments, setAssignments] = useState<Record<string, any>>({});
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignTarget, setAssignTarget] = useState<{ itemId: string; itemName: string | null } | null>(null);
+  const [autoAssigning, setAutoAssigning] = useState(false);
+
 
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
   const columns = useMemo<SlackColumn[]>(() => {
