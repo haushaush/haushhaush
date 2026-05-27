@@ -401,7 +401,8 @@ export function SlackListsTab() {
                   <tr key={it.slack_item_id} className="border-t border-border hover:bg-muted/20">
                     {columns.map((col) => {
                       const cellKey = `${it.slack_item_id}::${col.id}`;
-                      const isEditing = editing?.itemId === it.slack_item_id && editing?.colId === col.id;
+                      const editable = isColumnEditable(col);
+                      const isEditing = editing?.itemId === it.slack_item_id && editing?.colId === col.id && editable;
                       const isSaving = savingCell === cellKey;
                       const isError = errorCell === cellKey;
                       const val = it.fields?.[col.id];
@@ -425,8 +426,11 @@ export function SlackListsTab() {
                             />
                           ) : (
                             <div
-                              onClick={() => setEditing({ itemId: it.slack_item_id, colId: col.id })}
-                              className="cursor-pointer min-h-[28px] flex items-center gap-2 hover:bg-accent/50 rounded px-1 -mx-1"
+                              onClick={editable ? () => setEditing({ itemId: it.slack_item_id, colId: col.id }) : undefined}
+                              className={cn(
+                                'min-h-[28px] flex items-center gap-2 rounded px-1 -mx-1',
+                                editable ? 'cursor-pointer hover:bg-accent/50' : 'cursor-default',
+                              )}
                             >
                               {(() => {
                                 if (col.type === 'checkbox' || typeof val === 'boolean') {
