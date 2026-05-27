@@ -1,16 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 const KAMPAGNEN_STATUS_COL = "Col0B5AR5UJQJ";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // PREFLIGHT must be checked FIRST
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
 
   const startTime = Date.now();
   const supabase = createClient(
@@ -129,7 +133,7 @@ serve(async (req) => {
         .in("campaign_id", deletedIds);
     }
 
-    // 7) Slack-Item ↔ Account assignments
+    // 7) Slack-Item Account assignments
     const { data: assignments } = await supabase
       .from("slack_item_meta_account")
       .select("slack_item_id, slack_list_id, meta_account_id");
@@ -248,7 +252,9 @@ serve(async (req) => {
         is_first_run: isFirstRun,
         duration_ms,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
     );
   } catch (e) {
     const duration_ms = Date.now() - startTime;
@@ -265,7 +271,10 @@ serve(async (req) => {
     });
     return new Response(
       JSON.stringify({ success: false, error: (e as Error).message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
     );
   }
 });
