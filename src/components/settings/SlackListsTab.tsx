@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   List, RefreshCw, Plus, Trash2, Eye, ArrowLeft, Search, Loader2,
-  ArrowUp, ArrowDown, ArrowUpDown,
+  ArrowUp, ArrowDown, ArrowUpDown, Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,15 @@ import { renderCellPlain, renderCellNode, getCellPills, normalizeColumns, loadAl
 import { SlackAliasEditor } from './SlackAliasEditor';
 import { SlackCellEditor } from './SlackCellEditor';
 import { Settings2 } from 'lucide-react';
+
+const EDITABLE_COLUMN_IDS = ['Col0B5AR5UJQJ'];
+const EDITABLE_COLUMN_NAMES = ['kampagnen status', 'kampagnenstatus'];
+
+const isColumnEditable = (col: SlackColumn) => {
+  const name = (col.name || '').toLowerCase().trim();
+  return EDITABLE_COLUMN_IDS.includes(col.id) ||
+         EDITABLE_COLUMN_NAMES.includes(name);
+};
 
 interface SlackList {
   id: string;
@@ -338,6 +347,11 @@ export function SlackListsTab() {
           />
         </div>
 
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <span className="inline-block w-1 h-1 rounded-full bg-primary" />
+          Nur die Spalte „Kampagnen Status" kann hier editiert werden. Alle anderen Daten kommen aus Slack.
+        </p>
+
         <Card className="border-border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -353,6 +367,9 @@ export function SlackListsTab() {
                       >
                         <span className="inline-flex items-center gap-1.5">
                           {getColumnDisplay(col.id, activeListId, col.name || col.id)}
+                          {isColumnEditable(col) && (
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          )}
                           {active ? (
                             sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                           ) : (
@@ -384,7 +401,8 @@ export function SlackListsTab() {
                   <tr key={it.slack_item_id} className="border-t border-border hover:bg-muted/20">
                     {columns.map((col) => {
                       const cellKey = `${it.slack_item_id}::${col.id}`;
-                      const isEditing = editing?.itemId === it.slack_item_id && editing?.colId === col.id;
+                      const editable = isColumnEditable(col);
+                      const isEditing = editing?.itemId === it.slack_item_id && editing?.colId === col.id && editable;
                       const isSaving = savingCell === cellKey;
                       const isError = errorCell === cellKey;
                       const val = it.fields?.[col.id];
@@ -408,8 +426,11 @@ export function SlackListsTab() {
                             />
                           ) : (
                             <div
-                              onClick={() => setEditing({ itemId: it.slack_item_id, colId: col.id })}
-                              className="cursor-pointer min-h-[28px] flex items-center gap-2 hover:bg-accent/50 rounded px-1 -mx-1"
+                              onClick={editable ? () => setEditing({ itemId: it.slack_item_id, colId: col.id }) : undefined}
+                              className={cn(
+                                'min-h-[28px] flex items-center gap-2 rounded px-1 -mx-1',
+                                editable ? 'cursor-pointer hover:bg-accent/50' : 'cursor-default',
+                              )}
                             >
                               {(() => {
                                 if (col.type === 'checkbox' || typeof val === 'boolean') {
