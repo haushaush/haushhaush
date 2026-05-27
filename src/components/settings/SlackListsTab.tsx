@@ -745,8 +745,52 @@ export function SlackListsTab() {
                         </td>
                       );
                     })()}
+                    {(() => {
+                      const a = assignments[it.slack_item_id];
+                      const nameField: any = it.fields?.[NAME_COLUMN_ID];
+                      const itemName: string | null = typeof nameField === 'string'
+                        ? nameField
+                        : (nameField?.text || nameField?.value || null);
+                      const isChecking = checkingItems.has(it.slack_item_id);
+                      const result = checkResults[it.slack_item_id];
+                      return (
+                        <td className="px-3 py-2 align-top w-20">
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-block">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={!a || isChecking}
+                                    onClick={() => handleSingleCheck(it.slack_item_id, itemName)}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    {isChecking ? (
+                                      <RefreshCw className="h-4 w-4 animate-spin" />
+                                    ) : result === 'success' ? (
+                                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    ) : result === 'error' ? (
+                                      <XCircle className="h-4 w-4 text-red-500" />
+                                    ) : (
+                                      <RefreshCw className={cn('h-4 w-4', !a && 'text-muted-foreground/50')} />
+                                    )}
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {a
+                                  ? `Status für ${itemName || 'dieses Item'} prüfen`
+                                  : 'Erst Meta Account zuweisen'}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </td>
+                      );
+                    })()}
                   </tr>
                 ))}
+
               </tbody>
             </table>
           </div>
