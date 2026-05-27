@@ -613,8 +613,83 @@ export function SlackListsTab() {
           items={items}
           onSaved={() => setAliasVersion((v) => v + 1)}
         />
+
+        <Dialog open={debugOpen} onOpenChange={setDebugOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Meta-Status-Check Historie</DialogTitle>
+            </DialogHeader>
+            <Tabs defaultValue="runs" className="flex-1 overflow-hidden flex flex-col">
+              <TabsList>
+                <TabsTrigger value="runs">Runs ({recentRuns.length})</TabsTrigger>
+                <TabsTrigger value="logs">Status-Changes ({recentLogs.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value="runs" className="flex-1 overflow-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/30 text-muted-foreground sticky top-0">
+                    <tr>
+                      <th className="px-2 py-1.5 text-left">Zeit</th>
+                      <th className="px-2 py-1.5 text-left">Trigger</th>
+                      <th className="px-2 py-1.5 text-right">Accs</th>
+                      <th className="px-2 py-1.5 text-right">Events</th>
+                      <th className="px-2 py-1.5 text-right">Matches</th>
+                      <th className="px-2 py-1.5 text-right">Sent</th>
+                      <th className="px-2 py-1.5 text-right">Errors</th>
+                      <th className="px-2 py-1.5 text-right">Dauer</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentRuns.map((r) => (
+                      <tr key={r.id} className="border-t border-border">
+                        <td className="px-2 py-1.5">{new Date(r.triggered_at).toLocaleString('de-DE')}</td>
+                        <td className="px-2 py-1.5">{r.trigger_source}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.accounts_checked ?? 0}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.events_found ?? 0}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.items_matched ?? 0}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.updates_sent ?? 0}</td>
+                        <td className={cn('px-2 py-1.5 text-right tabular-nums', r.errors > 0 && 'text-destructive')}>{r.errors ?? 0}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{r.duration_ms}ms</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TabsContent>
+              <TabsContent value="logs" className="flex-1 overflow-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/30 text-muted-foreground sticky top-0">
+                    <tr>
+                      <th className="px-2 py-1.5 text-left">Zeit</th>
+                      <th className="px-2 py-1.5 text-left">Kampagne</th>
+                      <th className="px-2 py-1.5 text-left">Old → New</th>
+                      <th className="px-2 py-1.5 text-left">Actor</th>
+                      <th className="px-2 py-1.5 text-left">Trigger</th>
+                      <th className="px-2 py-1.5 text-left">OK?</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentLogs.map((l) => (
+                      <tr key={l.id} className="border-t border-border">
+                        <td className="px-2 py-1.5">{new Date(l.created_at).toLocaleString('de-DE')}</td>
+                        <td className="px-2 py-1.5 max-w-[280px] truncate">{l.meta_campaign_name}</td>
+                        <td className="px-2 py-1.5">{l.old_value} → {l.new_value}</td>
+                        <td className="px-2 py-1.5">{l.actor_name || '–'}</td>
+                        <td className="px-2 py-1.5">{l.trigger_source}</td>
+                        <td className="px-2 py-1.5">
+                          {l.webhook_success
+                            ? <span className="text-green-500">✓</span>
+                            : <span className="text-destructive" title={l.error_message}>✗</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
       </div>
     );
+
   }
 
 
