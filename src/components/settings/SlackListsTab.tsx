@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 
 import { renderCellPlain, renderCellNode, getCellPills, normalizeColumns, loadAliases, subscribeAliases, getColumnDisplay, type SlackColumn } from '@/utils/slack-list-renderer';
 import { SlackAliasEditor } from './SlackAliasEditor';
+import { SlackCellEditor } from './SlackCellEditor';
 import { Settings2 } from 'lucide-react';
 
 interface SlackList {
