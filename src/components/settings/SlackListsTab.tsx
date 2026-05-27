@@ -389,7 +389,36 @@ export function SlackListsTab() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {lastRun && (() => {
+              const ageMs = Date.now() - new Date(lastRun.triggered_at).getTime();
+              const stale = ageMs > 2 * 3600 * 1000;
+              return (
+                <button
+                  type="button"
+                  onClick={openDebug}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 h-7 text-xs transition-colors',
+                    stale ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-200' : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50',
+                  )}
+                  title="Klick für Run-Historie"
+                >
+                  <History className="h-3 w-3" />
+                  Letzter Auto-Check: {formatDistanceToNow(new Date(lastRun.triggered_at), { locale: de, addSuffix: true })}
+                </button>
+              );
+            })()}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={runMetaCheck}
+              disabled={checkingMeta}
+            >
+              {checkingMeta
+                ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                : <Zap className="h-3.5 w-3.5 mr-1.5" />}
+              Meta-Status prüfen
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -410,6 +439,7 @@ export function SlackListsTab() {
               Aus Slack syncen
             </Button>
           </div>
+
         </div>
 
         <div className="relative">
