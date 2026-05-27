@@ -135,14 +135,74 @@ export function SlackListsTab() {
     setLoadingItems(false);
   };
 
-  useEffect(() => { loadLists(); }, []);
+  const loadLastRun = async () => {
+    const { data } = await supabase
+      .from('meta_check_runs')
+      .select('*')
+      .order('triggered_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setLastRun(data);
+  };
+
+  const loadItemUpdates = async (listId: string) => {
+    const cutoff = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const { data } = await supabase
+      .from('meta_campaign_status_log')
+      .select('*')
+      .eq('slack_list_id', listId)
+      .eq('webhook_success', true)
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false });
+    const map: Record<string, any> = {};
+    for (const row of data || []) {
+      if (!map[row.slack_item_id]) map[row.slack_item_id] = row;
+    }
+    setItemLastUpdate(map);
+  };
+
+  const openDebug = async () => {
+    setDebugOpen(true);
+    const [{ data: runs }, { data: logs }] = await Promise.all([
+      supabase.from('meta_check_runs').select('*').order('triggered_at', { ascending: false }).limit(20),
+      supabase.from('meta_campaign_status_log').select('*').order('created_at', { ascending: false }).limit(50),
+    ]);
+    setRecentRuns(runs || []);
+    setRecentLogs(logs || []);
+  };
+
+  const runMetaCheck = async () => {
+    setCheckingMeta(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-meta-campaign-events', {
+        body: { trigger_source: 'manual' },
+      });
+      if (error) throw error;
+      if ((data as any)?.success === false) throw new Error((data as any).error);
+      const d = data as any;
+      toast.success(`${d.updates_sent} Updates · ${d.items_matched} Matches · ${d.events_found} Events`);
+      await loadLastRun();
+      if (activeListId) {
+        await loadItems(activeListId);
+        await loadItemUpdates(activeListId);
+      }
+    } catch (e: any) {
+      toast.error('Meta-Check fehlgeschlagen: ' + (e.message || 'Unbekannt'));
+    } finally {
+      setCheckingMeta(false);
+    }
+  };
+
+  useEffect(() => { loadLists(); loadLastRun(); }, []);
   useEffect(() => {
     if (activeListId) {
       loadItems(activeListId);
       loadAliases(activeListId).then(() => setAliasVersion((v) => v + 1));
+      loadItemUpdates(activeListId);
     }
   }, [activeListId]);
   useEffect(() => subscribeAliases(() => setAliasVersion((v) => v + 1)), []);
+
 
   const addList = async () => {
     const id = newListId.trim();
