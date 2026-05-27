@@ -2529,6 +2529,33 @@ export type Database = {
           },
         ]
       }
+      meta_accounts_cache: {
+        Row: {
+          business_name: string | null
+          currency: string | null
+          last_synced_at: string
+          meta_account_id: string
+          name: string | null
+          status: string | null
+        }
+        Insert: {
+          business_name?: string | null
+          currency?: string | null
+          last_synced_at?: string
+          meta_account_id: string
+          name?: string | null
+          status?: string | null
+        }
+        Update: {
+          business_name?: string | null
+          currency?: string | null
+          last_synced_at?: string
+          meta_account_id?: string
+          name?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       meta_campaign_status_log: {
         Row: {
           actor_name: string | null
@@ -4571,6 +4598,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      slack_item_meta_account: {
+        Row: {
+          assigned_at: string
+          id: string
+          matched_client_id: string | null
+          meta_account_id: string
+          meta_account_name: string | null
+          slack_item_id: string
+          slack_list_id: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          id?: string
+          matched_client_id?: string | null
+          meta_account_id: string
+          meta_account_name?: string | null
+          slack_item_id: string
+          slack_list_id: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          id?: string
+          matched_client_id?: string | null
+          meta_account_id?: string
+          meta_account_name?: string | null
+          slack_item_id?: string
+          slack_list_id?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_item_meta_account_matched_client_id_fkey"
+            columns: ["matched_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       slack_list_aliases: {
         Row: {
