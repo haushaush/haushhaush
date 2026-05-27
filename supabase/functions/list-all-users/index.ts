@@ -28,11 +28,14 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return jsonResponse({ error: 'Nicht authentifiziert' }, 401);
 
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) return jsonResponse({ error: 'Nicht authentifiziert' }, 401);
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    const userClient = createClient(SUPABASE_URL, ANON_KEY);
+    const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token);
+    if (claimsErr || !claims?.claims?.sub) {
+      console.error('list-all-users auth failed', claimsErr);
+      return jsonResponse({ error: 'Nicht authentifiziert' }, 401);
+    }
+    const userId = claims.claims.sub as string;
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
@@ -40,7 +43,7 @@ Deno.serve(async (req) => {
     const { data: roleRow } = await admin
       .from('user_roles')
       .select('role')
-      .eq('user_id', userData.user.id)
+      .eq('user_id', userId)
       .eq('role', 'admin')
       .maybeSingle();
 
