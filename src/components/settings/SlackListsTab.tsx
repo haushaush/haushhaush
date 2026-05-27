@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   List, RefreshCw, Plus, Trash2, Eye, ArrowLeft, Search, Loader2,
-  ArrowUp, ArrowDown, ArrowUpDown, Pencil, Zap, History,
+  ArrowUp, ArrowDown, ArrowUpDown, Pencil, Zap, History, Link2, Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -21,7 +21,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { renderCellPlain, renderCellNode, getCellPills, normalizeColumns, loadAliases, subscribeAliases, getColumnDisplay, type SlackColumn } from '@/utils/slack-list-renderer';
 import { SlackAliasEditor } from './SlackAliasEditor';
 import { SlackCellEditor } from './SlackCellEditor';
+import { MetaAccountAssignModal } from './MetaAccountAssignModal';
 import { Settings2 } from 'lucide-react';
+
+const NAME_COLUMN_ID = 'Col0B5BLYQH7B';
 
 const EDITABLE_COLUMN_IDS = ['Col0B5AR5UJQJ'];
 const EDITABLE_COLUMN_NAMES = ['kampagnen status', 'kampagnenstatus'];
@@ -82,6 +85,12 @@ export function SlackListsTab() {
   const [recentRuns, setRecentRuns] = useState<any[]>([]);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [itemLastUpdate, setItemLastUpdate] = useState<Record<string, any>>({});
+
+  // Meta-Account assignments
+  const [assignments, setAssignments] = useState<Record<string, any>>({});
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignTarget, setAssignTarget] = useState<{ itemId: string; itemName: string | null } | null>(null);
+  const [autoAssigning, setAutoAssigning] = useState(false);
 
 
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
@@ -193,12 +202,48 @@ export function SlackListsTab() {
     }
   };
 
+  const loadAssignments = async (listId: string) => {
+    const { data } = await supabase
+      .from('slack_item_meta_account')
+      .select('*')
+      .eq('slack_list_id', listId);
+    const map: Record<string, any> = {};
+    for (const a of data || []) map[a.slack_item_id] = a;
+    setAssignments(map);
+  };
+
+  const runAutoAssign = async () => {
+    const unassignedCount = items.filter((it) => !assignments[it.slack_item_id]).length;
+    if (unassignedCount === 0) {
+      toast.info('Alle Items haben bereits einen Account.');
+      return;
+    }
+    if (!confirm(`Auto-Match versuchen für ${unassignedCount} Items ohne Account?`)) return;
+    setAutoAssigning(true);
+    try {
+      // Refresh accounts cache first so name lookups work
+      await supabase.functions.invoke('list-meta-accounts', { body: {} });
+      const { data, error } = await supabase.functions.invoke('assign-meta-account-auto', {
+        body: { force: false },
+      });
+      if (error) throw error;
+      const d = data as any;
+      toast.success(`${d.matched} neu zugewiesen · ${d.skipped} übersprungen`);
+      if (activeListId) await loadAssignments(activeListId);
+    } catch (e: any) {
+      toast.error('Auto-Zuweisen fehlgeschlagen: ' + (e.message || ''));
+    } finally {
+      setAutoAssigning(false);
+    }
+  };
+
   useEffect(() => { loadLists(); loadLastRun(); }, []);
   useEffect(() => {
     if (activeListId) {
       loadItems(activeListId);
       loadAliases(activeListId).then(() => setAliasVersion((v) => v + 1));
       loadItemUpdates(activeListId);
+      loadAssignments(activeListId);
     }
   }, [activeListId]);
   useEffect(() => subscribeAliases(() => setAliasVersion((v) => v + 1)), []);
@@ -411,6 +456,17 @@ export function SlackListsTab() {
             <Button
               variant="outline"
               size="sm"
+              onClick={runAutoAssign}
+              disabled={autoAssigning}
+            >
+              {autoAssigning
+                ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+              Accounts auto-zuweisen
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={runMetaCheck}
               disabled={checkingMeta}
             >
@@ -484,20 +540,26 @@ export function SlackListsTab() {
                       </th>
                     );
                   })}
+                  <th className="px-4 py-3 text-left font-medium">
+                    <span className="inline-flex items-center gap-1.5">
+                      Meta Account
+                      <Link2 className="h-3 w-3 text-muted-foreground" />
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {loadingItems &&
                   Array.from({ length: 4 }).map((_, i) => (
                     <tr key={i} className="border-t border-border">
-                      <td colSpan={Math.max(columns.length, 1)} className="px-3 py-3">
+                      <td colSpan={columns.length + 1} className="px-3 py-3">
                         <Skeleton className="h-4 w-full" />
                       </td>
                     </tr>
                   ))}
                 {!loadingItems && filteredItems.length === 0 && (
                   <tr className="border-t border-border">
-                    <td colSpan={Math.max(columns.length, 1)} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={columns.length + 1} className="px-3 py-8 text-center text-muted-foreground">
                       Keine Items.
                     </td>
                   </tr>
@@ -598,6 +660,44 @@ export function SlackListsTab() {
                         </td>
                       );
                     })}
+                    {(() => {
+                      const a = assignments[it.slack_item_id];
+                      const nameField: any = it.fields?.[NAME_COLUMN_ID];
+                      const itemName: string | null = typeof nameField === 'string'
+                        ? nameField
+                        : (nameField?.text || nameField?.value || null);
+                      return (
+                        <td className="px-3 py-2 align-top">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAssignTarget({ itemId: it.slack_item_id, itemName });
+                              setAssignModalOpen(true);
+                            }}
+                            className={cn(
+                              'inline-flex items-center gap-1.5 rounded-md border px-2 h-7 text-xs transition-colors max-w-[260px]',
+                              a
+                                ? 'border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary'
+                                : 'border-dashed border-border bg-muted/30 hover:bg-muted/60 text-muted-foreground',
+                            )}
+                            title={a ? `${a.meta_account_id} (${a.source})` : 'Account zuweisen'}
+                          >
+                            {a ? (
+                              <>
+                                <Link2 className="h-3 w-3 shrink-0" />
+                                <span className="truncate">{a.meta_account_name || a.meta_account_id}</span>
+                                {a.source === 'auto' && <Sparkles className="h-3 w-3 shrink-0 opacity-70" />}
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="h-3 w-3" />
+                                Zuweisen
+                              </>
+                            )}
+                          </button>
+                        </td>
+                      );
+                    })()}
                   </tr>
                 ))}
               </tbody>
@@ -612,6 +712,16 @@ export function SlackListsTab() {
           columns={columns}
           items={items}
           onSaved={() => setAliasVersion((v) => v + 1)}
+        />
+
+        <MetaAccountAssignModal
+          open={assignModalOpen}
+          onOpenChange={(v) => { setAssignModalOpen(v); if (!v) setAssignTarget(null); }}
+          slackItemId={assignTarget?.itemId || null}
+          slackListId={activeListId}
+          slackItemName={assignTarget?.itemName || null}
+          currentAssignment={assignTarget ? assignments[assignTarget.itemId] : null}
+          onSaved={() => { if (activeListId) loadAssignments(activeListId); }}
         />
 
         <Dialog open={debugOpen} onOpenChange={setDebugOpen}>
