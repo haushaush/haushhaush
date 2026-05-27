@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   List, RefreshCw, Plus, Trash2, Eye, ArrowLeft, Search, Loader2,
-  ArrowUp, ArrowDown, ArrowUpDown, Pencil, Zap, History,
+  ArrowUp, ArrowDown, ArrowUpDown, Pencil, Zap, History, Link2, Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -21,7 +21,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { renderCellPlain, renderCellNode, getCellPills, normalizeColumns, loadAliases, subscribeAliases, getColumnDisplay, type SlackColumn } from '@/utils/slack-list-renderer';
 import { SlackAliasEditor } from './SlackAliasEditor';
 import { SlackCellEditor } from './SlackCellEditor';
+import { MetaAccountAssignModal } from './MetaAccountAssignModal';
 import { Settings2 } from 'lucide-react';
+
+const NAME_COLUMN_ID = 'Col0B5BLYQH7B';
 
 const EDITABLE_COLUMN_IDS = ['Col0B5AR5UJQJ'];
 const EDITABLE_COLUMN_NAMES = ['kampagnen status', 'kampagnenstatus'];
