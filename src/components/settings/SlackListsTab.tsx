@@ -75,6 +75,15 @@ export function SlackListsTab() {
   const [aliasEditorOpen, setAliasEditorOpen] = useState(false);
   const [aliasVersion, setAliasVersion] = useState(0);
 
+  // Meta-Status-Check state
+  const [checkingMeta, setCheckingMeta] = useState(false);
+  const [lastRun, setLastRun] = useState<any | null>(null);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [recentRuns, setRecentRuns] = useState<any[]>([]);
+  const [recentLogs, setRecentLogs] = useState<any[]>([]);
+  const [itemLastUpdate, setItemLastUpdate] = useState<Record<string, any>>({});
+
+
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
   const columns = useMemo<SlackColumn[]>(() => {
     const fromMeta = normalizeColumns(activeList?.columns);
