@@ -10,6 +10,12 @@ const corsHeaders = {
 const toKey = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
+const VARIABLE_KEY_OVERRIDES: Record<string, string> = {
+  'Col0B5AR5UJQJ': 'status',
+  // "Kampagnen Status" → Slack-Workflow-Variable "status"
+  // Weitere Overrides hier ergänzbar
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
