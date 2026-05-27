@@ -176,30 +176,27 @@ export function SlackListsTab() {
     await loadLists();
   };
 
-  const startEdit = (itemId: string, colId: string, current: unknown) => {
-    setEditing({ itemId, colId });
-    setEditValue(cellToString(current));
-    setErrorCell(null);
-  };
-
-  const saveEdit = async () => {
-    if (!editing || !activeListId) return;
-    const { itemId, colId } = editing;
-    const cellKey = `${itemId}::${colId}`;
+  const saveCell = async (itemId: string, col: SlackColumn, newValue: unknown) => {
+    if (!activeListId) return;
+    const cellKey = `${itemId}::${col.id}`;
     const item = items.find((i) => i.slack_item_id === itemId);
-    const prev = item?.fields?.[colId];
-    const newVal = editValue;
-    if (cellToString(prev) === newVal) {
-      setEditing(null);
-      return;
-    }
+    const prev = item?.fields?.[col.id];
+
+    // Optimistic store — shape mirrors what sync writes back
+    const optimistic = (() => {
+      const t = col.type;
+      if (t === 'select') return { select: newValue ? [newValue as string] : [] };
+      if (t === 'multi_select') return { select: Array.isArray(newValue) ? newValue : [] };
+      if (t === 'checkbox') return { checkbox: !!newValue };
+      if (t === 'date') return { date: newValue as number };
+      if (t === 'number') return { value: newValue };
+      return { text: String(newValue ?? '') };
+    })();
+
     setSavingCell(cellKey);
-    // Optimistic
     setItems((curr) =>
       curr.map((i) =>
-        i.slack_item_id === itemId
-          ? { ...i, fields: { ...i.fields, [colId]: newVal } }
-          : i,
+        i.slack_item_id === itemId ? { ...i, fields: { ...i.fields, [col.id]: optimistic } } : i,
       ),
     );
     setEditing(null);
@@ -208,7 +205,8 @@ export function SlackListsTab() {
         body: {
           slack_item_id: itemId,
           slack_list_id: activeListId,
-          field_updates: { [colId]: newVal },
+          field_updates: { [col.id]: newValue },
+          column_types: { [col.id]: col.type || 'text' },
         },
       });
       if (error) throw error;
@@ -216,12 +214,9 @@ export function SlackListsTab() {
       toast.success('Aktualisiert');
     } catch (e: any) {
       toast.error('Speichern fehlgeschlagen: ' + (e.message || 'Unbekannt'));
-      // Revert
       setItems((curr) =>
         curr.map((i) =>
-          i.slack_item_id === itemId
-            ? { ...i, fields: { ...i.fields, [colId]: prev } }
-            : i,
+          i.slack_item_id === itemId ? { ...i, fields: { ...i.fields, [col.id]: prev } } : i,
         ),
       );
       setErrorCell(cellKey);
