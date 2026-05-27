@@ -7,6 +7,9 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const toKey = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -27,7 +30,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Load list columns for type-aware mapping
+    // Load list columns
     let columns: any[] = [];
     if (slack_list_id) {
       const { data: list } = await supabase
@@ -39,14 +42,32 @@ serve(async (req) => {
     }
     const columnsMap = new Map(columns.map((c: any) => [c.id, c]));
 
-    const toKey = (s: string) =>
-      s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    // Load Hub aliases for column display names
+    const aliasMap = new Map<string, string>();
+    if (slack_list_id) {
+      const { data: aliases } = await supabase
+        .from("slack_list_aliases")
+        .select("slack_id, display_name")
+        .eq("slack_list_id", slack_list_id)
+        .eq("alias_type", "column");
+      for (const a of aliases || []) {
+        if (a.slack_id && a.display_name) aliasMap.set(a.slack_id, a.display_name);
+      }
+    }
+
+    const getVariableKey = (column: any, fallbackId: string) => {
+      const displayName =
+        aliasMap.get(fallbackId) ||
+        column?.name ||
+        fallbackId;
+      return toKey(String(displayName));
+    };
 
     const mappedUpdates: Record<string, unknown> = {};
     for (const [colId, value] of Object.entries(field_updates as Record<string, unknown>)) {
       const column: any = columnsMap.get(colId);
+      const variableKey = getVariableKey(column, colId);
       const type = column?.type || "text";
-      const key = toKey(column?.name || colId);
 
       let mapped: unknown;
       switch (type) {
@@ -71,21 +92,28 @@ serve(async (req) => {
           mapped = value == null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value);
       }
 
-      mappedUpdates[key] = mapped;
+      mappedUpdates[variableKey] = mapped;
     }
+
+    console.log("[send-update] Column → Variable-Key mapping:",
+      Object.entries(field_updates as Record<string, unknown>).map(([colId]) => {
+        const column: any = columnsMap.get(colId);
+        return {
+          column_id: colId,
+          slack_column_name: column?.name,
+          hub_alias: aliasMap.get(colId),
+          resolved_variable_key: getVariableKey(column, colId),
+          type: column?.type,
+        };
+      }),
+    );
 
     const body = {
       item_id: slack_item_id,
       ...mappedUpdates,
     };
 
-    console.log("[send-update] Webhook-Body:", JSON.stringify(body, null, 2));
-    console.log("[send-update] Column types:",
-      Object.entries(field_updates as Record<string, unknown>).map(([colId]) => ({
-        colId,
-        type: columnsMap.get(colId)?.type,
-      })),
-    );
+    console.log("[send-update] Final webhook body:", JSON.stringify(body, null, 2));
 
     const response = await fetch(webhookUrl, {
       method: "POST",
