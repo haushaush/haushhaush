@@ -576,6 +576,23 @@ export function SlackListsTab() {
                                 return <span className="truncate max-w-[320px] whitespace-pre-wrap">{plain}</span>;
                               })()}
                               {isSaving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                              {editable && itemLastUpdate[it.slack_item_id] && (
+                                <TooltipProvider delayDuration={150}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-1.5 h-5 text-[10px] text-muted-foreground">
+                                        <RefreshCw className="h-2.5 w-2.5" />
+                                        {formatDistanceToNow(new Date(itemLastUpdate[it.slack_item_id].created_at), { locale: de, addSuffix: true })}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      Auto-Update: „{itemLastUpdate[it.slack_item_id].meta_campaign_name}"
+                                      {' '}({itemLastUpdate[it.slack_item_id].old_value} → {itemLastUpdate[it.slack_item_id].new_value})
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+
                             </div>
                           )}
                         </td>
