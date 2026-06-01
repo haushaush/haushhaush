@@ -422,6 +422,9 @@ export default function ReferenzWerbeanzeigenPage() {
         subtitle={SHOWCASE_COPY.werbeanzeigen.description}
         actions={isAdmin && (
           <div className="flex items-center gap-2">
+            <SecondaryActionButton disabled={refreshing} onClick={handleRefreshFilters}>
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> Filter neu laden
+            </SecondaryActionButton>
             <Link
               to="/admin/import-blacklist"
               className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium shadow-sm transition-colors"
