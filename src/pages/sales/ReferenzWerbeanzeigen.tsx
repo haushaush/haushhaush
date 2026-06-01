@@ -250,19 +250,28 @@ export default function ReferenzWerbeanzeigenPage() {
       if (brancheFilter) {
         const fkVal = pickBrancheValue(x as any);
         const raw = (fkVal ?? x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? '').toString();
-        const canonical = normalizeBranche(raw);
-        const matches =
-          (canonical && canonical === brancheFilter) ||
-          raw.trim().toLowerCase() === brancheFilter.toLowerCase();
-        if (!matches) return false;
+        if (brancheFilter === '__none__') {
+          if (raw.trim()) return false;
+        } else {
+          const canonical = normalizeBranche(raw);
+          const matches =
+            (canonical && canonical === brancheFilter) ||
+            raw.trim().toLowerCase() === brancheFilter.toLowerCase();
+          if (!matches) return false;
+        }
       }
       if (kundeFilter) {
-        const entry = kunden.find(k => k.value === kundeFilter);
-        const ids = entry?.allIds ?? [kundeFilter];
-        const xClientId = pickClientId(x as any);
-        const matchesFk = xClientId && ids.includes(xClientId);
-        const matchesLegacy = x.linked_kunde_id && ids.includes(x.linked_kunde_id);
-        if (!matchesFk && !matchesLegacy) return false;
+        if (kundeFilter === '__none__') {
+          const xClientId = pickClientId(x as any);
+          if (xClientId || x.linked_kunde_id) return false;
+        } else {
+          const entry = kunden.find(k => k.value === kundeFilter);
+          const ids = entry?.allIds ?? [kundeFilter];
+          const xClientId = pickClientId(x as any);
+          const matchesFk = xClientId && ids.includes(xClientId);
+          const matchesLegacy = x.linked_kunde_id && ids.includes(x.linked_kunde_id);
+          if (!matchesFk && !matchesLegacy) return false;
+        }
       }
       if (unternehmenFilter) {
         const u = (pickUnternehmenLabel(x as any) ?? x.linked_kunde?.unternehmen ?? (x.filter_values ?? {}).unternehmen ?? "").toString();
