@@ -370,7 +370,7 @@ export default function ReferenzWerbeanzeigenPage() {
         counts.set(key, entry);
       }
     }
-    const opts: FilterOption[] = Array.from(counts.entries())
+    const opts: DropdownFilterOption[] = Array.from(counts.entries())
       .map(([value, { label, count, short }]) => ({ value, label, count, short }))
       .sort((a, b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label, 'de'));
     if (noneCount > 0) opts.push({ value: '__none__', label: '— Ohne Branche —', count: noneCount });
@@ -380,7 +380,7 @@ export default function ReferenzWerbeanzeigenPage() {
   // Kunde-Optionen: dynamisch aus Anzeigen, die ALLE anderen Filter (außer Kunde) passieren.
   const kundenOptionsWithNone = useMemo(() => {
     const sourceRows = preFiltered.filter(x => passesAdAndStandalone(x, { skipKunde: true }));
-    const byName = new Map<string, FilterOption>();
+    const byName = new Map<string, DropdownFilterOption>();
     let noneCount = 0;
     for (const x of sourceRows) {
       const id = pickClientId(x as any) ?? (x as any).linked_kunde_id ?? null;
