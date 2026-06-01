@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SHOWCASE_COPY } from "@/copy/showcase";
 import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
 import { getAdLiveStatus, isAdActive } from "@/lib/adStatus";
-import { useFilterOptions } from "@/hooks/useFilterOptions";
+import { useFilterOptions, type FilterOption as DropdownFilterOption } from "@/hooks/useFilterOptions";
 import { normalizeBranche, getBrancheDisplay, getBranche } from "@/lib/branchen";
 import { FK_EMBED_ALL, pickBrancheValue, pickUnternehmenLabel, pickClientId, pickClientName } from "@/lib/showcaseFkSelect";
 import { SyncStatusBanner } from "@/components/admin/SyncStatusBanner";
