@@ -483,8 +483,9 @@ export default function ReferenzWerbeanzeigenPage() {
               { value: 'created', label: 'Importdatum' },
             ]}
           />
-          <DropdownPill label="Branche" icon={Tag} value={brancheFilter} onChange={setStandaloneFilter('branche')} options={branchen} />
-          <DropdownPill label="Kunde" icon={User} value={kundeFilter} onChange={setStandaloneFilter('kunde')} options={kunden} />
+          <DropdownPill label="Branche" icon={Tag} value={brancheFilter} onChange={setStandaloneFilter('branche')} options={brancheOptionsWithNone} />
+          <DropdownPill label="Kunde" icon={User} value={kundeFilter} onChange={setStandaloneFilter('kunde')} options={kundenOptionsWithNone} />
+
           <DropdownPill label="Unternehmen" icon={Building2} value={unternehmenFilter} onChange={setStandaloneFilter('unternehmen')} options={unternehmen} />
           <DropdownPill label="Werbekonto" icon={Wallet} value={werbekontoFilter} onChange={setStandaloneFilter('werbekonto')} options={werbekonten} />
           <DropdownPill
