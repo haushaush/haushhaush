@@ -462,6 +462,28 @@ export default function ReferenzWerbeanzeigenPage() {
       {isAdmin && <SyncStatusBanner />}
 
       <div className="space-y-4 mb-8">
+        <div className="text-center text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+          <span className="font-semibold text-gray-700 dark:text-gray-300">{diagnostics.total}</span> Anzeigen total
+          {' · '}
+          <button
+            type="button"
+            onClick={() => setStandaloneFilter('branche')('__none__')}
+            className="hover:underline disabled:no-underline disabled:cursor-default"
+            disabled={diagnostics.adsWithoutBranche === 0}
+          >
+            {diagnostics.adsWithoutBranche} ohne Branche
+          </button>
+          {' · '}
+          <button
+            type="button"
+            onClick={() => setStandaloneFilter('kunde')('__none__')}
+            className="hover:underline disabled:no-underline disabled:cursor-default"
+            disabled={diagnostics.adsWithoutKunde === 0}
+          >
+            {diagnostics.adsWithoutKunde} ohne Kunde
+          </button>
+        </div>
+
 
         <div className="max-w-2xl mx-auto">
           <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
