@@ -346,6 +346,75 @@ export default function ReferenzWerbeanzeigenPage() {
     return out;
   }, [categories, options]);
 
+  // ── Diagnose: NULL-Counts und Branche/Kunde-Verteilung gegen aktuell geladene `rows`
+  const diagnostics = useMemo(() => {
+    let adsWithoutBranche = 0;
+    let adsWithoutKunde = 0;
+    const brancheCounts: Record<string, number> = {};
+    const kundeCounts: Record<string, number> = {};
+    for (const x of rows) {
+      const fkVal = pickBrancheValue(x as any);
+      const raw = (fkVal ?? (x as any).linked_kunde?.branche ?? ((x as any).filter_values ?? {}).branche ?? '').toString().trim();
+      if (!raw) {
+        adsWithoutBranche += 1;
+      } else {
+        const canonical = normalizeBranche(raw) ?? raw.toLowerCase();
+        brancheCounts[canonical] = (brancheCounts[canonical] ?? 0) + 1;
+      }
+      const xClientId = pickClientId(x as any);
+      const legacy = (x as any).linked_kunde_id;
+      if (!xClientId && !legacy) {
+        adsWithoutKunde += 1;
+      } else {
+        const key = String(xClientId ?? legacy);
+        kundeCounts[key] = (kundeCounts[key] ?? 0) + 1;
+      }
+    }
+    return { total: rows.length, adsWithoutBranche, adsWithoutKunde, brancheCounts, kundeCounts };
+  }, [rows]);
+
+  useEffect(() => {
+    if (!rows.length) return;
+    // eslint-disable-next-line no-console
+    console.log('[filter-debug] total_ads:', diagnostics.total);
+    // eslint-disable-next-line no-console
+    console.log('[filter-debug] branche_counts:', diagnostics.brancheCounts);
+    // eslint-disable-next-line no-console
+    console.log('[filter-debug] branche_null_count:', diagnostics.adsWithoutBranche);
+    // eslint-disable-next-line no-console
+    console.log('[filter-debug] kunde_counts:', diagnostics.kundeCounts);
+    // eslint-disable-next-line no-console
+    console.log('[filter-debug] kunde_null_count:', diagnostics.adsWithoutKunde);
+  }, [diagnostics]);
+
+  // Dropdown-Optionen erweitert um "— Ohne … —"
+  const brancheOptionsWithNone = useMemo(() => {
+    const opts = [...branchen];
+    if (diagnostics.adsWithoutBranche > 0) {
+      opts.push({ value: '__none__', label: '— Ohne Branche —', count: diagnostics.adsWithoutBranche });
+    }
+    return opts;
+  }, [branchen, diagnostics.adsWithoutBranche]);
+
+  const kundenOptionsWithNone = useMemo(() => {
+    const opts = [...kunden];
+    if (diagnostics.adsWithoutKunde > 0) {
+      opts.push({ value: '__none__', label: '— Ohne Kunde —', count: diagnostics.adsWithoutKunde });
+    }
+    return opts;
+  }, [kunden, diagnostics.adsWithoutKunde]);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefreshFilters = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ['branchen-normalized-for-filter'] });
+    await queryClient.invalidateQueries({ queryKey: ['kunden-for-filter'] });
+    await queryClient.invalidateQueries({ queryKey: ['werbekonten-for-filter'] });
+    await load();
+    setRefreshing(false);
+    toast({ title: 'Filter neu geladen', description: `${rows.length} Anzeigen` });
+  }, [queryClient, toast, rows.length]);
+
   return (
     <ShowcasePageWrapper>
       <SubPageHeader
