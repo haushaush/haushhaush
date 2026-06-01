@@ -14,8 +14,8 @@ import { SHOWCASE_COPY } from "@/copy/showcase";
 import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
 import { getAdLiveStatus, isAdActive } from "@/lib/adStatus";
 import { useFilterOptions } from "@/hooks/useFilterOptions";
-import { normalizeBranche, getBrancheDisplay } from "@/lib/branchen";
-import { FK_EMBED_ALL, pickBrancheValue, pickUnternehmenLabel, pickClientId } from "@/lib/showcaseFkSelect";
+import { normalizeBranche, getBrancheDisplay, getBranche } from "@/lib/branchen";
+import { FK_EMBED_ALL, pickBrancheValue, pickUnternehmenLabel, pickClientId, pickClientName } from "@/lib/showcaseFkSelect";
 import { SyncStatusBanner } from "@/components/admin/SyncStatusBanner";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
