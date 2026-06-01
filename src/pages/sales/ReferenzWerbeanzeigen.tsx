@@ -347,63 +347,75 @@ export default function ReferenzWerbeanzeigenPage() {
     return out;
   }, [categories, options]);
 
-  // ── Diagnose: NULL-Counts und Branche/Kunde-Verteilung gegen aktuell geladene `rows`
+  // Branche-Optionen: dynamisch aus Anzeigen, die ALLE anderen Filter (außer Branche) passieren.
+  // So zeigt das Dropdown nur Werte mit > 0 echten Treffern und Counts stimmen mit dem Grid überein.
+  const brancheOptionsWithNone = useMemo(() => {
+    const sourceRows = preFiltered.filter(x => passesAdAndStandalone(x, { skipBranche: true }));
+    const counts = new Map<string, { label: string; count: number; short?: string }>();
+    let noneCount = 0;
+    for (const x of sourceRows) {
+      const fkVal = pickBrancheValue(x as any);
+      const raw = (fkVal ?? (x as any).linked_kunde?.branche ?? ((x as any).filter_values ?? {}).branche ?? '').toString().trim();
+      if (!raw) { noneCount += 1; continue; }
+      const canonical = normalizeBranche(raw);
+      if (canonical) {
+        const b = getBranche(canonical)!;
+        const entry = counts.get(canonical) ?? { label: b.label, short: b.short, count: 0 };
+        entry.count += 1;
+        counts.set(canonical, entry);
+      } else {
+        const key = raw.toLowerCase();
+        const entry = counts.get(key) ?? { label: raw, count: 0 };
+        entry.count += 1;
+        counts.set(key, entry);
+      }
+    }
+    const opts: FilterOption[] = Array.from(counts.entries())
+      .map(([value, { label, count, short }]) => ({ value, label, count, short }))
+      .sort((a, b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label, 'de'));
+    if (noneCount > 0) opts.push({ value: '__none__', label: '— Ohne Branche —', count: noneCount });
+    return opts;
+  }, [preFiltered, passesAdAndStandalone]);
+
+  // Kunde-Optionen: dynamisch aus Anzeigen, die ALLE anderen Filter (außer Kunde) passieren.
+  const kundenOptionsWithNone = useMemo(() => {
+    const sourceRows = preFiltered.filter(x => passesAdAndStandalone(x, { skipKunde: true }));
+    const byName = new Map<string, FilterOption>();
+    let noneCount = 0;
+    for (const x of sourceRows) {
+      const id = pickClientId(x as any) ?? (x as any).linked_kunde_id ?? null;
+      const name = pickClientName(x as any);
+      if (!id || !name) { noneCount += 1; continue; }
+      const key = name.toLowerCase();
+      const existing = byName.get(key);
+      if (existing) {
+        existing.count = (existing.count ?? 0) + 1;
+        if (!existing.allIds!.includes(id)) existing.allIds!.push(id);
+      } else {
+        byName.set(key, { value: id, label: name, count: 1, allIds: [id] });
+      }
+    }
+    const opts = Array.from(byName.values()).sort(
+      (a, b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label, 'de'),
+    );
+    if (noneCount > 0) opts.push({ value: '__none__', label: '— Ohne Kunde —', count: noneCount });
+    return opts;
+  }, [preFiltered, passesAdAndStandalone]);
+
+  // Diagnose-Banner: Counts spiegeln den Pre-Filter (also alles außer Standalone-Dropdowns + Ad-Filter).
   const diagnostics = useMemo(() => {
     let adsWithoutBranche = 0;
     let adsWithoutKunde = 0;
-    const brancheCounts: Record<string, number> = {};
-    const kundeCounts: Record<string, number> = {};
-    for (const x of rows) {
+    for (const x of preFiltered) {
       const fkVal = pickBrancheValue(x as any);
       const raw = (fkVal ?? (x as any).linked_kunde?.branche ?? ((x as any).filter_values ?? {}).branche ?? '').toString().trim();
-      if (!raw) {
-        adsWithoutBranche += 1;
-      } else {
-        const canonical = normalizeBranche(raw) ?? raw.toLowerCase();
-        brancheCounts[canonical] = (brancheCounts[canonical] ?? 0) + 1;
-      }
+      if (!raw) adsWithoutBranche += 1;
       const xClientId = pickClientId(x as any);
       const legacy = (x as any).linked_kunde_id;
-      if (!xClientId && !legacy) {
-        adsWithoutKunde += 1;
-      } else {
-        const key = String(xClientId ?? legacy);
-        kundeCounts[key] = (kundeCounts[key] ?? 0) + 1;
-      }
+      if (!xClientId && !legacy) adsWithoutKunde += 1;
     }
-    return { total: rows.length, adsWithoutBranche, adsWithoutKunde, brancheCounts, kundeCounts };
-  }, [rows]);
-
-  useEffect(() => {
-    if (!rows.length) return;
-    // eslint-disable-next-line no-console
-    console.log('[filter-debug] total_ads:', diagnostics.total);
-    // eslint-disable-next-line no-console
-    console.log('[filter-debug] branche_counts:', diagnostics.brancheCounts);
-    // eslint-disable-next-line no-console
-    console.log('[filter-debug] branche_null_count:', diagnostics.adsWithoutBranche);
-    // eslint-disable-next-line no-console
-    console.log('[filter-debug] kunde_counts:', diagnostics.kundeCounts);
-    // eslint-disable-next-line no-console
-    console.log('[filter-debug] kunde_null_count:', diagnostics.adsWithoutKunde);
-  }, [diagnostics]);
-
-  // Dropdown-Optionen erweitert um "— Ohne … —"
-  const brancheOptionsWithNone = useMemo(() => {
-    const opts = [...branchen];
-    if (diagnostics.adsWithoutBranche > 0) {
-      opts.push({ value: '__none__', label: '— Ohne Branche —', count: diagnostics.adsWithoutBranche });
-    }
-    return opts;
-  }, [branchen, diagnostics.adsWithoutBranche]);
-
-  const kundenOptionsWithNone = useMemo(() => {
-    const opts = [...kunden];
-    if (diagnostics.adsWithoutKunde > 0) {
-      opts.push({ value: '__none__', label: '— Ohne Kunde —', count: diagnostics.adsWithoutKunde });
-    }
-    return opts;
-  }, [kunden, diagnostics.adsWithoutKunde]);
+    return { total: preFiltered.length, adsWithoutBranche, adsWithoutKunde };
+  }, [preFiltered]);
 
   const [refreshing, setRefreshing] = useState(false);
   const handleRefreshFilters = useCallback(async () => {
