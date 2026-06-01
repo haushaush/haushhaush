@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Link } from "react-router-dom";
-import { Plus, Upload, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon, Wand2, ShieldOff } from "lucide-react";
+import { Plus, Upload, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon, Wand2, ShieldOff, RefreshCw } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { BulkImportWizard } from "@/components/showcase/BulkImportWizard";
 import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
 import { AdCreativeFilters, ActiveFilterChips, type AdFilters } from "@/components/sales/AdCreativeFilters";
@@ -60,6 +61,7 @@ export default function ReferenzWerbeanzeigenPage() {
   const isPublic = useIsPublicView();
   const isAdmin = hasRole("admin") && !isPublic;
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [reenriching, setReenriching] = useState(false);
 
   const [rows, setRows] = useState<MetaAdRow[]>([]);
@@ -248,19 +250,28 @@ export default function ReferenzWerbeanzeigenPage() {
       if (brancheFilter) {
         const fkVal = pickBrancheValue(x as any);
         const raw = (fkVal ?? x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? '').toString();
-        const canonical = normalizeBranche(raw);
-        const matches =
-          (canonical && canonical === brancheFilter) ||
-          raw.trim().toLowerCase() === brancheFilter.toLowerCase();
-        if (!matches) return false;
+        if (brancheFilter === '__none__') {
+          if (raw.trim()) return false;
+        } else {
+          const canonical = normalizeBranche(raw);
+          const matches =
+            (canonical && canonical === brancheFilter) ||
+            raw.trim().toLowerCase() === brancheFilter.toLowerCase();
+          if (!matches) return false;
+        }
       }
       if (kundeFilter) {
-        const entry = kunden.find(k => k.value === kundeFilter);
-        const ids = entry?.allIds ?? [kundeFilter];
-        const xClientId = pickClientId(x as any);
-        const matchesFk = xClientId && ids.includes(xClientId);
-        const matchesLegacy = x.linked_kunde_id && ids.includes(x.linked_kunde_id);
-        if (!matchesFk && !matchesLegacy) return false;
+        if (kundeFilter === '__none__') {
+          const xClientId = pickClientId(x as any);
+          if (xClientId || x.linked_kunde_id) return false;
+        } else {
+          const entry = kunden.find(k => k.value === kundeFilter);
+          const ids = entry?.allIds ?? [kundeFilter];
+          const xClientId = pickClientId(x as any);
+          const matchesFk = xClientId && ids.includes(xClientId);
+          const matchesLegacy = x.linked_kunde_id && ids.includes(x.linked_kunde_id);
+          if (!matchesFk && !matchesLegacy) return false;
+        }
       }
       if (unternehmenFilter) {
         const u = (pickUnternehmenLabel(x as any) ?? x.linked_kunde?.unternehmen ?? (x.filter_values ?? {}).unternehmen ?? "").toString();
@@ -335,6 +346,75 @@ export default function ReferenzWerbeanzeigenPage() {
     return out;
   }, [categories, options]);
 
+  // ── Diagnose: NULL-Counts und Branche/Kunde-Verteilung gegen aktuell geladene `rows`
+  const diagnostics = useMemo(() => {
+    let adsWithoutBranche = 0;
+    let adsWithoutKunde = 0;
+    const brancheCounts: Record<string, number> = {};
+    const kundeCounts: Record<string, number> = {};
+    for (const x of rows) {
+      const fkVal = pickBrancheValue(x as any);
+      const raw = (fkVal ?? (x as any).linked_kunde?.branche ?? ((x as any).filter_values ?? {}).branche ?? '').toString().trim();
+      if (!raw) {
+        adsWithoutBranche += 1;
+      } else {
+        const canonical = normalizeBranche(raw) ?? raw.toLowerCase();
+        brancheCounts[canonical] = (brancheCounts[canonical] ?? 0) + 1;
+      }
+      const xClientId = pickClientId(x as any);
+      const legacy = (x as any).linked_kunde_id;
+      if (!xClientId && !legacy) {
+        adsWithoutKunde += 1;
+      } else {
+        const key = String(xClientId ?? legacy);
+        kundeCounts[key] = (kundeCounts[key] ?? 0) + 1;
+      }
+    }
+    return { total: rows.length, adsWithoutBranche, adsWithoutKunde, brancheCounts, kundeCounts };
+  }, [rows]);
+
+  useEffect(() => {
+    if (!rows.length) return;
+    // eslint-disable-next-line no-console
+    console.log('[filter-debug] total_ads:', diagnostics.total);
+    // eslint-disable-next-line no-console
+    console.log('[filter-debug] branche_counts:', diagnostics.brancheCounts);
+    // eslint-disable-next-line no-console
+    console.log('[filter-debug] branche_null_count:', diagnostics.adsWithoutBranche);
+    // eslint-disable-next-line no-console
+    console.log('[filter-debug] kunde_counts:', diagnostics.kundeCounts);
+    // eslint-disable-next-line no-console
+    console.log('[filter-debug] kunde_null_count:', diagnostics.adsWithoutKunde);
+  }, [diagnostics]);
+
+  // Dropdown-Optionen erweitert um "— Ohne … —"
+  const brancheOptionsWithNone = useMemo(() => {
+    const opts = [...branchen];
+    if (diagnostics.adsWithoutBranche > 0) {
+      opts.push({ value: '__none__', label: '— Ohne Branche —', count: diagnostics.adsWithoutBranche });
+    }
+    return opts;
+  }, [branchen, diagnostics.adsWithoutBranche]);
+
+  const kundenOptionsWithNone = useMemo(() => {
+    const opts = [...kunden];
+    if (diagnostics.adsWithoutKunde > 0) {
+      opts.push({ value: '__none__', label: '— Ohne Kunde —', count: diagnostics.adsWithoutKunde });
+    }
+    return opts;
+  }, [kunden, diagnostics.adsWithoutKunde]);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefreshFilters = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ['branchen-normalized-for-filter'] });
+    await queryClient.invalidateQueries({ queryKey: ['kunden-for-filter'] });
+    await queryClient.invalidateQueries({ queryKey: ['werbekonten-for-filter'] });
+    await load();
+    setRefreshing(false);
+    toast({ title: 'Filter neu geladen', description: `${rows.length} Anzeigen` });
+  }, [queryClient, toast, rows.length]);
+
   return (
     <ShowcasePageWrapper>
       <SubPageHeader
@@ -342,6 +422,9 @@ export default function ReferenzWerbeanzeigenPage() {
         subtitle={SHOWCASE_COPY.werbeanzeigen.description}
         actions={isAdmin && (
           <div className="flex items-center gap-2">
+            <SecondaryActionButton disabled={refreshing} onClick={handleRefreshFilters}>
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> Filter neu laden
+            </SecondaryActionButton>
             <Link
               to="/admin/import-blacklist"
               className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium shadow-sm transition-colors"
@@ -382,6 +465,28 @@ export default function ReferenzWerbeanzeigenPage() {
       {isAdmin && <SyncStatusBanner />}
 
       <div className="space-y-4 mb-8">
+        <div className="text-center text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+          <span className="font-semibold text-gray-700 dark:text-gray-300">{diagnostics.total}</span> Anzeigen total
+          {' · '}
+          <button
+            type="button"
+            onClick={() => setStandaloneFilter('branche')('__none__')}
+            className="hover:underline disabled:no-underline disabled:cursor-default"
+            disabled={diagnostics.adsWithoutBranche === 0}
+          >
+            {diagnostics.adsWithoutBranche} ohne Branche
+          </button>
+          {' · '}
+          <button
+            type="button"
+            onClick={() => setStandaloneFilter('kunde')('__none__')}
+            className="hover:underline disabled:no-underline disabled:cursor-default"
+            disabled={diagnostics.adsWithoutKunde === 0}
+          >
+            {diagnostics.adsWithoutKunde} ohne Kunde
+          </button>
+        </div>
+
 
         <div className="max-w-2xl mx-auto">
           <ShowcaseSearchInput value={search} onChange={setSearch} placeholder="Suche nach Titel, Tag, Kunde..." />
@@ -403,8 +508,9 @@ export default function ReferenzWerbeanzeigenPage() {
               { value: 'created', label: 'Importdatum' },
             ]}
           />
-          <DropdownPill label="Branche" icon={Tag} value={brancheFilter} onChange={setStandaloneFilter('branche')} options={branchen} />
-          <DropdownPill label="Kunde" icon={User} value={kundeFilter} onChange={setStandaloneFilter('kunde')} options={kunden} />
+          <DropdownPill label="Branche" icon={Tag} value={brancheFilter} onChange={setStandaloneFilter('branche')} options={brancheOptionsWithNone} />
+          <DropdownPill label="Kunde" icon={User} value={kundeFilter} onChange={setStandaloneFilter('kunde')} options={kundenOptionsWithNone} />
+
           <DropdownPill label="Unternehmen" icon={Building2} value={unternehmenFilter} onChange={setStandaloneFilter('unternehmen')} options={unternehmen} />
           <DropdownPill label="Werbekonto" icon={Wallet} value={werbekontoFilter} onChange={setStandaloneFilter('werbekonto')} options={werbekonten} />
           <DropdownPill
