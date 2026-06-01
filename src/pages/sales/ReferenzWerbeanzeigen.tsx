@@ -174,9 +174,9 @@ export default function ReferenzWerbeanzeigenPage() {
 
   const { branchen, unternehmen, kunden, werbekonten } = useFilterOptions('werbeanzeige');
 
-  const filtered = useMemo(() => {
+  // Pre-Filter: blacklist + search + dynamische Kategorien (alles AUSSER Standalone-Dropdowns + Ad-Filter)
+  const preFiltered = useMemo(() => {
     let r = rows;
-    // Apply import_blacklist: hide ads from blacklisted accounts/campaigns/ads/keywords
     if (blacklist.length) {
       const blAccount = new Set<string>();
       const blCampaign = new Set<string>();
@@ -215,8 +215,12 @@ export default function ReferenzWerbeanzeigenPage() {
       if (!val) return;
       r = r.filter(x => (x.filter_values ?? {})[catKey] === val);
     });
+    return r;
+  }, [rows, blacklist, search, activeFilters]);
 
-    // Performance / Ad-specific filters
+  // Standalone- + Ad-Filter Predikat, mit optionalem Skip für Branche/Kunde
+  // (damit Branche/Kunde-Dropdown nach Auswahl nicht nur 1 Option zeigt).
+  const passesAdAndStandalone = useCallback((x: MetaAdRow, opts: { skipBranche?: boolean; skipKunde?: boolean } = {}) => {
     const num = (v: any): number | null => {
       if (v == null || v === "") return null;
       const n = Number(v);
@@ -227,76 +231,73 @@ export default function ReferenzWerbeanzeigenPage() {
       if (n == null) return null;
       return n <= 1 ? n * 100 : n;
     };
+    const m = x.meta_metrics ?? {};
+    const cpl = num(m.cpl);
+    const leads = num(m.leads);
+    const ctr = ctrPct(m.ctr);
+    const spend = num(m.spend);
+    const fmt = (x.ad_format || "").toLowerCase();
 
-    r = r.filter(x => {
-      const m = x.meta_metrics ?? {};
-      const cpl = num(m.cpl);
-      const leads = num(m.leads);
-      const ctr = ctrPct(m.ctr);
-      const spend = num(m.spend);
-      const status = (m.status || m.effective_status || "").toString().toUpperCase();
-      const fmt = (x.ad_format || "").toLowerCase();
+    if (adFilters.has_leads && !(leads != null && leads > 0)) return false;
+    if (adFilters.has_video && fmt !== "video" && fmt !== "reel") return false;
+    if (adFilters.top_performers && !isTopPerformer(x as any)) return false;
+    if (adFilters.is_active && !isAdActive(x as any).active) return false;
+    if (adFilters.high_spend && (spend == null || spend < 500)) return false;
+    if (adFilters.recent && !isWithinDays(x.imported_at ?? x.created_at ?? null, 30)) return false;
+    if (adFilters.featured && !x.is_featured) return false;
 
-      // Quick toggles
-      if (adFilters.has_leads && !(leads != null && leads > 0)) return false;
-      if (adFilters.has_video && fmt !== "video" && fmt !== "reel") return false;
-      if (adFilters.top_performers && !isTopPerformer(x as any)) return false;
-      if (adFilters.is_active && !isAdActive(x as any).active) return false;
-      if (adFilters.high_spend && (spend == null || spend < 500)) return false;
-      if (adFilters.recent && !isWithinDays(x.imported_at ?? x.created_at ?? null, 30)) return false;
-      if (adFilters.featured && !x.is_featured) return false;
+    if (!opts.skipBranche && brancheFilter) {
+      const fkVal = pickBrancheValue(x as any);
+      const raw = (fkVal ?? x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? '').toString();
+      if (brancheFilter === '__none__') {
+        if (raw.trim()) return false;
+      } else {
+        const canonical = normalizeBranche(raw);
+        const matches =
+          (canonical && canonical === brancheFilter) ||
+          raw.trim().toLowerCase() === brancheFilter.toLowerCase();
+        if (!matches) return false;
+      }
+    }
+    if (!opts.skipKunde && kundeFilter) {
+      if (kundeFilter === '__none__') {
+        const xClientId = pickClientId(x as any);
+        if (xClientId || x.linked_kunde_id) return false;
+      } else {
+        const entry = kunden.find(k => k.value === kundeFilter);
+        const ids = entry?.allIds ?? [kundeFilter];
+        const xClientId = pickClientId(x as any);
+        const matchesFk = xClientId && ids.includes(xClientId);
+        const matchesLegacy = x.linked_kunde_id && ids.includes(x.linked_kunde_id);
+        if (!matchesFk && !matchesLegacy) return false;
+      }
+    }
+    if (unternehmenFilter) {
+      const u = (pickUnternehmenLabel(x as any) ?? x.linked_kunde?.unternehmen ?? (x.filter_values ?? {}).unternehmen ?? "").toString();
+      if (u !== unternehmenFilter) return false;
+    }
+    if (werbekontoFilter && x.meta_account_id !== werbekontoFilter) return false;
+    if (formatFilter) {
+      if (formatFilter === "video" && fmt !== "video" && fmt !== "reel") return false;
+      if (formatFilter === "image" && fmt !== "image" && fmt !== "" && fmt !== "single_image") return false;
+      if (formatFilter === "carousel" && fmt !== "carousel") return false;
+    }
 
-      // Standalone dropdown filters
-      if (brancheFilter) {
-        const fkVal = pickBrancheValue(x as any);
-        const raw = (fkVal ?? x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? '').toString();
-        if (brancheFilter === '__none__') {
-          if (raw.trim()) return false;
-        } else {
-          const canonical = normalizeBranche(raw);
-          const matches =
-            (canonical && canonical === brancheFilter) ||
-            raw.trim().toLowerCase() === brancheFilter.toLowerCase();
-          if (!matches) return false;
-        }
-      }
-      if (kundeFilter) {
-        if (kundeFilter === '__none__') {
-          const xClientId = pickClientId(x as any);
-          if (xClientId || x.linked_kunde_id) return false;
-        } else {
-          const entry = kunden.find(k => k.value === kundeFilter);
-          const ids = entry?.allIds ?? [kundeFilter];
-          const xClientId = pickClientId(x as any);
-          const matchesFk = xClientId && ids.includes(xClientId);
-          const matchesLegacy = x.linked_kunde_id && ids.includes(x.linked_kunde_id);
-          if (!matchesFk && !matchesLegacy) return false;
-        }
-      }
-      if (unternehmenFilter) {
-        const u = (pickUnternehmenLabel(x as any) ?? x.linked_kunde?.unternehmen ?? (x.filter_values ?? {}).unternehmen ?? "").toString();
-        if (u !== unternehmenFilter) return false;
-      }
-      if (werbekontoFilter && x.meta_account_id !== werbekontoFilter) return false;
-      if (formatFilter) {
-        if (formatFilter === "video" && fmt !== "video" && fmt !== "reel") return false;
-        if (formatFilter === "image" && fmt !== "image" && fmt !== "" && fmt !== "single_image") return false;
-        if (formatFilter === "carousel" && fmt !== "carousel") return false;
-      }
+    if (adFilters.cpl_range) {
+      const [lo, hi] = adFilters.cpl_range;
+      if (cpl == null || cpl < lo || cpl > hi) return false;
+    }
+    if (adFilters.spend_range) {
+      const [lo, hi] = adFilters.spend_range;
+      if (spend == null || spend < lo || spend > hi) return false;
+    }
+    if (adFilters.min_leads != null && (leads ?? 0) < adFilters.min_leads) return false;
+    if (adFilters.min_ctr != null && (ctr ?? 0) < adFilters.min_ctr) return false;
+    return true;
+  }, [adFilters, brancheFilter, kundeFilter, unternehmenFilter, werbekontoFilter, formatFilter, kunden]);
 
-      if (adFilters.cpl_range) {
-        const [lo, hi] = adFilters.cpl_range;
-        if (cpl == null || cpl < lo || cpl > hi) return false;
-      }
-      if (adFilters.spend_range) {
-        const [lo, hi] = adFilters.spend_range;
-        if (spend == null || spend < lo || spend > hi) return false;
-      }
-      if (adFilters.min_leads != null && (leads ?? 0) < adFilters.min_leads) return false;
-      if (adFilters.min_ctr != null && (ctr ?? 0) < adFilters.min_ctr) return false;
-      return true;
-    });
-
+  const filtered = useMemo(() => {
+    const r = preFiltered.filter(x => passesAdAndStandalone(x));
     const sorted = [...r];
     sorted.sort((a, b) => {
       if (a.is_featured !== b.is_featured) return a.is_featured ? -1 : 1;
@@ -317,7 +318,7 @@ export default function ReferenzWerbeanzeigenPage() {
       }
     });
     return sorted;
-  }, [rows, blacklist, search, activeFilters, sortBy, adFilters, brancheFilter, kundeFilter, unternehmenFilter, werbekontoFilter, formatFilter, kunden]);
+  }, [preFiltered, passesAdAndStandalone, sortBy]);
 
   const items: AnyItem[] = useMemo(
     () => filtered.map(a => ({
