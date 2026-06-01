@@ -30,12 +30,12 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace(/^Bearer\s+/i, '');
     const userClient = createClient(SUPABASE_URL, ANON_KEY);
-    const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claims?.claims?.sub) {
-      console.error('list-all-users auth failed', claimsErr);
+    const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+    if (userErr || !userData?.user?.id) {
+      console.error('list-all-users auth failed', userErr);
       return jsonResponse({ error: 'Nicht authentifiziert' }, 401);
     }
-    const userId = claims.claims.sub as string;
+    const userId = userData.user.id;
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
