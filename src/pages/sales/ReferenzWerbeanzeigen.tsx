@@ -61,6 +61,7 @@ export default function ReferenzWerbeanzeigenPage() {
   const isPublic = useIsPublicView();
   const isAdmin = hasRole("admin") && !isPublic;
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [reenriching, setReenriching] = useState(false);
 
   const [rows, setRows] = useState<MetaAdRow[]>([]);
