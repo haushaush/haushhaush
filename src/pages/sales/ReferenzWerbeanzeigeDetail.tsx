@@ -143,6 +143,32 @@ export default function ReferenzWerbeanzeigeDetail() {
     setTags([...tags, t]); setNewTag("");
   };
 
+  const handleInlineSave = async (
+    field: "linked_branche_id" | "linked_unternehmen_id" | "linked_client_id",
+    newValue: string | null,
+  ) => {
+    if (!ad) return;
+    const prev = ad as any;
+    const update: Record<string, any> = { [field]: newValue };
+    // Optimistic
+    setAd({ ...(ad as any), ...update });
+    if (field === "linked_client_id") {
+      setClientName(newValue ? (clientsList.find(c => c.id === newValue)?.name ?? "") : "");
+    } else if (field === "linked_unternehmen_id") {
+      setUnternehmenName(newValue ? (unternehmenList.find(u => u.id === newValue)?.name ?? "") : "");
+    } else if (field === "linked_branche_id" && newValue && !brancheList.includes(newValue)) {
+      setBrancheList([...brancheList, newValue].sort());
+    }
+    const { error } = await supabase.from("referenz_meta_ads" as any).update(update).eq("id", ad.id);
+    if (error) {
+      setAd(prev as any);
+      toast({ title: "Speichern fehlgeschlagen", description: error.message, variant: "destructive" });
+      throw error;
+    }
+    const labelMap = { linked_branche_id: "Branche", linked_unternehmen_id: "Unternehmen", linked_client_id: "Kunde" } as const;
+    toast({ title: `${labelMap[field]} aktualisiert` });
+  };
+
   if (loading) return <DetailPageSkeleton />;
   if (!ad) return (
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 p-10 text-sm text-gray-500 dark:text-gray-400">
