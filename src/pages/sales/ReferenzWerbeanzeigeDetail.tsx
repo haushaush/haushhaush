@@ -118,12 +118,6 @@ export default function ReferenzWerbeanzeigeDetail() {
     setTags([...tags, t]); setNewTag("");
   };
 
-  const handleInlineSave = async (
-    field: "linked_branche_id" | "linked_unternehmen_id" | "linked_client_id",
-    newValue: string | null,
-  ) => {
-
-  if (loading) return <DetailPageSkeleton />;
   if (!ad) return (
     <div className="min-h-screen bg-[#fafaf7] dark:bg-gray-950 p-10 text-sm text-gray-500 dark:text-gray-400">
       Nicht gefunden. <Link className="underline" to={backHref}>Zurück</Link>
