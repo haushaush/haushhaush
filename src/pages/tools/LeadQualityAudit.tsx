@@ -102,6 +102,8 @@ export default function LeadQualityAudit() {
   const [form, setForm] = useState<Audit>(EMPTY_FORM());
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Audit | null>(null);
+  const [showcaseClients, setShowcaseClients] = useState<ShowcaseClient[]>([]);
+  const [kundePopoverOpen, setKundePopoverOpen] = useState(false);
 
   const fetchAudits = async () => {
     setLoading(true);
