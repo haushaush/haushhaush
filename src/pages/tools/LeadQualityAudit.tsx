@@ -124,6 +124,33 @@ export default function LeadQualityAudit() {
 
   useEffect(() => { fetchAudits(); }, []);
 
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from("referenz_showcase" as any)
+        .select("id, client_name, website_url")
+        .eq("type", "website")
+        .eq("is_active", true)
+        .not("client_name", "is", null);
+      if (error) {
+        console.warn("Showcase-Clients konnten nicht geladen werden", error);
+        return;
+      }
+      const seen = new Set<string>();
+      const unique: ShowcaseClient[] = [];
+      for (const r of (data as any[]) ?? []) {
+        const name = (r.client_name ?? "").trim();
+        if (!name) continue;
+        const key = normalize(name);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        unique.push({ id: r.id, client_name: name, website_url: r.website_url });
+      }
+      unique.sort((a, b) => a.client_name.localeCompare(b.client_name, "de"));
+      setShowcaseClients(unique);
+    })();
+  }, []);
+
   const filtered = useMemo(() => {
     let r = rows;
     if (statusFilter !== "all") r = r.filter(x => x.status === statusFilter);
