@@ -42,6 +42,9 @@ export default function ReferenzWerbeanzeigeDetail() {
   const [categories, setCategories] = useState<FilterCategory[]>([]);
   const [options, setOptions] = useState<FilterOption[]>([]);
   const [kunden, setKunden] = useState<{ id: string; client_name: string }[]>([]);
+  const [clientsList, setClientsList] = useState<{ id: string; name: string; unternehmen_id: string | null; unternehmen_name?: string | null }[]>([]);
+  const [unternehmenList, setUnternehmenList] = useState<{ id: string; name: string; display_name: string | null }[]>([]);
+
 
 
   const [customTitle, setCustomTitle] = useState("");
