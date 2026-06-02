@@ -59,13 +59,15 @@ export default function ReferenzWerbeanzeigeDetail() {
   const load = async () => {
     if (!id) return;
     setLoading(true);
-    const [{ data: row }, { data: cats }, { data: opts }, { data: kds }] = await Promise.all([
+    const [{ data: row }, { data: cats }, { data: opts }, { data: kds }, { data: cls }, { data: unt }] = await Promise.all([
       supabase.from("referenz_meta_ads" as any)
         .select(isPublic ? '*' : '*, linked_kunde:close_deals(id, client_name, unternehmen, branche)')
         .eq("id", id).maybeSingle(),
       supabase.from("showcase_filter_categories" as any).select("*").in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
       supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
       supabase.from("close_deals").select("id, client_name").order("client_name").limit(500),
+      isPublic ? Promise.resolve({ data: [] }) : supabase.from("clients" as any).select("id, name, unternehmen_id, unternehmen:unternehmen_id(display_name, name)").order("name").limit(2000),
+      isPublic ? Promise.resolve({ data: [] }) : supabase.from("unternehmen" as any).select("id, name, display_name").order("name").limit(2000),
     ]);
     if (!row) { setLoading(false); return; }
     const r = row as any as MetaAdRow;
@@ -80,6 +82,11 @@ export default function ReferenzWerbeanzeigeDetail() {
     setCategories((cats ?? []) as any);
     setOptions((opts ?? []) as any);
     setKunden(((kds ?? []) as any).filter((k: any) => k.client_name));
+    setClientsList(((cls ?? []) as any[]).map((c: any) => ({
+      id: c.id, name: c.name, unternehmen_id: c.unternehmen_id,
+      unternehmen_name: c.unternehmen?.display_name || c.unternehmen?.name || null,
+    })));
+    setUnternehmenList((unt ?? []) as any);
 
     setLoading(false);
   };
