@@ -93,8 +93,8 @@ export function InlineEditDetailRow({
             <button
               type="button"
               className={cn(
-                "group inline-flex items-center gap-1.5 max-w-full justify-end rounded-md px-2 py-1 -mx-2 -my-1 text-base font-semibold transition-colors",
-                "text-gray-900 dark:text-white hover:bg-muted/40",
+                "group flex items-center gap-1.5 max-w-full justify-end rounded-md px-2 py-1 -mr-2 text-base font-semibold transition-colors",
+                "text-gray-900 dark:text-white hover:bg-muted/30",
                 "border border-transparent cursor-pointer",
                 open && "border-primary/50 bg-muted/40",
                 status === "error" && "border-red-400/60 bg-red-50/40 dark:bg-red-950/20",
