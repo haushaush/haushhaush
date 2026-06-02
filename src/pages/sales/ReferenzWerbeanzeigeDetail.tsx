@@ -17,10 +17,12 @@ import type { MetaAdRow } from "./ReferenzWerbeanzeigen";
 import type { FilterCategory, FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
 import {
   DetailPageLayout, DetailHero, DetailInfoPanel, InfoSection, InfoSectionTitle,
-  DetailRowList, DetailRow, MetricLarge, DetailPageSkeleton,
+  DetailRowList, DetailRow, DetailPageSkeleton,
 } from "@/components/showcase/DetailPageLayout";
 import { DeleteAdDialog } from "@/components/showcase/DeleteAdDialog";
-import { getBrancheDisplay } from "@/lib/branchen";
+import { InlineEditDetailRow, type InlineOption } from "@/components/showcase/InlineEditDetailRow";
+import { BRANCHEN, getBrancheDisplay } from "@/lib/branchen";
+import { cn } from "@/lib/utils";
 
 export default function ReferenzWerbeanzeigeDetail() {
   const { id } = useParams<{ id: string }>();
