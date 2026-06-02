@@ -144,6 +144,9 @@ export default function ReferenzWerbeanzeigenPage() {
     });
 
   const [importOpen, setImportOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+
+  const incompleteAccountsCount = useMemo(() => buildIncompleteAccounts(rows).length, [rows]);
 
   const [categories, setCategories] = useState<FilterCategory[]>([]);
   const [options, setOptions] = useState<FilterOption[]>([]);
