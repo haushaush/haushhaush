@@ -42,12 +42,6 @@ export default function ReferenzWerbeanzeigeDetail() {
   const [options, setOptions] = useState<FilterOption[]>([]);
   const [kunden, setKunden] = useState<{ id: string; client_name: string }[]>([]);
 
-  // Inline-edit lookups
-  const [clientsList, setClientsList] = useState<{ id: string; name: string; branche: string | null }[]>([]);
-  const [unternehmenList, setUnternehmenList] = useState<{ id: string; name: string }[]>([]);
-  const [brancheList, setBrancheList] = useState<string[]>([]);
-  const [clientName, setClientName] = useState<string>("");
-  const [unternehmenName, setUnternehmenName] = useState<string>("");
 
   const [customTitle, setCustomTitle] = useState("");
   const [customDescription, setCustomDescription] = useState("");
