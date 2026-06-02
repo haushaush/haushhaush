@@ -246,10 +246,6 @@ export default function LeadQualityAudit() {
                   <SelectItem value="abgeschlossen">Abgeschlossen</SelectItem>
                 </SelectContent>
               </Select>
-              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-                <Checkbox />
-                Gelöschte zeigen
-              </label>
             </div>
 
             {error ? (
@@ -427,7 +423,7 @@ export default function LeadQualityAudit() {
             <AlertDialogHeader>
               <AlertDialogTitle>Eintrag löschen?</AlertDialogTitle>
               <AlertDialogDescription>
-                {deleteTarget?.kunde_name} ({deleteTarget?.customer_id}) wird auf Status "deleted" gesetzt.
+                {deleteTarget?.kunde_name} ({deleteTarget?.customer_id}) wird permanent aus Google Sheets entfernt und kann nicht wiederhergestellt werden.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
