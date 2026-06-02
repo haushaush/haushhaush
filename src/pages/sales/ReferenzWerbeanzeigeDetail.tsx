@@ -284,13 +284,13 @@ export default function ReferenzWerbeanzeigeDetail() {
             <InfoSection>
               <InfoSectionTitle icon={BarChart3}>Performance</InfoSectionTitle>
               <div className="grid grid-cols-2 gap-5">
-                <MetricLarge label="CPL" value={cpl != null ? `€${cpl.toFixed(2)}` : '—'} highlight={isWinning} />
-                <MetricLarge label="Leads" value={m.leads != null ? Number(m.leads).toLocaleString('de-DE') : '—'} />
-                <MetricLarge label="CTR" value={m.ctr != null ? `${Number(m.ctr).toFixed(2)}%` : '—'} />
-                <MetricLarge label="Budget" value={m.spend != null ? `€${Math.round(Number(m.spend)).toLocaleString('de-DE')}` : '—'} />
+                <BigMetric label="CPL" value={cpl != null ? `€${cpl.toFixed(2)}` : '—'} highlight={isWinning} />
+                <BigMetric label="Leads" value={m.leads != null ? Number(m.leads).toLocaleString('de-DE') : '—'} />
+                <BigMetric label="CTR" value={m.ctr != null ? `${Number(m.ctr).toFixed(2)}%` : '—'} />
+                <BigMetric label="Budget" value={m.spend != null ? `€${Math.round(Number(m.spend)).toLocaleString('de-DE')}` : '—'} />
               </div>
               {ad.campaign_period_start && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                   {ad.campaign_period_start} – {ad.campaign_period_end ?? "heute"}
                 </p>
               )}
@@ -300,12 +300,40 @@ export default function ReferenzWerbeanzeigeDetail() {
           <InfoSection>
             <InfoSectionTitle icon={Info}>Details</InfoSectionTitle>
             <DetailRowList>
-              {branche && <DetailRow label="Branche" value={branche} capitalize />}
-              {unternehmen && <DetailRow label="Unternehmen" value={unternehmen} />}
-              {linkedKunde?.client_name && <DetailRow label="Kunde" value={linkedKunde.client_name} />}
-              <DetailRow label="Format" value={formatLabel} />
-              {ad.meta_account_name && <DetailRow label="Account" value={ad.meta_account_name} />}
-              {ad.meta_campaign_name && <DetailRow label="Kampagne" value={ad.meta_campaign_name} />}
+              <InlineEditDetailRow
+                label="Branche"
+                value={linkedBrancheId}
+                displayValue={brancheDisplay}
+                options={brancheOptions}
+                allowFreeText
+                allowClear
+                placeholder="Branche suchen oder neu…"
+                disabled={!isAdmin}
+                onSave={(v) => handleInlineSave("linked_branche_id", v)}
+              />
+              <InlineEditDetailRow
+                label="Unternehmen"
+                value={linkedUnternehmenId}
+                displayValue={unternehmenDisplay}
+                options={unternehmenOptions}
+                allowClear
+                placeholder="Unternehmen suchen…"
+                disabled={!isAdmin}
+                onSave={(v) => handleInlineSave("linked_unternehmen_id", v)}
+              />
+              <InlineEditDetailRow
+                label="Kunde"
+                value={linkedClientId}
+                displayValue={kundeDisplay}
+                options={clientOptions}
+                allowClear
+                placeholder="Kunde suchen…"
+                disabled={!isAdmin}
+                onSave={(v) => handleInlineSave("linked_client_id", v)}
+              />
+              <BigRow label="Format" value={formatLabel} />
+              {ad.meta_account_name && <BigRow label="Account" value={ad.meta_account_name} />}
+              {ad.meta_campaign_name && <BigRow label="Kampagne" value={ad.meta_campaign_name} />}
             </DetailRowList>
           </InfoSection>
 
