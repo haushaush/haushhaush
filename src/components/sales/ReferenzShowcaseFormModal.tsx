@@ -9,9 +9,6 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Upload } from 'lucide-react';
 import type { ShowcaseRow } from '@/pages/sales/ReferenzShowcaseShared';
-import { ClientPicker } from '@/components/pickers/ClientPicker';
-import { BranchePicker } from '@/components/pickers/BranchePicker';
-import { UnternehmenPicker } from '@/components/pickers/UnternehmenPicker';
 
 interface Props {
   open: boolean;
