@@ -20,7 +20,8 @@ import {
   DetailRowList, DetailRow, DetailPageSkeleton,
 } from "@/components/showcase/DetailPageLayout";
 import { DeleteAdDialog } from "@/components/showcase/DeleteAdDialog";
-import { getBrancheDisplay } from "@/lib/branchen";
+import { getBrancheDisplay, BRANCHEN } from "@/lib/branchen";
+import { InlineEditDetailRow, type InlineOption } from "@/components/showcase/InlineEditDetailRow";
 import { cn } from "@/lib/utils";
 
 export default function ReferenzWerbeanzeigeDetail() {
