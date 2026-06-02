@@ -122,27 +122,6 @@ export default function ReferenzWerbeanzeigeDetail() {
     field: "linked_branche_id" | "linked_unternehmen_id" | "linked_client_id",
     newValue: string | null,
   ) => {
-    if (!ad) return;
-    const prev = ad as any;
-    const update: Record<string, any> = { [field]: newValue };
-    // Optimistic
-    setAd({ ...(ad as any), ...update });
-    if (field === "linked_client_id") {
-      setClientName(newValue ? (clientsList.find(c => c.id === newValue)?.name ?? "") : "");
-    } else if (field === "linked_unternehmen_id") {
-      setUnternehmenName(newValue ? (unternehmenList.find(u => u.id === newValue)?.name ?? "") : "");
-    } else if (field === "linked_branche_id" && newValue && !brancheList.includes(newValue)) {
-      setBrancheList([...brancheList, newValue].sort());
-    }
-    const { error } = await supabase.from("referenz_meta_ads" as any).update(update).eq("id", ad.id);
-    if (error) {
-      setAd(prev as any);
-      toast({ title: "Speichern fehlgeschlagen", description: error.message, variant: "destructive" });
-      throw error;
-    }
-    const labelMap = { linked_branche_id: "Branche", linked_unternehmen_id: "Unternehmen", linked_client_id: "Kunde" } as const;
-    toast({ title: `${labelMap[field]} aktualisiert` });
-  };
 
   if (loading) return <DetailPageSkeleton />;
   if (!ad) return (
@@ -159,25 +138,13 @@ export default function ReferenzWerbeanzeigeDetail() {
   const title = ad.custom_title || ad.meta_ad_name || "Unbenannt";
   const thumb = (ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta;
 
-  const linkedClientId = (ad as any).linked_client_id as string | null;
-  const linkedUnternehmenId = (ad as any).linked_unternehmen_id as string | null;
-  const linkedBrancheId = (ad as any).linked_branche_id as string | null;
-
   const brancheDisplay =
-    getBrancheDisplay(linkedBrancheId, 'long') ||
-    linkedBrancheId ||
+    getBrancheDisplay((ad as any).linked_branche_id, 'long') ||
+    (ad as any).linked_branche_id ||
     getBrancheDisplay(linkedKunde?.branche || ad.filter_values?.branche, 'long') ||
     linkedKunde?.branche || ad.filter_values?.branche || "";
-  const unternehmenDisplay = unternehmenName || linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
-  const kundeDisplay = clientName || linkedKunde?.client_name || "";
-
-  const brancheOptions: InlineOption[] = brancheList.map(b => ({
-    value: b, label: getBrancheDisplay(b, 'long') || b,
-  }));
-  const unternehmenOptions: InlineOption[] = unternehmenList.map(u => ({ value: u.id, label: u.name }));
-  const clientOptions: InlineOption[] = clientsList.map(c => ({
-    value: c.id, label: c.name, sublabel: c.branche ? (getBrancheDisplay(c.branche, 'long') || c.branche) : undefined,
-  }));
+  const unternehmenDisplay = linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
+  const kundeDisplay = linkedKunde?.client_name || "";
 
   const cpl = m.cpl != null ? Number(m.cpl) : null;
   const isWinning = !!(cpl != null && cpl > 0 && cpl < 5);
@@ -275,37 +242,9 @@ export default function ReferenzWerbeanzeigeDetail() {
           <InfoSection>
             <InfoSectionTitle icon={Info}>Details</InfoSectionTitle>
             <DetailRowList>
-              <InlineEditDetailRow
-                label="Branche"
-                value={linkedBrancheId}
-                displayValue={brancheDisplay}
-                options={brancheOptions}
-                allowFreeText
-                allowClear
-                placeholder="Branche suchen oder neu…"
-                disabled={!isAdmin}
-                onSave={(v) => handleInlineSave("linked_branche_id", v)}
-              />
-              <InlineEditDetailRow
-                label="Unternehmen"
-                value={linkedUnternehmenId}
-                displayValue={unternehmenDisplay}
-                options={unternehmenOptions}
-                allowClear
-                placeholder="Unternehmen suchen…"
-                disabled={!isAdmin}
-                onSave={(v) => handleInlineSave("linked_unternehmen_id", v)}
-              />
-              <InlineEditDetailRow
-                label="Kunde"
-                value={linkedClientId}
-                displayValue={kundeDisplay}
-                options={clientOptions}
-                allowClear
-                placeholder="Kunde suchen…"
-                disabled={!isAdmin}
-                onSave={(v) => handleInlineSave("linked_client_id", v)}
-              />
+              <BigRow label="Branche" value={brancheDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
+              <BigRow label="Unternehmen" value={unternehmenDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
+              <BigRow label="Kunde" value={kundeDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
               <BigRow label="Format" value={formatLabel} />
               {ad.meta_account_name && <BigRow label="Account" value={ad.meta_account_name} />}
               {ad.meta_campaign_name && <BigRow label="Kampagne" value={ad.meta_campaign_name} />}
