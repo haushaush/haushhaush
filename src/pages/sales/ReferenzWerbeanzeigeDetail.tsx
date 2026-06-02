@@ -161,6 +161,12 @@ export default function ReferenzWerbeanzeigeDetail() {
     linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
   const kundeDisplay = clientFromList?.name || linkedKunde?.client_name || "";
 
+  const modalFilterCategories = categories.filter(cat => {
+    const key = (cat.key ?? "").toLowerCase().trim();
+    const label = (cat.label ?? "").toLowerCase().trim();
+    return key === "format" || key === "zielgruppe" || label === "format" || label === "zielgruppe";
+  });
+
   const handleInlineSave = async (field: "linked_branche_id" | "linked_unternehmen_id" | "linked_client_id", newValue: string | null) => {
     if (!ad) return;
     const prev = ad;
@@ -376,11 +382,11 @@ export default function ReferenzWerbeanzeigeDetail() {
               <Textarea value={customNotes} onChange={(e) => setCustomNotes(e.target.value)} rows={2} className="mt-1" placeholder="Hook funktioniert sehr gut…" />
             </div>
 
-            {categories.length > 0 && (
+            {modalFilterCategories.length > 0 && (
               <div className="space-y-2">
                 <Label>Filter</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  {categories.map(cat => {
+                  {modalFilterCategories.map(cat => {
                     const catOpts = options.filter(o => o.category_id === cat.id);
                     return (
                       <div key={cat.id}>
@@ -429,18 +435,6 @@ export default function ReferenzWerbeanzeigeDetail() {
                   <Button size="icon" variant="ghost" onClick={addTag}><Plus className="w-3.5 h-3.5" /></Button>
                 </div>
               </div>
-            </div>
-
-            <div>
-              <Label>Verknüpfter Kunde</Label>
-              <select
-                value={linkedKundeId ?? ""}
-                onChange={(e) => setLinkedKundeId(e.target.value || null)}
-                className="w-full text-sm bg-background border border-border rounded-md px-2 h-9 mt-1"
-              >
-                <option value="">— keiner —</option>
-                {kunden.map(k => <option key={k.id} value={k.id}>{k.client_name}</option>)}
-              </select>
             </div>
 
             <div className="flex items-center gap-3">
