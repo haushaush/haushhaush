@@ -75,9 +75,9 @@ export function InlineEditDetailRow({
 
   if (disabled) {
     return (
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex justify-between items-center gap-4 py-1.5">
         <dt className="text-base text-gray-500 dark:text-gray-400 font-medium shrink-0">{label}</dt>
-        <dd className="text-base text-right font-semibold text-gray-900 dark:text-white truncate min-w-0">
+        <dd className="text-base text-right font-semibold text-gray-900 dark:text-white truncate min-w-0 max-w-[60%]">
           {displayValue || <span className="text-gray-400 italic">{emptyLabel}</span>}
         </dd>
       </div>
@@ -85,16 +85,16 @@ export function InlineEditDetailRow({
   }
 
   return (
-    <div className="flex items-start justify-between gap-4">
-      <dt className="text-base text-gray-500 dark:text-gray-400 font-medium shrink-0 pt-1">{label}</dt>
-      <dd className="text-right min-w-0 flex-1">
+    <div className="flex justify-between items-center gap-4 py-1.5">
+      <dt className="text-base text-gray-500 dark:text-gray-400 font-medium shrink-0">{label}</dt>
+      <dd className="flex justify-end min-w-0 max-w-[60%]">
         <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
           <PopoverTrigger asChild>
             <button
               type="button"
               className={cn(
-                "group inline-flex items-center gap-1.5 max-w-full justify-end rounded-md px-2 py-1 -mx-2 -my-1 text-base font-semibold transition-colors",
-                "text-gray-900 dark:text-white hover:bg-muted/40",
+                "group flex items-center gap-1.5 max-w-full justify-end rounded-md px-2 py-1 -mr-2 text-base font-semibold transition-colors",
+                "text-gray-900 dark:text-white hover:bg-muted/30",
                 "border border-transparent cursor-pointer",
                 open && "border-primary/50 bg-muted/40",
                 status === "error" && "border-red-400/60 bg-red-50/40 dark:bg-red-950/20",

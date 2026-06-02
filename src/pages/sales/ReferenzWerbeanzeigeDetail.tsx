@@ -220,9 +220,9 @@ export default function ReferenzWerbeanzeigeDetail() {
 
   // Local read-only row, upscaled to text-base (+15% vs text-sm)
   const BigRow = ({ label, value, capitalize }: { label: string; value: React.ReactNode; capitalize?: boolean }) => (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex justify-between items-center gap-4 py-1.5">
       <dt className="text-base text-gray-500 dark:text-gray-400 font-medium shrink-0">{label}</dt>
-      <dd className={cn("text-base text-right truncate min-w-0 font-semibold text-gray-900 dark:text-white", capitalize && "capitalize")}>{value}</dd>
+      <dd className={cn("text-base text-right truncate min-w-0 max-w-[60%] font-semibold text-gray-900 dark:text-white", capitalize && "capitalize")}>{value}</dd>
     </div>
   );
 
