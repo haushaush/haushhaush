@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail, Globe, BarChart3, Video, MonitorPlay, Wrench } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail, Globe, BarChart3, Video, MonitorPlay, Wrench, ShieldCheck } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -138,6 +138,9 @@ const toolsNavItems: NavItem[] = [
   },
   {
     title: 'Ad Creative Studio', url: '/tools/ad-creative-studio', icon: Wand2,
+  },
+  {
+    title: 'Lead Quality Audit', url: '/tools/lead-quality-audit', icon: ShieldCheck,
   },
 ];
 function loadSidebarState(): Record<string, boolean> {

@@ -14,6 +14,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { toast } from "sonner";
 import Auth from "./pages/Auth.tsx";
+import LeadQualityAudit from "./pages/tools/LeadQualityAudit.tsx";
 import Profil from "./pages/Profil.tsx";
 import Registrierung from "./pages/Registrierung.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
@@ -211,6 +212,7 @@ const App = () => (
                 <Route path="/creatives/:id" element={<DL><CreativeDetail /></DL>} />
                 <Route path="/review/:token" element={<CreativeReview />} />
                 <Route path="/tools/ad-creative-studio" element={<DL><AdCreativeStudio /></DL>} />
+                <Route path="/tools/lead-quality-audit" element={<DL><LeadQualityAudit /></DL>} />
                 <Route path="/showcase/:id" element={<PublicShowcaseView />} />
 
                 {/* Redirects */}
