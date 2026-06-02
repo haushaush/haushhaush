@@ -9,9 +9,6 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Upload } from 'lucide-react';
 import type { ShowcaseRow } from '@/pages/sales/ReferenzShowcaseShared';
-import { ClientPicker } from '@/components/pickers/ClientPicker';
-import { BranchePicker } from '@/components/pickers/BranchePicker';
-import { UnternehmenPicker } from '@/components/pickers/UnternehmenPicker';
 
 interface Props {
   open: boolean;
@@ -140,32 +137,9 @@ export function ReferenzShowcaseFormModal({ open, type: initialType, editing, on
             <Input value={title} onChange={e => setTitle(e.target.value)} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Kunde</Label>
-              <ClientPicker
-                value={linkedClientId}
-                onChange={(id, name) => {
-                  setLinkedClientId(id);
-                  if (name && !clientName) setClientName(name);
-                }}
-              />
-            </div>
-            <div>
-              <Label>Kundenname (Anzeige)</Label>
-              <Input value={clientName} onChange={e => setClientName(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Branche</Label>
-              <BranchePicker value={brancheId} onChange={setBrancheId} />
-            </div>
-            <div>
-              <Label>Unternehmen</Label>
-              <UnternehmenPicker value={unternehmenId} onChange={setUnternehmenId} />
-            </div>
+          <div>
+            <Label>Kundenname (Anzeige)</Label>
+            <Input value={clientName} onChange={e => setClientName(e.target.value)} />
           </div>
 
           <div>
