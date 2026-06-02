@@ -410,7 +410,84 @@ export default function LeadQualityAudit() {
                 <Input value={form.customer_id} onChange={(e) => setForm({ ...form, customer_id: e.target.value })} disabled={!!editing} />
               </Field>
               <Field label="Kunde *">
-                <Input value={form.kunde_name} onChange={(e) => setForm({ ...form, kunde_name: e.target.value })} />
+                {showcaseClients.length === 0 ? (
+                  <Input
+                    value={form.kunde_name}
+                    onChange={(e) => setForm({ ...form, kunde_name: e.target.value })}
+                    placeholder="Kundenname"
+                  />
+                ) : (
+                  <Popover open={kundePopoverOpen} onOpenChange={setKundePopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={kundePopoverOpen}
+                        className="w-full justify-between font-normal"
+                      >
+                        <span className={form.kunde_name ? "" : "text-muted-foreground"}>
+                          {form.kunde_name || "Kunde wählen oder eintippen…"}
+                        </span>
+                        <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command
+                        filter={(value, search) => {
+                          if (!search) return 1;
+                          return normalize(value).includes(normalize(search)) ? 1 : 0;
+                        }}
+                      >
+                        <CommandInput
+                          placeholder="Tippen…"
+                          value={form.kunde_name}
+                          onValueChange={(v) => setForm((f) => ({ ...f, kunde_name: v }))}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            <div className="px-2 py-3 text-xs text-muted-foreground">
+                              Kein Match — "{form.kunde_name}" wird als neuer Kunde übernommen
+                            </div>
+                          </CommandEmpty>
+                          <CommandGroup heading="Showcase-Kunden">
+                            {showcaseClients.slice(0, 50).map((c) => (
+                              <CommandItem
+                                key={c.id}
+                                value={c.client_name}
+                                onSelect={() => {
+                                  setForm((f) => ({
+                                    ...f,
+                                    kunde_name: c.client_name,
+                                    funnel_link: f.funnel_link?.trim()
+                                      ? f.funnel_link
+                                      : c.website_url ?? f.funnel_link,
+                                  }));
+                                  setKundePopoverOpen(false);
+                                  if (c.website_url) {
+                                    toast.success(`Funnel-Link von "${c.client_name}" übernommen`);
+                                  }
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${form.kunde_name === c.client_name ? "opacity-100" : "opacity-0"}`}
+                                />
+                                <div className="flex flex-col min-w-0">
+                                  <span className="truncate">{c.client_name}</span>
+                                  {c.website_url && (
+                                    <span className="text-[10px] text-muted-foreground truncate">
+                                      {c.website_url}
+                                    </span>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </Field>
               <Field label="Funnel-Link" className="col-span-2">
                 <Input value={form.funnel_link} onChange={(e) => setForm({ ...form, funnel_link: e.target.value })} placeholder="https://…" />
