@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type Status = "aktiv" | "pausiert" | "abgeschlossen" | "deleted";
+type Status = "aktiv" | "pausiert" | "abgeschlossen";
 
 interface Audit {
   customer_id: string;
@@ -71,7 +71,6 @@ const statusVariant = (s: Status) => {
     case "aktiv": return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30";
     case "pausiert": return "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30";
     case "abgeschlossen": return "bg-muted text-muted-foreground border-border";
-    case "deleted": return "bg-destructive/15 text-destructive border-destructive/30";
   }
 };
 
@@ -83,7 +82,6 @@ export default function LeadQualityAudit() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
-  const [showDeleted, setShowDeleted] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("customer_id");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
@@ -114,7 +112,6 @@ export default function LeadQualityAudit() {
 
   const filtered = useMemo(() => {
     let r = rows;
-    if (!showDeleted) r = r.filter(x => x.status !== "deleted");
     if (statusFilter !== "all") r = r.filter(x => x.status === statusFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -126,7 +123,7 @@ export default function LeadQualityAudit() {
       return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
     });
     return sorted;
-  }, [rows, search, statusFilter, showDeleted, sortKey, sortDir]);
+  }, [rows, search, statusFilter, sortKey, sortDir]);
 
   const nextCustomerId = useMemo(() => {
     const nums = rows
@@ -189,11 +186,11 @@ export default function LeadQualityAudit() {
     if (!deleteTarget) return;
     const cid = deleteTarget.customer_id;
     const snapshot = rows;
-    setRows(rs => rs.map(r => r.customer_id === cid ? { ...r, status: "deleted" } : r));
+    setRows(rs => rs.filter(r => r.customer_id !== cid));
     setDeleteTarget(null);
     try {
       const { error } = await supabase.functions.invoke("audit-bridge", {
-        body: { action: "update", customer_id: cid, data: { status: "deleted" } },
+        body: { action: "delete", customer_id: cid },
       });
       if (error) throw error;
       toast.success("Eintrag gelöscht");
@@ -250,7 +247,7 @@ export default function LeadQualityAudit() {
                 </SelectContent>
               </Select>
               <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-                <Checkbox checked={showDeleted} onCheckedChange={(v) => setShowDeleted(!!v)} />
+                <Checkbox />
                 Gelöschte zeigen
               </label>
             </div>
