@@ -20,7 +20,8 @@ import {
   DetailRowList, DetailRow, DetailPageSkeleton,
 } from "@/components/showcase/DetailPageLayout";
 import { DeleteAdDialog } from "@/components/showcase/DeleteAdDialog";
-import { getBrancheDisplay } from "@/lib/branchen";
+import { getBrancheDisplay, BRANCHEN } from "@/lib/branchen";
+import { InlineEditDetailRow, type InlineOption } from "@/components/showcase/InlineEditDetailRow";
 import { cn } from "@/lib/utils";
 
 export default function ReferenzWerbeanzeigeDetail() {
@@ -41,6 +42,9 @@ export default function ReferenzWerbeanzeigeDetail() {
   const [categories, setCategories] = useState<FilterCategory[]>([]);
   const [options, setOptions] = useState<FilterOption[]>([]);
   const [kunden, setKunden] = useState<{ id: string; client_name: string }[]>([]);
+  const [clientsList, setClientsList] = useState<{ id: string; name: string; unternehmen_id: string | null; unternehmen_name?: string | null }[]>([]);
+  const [unternehmenList, setUnternehmenList] = useState<{ id: string; name: string; display_name: string | null }[]>([]);
+
 
 
   const [customTitle, setCustomTitle] = useState("");
@@ -55,13 +59,15 @@ export default function ReferenzWerbeanzeigeDetail() {
   const load = async () => {
     if (!id) return;
     setLoading(true);
-    const [{ data: row }, { data: cats }, { data: opts }, { data: kds }] = await Promise.all([
+    const [{ data: row }, { data: cats }, { data: opts }, { data: kds }, { data: cls }, { data: unt }] = await Promise.all([
       supabase.from("referenz_meta_ads" as any)
         .select(isPublic ? '*' : '*, linked_kunde:close_deals(id, client_name, unternehmen, branche)')
         .eq("id", id).maybeSingle(),
       supabase.from("showcase_filter_categories" as any).select("*").in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
       supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
       supabase.from("close_deals").select("id, client_name").order("client_name").limit(500),
+      isPublic ? Promise.resolve({ data: [] }) : supabase.from("clients" as any).select("id, name, unternehmen_id, unternehmen:unternehmen_id(display_name, name)").order("name").limit(2000),
+      isPublic ? Promise.resolve({ data: [] }) : supabase.from("unternehmen" as any).select("id, name, display_name").order("name").limit(2000),
     ]);
     if (!row) { setLoading(false); return; }
     const r = row as any as MetaAdRow;
@@ -76,6 +82,11 @@ export default function ReferenzWerbeanzeigeDetail() {
     setCategories((cats ?? []) as any);
     setOptions((opts ?? []) as any);
     setKunden(((kds ?? []) as any).filter((k: any) => k.client_name));
+    setClientsList(((cls ?? []) as any[]).map((c: any) => ({
+      id: c.id, name: c.name, unternehmen_id: c.unternehmen_id,
+      unternehmen_name: c.unternehmen?.display_name || c.unternehmen?.name || null,
+    })));
+    setUnternehmenList((unt ?? []) as any);
 
     setLoading(false);
   };
@@ -132,13 +143,37 @@ export default function ReferenzWerbeanzeigeDetail() {
   const title = ad.custom_title || ad.meta_ad_name || "Unbenannt";
   const thumb = (ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta;
 
+  const linkedBrancheId = (ad as any).linked_branche_id as string | null;
+  const linkedUnternehmenId = (ad as any).linked_unternehmen_id as string | null;
+  const linkedClientId = (ad as any).linked_client_id as string | null;
+
+  const unternehmenFromList = unternehmenList.find(u => u.id === linkedUnternehmenId);
+  const clientFromList = clientsList.find(c => c.id === linkedClientId);
+
   const brancheDisplay =
-    getBrancheDisplay((ad as any).linked_branche_id, 'long') ||
-    (ad as any).linked_branche_id ||
+    getBrancheDisplay(linkedBrancheId, 'long') ||
+    linkedBrancheId ||
     getBrancheDisplay(linkedKunde?.branche || ad.filter_values?.branche, 'long') ||
     linkedKunde?.branche || ad.filter_values?.branche || "";
-  const unternehmenDisplay = linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
-  const kundeDisplay = linkedKunde?.client_name || "";
+  const unternehmenDisplay =
+    unternehmenFromList?.display_name || unternehmenFromList?.name ||
+    clientFromList?.unternehmen_name ||
+    linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
+  const kundeDisplay = clientFromList?.name || linkedKunde?.client_name || "";
+
+  const handleInlineSave = async (field: "linked_branche_id" | "linked_unternehmen_id" | "linked_client_id", newValue: string | null) => {
+    if (!ad) return;
+    const prev = ad;
+    const update: any = { [field]: newValue };
+    setAd({ ...ad, ...update } as any);
+    const { error } = await supabase.from("referenz_meta_ads" as any).update(update).eq("id", ad.id);
+    if (error) {
+      setAd(prev);
+      toast({ title: "Speichern fehlgeschlagen", description: error.message, variant: "destructive" });
+      throw error;
+    }
+  };
+
 
   const cpl = m.cpl != null ? Number(m.cpl) : null;
   const isWinning = !!(cpl != null && cpl > 0 && cpl < 5);
@@ -236,9 +271,44 @@ export default function ReferenzWerbeanzeigeDetail() {
           <InfoSection>
             <InfoSectionTitle icon={Info}>Details</InfoSectionTitle>
             <DetailRowList>
-              <BigRow label="Branche" value={brancheDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
-              <BigRow label="Unternehmen" value={unternehmenDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
-              <BigRow label="Kunde" value={kundeDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
+              {editMode && isAdmin ? (
+                <>
+                  <InlineEditDetailRow
+                    label="Branche"
+                    value={linkedBrancheId}
+                    displayValue={brancheDisplay}
+                    options={BRANCHEN.map(b => ({ value: b.id, label: b.label, sublabel: b.short })) as InlineOption[]}
+                    placeholder="Branche suchen…"
+                    allowFreeText
+                    allowClear
+                    onSave={(v) => handleInlineSave("linked_branche_id", v)}
+                  />
+                  <InlineEditDetailRow
+                    label="Unternehmen"
+                    value={linkedUnternehmenId}
+                    displayValue={unternehmenDisplay}
+                    options={unternehmenList.map(u => ({ value: u.id, label: u.display_name || u.name })) as InlineOption[]}
+                    placeholder="Unternehmen suchen…"
+                    allowClear
+                    onSave={(v) => handleInlineSave("linked_unternehmen_id", v)}
+                  />
+                  <InlineEditDetailRow
+                    label="Kunde"
+                    value={linkedClientId}
+                    displayValue={kundeDisplay}
+                    options={clientsList.map(c => ({ value: c.id, label: c.name, sublabel: c.unternehmen_name || undefined })) as InlineOption[]}
+                    placeholder="Kunde suchen…"
+                    allowClear
+                    onSave={(v) => handleInlineSave("linked_client_id", v)}
+                  />
+                </>
+              ) : (
+                <>
+                  <BigRow label="Branche" value={brancheDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
+                  <BigRow label="Unternehmen" value={unternehmenDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
+                  <BigRow label="Kunde" value={kundeDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
+                </>
+              )}
               <BigRow label="Format" value={formatLabel} />
               {ad.meta_account_name && <BigRow label="Account" value={ad.meta_account_name} />}
               {ad.meta_campaign_name && <BigRow label="Kampagne" value={ad.meta_campaign_name} />}
