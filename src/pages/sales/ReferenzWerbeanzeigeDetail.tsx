@@ -183,10 +183,48 @@ export default function ReferenzWerbeanzeigeDetail() {
   const eyebrow = linkedKunde?.unternehmen || linkedKunde?.client_name || ad.meta_account_name || "Anzeige";
   const title = ad.custom_title || ad.meta_ad_name || "Unbenannt";
   const thumb = (ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta;
-  const branche = getBrancheDisplay(linkedKunde?.branche || ad.filter_values?.branche, 'long') || linkedKunde?.branche || ad.filter_values?.branche || "";
-  const unternehmen = linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
+
+  const linkedClientId = (ad as any).linked_client_id as string | null;
+  const linkedUnternehmenId = (ad as any).linked_unternehmen_id as string | null;
+  const linkedBrancheId = (ad as any).linked_branche_id as string | null;
+
+  const brancheDisplay =
+    getBrancheDisplay(linkedBrancheId, 'long') ||
+    linkedBrancheId ||
+    getBrancheDisplay(linkedKunde?.branche || ad.filter_values?.branche, 'long') ||
+    linkedKunde?.branche || ad.filter_values?.branche || "";
+  const unternehmenDisplay = unternehmenName || linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
+  const kundeDisplay = clientName || linkedKunde?.client_name || "";
+
+  const brancheOptions: InlineOption[] = brancheList.map(b => ({
+    value: b, label: getBrancheDisplay(b, 'long') || b,
+  }));
+  const unternehmenOptions: InlineOption[] = unternehmenList.map(u => ({ value: u.id, label: u.name }));
+  const clientOptions: InlineOption[] = clientsList.map(c => ({
+    value: c.id, label: c.name, sublabel: c.branche ? (getBrancheDisplay(c.branche, 'long') || c.branche) : undefined,
+  }));
+
   const cpl = m.cpl != null ? Number(m.cpl) : null;
   const isWinning = !!(cpl != null && cpl > 0 && cpl < 5);
+
+  // Local upsized metric (+15% vs MetricLarge: text-2xl -> text-[28px])
+  const BigMetric = ({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: boolean }) => (
+    <div>
+      <div className="text-[11px] uppercase tracking-[0.08em] font-bold text-gray-500 dark:text-gray-400 mb-1">{label}</div>
+      <div className={cn(
+        "text-[28px] font-extrabold tabular-nums leading-none",
+        highlight ? "text-emerald-600 dark:text-emerald-400" : "text-gray-900 dark:text-white",
+      )}>{value}</div>
+    </div>
+  );
+
+  // Local read-only row, upscaled to text-base (+15% vs text-sm)
+  const BigRow = ({ label, value, capitalize }: { label: string; value: React.ReactNode; capitalize?: boolean }) => (
+    <div className="flex items-start justify-between gap-4">
+      <dt className="text-base text-gray-500 dark:text-gray-400 font-medium shrink-0">{label}</dt>
+      <dd className={cn("text-base text-right truncate min-w-0 font-semibold text-gray-900 dark:text-white", capitalize && "capitalize")}>{value}</dd>
+    </div>
+  );
 
   return (
     <>
