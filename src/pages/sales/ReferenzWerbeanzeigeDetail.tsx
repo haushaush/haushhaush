@@ -271,9 +271,44 @@ export default function ReferenzWerbeanzeigeDetail() {
           <InfoSection>
             <InfoSectionTitle icon={Info}>Details</InfoSectionTitle>
             <DetailRowList>
-              <BigRow label="Branche" value={brancheDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
-              <BigRow label="Unternehmen" value={unternehmenDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
-              <BigRow label="Kunde" value={kundeDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
+              {editMode && isAdmin ? (
+                <>
+                  <InlineEditDetailRow
+                    label="Branche"
+                    value={linkedBrancheId}
+                    displayValue={brancheDisplay}
+                    options={BRANCHEN.map(b => ({ value: b.id, label: b.label, sublabel: b.short })) as InlineOption[]}
+                    placeholder="Branche suchen…"
+                    allowFreeText
+                    allowClear
+                    onSave={(v) => handleInlineSave("linked_branche_id", v)}
+                  />
+                  <InlineEditDetailRow
+                    label="Unternehmen"
+                    value={linkedUnternehmenId}
+                    displayValue={unternehmenDisplay}
+                    options={unternehmenList.map(u => ({ value: u.id, label: u.display_name || u.name })) as InlineOption[]}
+                    placeholder="Unternehmen suchen…"
+                    allowClear
+                    onSave={(v) => handleInlineSave("linked_unternehmen_id", v)}
+                  />
+                  <InlineEditDetailRow
+                    label="Kunde"
+                    value={linkedClientId}
+                    displayValue={kundeDisplay}
+                    options={clientsList.map(c => ({ value: c.id, label: c.name, sublabel: c.unternehmen_name || undefined })) as InlineOption[]}
+                    placeholder="Kunde suchen…"
+                    allowClear
+                    onSave={(v) => handleInlineSave("linked_client_id", v)}
+                  />
+                </>
+              ) : (
+                <>
+                  <BigRow label="Branche" value={brancheDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
+                  <BigRow label="Unternehmen" value={unternehmenDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
+                  <BigRow label="Kunde" value={kundeDisplay || <span className="text-gray-400 italic font-normal">— nicht gesetzt —</span>} />
+                </>
+              )}
               <BigRow label="Format" value={formatLabel} />
               {ad.meta_account_name && <BigRow label="Account" value={ad.meta_account_name} />}
               {ad.meta_campaign_name && <BigRow label="Kampagne" value={ad.meta_campaign_name} />}
