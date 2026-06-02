@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.onepage-webhook]
 verify_jwt = false
+
+[functions.audit-bridge]
+verify_jwt = false
