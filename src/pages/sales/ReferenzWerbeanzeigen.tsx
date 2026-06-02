@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Link } from "react-router-dom";
-import { Plus, Upload, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon, Wand2, ShieldOff, RefreshCw } from "lucide-react";
+import { Plus, Upload, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon, Wand2, ShieldOff, RefreshCw, Link2 } from "lucide-react";
+import { ZuordnenAccountsModal, buildIncompleteAccounts } from "@/components/sales/ZuordnenAccountsModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { BulkImportWizard } from "@/components/showcase/BulkImportWizard";
 import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
@@ -143,6 +144,9 @@ export default function ReferenzWerbeanzeigenPage() {
     });
 
   const [importOpen, setImportOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+
+  const incompleteAccountsCount = useMemo(() => buildIncompleteAccounts(rows).length, [rows]);
 
   const [categories, setCategories] = useState<FilterCategory[]>([]);
   const [options, setOptions] = useState<FilterOption[]>([]);
@@ -468,6 +472,14 @@ export default function ReferenzWerbeanzeigenPage() {
               {reenriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
               Auto-Zuordnen
             </SecondaryActionButton>
+            <SecondaryActionButton onClick={() => setAssignOpen(true)}>
+              <Link2 className="w-4 h-4" /> Zuordnen
+              {incompleteAccountsCount > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 tabular-nums">
+                  {incompleteAccountsCount} offen
+                </span>
+              )}
+            </SecondaryActionButton>
             <PrimaryActionButton onClick={() => setImportOpen(true)}>
               <Upload className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importLabel}
             </PrimaryActionButton>
@@ -644,6 +656,12 @@ export default function ReferenzWerbeanzeigenPage() {
       )}
 
       <BulkImportWizard open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
+      <ZuordnenAccountsModal
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        rows={rows}
+        onSaved={load}
+      />
     </ShowcasePageWrapper>
   );
 }
