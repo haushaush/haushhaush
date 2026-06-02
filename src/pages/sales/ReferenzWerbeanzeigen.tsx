@@ -656,6 +656,12 @@ export default function ReferenzWerbeanzeigenPage() {
       )}
 
       <BulkImportWizard open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
+      <ZuordnenAccountsModal
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        rows={rows}
+        onSaved={load}
+      />
     </ShowcasePageWrapper>
   );
 }
