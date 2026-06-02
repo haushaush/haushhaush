@@ -143,13 +143,37 @@ export default function ReferenzWerbeanzeigeDetail() {
   const title = ad.custom_title || ad.meta_ad_name || "Unbenannt";
   const thumb = (ad as any).thumbnail_url_persisted || ad.thumbnail_url || (ad as any).thumbnail_url_meta;
 
+  const linkedBrancheId = (ad as any).linked_branche_id as string | null;
+  const linkedUnternehmenId = (ad as any).linked_unternehmen_id as string | null;
+  const linkedClientId = (ad as any).linked_client_id as string | null;
+
+  const unternehmenFromList = unternehmenList.find(u => u.id === linkedUnternehmenId);
+  const clientFromList = clientsList.find(c => c.id === linkedClientId);
+
   const brancheDisplay =
-    getBrancheDisplay((ad as any).linked_branche_id, 'long') ||
-    (ad as any).linked_branche_id ||
+    getBrancheDisplay(linkedBrancheId, 'long') ||
+    linkedBrancheId ||
     getBrancheDisplay(linkedKunde?.branche || ad.filter_values?.branche, 'long') ||
     linkedKunde?.branche || ad.filter_values?.branche || "";
-  const unternehmenDisplay = linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
-  const kundeDisplay = linkedKunde?.client_name || "";
+  const unternehmenDisplay =
+    unternehmenFromList?.display_name || unternehmenFromList?.name ||
+    clientFromList?.unternehmen_name ||
+    linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
+  const kundeDisplay = clientFromList?.name || linkedKunde?.client_name || "";
+
+  const handleInlineSave = async (field: "linked_branche_id" | "linked_unternehmen_id" | "linked_client_id", newValue: string | null) => {
+    if (!ad) return;
+    const prev = ad;
+    const update: any = { [field]: newValue };
+    setAd({ ...ad, ...update } as any);
+    const { error } = await supabase.from("referenz_meta_ads" as any).update(update).eq("id", ad.id);
+    if (error) {
+      setAd(prev);
+      toast({ title: "Speichern fehlgeschlagen", description: error.message, variant: "destructive" });
+      throw error;
+    }
+  };
+
 
   const cpl = m.cpl != null ? Number(m.cpl) : null;
   const isWinning = !!(cpl != null && cpl > 0 && cpl < 5);
