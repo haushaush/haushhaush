@@ -472,6 +472,14 @@ export default function ReferenzWerbeanzeigenPage() {
               {reenriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
               Auto-Zuordnen
             </SecondaryActionButton>
+            <SecondaryActionButton onClick={() => setAssignOpen(true)}>
+              <Link2 className="w-4 h-4" /> Zuordnen
+              {incompleteAccountsCount > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 tabular-nums">
+                  {incompleteAccountsCount} offen
+                </span>
+              )}
+            </SecondaryActionButton>
             <PrimaryActionButton onClick={() => setImportOpen(true)}>
               <Upload className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importLabel}
             </PrimaryActionButton>
