@@ -266,14 +266,17 @@ export default function ReferenzWerbeanzeigenPage() {
     if (adFilters.featured && !x.is_featured) return false;
 
     if (!opts.skipBranche && brancheFilter) {
-      const fkVal = pickBrancheValue(x as any);
-      const raw = (fkVal ?? x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? '').toString();
+      const label = pickBrancheLabel(x as any) ?? (x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? '');
+      const raw = (label ?? '').toString();
       if (brancheFilter === '__none__') {
         if (raw.trim()) return false;
       } else {
-        const canonical = normalizeBranche(raw);
+        // Compare via alias-folded canonical (case-insensitive). Fallback to legacy normalizeBranche/raw lowercase.
+        const canonicalKey = getCanonicalBranche(raw).toLowerCase();
+        const legacyCanonical = normalizeBranche(raw);
         const matches =
-          (canonical && canonical === brancheFilter) ||
+          canonicalKey === brancheFilter ||
+          (legacyCanonical && legacyCanonical === brancheFilter) ||
           raw.trim().toLowerCase() === brancheFilter.toLowerCase();
         if (!matches) return false;
       }
