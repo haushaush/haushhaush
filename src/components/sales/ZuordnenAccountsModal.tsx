@@ -103,6 +103,7 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
   const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
   const [addBrancheFor, setAddBrancheFor] = useState<string | null>(null);
   const [localBranchen, setLocalBranchen] = useState<string[]>([]);
+  const { data: masterBranchen = [] } = useBranchen();
 
   // Per-account form state
   const [picks, setPicks] = useState<Record<string, { kundeId?: string; kundeName?: string; branche?: string }>>({});
