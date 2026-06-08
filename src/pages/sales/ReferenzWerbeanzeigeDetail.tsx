@@ -283,7 +283,7 @@ export default function ReferenzWerbeanzeigeDetail() {
                     label="Branche"
                     value={linkedBrancheId}
                     displayValue={brancheDisplay}
-                    options={BRANCHEN.map(b => ({ value: b.id, label: b.label, sublabel: b.short })) as InlineOption[]}
+                    options={brancheMasterOptions}
                     placeholder="Branche suchen…"
                     allowFreeText
                     allowClear
