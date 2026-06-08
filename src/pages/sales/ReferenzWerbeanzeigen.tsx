@@ -370,10 +370,25 @@ export default function ReferenzWerbeanzeigenPage() {
     return out;
   }, [categories, options]);
 
-  // Master-Branchen-Liste = clients.branche ∪ lokal hinzugefügte Branchen, gefaltet auf Canonical (Alias-Mapping).
+  // Master-Branchen aus zentraler branchen-Tabelle (Single Source of Truth)
+  const { data: masterBranchen = [] } = useBranchen();
+  const masterShortMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const b of masterBranchen) {
+      if (b.short_name) m.set(getCanonicalBranche(b.canonical_name).toLowerCase(), b.short_name);
+    }
+    return m;
+  }, [masterBranchen]);
+
+  // Master-Branchen-Liste = branchen-Tabelle ∪ clients.branche ∪ lokal hinzugefügte, gefaltet auf Canonical (Alias-Mapping).
   const allBranchen = useMemo(() => {
     const byKey = new Map<string, string>();
-    for (const b of [...clientBranchen, ...localBranchen]) {
+    const sources: string[] = [
+      ...masterBranchen.map(b => b.canonical_name),
+      ...clientBranchen,
+      ...localBranchen,
+    ];
+    for (const b of sources) {
       const t = (b ?? "").toString().trim();
       if (!t) continue;
       const canonical = getCanonicalBranche(t);
@@ -381,7 +396,7 @@ export default function ReferenzWerbeanzeigenPage() {
       if (!byKey.has(k)) byKey.set(k, canonical);
     }
     return Array.from(byKey.entries()).map(([key, label]) => ({ key, label }));
-  }, [clientBranchen, localBranchen]);
+  }, [masterBranchen, clientBranchen, localBranchen]);
 
   // Branche-Optionen: Aliase werden auf Canonical zusammengefasst, Counts addiert.
   const brancheOptionsWithNone = useMemo(() => {
