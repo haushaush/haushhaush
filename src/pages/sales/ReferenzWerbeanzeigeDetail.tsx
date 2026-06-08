@@ -162,6 +162,14 @@ export default function ReferenzWerbeanzeigeDetail() {
     linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
   const kundeDisplay = clientFromList?.name || linkedKunde?.client_name || "";
 
+  const { data: masterBranchen = [] } = useBranchen();
+  const brancheMasterOptions: InlineOption[] = [
+    ...BRANCHEN.map(b => ({ value: b.id, label: b.label, sublabel: b.short })),
+    ...masterBranchen
+      .filter(mb => !BRANCHEN.some(b => b.label.toLowerCase() === mb.canonical_name.toLowerCase() || b.id === mb.canonical_name))
+      .map(mb => ({ value: mb.canonical_name, label: mb.canonical_name, sublabel: mb.short_name ?? undefined })),
+  ];
+
   const modalFilterCategories = categories.filter(cat => {
     const key = (cat.key ?? "").toLowerCase().trim();
     const label = (cat.label ?? "").toLowerCase().trim();
