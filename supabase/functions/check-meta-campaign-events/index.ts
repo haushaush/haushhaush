@@ -8,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const KAMPAGNEN_STATUS_COL = "Col0B5AR5UJQJ";
+const KAMPAGNEN_STATUS_COL = "Col0B645A1WL8";
 
 serve(async (req) => {
   // PREFLIGHT must be checked FIRST
