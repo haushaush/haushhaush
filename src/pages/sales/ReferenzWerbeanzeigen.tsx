@@ -17,7 +17,8 @@ import { isTopPerformer, isWithinDays } from "@/lib/topPerformer";
 import { getAdLiveStatus, isAdActive } from "@/lib/adStatus";
 import { useFilterOptions, type FilterOption as DropdownFilterOption } from "@/hooks/useFilterOptions";
 import { normalizeBranche, getBrancheDisplay, getBranche } from "@/lib/branchen";
-import { FK_EMBED_ALL, pickBrancheValue, pickUnternehmenLabel, pickClientId, pickClientName } from "@/lib/showcaseFkSelect";
+import { FK_EMBED_ALL, pickBrancheValue, pickBrancheLabel, pickUnternehmenLabel, pickClientId, pickClientName } from "@/lib/showcaseFkSelect";
+import { getCanonicalBranche, getBrancheShortName } from "@/lib/branche-aliases";
 import { SyncStatusBanner } from "@/components/admin/SyncStatusBanner";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
@@ -265,14 +266,17 @@ export default function ReferenzWerbeanzeigenPage() {
     if (adFilters.featured && !x.is_featured) return false;
 
     if (!opts.skipBranche && brancheFilter) {
-      const fkVal = pickBrancheValue(x as any);
-      const raw = (fkVal ?? x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? '').toString();
+      const label = pickBrancheLabel(x as any) ?? (x.linked_kunde?.branche ?? (x.filter_values ?? {}).branche ?? '');
+      const raw = (label ?? '').toString();
       if (brancheFilter === '__none__') {
         if (raw.trim()) return false;
       } else {
-        const canonical = normalizeBranche(raw);
+        // Compare via alias-folded canonical (case-insensitive). Fallback to legacy normalizeBranche/raw lowercase.
+        const canonicalKey = getCanonicalBranche(raw).toLowerCase();
+        const legacyCanonical = normalizeBranche(raw);
         const matches =
-          (canonical && canonical === brancheFilter) ||
+          canonicalKey === brancheFilter ||
+          (legacyCanonical && legacyCanonical === brancheFilter) ||
           raw.trim().toLowerCase() === brancheFilter.toLowerCase();
         if (!matches) return false;
       }
@@ -365,44 +369,64 @@ export default function ReferenzWerbeanzeigenPage() {
     return out;
   }, [categories, options]);
 
-  // Master-Branchen-Liste = clients.branche ∪ lokal hinzugefügte Branchen (case-insensitive dedupe).
+  // Master-Branchen-Liste = clients.branche ∪ lokal hinzugefügte Branchen, gefaltet auf Canonical (Alias-Mapping).
   const allBranchen = useMemo(() => {
     const byKey = new Map<string, string>();
     for (const b of [...clientBranchen, ...localBranchen]) {
       const t = (b ?? "").toString().trim();
       if (!t) continue;
-      const k = t.toLowerCase();
-      if (!byKey.has(k)) byKey.set(k, t);
+      const canonical = getCanonicalBranche(t);
+      const k = canonical.toLowerCase();
+      if (!byKey.has(k)) byKey.set(k, canonical);
     }
     return Array.from(byKey.entries()).map(([key, label]) => ({ key, label }));
   }, [clientBranchen, localBranchen]);
 
-  // Branche-Optionen: ALLE Branchen aus clients.branche (+ lokal), Counts aus den Anzeigen.
+  // Branche-Optionen: Aliase werden auf Canonical zusammengefasst, Counts addiert.
   const brancheOptionsWithNone = useMemo(() => {
     const sourceRows = preFiltered.filter(x => passesAdAndStandalone(x, { skipBranche: true }));
     const counts = new Map<string, number>();
     let noneCount = 0;
     for (const x of sourceRows) {
-      const fkVal = pickBrancheValue(x as any);
-      const raw = (fkVal ?? (x as any).linked_kunde?.branche ?? ((x as any).filter_values ?? {}).branche ?? '').toString().trim();
+      const label = pickBrancheLabel(x as any) ?? (x as any).linked_kunde?.branche ?? ((x as any).filter_values ?? {}).branche ?? '';
+      const raw = (label ?? '').toString().trim();
       if (!raw) { noneCount += 1; continue; }
-      const key = raw.toLowerCase();
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+      const canonicalKey = getCanonicalBranche(raw).toLowerCase();
+      counts.set(canonicalKey, (counts.get(canonicalKey) ?? 0) + 1);
     }
-    // Master-Liste + Ad-only Branchen (für die kein clients.branche existiert) ergänzen.
     const merged = new Map<string, { label: string; count: number }>();
     for (const { key, label } of allBranchen) {
       merged.set(key, { label, count: counts.get(key) ?? 0 });
     }
     for (const [key, count] of counts.entries()) {
       if (!merged.has(key)) {
-        // Versuche kanonisches Label aus BRANCHEN-Konstante
-        const b = getBranche(key);
-        merged.set(key, { label: b?.label ?? key, count });
+        // Canonical existiert nicht in clients.branche → Label aus Aliases ableiten oder Fallback.
+        const fromBranchenConst = getBranche(key);
+        // Bei alias-gefalteten Werten: key ist bereits canonical.toLowerCase() — wir brauchen Original-Casing.
+        // Rohe Suche aus den Quelldaten: ersten ad nehmen.
+        let label = fromBranchenConst?.label ?? '';
+        if (!label) {
+          for (const x of sourceRows) {
+            const lbl = pickBrancheLabel(x as any) ?? '';
+            const raw = (lbl ?? '').toString().trim();
+            if (!raw) continue;
+            if (getCanonicalBranche(raw).toLowerCase() === key) {
+              label = getCanonicalBranche(raw);
+              break;
+            }
+          }
+        }
+        merged.set(key, { label: label || key, count });
       }
     }
-    const arr = Array.from(merged.entries())
-      .map(([value, { label, count }]) => ({ value, label, count }));
+    const arr = Array.from(merged.entries()).map(([value, { label, count }]) => {
+      const sn = getBrancheShortName(label);
+      return {
+        value,
+        label: sn ? `${label} (${sn})` : label,
+        count,
+      };
+    });
     const withCount = arr.filter(o => (o.count ?? 0) > 0).sort((a, b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label, 'de'));
     const noCount = arr.filter(o => (o.count ?? 0) === 0).sort((a, b) => a.label.localeCompare(b.label, 'de'));
     const opts: DropdownFilterOption[] = [...withCount, ...noCount];
