@@ -22,10 +22,23 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  let trigger_source: "cron" | "manual" = "cron";
+  let trigger_source: "cron" | "manual" | "cron-hourly" | "cron-daily" = "cron";
+
+  // Cron-Secret bypass (for n8n external triggers)
+  const CRON_SECRET = Deno.env.get("CRON_TRIGGER_SECRET");
+  const incomingCronSecret = req.headers.get("x-cron-secret");
+  let isCronTrigger = false;
+  if (CRON_SECRET && incomingCronSecret === CRON_SECRET) {
+    isCronTrigger = true;
+    trigger_source = "cron-hourly";
+    console.log("[cron] Authenticated via X-Cron-Secret header");
+  }
+
   try {
     const body = await req.json().catch(() => ({}));
-    if (body?.trigger_source === "manual") trigger_source = "manual";
+    if (!isCronTrigger) {
+      if (body?.trigger_source === "manual") trigger_source = "manual";
+    }
   } catch { /* */ }
 
   try {
