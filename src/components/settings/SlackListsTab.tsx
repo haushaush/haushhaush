@@ -385,6 +385,25 @@ export function SlackListsTab() {
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success('Aktualisiert');
+
+      // Best-effort: Channel-Notification bei Status-Spalte
+      if (col.id === 'Col0B645A1WL8') {
+        let canonicalStatus: 'aktiv' | 'inaktiv' | null = null;
+        if (newValue === 'OptARVJ11UU') canonicalStatus = 'aktiv';
+        else if (newValue === 'OptH358HCYM') canonicalStatus = 'inaktiv';
+
+        if (canonicalStatus) {
+          const nameCol = columns.find((c) => c.id === 'Col0B5BLYQH7B');
+          const itemName =
+            (item && nameCol && cellToString(item.fields?.['Col0B5BLYQH7B'], nameCol, activeListId)) ||
+            'Unbekannt';
+          supabase.functions
+            .invoke('post-slack-status-notification', {
+              body: { item_name: itemName, new_status: canonicalStatus },
+            })
+            .catch((e) => console.error('Notification failed:', e));
+        }
+      }
     } catch (e: any) {
       toast.error('Speichern fehlgeschlagen: ' + (e.message || 'Unbekannt'));
       setItems((curr) =>
