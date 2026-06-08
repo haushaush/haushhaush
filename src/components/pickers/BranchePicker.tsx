@@ -14,7 +14,7 @@ interface Props {
 export function BranchePicker({ value, onChange, label, placeholder = 'Branche wählen', compact, disabled }: Props) {
   const { data: branchen = [], isLoading } = useBranchen();
   const options = branchen.map((b) => ({
-    value: b.id,
+    value: b.canonical_name,
     label: b.display_name || b.canonical_name,
     meta: b.short_name || undefined,
   }));
