@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { BRANCHE_ALIASES, getCanonicalBranche, getBrancheShortName } from "@/lib/branche-aliases";
 import { pickClientId, pickBrancheValue } from "@/lib/showcaseFkSelect";
 import { AddBrancheDialog } from "@/components/sales/AddBrancheDialog";
+import { useBranchen } from "@/hooks/useBranchen";
 import type { MetaAdRow } from "@/pages/sales/ReferenzWerbeanzeigen";
 
 export interface AccountSummary {
