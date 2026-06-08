@@ -45,6 +45,7 @@ export default function ReferenzWerbeanzeigeDetail() {
   const [kunden, setKunden] = useState<{ id: string; client_name: string }[]>([]);
   const [clientsList, setClientsList] = useState<{ id: string; name: string; unternehmen_id: string | null; unternehmen_name?: string | null }[]>([]);
   const [unternehmenList, setUnternehmenList] = useState<{ id: string; name: string; display_name: string | null }[]>([]);
+  const { data: masterBranchen = [] } = useBranchen();
 
 
 
