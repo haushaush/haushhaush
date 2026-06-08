@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface BrancheRow {
   id: string;
   canonical_name: string;
+  display_name: string | null;
   short_name: string | null;
 }
 
@@ -13,7 +14,7 @@ export const useBranchen = () => {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('branchen')
-        .select('id, canonical_name, short_name')
+        .select('id, canonical_name, display_name, short_name')
         .is('deleted_at', null)
         .order('canonical_name');
       if (error) throw error;
@@ -33,7 +34,7 @@ export const createBranche = async (canonical_name: string, short_name?: string 
       name: trimmed,
       display_name: trimmed,
     })
-    .select('id, canonical_name, short_name')
+    .select('id, canonical_name, display_name, short_name')
     .single();
   if (error) throw error;
   return data as BrancheRow;
