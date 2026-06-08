@@ -545,6 +545,16 @@ export default function ReferenzWerbeanzeigenPage() {
           >
             {diagnostics.adsWithoutKunde} ohne Kunde
           </button>
+          {brancheStats.total > 0 && (
+            <>
+              {' · '}
+              <span>
+                {brancheStats.total} Branchen in clients
+                {' '}
+                <span className="text-gray-400">({brancheStats.withAds} mit Anzeigen, {brancheStats.withoutAds} ohne)</span>
+              </span>
+            </>
+          )}
         </div>
 
 
