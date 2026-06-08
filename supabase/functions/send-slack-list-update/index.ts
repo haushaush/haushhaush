@@ -12,7 +12,7 @@ const toKey = (s: string) =>
 
 const VARIABLE_KEY_OVERRIDES: Record<string, string> = {
   'Col0B645A1WL8': 'status',
-  // "Kampagnen Status" → Slack-Workflow-Variable "status"
+  // "Status" → Slack-Workflow-Variable "status"
   // Weitere Overrides hier ergänzbar
 };
 

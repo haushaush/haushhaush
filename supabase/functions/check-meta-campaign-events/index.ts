@@ -181,7 +181,7 @@ serve(async (req) => {
 
     if (byAccount.size > 0 && (!AKTIV_OPT || !INAKTIV_OPT)) {
       throw new Error(
-        `Kampagnen-Status-Aliase fehlen: AKTIV=${AKTIV_OPT}, INAKTIV=${INAKTIV_OPT}. ` +
+        `Status-Aliase fehlen: AKTIV=${AKTIV_OPT}, INAKTIV=${INAKTIV_OPT}. ` +
         `Bitte in slack_list_aliases anlegen für column ${KAMPAGNEN_STATUS_COL}.`
       );
     }
