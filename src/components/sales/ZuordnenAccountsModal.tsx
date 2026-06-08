@@ -180,10 +180,34 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
     }
   };
 
-  const brancheOptions = useMemo(
-    () => BRANCHEN.map((b) => ({ value: b.id, label: b.label, meta: b.short })),
-    [],
-  );
+  const brancheOptions = useMemo(() => {
+    const allRaw = new Set<string>();
+
+    for (const ad of rows) {
+      const raw = (ad as any).branche ?? (ad as any).linked_branche_id;
+      if (raw?.trim()) allRaw.add(raw.trim());
+    }
+
+    for (const c of clients) {
+      if (c.branche?.trim()) allRaw.add(c.branche.trim());
+    }
+
+    const canonicals = new Set<string>();
+    for (const raw of allRaw) {
+      canonicals.add(getCanonicalBranche(raw));
+    }
+    for (const group of BRANCHE_ALIASES) {
+      canonicals.add(group.canonical);
+    }
+
+    return Array.from(canonicals)
+      .sort((a, b) => a.localeCompare(b, "de"))
+      .map((canonical) => ({
+        value: canonical,
+        label: canonical,
+        meta: getBrancheShortName(canonical),
+      }));
+  }, [rows, clients]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
@@ -305,10 +329,9 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
                                   ...p[acc.meta_account_id],
                                   kundeId: v || undefined,
                                   kundeName: label,
-                                  // auto-suggest branche from client (don't override existing pick)
                                   branche:
                                     p[acc.meta_account_id]?.branche ||
-                                    (chosen?.branche ? chosen.branche : undefined),
+                                    (chosen?.branche ? getCanonicalBranche(chosen.branche) : undefined),
                                 },
                               }));
                             }}
@@ -327,7 +350,7 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
                                     ...p[acc.meta_account_id],
                                     kundeId: suggested.id,
                                     kundeName: suggested.name,
-                                    branche: p[acc.meta_account_id]?.branche || suggested.branche || undefined,
+                                    branche: p[acc.meta_account_id]?.branche || getCanonicalBranche(suggested.branche) || undefined,
                                   },
                                 }))
                               }
@@ -339,7 +362,7 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
                         </td>
                         <td className="px-2 py-3 align-middle">
                           <Combobox
-                            value={pick.branche ? normalizeBranche(pick.branche) ?? pick.branche : ""}
+                            value={pick.branche ?? ""}
                             onChange={(v) =>
                               setPicks((p) => ({
                                 ...p,
