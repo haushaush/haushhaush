@@ -436,7 +436,7 @@ export default function ReferenzWerbeanzeigenPage() {
       }
     }
     const arr = Array.from(merged.entries()).map(([value, { label, count }]) => {
-      const sn = getBrancheShortName(label);
+      const sn = masterShortMap.get(value) ?? getBrancheShortName(label);
       return {
         value,
         label: sn ? `${label} (${sn})` : label,
