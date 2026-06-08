@@ -139,6 +139,52 @@ serve(async (req) => {
       throw new Error(`Webhook failed: ${response.status} ${respText}`);
     }
 
+    // ---- NEW: update meta_campaign_snapshot on manual Status edits ----
+    const STATUS_COL = "Col0B645A1WL8";
+    const statusOptId = (field_updates as Record<string, unknown>)[STATUS_COL];
+    if (statusOptId) {
+      const { data: linkage } = await supabase
+        .from("slack_item_meta_account")
+        .select("meta_account_id")
+        .eq("slack_item_id", slack_item_id)
+        .maybeSingle();
+
+      if (linkage?.meta_account_id) {
+        let canonicalStatus: string;
+        if (statusOptId === "OptARVJ11UU") canonicalStatus = "ACTIVE";
+        else if (statusOptId === "OptH358HCYM") canonicalStatus = "PAUSED";
+        else canonicalStatus = "UNKNOWN";
+
+        const rawAcc = linkage.meta_account_id as string;
+        const accId = rawAcc.startsWith("act_") ? rawAcc : `act_${rawAcc}`;
+        const accIdAlt = rawAcc.startsWith("act_") ? rawAcc.slice(4) : rawAcc;
+
+        const { error: snapshotError } = await supabase
+          .from("meta_campaign_snapshot")
+          .update({
+            status: canonicalStatus,
+            last_seen_at: new Date().toISOString(),
+          })
+          .in("account_id", [accId, accIdAlt]);
+
+        if (snapshotError) {
+          console.warn(
+            `[send-update] Snapshot update failed (non-blocking) for item ${slack_item_id} / account ${rawAcc}:`,
+            snapshotError.message,
+          );
+        } else {
+          console.log(
+            `[send-update] Snapshot updated → ${canonicalStatus} for item ${slack_item_id} (account ${rawAcc})`,
+          );
+        }
+      } else {
+        console.log(
+          `[send-update] No meta_account_id linkage for item ${slack_item_id} — snapshot update skipped`,
+        );
+      }
+    }
+    // ------------------------------------------------------------------
+
     // Optimistic local update
     const { data: existing } = await supabase
       .from("slack_list_items")
