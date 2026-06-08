@@ -142,7 +142,7 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
     const pick = picks[account.meta_account_id] ?? {};
     const kundeId = pick.kundeId?.trim();
     const brancheRaw = pick.branche?.trim();
-    const brancheId = brancheRaw ? normalizeBranche(brancheRaw) ?? brancheRaw.toLowerCase() : undefined;
+    const brancheId = brancheRaw || undefined;
 
     if (!kundeId && !brancheId) {
       toast.warning("Bitte mindestens Kunde oder Branche wählen");
