@@ -27,8 +27,8 @@ import { Settings2 } from 'lucide-react';
 
 const NAME_COLUMN_ID = 'Col0B5BLYQH7B';
 
-const EDITABLE_COLUMN_IDS = ['Col0B5AR5UJQJ'];
-const EDITABLE_COLUMN_NAMES = ['kampagnen status', 'kampagnenstatus'];
+const EDITABLE_COLUMN_IDS = ['Col0B645A1WL8'];
+const EDITABLE_COLUMN_NAMES = ['status'];
 
 const isColumnEditable = (col: SlackColumn) => {
   const name = (col.name || '').toLowerCase().trim();
