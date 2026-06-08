@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Eye, Search, CheckCircle2, AlertTriangle, XCircle, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { BRANCHEN, normalizeBranche } from "@/lib/branchen";
+import { BRANCHE_ALIASES, getCanonicalBranche, getBrancheShortName } from "@/lib/branche-aliases";
 import { pickClientId, pickBrancheValue } from "@/lib/showcaseFkSelect";
 import type { MetaAdRow } from "@/pages/sales/ReferenzWerbeanzeigen";
 
