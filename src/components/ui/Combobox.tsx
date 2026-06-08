@@ -25,6 +25,9 @@ interface ComboboxProps {
   compact?: boolean;
   disabled?: boolean;
   className?: string;
+  /** Optional footer action shown at the bottom of the dropdown */
+  onAddNew?: () => void;
+  addNewLabel?: string;
 }
 
 function normalizeOption(opt: ComboboxOption | LegacyOption): ComboboxOption {
@@ -44,6 +47,8 @@ export function Combobox({
   compact = false,
   disabled = false,
   className,
+  onAddNew,
+  addNewLabel = 'Neu hinzufügen',
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -237,6 +242,24 @@ export function Combobox({
                 <Plus className="w-3.5 h-3.5 text-primary" />
                 <span className="text-muted-foreground">Neu anlegen:</span>
                 <span className="font-medium">"{search.trim()}"</span>
+              </button>
+            </>
+          )}
+
+          {onAddNew && (
+            <>
+              <div className="h-px bg-border my-1" />
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setSearch('');
+                  onAddNew();
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-sm text-primary hover:bg-accent/50 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span className="font-medium">{addNewLabel}</span>
               </button>
             </>
           )}
