@@ -6,6 +6,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { createBranche } from "@/hooks/useBranchen";
+import { getCanonicalBranche } from "@/lib/branche-aliases";
 
 export function AddBrancheDialog({
   open, onClose, existingBranchen, clients, onCreated,
@@ -17,32 +20,60 @@ export function AddBrancheDialog({
   onCreated: (branche: string) => void;
 }) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
+  const [shortName, setShortName] = useState("");
   const [clientId, setClientId] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const reset = () => { setName(""); setClientId(""); };
+  const reset = () => { setName(""); setShortName(""); setClientId(""); };
 
   const handleSave = async () => {
     const v = name.trim();
-    if (!v) { toast({ title: "Name darf nicht leer sein", variant: "destructive" }); return; }
-    if (existingBranchen.some(b => b.toLowerCase() === v.toLowerCase())) {
-      toast({ title: `Branche "${v}" existiert bereits` });
-      return;
-    }
+    if (!v) { toast({ title: "Branchen-Name darf nicht leer sein", variant: "destructive" }); return; }
+
     setSaving(true);
-    if (clientId) {
-      const { error } = await supabase.from("clients").update({ branche: v }).eq("id", clientId);
+    try {
+      const canonical = getCanonicalBranche(v);
+
+      // Check existing in master table
+      const { data: existing } = await (supabase as any)
+        .from("branchen")
+        .select("id, canonical_name")
+        .ilike("canonical_name", canonical)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      let finalName = canonical;
+
+      if (existing) {
+        toast({ title: `Branche "${existing.canonical_name}" existiert bereits` });
+        finalName = existing.canonical_name;
+      } else {
+        const created = await createBranche(v, shortName || null);
+        finalName = created.canonical_name;
+        toast({ title: `Branche "${finalName}" angelegt`, description: "Zentral gespeichert und überall verfügbar." });
+      }
+
+      if (clientId) {
+        const { error } = await supabase.from("clients").update({ branche: finalName }).eq("id", clientId);
+        if (error) {
+          toast({ title: "Kunden-Zuweisung fehlgeschlagen", description: error.message, variant: "destructive" });
+        } else {
+          const kn = clients.find(c => c.id === clientId)?.name;
+          toast({ title: `${finalName} ${kn ? `${kn} zugewiesen` : "zugewiesen"}` });
+        }
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['branchen-master'] });
+      onCreated(finalName);
+      reset();
+      onClose();
+    } catch (e: any) {
+      toast({ title: "Fehler", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
       setSaving(false);
-      if (error) { toast({ title: "Fehler", description: error.message, variant: "destructive" }); return; }
-      toast({ title: `Branche "${v}" angelegt`, description: "Kunde wurde zugewiesen." });
-    } else {
-      setSaving(false);
-      toast({ title: `"${v}" angelegt`, description: "Wird persistent, sobald ein Kunde zugewiesen wird." });
     }
-    onCreated(v);
-    reset();
-    onClose();
   };
 
   return (
@@ -51,13 +82,17 @@ export function AddBrancheDialog({
         <DialogHeader>
           <DialogTitle>Neue Branche anlegen</DialogTitle>
           <DialogDescription>
-            Die Branche wird verfügbar, sobald ein Kunde ihr zugewiesen wird. Du kannst Kunden auch im Kunden-Bereich editieren.
+            Die Branche wird zentral gespeichert und ist überall verfügbar.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
             <Label>Branchen-Name</Label>
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="z.B. Photovoltaik" className="mt-1" autoFocus />
+          </div>
+          <div>
+            <Label>Kurz-Form <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Input value={shortName} onChange={e => setShortName(e.target.value)} placeholder="z.B. PV, TKV" className="mt-1" />
           </div>
           <div>
             <Label>Direkt einem Kunden zuweisen? <span className="text-muted-foreground font-normal">(optional)</span></Label>
@@ -73,7 +108,7 @@ export function AddBrancheDialog({
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => { reset(); onClose(); }} disabled={saving}>Abbrechen</Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving || !name.trim()}>
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Anlegen
           </Button>
         </DialogFooter>

@@ -21,6 +21,7 @@ import {
 } from "@/components/showcase/DetailPageLayout";
 import { DeleteAdDialog } from "@/components/showcase/DeleteAdDialog";
 import { getBrancheDisplay, BRANCHEN } from "@/lib/branchen";
+import { useBranchen } from "@/hooks/useBranchen";
 import { InlineEditDetailRow, type InlineOption } from "@/components/showcase/InlineEditDetailRow";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,7 @@ export default function ReferenzWerbeanzeigeDetail() {
   const [kunden, setKunden] = useState<{ id: string; client_name: string }[]>([]);
   const [clientsList, setClientsList] = useState<{ id: string; name: string; unternehmen_id: string | null; unternehmen_name?: string | null }[]>([]);
   const [unternehmenList, setUnternehmenList] = useState<{ id: string; name: string; display_name: string | null }[]>([]);
+  const { data: masterBranchen = [] } = useBranchen();
 
 
 
@@ -160,6 +162,13 @@ export default function ReferenzWerbeanzeigeDetail() {
     clientFromList?.unternehmen_name ||
     linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
   const kundeDisplay = clientFromList?.name || linkedKunde?.client_name || "";
+
+  const brancheMasterOptions: InlineOption[] = [
+    ...BRANCHEN.map(b => ({ value: b.id, label: b.label, sublabel: b.short })),
+    ...masterBranchen
+      .filter(mb => !BRANCHEN.some(b => b.label.toLowerCase() === mb.canonical_name.toLowerCase() || b.id === mb.canonical_name))
+      .map(mb => ({ value: mb.canonical_name, label: mb.canonical_name, sublabel: mb.short_name ?? undefined })),
+  ];
 
   const modalFilterCategories = categories.filter(cat => {
     const key = (cat.key ?? "").toLowerCase().trim();
@@ -283,7 +292,7 @@ export default function ReferenzWerbeanzeigeDetail() {
                     label="Branche"
                     value={linkedBrancheId}
                     displayValue={brancheDisplay}
-                    options={BRANCHEN.map(b => ({ value: b.id, label: b.label, sublabel: b.short })) as InlineOption[]}
+                    options={brancheMasterOptions}
                     placeholder="Branche suchen…"
                     allowFreeText
                     allowClear

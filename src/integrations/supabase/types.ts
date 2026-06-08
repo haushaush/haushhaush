@@ -606,27 +606,39 @@ export type Database = {
       }
       branchen: {
         Row: {
+          canonical_name: string
           created_at: string
+          created_by: string | null
+          deleted_at: string | null
           display_name: string
           display_order: number | null
           id: string
           name: string
+          short_name: string | null
           usage_count: number
         }
         Insert: {
+          canonical_name: string
           created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
           display_name: string
           display_order?: number | null
           id?: string
           name: string
+          short_name?: string | null
           usage_count?: number
         }
         Update: {
+          canonical_name?: string
           created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
           display_name?: string
           display_order?: number | null
           id?: string
           name?: string
+          short_name?: string | null
           usage_count?: number
         }
         Relationships: []

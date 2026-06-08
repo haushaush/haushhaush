@@ -1,61 +1,64 @@
-## Voller Close.com-Sync pro Kunde
+## Ziel
+Zentrale `branchen`-Tabelle in Supabase als Single Source of Truth für alle Branche-Dropdowns.
 
-Implementiert manueller Full-Sync für Close-Daten (Lead, Custom Fields, Contacts, Opps, Activities, Tasks) mit Resource-Guards.
+## Wichtige Befunde aus Codebase-Check
 
-### 1. SQL Migration (eine Migration, additiv)
+1. **Tabelle `branchen` existiert bereits** (Spalten: `id, name, display_name, display_order, usage_count`) mit ~Kurzformen wie `PKV`, `BU`, `KFZ`. Sie muss erweitert werden, nicht neu erstellt.
+2. **Spalte heißt `clients.branche`** (TEXT), nicht `clients.sparte`. Ich nehme `branche`.
+3. **`BranchePicker` (Kunden-Bearbeiten)** liest aktuell aus der statischen Liste `BRANCHEN` in `src/lib/branchen.ts` und speichert in `clients.branche_id` (ein String-Key wie `"pkv"`). Das ist ein **anderes System** als die neue `branchen`-Tabelle mit Canonical-Texten.
 
-- `close_link` existiert bereits → SKIP CREATE, ensure UNIQUE(client_id), UNIQUE(close_lead_id) bestehen
-- NEU: `close_leads` (PK close_lead_id, custom_fields jsonb)
-- NEU: `close_contacts` (PK close_contact_id, emails/phones jsonb)
-- ALTER `close_opportunities` (existiert): Spalten ergänzen falls fehlen (`value_formatted`, `value_currency`, `value_period`, `confidence`, `note`, `date_won`, `date_lost`, `date_updated`, `custom_fields`) — NICHT droppen
-- ALTER `close_activities` (existiert): kompatibel halten, keine Drops
-- NEU: `close_tasks`
-- Alle neuen Tabellen: RLS enable + Policy "authenticated read" (insert/update nur service_role)
-- Indexe wie spezifiziert
+## Frage zur Entscheidung (Task 5D — Kunde-Bearbeiten)
 
-### 2. Edge Functions (3 neue)
+Im Kunde-Bearbeiten-Modal wird aktuell `branche_id` (Key wie `"pkv"`) gespeichert, nicht `branche` (Text). Soll ich:
+- **(A)** Das Bearbeiten-Feld auf die neue `branchen`-Tabelle umstellen → schreibt dann in `clients.branche` (TEXT) statt `branche_id`. Konsistent mit anderen Dropdowns, aber bricht den `branche_id`-basierten Display-Path in KundenDetail.
+- **(B)** `BranchePicker` für Kunden unverändert lassen (er ist ein anderes System), nur Filter / Werbeanzeigen-Detail / Zuordnen-Modal umstellen.
 
-**`sync-close-link`** — Email-basiertes Matching, max 50 Clients/Lauf, sleep 500ms zw. Batches. Returns `{processed, matched, unmatched, ambiguous}`.
+Bitte (A) oder (B) bestätigen — ich gehe sonst mit **(B)** weiter (minimal-invasiv, sicherer).
 
-**`sync-close-lead-full`** — Pro Client: GET `/lead/{id}` (mit `_fields=*` für Custom Fields + inline contacts/opportunities), GET `/activity/?lead_id=…&date_created__gte=180d&_limit=200`, GET `/task/?lead_id=…&_limit=100`. Per-section try/catch, 429 backoff 2/4/8s, 404 → close_link löschen. Truncate body_preview auf 1000 chars. Delete-then-reinsert für contacts/activities/tasks. Update `close_link.last_synced_at`.
+## Migrationen
 
-**`sync-close-batch`** — Max 30 client_ids, sequentiell `sync-close-lead-full` aufrufen mit sleep 800ms. Returns `{success, failed}`.
+```sql
+ALTER TABLE public.branchen
+  ADD COLUMN IF NOT EXISTS canonical_name TEXT,
+  ADD COLUMN IF NOT EXISTS short_name TEXT,
+  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id);
 
-Alle 3 Functions: CORS, kein raw_data, console.log mit Mem-Counter alle 10 Items.
+-- Backfill canonical_name aus display_name
+UPDATE public.branchen SET canonical_name = display_name WHERE canonical_name IS NULL;
+ALTER TABLE public.branchen ALTER COLUMN canonical_name SET NOT NULL;
 
-### 3. Frontend `src/pages/KundenDetail.tsx`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_branchen_canonical_unique
+  ON public.branchen (lower(canonical_name)) WHERE deleted_at IS NULL;
 
-- **Sync-Pill** im Header: Grün <24h / Gelb 1-3d / Rot >3d / Grau pulsing während Sync. Dropdown: "Jetzt syncen", "In Close öffnen", "Verknüpfung lösen". (Pill teilweise schon vorhanden aus früherem Sync — erweitern statt neu.)
-- **Card "Close.com Daten"** im Übersicht-Tab unter Stammdaten: Lead-Infos / Custom Fields (loop jsonb) / Kontaktpersonen (mailto/tel).
-- **Neuer Tab "Aktivitäten"**: Liste sortiert DESC, Filter-Pills (Alle/Email/Call/Note/Meeting/SMS), expandable body, Empty-State.
-- **Neuer Tab "Tasks"** (conditional, nur wenn Tasks vorhanden): Offene oben sortiert by due_date ASC.
-- **Deals-Tab erweitern**: Section "Aus Close.com" mit KPI-Karten (Won-Count+Sum, Active-Count, Letzter Won) + Liste sortiert (won → active → lost).
+-- Policies: UPDATE + soft-DELETE für authenticated
+CREATE POLICY "Authenticated update branchen" ON public.branchen
+  FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
 
-### 4. Admin-Sub-Page `/einstellungen/close-sync`
+-- Seed: alle Canonicals aus BRANCHE_ALIASES
+INSERT INTO public.branchen (name, display_name, canonical_name, short_name)
+VALUES ('Private Krankenversicherung','Private Krankenversicherung','Private Krankenversicherung','PKV'),
+       ... (alle 13)
+ON CONFLICT DO NOTHING;
 
-Erweitert `src/pages/admin/CloseSync.tsx` (existiert) bzw. mountet zusätzlich unter Einstellungen-Route:
+-- Distinct aus clients.branche, die noch nicht da sind
+INSERT INTO public.branchen (name, display_name, canonical_name)
+SELECT DISTINCT trim(branche), trim(branche), trim(branche) FROM public.clients
+WHERE branche IS NOT NULL AND trim(branche) <> ''
+  AND lower(trim(branche)) NOT IN (SELECT lower(canonical_name) FROM public.branchen WHERE deleted_at IS NULL)
+ON CONFLICT DO NOTHING;
+```
 
-- Stat-Cards: verlinkte Kunden X/Y, letzter globaler Sync, total Activities
-- Button "Alle nicht-verlinkten matchen" → `sync-close-link` ohne body
-- Tabelle verlinkter Kunden mit Multi-Select-Checkbox (max 30) → "Ausgewählte syncen" → `sync-close-batch`
-- Bestehende Unmatched-Liste + Manual-Link-Modal bleibt
+## Neue / geänderte Dateien
 
-### 5. Smoke-Test nach Deploy
+- **NEU** `src/hooks/useBranchen.ts` — React Query Hook, lädt `id, canonical_name, short_name`.
+- **EDIT** `src/components/sales/AddBrancheDialog.tsx` — schreibt in `branchen`-Tabelle, neues Feld `short_name`, Kunden-Zuweisung optional.
+- **EDIT** `src/components/sales/ZuordnenAccountsModal.tsx` — `brancheOptions` mergen mit `useBranchen()`-Daten.
+- **EDIT** `src/pages/sales/ReferenzWerbeanzeigen.tsx` — Filter-Optionen mit `useBranchen()` mergen (0-Counts bleiben sichtbar).
+- **EDIT** `src/pages/sales/ReferenzWerbeanzeigeDetail.tsx` — Branche-Inline-Combobox aus `useBranchen()` füllen.
+- **(B-Pfad)** Kunden-Bearbeiten bleibt unverändert.
 
-- `sync-close-link` mit Stefan-ID → 1 Link
-- `sync-close-lead-full` mit Stefan-ID → Daten in 5 Tabellen
-- UI-Check auf `/kunden/{stefan}`
-- SQL-Count-Check
-
-### Out of Scope
-
-- Kein Cron, kein Write-Back, keine Webhooks
-- `sync-notion`, `close_deals`, RLS-Defaults bleiben unverändert
-- Bestehende `sync-close-*`-Functions (orchestrator/match-leads/opportunities/activities) bleiben unangetastet — Parallelbetrieb
-
-### Technische Notizen
-
-- Close API: Basic Auth `btoa(API_KEY + ':')`
-- `/lead/{id}` liefert standardmäßig Custom Fields als `custom.cf_*` Keys → in jsonb mappen
-- Activities-Endpoint: `_type` Filter optional, holen ALLE Types, im Frontend filtern
-- Memory: `Deno.memoryUsage?.().heapUsed` (optional chain, fallback 0)
+## Nicht enthalten
+- Keine FK auf `clients.branche` / `referenz_meta_ads.branche`.
+- `branche-aliases.ts` bleibt für Alias-Folding.
+- Task 8 (Branchen-Verwalten-UI) wird ausgelassen (separater Sprint).

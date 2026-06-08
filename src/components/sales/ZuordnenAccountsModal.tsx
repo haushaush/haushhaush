@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { BRANCHE_ALIASES, getCanonicalBranche, getBrancheShortName } from "@/lib/branche-aliases";
 import { pickClientId, pickBrancheValue } from "@/lib/showcaseFkSelect";
 import { AddBrancheDialog } from "@/components/sales/AddBrancheDialog";
+import { useBranchen } from "@/hooks/useBranchen";
 import type { MetaAdRow } from "@/pages/sales/ReferenzWerbeanzeigen";
 
 export interface AccountSummary {
@@ -102,6 +103,7 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
   const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
   const [addBrancheFor, setAddBrancheFor] = useState<string | null>(null);
   const [localBranchen, setLocalBranchen] = useState<string[]>([]);
+  const { data: masterBranchen = [] } = useBranchen();
 
   // Per-account form state
   const [picks, setPicks] = useState<Record<string, { kundeId?: string; kundeName?: string; branche?: string }>>({});
@@ -196,11 +198,18 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
     }
 
     const canonicals = new Set<string>();
+    const shortFromMaster = new Map<string, string>();
+
     for (const raw of allRaw) {
       canonicals.add(getCanonicalBranche(raw));
     }
     for (const group of BRANCHE_ALIASES) {
       canonicals.add(group.canonical);
+    }
+    for (const m of masterBranchen) {
+      const canonical = getCanonicalBranche(m.canonical_name);
+      canonicals.add(canonical);
+      if (m.short_name) shortFromMaster.set(canonical.toLowerCase(), m.short_name);
     }
     for (const b of localBranchen) {
       if (b?.trim()) canonicals.add(getCanonicalBranche(b.trim()));
@@ -211,9 +220,9 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
       .map((canonical) => ({
         value: canonical,
         label: canonical,
-        meta: getBrancheShortName(canonical),
+        meta: shortFromMaster.get(canonical.toLowerCase()) ?? getBrancheShortName(canonical),
       }));
-  }, [rows, clients, localBranchen]);
+  }, [rows, clients, localBranchen, masterBranchen]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
