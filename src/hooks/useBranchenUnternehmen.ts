@@ -59,7 +59,7 @@ export function useUnternehmen() {
   const qc = useQueryClient();
   const { data = [], isLoading } = useQuery({
     queryKey: ['companies-pool'],
-    queryFn: () => fetchPool('companies'),
+    queryFn: fetchCompanies,
     staleTime: 60_000,
   });
 
