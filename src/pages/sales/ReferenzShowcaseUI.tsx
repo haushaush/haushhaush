@@ -137,13 +137,15 @@ export function ShowcaseSearchInput({
 /* DropdownPill                                                       */
 /* ------------------------------------------------------------------ */
 export function DropdownPill({
-  label, value, onChange, options, icon: Icon,
+  label, value, onChange, options, icon: Icon, onAddNew,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string; count?: number }[];
   icon?: React.ComponentType<{ className?: string }>;
+  /** Optional footer action, e.g. "+ Branche hinzufügen" */
+  onAddNew?: { label: string; onClick: () => void };
   /** kept for backward-compat, unused */
   minWidth?: number;
 }) {
