@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
-  ChevronDown, Search, Star, ExternalLink, X,
+  ChevronDown, Search, Star, ExternalLink, X, Plus,
   Image as ImageIcon, Video, BarChart3, Inbox, Check, Flame, Euro,
   Tag, Building2,
 } from 'lucide-react';
