@@ -195,26 +195,41 @@ export function DropdownPill({
               <div className="my-1 mx-3 h-px bg-gray-100 dark:bg-gray-800" />
             </>
           )}
-          {options.length === 0 ? (
+          {options.length === 0 && !onAddNew ? (
             <div className="px-3 py-3 text-xs text-gray-500 text-center">Keine Werte verfügbar</div>
           ) : (
-            options.map(opt => (
+            options.map(opt => {
+              const isZero = opt.count === 0;
+              return (
+                <button
+                  type="button"
+                  key={opt.value}
+                  onClick={() => { onChange(opt.value); setOpen(false); }}
+                  className={`w-full flex items-center justify-between gap-3 px-3 py-1.5 text-sm transition-colors ${
+                    value === opt.value
+                      ? 'bg-gray-100 dark:bg-gray-800 font-semibold text-gray-900 dark:text-white'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                  } ${isZero ? 'opacity-50' : ''}`}
+                >
+                  <span className="truncate text-left">{opt.label}</span>
+                  {opt.count !== undefined && (
+                    <span className="text-[11px] text-gray-400 tabular-nums shrink-0">{opt.count}</span>
+                  )}
+                </button>
+              );
+            })
+          )}
+          {onAddNew && (
+            <>
+              <div className="my-1 mx-3 h-px bg-gray-100 dark:bg-gray-800" />
               <button
                 type="button"
-                key={opt.value}
-                onClick={() => { onChange(opt.value); setOpen(false); }}
-                className={`w-full flex items-center justify-between gap-3 px-3 py-1.5 text-sm transition-colors ${
-                  value === opt.value
-                    ? 'bg-gray-100 dark:bg-gray-800 font-semibold text-gray-900 dark:text-white'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50'
-                }`}
+                onClick={() => { setOpen(false); onAddNew.onClick(); }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30"
               >
-                <span className="truncate text-left">{opt.label}</span>
-                {opt.count !== undefined && (
-                  <span className="text-[11px] text-gray-400 tabular-nums shrink-0">{opt.count}</span>
-                )}
+                <Plus className="w-3.5 h-3.5" /> {onAddNew.label}
               </button>
-            ))
+            </>
           )}
         </div>
       )}
