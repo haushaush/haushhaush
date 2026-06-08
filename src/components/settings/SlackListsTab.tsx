@@ -27,8 +27,8 @@ import { Settings2 } from 'lucide-react';
 
 const NAME_COLUMN_ID = 'Col0B5BLYQH7B';
 
-const EDITABLE_COLUMN_IDS = ['Col0B5AR5UJQJ'];
-const EDITABLE_COLUMN_NAMES = ['kampagnen status', 'kampagnenstatus'];
+const EDITABLE_COLUMN_IDS = ['Col0B645A1WL8'];
+const EDITABLE_COLUMN_NAMES = ['status'];
 
 const isColumnEditable = (col: SlackColumn) => {
   const name = (col.name || '').toLowerCase().trim();
@@ -555,7 +555,7 @@ export function SlackListsTab() {
 
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           <span className="inline-block w-1 h-1 rounded-full bg-primary" />
-          Nur die Spalte „Kampagnen Status" kann hier editiert werden. Alle anderen Daten kommen aus Slack.
+          Nur die Spalte „Status" kann hier editiert werden. Alle anderen Daten kommen aus Slack.
         </p>
 
         <Card className="border-border bg-card overflow-hidden">

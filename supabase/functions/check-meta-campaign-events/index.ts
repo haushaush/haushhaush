@@ -8,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const KAMPAGNEN_STATUS_COL = "Col0B5AR5UJQJ";
+const KAMPAGNEN_STATUS_COL = "Col0B645A1WL8";
 
 serve(async (req) => {
   // PREFLIGHT must be checked FIRST
@@ -181,7 +181,7 @@ serve(async (req) => {
 
     if (byAccount.size > 0 && (!AKTIV_OPT || !INAKTIV_OPT)) {
       throw new Error(
-        `Kampagnen-Status-Aliase fehlen: AKTIV=${AKTIV_OPT}, INAKTIV=${INAKTIV_OPT}. ` +
+        `Status-Aliase fehlen: AKTIV=${AKTIV_OPT}, INAKTIV=${INAKTIV_OPT}. ` +
         `Bitte in slack_list_aliases anlegen für column ${KAMPAGNEN_STATUS_COL}.`
       );
     }
