@@ -714,6 +714,20 @@ export default function ReferenzWerbeanzeigenPage() {
         rows={rows}
         onSaved={load}
       />
+      <AddBrancheDialog
+        open={addBrancheOpen}
+        onClose={() => setAddBrancheOpen(false)}
+        existingBranchen={allBranchen.map(b => b.label)}
+        clients={clientsList}
+        onCreated={(name) => {
+          setLocalBranchen(prev => {
+            const next = [...prev, name];
+            try { localStorage.setItem("wa-local-branchen-v1", JSON.stringify(next)); } catch {}
+            return next;
+          });
+          load();
+        }}
+      />
     </ShowcasePageWrapper>
   );
 }
