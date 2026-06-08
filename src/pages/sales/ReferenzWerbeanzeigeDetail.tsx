@@ -163,7 +163,6 @@ export default function ReferenzWerbeanzeigeDetail() {
     linkedKunde?.unternehmen || ad.filter_values?.unternehmen || "";
   const kundeDisplay = clientFromList?.name || linkedKunde?.client_name || "";
 
-  const { data: masterBranchen = [] } = useBranchen();
   const brancheMasterOptions: InlineOption[] = [
     ...BRANCHEN.map(b => ({ value: b.id, label: b.label, sublabel: b.short })),
     ...masterBranchen
