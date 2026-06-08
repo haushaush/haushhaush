@@ -68,6 +68,12 @@ export default function ReferenzWerbeanzeigenPage() {
   const [rows, setRows] = useState<MetaAdRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [blacklist, setBlacklist] = useState<{ scope: string; target_id: string }[]>([]);
+  const [clientBranchen, setClientBranchen] = useState<string[]>([]);
+  const [clientsList, setClientsList] = useState<{ id: string; name: string }[]>([]);
+  const [localBranchen, setLocalBranchen] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("wa-local-branchen-v1") || "[]"); } catch { return []; }
+  });
+  const [addBrancheOpen, setAddBrancheOpen] = useState(false);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
