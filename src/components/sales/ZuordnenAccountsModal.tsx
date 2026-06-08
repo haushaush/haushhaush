@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { BRANCHE_ALIASES, getCanonicalBranche, getBrancheShortName } from "@/lib/branche-aliases";
 import { pickClientId, pickBrancheValue } from "@/lib/showcaseFkSelect";
+import { AddBrancheDialog } from "@/components/sales/AddBrancheDialog";
 import type { MetaAdRow } from "@/pages/sales/ReferenzWerbeanzeigen";
 
 export interface AccountSummary {
@@ -99,6 +100,8 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [completedKeys, setCompletedKeys] = useState<Set<string>>(new Set());
+  const [addBrancheFor, setAddBrancheFor] = useState<string | null>(null);
+  const [localBranchen, setLocalBranchen] = useState<string[]>([]);
 
   // Per-account form state
   const [picks, setPicks] = useState<Record<string, { kundeId?: string; kundeName?: string; branche?: string }>>({});
@@ -199,6 +202,9 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
     for (const group of BRANCHE_ALIASES) {
       canonicals.add(group.canonical);
     }
+    for (const b of localBranchen) {
+      if (b?.trim()) canonicals.add(getCanonicalBranche(b.trim()));
+    }
 
     return Array.from(canonicals)
       .sort((a, b) => a.localeCompare(b, "de"))
@@ -207,7 +213,7 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
         label: canonical,
         meta: getBrancheShortName(canonical),
       }));
-  }, [rows, clients]);
+  }, [rows, clients, localBranchen]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
@@ -373,6 +379,8 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
                             placeholder="Branche..."
                             allowCreate={false}
                             compact
+                            onAddNew={() => setAddBrancheFor(acc.meta_account_id)}
+                            addNewLabel="Branche hinzufügen"
                           />
                         </td>
                         <td className="px-2 py-3 align-middle text-right">
