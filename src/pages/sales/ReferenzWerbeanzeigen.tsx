@@ -19,6 +19,7 @@ import { useFilterOptions, type FilterOption as DropdownFilterOption } from "@/h
 import { normalizeBranche, getBrancheDisplay, getBranche } from "@/lib/branchen";
 import { FK_EMBED_ALL, pickBrancheValue, pickBrancheLabel, pickUnternehmenLabel, pickClientId, pickClientName } from "@/lib/showcaseFkSelect";
 import { getCanonicalBranche, getBrancheShortName } from "@/lib/branche-aliases";
+import { useBranchen } from "@/hooks/useBranchen";
 import { SyncStatusBanner } from "@/components/admin/SyncStatusBanner";
 import {
   ShowcasePageWrapper, SubPageHeader, ShowcaseSearchInput, DropdownPill,
