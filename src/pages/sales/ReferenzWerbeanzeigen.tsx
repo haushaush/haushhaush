@@ -364,35 +364,56 @@ export default function ReferenzWerbeanzeigenPage() {
     return out;
   }, [categories, options]);
 
-  // Branche-Optionen: dynamisch aus Anzeigen, die ALLE anderen Filter (außer Branche) passieren.
-  // So zeigt das Dropdown nur Werte mit > 0 echten Treffern und Counts stimmen mit dem Grid überein.
+  // Master-Branchen-Liste = clients.branche ∪ lokal hinzugefügte Branchen (case-insensitive dedupe).
+  const allBranchen = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const b of [...clientBranchen, ...localBranchen]) {
+      const t = (b ?? "").toString().trim();
+      if (!t) continue;
+      const k = t.toLowerCase();
+      if (!byKey.has(k)) byKey.set(k, t);
+    }
+    return Array.from(byKey.entries()).map(([key, label]) => ({ key, label }));
+  }, [clientBranchen, localBranchen]);
+
+  // Branche-Optionen: ALLE Branchen aus clients.branche (+ lokal), Counts aus den Anzeigen.
   const brancheOptionsWithNone = useMemo(() => {
     const sourceRows = preFiltered.filter(x => passesAdAndStandalone(x, { skipBranche: true }));
-    const counts = new Map<string, { label: string; count: number; short?: string }>();
+    const counts = new Map<string, number>();
     let noneCount = 0;
     for (const x of sourceRows) {
       const fkVal = pickBrancheValue(x as any);
       const raw = (fkVal ?? (x as any).linked_kunde?.branche ?? ((x as any).filter_values ?? {}).branche ?? '').toString().trim();
       if (!raw) { noneCount += 1; continue; }
-      const canonical = normalizeBranche(raw);
-      if (canonical) {
-        const b = getBranche(canonical)!;
-        const entry = counts.get(canonical) ?? { label: b.label, short: b.short, count: 0 };
-        entry.count += 1;
-        counts.set(canonical, entry);
-      } else {
-        const key = raw.toLowerCase();
-        const entry = counts.get(key) ?? { label: raw, count: 0 };
-        entry.count += 1;
-        counts.set(key, entry);
+      const key = raw.toLowerCase();
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    // Master-Liste + Ad-only Branchen (für die kein clients.branche existiert) ergänzen.
+    const merged = new Map<string, { label: string; count: number }>();
+    for (const { key, label } of allBranchen) {
+      merged.set(key, { label, count: counts.get(key) ?? 0 });
+    }
+    for (const [key, count] of counts.entries()) {
+      if (!merged.has(key)) {
+        // Versuche kanonisches Label aus BRANCHEN-Konstante
+        const b = getBranche(key);
+        merged.set(key, { label: b?.label ?? key, count });
       }
     }
-    const opts: DropdownFilterOption[] = Array.from(counts.entries())
-      .map(([value, { label, count, short }]) => ({ value, label, count, short }))
-      .sort((a, b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label, 'de'));
+    const arr = Array.from(merged.entries())
+      .map(([value, { label, count }]) => ({ value, label, count }));
+    const withCount = arr.filter(o => (o.count ?? 0) > 0).sort((a, b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label, 'de'));
+    const noCount = arr.filter(o => (o.count ?? 0) === 0).sort((a, b) => a.label.localeCompare(b.label, 'de'));
+    const opts: DropdownFilterOption[] = [...withCount, ...noCount];
     if (noneCount > 0) opts.push({ value: '__none__', label: '— Ohne Branche —', count: noneCount });
     return opts;
-  }, [preFiltered, passesAdAndStandalone]);
+  }, [preFiltered, passesAdAndStandalone, allBranchen]);
+
+  const brancheStats = useMemo(() => {
+    const withAds = brancheOptionsWithNone.filter(o => o.value !== '__none__' && (o.count ?? 0) > 0).length;
+    const withoutAds = brancheOptionsWithNone.filter(o => o.value !== '__none__' && (o.count ?? 0) === 0).length;
+    return { total: allBranchen.length, withAds, withoutAds };
+  }, [brancheOptionsWithNone, allBranchen]);
 
   // Kunde-Optionen: dynamisch aus Anzeigen, die ALLE anderen Filter (außer Kunde) passieren.
   const kundenOptionsWithNone = useMemo(() => {
