@@ -6,6 +6,7 @@ import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Link } from "react-router-dom";
 import { Plus, Upload, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon, Wand2, ShieldOff, RefreshCw, Link2 } from "lucide-react";
 import { ZuordnenAccountsModal, buildIncompleteAccounts } from "@/components/sales/ZuordnenAccountsModal";
+import { AddBrancheDialog } from "@/components/sales/AddBrancheDialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { BulkImportWizard } from "@/components/showcase/BulkImportWizard";
 import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
@@ -68,6 +69,12 @@ export default function ReferenzWerbeanzeigenPage() {
   const [rows, setRows] = useState<MetaAdRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [blacklist, setBlacklist] = useState<{ scope: string; target_id: string }[]>([]);
+  const [clientBranchen, setClientBranchen] = useState<string[]>([]);
+  const [clientsList, setClientsList] = useState<{ id: string; name: string }[]>([]);
+  const [localBranchen, setLocalBranchen] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("wa-local-branchen-v1") || "[]"); } catch { return []; }
+  });
+  const [addBrancheOpen, setAddBrancheOpen] = useState(false);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -153,7 +160,7 @@ export default function ReferenzWerbeanzeigenPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: ads }, { data: cats }, { data: opts }, { data: bl }] = await Promise.all([
+    const [{ data: ads }, { data: cats }, { data: opts }, { data: bl }, { data: cb }, { data: cl }] = await Promise.all([
       supabase.from("referenz_meta_ads" as any)
         .select(isPublic
           ? `*, ${FK_EMBED_ALL}`
@@ -166,11 +173,18 @@ export default function ReferenzWerbeanzeigenPage() {
         .in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
       supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
       supabase.from("import_blacklist" as any).select("scope, target_id"),
+      supabase.from("clients").select("branche").not("branche", "is", null),
+      supabase.from("clients").select("id, name").order("name").limit(2000),
     ]);
     setRows(((ads ?? []) as any[]) as MetaAdRow[]);
     setCategories((cats ?? []) as any);
     setOptions((opts ?? []) as any);
     setBlacklist(((bl ?? []) as any[]) as { scope: string; target_id: string }[]);
+    const distinctBr = Array.from(new Set(((cb ?? []) as any[])
+      .map((r: any) => (r.branche ?? "").toString().trim())
+      .filter(Boolean))).sort((a, b) => a.localeCompare(b, 'de'));
+    setClientBranchen(distinctBr);
+    setClientsList(((cl ?? []) as any[]).filter((c: any) => c.name) as any);
     setLoading(false);
   };
 
@@ -351,35 +365,56 @@ export default function ReferenzWerbeanzeigenPage() {
     return out;
   }, [categories, options]);
 
-  // Branche-Optionen: dynamisch aus Anzeigen, die ALLE anderen Filter (außer Branche) passieren.
-  // So zeigt das Dropdown nur Werte mit > 0 echten Treffern und Counts stimmen mit dem Grid überein.
+  // Master-Branchen-Liste = clients.branche ∪ lokal hinzugefügte Branchen (case-insensitive dedupe).
+  const allBranchen = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const b of [...clientBranchen, ...localBranchen]) {
+      const t = (b ?? "").toString().trim();
+      if (!t) continue;
+      const k = t.toLowerCase();
+      if (!byKey.has(k)) byKey.set(k, t);
+    }
+    return Array.from(byKey.entries()).map(([key, label]) => ({ key, label }));
+  }, [clientBranchen, localBranchen]);
+
+  // Branche-Optionen: ALLE Branchen aus clients.branche (+ lokal), Counts aus den Anzeigen.
   const brancheOptionsWithNone = useMemo(() => {
     const sourceRows = preFiltered.filter(x => passesAdAndStandalone(x, { skipBranche: true }));
-    const counts = new Map<string, { label: string; count: number; short?: string }>();
+    const counts = new Map<string, number>();
     let noneCount = 0;
     for (const x of sourceRows) {
       const fkVal = pickBrancheValue(x as any);
       const raw = (fkVal ?? (x as any).linked_kunde?.branche ?? ((x as any).filter_values ?? {}).branche ?? '').toString().trim();
       if (!raw) { noneCount += 1; continue; }
-      const canonical = normalizeBranche(raw);
-      if (canonical) {
-        const b = getBranche(canonical)!;
-        const entry = counts.get(canonical) ?? { label: b.label, short: b.short, count: 0 };
-        entry.count += 1;
-        counts.set(canonical, entry);
-      } else {
-        const key = raw.toLowerCase();
-        const entry = counts.get(key) ?? { label: raw, count: 0 };
-        entry.count += 1;
-        counts.set(key, entry);
+      const key = raw.toLowerCase();
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    // Master-Liste + Ad-only Branchen (für die kein clients.branche existiert) ergänzen.
+    const merged = new Map<string, { label: string; count: number }>();
+    for (const { key, label } of allBranchen) {
+      merged.set(key, { label, count: counts.get(key) ?? 0 });
+    }
+    for (const [key, count] of counts.entries()) {
+      if (!merged.has(key)) {
+        // Versuche kanonisches Label aus BRANCHEN-Konstante
+        const b = getBranche(key);
+        merged.set(key, { label: b?.label ?? key, count });
       }
     }
-    const opts: DropdownFilterOption[] = Array.from(counts.entries())
-      .map(([value, { label, count, short }]) => ({ value, label, count, short }))
-      .sort((a, b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label, 'de'));
+    const arr = Array.from(merged.entries())
+      .map(([value, { label, count }]) => ({ value, label, count }));
+    const withCount = arr.filter(o => (o.count ?? 0) > 0).sort((a, b) => (b.count ?? 0) - (a.count ?? 0) || a.label.localeCompare(b.label, 'de'));
+    const noCount = arr.filter(o => (o.count ?? 0) === 0).sort((a, b) => a.label.localeCompare(b.label, 'de'));
+    const opts: DropdownFilterOption[] = [...withCount, ...noCount];
     if (noneCount > 0) opts.push({ value: '__none__', label: '— Ohne Branche —', count: noneCount });
     return opts;
-  }, [preFiltered, passesAdAndStandalone]);
+  }, [preFiltered, passesAdAndStandalone, allBranchen]);
+
+  const brancheStats = useMemo(() => {
+    const withAds = brancheOptionsWithNone.filter(o => o.value !== '__none__' && (o.count ?? 0) > 0).length;
+    const withoutAds = brancheOptionsWithNone.filter(o => o.value !== '__none__' && (o.count ?? 0) === 0).length;
+    return { total: allBranchen.length, withAds, withoutAds };
+  }, [brancheOptionsWithNone, allBranchen]);
 
   // Kunde-Optionen: dynamisch aus Anzeigen, die ALLE anderen Filter (außer Kunde) passieren.
   const kundenOptionsWithNone = useMemo(() => {
@@ -510,6 +545,16 @@ export default function ReferenzWerbeanzeigenPage() {
           >
             {diagnostics.adsWithoutKunde} ohne Kunde
           </button>
+          {brancheStats.total > 0 && (
+            <>
+              {' · '}
+              <span>
+                {brancheStats.total} Branchen in clients
+                {' '}
+                <span className="text-gray-400">({brancheStats.withAds} mit Anzeigen, {brancheStats.withoutAds} ohne)</span>
+              </span>
+            </>
+          )}
         </div>
 
 
@@ -533,7 +578,14 @@ export default function ReferenzWerbeanzeigenPage() {
               { value: 'created', label: 'Importdatum' },
             ]}
           />
-          <DropdownPill label="Branche" icon={Tag} value={brancheFilter} onChange={setStandaloneFilter('branche')} options={brancheOptionsWithNone} />
+          <DropdownPill
+            label="Branche"
+            icon={Tag}
+            value={brancheFilter}
+            onChange={setStandaloneFilter('branche')}
+            options={brancheOptionsWithNone}
+            onAddNew={isAdmin ? { label: 'Branche hinzufügen', onClick: () => setAddBrancheOpen(true) } : undefined}
+          />
           <DropdownPill label="Kunde" icon={User} value={kundeFilter} onChange={setStandaloneFilter('kunde')} options={kundenOptionsWithNone} />
 
           <DropdownPill label="Unternehmen" icon={Building2} value={unternehmenFilter} onChange={setStandaloneFilter('unternehmen')} options={unternehmen} />
@@ -661,6 +713,20 @@ export default function ReferenzWerbeanzeigenPage() {
         onClose={() => setAssignOpen(false)}
         rows={rows}
         onSaved={load}
+      />
+      <AddBrancheDialog
+        open={addBrancheOpen}
+        onClose={() => setAddBrancheOpen(false)}
+        existingBranchen={allBranchen.map(b => b.label)}
+        clients={clientsList}
+        onCreated={(name) => {
+          setLocalBranchen(prev => {
+            const next = [...prev, name];
+            try { localStorage.setItem("wa-local-branchen-v1", JSON.stringify(next)); } catch {}
+            return next;
+          });
+          load();
+        }}
       />
     </ShowcasePageWrapper>
   );
