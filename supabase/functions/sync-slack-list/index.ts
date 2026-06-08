@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -55,9 +55,20 @@ function extractCell(cell: SlackCell): unknown {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Cron-Secret bypass (for n8n external triggers)
+  const CRON_SECRET = Deno.env.get("CRON_TRIGGER_SECRET");
+  const incomingCronSecret = req.headers.get("x-cron-secret");
+  let isCronTrigger = false;
+  if (CRON_SECRET && incomingCronSecret === CRON_SECRET) {
+    isCronTrigger = true;
+    console.log("[cron-daily] sync-slack-list authenticated via X-Cron-Secret header");
+  }
+  const triggerSource = isCronTrigger ? "cron-daily" : "manual";
+
   const t0 = Date.now();
   try {
     const { list_id } = await req.json();
+    console.log("[sync-slack-list] trigger:", triggerSource, "list_id:", list_id);
     if (!list_id) {
       return new Response(JSON.stringify({ error: "list_id required" }), {
         status: 400,

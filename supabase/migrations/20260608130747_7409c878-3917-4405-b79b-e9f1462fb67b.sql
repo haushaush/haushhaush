@@ -1,0 +1,2 @@
+ALTER TABLE public.meta_check_runs DROP CONSTRAINT IF EXISTS meta_check_runs_trigger_source_check;
+ALTER TABLE public.meta_check_runs ADD CONSTRAINT meta_check_runs_trigger_source_check CHECK (trigger_source = ANY (ARRAY['cron'::text, 'manual'::text, 'cron-hourly'::text, 'cron-daily'::text]));
