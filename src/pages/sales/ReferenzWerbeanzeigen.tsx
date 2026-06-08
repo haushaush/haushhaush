@@ -6,6 +6,7 @@ import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Link } from "react-router-dom";
 import { Plus, Upload, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon, Wand2, ShieldOff, RefreshCw, Link2 } from "lucide-react";
 import { ZuordnenAccountsModal, buildIncompleteAccounts } from "@/components/sales/ZuordnenAccountsModal";
+import { AddBrancheDialog } from "@/components/sales/AddBrancheDialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { BulkImportWizard } from "@/components/showcase/BulkImportWizard";
 import { type FilterCategory, type FilterOption } from "@/components/sales/ShowcaseFilterManagementModal";
