@@ -419,6 +419,26 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
           <Button variant="ghost" onClick={handleClose}>Schließen</Button>
         </div>
       </DialogContent>
+
+      <AddBrancheDialog
+        open={!!addBrancheFor}
+        onClose={() => setAddBrancheFor(null)}
+        existingBranchen={brancheOptions.map((o) => o.value)}
+        clients={clients.map((c) => ({ id: c.id, name: c.name }))}
+        onCreated={(branche) => {
+          const canonical = getCanonicalBranche(branche);
+          setLocalBranchen((prev) =>
+            prev.some((b) => b.toLowerCase() === canonical.toLowerCase()) ? prev : [...prev, canonical],
+          );
+          if (addBrancheFor) {
+            setPicks((p) => ({
+              ...p,
+              [addBrancheFor]: { ...p[addBrancheFor], branche: canonical },
+            }));
+          }
+          setAddBrancheFor(null);
+        }}
+      />
     </Dialog>
   );
 }
