@@ -21,6 +21,7 @@ import {
 } from "@/components/showcase/DetailPageLayout";
 import { DeleteAdDialog } from "@/components/showcase/DeleteAdDialog";
 import { getBrancheDisplay, BRANCHEN } from "@/lib/branchen";
+import { useBranchen } from "@/hooks/useBranchen";
 import { InlineEditDetailRow, type InlineOption } from "@/components/showcase/InlineEditDetailRow";
 import { cn } from "@/lib/utils";
 
