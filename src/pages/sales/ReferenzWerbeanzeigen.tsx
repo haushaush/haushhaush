@@ -560,6 +560,14 @@ export default function ReferenzWerbeanzeigenPage() {
                 </span>
               )}
             </SecondaryActionButton>
+            <SecondaryActionButton onClick={() => setKampagnenOpen(true)}>
+              <Layers className="w-4 h-4" /> Kampagnen-Zuordnung
+              {campaignsWithoutBranche > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 tabular-nums">
+                  {campaignsWithoutBranche} ohne Branche
+                </span>
+              )}
+            </SecondaryActionButton>
             <PrimaryActionButton onClick={() => setImportOpen(true)}>
               <Upload className="w-4 h-4" /> {SHOWCASE_COPY.werbeanzeigen.importLabel}
             </PrimaryActionButton>
