@@ -147,19 +147,32 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
     setSavingKey(camp.key);
     try {
       const ids = camp.ads.map((a) => a.id);
-      const { error } = await supabase
+      console.log("[KampagnenZuordnung] updating ads:", ids, "to branche:", canonical);
+      const { data, error } = await supabase
         .from("referenz_meta_ads" as any)
         .update({ linked_branche_id: canonical })
-        .in("id", ids);
-      if (error) throw error;
+        .in("id", ids)
+        .select("id");
+      if (error) {
+        console.error("[KampagnenZuordnung] update error:", error);
+        toast.error(`Speichern fehlgeschlagen: ${error.message}`);
+        return;
+      }
+      const updated = (data ?? []) as { id: string }[];
+      if (updated.length === 0) {
+        toast.error("Keine Zeilen aktualisiert – Filter matched nichts");
+        return;
+      }
       setOverrides((o) => {
         const n = { ...o };
-        for (const id of ids) n[id] = canonical;
+        for (const r of updated) n[r.id] = canonical;
         return n;
       });
-      toast.success(`${canonical} auf ${ids.length} Ads gesetzt`);
+      toast.success(`${canonical} auf ${updated.length} Ads gesetzt`);
+      onSaved();
     } catch (e: any) {
-      toast.error(e?.message ?? "Speichern fehlgeschlagen");
+      console.error("[KampagnenZuordnung] unexpected error:", e);
+      toast.error(`Speichern fehlgeschlagen: ${e?.message ?? "unbekannt"}`);
     } finally {
       setSavingKey(null);
     }
@@ -169,15 +182,27 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
     const canonical = getCanonicalBranche(branche);
     setSavingKey(`ad:${ad.id}`);
     try {
-      const { error } = await supabase
+      console.log("[KampagnenZuordnung] updating ad:", ad.id, "to branche:", canonical);
+      const { data, error } = await supabase
         .from("referenz_meta_ads" as any)
         .update({ linked_branche_id: canonical })
-        .eq("id", ad.id);
-      if (error) throw error;
+        .eq("id", ad.id)
+        .select("id");
+      if (error) {
+        console.error("[KampagnenZuordnung] update error:", error);
+        toast.error(`Speichern fehlgeschlagen: ${error.message}`);
+        return;
+      }
+      if (!data || data.length === 0) {
+        toast.error("Keine Zeilen aktualisiert – Filter matched nichts");
+        return;
+      }
       setOverrides((o) => ({ ...o, [ad.id]: canonical }));
       toast.success(`${canonical} gesetzt`);
+      onSaved();
     } catch (e: any) {
-      toast.error(e?.message ?? "Speichern fehlgeschlagen");
+      console.error("[KampagnenZuordnung] unexpected error:", e);
+      toast.error(`Speichern fehlgeschlagen: ${e?.message ?? "unbekannt"}`);
     } finally {
       setSavingKey(null);
     }
