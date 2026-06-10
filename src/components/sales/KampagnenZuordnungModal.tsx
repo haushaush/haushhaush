@@ -55,13 +55,12 @@ function groupAds(rows: MetaAdRow[]): AccountGroup[] {
   return out.sort((a, b) => a.name.localeCompare(b.name, "de"));
 }
 
-function campaignBrancheStatus(ads: MetaAdRow[]): { label: string; tone: "ok" | "mixed" | "none" } {
-  const labels = ads.map((a) => pickBrancheLabel(a as any)).map((l) => l?.trim() || null);
-  const distinct = new Set(labels.filter(Boolean));
+function summarizeBranchen(labels: (string | null)[]): { label: string; tone: "ok" | "mixed" | "none" } {
+  const norm = labels.map((l) => l?.trim() || null);
+  const distinct = new Set(norm.filter(Boolean) as string[]);
   if (distinct.size === 0) return { label: "—", tone: "none" };
-  if (labels.some((l) => !l)) return { label: "gemischt", tone: "mixed" };
-  if (distinct.size > 1) return { label: "gemischt", tone: "mixed" };
-  return { label: Array.from(distinct)[0] as string, tone: "ok" };
+  if (norm.some((l) => !l) || distinct.size > 1) return { label: "gemischt", tone: "mixed" };
+  return { label: Array.from(distinct)[0]!, tone: "ok" };
 }
 
 /** Count of campaigns where at least one ad has no Branche. */
