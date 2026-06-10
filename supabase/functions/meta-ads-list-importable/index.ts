@@ -21,18 +21,13 @@ interface Body {
 }
 
 function authClient(req: Request) {
-  return createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } }
-  );
+  return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
+  });
 }
 
 function svcClient() {
-  return createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 }
 
 function isRateLimit(msg: string) {
@@ -65,10 +60,14 @@ Deno.serve(async (req) => {
     if (!ACCESS_TOKEN) throw new Error("META_ACCESS_TOKEN not configured");
 
     const supabase = authClient(req);
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authErr,
+    } = await supabase.auth.getUser();
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     const userId = user.id;
@@ -77,7 +76,8 @@ Deno.serve(async (req) => {
     const isAdmin = (roles ?? []).some((r: any) => r.role === "admin");
     if (!isAdmin) {
       return new Response(JSON.stringify({ error: "Forbidden – admin only" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -88,38 +88,50 @@ Deno.serve(async (req) => {
     const datePreset = body.datePreset ?? "last_30d";
 
     // Existing imported IDs (only non-deleted count as "imported"; hard-deleted blocks re-import via blacklist below)
-    const { data: existing } = await svc
-      .from("referenz_meta_ads")
-      .select("meta_ad_id, deleted_at, delete_mode");
-    const importedSet = new Set(
-      (existing ?? [])
-        .filter((r: any) => !r.deleted_at)
-        .map((r: any) => r.meta_ad_id)
-    );
+    // referenz_meta_ads hat >1000 Zeilen → Single-Select ist auf 1000 gecappt. Paginieren.
+    const existing: any[] = [];
+    {
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await svc
+          .from("referenz_meta_ads")
+          .select("meta_ad_id, deleted_at, delete_mode")
+          .order("meta_ad_id", { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) {
+          console.error("existing fetch failed", error);
+          break;
+        }
+        existing.push(...(data ?? []));
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+    }
+    const importedSet = new Set((existing ?? []).filter((r: any) => !r.deleted_at).map((r: any) => r.meta_ad_id));
     const hardBlockedSet = new Set(
-      (existing ?? [])
-        .filter((r: any) => r.deleted_at && r.delete_mode === 'hard')
-        .map((r: any) => r.meta_ad_id)
+      (existing ?? []).filter((r: any) => r.deleted_at && r.delete_mode === "hard").map((r: any) => r.meta_ad_id),
     );
 
     // Blacklist (account, campaign, ad, keyword)
-    const { data: blacklist } = await svc
-      .from("import_blacklist")
-      .select("scope, target_id");
+    const { data: blacklist } = await svc.from("import_blacklist").select("scope, target_id");
     const blAccount = new Set<string>();
     const blCampaign = new Set<string>();
     const blAd = new Set<string>();
     const blKeyword: string[] = [];
     for (const b of (blacklist ?? []) as any[]) {
-      if (b.scope === 'meta_account') { blAccount.add(b.target_id); blAccount.add(b.target_id.replace(/^act_/, '')); blAccount.add(`act_${b.target_id.replace(/^act_/, '')}`); }
-      else if (b.scope === 'meta_campaign') blCampaign.add(b.target_id);
-      else if (b.scope === 'meta_ad') blAd.add(b.target_id);
-      else if (b.scope === 'keyword') blKeyword.push(String(b.target_id).toLowerCase());
+      if (b.scope === "meta_account") {
+        blAccount.add(b.target_id);
+        blAccount.add(b.target_id.replace(/^act_/, ""));
+        blAccount.add(`act_${b.target_id.replace(/^act_/, "")}`);
+      } else if (b.scope === "meta_campaign") blCampaign.add(b.target_id);
+      else if (b.scope === "meta_ad") blAd.add(b.target_id);
+      else if (b.scope === "keyword") blKeyword.push(String(b.target_id).toLowerCase());
     }
 
     // If account itself is blacklisted, return empty result
-    if (blAccount.has(accountId) || blAccount.has(accountId.replace(/^act_/, ''))) {
-      return new Response(JSON.stringify({ ads: [], paging: null, account_name: '', blocked: 'account' }), {
+    if (blAccount.has(accountId) || blAccount.has(accountId.replace(/^act_/, ""))) {
+      return new Response(JSON.stringify({ ads: [], paging: null, account_name: "", blocked: "account" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -144,9 +156,7 @@ Deno.serve(async (req) => {
     };
     if (body.after) params.after = body.after;
     if (body.status && body.status !== "ALL") {
-      params.filtering = JSON.stringify([
-        { field: "effective_status", operator: "IN", value: [body.status] },
-      ]);
+      params.filtering = JSON.stringify([{ field: "effective_status", operator: "IN", value: [body.status] }]);
     }
 
     const adsRes = await metaGet(`/${accountId}/ads`, params);
@@ -157,7 +167,9 @@ Deno.serve(async (req) => {
     try {
       const acc = await metaGet(`/${accountId}`, { fields: "name" });
       accountName = acc?.name ?? "";
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     // Single account-level insights call with level=ad — avoids per-ad rate limits
     const insightsByAd = new Map<string, any>();
@@ -174,7 +186,7 @@ Deno.serve(async (req) => {
           };
           if (after) insParams.after = after;
           const insRes = await metaGet(`/${accountId}/insights`, insParams);
-          for (const row of (insRes?.data ?? [])) {
+          for (const row of insRes?.data ?? []) {
             if (row.ad_id) insightsByAd.set(row.ad_id, row);
           }
           after = insRes?.paging?.cursors?.after && insRes?.paging?.next ? insRes.paging.cursors.after : undefined;
@@ -191,16 +203,16 @@ Deno.serve(async (req) => {
       if (hardBlockedSet.has(ad.id)) continue;
       if (blAd.has(ad.id)) continue;
       if (ad.campaign_id && blCampaign.has(ad.campaign_id)) continue;
-      if (blKeyword.length && ad.name && blKeyword.some(k => String(ad.name).toLowerCase().includes(k))) continue;
+      if (blKeyword.length && ad.name && blKeyword.some((k) => String(ad.name).toLowerCase().includes(k))) continue;
       const alreadyImported = importedSet.has(ad.id);
       let metrics: any = null;
       const row = insightsByAd.get(ad.id);
       if (!alreadyImported && row) {
         const leadAction = (row.actions ?? []).find((a: any) =>
-          ["lead", "offsite_conversion.fb_pixel_lead", "onsite_conversion.lead_grouped"].includes(a.action_type)
+          ["lead", "offsite_conversion.fb_pixel_lead", "onsite_conversion.lead_grouped"].includes(a.action_type),
         );
         const purchaseValue = (row.action_values ?? []).find((a: any) =>
-          ["purchase", "offsite_conversion.fb_pixel_purchase"].includes(a.action_type)
+          ["purchase", "offsite_conversion.fb_pixel_purchase"].includes(a.action_type),
         );
         const leads = leadAction ? Number(leadAction.value) : 0;
         const spend = Number(row.spend ?? 0);
@@ -242,20 +254,21 @@ Deno.serve(async (req) => {
         paging: adsRes.paging ?? null,
         account_name: accountName,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("meta-ads-list-importable", err);
     const msg = (err as Error).message;
     const rl = isRateLimitErr(err);
-    return new Response(JSON.stringify({
-      error: rl
-        ? "Meta API Rate-Limit erreicht. Bitte 5–10 Minuten warten und erneut versuchen."
-        : msg,
-      rate_limited: rl,
-    }), {
-      status: rl ? 429 : 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        error: rl ? "Meta API Rate-Limit erreicht. Bitte 5–10 Minuten warten und erneut versuchen." : msg,
+        rate_limited: rl,
+      }),
+      {
+        status: rl ? 429 : 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });
