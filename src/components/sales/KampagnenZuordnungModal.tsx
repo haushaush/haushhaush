@@ -228,9 +228,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                     <div className="border-t border-border divide-y divide-border">
                       {acc.campaigns.map((camp) => {
                         const cExpanded = openCampaigns.has(camp.key);
-                        const status = campaignBrancheStatus(
-                          camp.ads.map((a) => ({ ...a, linked_branche_id: effectiveBrancheFor(a) ?? (a as any).linked_branche_id })) as any,
-                        );
+                        const status = summarizeBranchen(camp.ads.map((a) => effectiveBrancheFor(a)));
                         return (
                           <div key={camp.key} className="bg-background/40">
                             <div className="flex items-center gap-3 px-4 py-2.5">
