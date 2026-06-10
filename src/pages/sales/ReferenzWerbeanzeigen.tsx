@@ -374,6 +374,17 @@ export default function ReferenzWerbeanzeigenPage() {
     [filtered],
   );
 
+  const PAGE_SIZE = 60;
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [filtered]);
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const pagedItems = useMemo(
+    () => items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [items, page],
+  );
+
+
+
 
   const hasActiveFilters =
     !!search ||
