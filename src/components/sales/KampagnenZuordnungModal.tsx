@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Combobox } from "@/components/ui/Combobox";
 import { ChevronRight, Loader2, Search } from "lucide-react";
@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { BRANCHEN, normalizeBranche, getBrancheLabel } from "@/lib/branchen";
 import { useBranchen } from "@/hooks/useBranchen";
-import { pickBrancheLabel } from "@/lib/showcaseFkSelect";
+import { pickBrancheLabel, pickClientId, pickClientName } from "@/lib/showcaseFkSelect";
 import type { MetaAdRow } from "@/pages/sales/ReferenzWerbeanzeigen";
 
 interface Props {
@@ -27,6 +27,7 @@ interface AccountGroup {
   name: string;
   campaigns: CampaignGroup[];
   totalAds: number;
+  ads: MetaAdRow[];
 }
 
 function groupAds(rows: MetaAdRow[]): AccountGroup[] {
@@ -45,12 +46,14 @@ function groupAds(rows: MetaAdRow[]): AccountGroup[] {
     const accName = first?.meta_account_name?.trim() || accKey;
     const campaigns: CampaignGroup[] = [];
     let total = 0;
+    const allAds: MetaAdRow[] = [];
     for (const [campKey, ads] of cMap) {
       campaigns.push({ key: `${accKey}::${campKey}`, name: campKey === "__no_campaign__" ? "(Ohne Kampagne)" : campKey, ads });
       total += ads.length;
+      allAds.push(...ads);
     }
     campaigns.sort((a, b) => a.name.localeCompare(b.name, "de"));
-    out.push({ key: accKey, name: accName, campaigns, totalAds: total });
+    out.push({ key: accKey, name: accName, campaigns, totalAds: total, ads: allAds });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name, "de"));
 }
@@ -75,16 +78,19 @@ export function countCampaignsWithoutBranche(rows: MetaAdRow[]): number {
   return n;
 }
 
-/**
- * Resolve the picked Combobox value to the canonical DB write value.
- * MUST match what ReferenzWerbeanzeigeDetail writes for linked_branche_id
- * (BRANCHEN[].id for known branches; otherwise the trimmed picked value).
- */
 function resolveBrancheWriteValue(picked: string): string {
   const trimmed = picked.trim();
   if (!trimmed) return trimmed;
   return normalizeBranche(trimmed) ?? trimmed;
 }
+
+const MissingPill = ({ children }: { children: React.ReactNode }) => (
+  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+    {children}
+  </span>
+);
+
+interface ClientRow { id: string; name: string }
 
 export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props) {
   const { data: masterBranchen = [] } = useBranchen();
@@ -92,6 +98,23 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
   const [openAccounts, setOpenAccounts] = useState<Set<string>>(new Set());
   const [openCampaigns, setOpenCampaigns] = useState<Set<string>>(new Set());
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [clients, setClients] = useState<ClientRow[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name")
+        .order("name")
+        .limit(2000);
+      if (error) {
+        console.error("[KampagnenZuordnung] clients load error:", error);
+        return;
+      }
+      setClients(((data ?? []) as any[]).filter((c) => c.name) as ClientRow[]);
+    })();
+  }, [open]);
 
   const accounts = useMemo(() => groupAds(rows), [rows]);
   const visible = useMemo(() => {
@@ -107,8 +130,6 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
       .filter((a) => a.campaigns.length > 0 || a.name.toLowerCase().includes(q));
   }, [accounts, search]);
 
-  // Options identical in shape to the detail-page Combobox: BRANCHEN ids first,
-  // then any master rows that don't fold onto a known canonical id.
   const brancheOptions = useMemo(() => {
     const seen = new Set<string>();
     const opts: { value: string; label: string; meta?: string }[] = [];
@@ -127,11 +148,35 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
     return opts.sort((a, b) => a.label.localeCompare(b.label, "de"));
   }, [masterBranchen]);
 
+  const clientOptions = useMemo(
+    () => clients.map((c) => ({ value: c.id, label: c.name })),
+    [clients],
+  );
+
   const adBrancheValue = (ad: MetaAdRow): string => {
     const raw = (ad as any).linked_branche_id as string | null | undefined;
     if (!raw) return "";
     return normalizeBranche(raw) ?? raw.trim();
   };
+
+  /** Summarize client status across a set of ads. */
+  const summarizeClients = (ads: MetaAdRow[]): { label: string; tone: "ok" | "mixed" | "none"; selected: string } => {
+    const ids = new Set<string>();
+    let anyMissing = false;
+    for (const a of ads) {
+      const id = pickClientId(a as any);
+      if (id) ids.add(id);
+      else anyMissing = true;
+    }
+    if (ids.size === 0) return { label: "—", tone: "none", selected: "" };
+    if (ids.size > 1 || anyMissing) return { label: "gemischt", tone: "mixed", selected: "" };
+    const id = Array.from(ids)[0]!;
+    const name = pickClientName(ads.find((a) => pickClientId(a as any) === id) as any) ?? id;
+    return { label: name, tone: "ok", selected: id };
+  };
+
+  const accountHasMissingClient = (acc: AccountGroup) => acc.ads.some((a) => !pickClientId(a as any));
+  const campaignHasMissingBranche = (camp: CampaignGroup) => camp.ads.some((a) => !pickBrancheLabel(a as any));
 
   const toggleAccount = (k: string) =>
     setOpenAccounts((s) => {
@@ -146,7 +191,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
       return n;
     });
 
-  const updateCampaign = async (camp: CampaignGroup, picked: string) => {
+  const updateCampaignBranche = async (camp: CampaignGroup, picked: string) => {
     const writeValue = resolveBrancheWriteValue(picked);
     if (!writeValue) return;
     setSavingKey(camp.key);
@@ -159,53 +204,64 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
         .in("id", ids)
         .select("id");
       if (error) {
-        console.error("[KampagnenZuordnung] update error:", error);
         toast.error(`Speichern fehlgeschlagen: ${error.message}`);
         return;
       }
       const updated = (data ?? []) as unknown as { id: string }[];
-      if (updated.length === 0) {
-        toast.error("Keine Zeilen aktualisiert – Filter matched nichts");
-        return;
-      }
-      if (updated.length !== ids.length) {
-        toast.warning(`Nur ${updated.length}/${ids.length} Ads aktualisiert`);
-      } else {
-        toast.success(`${getBrancheLabel(writeValue)} auf ${updated.length} Ads gesetzt`);
-      }
+      if (updated.length === 0) { toast.error("Keine Zeilen aktualisiert"); return; }
+      if (updated.length !== ids.length) toast.warning(`Nur ${updated.length}/${ids.length} Ads aktualisiert`);
+      else toast.success(`${getBrancheLabel(writeValue)} auf ${updated.length} Ads gesetzt`);
       onSaved();
     } catch (e: any) {
-      console.error("[KampagnenZuordnung] unexpected error:", e);
       toast.error(`Speichern fehlgeschlagen: ${e?.message ?? "unbekannt"}`);
     } finally {
       setSavingKey(null);
     }
   };
 
-  const updateAd = async (ad: MetaAdRow, picked: string) => {
+  const updateAdBranche = async (ad: MetaAdRow, picked: string) => {
     const writeValue = resolveBrancheWriteValue(picked);
     if (!writeValue) return;
     setSavingKey(`ad:${ad.id}`);
     try {
-      console.log("[KampagnenZuordnung] updating ad:", ad.id, "to branche:", writeValue);
       const { data, error } = await supabase
         .from("referenz_meta_ads" as any)
         .update({ linked_branche_id: writeValue })
         .eq("id", ad.id)
         .select("id");
-      if (error) {
-        console.error("[KampagnenZuordnung] update error:", error);
-        toast.error(`Speichern fehlgeschlagen: ${error.message}`);
-        return;
-      }
-      if (!data || data.length === 0) {
-        toast.error("Keine Zeilen aktualisiert – Filter matched nichts");
-        return;
-      }
+      if (error) { toast.error(`Speichern fehlgeschlagen: ${error.message}`); return; }
+      if (!data || data.length === 0) { toast.error("Keine Zeilen aktualisiert"); return; }
       toast.success(`${getBrancheLabel(writeValue)} gesetzt`);
       onSaved();
     } catch (e: any) {
-      console.error("[KampagnenZuordnung] unexpected error:", e);
+      toast.error(`Speichern fehlgeschlagen: ${e?.message ?? "unbekannt"}`);
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const updateAccountClient = async (acc: AccountGroup, clientId: string) => {
+    if (!clientId) return;
+    setSavingKey(`client:${acc.key}`);
+    try {
+      const ids = acc.ads.map((a) => a.id);
+      console.log("[KampagnenZuordnung] updating ads:", ids, "to client:", clientId);
+      const { data, error } = await supabase
+        .from("referenz_meta_ads" as any)
+        .update({ linked_client_id: clientId })
+        .in("id", ids)
+        .select("id");
+      if (error) {
+        toast.error(`Speichern fehlgeschlagen: ${error.message}`);
+        return;
+      }
+      const updated = (data ?? []) as unknown as { id: string }[];
+      if (updated.length === 0) { toast.error("Keine Zeilen aktualisiert"); return; }
+      const clientName = clients.find((c) => c.id === clientId)?.name ?? "Kunde";
+      if (updated.length !== ids.length) toast.warning(`Nur ${updated.length}/${ids.length} Ads aktualisiert`);
+      else toast.success(`${clientName} auf ${updated.length} Ads gesetzt`);
+      onSaved();
+    } catch (e: any) {
       toast.error(`Speichern fehlgeschlagen: ${e?.message ?? "unbekannt"}`);
     } finally {
       setSavingKey(null);
@@ -218,7 +274,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
           <DialogTitle>Kampagnen-Zuordnung</DialogTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Branche pro Werbeaccount → Kampagne → Anzeige. Kampagnen-Auswahl überschreibt alle Ads der Kampagne.
+            Kunde pro Werbeaccount, Branche pro Kampagne oder Anzeige. Werbeaccount/Kampagnen-Auswahl überschreibt alle zugehörigen Ads.
           </p>
           <div className="relative mt-3">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -237,21 +293,55 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
           ) : (
             visible.map((acc) => {
               const expanded = openAccounts.has(acc.key);
+              const clientStatus = summarizeClients(acc.ads);
+              const missingClient = accountHasMissingClient(acc);
+              const accSaving = savingKey === `client:${acc.key}`;
               return (
-                <div key={acc.key} className="rounded-lg border border-border bg-card">
-                  <button
-                    type="button"
-                    onClick={() => toggleAccount(acc.key)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
-                  >
-                    <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{acc.name}</div>
-                      <div className="text-xs text-muted-foreground tabular-nums">
-                        {acc.campaigns.length} Kampagnen · {acc.totalAds} Ads
+                <div
+                  key={acc.key}
+                  className={`rounded-lg border bg-card ${missingClient ? "border-l-2 border-l-amber-500 border-border" : "border-border"}`}
+                >
+                  <div className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
+                    <button
+                      type="button"
+                      onClick={() => toggleAccount(acc.key)}
+                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                    >
+                      <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate flex items-center gap-2">
+                          {acc.name}
+                          {missingClient && <MissingPill>Kunde fehlt</MissingPill>}
+                        </div>
+                        <div className="text-xs text-muted-foreground tabular-nums">
+                          {acc.campaigns.length} Kampagnen · {acc.totalAds} Ads ·{" "}
+                          <span
+                            className={
+                              clientStatus.tone === "ok"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : clientStatus.tone === "mixed"
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-muted-foreground"
+                            }
+                          >
+                            Kunde: {clientStatus.label}
+                          </span>
+                        </div>
                       </div>
+                    </button>
+                    <div className="w-64 shrink-0 flex items-center gap-2">
+                      <Combobox
+                        value={clientStatus.selected}
+                        onChange={(v) => v && updateAccountClient(acc, v)}
+                        options={clientOptions}
+                        placeholder="Kunde für Account"
+                        allowCreate={false}
+                        compact
+                        disabled={accSaving}
+                      />
+                      {accSaving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                     </div>
-                  </button>
+                  </div>
 
                   {expanded && (
                     <div className="border-t border-border divide-y divide-border">
@@ -260,8 +350,12 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                         const status = summarizeBranchen(camp.ads.map((a) => pickBrancheLabel(a as any)));
                         const campValues = new Set(camp.ads.map((a) => adBrancheValue(a)).filter(Boolean));
                         const campSelected = campValues.size === 1 ? Array.from(campValues)[0]! : "";
+                        const missingBranche = campaignHasMissingBranche(camp);
                         return (
-                          <div key={camp.key} className="bg-background/40">
+                          <div
+                            key={camp.key}
+                            className={`bg-background/40 ${missingBranche ? "border-l-2 border-l-amber-500" : ""}`}
+                          >
                             <div className="flex items-center gap-3 px-4 py-2.5">
                               <button
                                 type="button"
@@ -270,7 +364,10 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                               >
                                 <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${cExpanded ? "rotate-90" : ""}`} />
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-sm truncate">{camp.name}</div>
+                                  <div className="text-sm truncate flex items-center gap-2">
+                                    {camp.name}
+                                    {missingBranche && <MissingPill>Branche fehlt</MissingPill>}
+                                  </div>
                                   <div className="text-[11px] text-muted-foreground tabular-nums">
                                     {camp.ads.length} Ads ·{" "}
                                     <span
@@ -290,7 +387,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                               <div className="w-64 shrink-0 flex items-center gap-2">
                                 <Combobox
                                   value={campSelected}
-                                  onChange={(v) => v && updateCampaign(camp, v)}
+                                  onChange={(v) => v && updateCampaignBranche(camp, v)}
                                   options={brancheOptions}
                                   placeholder="Branche für Kampagne"
                                   allowCreate={false}
@@ -308,16 +405,23 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                                   const title = ad.custom_title ?? ad.meta_ad_name ?? "(ohne Titel)";
                                   const current = adBrancheValue(ad);
                                   const saving = savingKey === `ad:${ad.id}`;
+                                  const adMissing = !pickBrancheLabel(ad as any);
                                   return (
-                                    <div key={ad.id} className="flex items-center gap-3 pl-6 pr-1 py-1.5 rounded-md hover:bg-muted/30">
+                                    <div
+                                      key={ad.id}
+                                      className={`flex items-center gap-3 pl-6 pr-1 py-1.5 rounded-md hover:bg-muted/30 ${adMissing ? "border-l-2 border-l-amber-500" : ""}`}
+                                    >
                                       <div className="w-10 h-10 rounded bg-muted overflow-hidden shrink-0">
                                         {thumb ? <img src={thumb} alt="" className="w-full h-full object-cover" /> : null}
                                       </div>
-                                      <div className="flex-1 min-w-0 text-xs truncate">{title}</div>
+                                      <div className="flex-1 min-w-0 text-xs truncate flex items-center gap-2">
+                                        <span className="truncate">{title}</span>
+                                        {adMissing && <MissingPill>Branche fehlt</MissingPill>}
+                                      </div>
                                       <div className="w-56 shrink-0 flex items-center gap-2">
                                         <Combobox
                                           value={current}
-                                          onChange={(v) => v && updateAd(ad, v)}
+                                          onChange={(v) => v && updateAdBranche(ad, v)}
                                           options={brancheOptions}
                                           placeholder="Branche"
                                           allowCreate={false}
