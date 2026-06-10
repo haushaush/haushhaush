@@ -25,6 +25,8 @@ interface ComboboxProps {
   compact?: boolean;
   disabled?: boolean;
   className?: string;
+  /** Optional override for the trigger display label (when closed) */
+  selectedLabel?: string;
   /** Optional footer action shown at the bottom of the dropdown */
   onAddNew?: () => void;
   addNewLabel?: string;
