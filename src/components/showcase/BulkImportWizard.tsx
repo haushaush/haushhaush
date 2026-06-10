@@ -1,22 +1,34 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { useMetaAds } from '@/contexts/MetaAdsContext';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useMetaAds } from "@/contexts/MetaAdsContext";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import {
-  X, Check, Facebook, Calendar, Activity, Filter, Flame, Loader2,
-  Download, Search as SearchIcon, Sparkles, Zap, Wand2, HelpCircle,
-} from 'lucide-react';
-import { Combobox, type ComboboxOption } from '@/components/ui/Combobox';
-import { useBranchen, useUnternehmen } from '@/hooks/useBranchenUnternehmen';
-import { useKundenMapping, guessBrancheFromText, type KundeMatch } from '@/hooks/useKundenMapping';
+  X,
+  Check,
+  Facebook,
+  Calendar,
+  Activity,
+  Filter,
+  Flame,
+  Loader2,
+  Download,
+  Search as SearchIcon,
+  Sparkles,
+  Zap,
+  Wand2,
+  HelpCircle,
+} from "lucide-react";
+import { Combobox, type ComboboxOption } from "@/components/ui/Combobox";
+import { useBranchen, useUnternehmen } from "@/hooks/useBranchenUnternehmen";
+import { useKundenMapping, guessBrancheFromText, type KundeMatch } from "@/hooks/useKundenMapping";
 
 // ───────────────────────────────────────────────────────────────────
 // Types
 // ───────────────────────────────────────────────────────────────────
-type Step = 'source' | 'filter' | 'select' | 'enrich' | 'import' | 'done';
+type Step = "source" | "filter" | "select" | "enrich" | "import" | "done";
 
 interface ImportableAd {
   meta_ad_id: string;
@@ -40,8 +52,8 @@ interface Enrichment {
 }
 
 interface FilterState {
-  datePreset: 'last_30d' | 'last_90d' | 'last_180d' | 'maximum';
-  status: 'ACTIVE' | 'PAUSED' | 'ALL';
+  datePreset: "last_30d" | "last_90d" | "last_180d" | "maximum";
+  status: "ACTIVE" | "PAUSED" | "ALL";
   minLeads: number;
   minSpend: number;
 }
@@ -49,7 +61,7 @@ interface FilterState {
 interface ProgressEntry {
   adId: string;
   adName: string;
-  status: 'pending' | 'success' | 'error';
+  status: "pending" | "success" | "error";
   message: string;
 }
 
@@ -78,18 +90,18 @@ interface Props {
 }
 
 const STEPS: { key: Step; label: string }[] = [
-  { key: 'source', label: 'Quelle' },
-  { key: 'filter', label: 'Filter' },
-  { key: 'select', label: 'Auswahl' },
-  { key: 'enrich', label: 'Zuordnen' },
-  { key: 'import', label: 'Import' },
+  { key: "source", label: "Quelle" },
+  { key: "filter", label: "Filter" },
+  { key: "select", label: "Auswahl" },
+  { key: "enrich", label: "Zuordnen" },
+  { key: "import", label: "Import" },
 ];
 
 const DATE_PRESETS = [
-  { value: 'last_30d', label: 'Letzte 30 Tage' },
-  { value: 'last_90d', label: 'Letzte 90 Tage' },
-  { value: 'last_180d', label: 'Letzte 6 Monate' },
-  { value: 'maximum', label: 'Gesamt' },
+  { value: "last_30d", label: "Letzte 30 Tage" },
+  { value: "last_90d", label: "Letzte 90 Tage" },
+  { value: "last_180d", label: "Letzte 6 Monate" },
+  { value: "maximum", label: "Gesamt" },
 ] as const;
 
 export function BulkImportWizard({ open, onClose, onImported }: Props) {
@@ -99,11 +111,11 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   const { unternehmen: unternehmenPool, createUnternehmen } = useUnternehmen();
   const { matchKunde } = useKundenMapping();
 
-  const [step, setStep] = useState<Step>('source');
-  const [accountId, setAccountId] = useState<string>('');
+  const [step, setStep] = useState<Step>("source");
+  const [accountId, setAccountId] = useState<string>("");
   const [filters, setFilters] = useState<FilterState>({
-    datePreset: 'last_90d',
-    status: 'ACTIVE',
+    datePreset: "last_90d",
+    status: "ACTIVE",
     minLeads: 0,
     minSpend: 0,
   });
@@ -112,11 +124,15 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   const [adsLoading, setAdsLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [enrichment, setEnrichment] = useState<Record<string, Enrichment>>({});
-  const [bulkBranche, setBulkBranche] = useState('');
-  const [bulkUnternehmen, setBulkUnternehmen] = useState('');
+  const [bulkBranche, setBulkBranche] = useState("");
+  const [bulkUnternehmen, setBulkUnternehmen] = useState("");
 
   const [progress, setProgress] = useState<ImportProgress>({
-    done: 0, total: 0, recent: [], errors: [], skipped: [],
+    done: 0,
+    total: 0,
+    recent: [],
+    errors: [],
+    skipped: [],
   });
 
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -124,12 +140,12 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   // Reset on open — but if there's an active job in localStorage, resume it
   useEffect(() => {
     if (open) {
-      const existingJobId = localStorage.getItem('showcase_import_active_job');
+      const existingJobId = localStorage.getItem("showcase_import_active_job");
       if (existingJobId) {
         setActiveJobId(existingJobId);
-        setStep('import');
+        setStep("import");
       } else {
-        setStep('source');
+        setStep("source");
         setSelected(new Set());
         setEnrichment({});
         setProgress({ done: 0, total: 0, recent: [], errors: [], skipped: [] });
@@ -148,47 +164,60 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
         done: row.done ?? 0,
         total: row.total ?? 0,
         recent: (row.recent ?? []).map((r: any) => ({
-          adId: r.adId, adName: r.adId, status: r.status, message: r.message,
+          adId: r.adId,
+          adName: r.adId,
+          status: r.status,
+          message: r.message,
         })),
         errors: (row.errors ?? []).map((e: any) => ({ adId: e.adId, adName: e.adId, message: e.message })),
         skipped: (row.skipped ?? []).map((s: any) => ({ adId: s.adId, adName: s.adId, reason: s.reason })),
       });
-      if (row.status === 'done') {
-        localStorage.removeItem('showcase_import_active_job');
-        setStep('done');
+      if (row.status === "done") {
+        localStorage.removeItem("showcase_import_active_job");
+        setStep("done");
         onImported();
       }
     };
 
     // Initial fetch + kick stale jobs again (e.g. after function timeout/refresh)
-    supabase.from('showcase_import_jobs' as any).select('*').eq('id', activeJobId).maybeSingle()
+    supabase
+      .from("showcase_import_jobs" as any)
+      .select("*")
+      .eq("id", activeJobId)
+      .maybeSingle()
       .then(({ data }) => {
         apply(data);
         const row = data as any;
-        if (!row || row.status === 'done') return;
+        if (!row || row.status === "done") return;
         const updatedAt = row.updated_at ? new Date(row.updated_at).getTime() : 0;
         const isStale = Date.now() - updatedAt > 45_000;
-        if (row.status === 'queued' || isStale) {
-          supabase.functions.invoke('process-showcase-import-job', { body: { jobId: activeJobId } });
+        if (row.status === "queued" || isStale) {
+          supabase.functions.invoke("process-showcase-import-job", { body: { jobId: activeJobId } });
         }
       });
 
     const channel = supabase
       .channel(`showcase-import-job-${activeJobId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'showcase_import_jobs',
-        filter: `id=eq.${activeJobId}`,
-      }, (payload) => apply(payload.new))
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "showcase_import_jobs",
+          filter: `id=eq.${activeJobId}`,
+        },
+        (payload) => apply(payload.new),
+      )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [activeJobId]);
 
   // Auto-match enrichment when entering enrich step
   const runAutoMatch = (force = false) => {
-    const selectedAds = ads.filter(a => selected.has(a.meta_ad_id));
+    const selectedAds = ads.filter((a) => selected.has(a.meta_ad_id));
     const next: Record<string, Enrichment> = force ? {} : { ...enrichment };
     let matched = 0;
     let guessed = 0;
@@ -201,18 +230,18 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
           unternehmen: k.unternehmen,
           kunde_id: k.kunde_id,
           auto_matched: true,
-          match_reason: `Über Werbekonto ${ad.meta_account_name || ad.meta_account_id}${k.kundenname ? ` → ${k.kundenname}` : ''}`,
+          match_reason: `Über Werbekonto ${ad.meta_account_name || ad.meta_account_id}${k.kundenname ? ` → ${k.kundenname}` : ""}`,
         };
         matched++;
         continue;
       }
-      const guess = guessBrancheFromText(`${ad.meta_ad_name} ${ad.meta_campaign_name ?? ''}`);
+      const guess = guessBrancheFromText(`${ad.meta_ad_name} ${ad.meta_campaign_name ?? ""}`);
       if (guess) {
         next[ad.meta_ad_id] = {
           branche: guess,
-          unternehmen: '',
+          unternehmen: "",
           auto_matched: false,
-          match_reason: 'Aus Anzeigen-Name erkannt',
+          match_reason: "Aus Anzeigen-Name erkannt",
         };
         guessed++;
       }
@@ -222,35 +251,38 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   };
 
   useEffect(() => {
-    if (step !== 'enrich') return;
+    if (step !== "enrich") return;
     runAutoMatch(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
   // Blacklist (loaded once when wizard opens)
   const [blacklist, setBlacklist] = useState<BlacklistSet>({
-    accounts: new Set(), ads: new Set(), campaigns: new Set(), keywords: [],
+    accounts: new Set(),
+    ads: new Set(),
+    campaigns: new Set(),
+    keywords: [],
   });
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const { data } = await supabase.from('import_blacklist' as any).select('scope, target_id');
+      const { data } = await supabase.from("import_blacklist" as any).select("scope, target_id");
       const set: BlacklistSet = { accounts: new Set(), ads: new Set(), campaigns: new Set(), keywords: [] };
-      for (const b of ((data ?? []) as any[]) as Array<{ scope: string; target_id: string }>) {
-        if (b.scope === 'meta_account') set.accounts.add(b.target_id);
-        else if (b.scope === 'meta_ad') set.ads.add(b.target_id);
-        else if (b.scope === 'meta_campaign') set.campaigns.add(b.target_id);
-        else if (b.scope === 'keyword') set.keywords.push(b.target_id.toLowerCase());
+      for (const b of (data ?? []) as any[] as Array<{ scope: string; target_id: string }>) {
+        if (b.scope === "meta_account") set.accounts.add(b.target_id);
+        else if (b.scope === "meta_ad") set.ads.add(b.target_id);
+        else if (b.scope === "meta_campaign") set.campaigns.add(b.target_id);
+        else if (b.scope === "keyword") set.keywords.push(b.target_id.toLowerCase());
       }
       setBlacklist(set);
     })();
   }, [open]);
 
   const isBlacklisted = (ad: ImportableAd): string | null => {
-    if (blacklist.ads.has(ad.meta_ad_id)) return 'Anzeige';
-    if (blacklist.accounts.has(ad.meta_account_id)) return 'Werbekonto';
-    const name = (ad.meta_ad_name || '').toLowerCase();
-    const kw = blacklist.keywords.find(k => name.includes(k));
+    if (blacklist.ads.has(ad.meta_ad_id)) return "Anzeige";
+    if (blacklist.accounts.has(ad.meta_account_id)) return "Werbekonto";
+    const name = (ad.meta_ad_name || "").toLowerCase();
+    const kw = blacklist.keywords.find((k) => name.includes(k));
     if (kw) return `Keyword "${kw}"`;
     return null;
   };
@@ -262,19 +294,19 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
     if (!open) return;
     (async () => {
       const { data } = await supabase
-        .from('close_deals' as any)
-        .select('branche, unternehmen')
+        .from("close_deals" as any)
+        .select("branche, unternehmen")
         .limit(2000);
       const b = new Set<string>();
       const u = new Set<string>();
-      ((data ?? []) as any[]).forEach(r => {
-        const br = typeof r.branche === 'string' ? r.branche.trim() : '';
-        const un = typeof r.unternehmen === 'string' ? r.unternehmen.trim() : '';
+      ((data ?? []) as any[]).forEach((r) => {
+        const br = typeof r.branche === "string" ? r.branche.trim() : "";
+        const un = typeof r.unternehmen === "string" ? r.unternehmen.trim() : "";
         if (br) b.add(br);
         if (un) u.add(un);
       });
-      setBrancheOpts([...b].sort((a, b) => a.localeCompare(b, 'de')));
-      setUnternehmenOpts([...u].sort((a, b) => a.localeCompare(b, 'de')));
+      setBrancheOpts([...b].sort((a, b) => a.localeCompare(b, "de")));
+      setUnternehmenOpts([...u].sort((a, b) => a.localeCompare(b, "de")));
     })();
   }, [open]);
 
@@ -288,8 +320,8 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       for (let i = 0; i < 8; i++) {
         const { data: sess } = await supabase.auth.getSession();
         const token = sess.session?.access_token;
-        if (!token) throw new Error('Nicht eingeloggt – bitte erneut anmelden.');
-        const { data, error } = await supabase.functions.invoke('meta-ads-list-importable', {
+        if (!token) throw new Error("Nicht eingeloggt – bitte erneut anmelden.");
+        const { data, error } = await supabase.functions.invoke("meta-ads-list-importable", {
           body: {
             accountId,
             status: filters.status,
@@ -307,16 +339,17 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
         if (!after) break;
       }
       // Apply min thresholds + blacklist filter locally
-      const filtered = all.filter(a => {
+      const filtered = all.filter((a) => {
         const m = a.metrics ?? {};
         if (filters.minLeads > 0 && (m.leads ?? 0) < filters.minLeads) return false;
         if (filters.minSpend > 0 && (m.spend ?? 0) < filters.minSpend) return false;
         if (isBlacklisted(a)) return false;
+        if (a.already_imported) return false;
         return true;
       });
       setAds(filtered);
     } catch (e) {
-      toast({ title: 'Fehler beim Laden', description: (e as Error).message, variant: 'destructive' });
+      toast({ title: "Fehler beim Laden", description: (e as Error).message, variant: "destructive" });
       setAds([]);
     } finally {
       setAdsLoading(false);
@@ -332,33 +365,33 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   };
 
   const handleNext = async () => {
-    if (step === 'source' && accountId) {
-      setStep('filter');
-    } else if (step === 'filter') {
-      setStep('select');
+    if (step === "source" && accountId) {
+      setStep("filter");
+    } else if (step === "filter") {
+      setStep("select");
       await fetchAds();
-    } else if (step === 'select' && selected.size > 0) {
-      setStep('enrich');
-    } else if (step === 'enrich') {
+    } else if (step === "select" && selected.size > 0) {
+      setStep("enrich");
+    } else if (step === "enrich") {
       await runImport();
     }
   };
 
   const handleBack = () => {
-    const order: Step[] = ['source', 'filter', 'select', 'enrich'];
+    const order: Step[] = ["source", "filter", "select", "enrich"];
     const idx = order.indexOf(step);
     if (idx > 0) setStep(order[idx - 1]);
   };
 
   const runImport = async () => {
-    setStep('import');
+    setStep("import");
     const ids = Array.from(selected);
 
     // Pre-filter blacklisted client-side
     const allowed: string[] = [];
     const preSkipped: { adId: string; adName: string; reason: string }[] = [];
     for (const adId of ids) {
-      const ad = ads.find(a => a.meta_ad_id === adId);
+      const ad = ads.find((a) => a.meta_ad_id === adId);
       const adName = ad?.meta_ad_name ?? adId;
       const reason = ad ? isBlacklisted(ad) : null;
       if (reason) preSkipped.push({ adId, adName, reason });
@@ -368,7 +401,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
     setProgress({ done: 0, total: ids.length, recent: [], errors: [], skipped: preSkipped });
 
     if (allowed.length === 0) {
-      setStep('done');
+      setStep("done");
       onImported();
       return;
     }
@@ -376,7 +409,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
     try {
       const { data: sess } = await supabase.auth.getSession();
       const userId = sess.session?.user?.id;
-      if (!userId) throw new Error('Nicht eingeloggt – bitte erneut anmelden.');
+      if (!userId) throw new Error("Nicht eingeloggt – bitte erneut anmelden.");
 
       const enrichmentPayload: Record<string, { branche?: string; unternehmen?: string }> = {};
       for (const id of allowed) {
@@ -387,60 +420,71 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       }
 
       const { data: job, error: insErr } = await supabase
-        .from('showcase_import_jobs' as any)
+        .from("showcase_import_jobs" as any)
         .insert({
           user_id: userId,
           ad_ids: allowed,
           enrichment: enrichmentPayload,
           total: allowed.length,
         })
-        .select('id')
+        .select("id")
         .single();
 
-      if (insErr || !job) throw new Error(insErr?.message || 'Job konnte nicht erstellt werden');
+      if (insErr || !job) throw new Error(insErr?.message || "Job konnte nicht erstellt werden");
 
       const jobId = (job as any).id as string;
-      localStorage.setItem('showcase_import_active_job', jobId);
+      localStorage.setItem("showcase_import_active_job", jobId);
       setActiveJobId(jobId);
 
       // Kick off background processing — returns immediately (202)
-      const { error: invokeErr } = await supabase.functions.invoke('process-showcase-import-job', {
+      const { error: invokeErr } = await supabase.functions.invoke("process-showcase-import-job", {
         body: { jobId },
       });
       if (invokeErr) throw invokeErr;
     } catch (e) {
-      toast({ title: 'Fehler', description: (e as Error).message, variant: 'destructive' });
-      setStep('enrich');
+      toast({ title: "Fehler", description: (e as Error).message, variant: "destructive" });
+      setStep("enrich");
     }
   };
 
   const applyBulk = () => {
     const update: Record<string, Enrichment> = { ...enrichment };
-    selected.forEach(id => {
+    selected.forEach((id) => {
       update[id] = {
         branche: bulkBranche || update[id]?.branche,
         unternehmen: bulkUnternehmen || update[id]?.unternehmen,
       };
     });
     setEnrichment(update);
-    toast({ title: 'Übernommen', description: `Auf ${selected.size} Anzeigen angewendet.` });
+    toast({ title: "Übernommen", description: `Auf ${selected.size} Anzeigen angewendet.` });
   };
 
   const subtitle = useMemo(() => {
     switch (step) {
-      case 'source': return 'Wähle das Werbekonto';
-      case 'filter': return 'Filter setzen, um relevante Anzeigen zu finden';
-      case 'select': return `${selected.size} von ${ads.length} ausgewählt`;
-      case 'enrich': return 'Branche und Unternehmen zuordnen';
-      case 'import': return 'Wird importiert...';
-      case 'done': return 'Fertig';
+      case "source":
+        return "Wähle das Werbekonto";
+      case "filter":
+        return "Filter setzen, um relevante Anzeigen zu finden";
+      case "select":
+        return `${selected.size} von ${ads.length} ausgewählt`;
+      case "enrich":
+        return "Branche und Unternehmen zuordnen";
+      case "import":
+        return "Wird importiert...";
+      case "done":
+        return "Fertig";
     }
   }, [step, selected.size, ads.length]);
 
-  const canCloseRequest = step !== 'import';
+  const canCloseRequest = step !== "import";
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v && canCloseRequest) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v && canCloseRequest) onClose();
+      }}
+    >
       <DialogContent persistent className="max-w-6xl h-[88vh] flex flex-col p-0 overflow-hidden gap-0">
         {/* HEADER (Radix Dialog renders its own close button automatically) */}
         <div className="px-6 py-5 pr-14 border-b border-gray-200 dark:border-gray-800 shrink-0">
@@ -455,22 +499,24 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
 
         {/* CONTENT */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
-          {step === 'source' && (
+          {step === "source" && (
             <SourceStep
               accounts={accounts.filter((acc: any) => {
-                const raw = String(acc.account_id ?? acc.id ?? '');
-                const noPrefix = raw.replace(/^act_/, '');
-                return !blacklist.accounts.has(raw)
-                  && !blacklist.accounts.has(noPrefix)
-                  && !blacklist.accounts.has(`act_${noPrefix}`);
+                const raw = String(acc.account_id ?? acc.id ?? "");
+                const noPrefix = raw.replace(/^act_/, "");
+                return (
+                  !blacklist.accounts.has(raw) &&
+                  !blacklist.accounts.has(noPrefix) &&
+                  !blacklist.accounts.has(`act_${noPrefix}`)
+                );
               })}
               loading={loadingAccounts}
               selectedAccount={accountId}
               onChange={setAccountId}
             />
           )}
-          {step === 'filter' && <FilterStep filters={filters} onChange={setFilters} />}
-          {step === 'select' && (
+          {step === "filter" && <FilterStep filters={filters} onChange={setFilters} />}
+          {step === "select" && (
             <SelectStep
               ads={ads}
               loading={adsLoading}
@@ -479,9 +525,9 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
               isTop={isTopPerformer}
             />
           )}
-          {step === 'enrich' && (
+          {step === "enrich" && (
             <EnrichStep
-              ads={ads.filter(a => selected.has(a.meta_ad_id))}
+              ads={ads.filter((a) => selected.has(a.meta_ad_id))}
               enrichment={enrichment}
               onEnrichmentChange={setEnrichment}
               branchen={branchen}
@@ -495,30 +541,29 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
               onApplyBulk={applyBulk}
               onRerunAutoMatch={() => {
                 const r = runAutoMatch(true);
-                toast({ title: 'Auto-Match aktualisiert', description: `${r.matched} via Kunde · ${r.guessed} aus Name` });
+                toast({
+                  title: "Auto-Match aktualisiert",
+                  description: `${r.matched} via Kunde · ${r.guessed} aus Name`,
+                });
               }}
             />
           )}
-          {step === 'import' && <ImportStep progress={progress} />}
-          {step === 'done' && <DoneStep progress={progress} onClose={onClose} />}
+          {step === "import" && <ImportStep progress={progress} />}
+          {step === "done" && <DoneStep progress={progress} onClose={onClose} />}
         </div>
 
         {/* FOOTER */}
-        {step !== 'import' && step !== 'done' && (
+        {step !== "import" && step !== "done" && (
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0 bg-gray-50 dark:bg-gray-900/50">
-            <Button variant="ghost" onClick={handleBack} disabled={step === 'source'}>
+            <Button variant="ghost" onClick={handleBack} disabled={step === "source"}>
               Zurück
             </Button>
             <Button
               variant="accent"
               onClick={handleNext}
-              disabled={
-                (step === 'source' && !accountId) ||
-                (step === 'select' && selected.size === 0) ||
-                adsLoading
-              }
+              disabled={(step === "source" && !accountId) || (step === "select" && selected.size === 0) || adsLoading}
             >
-              {step === 'enrich' ? `${selected.size} importieren →` : 'Weiter →'}
+              {step === "enrich" ? `${selected.size} importieren →` : "Weiter →"}
             </Button>
           </div>
         )}
@@ -531,8 +576,8 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
 // Stepper
 // ───────────────────────────────────────────────────────────────────
 function StepperBar({ currentStep }: { currentStep: Step }) {
-  const currentIdx = STEPS.findIndex(s => s.key === currentStep);
-  const isDoneAll = currentStep === 'done';
+  const currentIdx = STEPS.findIndex((s) => s.key === currentStep);
+  const isDoneAll = currentStep === "done";
 
   return (
     <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 shrink-0">
@@ -543,28 +588,34 @@ function StepperBar({ currentStep }: { currentStep: Step }) {
           return (
             <Fragment key={s.key}>
               <div className="flex items-center gap-2">
-                <div className={cn(
-                  'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all',
-                  isActive && 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 scale-110',
-                  isDone && 'bg-emerald-500 text-white',
-                  !isActive && !isDone && 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500',
-                )}>
+                <div
+                  className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all",
+                    isActive && "bg-gray-900 dark:bg-white text-white dark:text-gray-900 scale-110",
+                    isDone && "bg-emerald-500 text-white",
+                    !isActive && !isDone && "bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-500",
+                  )}
+                >
                   {isDone ? <Check className="w-3.5 h-3.5" /> : i + 1}
                 </div>
-                <span className={cn(
-                  'text-sm font-semibold transition-colors hidden md:inline',
-                  isActive && 'text-gray-900 dark:text-white',
-                  isDone && 'text-emerald-600 dark:text-emerald-400',
-                  !isActive && !isDone && 'text-gray-400 dark:text-gray-500',
-                )}>
+                <span
+                  className={cn(
+                    "text-sm font-semibold transition-colors hidden md:inline",
+                    isActive && "text-gray-900 dark:text-white",
+                    isDone && "text-emerald-600 dark:text-emerald-400",
+                    !isActive && !isDone && "text-gray-400 dark:text-gray-500",
+                  )}
+                >
                   {s.label}
                 </span>
               </div>
               {i < STEPS.length - 1 && (
-                <div className={cn(
-                  'flex-1 h-0.5 rounded-full transition-colors',
-                  i < currentIdx || isDoneAll ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-800',
-                )} />
+                <div
+                  className={cn(
+                    "flex-1 h-0.5 rounded-full transition-colors",
+                    i < currentIdx || isDoneAll ? "bg-emerald-500" : "bg-gray-200 dark:bg-gray-800",
+                  )}
+                />
               )}
             </Fragment>
           );
@@ -577,11 +628,23 @@ function StepperBar({ currentStep }: { currentStep: Step }) {
 // ───────────────────────────────────────────────────────────────────
 // Step: Source
 // ───────────────────────────────────────────────────────────────────
-function SourceStep({ accounts, loading, selectedAccount, onChange }: {
-  accounts: any[]; loading: boolean; selectedAccount: string; onChange: (id: string) => void;
+function SourceStep({
+  accounts,
+  loading,
+  selectedAccount,
+  onChange,
+}: {
+  accounts: any[];
+  loading: boolean;
+  selectedAccount: string;
+  onChange: (id: string) => void;
 }) {
   if (loading) {
-    return <div className="py-12 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>;
+    return (
+      <div className="py-12 flex justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+      </div>
+    );
   }
   if (accounts.length === 0) {
     return (
@@ -590,7 +653,9 @@ function SourceStep({ accounts, loading, selectedAccount, onChange }: {
           <Facebook className="w-6 h-6 text-gray-400" />
         </div>
         <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Kein Meta-Account verbunden</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Verbinde zuerst dein Meta-Werbekonto unter Connections.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Verbinde zuerst dein Meta-Werbekonto unter Connections.
+        </p>
       </div>
     );
   }
@@ -599,15 +664,15 @@ function SourceStep({ accounts, loading, selectedAccount, onChange }: {
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
         Aus welchem Werbekonto sollen Anzeigen importiert werden?
       </p>
-      {accounts.map(acc => (
+      {accounts.map((acc) => (
         <button
           key={acc.id}
           onClick={() => onChange(acc.id)}
           className={cn(
-            'w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4',
+            "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
             selectedAccount === acc.id
-              ? 'border-gray-900 dark:border-white bg-gray-50 dark:bg-gray-800 ring-2 ring-gray-900/10 dark:ring-white/10'
-              : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900',
+              ? "border-gray-900 dark:border-white bg-gray-50 dark:bg-gray-800 ring-2 ring-gray-900/10 dark:ring-white/10"
+              : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900",
           )}
         >
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shrink-0">
@@ -616,7 +681,8 @@ function SourceStep({ accounts, loading, selectedAccount, onChange }: {
           <div className="flex-1 min-w-0">
             <div className="font-bold text-gray-900 dark:text-white truncate">{acc.name}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-              {acc.account_id ?? acc.id}{acc.currency ? ` · ${acc.currency}` : ''}
+              {acc.account_id ?? acc.id}
+              {acc.currency ? ` · ${acc.currency}` : ""}
             </div>
           </div>
           {selectedAccount === acc.id && <Check className="w-5 h-5 text-gray-900 dark:text-white shrink-0" />}
@@ -642,15 +708,15 @@ function FilterStep({ filters, onChange }: { filters: FilterState; onChange: (f:
           <h4 className="text-sm font-bold text-gray-900 dark:text-white">Zeitraum</h4>
         </div>
         <div className="flex flex-wrap gap-2">
-          {DATE_PRESETS.map(p => (
+          {DATE_PRESETS.map((p) => (
             <button
               key={p.value}
               onClick={() => onChange({ ...filters, datePreset: p.value })}
               className={cn(
-                'px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all',
+                "px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all",
                 filters.datePreset === p.value
-                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-transparent'
-                  : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400',
+                  ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-transparent"
+                  : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-gray-400",
               )}
             >
               {p.label}
@@ -666,24 +732,26 @@ function FilterStep({ filters, onChange }: { filters: FilterState; onChange: (f:
         </div>
         <div className="space-y-2">
           {[
-            { v: 'ACTIVE', l: 'Nur aktive Anzeigen', d: 'Aktuell laufend' },
-            { v: 'PAUSED', l: 'Pausierte', d: 'Manuell gestoppt' },
-            { v: 'ALL', l: 'Alle Anzeigen', d: 'Aktive + pausierte + beendete' },
-          ].map(o => (
+            { v: "ACTIVE", l: "Nur aktive Anzeigen", d: "Aktuell laufend" },
+            { v: "PAUSED", l: "Pausierte", d: "Manuell gestoppt" },
+            { v: "ALL", l: "Alle Anzeigen", d: "Aktive + pausierte + beendete" },
+          ].map((o) => (
             <button
               key={o.v}
               onClick={() => onChange({ ...filters, status: o.v as any })}
               className={cn(
-                'w-full text-left p-3 rounded-xl border transition-all flex items-start gap-3',
+                "w-full text-left p-3 rounded-xl border transition-all flex items-start gap-3",
                 filters.status === o.v
-                  ? 'border-gray-900 dark:border-white bg-gray-50 dark:bg-gray-800'
-                  : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700',
+                  ? "border-gray-900 dark:border-white bg-gray-50 dark:bg-gray-800"
+                  : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700",
               )}
             >
-              <div className={cn(
-                'w-4 h-4 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center',
-                filters.status === o.v ? 'border-gray-900 dark:border-white' : 'border-gray-300 dark:border-gray-600',
-              )}>
+              <div
+                className={cn(
+                  "w-4 h-4 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center",
+                  filters.status === o.v ? "border-gray-900 dark:border-white" : "border-gray-300 dark:border-gray-600",
+                )}
+              >
                 {filters.status === o.v && <div className="w-2 h-2 rounded-full bg-gray-900 dark:bg-white" />}
               </div>
               <div>
@@ -710,19 +778,21 @@ function FilterStep({ filters, onChange }: { filters: FilterState; onChange: (f:
             <input
               type="number"
               min={0}
-              value={filters.minLeads || ''}
-              onChange={e => onChange({ ...filters, minLeads: Number(e.target.value) || 0 })}
+              value={filters.minLeads || ""}
+              onChange={(e) => onChange({ ...filters, minLeads: Number(e.target.value) || 0 })}
               placeholder="z.B. 5"
               className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm tabular-nums focus:border-gray-400 dark:focus:border-gray-500 outline-none"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Min. Budget (€)</label>
+            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
+              Min. Budget (€)
+            </label>
             <input
               type="number"
               min={0}
-              value={filters.minSpend || ''}
-              onChange={e => onChange({ ...filters, minSpend: Number(e.target.value) || 0 })}
+              value={filters.minSpend || ""}
+              onChange={(e) => onChange({ ...filters, minSpend: Number(e.target.value) || 0 })}
               placeholder="z.B. 100"
               className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm tabular-nums focus:border-gray-400 dark:focus:border-gray-500 outline-none"
             />
@@ -736,33 +806,40 @@ function FilterStep({ filters, onChange }: { filters: FilterState; onChange: (f:
 // ───────────────────────────────────────────────────────────────────
 // Step: Select
 // ───────────────────────────────────────────────────────────────────
-function SelectStep({ ads, loading, selectedIds, onChange, isTop }: {
+function SelectStep({
+  ads,
+  loading,
+  selectedIds,
+  onChange,
+  isTop,
+}: {
   ads: ImportableAd[];
   loading: boolean;
   selectedIds: Set<string>;
   onChange: (s: Set<string>) => void;
   isTop: (a: ImportableAd) => boolean;
 }) {
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
     if (!search) return ads;
     const q = search.toLowerCase();
-    return ads.filter(a =>
-      a.meta_ad_name?.toLowerCase().includes(q) ||
-      a.meta_campaign_name?.toLowerCase().includes(q));
+    return ads.filter(
+      (a) => a.meta_ad_name?.toLowerCase().includes(q) || a.meta_campaign_name?.toLowerCase().includes(q),
+    );
   }, [ads, search]);
 
   const toggle = (id: string) => {
     const n = new Set(selectedIds);
-    if (n.has(id)) n.delete(id); else n.add(id);
+    if (n.has(id)) n.delete(id);
+    else n.add(id);
     onChange(n);
   };
 
-  const selectableAds = filtered.filter(a => !a.already_imported);
-  const selectAll = () => onChange(new Set(selectableAds.map(a => a.meta_ad_id)));
+  const selectableAds = filtered.filter((a) => !a.already_imported);
+  const selectAll = () => onChange(new Set(selectableAds.map((a) => a.meta_ad_id)));
   const selectNone = () => onChange(new Set());
-  const selectTop = () => onChange(new Set(selectableAds.filter(isTop).map(a => a.meta_ad_id)));
+  const selectTop = () => onChange(new Set(selectableAds.filter(isTop).map((a) => a.meta_ad_id)));
 
   if (loading) {
     return (
@@ -789,17 +866,25 @@ function SelectStep({ ads, loading, selectedIds, onChange, isTop }: {
     <div>
       <div className="flex items-center gap-3 mb-4 sticky top-0 bg-white dark:bg-gray-950 pb-3 -mx-6 px-6 z-10 border-b border-gray-100 dark:border-gray-900">
         <div className="flex items-center gap-2 flex-1">
-          <button onClick={selectAll} className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline">
+          <button
+            onClick={selectAll}
+            className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+          >
             Alle ({selectableAds.length})
           </button>
           <span className="text-gray-300 dark:text-gray-700">·</span>
-          <button onClick={selectTop} className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1">
+          <button
+            onClick={selectTop}
+            className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+          >
             <Flame className="w-3 h-3" /> Top-Performer
           </button>
           {selectedIds.size > 0 && (
             <>
               <span className="text-gray-300 dark:text-gray-700">·</span>
-              <button onClick={selectNone} className="text-xs font-semibold text-gray-500 hover:underline">Keine</button>
+              <button onClick={selectNone} className="text-xs font-semibold text-gray-500 hover:underline">
+                Keine
+              </button>
             </>
           )}
         </div>
@@ -807,7 +892,7 @@ function SelectStep({ ads, loading, selectedIds, onChange, isTop }: {
           <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Suche..."
             className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 outline-none focus:border-gray-400 w-44"
           />
@@ -819,7 +904,7 @@ function SelectStep({ ads, loading, selectedIds, onChange, isTop }: {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {filtered.map(ad => (
+        {filtered.map((ad) => (
           <SelectableAdCard
             key={ad.meta_ad_id}
             ad={ad}
@@ -832,9 +917,7 @@ function SelectStep({ ads, loading, selectedIds, onChange, isTop }: {
   );
 }
 
-function SelectableAdCard({ ad, selected, onToggle }: {
-  ad: ImportableAd; selected: boolean; onToggle: () => void;
-}) {
+function SelectableAdCard({ ad, selected, onToggle }: { ad: ImportableAd; selected: boolean; onToggle: () => void }) {
   const m = ad.metrics ?? {};
   const disabled = ad.already_imported;
   return (
@@ -842,10 +925,12 @@ function SelectableAdCard({ ad, selected, onToggle }: {
       onClick={disabled ? undefined : onToggle}
       disabled={disabled}
       className={cn(
-        'relative rounded-xl overflow-hidden border-2 transition-all text-left bg-white dark:bg-gray-900',
-        disabled && 'opacity-40 cursor-not-allowed',
-        !disabled && selected && 'border-gray-900 dark:border-white ring-2 ring-gray-900/15 dark:ring-white/15',
-        !disabled && !selected && 'border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600',
+        "relative rounded-xl overflow-hidden border-2 transition-all text-left bg-white dark:bg-gray-900",
+        disabled && "opacity-40 cursor-not-allowed",
+        !disabled && selected && "border-gray-900 dark:border-white ring-2 ring-gray-900/15 dark:ring-white/15",
+        !disabled &&
+          !selected &&
+          "border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600",
       )}
     >
       <div className="aspect-square bg-gray-100 dark:bg-gray-800 relative">
@@ -856,10 +941,14 @@ function SelectableAdCard({ ad, selected, onToggle }: {
             <SearchIcon className="w-6 h-6" />
           </div>
         )}
-        <div className={cn(
-          'absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-all',
-          selected ? 'bg-gray-900 dark:bg-white' : 'bg-white/85 dark:bg-gray-900/85 border border-gray-300 dark:border-gray-600',
-        )}>
+        <div
+          className={cn(
+            "absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-all",
+            selected
+              ? "bg-gray-900 dark:bg-white"
+              : "bg-white/85 dark:bg-gray-900/85 border border-gray-300 dark:border-gray-600",
+          )}
+        >
           {selected && <Check className="w-3.5 h-3.5 text-white dark:text-gray-900" />}
         </div>
         {disabled && (
@@ -878,7 +967,7 @@ function SelectableAdCard({ ad, selected, onToggle }: {
       </div>
       <div className="p-2.5">
         <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{ad.meta_ad_name}</p>
-        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate mt-0.5">{ad.meta_campaign_name ?? '—'}</p>
+        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate mt-0.5">{ad.meta_campaign_name ?? "—"}</p>
       </div>
     </button>
   );
@@ -888,10 +977,19 @@ function SelectableAdCard({ ad, selected, onToggle }: {
 // Step: Enrich
 // ───────────────────────────────────────────────────────────────────
 function EnrichStep({
-  ads, enrichment, onEnrichmentChange, branchen, unternehmenPool,
-  createBranche, createUnternehmen,
-  bulkBranche, setBulkBranche, bulkUnternehmen, setBulkUnternehmen,
-  onApplyBulk, onRerunAutoMatch,
+  ads,
+  enrichment,
+  onEnrichmentChange,
+  branchen,
+  unternehmenPool,
+  createBranche,
+  createUnternehmen,
+  bulkBranche,
+  setBulkBranche,
+  bulkUnternehmen,
+  setBulkUnternehmen,
+  onApplyBulk,
+  onRerunAutoMatch,
 }: {
   ads: ImportableAd[];
   enrichment: Record<string, Enrichment>;
@@ -916,15 +1014,15 @@ function EnrichStep({
     });
   };
 
-  const matchedCount = ads.filter(a => enrichment[a.meta_ad_id]?.auto_matched).length;
-  const guessedCount = ads.filter(a => {
+  const matchedCount = ads.filter((a) => enrichment[a.meta_ad_id]?.auto_matched).length;
+  const guessedCount = ads.filter((a) => {
     const e = enrichment[a.meta_ad_id];
     return e && !e.auto_matched && (e.branche || e.unternehmen);
   }).length;
   const unmatchedCount = ads.length - matchedCount - guessedCount;
 
   const visibleAds = showOnlyUnmatched
-    ? ads.filter(a => {
+    ? ads.filter((a) => {
         const e = enrichment[a.meta_ad_id];
         return !e || (!e.branche && !e.unternehmen);
       })
@@ -939,9 +1037,7 @@ function EnrichStep({
             <Wand2 className="w-5 h-5 text-white dark:text-gray-900" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-1">
-              Automatisches Matching
-            </h4>
+            <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-1">Automatisches Matching</h4>
             <div className="text-xs text-gray-600 dark:text-gray-400 flex flex-wrap items-center gap-x-1.5 gap-y-1">
               {matchedCount > 0 && (
                 <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
@@ -950,9 +1046,7 @@ function EnrichStep({
               )}
               {matchedCount > 0 && (guessedCount > 0 || unmatchedCount > 0) && <span className="text-gray-300">·</span>}
               {guessedCount > 0 && (
-                <span className="font-semibold text-blue-700 dark:text-blue-400">
-                  {guessedCount} aus Name erkannt
-                </span>
+                <span className="font-semibold text-blue-700 dark:text-blue-400">{guessedCount} aus Name erkannt</span>
               )}
               {guessedCount > 0 && unmatchedCount > 0 && <span className="text-gray-300">·</span>}
               {unmatchedCount > 0 && (
@@ -1017,15 +1111,15 @@ function EnrichStep({
           <h4 className="text-sm font-bold text-gray-900 dark:text-white">Pro Anzeige anpassen</h4>
           {unmatchedCount > 0 && (
             <button
-              onClick={() => setShowOnlyUnmatched(v => !v)}
+              onClick={() => setShowOnlyUnmatched((v) => !v)}
               className="text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
             >
-              {showOnlyUnmatched ? 'Alle anzeigen' : `Nur ${unmatchedCount} ohne Match`}
+              {showOnlyUnmatched ? "Alle anzeigen" : `Nur ${unmatchedCount} ohne Match`}
             </button>
           )}
         </div>
         <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[480px] overflow-y-auto overflow-x-visible">
-          {visibleAds.map(ad => {
+          {visibleAds.map((ad) => {
             const enr = enrichment[ad.meta_ad_id] ?? {};
             const isAuto = !!enr.auto_matched;
             const isGuessed = !isAuto && !!(enr.branche || enr.unternehmen);
@@ -1033,7 +1127,9 @@ function EnrichStep({
             return (
               <div key={ad.meta_ad_id} className="px-5 py-3 flex items-start gap-3">
                 <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden shrink-0">
-                  {ad.thumbnail_url ? <img src={ad.thumbnail_url} alt="" className="w-full h-full object-cover" /> : null}
+                  {ad.thumbnail_url ? (
+                    <img src={ad.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                  ) : null}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1055,12 +1151,12 @@ function EnrichStep({
                     )}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                    {ad.meta_account_name || ad.meta_campaign_name || '—'}
+                    {ad.meta_account_name || ad.meta_campaign_name || "—"}
                     {enr.match_reason && <span className="ml-1">· {enr.match_reason}</span>}
                   </p>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <Combobox
-                      value={enr.branche ?? ''}
+                      value={enr.branche ?? ""}
                       onChange={(v) => setOne(ad.meta_ad_id, { branche: v })}
                       options={branchen}
                       onCreate={createBranche}
@@ -1068,7 +1164,7 @@ function EnrichStep({
                       compact
                     />
                     <Combobox
-                      value={enr.unternehmen ?? ''}
+                      value={enr.unternehmen ?? ""}
                       onChange={(v) => setOne(ad.meta_ad_id, { unternehmen: v })}
                       options={unternehmenPool}
                       onCreate={createUnternehmen}
@@ -1114,27 +1210,26 @@ function ImportStep({ progress }: { progress: ImportProgress }) {
         <div className="flex justify-between mt-2 text-xs">
           <span className="text-gray-500 dark:text-gray-400 tabular-nums">{Math.round(percent)}%</span>
           {progress.errors.length > 0 && (
-            <span className="text-red-600 dark:text-red-400 font-bold">
-              {progress.errors.length} Fehler
-            </span>
+            <span className="text-red-600 dark:text-red-400 font-bold">{progress.errors.length} Fehler</span>
           )}
         </div>
       </div>
       <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3 max-h-48 overflow-y-auto">
         <div className="space-y-1.5 text-xs font-mono">
-          {progress.recent.length === 0 && (
-            <div className="text-gray-400 italic">Warte auf erste Aktion...</div>
-          )}
+          {progress.recent.length === 0 && <div className="text-gray-400 italic">Warte auf erste Aktion...</div>}
           {progress.recent.map((entry, i) => (
-            <div key={i} className={cn(
-              'flex items-center gap-2',
-              entry.status === 'success' && 'text-emerald-600 dark:text-emerald-400',
-              entry.status === 'error' && 'text-red-600 dark:text-red-400',
-              entry.status === 'pending' && 'text-gray-500 dark:text-gray-400',
-            )}>
-              {entry.status === 'success' && <Check className="w-3 h-3 shrink-0" />}
-              {entry.status === 'error' && <X className="w-3 h-3 shrink-0" />}
-              {entry.status === 'pending' && <Loader2 className="w-3 h-3 animate-spin shrink-0" />}
+            <div
+              key={i}
+              className={cn(
+                "flex items-center gap-2",
+                entry.status === "success" && "text-emerald-600 dark:text-emerald-400",
+                entry.status === "error" && "text-red-600 dark:text-red-400",
+                entry.status === "pending" && "text-gray-500 dark:text-gray-400",
+              )}
+            >
+              {entry.status === "success" && <Check className="w-3 h-3 shrink-0" />}
+              {entry.status === "error" && <X className="w-3 h-3 shrink-0" />}
+              {entry.status === "pending" && <Loader2 className="w-3 h-3 animate-spin shrink-0" />}
               <span className="truncate">{entry.message}</span>
             </div>
           ))}
@@ -1168,9 +1263,7 @@ function DoneStep({ progress, onClose }: { progress: ImportProgress; onClose: ()
             {progress.errors.length} konnten nicht importiert werden. Details unten.
           </p>
         ) : progress.skipped.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Alle Anzeigen wurden erfolgreich importiert.
-          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Alle Anzeigen wurden erfolgreich importiert.</p>
         ) : null}
       </div>
       {progress.errors.length > 0 && (
