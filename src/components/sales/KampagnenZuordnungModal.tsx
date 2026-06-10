@@ -295,11 +295,13 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
               const expanded = openAccounts.has(acc.key);
               const clientStatus = summarizeClients(acc.ads);
               const missingClient = accountHasMissingClient(acc);
+              const brancheStatus = summarizeBranchen(acc.ads.map((a) => pickBrancheLabel(a as any)));
+              const missingBranche = acc.ads.some((a) => !pickBrancheLabel(a as any));
               const accSaving = savingKey === `client:${acc.key}`;
               return (
                 <div
                   key={acc.key}
-                  className={`rounded-lg border bg-card ${missingClient ? "border-l-2 border-l-amber-500 border-border" : "border-border"}`}
+                  className={`rounded-lg border bg-card ${missingClient || missingBranche ? "border-l-2 border-l-amber-500 border-border" : "border-border"}`}
                 >
                   <div className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
                     <button
@@ -312,6 +314,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                         <div className="text-sm font-medium truncate flex items-center gap-2">
                           {acc.name}
                           {missingClient && <MissingPill>Kunde fehlt</MissingPill>}
+                          {missingBranche && <MissingPill>Branche fehlt</MissingPill>}
                         </div>
                         <div className="text-xs text-muted-foreground tabular-nums">
                           {acc.campaigns.length} Kampagnen · {acc.totalAds} Ads ·{" "}
@@ -325,6 +328,18 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                             }
                           >
                             Kunde: {clientStatus.label}
+                          </span>
+                          {" · "}
+                          <span
+                            className={
+                              brancheStatus.tone === "ok"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : brancheStatus.tone === "mixed"
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-muted-foreground"
+                            }
+                          >
+                            Branche: {brancheStatus.label}
                           </span>
                         </div>
                       </div>
