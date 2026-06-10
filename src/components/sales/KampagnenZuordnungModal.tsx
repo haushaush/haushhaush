@@ -338,6 +338,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                         allowCreate={false}
                         compact
                         disabled={accSaving}
+                        selectedLabel={clients.find((c) => c.id === clientStatus.selected)?.name}
                       />
                       {accSaving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                     </div>

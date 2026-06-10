@@ -25,6 +25,8 @@ interface ComboboxProps {
   compact?: boolean;
   disabled?: boolean;
   className?: string;
+  /** Optional override for the trigger display label (when closed) */
+  selectedLabel?: string;
   /** Optional footer action shown at the bottom of the dropdown */
   onAddNew?: () => void;
   addNewLabel?: string;
@@ -47,6 +49,7 @@ export function Combobox({
   compact = false,
   disabled = false,
   className,
+  selectedLabel,
   onAddNew,
   addNewLabel = 'Neu hinzufügen',
 }: ComboboxProps) {
@@ -58,7 +61,7 @@ export function Combobox({
 
   const normalized = options.map(normalizeOption);
   const currentOption = normalized.find((o) => o.value === value);
-  const displayValue = open ? search : currentOption?.label || value || '';
+  const displayValue = open ? search : (selectedLabel || currentOption?.label || value || '');
 
   const filtered = normalized.filter(
     (opt) =>
