@@ -158,7 +158,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
         toast.error(`Speichern fehlgeschlagen: ${error.message}`);
         return;
       }
-      const updated = (data ?? []) as { id: string }[];
+      const updated = (data ?? []) as unknown as { id: string }[];
       if (updated.length === 0) {
         toast.error("Keine Zeilen aktualisiert – Filter matched nichts");
         return;
