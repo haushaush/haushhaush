@@ -49,6 +49,7 @@ export function Combobox({
   compact = false,
   disabled = false,
   className,
+  selectedLabel,
   onAddNew,
   addNewLabel = 'Neu hinzufügen',
 }: ComboboxProps) {
