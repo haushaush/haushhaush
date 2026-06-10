@@ -167,23 +167,40 @@ export default function ReferenzWerbeanzeigenPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: ads }, { data: cats }, { data: opts }, { data: bl }, { data: cb }, { data: cl }] = await Promise.all([
-      supabase.from("referenz_meta_ads" as any)
-        .select(isPublic
-          ? `*, ${FK_EMBED_ALL}`
-          : `*, linked_kunde:close_deals(client_name, unternehmen, branche), ${FK_EMBED_ALL}`)
-        .eq("is_active", true)
-        .is("deleted_at", null)
-        .order("is_featured", { ascending: false })
-        .order("imported_at", { ascending: false }),
-      supabase.from("showcase_filter_categories" as any).select("*")
-        .in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
-      supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
-      supabase.from("import_blacklist" as any).select("scope, target_id"),
-      supabase.from("clients").select("branche").not("branche", "is", null),
-      supabase.from("clients").select("id, name").order("name").limit(2000),
+    const adsSelect = isPublic
+      ? `*, ${FK_EMBED_ALL}`
+      : `*, linked_kunde:close_deals(client_name, unternehmen, branche), ${FK_EMBED_ALL}`;
+    const fetchAllAds = async () => {
+      const pageSize = 1000;
+      let from = 0; let all: any[] = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from("referenz_meta_ads" as any)
+          .select(adsSelect)
+          .eq("is_active", true)
+          .is("deleted_at", null)
+          .order("is_featured", { ascending: false })
+          .order("imported_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error) { console.error("ads page fetch failed", error); break; }
+        all = all.concat(data ?? []);
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
+    };
+    const [ads, [{ data: cats }, { data: opts }, { data: bl }, { data: cb }, { data: cl }]] = await Promise.all([
+      fetchAllAds(),
+      Promise.all([
+        supabase.from("showcase_filter_categories" as any).select("*")
+          .in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
+        supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
+        supabase.from("import_blacklist" as any).select("scope, target_id"),
+        supabase.from("clients").select("branche").not("branche", "is", null),
+        supabase.from("clients").select("id, name").order("name").limit(2000),
+      ]),
     ]);
-    setRows(((ads ?? []) as any[]) as MetaAdRow[]);
+    setRows((ads as any[]) as MetaAdRow[]);
     setCategories((cats ?? []) as any);
     setOptions((opts ?? []) as any);
     setBlacklist(((bl ?? []) as any[]) as { scope: string; target_id: string }[]);
