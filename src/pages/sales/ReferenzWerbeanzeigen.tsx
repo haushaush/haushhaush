@@ -156,6 +156,9 @@ export default function ReferenzWerbeanzeigenPage() {
 
   const [importOpen, setImportOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [kampagnenOpen, setKampagnenOpen] = useState(false);
+
+  const campaignsWithoutBranche = useMemo(() => countCampaignsWithoutBranche(rows), [rows]);
 
   const incompleteAccountsCount = useMemo(() => buildIncompleteAccounts(rows).length, [rows]);
 
