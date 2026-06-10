@@ -5,7 +5,7 @@ import { ChevronRight, Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { BRANCHE_ALIASES, getCanonicalBranche, getBrancheShortName } from "@/lib/branche-aliases";
+import { BRANCHEN, normalizeBranche, getBrancheLabel } from "@/lib/branchen";
 import { useBranchen } from "@/hooks/useBranchen";
 import { pickBrancheLabel } from "@/lib/showcaseFkSelect";
 import type { MetaAdRow } from "@/pages/sales/ReferenzWerbeanzeigen";
@@ -75,15 +75,23 @@ export function countCampaignsWithoutBranche(rows: MetaAdRow[]): number {
   return n;
 }
 
+/**
+ * Resolve the picked Combobox value to the canonical DB write value.
+ * MUST match what ReferenzWerbeanzeigeDetail writes for linked_branche_id
+ * (BRANCHEN[].id for known branches; otherwise the trimmed picked value).
+ */
+function resolveBrancheWriteValue(picked: string): string {
+  const trimmed = picked.trim();
+  if (!trimmed) return trimmed;
+  return normalizeBranche(trimmed) ?? trimmed;
+}
+
 export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props) {
   const { data: masterBranchen = [] } = useBranchen();
   const [search, setSearch] = useState("");
   const [openAccounts, setOpenAccounts] = useState<Set<string>>(new Set());
   const [openCampaigns, setOpenCampaigns] = useState<Set<string>>(new Set());
   const [savingKey, setSavingKey] = useState<string | null>(null);
-  // local overrides so UI reflects updates without parent reload
-  const [overrides, setOverrides] = useState<Record<string, string | null>>({});
-  const dirty = Object.keys(overrides).length > 0;
 
   const accounts = useMemo(() => groupAds(rows), [rows]);
   const visible = useMemo(() => {
@@ -99,28 +107,30 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
       .filter((a) => a.campaigns.length > 0 || a.name.toLowerCase().includes(q));
   }, [accounts, search]);
 
+  // Options identical in shape to the detail-page Combobox: BRANCHEN ids first,
+  // then any master rows that don't fold onto a known canonical id.
   const brancheOptions = useMemo(() => {
-    const canonicals = new Set<string>();
-    const shortFromMaster = new Map<string, string>();
-    for (const g of BRANCHE_ALIASES) canonicals.add(g.canonical);
-    for (const m of masterBranchen) {
-      const canonical = getCanonicalBranche(m.canonical_name);
-      canonicals.add(canonical);
-      if (m.short_name) shortFromMaster.set(canonical.toLowerCase(), m.short_name);
+    const seen = new Set<string>();
+    const opts: { value: string; label: string; meta?: string }[] = [];
+    for (const b of BRANCHEN) {
+      opts.push({ value: b.id, label: b.label, meta: b.short });
+      seen.add(b.id);
     }
-    return Array.from(canonicals)
-      .sort((a, b) => a.localeCompare(b, "de"))
-      .map((canonical) => ({
-        value: canonical,
-        label: canonical,
-        meta: shortFromMaster.get(canonical.toLowerCase()) ?? getBrancheShortName(canonical),
-      }));
+    for (const mb of masterBranchen) {
+      const id = normalizeBranche(mb.canonical_name);
+      if (id && seen.has(id)) continue;
+      const value = id ?? mb.canonical_name.trim();
+      if (!value || seen.has(value)) continue;
+      opts.push({ value, label: mb.display_name || mb.canonical_name, meta: mb.short_name ?? undefined });
+      seen.add(value);
+    }
+    return opts.sort((a, b) => a.label.localeCompare(b.label, "de"));
   }, [masterBranchen]);
 
-  const effectiveBrancheFor = (ad: MetaAdRow): string | null => {
-    const o = overrides[ad.id];
-    if (o !== undefined) return o;
-    return pickBrancheLabel(ad as any);
+  const adBrancheValue = (ad: MetaAdRow): string => {
+    const raw = (ad as any).linked_branche_id as string | null | undefined;
+    if (!raw) return "";
+    return normalizeBranche(raw) ?? raw.trim();
   };
 
   const toggleAccount = (k: string) =>
@@ -136,21 +146,16 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
       return n;
     });
 
-  const handleClose = () => {
-    if (dirty) onSaved();
-    setOverrides({});
-    onClose();
-  };
-
-  const updateCampaign = async (camp: CampaignGroup, branche: string) => {
-    const canonical = getCanonicalBranche(branche);
+  const updateCampaign = async (camp: CampaignGroup, picked: string) => {
+    const writeValue = resolveBrancheWriteValue(picked);
+    if (!writeValue) return;
     setSavingKey(camp.key);
     try {
       const ids = camp.ads.map((a) => a.id);
-      console.log("[KampagnenZuordnung] updating ads:", ids, "to branche:", canonical);
+      console.log("[KampagnenZuordnung] updating ads:", ids, "to branche:", writeValue);
       const { data, error } = await supabase
         .from("referenz_meta_ads" as any)
-        .update({ linked_branche_id: canonical })
+        .update({ linked_branche_id: writeValue })
         .in("id", ids)
         .select("id");
       if (error) {
@@ -163,12 +168,11 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
         toast.error("Keine Zeilen aktualisiert – Filter matched nichts");
         return;
       }
-      setOverrides((o) => {
-        const n = { ...o };
-        for (const r of updated) n[r.id] = canonical;
-        return n;
-      });
-      toast.success(`${canonical} auf ${updated.length} Ads gesetzt`);
+      if (updated.length !== ids.length) {
+        toast.warning(`Nur ${updated.length}/${ids.length} Ads aktualisiert`);
+      } else {
+        toast.success(`${getBrancheLabel(writeValue)} auf ${updated.length} Ads gesetzt`);
+      }
       onSaved();
     } catch (e: any) {
       console.error("[KampagnenZuordnung] unexpected error:", e);
@@ -178,14 +182,15 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
     }
   };
 
-  const updateAd = async (ad: MetaAdRow, branche: string) => {
-    const canonical = getCanonicalBranche(branche);
+  const updateAd = async (ad: MetaAdRow, picked: string) => {
+    const writeValue = resolveBrancheWriteValue(picked);
+    if (!writeValue) return;
     setSavingKey(`ad:${ad.id}`);
     try {
-      console.log("[KampagnenZuordnung] updating ad:", ad.id, "to branche:", canonical);
+      console.log("[KampagnenZuordnung] updating ad:", ad.id, "to branche:", writeValue);
       const { data, error } = await supabase
         .from("referenz_meta_ads" as any)
-        .update({ linked_branche_id: canonical })
+        .update({ linked_branche_id: writeValue })
         .eq("id", ad.id)
         .select("id");
       if (error) {
@@ -197,8 +202,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
         toast.error("Keine Zeilen aktualisiert – Filter matched nichts");
         return;
       }
-      setOverrides((o) => ({ ...o, [ad.id]: canonical }));
-      toast.success(`${canonical} gesetzt`);
+      toast.success(`${getBrancheLabel(writeValue)} gesetzt`);
       onSaved();
     } catch (e: any) {
       console.error("[KampagnenZuordnung] unexpected error:", e);
@@ -209,7 +213,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] overflow-hidden p-0 flex flex-col">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
           <DialogTitle>Kampagnen-Zuordnung</DialogTitle>
@@ -253,7 +257,9 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                     <div className="border-t border-border divide-y divide-border">
                       {acc.campaigns.map((camp) => {
                         const cExpanded = openCampaigns.has(camp.key);
-                        const status = summarizeBranchen(camp.ads.map((a) => effectiveBrancheFor(a)));
+                        const status = summarizeBranchen(camp.ads.map((a) => pickBrancheLabel(a as any)));
+                        const campValues = new Set(camp.ads.map((a) => adBrancheValue(a)).filter(Boolean));
+                        const campSelected = campValues.size === 1 ? Array.from(campValues)[0]! : "";
                         return (
                           <div key={camp.key} className="bg-background/40">
                             <div className="flex items-center gap-3 px-4 py-2.5">
@@ -283,7 +289,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                               </button>
                               <div className="w-64 shrink-0 flex items-center gap-2">
                                 <Combobox
-                                  value={status.tone === "ok" ? status.label : ""}
+                                  value={campSelected}
                                   onChange={(v) => v && updateCampaign(camp, v)}
                                   options={brancheOptions}
                                   placeholder="Branche für Kampagne"
@@ -300,7 +306,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                                 {camp.ads.map((ad) => {
                                   const thumb = ad.thumbnail_url_persisted ?? ad.thumbnail_url ?? ad.thumbnail_url_meta;
                                   const title = ad.custom_title ?? ad.meta_ad_name ?? "(ohne Titel)";
-                                  const current = effectiveBrancheFor(ad);
+                                  const current = adBrancheValue(ad);
                                   const saving = savingKey === `ad:${ad.id}`;
                                   return (
                                     <div key={ad.id} className="flex items-center gap-3 pl-6 pr-1 py-1.5 rounded-md hover:bg-muted/30">
@@ -310,7 +316,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                                       <div className="flex-1 min-w-0 text-xs truncate">{title}</div>
                                       <div className="w-56 shrink-0 flex items-center gap-2">
                                         <Combobox
-                                          value={current ?? ""}
+                                          value={current}
                                           onChange={(v) => v && updateAd(ad, v)}
                                           options={brancheOptions}
                                           placeholder="Branche"
