@@ -61,7 +61,7 @@ export function Combobox({
 
   const normalized = options.map(normalizeOption);
   const currentOption = normalized.find((o) => o.value === value);
-  const displayValue = open ? search : currentOption?.label || value || '';
+  const displayValue = open ? search : (selectedLabel || currentOption?.label || value || '');
 
   const filtered = normalized.filter(
     (opt) =>
