@@ -167,23 +167,40 @@ export default function ReferenzWerbeanzeigenPage() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: ads }, { data: cats }, { data: opts }, { data: bl }, { data: cb }, { data: cl }] = await Promise.all([
-      supabase.from("referenz_meta_ads" as any)
-        .select(isPublic
-          ? `*, ${FK_EMBED_ALL}`
-          : `*, linked_kunde:close_deals(client_name, unternehmen, branche), ${FK_EMBED_ALL}`)
-        .eq("is_active", true)
-        .is("deleted_at", null)
-        .order("is_featured", { ascending: false })
-        .order("imported_at", { ascending: false }),
-      supabase.from("showcase_filter_categories" as any).select("*")
-        .in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
-      supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
-      supabase.from("import_blacklist" as any).select("scope, target_id"),
-      supabase.from("clients").select("branche").not("branche", "is", null),
-      supabase.from("clients").select("id, name").order("name").limit(2000),
+    const adsSelect = isPublic
+      ? `*, ${FK_EMBED_ALL}`
+      : `*, linked_kunde:close_deals(client_name, unternehmen, branche), ${FK_EMBED_ALL}`;
+    const fetchAllAds = async () => {
+      const pageSize = 1000;
+      let from = 0; let all: any[] = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from("referenz_meta_ads" as any)
+          .select(adsSelect)
+          .eq("is_active", true)
+          .is("deleted_at", null)
+          .order("is_featured", { ascending: false })
+          .order("imported_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error) { console.error("ads page fetch failed", error); break; }
+        all = all.concat(data ?? []);
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
+    };
+    const [ads, [{ data: cats }, { data: opts }, { data: bl }, { data: cb }, { data: cl }]] = await Promise.all([
+      fetchAllAds(),
+      Promise.all([
+        supabase.from("showcase_filter_categories" as any).select("*")
+          .in("applies_to", ["werbeanzeige", "both", "all"]).eq("is_active", true).order("display_order"),
+        supabase.from("showcase_filter_options" as any).select("*").eq("is_active", true).order("display_order"),
+        supabase.from("import_blacklist" as any).select("scope, target_id"),
+        supabase.from("clients").select("branche").not("branche", "is", null),
+        supabase.from("clients").select("id, name").order("name").limit(2000),
+      ]),
     ]);
-    setRows(((ads ?? []) as any[]) as MetaAdRow[]);
+    setRows((ads as any[]) as MetaAdRow[]);
     setCategories((cats ?? []) as any);
     setOptions((opts ?? []) as any);
     setBlacklist(((bl ?? []) as any[]) as { scope: string; target_id: string }[]);
@@ -356,6 +373,17 @@ export default function ReferenzWerbeanzeigenPage() {
     })),
     [filtered],
   );
+
+  const PAGE_SIZE = 60;
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [filtered]);
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const pagedItems = useMemo(
+    () => items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [items, page],
+  );
+
+
 
 
   const hasActiveFilters =
@@ -755,10 +783,34 @@ export default function ReferenzWerbeanzeigenPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 auto-rows-fr">
-          {items.map(item => <ShowcaseCard key={item.id} item={item} />)}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 auto-rows-fr">
+            {pagedItems.map(item => <ShowcaseCard key={item.id} item={item} />)}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-8 tabular-nums">
+              <button
+                type="button"
+                disabled={page === 1}
+                onClick={() => { setPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="inline-flex items-center h-9 px-3 rounded-lg border border-border bg-background text-sm font-medium hover:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+              >
+                Zurück
+              </button>
+              <span className="text-sm text-muted-foreground">Seite {page} von {totalPages}</span>
+              <button
+                type="button"
+                disabled={page === totalPages}
+                onClick={() => { setPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="inline-flex items-center h-9 px-3 rounded-lg border border-border bg-background text-sm font-medium hover:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+              >
+                Weiter
+              </button>
+            </div>
+          )}
+        </>
       )}
+
 
       <BulkImportWizard open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
       <ZuordnenAccountsModal
