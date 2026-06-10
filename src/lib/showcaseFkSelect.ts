@@ -26,11 +26,15 @@ const trimOrNull = (v: any): string | null => {
 
 /** Display label for branche — resolves canonical id via BRANCHEN const, falls back to legacy text. */
 export function pickBrancheLabel(i: any): string | null {
-  // linked_branche_id is a TEXT field holding the canonical branche id (no FK join possible)
+  // linked_branche_id is a TEXT field. It usually holds either a canonical BRANCHEN id
+  // (e.g. 'pkv') or the canonical_name of a row in the `branchen` master table
+  // (e.g. 'Ästhetische Medizin'). For the first case we resolve via the BRANCHEN const;
+  // for the second case the value itself is already a human-readable label.
   const brancheId = trimOrNull(i?.linked_branche_id);
   if (brancheId) {
     const b = getBrancheById(brancheId);
     if (b) return b.label;
+    return brancheId; // master canonical_name -> use as-is
   }
   const fromClientFk = i?.linked_client?.branche;
   if (fromClientFk) {
@@ -38,6 +42,7 @@ export function pickBrancheLabel(i: any): string | null {
     if (id) {
       const b = getBrancheById(id);
       if (b) return b.label;
+      return id;
     }
   }
   return (
