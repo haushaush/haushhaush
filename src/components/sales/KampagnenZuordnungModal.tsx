@@ -171,7 +171,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
     if (ids.size === 0) return { label: "—", tone: "none", selected: "" };
     if (ids.size > 1 || anyMissing) return { label: "gemischt", tone: "mixed", selected: "" };
     const id = Array.from(ids)[0]!;
-    const name = pickClientName(ads.find((a) => pickClientId(a as any) === id) as any) ?? id;
+    const name = clients.find((c) => c.id === id)?.name ?? pickClientName(ads.find((a) => pickClientId(a as any) === id) as any) ?? id;
     return { label: name, tone: "ok", selected: id };
   };
 
