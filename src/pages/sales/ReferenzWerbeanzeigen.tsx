@@ -783,10 +783,34 @@ export default function ReferenzWerbeanzeigenPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 auto-rows-fr">
-          {items.map(item => <ShowcaseCard key={item.id} item={item} />)}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 auto-rows-fr">
+            {pagedItems.map(item => <ShowcaseCard key={item.id} item={item} />)}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-8 tabular-nums">
+              <button
+                type="button"
+                disabled={page === 1}
+                onClick={() => { setPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="inline-flex items-center h-9 px-3 rounded-lg border border-border bg-background text-sm font-medium hover:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+              >
+                Zurück
+              </button>
+              <span className="text-sm text-muted-foreground">Seite {page} von {totalPages}</span>
+              <button
+                type="button"
+                disabled={page === totalPages}
+                onClick={() => { setPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="inline-flex items-center h-9 px-3 rounded-lg border border-border bg-background text-sm font-medium hover:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+              >
+                Weiter
+              </button>
+            </div>
+          )}
+        </>
       )}
+
 
       <BulkImportWizard open={importOpen} onClose={() => setImportOpen(false)} onImported={load} />
       <ZuordnenAccountsModal
