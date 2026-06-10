@@ -767,6 +767,12 @@ export default function ReferenzWerbeanzeigenPage() {
         rows={rows}
         onSaved={load}
       />
+      <KampagnenZuordnungModal
+        open={kampagnenOpen}
+        onClose={() => setKampagnenOpen(false)}
+        rows={rows}
+        onSaved={load}
+      />
       <AddBrancheDialog
         open={addBrancheOpen}
         onClose={() => setAddBrancheOpen(false)}
