@@ -373,6 +373,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
         if (filters.minLeads > 0 && (m.leads ?? 0) < filters.minLeads) return false;
         if (filters.minSpend > 0 && (m.spend ?? 0) < filters.minSpend) return false;
         if (isBlacklisted(a)) return false;
+        if (importedAdIds.has(String(a.meta_ad_id))) return false;
         if (a.already_imported) return false;
         return true;
       });
