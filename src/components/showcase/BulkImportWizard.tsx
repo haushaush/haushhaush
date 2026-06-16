@@ -123,6 +123,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   const [ads, setAds] = useState<ImportableAd[]>([]);
   const [adsLoading, setAdsLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [importedAdIds, setImportedAdIds] = useState<Set<string>>(new Set());
   const [enrichment, setEnrichment] = useState<Record<string, Enrichment>>({});
   const [bulkBranche, setBulkBranche] = useState("");
   const [bulkUnternehmen, setBulkUnternehmen] = useState("");
