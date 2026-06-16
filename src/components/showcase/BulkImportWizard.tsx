@@ -123,6 +123,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
   const [ads, setAds] = useState<ImportableAd[]>([]);
   const [adsLoading, setAdsLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [importedAdIds, setImportedAdIds] = useState<Set<string>>(new Set());
   const [enrichment, setEnrichment] = useState<Record<string, Enrichment>>({});
   const [bulkBranche, setBulkBranche] = useState("");
   const [bulkUnternehmen, setBulkUnternehmen] = useState("");
@@ -278,6 +279,34 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
     })();
   }, [open]);
 
+  // Already imported ad IDs (loaded once when wizard opens)
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const ids = new Set<string>();
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("referenz_meta_ads" as any)
+          .select("meta_ad_id")
+          .is("deleted_at", null)
+          .order("meta_ad_id", { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) {
+          console.error("imported ids fetch failed", error);
+          break;
+        }
+        (data ?? []).forEach((r: any) => {
+          if (r.meta_ad_id) ids.add(String(r.meta_ad_id));
+        });
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+      setImportedAdIds(ids);
+    })();
+  }, [open]);
+
   const isBlacklisted = (ad: ImportableAd): string | null => {
     if (blacklist.ads.has(ad.meta_ad_id)) return "Anzeige";
     if (blacklist.accounts.has(ad.meta_account_id)) return "Werbekonto";
@@ -344,6 +373,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
         if (filters.minLeads > 0 && (m.leads ?? 0) < filters.minLeads) return false;
         if (filters.minSpend > 0 && (m.spend ?? 0) < filters.minSpend) return false;
         if (isBlacklisted(a)) return false;
+        if (importedAdIds.has(String(a.meta_ad_id))) return false;
         if (a.already_imported) return false;
         return true;
       });
