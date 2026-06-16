@@ -279,6 +279,34 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
     })();
   }, [open]);
 
+  // Already imported ad IDs (loaded once when wizard opens)
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const ids = new Set<string>();
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("referenz_meta_ads" as any)
+          .select("meta_ad_id")
+          .is("deleted_at", null)
+          .order("meta_ad_id", { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) {
+          console.error("imported ids fetch failed", error);
+          break;
+        }
+        (data ?? []).forEach((r: any) => {
+          if (r.meta_ad_id) ids.add(String(r.meta_ad_id));
+        });
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+      setImportedAdIds(ids);
+    })();
+  }, [open]);
+
   const isBlacklisted = (ad: ImportableAd): string | null => {
     if (blacklist.ads.has(ad.meta_ad_id)) return "Anzeige";
     if (blacklist.accounts.has(ad.meta_account_id)) return "Werbekonto";
