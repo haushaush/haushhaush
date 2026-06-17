@@ -22,10 +22,12 @@ import { Plus, Search, Users, RefreshCw, Loader2, Sparkles, Cloud, ChevronDown, 
 import { toast } from 'sonner';
 
 const STATUS_STYLES: Record<string, string> = {
-  'In Betreuung': 'bg-success/20 text-success',
+  'In Betreuung': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
   'Onboarding': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   'Lead': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-  'Done': 'bg-muted text-muted-foreground',
+  'Done': 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  'Offen': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  'Follow Up': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
 };
 const AMPEL_DOT: Record<string, string> = { 'Grün': 'bg-success', 'Gelb': 'bg-warning', 'Rot': 'bg-destructive' };
 
