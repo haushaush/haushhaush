@@ -198,7 +198,16 @@ export default function KundenLaufzeiten() {
                   <TableCell className={`font-medium ${isRed ? 'text-destructive' : ''}`}>{r.client.name || '–'}</TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(r.client.startdatum)}</TableCell>
                   <TableCell className="text-muted-foreground">{r.client.laufzeit || '–'}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.endDate ? fmtDate(r.endDate) : <span className="italic">kein Enddatum</span>}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.endDate ? (
+                      <span>
+                        {fmtDate(r.endDate)}
+                        {r.source === 'project' && <span className="ml-1 text-[10px] text-muted-foreground/70">via Projekt</span>}
+                      </span>
+                    ) : (
+                      <span className="italic">kein Enddatum</span>
+                    )}
+                  </TableCell>
                   <TableCell className={isRed ? 'text-destructive font-medium' : 'text-muted-foreground'}>{verbleibendLabel(r.days)}</TableCell>
                   <TableCell>
                     {r.client.kundenstatus && (
