@@ -244,14 +244,28 @@ export default function Kunden() {
     return clients.filter(c => {
       const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase());
       const matchStatus = filterStatus === 'all' || c.kundenstatus === filterStatus;
-      return matchSearch && matchStatus;
+      const matchBranche = filterBranche === 'all' || c.branche === filterBranche;
+      const matchUnternehmen = filterUnternehmen === 'all' || c.unternehmen?.display_name === filterUnternehmen;
+      return matchSearch && matchStatus && matchBranche && matchUnternehmen;
     });
-  }, [clients, search, filterStatus]);
+  }, [clients, search, filterStatus, filterBranche, filterUnternehmen]);
 
   const statusCounts = useMemo(() => {
     const m: Record<string, number> = { all: clients.length };
     clients.forEach(c => { m[c.kundenstatus] = (m[c.kundenstatus] || 0) + 1; });
     return m;
+  }, [clients]);
+
+  const brancheOptions = useMemo(() => {
+    const s = new Set<string>();
+    clients.forEach(c => { if (c.branche) s.add(c.branche); });
+    return [...s].sort((a, b) => a.localeCompare(b, 'de'));
+  }, [clients]);
+
+  const unternehmenOptions = useMemo(() => {
+    const s = new Set<string>();
+    clients.forEach(c => { const u = c.unternehmen?.display_name; if (u) s.add(u); });
+    return [...s].sort((a, b) => a.localeCompare(b, 'de'));
   }, [clients]);
 
   const TAB_STATUSES = ['all', 'Lead', 'Onboarding', 'In Betreuung', 'Done'];
@@ -367,6 +381,32 @@ export default function Kunden() {
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input className="pl-9 h-9" placeholder="Name oder Email…" value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <Select value={filterBranche} onValueChange={setFilterBranche}>
+          <SelectTrigger className="h-9 w-[180px] text-sm">
+            <SelectValue placeholder="Branche" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle Branchen</SelectItem>
+            {brancheOptions.map(b => (
+              <SelectItem key={b} value={b}>{b}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={filterUnternehmen} onValueChange={setFilterUnternehmen}>
+          <SelectTrigger className="h-9 w-[220px] text-sm">
+            <SelectValue placeholder="Unternehmen" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle Unternehmen</SelectItem>
+            {unternehmenOptions.map(u => (
+              <SelectItem key={u} value={u}>{u}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
