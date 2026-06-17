@@ -114,7 +114,7 @@ export default function KundenLaufzeiten() {
     const days = bestEnd ? Math.ceil((bestEnd.getTime() - Date.now()) / 86400000) : null;
     const pct = progress(c.startdatum, bestEnd);
     return { client: c, endDate: bestEnd, days, pct, source };
-  }), [clients, projectsByClient]);
+  }).filter(r => r.endDate !== null), [clients, projectsByClient]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
