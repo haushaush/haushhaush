@@ -654,8 +654,16 @@ export default function Projekte() {
         </div>
       )}
 
+      {/* Meine Projekte — empty placeholder */}
+      {viewMode === 'meine' && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground">
+          <User className="h-10 w-10 opacity-30" />
+          <p className="text-sm">Noch keine Projekte zugeordnet</p>
+        </div>
+      )}
+
       {/* Kanban board with DnD */}
-      {viewMode !== 'kpi' && (
+      {viewMode !== 'kpi' && viewMode !== 'meine' && (
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
