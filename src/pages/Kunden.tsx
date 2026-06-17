@@ -360,30 +360,26 @@ export default function Kunden() {
         )}
       </div>
 
-      {/* Status tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
-        {TAB_STATUSES.map(s => (
-          <button
-            key={s}
-            onClick={() => setFilterStatus(s)}
-            className={`px-3.5 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-              filterStatus === s ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-            }`}
-          >
-            {s === 'all' ? 'Alle' : s}
-            <span className={`ml-1.5 text-xs ${filterStatus === s ? 'text-primary-foreground/70' : 'text-muted-foreground/60'}`}>
-              {statusCounts[s] ?? 0}
-            </span>
-          </button>
-        ))}
-      </div>
-
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input className="pl-9 h-9" placeholder="Name oder Email…" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="h-9 w-[180px] text-sm">
+            <SelectValue placeholder="Kundenstatus" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle Status</SelectItem>
+            {TAB_STATUSES.filter(s => s !== 'all').map(s => (
+              <SelectItem key={s} value={s}>
+                {s} ({statusCounts[s] ?? 0})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Select value={filterBranche} onValueChange={setFilterBranche}>
           <SelectTrigger className="h-9 w-[180px] text-sm">
             <SelectValue placeholder="Branche" />
