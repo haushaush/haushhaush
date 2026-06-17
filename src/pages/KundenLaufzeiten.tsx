@@ -37,6 +37,7 @@ type Row = {
   days: number | null; // null = no end date
   pct: number;
   source: 'client' | 'project' | null;
+  sourceLaufzeit: string | null;
 };
 
 function computeEndFrom(end: any, start: any, laufzeit: any): Date | null {
