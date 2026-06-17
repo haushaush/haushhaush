@@ -37,6 +37,7 @@ type Row = {
   days: number | null; // null = no end date
   pct: number;
   source: 'client' | 'project' | null;
+  sourceLaufzeit: string | null;
 };
 
 function computeEndFrom(end: any, start: any, laufzeit: any): Date | null {
@@ -81,7 +82,7 @@ export default function KundenLaufzeiten() {
   useEffect(() => {
     Promise.all([
       supabase.from('clients').select('*'),
-      supabase.from('projects').select('client_id, startdatum, laufzeit, enddatum'),
+      supabase.from('projects').select('client_id, startdatum, laufzeit, enddatum, status'),
     ]).then(([c, p]) => {
       setClients(c.data || []);
       setProjects(p.data || []);
@@ -103,17 +104,20 @@ export default function KundenLaufzeiten() {
     const clientEnd = computeEndFrom(c.enddatum, c.startdatum, c.laufzeit);
     let bestEnd: Date | null = clientEnd;
     let source: 'client' | 'project' | null = clientEnd ? 'client' : null;
+    let sourceLaufzeit: string | null = clientEnd ? (c.laufzeit || null) : null;
     const list = projectsByClient.get(c.id) || [];
     for (const p of list) {
+      if (p.status === 'Abgeschlossen') continue;
       const pe = computeEndFrom(p.enddatum, p.startdatum, p.laufzeit);
       if (pe && (!bestEnd || pe.getTime() > bestEnd.getTime())) {
         bestEnd = pe;
         source = 'project';
+        sourceLaufzeit = p.laufzeit || null;
       }
     }
     const days = bestEnd ? Math.ceil((bestEnd.getTime() - Date.now()) / 86400000) : null;
     const pct = progress(c.startdatum, bestEnd);
-    return { client: c, endDate: bestEnd, days, pct, source };
+    return { client: c, endDate: bestEnd, days, pct, source, sourceLaufzeit };
   }).filter(r => r.endDate !== null), [clients, projectsByClient]);
 
   const filtered = useMemo(() => {
@@ -129,7 +133,18 @@ export default function KundenLaufzeiten() {
     }
 
     return list.sort((a, b) => {
-      // no end date → bottom
+      const aDone = a.client.kundenstatus === 'Done';
+      const bDone = b.client.kundenstatus === 'Done';
+      // Done customers always go to the bottom
+      if (aDone && !bDone) return 1;
+      if (!aDone && bDone) return -1;
+      if (aDone && bDone) {
+        // Done amongst themselves: latest end date first
+        const ae = a.endDate?.getTime() ?? 0;
+        const be = b.endDate?.getTime() ?? 0;
+        return be - ae;
+      }
+      // Non-Done: by remaining days ascending
       if (a.days === null && b.days === null) return 0;
       if (a.days === null) return 1;
       if (b.days === null) return -1;
@@ -197,7 +212,11 @@ export default function KundenLaufzeiten() {
                 <TableRow key={r.client.id} className={isRed ? 'bg-destructive/10 hover:bg-destructive/15' : ''}>
                   <TableCell className={`font-medium ${isRed ? 'text-destructive' : ''}`}>{r.client.name || '–'}</TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(r.client.startdatum)}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.client.laufzeit || '–'}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.source === 'project'
+                      ? (r.sourceLaufzeit || 'Projektlaufzeit')
+                      : (r.client.laufzeit || '–')}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {r.endDate ? (
                       <span>
