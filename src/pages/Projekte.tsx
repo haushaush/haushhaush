@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, RefreshCw, Loader2, FolderKanban, FileX, Clock, Users, LayoutGrid, BarChart3, Plus } from 'lucide-react';
+import { Search, RefreshCw, Loader2, FolderKanban, FileX, Clock, Users, LayoutGrid, BarChart3, Plus, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from 'recharts';
 import ProjekteSlidePanel from '@/components/projekte/ProjekteSlidePanel';
@@ -65,6 +65,7 @@ const STATUS_ORDER = [
 ];
 
 const VIEW_TABS = [
+  { label: 'Meine Projekte', value: 'meine', icon: User },
   { label: 'Nach Kunde', value: 'kunde', icon: Users },
   { label: 'Nach Status', value: 'status', icon: LayoutGrid },
   { label: 'Nach Projektart', value: 'typ', icon: FolderKanban },
@@ -274,7 +275,7 @@ export default function Projekte() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'kunde' | 'status' | 'typ' | 'mitarbeiter' | 'kpi'>('status');
+  const [viewMode, setViewMode] = useState<'meine' | 'kunde' | 'status' | 'typ' | 'mitarbeiter' | 'kpi'>('status');
   const [deadlineFilter, setDeadlineFilter] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showNewPanel, setShowNewPanel] = useState(false);
@@ -594,7 +595,7 @@ export default function Projekte() {
       </div>
 
       {/* Search + deadline filter (hidden on KPI tab) */}
-      {viewMode !== 'kpi' && (
+      {viewMode !== 'kpi' && viewMode !== 'meine' && (
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative max-w-sm flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
