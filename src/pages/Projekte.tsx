@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, RefreshCw, Loader2, FolderKanban, FileX, Clock, Users, LayoutGrid, BarChart3, Plus } from 'lucide-react';
+import { Search, RefreshCw, Loader2, FolderKanban, FileX, Clock, Users, LayoutGrid, BarChart3, Plus, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from 'recharts';
 import ProjekteSlidePanel from '@/components/projekte/ProjekteSlidePanel';
@@ -65,6 +65,7 @@ const STATUS_ORDER = [
 ];
 
 const VIEW_TABS = [
+  { label: 'Meine Projekte', value: 'meine', icon: User },
   { label: 'Nach Kunde', value: 'kunde', icon: Users },
   { label: 'Nach Status', value: 'status', icon: LayoutGrid },
   { label: 'Nach Projektart', value: 'typ', icon: FolderKanban },
@@ -243,7 +244,7 @@ function DroppableKanbanColumn({
         <h3 className="text-xs font-semibold truncate">{title}</h3>
         <Badge variant="secondary" className="text-[10px] h-5 px-1.5 rounded-md">{count}</Badge>
       </div>
-      <div className={`flex-1 border-x border-b rounded-b-lg p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-260px)] transition-all duration-200
+      <div className={`flex-1 border-x border-b rounded-b-lg p-2 space-y-2 overflow-y-auto scrollbar-none max-h-[calc(100vh-260px)] transition-all duration-200
         ${highlighted ? 'bg-primary/5 border-primary/40 ring-1 ring-primary/30' : 'bg-muted/10 border-border'}`}>
         {projects.length === 0 ? (
           <p className={`text-xs text-center py-6 transition-colors ${highlighted ? 'text-primary/60' : 'text-muted-foreground'}`}>
@@ -274,7 +275,7 @@ export default function Projekte() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'kunde' | 'status' | 'typ' | 'mitarbeiter' | 'kpi'>('status');
+  const [viewMode, setViewMode] = useState<'meine' | 'kunde' | 'status' | 'typ' | 'mitarbeiter' | 'kpi'>('status');
   const [deadlineFilter, setDeadlineFilter] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showNewPanel, setShowNewPanel] = useState(false);
@@ -594,7 +595,7 @@ export default function Projekte() {
       </div>
 
       {/* Search + deadline filter (hidden on KPI tab) */}
-      {viewMode !== 'kpi' && (
+      {viewMode !== 'kpi' && viewMode !== 'meine' && (
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative max-w-sm flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -653,8 +654,16 @@ export default function Projekte() {
         </div>
       )}
 
+      {/* Meine Projekte — empty placeholder */}
+      {viewMode === 'meine' && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground">
+          <User className="h-10 w-10 opacity-30" />
+          <p className="text-sm">Noch keine Projekte zugeordnet</p>
+        </div>
+      )}
+
       {/* Kanban board with DnD */}
-      {viewMode !== 'kpi' && (
+      {viewMode !== 'kpi' && viewMode !== 'meine' && (
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
