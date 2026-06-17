@@ -93,6 +93,33 @@ Deno.serve(async (req) => {
         }
         break;
       }
+      case 'abschluss': {
+        const q = (body.query || {}) as Record<string, any>;
+        if (q.Name) {
+          const art = Array.isArray(q.Art) ? q.Art.join(', ') : (q.Art || 'PKV');
+          let leistungen: string[] = [];
+          if (typeof q.Leistungen === 'string') {
+            leistungen = q.Leistungen.split(',').map((s: string) => s.trim()).filter(Boolean);
+          } else if (Array.isArray(q.Leistungen)) {
+            leistungen = q.Leistungen;
+          }
+          const laufzeit = parseInt(String(q.Laufzeit || ''), 10);
+          const wert = Number(q.Wert || 0);
+          const startRaw = q.Start && q.Start !== '-' ? q.Start : null;
+          const { error } = await supabase.from('close_deals').insert({
+            client_name: q.Name,
+            art,
+            deal_type: q.DealTyp || q.Typ || 'Neukunde',
+            wert_eur: isNaN(wert) ? 0 : wert,
+            laufzeit_monate: isNaN(laufzeit) ? null : laufzeit,
+            start_datum: startRaw,
+            leistungen,
+            status: 'Aktiv',
+          });
+          if (error) console.error('abschluss insert failed', error);
+        }
+        break;
+      }
       default:
         console.log(`Unknown webhook source: ${xSource}`);
     }
