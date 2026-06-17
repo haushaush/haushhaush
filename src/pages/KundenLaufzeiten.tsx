@@ -212,7 +212,11 @@ export default function KundenLaufzeiten() {
                 <TableRow key={r.client.id} className={isRed ? 'bg-destructive/10 hover:bg-destructive/15' : ''}>
                   <TableCell className={`font-medium ${isRed ? 'text-destructive' : ''}`}>{r.client.name || '–'}</TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(r.client.startdatum)}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.client.laufzeit || '–'}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.source === 'project'
+                      ? (r.sourceLaufzeit || 'Projektlaufzeit')
+                      : (r.client.laufzeit || '–')}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {r.endDate ? (
                       <span>
