@@ -76,6 +76,9 @@ import PublicShowcaseLayout from "./pages/PublicShowcaseLayout.tsx";
 import { ShowcaseAuthRedirect } from "./components/ShowcaseAuthRedirect";
 import { AdminRoute } from "./components/AdminRoute";
 import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
+import { useFunnelGuard } from "./hooks/useFunnelGuard";
+import DailyFunnel from "./pages/DailyFunnel.tsx";
+import CheckinOverview from "./pages/hr/CheckinOverview.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
