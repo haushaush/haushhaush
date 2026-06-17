@@ -270,7 +270,11 @@ export default function Kunden() {
     return [...s].sort((a, b) => a.localeCompare(b, 'de'));
   }, [clients]);
 
-  const TAB_STATUSES = ['all', 'Lead', 'Onboarding', 'In Betreuung', 'Done'];
+  const statusOptions = useMemo(() => {
+    const s = new Set<string>();
+    clients.forEach(c => { if (c.kundenstatus) s.add(c.kundenstatus); });
+    return [...s].sort((a, b) => a.localeCompare(b, 'de'));
+  }, [clients]);
 
   if (loading) {
     return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-10 w-64" /><Skeleton className="h-96" /></div>;
