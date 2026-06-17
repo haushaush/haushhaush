@@ -22,6 +22,7 @@ import { Search } from 'lucide-react';
 import { KpiSlider } from '@/components/dashboard/KpiSlider';
 import { SortableBlock } from '@/components/dashboard/SortableBlock';
 import { MitteilungenCard } from '@/components/dashboard/MitteilungenCard';
+import { CheckinBanner } from '@/components/dashboard/CheckinBanner';
 import { ARIAHeroBlock } from '@/components/aria/ARIAHeroBlock';
 import { ARIAPanel } from '@/components/aria/ARIAPanel';
 import { useARIA } from '@/contexts/ARIAContext';
