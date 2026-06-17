@@ -393,7 +393,7 @@ export function AppSidebar() {
                 )}
               </div>
             )}
-            {item.children!.map(child => {
+            {item.children!.filter(c => !c.adminOnly || isAdmin).map(child => {
               const childActive = isActive(child.url);
               const isPipedriveChild = item.title === 'Pipedrive';
               const href = isPipedriveChild && activePipedriveId
