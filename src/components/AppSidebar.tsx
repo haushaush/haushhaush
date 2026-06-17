@@ -17,7 +17,7 @@ interface NavItem {
   title: string;
   url: string;
   icon: any;
-  children?: { title: string; url: string }[];
+  children?: { title: string; url: string; adminOnly?: boolean }[];
   adminOnly?: boolean;
 }
 
