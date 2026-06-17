@@ -5642,7 +5642,15 @@ export type Database = {
         | "Altersvorsorge"
         | "Sonstiges"
       finanz_typ: "Einnahme" | "Ausgabe"
-      kundenstatus: "In Betreuung" | "Pausiert" | "Churned" | "Lead"
+      kundenstatus:
+        | "In Betreuung"
+        | "Pausiert"
+        | "Churned"
+        | "Lead"
+        | "Offen"
+        | "Onboarding"
+        | "Done"
+        | "Follow Up"
       team_rolle:
         | "Admin"
         | "Account-Manager"
@@ -5814,7 +5822,16 @@ export const Constants = {
         "Sonstiges",
       ],
       finanz_typ: ["Einnahme", "Ausgabe"],
-      kundenstatus: ["In Betreuung", "Pausiert", "Churned", "Lead"],
+      kundenstatus: [
+        "In Betreuung",
+        "Pausiert",
+        "Churned",
+        "Lead",
+        "Offen",
+        "Onboarding",
+        "Done",
+        "Follow Up",
+      ],
       team_rolle: [
         "Admin",
         "Account-Manager",
