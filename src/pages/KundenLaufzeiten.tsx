@@ -36,17 +36,18 @@ type Row = {
   endDate: Date | null;
   days: number | null; // null = no end date
   pct: number;
+  source: 'client' | 'project' | null;
 };
 
-function computeEnd(c: any): Date | null {
-  if (c.enddatum) {
-    const d = new Date(c.enddatum);
+function computeEndFrom(end: any, start: any, laufzeit: any): Date | null {
+  if (end) {
+    const d = new Date(end);
     if (!isNaN(d.getTime())) return d;
   }
-  if (c.startdatum && c.laufzeit && LAUFZEIT_MONTHS[c.laufzeit]) {
-    const d = new Date(c.startdatum);
+  if (start && laufzeit && LAUFZEIT_MONTHS[laufzeit]) {
+    const d = new Date(start);
     if (!isNaN(d.getTime())) {
-      d.setMonth(d.getMonth() + LAUFZEIT_MONTHS[c.laufzeit]);
+      d.setMonth(d.getMonth() + LAUFZEIT_MONTHS[laufzeit]);
       return d;
     }
   }
@@ -65,30 +66,55 @@ function progress(start: string | null, end: Date | null): number {
 
 function verbleibendLabel(days: number | null): string {
   if (days === null) return 'kein Enddatum';
-  if (days < 0) return `abgelaufen vor ${Math.abs(days)} Tag${Math.abs(days) === 1 ? '' : 'en'}`;
+  if (days < 0) return `vor ${Math.abs(days)} Tag${Math.abs(days) === 1 ? '' : 'en'} abgelaufen`;
   if (days === 0) return 'heute';
-  return `${days} Tag${days === 1 ? '' : 'e'}`;
+  return `in ${days} Tag${days === 1 ? '' : 'en'}`;
 }
 
 export default function KundenLaufzeiten() {
   const [clients, setClients] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'alle' | 'abgelaufen' | 'aktiv' | 'abgeschlossen'>('alle');
 
   useEffect(() => {
-    supabase.from('clients').select('*').then(({ data }) => {
-      setClients(data || []);
+    Promise.all([
+      supabase.from('clients').select('*'),
+      supabase.from('projects').select('client_id, startdatum, laufzeit, enddatum'),
+    ]).then(([c, p]) => {
+      setClients(c.data || []);
+      setProjects(p.data || []);
       setLoading(false);
     });
   }, []);
 
+  const projectsByClient = useMemo(() => {
+    const m = new Map<string, any[]>();
+    for (const p of projects) {
+      if (!p.client_id) continue;
+      if (!m.has(p.client_id)) m.set(p.client_id, []);
+      m.get(p.client_id)!.push(p);
+    }
+    return m;
+  }, [projects]);
+
   const rows: Row[] = useMemo(() => clients.map(c => {
-    const endDate = computeEnd(c);
-    const days = endDate ? Math.ceil((endDate.getTime() - Date.now()) / 86400000) : null;
-    const pct = progress(c.startdatum, endDate);
-    return { client: c, endDate, days, pct };
-  }), [clients]);
+    const clientEnd = computeEndFrom(c.enddatum, c.startdatum, c.laufzeit);
+    let bestEnd: Date | null = clientEnd;
+    let source: 'client' | 'project' | null = clientEnd ? 'client' : null;
+    const list = projectsByClient.get(c.id) || [];
+    for (const p of list) {
+      const pe = computeEndFrom(p.enddatum, p.startdatum, p.laufzeit);
+      if (pe && (!bestEnd || pe.getTime() > bestEnd.getTime())) {
+        bestEnd = pe;
+        source = 'project';
+      }
+    }
+    const days = bestEnd ? Math.ceil((bestEnd.getTime() - Date.now()) / 86400000) : null;
+    const pct = progress(c.startdatum, bestEnd);
+    return { client: c, endDate: bestEnd, days, pct, source };
+  }), [clients, projectsByClient]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -172,7 +198,16 @@ export default function KundenLaufzeiten() {
                   <TableCell className={`font-medium ${isRed ? 'text-destructive' : ''}`}>{r.client.name || '–'}</TableCell>
                   <TableCell className="text-muted-foreground">{fmtDate(r.client.startdatum)}</TableCell>
                   <TableCell className="text-muted-foreground">{r.client.laufzeit || '–'}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.endDate ? fmtDate(r.endDate) : <span className="italic">kein Enddatum</span>}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {r.endDate ? (
+                      <span>
+                        {fmtDate(r.endDate)}
+                        {r.source === 'project' && <span className="ml-1 text-[10px] text-muted-foreground/70">via Projekt</span>}
+                      </span>
+                    ) : (
+                      <span className="italic">kein Enddatum</span>
+                    )}
+                  </TableCell>
                   <TableCell className={isRed ? 'text-destructive font-medium' : 'text-muted-foreground'}>{verbleibendLabel(r.days)}</TableCell>
                   <TableCell>
                     {r.client.kundenstatus && (
