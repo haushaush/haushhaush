@@ -127,13 +127,6 @@ Deno.serve(async (req) => {
       results.kunden = rows.length;
 
       // Spiegel-upsert in clients (Master-Tabelle)
-      const clientStatusMap: Record<string, string> = {
-        "In Betreuung": "In Betreuung",
-        "Onboarding": "In Betreuung",
-        "Done": "Churned",
-        "Follow Up": "Pausiert",
-        "Offen": "Pausiert",
-      };
       // 1) Resolve each unique Unternehmen name case-insensitively
       //    (select-then-insert, with race-condition retry on 23505)
       const unternehmenNames = new Set<string>();
@@ -211,7 +204,7 @@ Deno.serve(async (req) => {
           email: ge(pr["Email"]),
           phone: gp(pr["Telefon"]),
           website_url: gu(pr["Website URL"]),
-          kundenstatus: (clientStatusMap[kundenstatus || ""] || "Lead"),
+          kundenstatus: kundenstatus || "Offen",
           ampelstatus: ampelMap[ampel || ""] || "Grün",
           zahlstatus: gs(pr["Zahlstatus"]),
           branche: branche[0] || null,

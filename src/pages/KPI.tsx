@@ -61,7 +61,7 @@ export default function KPI() {
   const chartHeight = isMobile ? 200 : 260;
 
   // ── Customer Success ──
-  const activeClients = useMemo(() => clients.filter(c => c.kundenstatus === 'In Betreuung'), [clients]);
+  const activeClients = useMemo(() => clients.filter(c => c.kundenstatus === 'In Betreuung' || c.kundenstatus === 'Onboarding'), [clients]);
   const alertClients = useMemo(() => clients.filter(c => c.ampelstatus === 'Rot' || (c.zahlstatus && c.zahlstatus.toLowerCase() === 'offen')), [clients]);
 
   function laufzeitPercent(c: any) {
