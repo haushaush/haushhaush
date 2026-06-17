@@ -244,7 +244,7 @@ function DroppableKanbanColumn({
         <h3 className="text-xs font-semibold truncate">{title}</h3>
         <Badge variant="secondary" className="text-[10px] h-5 px-1.5 rounded-md">{count}</Badge>
       </div>
-      <div className={`flex-1 border-x border-b rounded-b-lg p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-260px)] transition-all duration-200
+      <div className={`flex-1 border-x border-b rounded-b-lg p-2 space-y-2 overflow-y-auto scrollbar-none max-h-[calc(100vh-260px)] transition-all duration-200
         ${highlighted ? 'bg-primary/5 border-primary/40 ring-1 ring-primary/30' : 'bg-muted/10 border-border'}`}>
         {projects.length === 0 ? (
           <p className={`text-xs text-center py-6 transition-colors ${highlighted ? 'text-primary/60' : 'text-muted-foreground'}`}>
