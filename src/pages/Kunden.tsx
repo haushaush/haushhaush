@@ -378,7 +378,7 @@ export default function Kunden() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Alle Status</SelectItem>
-            {TAB_STATUSES.filter(s => s !== 'all').map(s => (
+            {statusOptions.map(s => (
               <SelectItem key={s} value={s}>
                 {s} ({statusCounts[s] ?? 0})
               </SelectItem>
