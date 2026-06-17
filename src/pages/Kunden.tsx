@@ -15,6 +15,9 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { Plus, Search, Users, RefreshCw, Loader2, Sparkles, Cloud, ChevronDown, Settings as SettingsIcon, Link2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -69,6 +72,8 @@ export default function Kunden() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterBranche, setFilterBranche] = useState<string>('all');
+  const [filterUnternehmen, setFilterUnternehmen] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [syncing, setSyncing] = useState(false);

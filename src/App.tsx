@@ -141,7 +141,6 @@ const App = () => (
                 <Route path="/recovery" element={<Recovery />} />
                 <Route path="/" element={<DL><Dashboard /></DL>} />
                 <Route path="/kunden" element={<DL><Kunden /></DL>} />
-                <Route path="/kunden/pipeline" element={<DL><KundenPipeline /></DL>} />
                 <Route path="/kunden/abschluesse" element={<DL><KundenAbschluesse /></DL>} />
                 <Route path="/kunden/laufzeiten" element={<DL><KundenLaufzeiten /></DL>} />
                 <Route path="/kunden/:id" element={<DL><KundenDetail /></DL>} />

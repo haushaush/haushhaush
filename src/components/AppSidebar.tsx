@@ -26,8 +26,7 @@ const navItems: NavItem[] = [
   {
     title: 'Kunden', url: '/kunden', icon: Users,
     children: [
-      { title: 'Alle Kunden', url: '/kunden' },
-      { title: 'Pipeline', url: '/kunden/pipeline' },
+      { title: 'Übersicht', url: '/kunden' },
       { title: 'Abschlüsse', url: '/kunden/abschluesse' },
       { title: 'Laufzeiten', url: '/kunden/laufzeiten' },
     ],
