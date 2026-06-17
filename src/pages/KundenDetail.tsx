@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-const KUNDENSTATUS_OPTIONS = ['Lead', 'In Betreuung', 'Pausiert', 'Churned'];
+const KUNDENSTATUS_OPTIONS = ['Offen', 'Onboarding', 'In Betreuung', 'Follow Up', 'Done', 'Lead', 'Pausiert', 'Churned'];
 const AMPEL_OPTIONS = ['Grün', 'Gelb', 'Rot', 'CC'];
 const ZAHLSTATUS_OPTIONS = ['Offen', 'In Bearbeitung', 'Rechnung zu erstellen', 'VC an HHS', 'DONE'];
 
