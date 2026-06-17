@@ -20,7 +20,6 @@ import Registrierung from "./pages/Registrierung.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Kunden from "./pages/Kunden.tsx";
 import KundenDetail from "./pages/KundenDetail.tsx";
-import KundenPipeline from "./pages/KundenPipeline.tsx";
 import KundenAbschluesse from "./pages/KundenAbschluesse.tsx";
 import KundenLaufzeiten from "./pages/KundenLaufzeiten.tsx";
 import Projekte from "./pages/Projekte.tsx";
