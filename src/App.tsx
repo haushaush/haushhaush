@@ -76,6 +76,9 @@ import PublicShowcaseLayout from "./pages/PublicShowcaseLayout.tsx";
 import { ShowcaseAuthRedirect } from "./components/ShowcaseAuthRedirect";
 import { AdminRoute } from "./components/AdminRoute";
 import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
+import { useFunnelGuard } from "./hooks/useFunnelGuard";
+import DailyFunnel from "./pages/DailyFunnel.tsx";
+import CheckinOverview from "./pages/hr/CheckinOverview.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -93,6 +96,7 @@ const DL = ({ children }: { children: React.ReactNode }) => <DashboardLayout>{ch
 
 function OnboardingGuardRunner() {
   useOnboardingGuard();
+  useFunnelGuard();
   return null;
 }
 
@@ -191,7 +195,9 @@ const App = () => (
                 <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />
                 <Route path="/finanzen" element={<DL><Finanzen /></DL>} />
                 <Route path="/finanzen/:tab" element={<DL><Finanzen /></DL>} />
+                <Route path="/funnel" element={<DailyFunnel />} />
                 <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
+                <Route path="/hr/checkins" element={<AdminRoute><DL><CheckinOverview /></DL></AdminRoute>} />
                 <Route path="/hr/mitarbeiter/:id" element={<DL><MitarbeiterDetail /></DL>} />
                 <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
                 <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />

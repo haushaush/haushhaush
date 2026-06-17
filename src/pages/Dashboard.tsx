@@ -22,6 +22,7 @@ import { Search } from 'lucide-react';
 import { KpiSlider } from '@/components/dashboard/KpiSlider';
 import { SortableBlock } from '@/components/dashboard/SortableBlock';
 import { MitteilungenCard } from '@/components/dashboard/MitteilungenCard';
+import { CheckinBanner } from '@/components/dashboard/CheckinBanner';
 import { ARIAHeroBlock } from '@/components/aria/ARIAHeroBlock';
 import { ARIAPanel } from '@/components/aria/ARIAPanel';
 import { useARIA } from '@/contexts/ARIAContext';
@@ -599,6 +600,7 @@ export default function Dashboard() {
     <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10">
 
       <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <CheckinBanner />
 
       {/* Hero + ARIA block — locked at top */}
       <div className="mb-8 space-y-0">

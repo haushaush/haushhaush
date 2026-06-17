@@ -1675,6 +1675,77 @@ export type Database = {
           },
         ]
       }
+      daily_checkins: {
+        Row: {
+          created_at: string
+          date: string
+          energie_abend: number | null
+          energie_morgen: number | null
+          focus_task: string | null
+          id: string
+          learnings: string | null
+          notiz: string | null
+          tagesbewertung: number | null
+          team_member_id: string | null
+          type: string
+          updated_at: string
+          user_id: string
+          vorfreude: string | null
+          ziele: Json
+          ziele_abend: Json
+          zusagen: Json
+          zusagen_abend: Json
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          energie_abend?: number | null
+          energie_morgen?: number | null
+          focus_task?: string | null
+          id?: string
+          learnings?: string | null
+          notiz?: string | null
+          tagesbewertung?: number | null
+          team_member_id?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+          vorfreude?: string | null
+          ziele?: Json
+          ziele_abend?: Json
+          zusagen?: Json
+          zusagen_abend?: Json
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          energie_abend?: number | null
+          energie_morgen?: number | null
+          focus_task?: string | null
+          id?: string
+          learnings?: string | null
+          notiz?: string | null
+          tagesbewertung?: number | null
+          team_member_id?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+          vorfreude?: string | null
+          ziele?: Json
+          ziele_abend?: Json
+          zusagen?: Json
+          zusagen_abend?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_checkins_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drive_connection: {
         Row: {
           access_token: string | null

@@ -17,7 +17,7 @@ interface NavItem {
   title: string;
   url: string;
   icon: any;
-  children?: { title: string; url: string }[];
+  children?: { title: string; url: string; adminOnly?: boolean }[];
   adminOnly?: boolean;
 }
 
@@ -73,6 +73,7 @@ const navItems: NavItem[] = [
     title: 'Team & HR', url: '/hr', icon: UserCircle,
     children: [
       { title: 'Mitarbeiter', url: '/hr/mitarbeiter' },
+      { title: 'Check-in & Check-out', url: '/hr/checkins', adminOnly: true },
       { title: 'Verträge & Gehalt', url: '/hr/vertraege' },
       { title: 'Probewoche', url: '/hr/probewoche' },
       { title: 'Akademie', url: '/hr/akademie' },
@@ -392,7 +393,7 @@ export function AppSidebar() {
                 )}
               </div>
             )}
-            {item.children!.map(child => {
+            {item.children!.filter(c => !c.adminOnly || isAdmin).map(child => {
               const childActive = isActive(child.url);
               const isPipedriveChild = item.title === 'Pipedrive';
               const href = isPipedriveChild && activePipedriveId
