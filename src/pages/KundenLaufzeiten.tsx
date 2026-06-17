@@ -118,7 +118,7 @@ export default function KundenLaufzeiten() {
     const days = bestEnd ? Math.ceil((bestEnd.getTime() - Date.now()) / 86400000) : null;
     const pct = progress(c.startdatum, bestEnd);
     return { client: c, endDate: bestEnd, days, pct, source, sourceLaufzeit };
-  }).filter(r => r.endDate !== null), [clients, projectsByClient]);
+  }).filter(r => r.endDate !== null || r.client.kundenstatus === 'Done'), [clients, projectsByClient]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -139,7 +139,10 @@ export default function KundenLaufzeiten() {
       if (aDone && !bDone) return 1;
       if (!aDone && bDone) return -1;
       if (aDone && bDone) {
-        // Done amongst themselves: latest end date first
+        // Done with end date first (descending), then those without
+        const aHasEnd = a.endDate !== null ? 1 : 0;
+        const bHasEnd = b.endDate !== null ? 1 : 0;
+        if (aHasEnd !== bHasEnd) return bHasEnd - aHasEnd;
         const ae = a.endDate?.getTime() ?? 0;
         const be = b.endDate?.getTime() ?? 0;
         return be - ae;
