@@ -73,6 +73,7 @@ const navItems: NavItem[] = [
     title: 'Team & HR', url: '/hr', icon: UserCircle,
     children: [
       { title: 'Mitarbeiter', url: '/hr/mitarbeiter' },
+      { title: 'Check-in & Check-out', url: '/hr/checkins', adminOnly: true },
       { title: 'Verträge & Gehalt', url: '/hr/vertraege' },
       { title: 'Probewoche', url: '/hr/probewoche' },
       { title: 'Akademie', url: '/hr/akademie' },
