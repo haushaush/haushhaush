@@ -96,6 +96,7 @@ const DL = ({ children }: { children: React.ReactNode }) => <DashboardLayout>{ch
 
 function OnboardingGuardRunner() {
   useOnboardingGuard();
+  useFunnelGuard();
   return null;
 }
 
