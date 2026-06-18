@@ -140,7 +140,7 @@ const toolsNavItems: NavItem[] = [
     ],
   },
   {
-    title: 'Ad Creative Studio', url: '/tools/ad-creative-studio', icon: Wand2,
+    title: 'A-Ad Creative Studio', url: '/tools/ad-creative-studio', icon: Wand2, adminOnly: true,
   },
   {
     title: 'Lead Quality Audit', url: '/tools/lead-quality-audit', icon: ShieldCheck,
