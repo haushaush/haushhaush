@@ -28,7 +28,7 @@ const ALLOWED_TABS = ['mitarbeiter', 'checkins', 'erstellen'];
 export default function TeamPage() {
   const { tab } = useParams();
   const navigate = useNavigate();
-  const currentTab = tab && ALLOWED_TABS.includes(tab) ? tab : 'mitarbeiter';
+  const requestedTab = tab && ALLOWED_TABS.includes(tab) ? tab : 'mitarbeiter';
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
