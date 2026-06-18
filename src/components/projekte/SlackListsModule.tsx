@@ -41,7 +41,7 @@ type MappingRow = { colId: string; varName: string };
 
 const EDITABLE_COLUMN_IDS = ['Col0B645A1WL8'];
 const EDITABLE_COLUMN_NAMES = ['status'];
-const EDITABLE_TYPES = ['text', 'select', 'multi_select', 'checkbox', 'date', 'number'];
+const EDITABLE_TYPES = ['text', 'select', 'multi_select', 'checkbox', 'date', 'number', 'user'];
 
 const isColumnEditable = (
   col: SlackColumn,
@@ -50,8 +50,6 @@ const isColumnEditable = (
 ) => {
   // Nie editierbar: Dateianhänge
   if (col.type === 'attachment') return false;
-  // User-Spalten vorerst read-only (brauchen Slack-User-ID, kein Freitext)
-  if (col.type === 'user') return false;
   // System-/berechnete Spalten read-only
   const systemNames = ['created_by', 'updated', 'created', 'creator', 'last_updated', 'updated_by', 'timestamp'];
   const n = (col.name || '').toLowerCase().trim();
@@ -262,6 +260,7 @@ export function SlackListsModule() {
       if (t === 'checkbox') return { checkbox: !!newValue };
       if (t === 'date') return { date: newValue as number };
       if (t === 'number') return { value: newValue };
+      if (t === 'user') return { user: newValue ? [String(newValue)] : [] };
       return { text: String(newValue ?? '') };
     })();
     setSavingCell(cellKey);
@@ -271,10 +270,14 @@ export function SlackListsModule() {
     try {
       // Vorquali nutzt weiter den Webhook-Weg; alle anderen Listen direkt via Slack-API
       const fn = activeListId === 'F0B56EJPTEZ' ? 'send-slack-list-update' : 'update-slack-list-item';
+      // user: stets als Array senden (leeres Array = niemand)
+      const fieldValue = col.type === 'user'
+        ? (newValue ? [String(newValue)] : [])
+        : newValue;
       const body: any = {
         slack_item_id: itemId,
         slack_list_id: activeListId,
-        field_updates: { [col.id]: newValue },
+        field_updates: { [col.id]: fieldValue },
       };
       if (fn === 'update-slack-list-item') {
         body.column_types = { [col.id]: col.type };
