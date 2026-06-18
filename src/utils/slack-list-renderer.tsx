@@ -165,6 +165,26 @@ export function renderCellPlain(cell: any, col?: SlackColumn, slackListId?: stri
     return '';
   }
 
+  // USER — resolve via alias_type='user' (key = slack_id)
+  if (col?.type === 'user') {
+    const ids: string[] = (() => {
+      if (cell == null) return [];
+      if (typeof cell === 'string') return /^[UW][A-Z0-9]+$/.test(cell) ? [cell] : [];
+      if (Array.isArray(cell)) return cell.filter((v) => typeof v === 'string');
+      if (typeof cell === 'object') {
+        if (Array.isArray(cell.user)) return cell.user.filter((v: unknown) => typeof v === 'string');
+        if (typeof cell.user === 'string') return [cell.user];
+        if (typeof cell.value === 'string' && /^[UW][A-Z0-9]+$/.test(cell.value)) return [cell.value];
+      }
+      return [];
+    })();
+    if (ids.length === 0) return '';
+    return ids
+      .map((id) => (slackListId ? aliasCache.get(slackListId)?.get(id)?.display_name : null) || id)
+      .join(', ');
+  }
+
+
 
   if (cell == null) return '';
   if (typeof cell === 'boolean') return cell ? '✓' : '';
