@@ -921,13 +921,6 @@ export default function Einstellungen() {
         </DialogContent>
       </Dialog>
 
-      {/* Pipedrive Accounts Modal */}
-      <PipedriveAccountsModal
-        open={pipedriveModalOpen}
-        onClose={() => setPipedriveModalOpen(false)}
-        onChanged={fetchData}
-      />
-
       {/* Import Orphan Modal */}
       <ImportOrphanModal
         open={!!importOrphanEmail}
