@@ -38,6 +38,8 @@ interface SlackList {
   columns: any;
   last_synced_at: string | null;
   created_at: string;
+  webhook_url?: string | null;
+  variable_mapping?: Record<string, string> | null;
   item_count?: number;
 }
 
