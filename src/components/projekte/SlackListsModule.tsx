@@ -41,20 +41,32 @@ type MappingRow = { colId: string; varName: string };
 
 const EDITABLE_COLUMN_IDS = ['Col0B645A1WL8'];
 const EDITABLE_COLUMN_NAMES = ['status'];
+const EDITABLE_TYPES = ['text', 'select', 'multi_select', 'checkbox', 'date', 'number'];
+
 const isColumnEditable = (
   col: SlackColumn,
   slackListId: string | null,
-  variableMapping?: Record<string, string> | null
+  _variableMapping?: Record<string, string> | null
 ) => {
+  // Nie editierbar: Dateianhänge
+  if (col.type === 'attachment') return false;
+  // User-Spalten vorerst read-only (brauchen Slack-User-ID, kein Freitext)
+  if (col.type === 'user') return false;
+  // System-/berechnete Spalten read-only
+  const systemNames = ['created_by', 'updated', 'created', 'creator', 'last_updated', 'updated_by', 'timestamp'];
+  const n = (col.name || '').toLowerCase().trim();
+  if (systemNames.includes(n) || col.id.toLowerCase().includes('created') || col.id.toLowerCase().includes('updated')) return false;
+
   // Checkbox-Spalten sind immer togglebar (direkter Slack-API-Weg, kein Webhook nötig)
   if (col.type === 'checkbox') return true;
+
   // Vorquali-Liste: alte Allowlist als Fallback behalten
   if (slackListId === 'F0B56EJPTEZ') {
-    const n = (col.name || '').toLowerCase().trim();
     return EDITABLE_COLUMN_IDS.includes(col.id) || EDITABLE_COLUMN_NAMES.includes(n);
   }
-  // Alle anderen Listen: editierbar, wenn im variable_mapping der Liste enthalten
-  return !!variableMapping && col.id in variableMapping;
+
+  // Alle anderen Listen: editierbar, wenn Typ vom SlackCellEditor unterstützt wird
+  return EDITABLE_TYPES.includes(col.type || 'text');
 };
 
 interface SlackList {
