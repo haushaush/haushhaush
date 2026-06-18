@@ -11,6 +11,7 @@ import { MiniPlayerBar } from '@/components/layout/MiniPlayerBar';
 import { ARIASearchBar } from '@/components/aria/ARIASearchBar';
 import { ARIAPanel } from '@/components/aria/ARIAPanel';
 import { useARIA } from '@/contexts/ARIAContext';
+import { usePreferences } from '@/hooks/usePreferences';
 import { MfaGate } from '@/components/mfa/MfaGate';
 
 function SidebarWidthSync() {
