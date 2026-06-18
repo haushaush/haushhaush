@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
   List, RefreshCw, Plus, Trash2, Search, Loader2, Pencil,
-  ArrowUp, ArrowDown, ArrowUpDown, Settings2,
+  ArrowUp, ArrowDown, ArrowUpDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -18,9 +18,6 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import {
   renderCellPlain, renderCellNode, getCellPills, normalizeColumns,
   loadAliases, subscribeAliases, getColumnDisplay, type SlackColumn,
@@ -38,7 +35,7 @@ const getCheckboxValue = (cell: any): boolean => {
   return raw === true || raw === 'true' || raw === 1;
 };
 
-type MappingRow = { colId: string; varName: string };
+
 
 const EDITABLE_COLUMN_IDS = ['Col0B645A1WL8'];
 const EDITABLE_COLUMN_NAMES = ['status'];
@@ -112,10 +109,6 @@ export function SlackListsModule() {
   const [newListName, setNewListName] = useState('');
   const [adding, setAdding] = useState(false);
 
-  const [configOpen, setConfigOpen] = useState(false);
-  const [configWebhook, setConfigWebhook] = useState('');
-  const [configRows, setConfigRows] = useState<MappingRow[]>([]);
-  const [savingConfig, setSavingConfig] = useState(false);
   const [aliasOpen, setAliasOpen] = useState(false);
 
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
@@ -210,45 +203,8 @@ export function SlackListsModule() {
     await loadLists();
   };
 
-  const openConfig = () => {
-    if (!activeList) return;
-    setConfigWebhook(activeList.webhook_url || '');
-    const mapping = activeList.variable_mapping || {};
-    const rows: MappingRow[] = Object.entries(mapping).map(([colId, varName]) => ({
-      colId,
-      varName: String(varName || ''),
-    }));
-    setConfigRows(rows);
-    setConfigOpen(true);
-  };
 
-  const saveConfig = async () => {
-    if (!activeListId) return;
-    setSavingConfig(true);
-    try {
-      const cleanMapping: Record<string, string> = {};
-      for (const row of configRows) {
-        const colId = String(row.colId || '').trim();
-        const varName = String(row.varName || '').trim();
-        if (colId && varName) cleanMapping[colId] = varName;
-      }
-      const { error } = await supabase
-        .from('slack_lists')
-        .update({
-          webhook_url: configWebhook.trim() || null,
-          variable_mapping: cleanMapping as any,
-        } as any)
-        .eq('slack_list_id', activeListId);
-      if (error) throw error;
-      toast.success('Konfiguration gespeichert');
-      setConfigOpen(false);
-      await loadLists();
-    } catch (e: any) {
-      toast.error('Speichern fehlgeschlagen: ' + (e.message || 'Unbekannt'));
-    } finally {
-      setSavingConfig(false);
-    }
-  };
+
 
   const saveCell = async (itemId: string, col: SlackColumn, newValue: unknown) => {
     if (!activeListId) return;
@@ -429,10 +385,6 @@ export function SlackListsModule() {
                       syncingId === activeList.slack_list_id && 'animate-spin')} />
                     Sync
                   </Button>
-                  <Button variant="outline" size="sm" onClick={openConfig}>
-                    <Settings2 className="h-3.5 w-3.5 mr-1.5" />
-                    Konfigurieren
-                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setAliasOpen(true)}>
                     <Pencil className="h-3.5 w-3.5 mr-1.5" />
                     Anzeige anpassen
@@ -585,100 +537,6 @@ export function SlackListsModule() {
           )}
         </>
       )}
-
-      <Dialog open={configOpen} onOpenChange={setConfigOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Liste konfigurieren</DialogTitle>
-            <DialogDescription>
-              Webhook-URL und Variablen-Mapping für den Slack-Workflow dieser Liste.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-1">
-            <div className="space-y-1.5">
-              <Label htmlFor="cfg-webhook">Slack-Workflow Webhook-URL</Label>
-              <Input id="cfg-webhook" placeholder="https://hooks.slack.com/triggers/..."
-                className="font-mono text-xs"
-                value={configWebhook} onChange={(e) => setConfigWebhook(e.target.value)} />
-              <p className="text-[11px] text-muted-foreground">
-                Wird beim Speichern einer Zelle aufgerufen. Leer lassen, um Schreib-Sync zu deaktivieren.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label>Variablen-Mapping</Label>
-              <p className="text-[11px] text-muted-foreground">
-                Trage die Variablennamen deines Slack-Workflows ein und wähle, welche Spalte den Wert liefert. <span className="font-mono">zeilenid</span> wird automatisch mitgesendet und muss nicht gemappt werden.
-              </p>
-              <div className="space-y-2">
-                {configRows.length === 0 && (
-                  <p className="text-xs text-muted-foreground italic">
-                    Noch keine Variablen. Füge mit "+ Variable hinzufügen" eine hinzu.
-                  </p>
-                )}
-                {configRows.map((row, idx) => (
-                  <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
-                    <Input
-                      placeholder="slack_variable"
-                      className="font-mono text-xs h-8"
-                      value={row.varName}
-                      onChange={(e) =>
-                        setConfigRows((rows) =>
-                          rows.map((r, i) => (i === idx ? { ...r, varName: e.target.value } : r))
-                        )
-                      }
-                    />
-                    <Select
-                      value={row.colId || undefined}
-                      onValueChange={(val) =>
-                        setConfigRows((rows) =>
-                          rows.map((r, i) => (i === idx ? { ...r, colId: val } : r))
-                        )
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Spalte wählen…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {columns.map((col) => (
-                          <SelectItem key={col.id} value={col.id} className="text-xs">
-                            {getColumnDisplay(col.id, activeListId, col.name || col.id)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() =>
-                        setConfigRows((rows) => rows.filter((_, i) => i !== idx))
-                      }
-                      aria-label="Variable entfernen"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={() => setConfigRows((rows) => [...rows, { colId: '', varName: '' }])}
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" /> Variable hinzufügen
-              </Button>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setConfigOpen(false)}>Abbrechen</Button>
-            <Button onClick={saveConfig} disabled={savingConfig}>
-              {savingConfig && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-              Speichern
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
