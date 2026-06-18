@@ -284,8 +284,8 @@ export default function Einstellungen() {
   const defaultTab = 'branding';
   const adminOnlyTabs = ['mitarbeiter-erstellen'];
   const allowedTabs = isAdmin
-    ? ['branding', 'benutzer', 'mitarbeiter-erstellen', 'benachrichtigungen', 'sicherheit', 'slack']
-    : ['branding', 'benutzer', 'benachrichtigungen', 'sicherheit', 'slack'];
+    ? ['branding', 'mitarbeiter-erstellen', 'benachrichtigungen', 'sicherheit', 'slack']
+    : ['branding', 'benachrichtigungen', 'sicherheit', 'slack'];
   const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
 
   // Redirect non-admins away from admin-only tabs
@@ -314,44 +314,21 @@ export default function Einstellungen() {
   const [rejectReason, setRejectReason] = useState('');
   const [adminNote, setAdminNote] = useState('');
 
-  const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  // Unified user list (auth + team)
-  const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [userStats, setUserStats] = useState<{ total: number; active: number; orphan: number; deleted: number } | null>(null);
-  const [importOrphanEmail, setImportOrphanEmail] = useState<string | null>(null);
-  const [orphanDeleteTarget, setOrphanDeleteTarget] = useState<{ id: string; email: string } | null>(null);
-  const [orphanDeleting, setOrphanDeleting] = useState(false);
-  const [showDeletedSection, setShowDeletedSection] = useState(false);
-
-  const loadAllUsers = useCallback(async () => {
-    if (!isAdmin) return;
-    const { data, error } = await supabase.functions.invoke('list-all-users');
-    if (error || (data as any)?.error) {
-      console.warn('[list-all-users] fehlgeschlagen', error || (data as any)?.error);
-      return;
-    }
-    setAllUsers((data as any).users || []);
-    setUserStats((data as any).stats || null);
-  }, [isAdmin]);
-
   const fetchData = async () => {
-    const [teamRes, reqRes, rolesRes] = await Promise.all([
+    const [teamRes, reqRes] = await Promise.all([
       supabase.from('team').select('*').order('name'),
       isAdminOrManager ? supabase.from('employee_requests').select('*').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-      isAdmin ? supabase.from('user_roles').select('user_id').eq('role', 'admin') : Promise.resolve({ data: [] }),
     ]);
     setTeam(teamRes.data || []);
-    setAdminIds(new Set(((rolesRes.data || []) as any[]).map((r: any) => r.user_id)));
     setRequests((reqRes.data || []) as EmployeeRequest[]);
     setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, [user, isAdminOrManager, isAdmin]);
-  useEffect(() => { loadAllUsers(); }, [loadAllUsers]);
 
   const showDeleteError = (raw: string, hint?: string) => {
     const isFkError =
@@ -387,25 +364,9 @@ export default function Einstellungen() {
     setDeleteTarget(null);
     setDeleteConfirmName('');
     fetchData();
-    loadAllUsers();
   };
 
-  const handleDeleteOrphan = async () => {
-    if (!orphanDeleteTarget) return;
-    setOrphanDeleting(true);
-    const { data, error } = await supabase.functions.invoke('delete-orphan-auth-user', {
-      body: { user_id: orphanDeleteTarget.id },
-    });
-    setOrphanDeleting(false);
-    const errMsg = (data as any)?.error || error?.message;
-    if (errMsg) {
-      showDeleteError(errMsg, (data as any)?.hint);
-      return;
-    }
-    toast.success(`Verwaister Auth-User ${orphanDeleteTarget.email} gelöscht`);
-    setOrphanDeleteTarget(null);
-    loadAllUsers();
-  };
+
 
   const pendingCount = requests.filter(r => r.status === 'Ausstehend').length;
 
@@ -486,14 +447,6 @@ export default function Einstellungen() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="benutzer" className="relative">
-            Benutzer
-            {pendingCount > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5">
-                {pendingCount}
-              </span>
-            )}
-          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="mitarbeiter-erstellen">Mitarbeiter erstellen</TabsTrigger>
           )}
@@ -541,185 +494,6 @@ export default function Einstellungen() {
           <CompanyLogoManager />
         </TabsContent>
 
-        {/* ═══════ BENUTZER TAB ═══════ */}
-        <TabsContent value="benutzer" className="mt-4 space-y-6">
-          {isAdminOrManager && requests.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Mitarbeiter-Anfragen</h3>
-              <Card className="border-border bg-card"><CardContent className="p-0"><div className="overflow-x-auto">
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>E-Mail</TableHead>
-                    <TableHead className="hidden sm:table-cell">Position</TableHead>
-                    <TableHead className="hidden sm:table-cell">Abteilung</TableHead>
-                    <TableHead className="hidden md:table-cell">Eingereicht</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {requests.map(r => (
-                      <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDrawer(r)}>
-                        <TableCell className="font-medium">{r.vorname} {r.nachname}</TableCell>
-                        <TableCell className="text-muted-foreground">{r.email}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{r.position || '–'}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{r.abteilung || '–'}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs hidden md:table-cell">{new Date(r.created_at).toLocaleDateString('de-DE')}</TableCell>
-                        <TableCell>{statusBadge(r.status)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div></CardContent></Card>
-            </div>
-          )}
-
-          {isAdmin && userStats && (
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span><span className="text-foreground font-semibold">{userStats.active}</span> aktiv</span>
-              <span>·</span>
-              <span>
-                <span className={`font-semibold ${userStats.orphan > 0 ? 'text-warning' : 'text-foreground'}`}>{userStats.orphan}</span> verwaist
-              </span>
-              <span>·</span>
-              <span><span className="text-foreground font-semibold">{userStats.deleted}</span> gelöscht</span>
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Aktive Mitarbeiter</h3>
-            <Card className="border-border bg-card"><CardContent className="p-0"><div className="overflow-x-auto">
-              <Table>
-                <TableHeader><TableRow>
-                  <TableHead>Name</TableHead><TableHead>E-Mail</TableHead><TableHead>Rolle</TableHead><TableHead className="hidden sm:table-cell">Abteilung</TableHead>
-                  {isAdmin && <TableHead className="text-right w-[120px]">Aktionen</TableHead>}
-                </TableRow></TableHeader>
-                <TableBody>
-                  {team.map(m => {
-                    const isSelf = user?.id === m.id;
-                    const targetIsAdmin = adminIds.has(m.id);
-                    const canDelete = isAdmin && !isSelf && !targetIsAdmin;
-                    return (
-                      <TableRow key={m.id}>
-                        <TableCell className="font-medium">{m.name}</TableCell>
-                        <TableCell className="text-muted-foreground">{m.email}</TableCell>
-                        <TableCell><Badge variant="secondary" className="text-xs">{m.rolle}</Badge></TableCell>
-                        <TableCell className="text-muted-foreground hidden sm:table-cell">{m.department || '–'}</TableCell>
-                        {isAdmin && (
-                          <TableCell className="text-right">
-                            {isSelf ? (
-                              <span className="text-xs text-muted-foreground">Du</span>
-                            ) : targetIsAdmin ? (
-                              <span className="text-xs text-muted-foreground">Admin</span>
-                            ) : canDelete ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => { setDeleteTarget(m); setDeleteConfirmName(''); }}
-                                aria-label={`${m.name} löschen`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            ) : null}
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div></CardContent></Card>
-          </div>
-
-          {/* Verwaiste Auth-User */}
-          {isAdmin && allUsers.filter(u => u.is_orphan).length > 0 && (
-            <div className="space-y-3">
-              <div>
-                <h3 className="text-sm font-semibold text-warning uppercase tracking-wider flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  Verwaiste Auth-User ({allUsers.filter(u => u.is_orphan).length})
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Diese User können sich einloggen, haben aber kein Mitarbeiter-Profil. Bitte importieren oder löschen.
-                </p>
-              </div>
-              <Card className="border-warning/30 bg-card"><CardContent className="p-0"><div className="overflow-x-auto">
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>E-Mail</TableHead>
-                    <TableHead className="hidden sm:table-cell">Auth seit</TableHead>
-                    <TableHead className="text-right">Aktion</TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {allUsers.filter(u => u.is_orphan).map(u => (
-                      <TableRow key={u.id}>
-                        <TableCell className="font-mono text-xs">{u.email}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs hidden sm:table-cell">
-                          {u.auth_created_at ? new Date(u.auth_created_at).toLocaleDateString('de-DE') : '–'}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 text-xs"
-                              onClick={() => setImportOrphanEmail(u.email)}
-                            >
-                              <UserPlus className="h-3.5 w-3.5 mr-1" />
-                              Importieren
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => setOrphanDeleteTarget({ id: u.id, email: u.email })}
-                              aria-label={`${u.email} löschen`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div></CardContent></Card>
-            </div>
-          )}
-
-          {/* Gelöschte Mitarbeiter */}
-          {isAdmin && allUsers.filter(u => u.is_deleted).length > 0 && (
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => setShowDeletedSection(v => !v)}
-                className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
-              >
-                {showDeletedSection ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                Gelöschte Mitarbeiter ({allUsers.filter(u => u.is_deleted).length})
-              </button>
-              {showDeletedSection && (
-                <Card className="border-border bg-card"><CardContent className="p-0"><div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader><TableRow>
-                      <TableHead>Name</TableHead><TableHead>E-Mail</TableHead>
-                    </TableRow></TableHeader>
-                    <TableBody>
-                      {allUsers.filter(u => u.is_deleted).map(u => (
-                        <TableRow key={u.id}>
-                          <TableCell className="font-medium text-muted-foreground">{u.name || '–'}</TableCell>
-                          <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div></CardContent></Card>
-              )}
-            </div>
-          )}
-
-          <Button variant="outline"><Users className="h-4 w-4 mr-2" />Per E-Mail einladen</Button>
-        </TabsContent>
 
         {/* ═══════ MITARBEITER ERSTELLEN TAB ═══════ */}
         {isAdmin && (
@@ -909,38 +683,6 @@ export default function Einstellungen() {
               }
             >
               {deleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Lösche...</> : <><Trash2 className="h-4 w-4 mr-2" />Endgültig löschen</>}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Import Orphan Modal */}
-      <ImportOrphanModal
-        open={!!importOrphanEmail}
-        email={importOrphanEmail || ''}
-        onOpenChange={(o) => { if (!o) setImportOrphanEmail(null); }}
-        onImported={() => { fetchData(); loadAllUsers(); }}
-      />
-
-      {/* Orphan Delete Confirmation */}
-      <Dialog open={!!orphanDeleteTarget} onOpenChange={(o) => { if (!o) setOrphanDeleteTarget(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Verwaisten Auth-User löschen?
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Der Auth-User <span className="font-mono text-foreground">{orphanDeleteTarget?.email}</span> wird
-            unwiderruflich aus dem System entfernt.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOrphanDeleteTarget(null)} disabled={orphanDeleting}>
-              Abbrechen
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteOrphan} disabled={orphanDeleting}>
-              {orphanDeleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Lösche...</> : <><Trash2 className="h-4 w-4 mr-2" />Löschen</>}
             </Button>
           </DialogFooter>
         </DialogContent>
