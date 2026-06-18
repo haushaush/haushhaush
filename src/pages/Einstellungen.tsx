@@ -322,34 +322,15 @@ export default function Einstellungen() {
   }, [isAdmin]);
 
   const fetchData = async () => {
-    const [driveRes, googleDriveRes, teamRes, reqRes, intRes, dealsRes, rolesRes, pipedriveRes] = await Promise.all([
-      user ? supabase.from('drive_connection').select('*').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
-      user ? supabase.from('google_drive_connections').select('google_email, connected_at').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
+  const fetchData = async () => {
+    const [teamRes, reqRes, rolesRes] = await Promise.all([
       supabase.from('team').select('*').order('name'),
       isAdminOrManager ? supabase.from('employee_requests').select('*').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-      user ? supabase.from('integration_settings').select('*').eq('user_id', user.id) : Promise.resolve({ data: [] }),
-      supabase.from('close_deals').select('id, client_name, art, wert_eur').order('client_name'),
       isAdmin ? supabase.from('user_roles').select('user_id').eq('role', 'admin') : Promise.resolve({ data: [] }),
-      isAdmin ? supabase.from('pipedrive_accounts' as any).select('id, name, domain, is_active, last_sync_at, last_sync_status, total_deals_synced').order('created_at', { ascending: true }) : Promise.resolve({ data: [] }),
     ]);
-    if (driveRes.data) { setDriveConnected(true); setDriveEmail(driveRes.data.google_email); }
-    if (googleDriveRes.data) {
-      setGoogleDriveConn({ email: googleDriveRes.data.google_email, connected_at: googleDriveRes.data.connected_at });
-    } else {
-      setGoogleDriveConn(null);
-    }
     setTeam(teamRes.data || []);
     setAdminIds(new Set(((rolesRes.data || []) as any[]).map((r: any) => r.user_id)));
     setRequests((reqRes.data || []) as EmployeeRequest[]);
-    setIntegrationSettings((intRes.data || []) as any[]);
-    setCloseDeals((dealsRes.data || []) as CloseDeal[]);
-    // Extract dynamic configs from integration settings
-    const dynConfigs: Record<string, Record<string, any>> = {};
-    ((intRes.data || []) as any[]).forEach((s: any) => {
-      if (s.config?.dynamic_data) dynConfigs[s.provider] = s.config.dynamic_data;
-    });
-    setDynamicConfigs(dynConfigs);
-    setPipedriveAccounts((pipedriveRes.data || []) as any[]);
     setLoading(false);
   };
 
