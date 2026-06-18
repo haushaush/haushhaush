@@ -172,6 +172,41 @@ export function SlackListsModule() {
     await loadLists();
   };
 
+  const openConfig = () => {
+    if (!activeList) return;
+    setConfigWebhook(activeList.webhook_url || '');
+    setConfigMapping({ ...(activeList.variable_mapping || {}) });
+    setConfigOpen(true);
+  };
+
+  const saveConfig = async () => {
+    if (!activeListId) return;
+    setSavingConfig(true);
+    try {
+      // Strip empty mapping entries
+      const cleanMapping: Record<string, string> = {};
+      for (const [k, v] of Object.entries(configMapping)) {
+        const val = String(v || '').trim();
+        if (val) cleanMapping[k] = val;
+      }
+      const { error } = await supabase
+        .from('slack_lists')
+        .update({
+          webhook_url: configWebhook.trim() || null,
+          variable_mapping: cleanMapping as any,
+        } as any)
+        .eq('slack_list_id', activeListId);
+      if (error) throw error;
+      toast.success('Konfiguration gespeichert');
+      setConfigOpen(false);
+      await loadLists();
+    } catch (e: any) {
+      toast.error('Speichern fehlgeschlagen: ' + (e.message || 'Unbekannt'));
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
   const saveCell = async (itemId: string, col: SlackColumn, newValue: unknown) => {
     if (!activeListId) return;
     const cellKey = `${itemId}::${col.id}`;
