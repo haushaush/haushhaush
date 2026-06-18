@@ -82,7 +82,7 @@ export function SlackListsModule() {
 
   const [configOpen, setConfigOpen] = useState(false);
   const [configWebhook, setConfigWebhook] = useState('');
-  const [configMapping, setConfigMapping] = useState<Record<string, string>>({});
+  const [configRows, setConfigRows] = useState<MappingRow[]>([]);
   const [savingConfig, setSavingConfig] = useState(false);
 
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
