@@ -126,7 +126,7 @@ export function SlackListsModule() {
     try {
       const { error: upErr } = await supabase
         .from('slack_lists')
-        .upsert({ slack_list_id: id, list_name: name || null } as any, { onConflict: 'slack_list_id' });
+        .upsert({ slack_list_id: id, list_name: name || null, context: 'aufgaben' } as any, { onConflict: 'slack_list_id' });
       if (upErr) throw upErr;
       const { data, error } = await supabase.functions.invoke('sync-slack-list', { body: { list_id: id } });
       if (error) throw error;
