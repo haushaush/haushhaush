@@ -26,6 +26,7 @@ import {
   loadAliases, subscribeAliases, getColumnDisplay, type SlackColumn,
 } from '@/utils/slack-list-renderer';
 import { SlackCellEditor } from '@/components/settings/SlackCellEditor';
+import { SlackAliasEditor } from '@/components/settings/SlackAliasEditor';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const getCheckboxValue = (cell: any): boolean => {
@@ -115,6 +116,7 @@ export function SlackListsModule() {
   const [configWebhook, setConfigWebhook] = useState('');
   const [configRows, setConfigRows] = useState<MappingRow[]>([]);
   const [savingConfig, setSavingConfig] = useState(false);
+  const [aliasOpen, setAliasOpen] = useState(false);
 
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
   const columns = useMemo<SlackColumn[]>(() => {
@@ -431,6 +433,10 @@ export function SlackListsModule() {
                     <Settings2 className="h-3.5 w-3.5 mr-1.5" />
                     Konfigurieren
                   </Button>
+                  <Button variant="outline" size="sm" onClick={() => setAliasOpen(true)}>
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                    Anzeige anpassen
+                  </Button>
                   <Button variant="ghost" size="sm" onClick={() => removeList(activeList.slack_list_id)}>
                     <Trash2 className="h-3.5 w-3.5 text-destructive" />
                   </Button>
@@ -563,6 +569,18 @@ export function SlackListsModule() {
                   </table>
                 </div>
               </Card>
+
+              <SlackAliasEditor
+                open={aliasOpen}
+                onOpenChange={setAliasOpen}
+                slackListId={activeList.slack_list_id}
+                columns={columns as any}
+                items={items as any}
+                onSaved={async () => {
+                  await loadAliases(activeList.slack_list_id, true);
+                  setAliasVersion((v) => v + 1);
+                }}
+              />
             </>
           )}
         </>
