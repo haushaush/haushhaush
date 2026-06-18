@@ -5572,6 +5572,24 @@ export type Database = {
       }
     }
     Views: {
+      admin_time_entries: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          duration_seconds: number | null
+          id: string | null
+          notes: string | null
+          started_at: string | null
+          stopped_at: string | null
+          task_id: string | null
+          task_label: string | null
+          team_id: string | null
+          team_name: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       onepage_projects_with_stats: {
         Row: {
           client_id: string | null
@@ -5605,6 +5623,24 @@ export type Database = {
       find_client_by_meta_account: {
         Args: { p_account_id: string }
         Returns: string
+      }
+      get_admin_time_entries: {
+        Args: never
+        Returns: {
+          client_id: string
+          created_at: string
+          duration_seconds: number
+          id: string
+          notes: string
+          started_at: string
+          stopped_at: string
+          task_id: string
+          task_label: string
+          team_id: string
+          team_name: string
+          user_email: string
+          user_id: string
+        }[]
       }
       has_role: {
         Args: {
