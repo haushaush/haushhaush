@@ -239,7 +239,7 @@ export function renderCellPlain(cell: any, col?: SlackColumn, slackListId?: stri
 export function renderCellNode(cell: any, col?: SlackColumn): ReactNode {
   const type = col?.type;
   if (type === 'checkbox' || typeof cell === 'boolean') {
-    const checked = cell === true || cell === 'true' || cell === 1;
+    const checked = extractCheckboxValue(cell);
     return checked
       ? <span className="inline-flex h-4 w-4 items-center justify-center rounded border border-primary bg-primary/20 text-primary text-[10px]">✓</span>
       : <span className="inline-flex h-4 w-4 rounded border border-border" />;
