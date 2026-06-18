@@ -279,8 +279,8 @@ export function AppSidebar() {
   const toolsOpen = openGroups['__tools'] ?? false;
   const anyToolActive = visibleToolsItems.some(t => isParentActive(t));
 
-  // Split navItems: items before Fulfillment = top group, Fulfillment onwards = bottom group
-  const toolsInsertIndex = visibleNavItems.findIndex(i => i.title === 'Fulfillment');
+  // Split navItems: items before Finanzen = top group, Finanzen onwards = bottom group
+  const toolsInsertIndex = visibleNavItems.findIndex(i => i.title === 'Finanzen');
   const navItemsBefore = toolsInsertIndex >= 0 ? visibleNavItems.slice(0, toolsInsertIndex) : visibleNavItems;
   const navItemsAfter = toolsInsertIndex >= 0 ? visibleNavItems.slice(toolsInsertIndex) : [];
 
