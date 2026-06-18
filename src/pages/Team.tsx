@@ -34,6 +34,7 @@ export default function TeamPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
+  const currentTab = requestedTab === 'erstellen' && !isAdmin ? 'mitarbeiter' : requestedTab;
   const { toast } = useToast();
   const [form, setForm] = useState({ name: '', email: '', rolle: 'Setter', department: 'Sales', startdatum: '' });
 
