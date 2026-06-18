@@ -50,8 +50,6 @@ const isColumnEditable = (
 ) => {
   // Nie editierbar: Dateianhänge
   if (col.type === 'attachment') return false;
-  // User-Spalten vorerst read-only (brauchen Slack-User-ID, kein Freitext)
-  if (col.type === 'user') return false;
   // System-/berechnete Spalten read-only
   const systemNames = ['created_by', 'updated', 'created', 'creator', 'last_updated', 'updated_by', 'timestamp'];
   const n = (col.name || '').toLowerCase().trim();
