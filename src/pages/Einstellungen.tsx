@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Bell, Palette, Users, Hash, X, Check, Loader2, Upload, Building2, ImageIcon, Trash2, AlertTriangle, UserPlus, ChevronDown, ChevronRight, GitMerge, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
-import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
+
 import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
 import { SlackChannelsTab } from '@/components/settings/SlackChannelsTab';
@@ -282,9 +282,9 @@ export default function Einstellungen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const defaultTab = 'branding';
-  const adminOnlyTabs = ['mitarbeiter-erstellen'];
+  const adminOnlyTabs: string[] = [];
   const allowedTabs = isAdmin
-    ? ['branding', 'mitarbeiter-erstellen', 'benachrichtigungen', 'sicherheit', 'slack']
+    ? ['branding', 'benachrichtigungen', 'sicherheit', 'slack']
     : ['branding', 'benachrichtigungen', 'sicherheit', 'slack'];
   const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
 
@@ -447,9 +447,6 @@ export default function Einstellungen() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="branding">Branding</TabsTrigger>
-          {isAdmin && (
-            <TabsTrigger value="mitarbeiter-erstellen">Mitarbeiter erstellen</TabsTrigger>
-          )}
           <TabsTrigger value="benachrichtigungen">Benachrichtigungen</TabsTrigger>
           <TabsTrigger value="sicherheit">Sicherheit</TabsTrigger>
           <TabsTrigger value="slack" className="flex items-center gap-1.5">
@@ -495,12 +492,7 @@ export default function Einstellungen() {
         </TabsContent>
 
 
-        {/* ═══════ MITARBEITER ERSTELLEN TAB ═══════ */}
-        {isAdmin && (
-          <TabsContent value="mitarbeiter-erstellen" className="mt-6">
-            <CreateTeamMemberTab />
-          </TabsContent>
-        )}
+
 
         {/* ═══════ BENACHRICHTIGUNGEN TAB ═══════ */}
         <TabsContent value="benachrichtigungen" className="mt-4 space-y-6">

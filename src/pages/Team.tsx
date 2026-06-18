@@ -12,8 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Users, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
 
 const DEPT_GROUPS = [
   { label: 'MANAGEMENT', departments: ['Management'] },
@@ -22,17 +23,18 @@ const DEPT_GROUPS = [
   { label: 'INTERN',     departments: ['Intern'] },
 ];
 const ALL_DEPTS = DEPT_GROUPS.flatMap(g => g.departments);
-const ALLOWED_TABS = ['mitarbeiter', 'checkins'];
+const ALLOWED_TABS = ['mitarbeiter', 'checkins', 'erstellen'];
 
 export default function TeamPage() {
   const { tab } = useParams();
   const navigate = useNavigate();
-  const currentTab = tab && ALLOWED_TABS.includes(tab) ? tab : 'mitarbeiter';
+  const requestedTab = tab && ALLOWED_TABS.includes(tab) ? tab : 'mitarbeiter';
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
+  const currentTab = requestedTab === 'erstellen' && !isAdmin ? 'mitarbeiter' : requestedTab;
   const { toast } = useToast();
   const [form, setForm] = useState({ name: '', email: '', rolle: 'Setter', department: 'Sales', startdatum: '' });
 
@@ -107,6 +109,9 @@ export default function TeamPage() {
       <Tabs value={currentTab} onValueChange={v => navigate(`/hr/${v}`)}>
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="mitarbeiter"><Users className="h-4 w-4 mr-1" />Mitarbeiter</TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="erstellen"><UserPlus className="h-4 w-4 mr-1" />Mitarbeiter erstellen</TabsTrigger>
+          )}
         </TabsList>
 
         {/* MITARBEITER */}
@@ -138,6 +143,12 @@ export default function TeamPage() {
             </div>
           ))}
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="erstellen" className="mt-4">
+            <CreateTeamMemberTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
