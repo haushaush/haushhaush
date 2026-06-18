@@ -64,6 +64,7 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Mitarbeiter', url: '/hr/mitarbeiter' },
       { title: 'Check-in & Check-out', url: '/hr/checkins' },
+      { title: 'Time Tracking', url: '/hr/time-tracking', adminOnly: true },
     ],
   },
 ];
