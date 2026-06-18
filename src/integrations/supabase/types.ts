@@ -4839,6 +4839,7 @@ export type Database = {
         Row: {
           channel_id: string | null
           columns: Json | null
+          context: string
           created_at: string
           id: string
           last_synced_at: string | null
@@ -4848,6 +4849,7 @@ export type Database = {
         Insert: {
           channel_id?: string | null
           columns?: Json | null
+          context?: string
           created_at?: string
           id?: string
           last_synced_at?: string | null
@@ -4857,6 +4859,7 @@ export type Database = {
         Update: {
           channel_id?: string | null
           columns?: Json | null
+          context?: string
           created_at?: string
           id?: string
           last_synced_at?: string | null
