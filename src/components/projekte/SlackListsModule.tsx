@@ -42,7 +42,7 @@ type MappingRow = { colId: string; varName: string };
 
 const EDITABLE_COLUMN_IDS = ['Col0B645A1WL8'];
 const EDITABLE_COLUMN_NAMES = ['status'];
-const EDITABLE_TYPES = ['text', 'select', 'multi_select', 'checkbox', 'date', 'number', 'user'];
+const NON_EDITABLE_TYPES = ['attachment'];
 
 const isColumnEditable = (
   col: SlackColumn,
@@ -64,8 +64,8 @@ const isColumnEditable = (
     return EDITABLE_COLUMN_IDS.includes(col.id) || EDITABLE_COLUMN_NAMES.includes(n);
   }
 
-  // Alle anderen Listen: editierbar, wenn Typ vom SlackCellEditor unterstützt wird
-  return EDITABLE_TYPES.includes(col.type || 'text');
+  // Alle anderen Listen: editierbar, außer explizit ausgeschlossene Typen
+  return !NON_EDITABLE_TYPES.includes(col.type || 'text');
 };
 
 interface SlackList {
