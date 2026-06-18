@@ -352,8 +352,17 @@ export function SlackListsModule() {
                           const active = sortCol === col.id;
                           return (
                             <th key={col.id} onClick={() => toggleSort(col.id)}
+                              onAuxClick={(e) => {
+                                if (e.button === 1) { e.preventDefault(); renameColumnAlias(col.id, col.name || col.id); }
+                              }}
+                              title="Alt+Klick um Spaltennamen zu setzen"
                               className="px-4 py-3 text-left cursor-pointer hover:text-primary select-none font-medium">
-                              <span className="inline-flex items-center gap-1.5">
+                              <span
+                                className="inline-flex items-center gap-1.5"
+                                onClick={(e) => {
+                                  if (e.altKey) { e.stopPropagation(); renameColumnAlias(col.id, col.name || col.id); }
+                                }}
+                              >
                                 {getColumnDisplay(col.id, activeListId, col.name || col.id)}
                                 {isColumnEditable(col) && <Pencil className="h-3 w-3 text-muted-foreground" />}
                                 {active
