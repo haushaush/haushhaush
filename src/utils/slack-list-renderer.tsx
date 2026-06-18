@@ -29,7 +29,7 @@ export async function loadAliases(slack_list_id: string, force = false): Promise
       .eq('slack_list_id', slack_list_id);
     const map = new Map<string, AliasEntry>();
     (data as any[] | null)?.forEach((a) => {
-      const key = a.alias_type === 'column'
+      const key = (a.alias_type === 'column' || a.alias_type === 'user')
         ? a.slack_id
         : `${a.parent_column_id || ''}:${a.slack_id}`;
       map.set(key, { display_name: a.display_name, color: a.display_color });
