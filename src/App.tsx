@@ -243,6 +243,7 @@ const App = () => (
               </MetaAdsProvider>
             </ARIAProvider>
             </MusicPlayerProvider>
+            </PreferencesProvider>
           </AuthProvider>
         </BrowserRouter>
         <ErrorCardOverlay />
