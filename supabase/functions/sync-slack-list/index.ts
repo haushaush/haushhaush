@@ -414,6 +414,37 @@ serve(async (req) => {
         });
       }
     }
+
+    // 4c. Collect all user IDs referenced in user-type cells, resolve via
+    //     users.list once, and upsert as alias_type='user'.
+    const userIds = new Set<string>();
+    for (const it of items) {
+      const cells = (it.fields || it.cells || []) as any[];
+      for (const c of cells) {
+        const u = (c as any).user;
+        if (typeof u === "string" && /^[UW][A-Z0-9]+$/.test(u)) userIds.add(u);
+        else if (Array.isArray(u)) {
+          for (const v of u) if (typeof v === "string" && /^[UW][A-Z0-9]+$/.test(v)) userIds.add(v);
+        }
+        const v = (c as any).value;
+        if (typeof v === "string" && /^[UW][A-Z0-9]+$/.test(v)) userIds.add(v);
+      }
+    }
+    if (userIds.size > 0) {
+      const userMap = await fetchAllUsers(token);
+      for (const uid of userIds) {
+        const name = userMap.get(uid);
+        if (!name) continue;
+        aliasRows.push({
+          slack_list_id: list_id,
+          alias_type: "user",
+          slack_id: uid,
+          parent_column_id: null,
+          display_name: name,
+        });
+      }
+    }
+
     if (aliasRows.length > 0) {
       const { error: aliasErr } = await supabase
         .from("slack_list_aliases")
