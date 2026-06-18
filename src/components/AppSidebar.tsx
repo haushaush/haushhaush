@@ -139,6 +139,7 @@ const toolsNavItems: NavItem[] = [
       { title: 'Papierkorb', url: '/email-automatisierung/papierkorb' },
     ],
   },
+  { title: 'n8n Workflows', url: '/automationen/n8n', icon: Workflow },
   {
     title: 'A-Ad Creative Studio', url: '/tools/ad-creative-studio', icon: Wand2, adminOnly: true,
   },
@@ -290,7 +291,7 @@ export function AppSidebar() {
   const ariaActive = location.pathname === '/aria' || location.pathname === '/automationen/aria';
   const n8nActive = location.pathname === '/automationen/n8n';
   const webhooksActive = location.pathname === '/automationen/webhooks';
-  const automationenGroupActive = ariaActive || n8nActive || webhooksActive;
+  const automationenGroupActive = ariaActive || webhooksActive;
   const einstellungenActive = location.pathname === '/einstellungen';
   const automationenOpen = openGroups['__automationen'] ?? automationenGroupActive;
   const toolsOpen = openGroups['__tools'] ?? false;
@@ -707,7 +708,6 @@ export function AppSidebar() {
                 <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
                   {[
                     { to: '/automationen/aria', label: 'A-ARIA', icon: Sparkles, active: ariaActive, adminOnly: true },
-                    { to: '/automationen/n8n', label: 'n8n Workflows', icon: Workflow, active: n8nActive },
                     { to: '/automationen/webhooks', label: 'Webhooks', icon: Webhook, active: webhooksActive },
                   ].filter(c => !c.adminOnly || isAdmin).map((c) => (
                     <NavLink
