@@ -284,8 +284,8 @@ export default function Einstellungen() {
   const defaultTab = 'branding';
   const adminOnlyTabs = ['mitarbeiter-erstellen'];
   const allowedTabs = isAdmin
-    ? ['branding', 'benutzer', 'mitarbeiter-erstellen', 'benachrichtigungen', 'sicherheit', 'slack']
-    : ['branding', 'benutzer', 'benachrichtigungen', 'sicherheit', 'slack'];
+    ? ['branding', 'mitarbeiter-erstellen', 'benachrichtigungen', 'sicherheit', 'slack']
+    : ['branding', 'benachrichtigungen', 'sicherheit', 'slack'];
   const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
 
   // Redirect non-admins away from admin-only tabs
