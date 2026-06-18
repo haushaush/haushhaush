@@ -31,9 +31,18 @@ type MappingRow = { colId: string; varName: string };
 
 const EDITABLE_COLUMN_IDS = ['Col0B645A1WL8'];
 const EDITABLE_COLUMN_NAMES = ['status'];
-const isColumnEditable = (col: SlackColumn) => {
-  const n = (col.name || '').toLowerCase().trim();
-  return EDITABLE_COLUMN_IDS.includes(col.id) || EDITABLE_COLUMN_NAMES.includes(n);
+const isColumnEditable = (
+  col: SlackColumn,
+  slackListId: string | null,
+  variableMapping?: Record<string, string> | null
+) => {
+  // Vorquali-Liste: alte Allowlist als Fallback behalten
+  if (slackListId === 'F0B56EJPTEZ') {
+    const n = (col.name || '').toLowerCase().trim();
+    return EDITABLE_COLUMN_IDS.includes(col.id) || EDITABLE_COLUMN_NAMES.includes(n);
+  }
+  // Alle anderen Listen: editierbar, wenn im variable_mapping der Liste enthalten
+  return !!variableMapping && col.id in variableMapping;
 };
 
 interface SlackList {
