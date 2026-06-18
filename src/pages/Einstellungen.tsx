@@ -282,9 +282,9 @@ export default function Einstellungen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const defaultTab = 'branding';
-  const adminOnlyTabs = ['mitarbeiter-erstellen'];
+  const adminOnlyTabs: string[] = [];
   const allowedTabs = isAdmin
-    ? ['branding', 'mitarbeiter-erstellen', 'benachrichtigungen', 'sicherheit', 'slack']
+    ? ['branding', 'benachrichtigungen', 'sicherheit', 'slack']
     : ['branding', 'benachrichtigungen', 'sicherheit', 'slack'];
   const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
 
