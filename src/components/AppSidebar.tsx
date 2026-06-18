@@ -50,22 +50,12 @@ const navItems: NavItem[] = [
       { title: 'Laufzeit Projekte', url: '/projekte/laufzeiten' },
     ],
   },
-  // "Tools" is rendered separately between here and Fulfillment
-  {
-    title: 'Fulfillment', url: '/fulfillment', icon: Target,
-    children: [
-      { title: 'Ad Performance', url: '/fulfillment/ads' },
-      { title: 'Mediabuying', url: '/fulfillment/mediabuying' },
-      { title: 'Customer Success', url: '/fulfillment/customer-success' },
-    ],
-  },
+  // "Tools" is rendered separately
   {
     title: 'Finanzen', url: '/finanzen', icon: Euro,
     children: [
       { title: 'Übersicht', url: '/finanzen' },
       { title: 'Rechnungen', url: '/finanzen/rechnungen' },
-      { title: 'Belege', url: '/finanzen/belege' },
-      { title: 'Buchhaltung', url: '/finanzen/buchhaltung' },
       { title: 'Werbebudgets', url: '/finanzen/werbebudgets' },
     ],
   },
@@ -74,11 +64,6 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Mitarbeiter', url: '/hr/mitarbeiter' },
       { title: 'Check-in & Check-out', url: '/hr/checkins', adminOnly: true },
-      { title: 'Verträge & Gehalt', url: '/hr/vertraege' },
-      { title: 'Probewoche', url: '/hr/probewoche' },
-      { title: 'Akademie', url: '/hr/akademie' },
-      { title: 'Coaching', url: '/hr/coaching' },
-      { title: 'Wiki & SOPs', url: '/hr/wiki' },
     ],
   },
 ];
