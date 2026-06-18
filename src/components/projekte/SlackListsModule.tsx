@@ -39,9 +39,9 @@ const getCheckboxValue = (cell: any): boolean => {
 
 type MappingRow = { colId: string; varName: string };
 
-const EDITABLE_TYPES = ['text', 'select', 'multi_select', 'checkbox', 'date', 'number', 'user'];
+const EDITABLE_COLUMN_IDS = ['Col0B645A1WL8'];
 const EDITABLE_COLUMN_NAMES = ['status'];
-const EDITABLE_TYPES = ['text', 'select', 'multi_select', 'checkbox', 'date', 'number'];
+const EDITABLE_TYPES = ['text', 'select', 'multi_select', 'checkbox', 'date', 'number', 'user'];
 
 const isColumnEditable = (
   col: SlackColumn,
