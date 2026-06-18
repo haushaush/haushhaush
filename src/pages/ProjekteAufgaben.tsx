@@ -7,6 +7,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SlackListsModule } from '@/components/projekte/SlackListsModule';
+
 
 export default function ProjekteAufgaben() {
   const [tasks, setTasks] = useState<any[]>([]);
