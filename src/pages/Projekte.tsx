@@ -672,7 +672,7 @@ export default function Projekte() {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex-1 overflow-x-auto pb-4">
+        <div className="flex-1 overflow-x-auto scrollbar-none pb-4">
           <div className="flex gap-3 min-h-[400px]">
             {sortedGroupKeys.map(key => {
               const mitarbeiterIcon = viewMode === 'mitarbeiter' && key !== 'Nicht zugewiesen' ? (
