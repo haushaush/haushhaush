@@ -230,7 +230,7 @@ const App = () => (
                 <Route path="/faktura" element={<Navigate to="/finanzen/rechnungen" replace />} />
                 <Route path="/mitarbeiter" element={<Navigate to="/hr/mitarbeiter" replace />} />
                 <Route path="/dateien" element={<Navigate to="/kunden" replace />} />
-                <Route path="/learning" element={<Navigate to="/hr/akademie" replace />} />
+                <Route path="/learning" element={<Navigate to="/hr/mitarbeiter" replace />} />
                 <Route path="/aufgaben" element={<Navigate to="/projekte/aufgaben" replace />} />
 
                 <Route path="*" element={<ErrorPage type="404" />} />
