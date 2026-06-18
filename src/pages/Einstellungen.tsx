@@ -288,10 +288,6 @@ export default function Einstellungen() {
     setSearchParams(params, { replace: true });
   };
 
-  const [driveConnected, setDriveConnected] = useState(false);
-  const [driveEmail, setDriveEmail] = useState<string | null>(null);
-  const [pipedriveAccounts, setPipedriveAccounts] = useState<any[]>([]);
-  const [pipedriveModalOpen, setPipedriveModalOpen] = useState(false);
   const [team, setTeam] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<EmployeeRequest[]>([]);
@@ -300,17 +296,7 @@ export default function Einstellungen() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [adminNote, setAdminNote] = useState('');
-  const [integrationSettings, setIntegrationSettings] = useState<IntegrationSetting[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('Alle');
-  const [testingAll, setTestingAll] = useState(false);
-  const [testingProvider, setTestingProvider] = useState<string | null>(null);
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
-  const [testResults, setTestResults] = useState<Record<string, HealthResult[]>>({});
-  const [closeDeals, setCloseDeals] = useState<CloseDeal[]>([]);
-  const [dynamicConfigs, setDynamicConfigs] = useState<Record<string, Record<string, any>>>({});
 
-  const [googleDriveConn, setGoogleDriveConn] = useState<{ email: string; connected_at: string } | null>(null);
   const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
