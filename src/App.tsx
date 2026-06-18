@@ -206,6 +206,7 @@ const App = () => (
                 <Route path="/email-automatisierung/regeln" element={<AdminRoute><DL><EmailAutomationRules /></DL></AdminRoute>} />
                 <Route path="/email-automatisierung/:slug" element={<AdminRoute><DL><EmailPage mode="shared" /></DL></AdminRoute>} />
                 <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
+                <Route path="/integrationen" element={<AdminRoute><DL><Integrationen /></DL></AdminRoute>} />
                 <Route path="/aria" element={<DL><AriaPage /></DL>} />
                 <Route path="/automationen" element={<Navigate to="/automationen/aria" replace />} />
                 <Route path="/automationen/aria" element={<DL><AriaPage /></DL>} />
