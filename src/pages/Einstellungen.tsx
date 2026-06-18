@@ -447,9 +447,6 @@ export default function Einstellungen() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="branding">Branding</TabsTrigger>
-          {isAdmin && (
-            <TabsTrigger value="mitarbeiter-erstellen">Mitarbeiter erstellen</TabsTrigger>
-          )}
           <TabsTrigger value="benachrichtigungen">Benachrichtigungen</TabsTrigger>
           <TabsTrigger value="sicherheit">Sicherheit</TabsTrigger>
           <TabsTrigger value="slack" className="flex items-center gap-1.5">
