@@ -84,6 +84,7 @@ const navItems: NavItem[] = [
 
 // Items that go under the "Tools" expandable category
 const toolsNavItems: NavItem[] = [
+  { title: 'Integrationen', url: '/integrationen', icon: Plug, adminOnly: true },
   {
     title: 'Close', url: '/close', icon: Briefcase,
     children: [
