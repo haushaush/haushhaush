@@ -553,7 +553,7 @@ export function AppSidebar() {
                     <Wrench className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
                   </NavLink>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs">Tools</TooltipContent>
+                <TooltipContent side="right" className="text-xs">Connections</TooltipContent>
               </Tooltip>
             ) : (
               <div>
