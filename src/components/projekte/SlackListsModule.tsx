@@ -1,0 +1,412 @@
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import {
+  List, RefreshCw, Plus, Trash2, Search, Loader2, Pencil,
+  ArrowUp, ArrowDown, ArrowUpDown,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
+import { de } from 'date-fns/locale';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  renderCellPlain, renderCellNode, getCellPills, normalizeColumns,
+  loadAliases, subscribeAliases, getColumnDisplay, type SlackColumn,
+} from '@/utils/slack-list-renderer';
+import { SlackCellEditor } from '@/components/settings/SlackCellEditor';
+
+const EDITABLE_COLUMN_IDS = ['Col0B645A1WL8'];
+const EDITABLE_COLUMN_NAMES = ['status'];
+const isColumnEditable = (col: SlackColumn) => {
+  const n = (col.name || '').toLowerCase().trim();
+  return EDITABLE_COLUMN_IDS.includes(col.id) || EDITABLE_COLUMN_NAMES.includes(n);
+};
+
+interface SlackList {
+  id: string;
+  slack_list_id: string;
+  list_name: string | null;
+  columns: any;
+  last_synced_at: string | null;
+  created_at: string;
+  item_count?: number;
+}
+
+interface SlackListItem {
+  id: string;
+  slack_item_id: string;
+  slack_list_id: string;
+  fields: Record<string, unknown>;
+  date_created: number | null;
+  synced_at: string;
+}
+
+const cellToString = (v: unknown, col?: SlackColumn, lid?: string | null) =>
+  renderCellPlain(v, col, lid);
+
+export function SlackListsModule() {
+  const [lists, setLists] = useState<SlackList[]>([]);
+  const [loadingLists, setLoadingLists] = useState(true);
+  const [activeListId, setActiveListId] = useState<string | null>(null);
+  const [items, setItems] = useState<SlackListItem[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [search, setSearch] = useState('');
+  const [editing, setEditing] = useState<{ itemId: string; colId: string } | null>(null);
+  const [savingCell, setSavingCell] = useState<string | null>(null);
+  const [errorCell, setErrorCell] = useState<string | null>(null);
+  const [sortCol, setSortCol] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [aliasVersion, setAliasVersion] = useState(0);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [newListId, setNewListId] = useState('');
+  const [newListName, setNewListName] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
+  const columns = useMemo<SlackColumn[]>(() => {
+    const fromMeta = normalizeColumns(activeList?.columns);
+    if (fromMeta.length > 0) return fromMeta;
+    const first = items[0];
+    if (!first?.fields) return [];
+    return Object.keys(first.fields).map((id) => ({ id, name: id }));
+  }, [activeList, items]);
+
+  const loadLists = async () => {
+    setLoadingLists(true);
+    const { data, error } = await supabase
+      .from('slack_lists').select('*').order('created_at', { ascending: false });
+    if (error) { toast.error('Listen laden fehlgeschlagen: ' + error.message); setLoadingLists(false); return; }
+    const ids = (data || []).map((l: any) => l.slack_list_id);
+    const counts: Record<string, number> = {};
+    if (ids.length) {
+      const { data: cnts } = await supabase.from('slack_list_items').select('slack_list_id').in('slack_list_id', ids);
+      for (const r of cnts || []) counts[(r as any).slack_list_id] = (counts[(r as any).slack_list_id] || 0) + 1;
+    }
+    const withCounts = (data || []).map((l: any) => ({ ...l, item_count: counts[l.slack_list_id] || 0 }));
+    setLists(withCounts);
+    setLoadingLists(false);
+    if (!activeListId && withCounts.length > 0) setActiveListId(withCounts[0].slack_list_id);
+  };
+
+  const loadItems = async (listId: string) => {
+    setLoadingItems(true);
+    const { data, error } = await supabase
+      .from('slack_list_items').select('*').eq('slack_list_id', listId)
+      .order('date_created', { ascending: false });
+    if (error) toast.error('Items laden fehlgeschlagen');
+    setItems((data as any[]) || []);
+    setLoadingItems(false);
+  };
+
+  useEffect(() => { loadLists(); }, []);
+  useEffect(() => {
+    if (activeListId) {
+      loadItems(activeListId);
+      loadAliases(activeListId).then(() => setAliasVersion((v) => v + 1));
+    }
+  }, [activeListId]);
+  useEffect(() => subscribeAliases(() => setAliasVersion((v) => v + 1)), []);
+
+  const addList = async () => {
+    const id = newListId.trim();
+    const name = newListName.trim();
+    if (!id) return;
+    setAdding(true);
+    try {
+      const { error: upErr } = await supabase
+        .from('slack_lists')
+        .upsert({ slack_list_id: id, list_name: name || null } as any, { onConflict: 'slack_list_id' });
+      if (upErr) throw upErr;
+      const { data, error } = await supabase.functions.invoke('sync-slack-list', { body: { list_id: id } });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`${(data as any).items_synced} Items synchronisiert`);
+      setNewListId(''); setNewListName(''); setAddOpen(false);
+      await loadLists();
+      setActiveListId(id);
+    } catch (e: any) {
+      toast.error('Fehler: ' + (e.message || 'Unbekannt'));
+      await supabase.from('slack_lists').delete().eq('slack_list_id', id).is('last_synced_at', null);
+      await loadLists();
+    } finally { setAdding(false); }
+  };
+
+  const syncList = async (listId: string) => {
+    setSyncingId(listId);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-slack-list', { body: { list_id: listId } });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`${(data as any).items_synced} Items synchronisiert`);
+      await loadLists();
+      if (activeListId === listId) await loadItems(listId);
+    } catch (e: any) {
+      toast.error('Sync fehlgeschlagen: ' + (e.message || 'Unbekannt'));
+    } finally { setSyncingId(null); }
+  };
+
+  const removeList = async (listId: string) => {
+    if (!confirm('Liste wirklich trennen? Alle synchronisierten Items werden gelöscht.')) return;
+    const { error } = await supabase.from('slack_lists').delete().eq('slack_list_id', listId);
+    if (error) return toast.error(error.message);
+    toast.success('Liste getrennt');
+    if (activeListId === listId) setActiveListId(null);
+    await loadLists();
+  };
+
+  const saveCell = async (itemId: string, col: SlackColumn, newValue: unknown) => {
+    if (!activeListId) return;
+    const cellKey = `${itemId}::${col.id}`;
+    const item = items.find((i) => i.slack_item_id === itemId);
+    const prev = item?.fields?.[col.id];
+    const optimistic = (() => {
+      const t = col.type;
+      if (t === 'select') return { select: newValue ? [newValue as string] : [] };
+      if (t === 'multi_select') return { select: Array.isArray(newValue) ? newValue : [] };
+      if (t === 'checkbox') return { checkbox: !!newValue };
+      if (t === 'date') return { date: newValue as number };
+      if (t === 'number') return { value: newValue };
+      return { text: String(newValue ?? '') };
+    })();
+    setSavingCell(cellKey);
+    setItems((curr) => curr.map((i) => i.slack_item_id === itemId
+      ? { ...i, fields: { ...i.fields, [col.id]: optimistic } } : i));
+    setEditing(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-slack-list-update', {
+        body: { slack_item_id: itemId, slack_list_id: activeListId, field_updates: { [col.id]: newValue } },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success('Aktualisiert');
+    } catch (e: any) {
+      toast.error('Speichern fehlgeschlagen: ' + (e.message || 'Unbekannt'));
+      setItems((curr) => curr.map((i) => i.slack_item_id === itemId
+        ? { ...i, fields: { ...i.fields, [col.id]: prev } } : i));
+      setErrorCell(cellKey); setTimeout(() => setErrorCell(null), 2000);
+    } finally { setSavingCell(null); }
+  };
+
+  const filteredItems = useMemo(() => {
+    let r = items;
+    if (search) {
+      const q = search.toLowerCase();
+      r = r.filter((it) => columns.some((c) =>
+        cellToString(it.fields?.[c.id], c, activeListId).toLowerCase().includes(q)));
+    }
+    if (sortCol) {
+      const def = columns.find((c) => c.id === sortCol);
+      r = [...r].sort((a, b) => {
+        const av = cellToString(a.fields?.[sortCol], def, activeListId);
+        const bv = cellToString(b.fields?.[sortCol], def, activeListId);
+        return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+    }
+    return r;
+  }, [items, search, sortCol, sortDir, columns, activeListId, aliasVersion]);
+
+  const toggleSort = (colId: string) => {
+    if (sortCol === colId) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(colId); setSortDir('asc'); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <List className="h-4 w-4 text-primary" />
+          <h2 className="text-lg font-semibold">Slack-Listen</h2>
+        </div>
+        <Button size="sm" onClick={() => setAddOpen(true)}>
+          <Plus className="h-4 w-4 mr-1.5" /> Liste hinzufügen
+        </Button>
+      </div>
+
+      {loadingLists ? (
+        <Skeleton className="h-10 w-full" />
+      ) : lists.length === 0 ? (
+        <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">
+          Noch keine Slack-Liste angebunden. Über „Liste hinzufügen" eine Slack-List-ID + Namen hinterlegen.
+        </CardContent></Card>
+      ) : (
+        <>
+          <Tabs value={activeListId ?? undefined} onValueChange={(v) => setActiveListId(v)}>
+            <TabsList className="flex-wrap h-auto">
+              {lists.map((l) => (
+                <TabsTrigger key={l.slack_list_id} value={l.slack_list_id} className="gap-2">
+                  {l.list_name || l.slack_list_id}
+                  <Badge variant="outline" className="text-[10px] h-4 px-1">{l.item_count ?? 0}</Badge>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          {activeList && (
+            <>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-xs text-muted-foreground">
+                  {activeList.last_synced_at
+                    ? `Zuletzt synct: ${formatDistanceToNow(new Date(activeList.last_synced_at), { locale: de, addSuffix: true })}`
+                    : 'Noch nicht synct'}
+                  {' · '}{filteredItems.length} / {items.length} Items
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm"
+                    onClick={() => syncList(activeList.slack_list_id)}
+                    disabled={syncingId === activeList.slack_list_id}>
+                    <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5',
+                      syncingId === activeList.slack_list_id && 'animate-spin')} />
+                    Sync
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => removeList(activeList.slack_list_id)}>
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="In allen Zellen suchen..." className="pl-9"
+                  value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
+
+              <Card className="border-border bg-card overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        {columns.map((col) => {
+                          const active = sortCol === col.id;
+                          return (
+                            <th key={col.id} onClick={() => toggleSort(col.id)}
+                              className="px-4 py-3 text-left cursor-pointer hover:text-primary select-none font-medium">
+                              <span className="inline-flex items-center gap-1.5">
+                                {getColumnDisplay(col.id, activeListId, col.name || col.id)}
+                                {isColumnEditable(col) && <Pencil className="h-3 w-3 text-muted-foreground" />}
+                                {active
+                                  ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)
+                                  : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+                              </span>
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loadingItems && Array.from({ length: 4 }).map((_, i) => (
+                        <tr key={i} className="border-t border-border">
+                          <td colSpan={Math.max(columns.length, 1)} className="px-3 py-3">
+                            <Skeleton className="h-4 w-full" />
+                          </td>
+                        </tr>
+                      ))}
+                      {!loadingItems && filteredItems.length === 0 && (
+                        <tr className="border-t border-border">
+                          <td colSpan={Math.max(columns.length, 1)} className="px-3 py-8 text-center text-muted-foreground">
+                            Keine Items.
+                          </td>
+                        </tr>
+                      )}
+                      {!loadingItems && filteredItems.map((it) => (
+                        <tr key={it.slack_item_id} className="border-t border-border hover:bg-muted/20">
+                          {columns.map((col) => {
+                            const cellKey = `${it.slack_item_id}::${col.id}`;
+                            const editable = isColumnEditable(col);
+                            const isEditing = editing?.itemId === it.slack_item_id && editing?.colId === col.id && editable;
+                            const isSaving = savingCell === cellKey;
+                            const isError = errorCell === cellKey;
+                            const val = it.fields?.[col.id];
+                            return (
+                              <td key={col.id} className={cn('px-3 py-2 align-top transition-colors',
+                                isError && 'bg-destructive/20')}>
+                                {isEditing ? (
+                                  <SlackCellEditor
+                                    field={val} column={col as SlackColumn} slackListId={activeListId}
+                                    onSave={async (nv) => { await saveCell(it.slack_item_id, col as SlackColumn, nv); }}
+                                    onCancel={() => setEditing(null)} />
+                                ) : (
+                                  <div onClick={editable ? () => setEditing({ itemId: it.slack_item_id, colId: col.id }) : undefined}
+                                    className={cn('min-h-[28px] flex items-center gap-2 rounded px-1 -mx-1',
+                                      editable ? 'cursor-pointer hover:bg-accent/50' : 'cursor-default')}>
+                                    {(() => {
+                                      if (col.type === 'checkbox' || typeof val === 'boolean') {
+                                        return renderCellNode(val, col as SlackColumn);
+                                      }
+                                      const pills = getCellPills(val, col as SlackColumn, activeListId);
+                                      if (pills) {
+                                        if (pills.length === 0) return <span className="text-muted-foreground/50">↩</span>;
+                                        return (
+                                          <div className="flex flex-wrap gap-1">
+                                            {pills.map((p) => (
+                                              <span key={p.id}
+                                                className={cn('inline-flex items-center rounded-full border px-3 h-6 text-xs font-medium', p.className)}>
+                                                {p.label}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        );
+                                      }
+                                      const plain = renderCellPlain(val, col as SlackColumn, activeListId);
+                                      if (!plain) return <span className="text-muted-foreground/50">↩</span>;
+                                      return <span className="truncate max-w-[320px] whitespace-pre-wrap">{plain}</span>;
+                                    })()}
+                                    {isSaving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                                  </div>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </>
+          )}
+        </>
+      )}
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Slack-Liste hinzufügen</DialogTitle>
+            <DialogDescription>
+              Verknüpfe eine Slack-Liste mit einem eigenen Namen. Items + Schema werden direkt geladen.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="slist-name">Eigener Name</Label>
+              <Input id="slist-name" placeholder="z.B. Sprint Backlog"
+                value={newListName} onChange={(e) => setNewListName(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="slist-id">Slack List ID</Label>
+              <Input id="slist-id" placeholder="z.B. F12345678" className="font-mono"
+                value={newListId} onChange={(e) => setNewListId(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAddOpen(false)}>Abbrechen</Button>
+            <Button onClick={addList} disabled={adding || !newListId.trim()}>
+              {adding ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
+              Hinzufügen & Syncen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

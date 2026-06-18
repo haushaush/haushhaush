@@ -45,7 +45,7 @@ const navItems: NavItem[] = [
     title: 'Projekte & Aufgaben', url: '/projekte', icon: ClipboardList,
     children: [
       { title: 'Projekte', url: '/projekte' },
-      { title: 'Meine Aufgaben', url: '/projekte/aufgaben' },
+      { title: 'Aufgaben', url: '/projekte/aufgaben' },
       { title: 'Laufzeit Projekte', url: '/projekte/laufzeiten' },
     ],
   },
