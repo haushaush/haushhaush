@@ -314,44 +314,21 @@ export default function Einstellungen() {
   const [rejectReason, setRejectReason] = useState('');
   const [adminNote, setAdminNote] = useState('');
 
-  const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  // Unified user list (auth + team)
-  const [allUsers, setAllUsers] = useState<any[]>([]);
-  const [userStats, setUserStats] = useState<{ total: number; active: number; orphan: number; deleted: number } | null>(null);
-  const [importOrphanEmail, setImportOrphanEmail] = useState<string | null>(null);
-  const [orphanDeleteTarget, setOrphanDeleteTarget] = useState<{ id: string; email: string } | null>(null);
-  const [orphanDeleting, setOrphanDeleting] = useState(false);
-  const [showDeletedSection, setShowDeletedSection] = useState(false);
-
-  const loadAllUsers = useCallback(async () => {
-    if (!isAdmin) return;
-    const { data, error } = await supabase.functions.invoke('list-all-users');
-    if (error || (data as any)?.error) {
-      console.warn('[list-all-users] fehlgeschlagen', error || (data as any)?.error);
-      return;
-    }
-    setAllUsers((data as any).users || []);
-    setUserStats((data as any).stats || null);
-  }, [isAdmin]);
-
   const fetchData = async () => {
-    const [teamRes, reqRes, rolesRes] = await Promise.all([
+    const [teamRes, reqRes] = await Promise.all([
       supabase.from('team').select('*').order('name'),
       isAdminOrManager ? supabase.from('employee_requests').select('*').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-      isAdmin ? supabase.from('user_roles').select('user_id').eq('role', 'admin') : Promise.resolve({ data: [] }),
     ]);
     setTeam(teamRes.data || []);
-    setAdminIds(new Set(((rolesRes.data || []) as any[]).map((r: any) => r.user_id)));
     setRequests((reqRes.data || []) as EmployeeRequest[]);
     setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, [user, isAdminOrManager, isAdmin]);
-  useEffect(() => { loadAllUsers(); }, [loadAllUsers]);
 
   const showDeleteError = (raw: string, hint?: string) => {
     const isFkError =
