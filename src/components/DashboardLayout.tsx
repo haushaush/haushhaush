@@ -28,6 +28,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const isMobile = useIsMobile();
   const { isOpen, modalOpen } = useARIA();
+  const { showAria } = usePreferences();
   const location = useLocation();
   const isOnHome = location.pathname === '/';
   const [ariaInput, setAriaInput] = useState('');
