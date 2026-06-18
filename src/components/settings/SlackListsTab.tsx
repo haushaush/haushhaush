@@ -303,7 +303,7 @@ export function SlackListsTab() {
       // Insert stub row + sync immediately
       const { error: upErr } = await supabase
         .from('slack_lists')
-        .upsert({ slack_list_id: id }, { onConflict: 'slack_list_id' });
+        .upsert({ slack_list_id: id, context: 'vorquali' } as any, { onConflict: 'slack_list_id' });
       if (upErr) throw upErr;
 
       const { data, error } = await supabase.functions.invoke('sync-slack-list', {
