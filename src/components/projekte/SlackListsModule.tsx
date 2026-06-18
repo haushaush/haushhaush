@@ -260,6 +260,7 @@ export function SlackListsModule() {
       if (t === 'checkbox') return { checkbox: !!newValue };
       if (t === 'date') return { date: newValue as number };
       if (t === 'number') return { value: newValue };
+      if (t === 'user') return { user: newValue ? [String(newValue)] : [] };
       return { text: String(newValue ?? '') };
     })();
     setSavingCell(cellKey);
