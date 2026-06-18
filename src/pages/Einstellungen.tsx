@@ -322,7 +322,6 @@ export default function Einstellungen() {
   }, [isAdmin]);
 
   const fetchData = async () => {
-  const fetchData = async () => {
     const [teamRes, reqRes, rolesRes] = await Promise.all([
       supabase.from('team').select('*').order('name'),
       isAdminOrManager ? supabase.from('employee_requests').select('*').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
