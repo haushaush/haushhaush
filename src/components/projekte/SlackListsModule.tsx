@@ -501,6 +501,63 @@ export function SlackListsModule() {
         </>
       )}
 
+      <Dialog open={configOpen} onOpenChange={setConfigOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Liste konfigurieren</DialogTitle>
+            <DialogDescription>
+              Webhook-URL und Variablen-Mapping für den Slack-Workflow dieser Liste.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="cfg-webhook">Slack-Workflow Webhook-URL</Label>
+              <Input id="cfg-webhook" placeholder="https://hooks.slack.com/triggers/..."
+                className="font-mono text-xs"
+                value={configWebhook} onChange={(e) => setConfigWebhook(e.target.value)} />
+              <p className="text-[11px] text-muted-foreground">
+                Wird beim Speichern einer Zelle aufgerufen. Leer lassen, um Schreib-Sync zu deaktivieren.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Variablen-Mapping (Spalte → Slack-Workflow-Variable)</Label>
+              {columns.filter(isColumnEditable).length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Keine editierbaren Spalten in dieser Liste.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {columns.filter(isColumnEditable).map((col) => (
+                    <div key={col.id} className="grid grid-cols-[1fr_1fr] gap-2 items-center">
+                      <div className="text-xs">
+                        <div className="font-medium">{getColumnDisplay(col.id, activeListId, col.name || col.id)}</div>
+                        <div className="font-mono text-[10px] text-muted-foreground">{col.id}</div>
+                      </div>
+                      <Input
+                        placeholder="variable_name"
+                        className="font-mono text-xs h-8"
+                        value={configMapping[col.id] || ''}
+                        onChange={(e) => setConfigMapping((m) => ({ ...m, [col.id]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Leerer Wert = automatischer Name (abgeleitet aus Spaltennamen).
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfigOpen(false)}>Abbrechen</Button>
+            <Button onClick={saveConfig} disabled={savingConfig}>
+              {savingConfig && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              Speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
           <DialogHeader>
