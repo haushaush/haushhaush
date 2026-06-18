@@ -132,6 +132,7 @@ const App = () => (
         <OfflineDetector />
         <BrowserRouter>
           <AuthProvider>
+            <PreferencesProvider>
             <MusicPlayerProvider>
             <ARIAProvider>
               <MetaAdsProvider>
