@@ -706,10 +706,10 @@ export function AppSidebar() {
               <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', automationenOpen ? 'max-h-96' : 'max-h-0')}>
                 <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
                   {[
-                    { to: '/automationen/aria', label: 'ARIA', icon: Sparkles, active: ariaActive },
+                    { to: '/automationen/aria', label: 'A-ARIA', icon: Sparkles, active: ariaActive, adminOnly: true },
                     { to: '/automationen/n8n', label: 'n8n Workflows', icon: Workflow, active: n8nActive },
                     { to: '/automationen/webhooks', label: 'Webhooks', icon: Webhook, active: webhooksActive },
-                  ].map((c) => (
+                  ].filter(c => !c.adminOnly || isAdmin).map((c) => (
                     <NavLink
                       key={c.to}
                       to={c.to}
