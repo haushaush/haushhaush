@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Bell, Palette, Users, Hash, X, Check, Loader2, Upload, Building2, ImageIcon, Trash2, AlertTriangle, UserPlus, ChevronDown, ChevronRight, GitMerge, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
-import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
+
 import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
 import { SlackChannelsTab } from '@/components/settings/SlackChannelsTab';
