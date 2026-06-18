@@ -468,7 +468,7 @@ export default function Einstellungen() {
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="flex flex-wrap h-auto gap-1">
-          {isAdmin && <TabsTrigger value="integrationen">Integrationen</TabsTrigger>}
+          
           {isAdmin && (
             <TabsTrigger value="verknuepfungen" className="flex items-center gap-1.5">
               <GitMerge className="h-3.5 w-3.5" />
