@@ -72,7 +72,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <BugReportWidget />
 
         {/* Unified ARIA wrapper: panel + pill — hidden on home page */}
-        {!isOnHome && (
+        {!isOnHome && showAria && (
           <div
             className={`aria-bottom-bar ${isOpen ? 'aria-bottom-bar--open' : ''}`}
             tabIndex={-1}
