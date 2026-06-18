@@ -38,18 +38,38 @@ async function slackPost(method: string, token: string, body: Record<string, unk
 
 function extractCell(cell: SlackCell): unknown {
   // Preserve all representations so the frontend can render rich_text,
-  // plain text fallback, booleans, selects, etc.
+  // plain text fallback, booleans, selects, users, etc.
   const out: Record<string, unknown> = {};
   if (cell.value !== undefined) out.value = cell.value;
   if (cell.text !== undefined) out.text = cell.text;
   if (cell.rich_text !== undefined) out.rich_text = cell.rich_text;
-  // If only one primitive remains, return it directly
+  if ((cell as any).user !== undefined) out.user = (cell as any).user;
+  if ((cell as any).select !== undefined) out.select = (cell as any).select;
+  if ((cell as any).checkbox !== undefined) out.checkbox = (cell as any).checkbox;
+  if ((cell as any).date !== undefined) out.date = (cell as any).date;
   const keys = Object.keys(out);
   if (keys.length === 0) return null;
   if (keys.length === 1 && (typeof out[keys[0]] === 'string' || typeof out[keys[0]] === 'number' || typeof out[keys[0]] === 'boolean')) {
     return out[keys[0]];
   }
   return out;
+}
+
+async function fetchAllUsers(token: string): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = { limit: 200 };
+    if (cursor) body.cursor = cursor;
+    const r = await slackPost("users.list", token, body);
+    if (!r.ok) { console.warn("[sync-slack-list] users.list failed", r.error); break; }
+    for (const u of (r.members ?? [])) {
+      const name = u.profile?.display_name?.trim() || u.profile?.real_name?.trim() || u.real_name || u.name;
+      if (u.id && name) map.set(u.id, name);
+    }
+    cursor = r.response_metadata?.next_cursor || undefined;
+  } while (cursor);
+  return map;
 }
 
 serve(async (req) => {
@@ -394,6 +414,37 @@ serve(async (req) => {
         });
       }
     }
+
+    // 4c. Collect all user IDs referenced in user-type cells, resolve via
+    //     users.list once, and upsert as alias_type='user'.
+    const userIds = new Set<string>();
+    for (const it of items) {
+      const cells = (it.fields || it.cells || []) as any[];
+      for (const c of cells) {
+        const u = (c as any).user;
+        if (typeof u === "string" && /^[UW][A-Z0-9]+$/.test(u)) userIds.add(u);
+        else if (Array.isArray(u)) {
+          for (const v of u) if (typeof v === "string" && /^[UW][A-Z0-9]+$/.test(v)) userIds.add(v);
+        }
+        const v = (c as any).value;
+        if (typeof v === "string" && /^[UW][A-Z0-9]+$/.test(v)) userIds.add(v);
+      }
+    }
+    if (userIds.size > 0) {
+      const userMap = await fetchAllUsers(token);
+      for (const uid of userIds) {
+        const name = userMap.get(uid);
+        if (!name) continue;
+        aliasRows.push({
+          slack_list_id: list_id,
+          alias_type: "user",
+          slack_id: uid,
+          parent_column_id: null,
+          display_name: name,
+        });
+      }
+    }
+
     if (aliasRows.length > 0) {
       const { error: aliasErr } = await supabase
         .from("slack_list_aliases")

@@ -29,7 +29,7 @@ export async function loadAliases(slack_list_id: string, force = false): Promise
       .eq('slack_list_id', slack_list_id);
     const map = new Map<string, AliasEntry>();
     (data as any[] | null)?.forEach((a) => {
-      const key = a.alias_type === 'column'
+      const key = (a.alias_type === 'column' || a.alias_type === 'user')
         ? a.slack_id
         : `${a.parent_column_id || ''}:${a.slack_id}`;
       map.set(key, { display_name: a.display_name, color: a.display_color });
@@ -164,6 +164,26 @@ export function renderCellPlain(cell: any, col?: SlackColumn, slackListId?: stri
     }
     return '';
   }
+
+  // USER — resolve via alias_type='user' (key = slack_id)
+  if (col?.type === 'user') {
+    const ids: string[] = (() => {
+      if (cell == null) return [];
+      if (typeof cell === 'string') return /^[UW][A-Z0-9]+$/.test(cell) ? [cell] : [];
+      if (Array.isArray(cell)) return cell.filter((v) => typeof v === 'string');
+      if (typeof cell === 'object') {
+        if (Array.isArray(cell.user)) return cell.user.filter((v: unknown) => typeof v === 'string');
+        if (typeof cell.user === 'string') return [cell.user];
+        if (typeof cell.value === 'string' && /^[UW][A-Z0-9]+$/.test(cell.value)) return [cell.value];
+      }
+      return [];
+    })();
+    if (ids.length === 0) return '';
+    return ids
+      .map((id) => (slackListId ? aliasCache.get(slackListId)?.get(id)?.display_name : null) || id)
+      .join(', ');
+  }
+
 
 
   if (cell == null) return '';
