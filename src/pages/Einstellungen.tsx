@@ -52,22 +52,8 @@ interface EmployeeRequest {
   created_at: string;
 }
 
-interface IntegrationSetting {
-  id: string;
-  provider: string;
-  connected: boolean;
-  config: Record<string, any>;
-  last_sync_at: string | null;
-  last_sync_status: string | null;
-  last_sync_error: string | null;
-}
 
-interface CloseDeal {
-  id: string;
-  client_name: string;
-  art: string | null;
-  wert_eur: number | null;
-}
+
 
 function SlackWebhookConfig() {
   const [webhookUrl, setWebhookUrl] = useState('');
