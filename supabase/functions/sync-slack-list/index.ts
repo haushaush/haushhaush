@@ -38,18 +38,38 @@ async function slackPost(method: string, token: string, body: Record<string, unk
 
 function extractCell(cell: SlackCell): unknown {
   // Preserve all representations so the frontend can render rich_text,
-  // plain text fallback, booleans, selects, etc.
+  // plain text fallback, booleans, selects, users, etc.
   const out: Record<string, unknown> = {};
   if (cell.value !== undefined) out.value = cell.value;
   if (cell.text !== undefined) out.text = cell.text;
   if (cell.rich_text !== undefined) out.rich_text = cell.rich_text;
-  // If only one primitive remains, return it directly
+  if ((cell as any).user !== undefined) out.user = (cell as any).user;
+  if ((cell as any).select !== undefined) out.select = (cell as any).select;
+  if ((cell as any).checkbox !== undefined) out.checkbox = (cell as any).checkbox;
+  if ((cell as any).date !== undefined) out.date = (cell as any).date;
   const keys = Object.keys(out);
   if (keys.length === 0) return null;
   if (keys.length === 1 && (typeof out[keys[0]] === 'string' || typeof out[keys[0]] === 'number' || typeof out[keys[0]] === 'boolean')) {
     return out[keys[0]];
   }
   return out;
+}
+
+async function fetchAllUsers(token: string): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  let cursor: string | undefined;
+  do {
+    const body: Record<string, unknown> = { limit: 200 };
+    if (cursor) body.cursor = cursor;
+    const r = await slackPost("users.list", token, body);
+    if (!r.ok) { console.warn("[sync-slack-list] users.list failed", r.error); break; }
+    for (const u of (r.members ?? [])) {
+      const name = u.profile?.display_name?.trim() || u.profile?.real_name?.trim() || u.real_name || u.name;
+      if (u.id && name) map.set(u.id, name);
+    }
+    cursor = r.response_metadata?.next_cursor || undefined;
+  } while (cursor);
+  return map;
 }
 
 serve(async (req) => {
