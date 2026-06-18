@@ -492,12 +492,7 @@ export default function Einstellungen() {
         </TabsContent>
 
 
-        {/* ═══════ MITARBEITER ERSTELLEN TAB ═══════ */}
-        {isAdmin && (
-          <TabsContent value="mitarbeiter-erstellen" className="mt-6">
-            <CreateTeamMemberTab />
-          </TabsContent>
-        )}
+
 
         {/* ═══════ BENACHRICHTIGUNGEN TAB ═══════ */}
         <TabsContent value="benachrichtigungen" className="mt-4 space-y-6">
