@@ -30,6 +30,7 @@ import Fulfillment from "./pages/Fulfillment.tsx";
 import Finanzen from "./pages/Finanzen.tsx";
 import TeamPage from "./pages/Team.tsx";
 import Einstellungen from "./pages/Einstellungen.tsx";
+import Integrationen from "./pages/Integrationen.tsx";
 import Creatives from "./pages/Creatives.tsx";
 import CreativeDetail from "./pages/CreativeDetail.tsx";
 import CreativeReview from "./pages/CreativeReview.tsx";
