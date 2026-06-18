@@ -46,6 +46,8 @@ const isColumnEditable = (
   slackListId: string | null,
   variableMapping?: Record<string, string> | null
 ) => {
+  // Checkbox-Spalten sind immer togglebar (direkter Slack-API-Weg, kein Webhook nötig)
+  if (col.type === 'checkbox') return true;
   // Vorquali-Liste: alte Allowlist als Fallback behalten
   if (slackListId === 'F0B56EJPTEZ') {
     const n = (col.name || '').toLowerCase().trim();
@@ -255,9 +257,17 @@ export function SlackListsModule() {
       ? { ...i, fields: { ...i.fields, [col.id]: optimistic } } : i));
     setEditing(null);
     try {
-      const { data, error } = await supabase.functions.invoke('send-slack-list-update', {
-        body: { slack_item_id: itemId, slack_list_id: activeListId, field_updates: { [col.id]: newValue } },
-      });
+      // Vorquali nutzt weiter den Webhook-Weg; alle anderen Listen direkt via Slack-API
+      const fn = activeListId === 'F0B56EJPTEZ' ? 'send-slack-list-update' : 'update-slack-list-item';
+      const body: any = {
+        slack_item_id: itemId,
+        slack_list_id: activeListId,
+        field_updates: { [col.id]: newValue },
+      };
+      if (fn === 'update-slack-list-item') {
+        body.column_types = { [col.id]: col.type };
+      }
+      const { data, error } = await supabase.functions.invoke(fn, { body });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success('Aktualisiert');
