@@ -569,6 +569,18 @@ export function SlackListsModule() {
                   </table>
                 </div>
               </Card>
+
+              <SlackAliasEditor
+                open={aliasOpen}
+                onOpenChange={setAliasOpen}
+                slackListId={activeList.slack_list_id}
+                columns={columns as any}
+                items={items as any}
+                onSaved={async () => {
+                  await loadAliases(activeList.slack_list_id, true);
+                  setAliasVersion((v) => v + 1);
+                }}
+              />
             </>
           )}
         </>
