@@ -27,7 +27,7 @@ import Projekte from "./pages/Projekte.tsx";
 import ProjekteAufgaben from "./pages/ProjekteAufgaben.tsx";
 import ProjekteLaufzeiten from "./pages/ProjekteLaufzeiten.tsx";
 import Sales from "./pages/Sales.tsx";
-import Fulfillment from "./pages/Fulfillment.tsx";
+
 import Finanzen from "./pages/Finanzen.tsx";
 import TeamPage from "./pages/Team.tsx";
 import Einstellungen from "./pages/Einstellungen.tsx";
@@ -193,8 +193,6 @@ const App = () => (
                   <Route path="ad-performance/:id" element={<AdPerformanceDetail />} />
                 </Route>
                 <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
-                <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
-                <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />
                 <Route path="/finanzen" element={<DL><Finanzen /></DL>} />
                 <Route path="/finanzen/:tab" element={<DL><Finanzen /></DL>} />
                 <Route path="/funnel" element={<DailyFunnel />} />
@@ -232,7 +230,7 @@ const App = () => (
                 <Route path="/faktura" element={<Navigate to="/finanzen/rechnungen" replace />} />
                 <Route path="/mitarbeiter" element={<Navigate to="/hr/mitarbeiter" replace />} />
                 <Route path="/dateien" element={<Navigate to="/kunden" replace />} />
-                <Route path="/learning" element={<Navigate to="/hr/akademie" replace />} />
+                <Route path="/learning" element={<Navigate to="/hr/mitarbeiter" replace />} />
                 <Route path="/aufgaben" element={<Navigate to="/projekte/aufgaben" replace />} />
 
                 <Route path="*" element={<ErrorPage type="404" />} />

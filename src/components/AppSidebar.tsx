@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Mail, Globe, BarChart3, Video, MonitorPlay, Wrench, Plug } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Mail, Globe, BarChart3, Video, MonitorPlay, Wrench, Plug } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -50,22 +50,12 @@ const navItems: NavItem[] = [
       { title: 'Laufzeit Projekte', url: '/projekte/laufzeiten' },
     ],
   },
-  // "Tools" is rendered separately between here and Fulfillment
-  {
-    title: 'Fulfillment', url: '/fulfillment', icon: Target,
-    children: [
-      { title: 'Ad Performance', url: '/fulfillment/ads' },
-      { title: 'Mediabuying', url: '/fulfillment/mediabuying' },
-      { title: 'Customer Success', url: '/fulfillment/customer-success' },
-    ],
-  },
+  // "Tools" is rendered separately
   {
     title: 'Finanzen', url: '/finanzen', icon: Euro,
     children: [
       { title: 'Übersicht', url: '/finanzen' },
       { title: 'Rechnungen', url: '/finanzen/rechnungen' },
-      { title: 'Belege', url: '/finanzen/belege' },
-      { title: 'Buchhaltung', url: '/finanzen/buchhaltung' },
       { title: 'Werbebudgets', url: '/finanzen/werbebudgets' },
     ],
   },
@@ -74,11 +64,6 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Mitarbeiter', url: '/hr/mitarbeiter' },
       { title: 'Check-in & Check-out', url: '/hr/checkins', adminOnly: true },
-      { title: 'Verträge & Gehalt', url: '/hr/vertraege' },
-      { title: 'Probewoche', url: '/hr/probewoche' },
-      { title: 'Akademie', url: '/hr/akademie' },
-      { title: 'Coaching', url: '/hr/coaching' },
-      { title: 'Wiki & SOPs', url: '/hr/wiki' },
     ],
   },
 ];
@@ -294,8 +279,8 @@ export function AppSidebar() {
   const toolsOpen = openGroups['__tools'] ?? false;
   const anyToolActive = visibleToolsItems.some(t => isParentActive(t));
 
-  // Split navItems: items before Fulfillment = top group, Fulfillment onwards = bottom group
-  const toolsInsertIndex = visibleNavItems.findIndex(i => i.title === 'Fulfillment');
+  // Split navItems: items before Finanzen = top group, Finanzen onwards = bottom group
+  const toolsInsertIndex = visibleNavItems.findIndex(i => i.title === 'Finanzen');
   const navItemsBefore = toolsInsertIndex >= 0 ? visibleNavItems.slice(0, toolsInsertIndex) : visibleNavItems;
   const navItemsAfter = toolsInsertIndex >= 0 ? visibleNavItems.slice(toolsInsertIndex) : [];
 
