@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Mail, Globe, Video, MonitorPlay, Wrench, Plug } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Mail, Globe, Video, MonitorPlay, Wrench, Plug, Hash } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -72,6 +72,7 @@ const navItems: NavItem[] = [
 // Items that go under the "Tools" expandable category
 const toolsNavItems: NavItem[] = [
   { title: 'Integrationen', url: '/integrationen', icon: Plug, adminOnly: true },
+  { title: 'Slack', url: '/slack', icon: Hash, adminOnly: true },
   {
     title: 'Close', url: '/close', icon: Briefcase,
     children: [
