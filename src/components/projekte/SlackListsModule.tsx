@@ -116,6 +116,7 @@ export function SlackListsModule() {
   const [configWebhook, setConfigWebhook] = useState('');
   const [configRows, setConfigRows] = useState<MappingRow[]>([]);
   const [savingConfig, setSavingConfig] = useState(false);
+  const [aliasOpen, setAliasOpen] = useState(false);
 
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
   const columns = useMemo<SlackColumn[]>(() => {
