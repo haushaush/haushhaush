@@ -27,7 +27,7 @@ import Projekte from "./pages/Projekte.tsx";
 import ProjekteAufgaben from "./pages/ProjekteAufgaben.tsx";
 import ProjekteLaufzeiten from "./pages/ProjekteLaufzeiten.tsx";
 import Sales from "./pages/Sales.tsx";
-import Fulfillment from "./pages/Fulfillment.tsx";
+
 import Finanzen from "./pages/Finanzen.tsx";
 import TeamPage from "./pages/Team.tsx";
 import Einstellungen from "./pages/Einstellungen.tsx";
