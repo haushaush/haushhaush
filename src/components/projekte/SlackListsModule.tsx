@@ -85,7 +85,7 @@ export function SlackListsModule() {
   const loadLists = async () => {
     setLoadingLists(true);
     const { data, error } = await supabase
-      .from('slack_lists').select('*').order('created_at', { ascending: false });
+      .from('slack_lists').select('*').eq('context', 'aufgaben').order('created_at', { ascending: false });
     if (error) { toast.error('Listen laden fehlgeschlagen: ' + error.message); setLoadingLists(false); return; }
     const ids = (data || []).map((l: any) => l.slack_list_id);
     const counts: Record<string, number> = {};
