@@ -114,6 +114,7 @@ export function SlackListsTab() {
     const { data, error } = await supabase
       .from('slack_lists')
       .select('*')
+      .eq('context', 'vorquali')
       .order('created_at', { ascending: false });
     if (error) {
       toast.error('Lists laden fehlgeschlagen: ' + error.message);
