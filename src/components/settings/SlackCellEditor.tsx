@@ -228,6 +228,84 @@ function TextEditor({ field, column, slackListId, onSave, onCancel }: Props) {
   );
 }
 
+function extractUserId(field: unknown): string {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  if (Array.isArray(field)) return typeof field[0] === 'string' ? field[0] : '';
+  if (typeof field === 'object') {
+    const f: any = field;
+    if (Array.isArray(f.user)) return typeof f.user[0] === 'string' ? f.user[0] : '';
+    if (typeof f.user === 'string') return f.user;
+    if (Array.isArray(f.value)) return typeof f.value[0] === 'string' ? f.value[0] : '';
+  }
+  return '';
+}
+
+const userOptionsCache = new Map<string, { id: string; name: string }[]>();
+
+function UserEditor({ field, slackListId, onSave, onCancel }: Props) {
+  const { saving, run } = useSave(onSave);
+  const current = extractUserId(field);
+  const [options, setOptions] = useState<{ id: string; name: string }[]>(
+    slackListId ? userOptionsCache.get(slackListId) || [] : [],
+  );
+  const [loading, setLoading] = useState(!options.length);
+
+  useEffect(() => {
+    if (!slackListId) { setLoading(false); return; }
+    if (userOptionsCache.has(slackListId)) {
+      setOptions(userOptionsCache.get(slackListId)!);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('slack_list_aliases' as any)
+        .select('slack_id, display_name')
+        .eq('slack_list_id', slackListId)
+        .eq('alias_type', 'user');
+      const opts = ((data as any[]) || [])
+        .map((r) => ({ id: r.slack_id as string, name: (r.display_name as string) || r.slack_id }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      if (cancelled) return;
+      userOptionsCache.set(slackListId, opts);
+      setOptions(opts);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [slackListId]);
+
+  return (
+    <Select
+      defaultOpen
+      value={current || '__none__'}
+      onValueChange={(v) => run(v === '__none__' ? '' : v)}
+      disabled={saving || loading}
+      onOpenChange={(open) => { if (!open) onCancel(); }}
+    >
+      <SelectTrigger className="h-7 text-xs">
+        <SelectValue placeholder={loading ? 'Lade…' : '– wählen –'} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none__" className="text-xs italic text-muted-foreground">
+          – niemand –
+        </SelectItem>
+        {options.length === 0 && !loading && (
+          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+            Keine User-Aliase gepflegt.
+          </div>
+        )}
+        {options.map((u) => (
+          <SelectItem key={u.id} value={u.id} className="text-xs">
+            {u.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function SlackCellEditor(props: Props) {
   const type = props.column.type || 'text';
   if (type === 'select') return <SelectEditor {...props} />;
@@ -235,5 +313,6 @@ export function SlackCellEditor(props: Props) {
   if (type === 'checkbox') return <CheckboxEditor {...props} />;
   if (type === 'date') return <DateEditor {...props} />;
   if (type === 'number') return <NumberEditor {...props} />;
+  if (type === 'user') return <UserEditor {...props} />;
   return <TextEditor {...props} />;
 }
