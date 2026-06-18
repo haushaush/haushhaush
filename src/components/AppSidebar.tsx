@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Webhook, Mail, Globe, BarChart3, Video, MonitorPlay, Wrench, ShieldCheck, Plug } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Mail, Globe, BarChart3, Video, MonitorPlay, Wrench, ShieldCheck, Plug } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -290,8 +290,7 @@ export function AppSidebar() {
   const nachrichtenActive = location.pathname === '/nachrichten' || (location.pathname.startsWith('/email') && !location.pathname.startsWith('/email-automatisierung'));
   const ariaActive = location.pathname === '/aria' || location.pathname === '/automationen/aria';
   const n8nActive = location.pathname === '/automationen/n8n';
-  const webhooksActive = location.pathname === '/automationen/webhooks';
-  const automationenGroupActive = ariaActive || webhooksActive;
+  const automationenGroupActive = ariaActive;
   const einstellungenActive = location.pathname === '/einstellungen';
   const automationenOpen = openGroups['__automationen'] ?? automationenGroupActive;
   const toolsOpen = openGroups['__tools'] ?? false;
@@ -673,61 +672,64 @@ export function AppSidebar() {
           {renderLevel2('/nachrichten', <Bell className="h-4 w-4" aria-hidden="true" />, 'Nachrichten', nachrichtenActive, unreadNotifs)}
 
           {/* ARIA & Automationen — expandable group */}
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <NavLink
-                  to="/automationen/aria"
+          {(() => {
+            const automationenItems = [
+              { to: '/automationen/aria', label: 'A-ARIA', icon: Sparkles, active: ariaActive, adminOnly: true },
+            ].filter(c => !c.adminOnly || isAdmin);
+            if (automationenItems.length === 0) return null;
+            return collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <NavLink
+                    to="/automationen/aria"
+                    className={cn(
+                      'sidebar-nav-item flex items-center justify-center rounded-lg transition-colors min-h-[36px] px-0 py-2',
+                      'text-[13px] font-normal',
+                      automationenGroupActive ? 'text-primary' : 'text-muted-foreground hover:bg-muted/60'
+                    )}
+                  >
+                    <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  </NavLink>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">ARIA & Automationen</TooltipContent>
+              </Tooltip>
+            ) : (
+              <div>
+                <button
+                  onClick={() => setOpenGroups((p) => ({ ...p, __automationen: !automationenOpen }))}
                   className={cn(
-                    'sidebar-nav-item flex items-center justify-center rounded-lg transition-colors min-h-[36px] px-0 py-2',
+                    'flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left transition-colors min-h-[36px]',
                     'text-[13px] font-normal',
-                    automationenGroupActive ? 'text-primary' : 'text-muted-foreground hover:bg-muted/60'
+                    automationenGroupActive ? 'text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
                   )}
+                  aria-expanded={automationenOpen}
                 >
-                  <Sparkles className="h-4 w-4" aria-hidden="true" />
-                </NavLink>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="text-xs">ARIA & Automationen</TooltipContent>
-            </Tooltip>
-          ) : (
-            <div>
-              <button
-                onClick={() => setOpenGroups((p) => ({ ...p, __automationen: !automationenOpen }))}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left transition-colors min-h-[36px]',
-                  'text-[13px] font-normal',
-                  automationenGroupActive ? 'text-primary font-medium' : 'text-muted-foreground hover:bg-muted/60'
-                )}
-                aria-expanded={automationenOpen}
-              >
-                <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="flex-1 truncate">ARIA & Automationen</span>
-                <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200', automationenOpen && 'rotate-90')} aria-hidden="true" />
-              </button>
-              <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', automationenOpen ? 'max-h-96' : 'max-h-0')}>
-                <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
-                  {[
-                    { to: '/automationen/aria', label: 'A-ARIA', icon: Sparkles, active: ariaActive, adminOnly: true },
-                    { to: '/automationen/webhooks', label: 'Webhooks', icon: Webhook, active: webhooksActive },
-                  ].filter(c => !c.adminOnly || isAdmin).map((c) => (
-                    <NavLink
-                      key={c.to}
-                      to={c.to}
-                      className={cn(
-                        'flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors min-h-[36px] truncate',
-                        c.active
-                          ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary -ml-[calc(0.75rem+1px)] pl-[calc(0.75rem+1px)]'
-                          : 'text-muted-foreground hover:bg-muted/60'
-                      )}
-                    >
-                      <c.icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      <span className="truncate">{c.label}</span>
-                    </NavLink>
-                  ))}
+                  <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="flex-1 truncate">ARIA & Automationen</span>
+                  <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200', automationenOpen && 'rotate-90')} aria-hidden="true" />
+                </button>
+                <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', automationenOpen ? 'max-h-96' : 'max-h-0')}>
+                  <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
+                    {automationenItems.map((c) => (
+                      <NavLink
+                        key={c.to}
+                        to={c.to}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors min-h-[36px] truncate',
+                          c.active
+                            ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary -ml-[calc(0.75rem+1px)] pl-[calc(0.75rem+1px)]'
+                            : 'text-muted-foreground hover:bg-muted/60'
+                        )}
+                      >
+                        <c.icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{c.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* ─── Thin divider ─── */}

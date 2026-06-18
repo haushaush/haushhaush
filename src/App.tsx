@@ -57,7 +57,6 @@ import DriveMeineDateien from "./pages/drive/DriveMeineDateien.tsx";
 import DriveGeteilt from "./pages/drive/DriveGeteilt.tsx";
 import DrivePapierkorb from "./pages/drive/DrivePapierkorb.tsx";
 import N8nWorkflowsPage from "./pages/automationen/N8nWorkflows.tsx";
-import WebhooksPage from "./pages/automationen/Webhooks.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import EmailPage from "./pages/Email.tsx";
 import EmailAutomationRules from "./pages/EmailAutomationRules.tsx";
@@ -217,7 +216,6 @@ const App = () => (
                 <Route path="/automationen" element={<Navigate to="/automationen/aria" replace />} />
                 <Route path="/automationen/aria" element={<DL><AriaPage /></DL>} />
                 <Route path="/automationen/n8n" element={<DL><N8nWorkflowsPage /></DL>} />
-                <Route path="/automationen/webhooks" element={<DL><WebhooksPage /></DL>} />
                 <Route path="/api-docs" element={<ApiDocs />} />
                 <Route path="/profil" element={<DL><Profil /></DL>} />
                 <Route path="/creatives" element={<DL><Creatives /></DL>} />
