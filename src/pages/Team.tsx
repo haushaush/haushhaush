@@ -12,8 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Users, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
 
 const DEPT_GROUPS = [
   { label: 'MANAGEMENT', departments: ['Management'] },
