@@ -23,7 +23,7 @@ const DEPT_GROUPS = [
   { label: 'INTERN',     departments: ['Intern'] },
 ];
 const ALL_DEPTS = DEPT_GROUPS.flatMap(g => g.departments);
-const ALLOWED_TABS = ['mitarbeiter', 'checkins'];
+const ALLOWED_TABS = ['mitarbeiter', 'checkins', 'erstellen'];
 
 export default function TeamPage() {
   const { tab } = useParams();
