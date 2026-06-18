@@ -180,7 +180,12 @@ export function SlackListsModule() {
   const openConfig = () => {
     if (!activeList) return;
     setConfigWebhook(activeList.webhook_url || '');
-    setConfigMapping({ ...(activeList.variable_mapping || {}) });
+    const mapping = activeList.variable_mapping || {};
+    const rows: MappingRow[] = Object.entries(mapping).map(([colId, varName]) => ({
+      colId,
+      varName: String(varName || ''),
+    }));
+    setConfigRows(rows);
     setConfigOpen(true);
   };
 
@@ -188,11 +193,11 @@ export function SlackListsModule() {
     if (!activeListId) return;
     setSavingConfig(true);
     try {
-      // Strip empty mapping entries
       const cleanMapping: Record<string, string> = {};
-      for (const [k, v] of Object.entries(configMapping)) {
-        const val = String(v || '').trim();
-        if (val) cleanMapping[k] = val;
+      for (const row of configRows) {
+        const colId = String(row.colId || '').trim();
+        const varName = String(row.varName || '').trim();
+        if (colId && varName) cleanMapping[colId] = varName;
       }
       const { error } = await supabase
         .from('slack_lists')
