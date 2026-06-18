@@ -193,8 +193,6 @@ const App = () => (
                   <Route path="ad-performance/:id" element={<AdPerformanceDetail />} />
                 </Route>
                 <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
-                <Route path="/fulfillment" element={<Navigate to="/fulfillment/ads" replace />} />
-                <Route path="/fulfillment/:tab" element={<DL><Fulfillment /></DL>} />
                 <Route path="/finanzen" element={<DL><Finanzen /></DL>} />
                 <Route path="/finanzen/:tab" element={<DL><Finanzen /></DL>} />
                 <Route path="/funnel" element={<DailyFunnel />} />
