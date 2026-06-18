@@ -19,10 +19,15 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
   renderCellPlain, renderCellNode, getCellPills, normalizeColumns,
   loadAliases, subscribeAliases, getColumnDisplay, type SlackColumn,
 } from '@/utils/slack-list-renderer';
 import { SlackCellEditor } from '@/components/settings/SlackCellEditor';
+
+type MappingRow = { colId: string; varName: string };
 
 const EDITABLE_COLUMN_IDS = ['Col0B645A1WL8'];
 const EDITABLE_COLUMN_NAMES = ['status'];
