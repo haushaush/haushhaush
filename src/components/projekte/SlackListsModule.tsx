@@ -221,6 +221,68 @@ export function SlackListsModule() {
     else { setSortCol(colId); setSortDir('asc'); }
   };
 
+  const renameColumnAlias = async (colId: string, currentLabel: string) => {
+    if (!activeListId) return;
+    const next = window.prompt(
+      `Vergib einen lesbaren Namen für die Spalte "${colId}":`,
+      currentLabel === colId ? '' : currentLabel,
+    );
+    if (next == null) return;
+    const display = next.trim();
+    try {
+      if (!display) {
+        await supabase.from('slack_list_aliases' as any).delete()
+          .eq('slack_list_id', activeListId)
+          .eq('alias_type', 'column')
+          .eq('slack_id', colId)
+          .is('parent_column_id', null);
+        toast.success('Alias entfernt');
+      } else {
+        const { error } = await supabase.from('slack_list_aliases' as any).upsert({
+          slack_list_id: activeListId, alias_type: 'column',
+          slack_id: colId, parent_column_id: null, display_name: display,
+        }, { onConflict: 'slack_list_id,slack_id,parent_column_id' });
+        if (error) throw error;
+        toast.success('Spalten-Alias gespeichert');
+      }
+      await loadAliases(activeListId, true);
+      setAliasVersion((v) => v + 1);
+    } catch (e: any) {
+      toast.error('Speichern fehlgeschlagen: ' + (e.message || 'Unbekannt'));
+    }
+  };
+
+  const renameOptionAlias = async (colId: string, optId: string, currentLabel: string) => {
+    if (!activeListId) return;
+    const next = window.prompt(
+      `Vergib einen lesbaren Namen für die Option "${optId}":`,
+      currentLabel === optId ? '' : currentLabel,
+    );
+    if (next == null) return;
+    const display = next.trim();
+    try {
+      if (!display) {
+        await supabase.from('slack_list_aliases' as any).delete()
+          .eq('slack_list_id', activeListId)
+          .eq('alias_type', 'option')
+          .eq('slack_id', optId)
+          .eq('parent_column_id', colId);
+        toast.success('Alias entfernt');
+      } else {
+        const { error } = await supabase.from('slack_list_aliases' as any).upsert({
+          slack_list_id: activeListId, alias_type: 'option',
+          slack_id: optId, parent_column_id: colId, display_name: display, display_color: 'gray',
+        }, { onConflict: 'slack_list_id,slack_id,parent_column_id' });
+        if (error) throw error;
+        toast.success('Option-Alias gespeichert');
+      }
+      await loadAliases(activeListId, true);
+      setAliasVersion((v) => v + 1);
+    } catch (e: any) {
+      toast.error('Speichern fehlgeschlagen: ' + (e.message || 'Unbekannt'));
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -290,8 +352,17 @@ export function SlackListsModule() {
                           const active = sortCol === col.id;
                           return (
                             <th key={col.id} onClick={() => toggleSort(col.id)}
+                              onAuxClick={(e) => {
+                                if (e.button === 1) { e.preventDefault(); renameColumnAlias(col.id, col.name || col.id); }
+                              }}
+                              title="Alt+Klick um Spaltennamen zu setzen"
                               className="px-4 py-3 text-left cursor-pointer hover:text-primary select-none font-medium">
-                              <span className="inline-flex items-center gap-1.5">
+                              <span
+                                className="inline-flex items-center gap-1.5"
+                                onClick={(e) => {
+                                  if (e.altKey) { e.stopPropagation(); renameColumnAlias(col.id, col.name || col.id); }
+                                }}
+                              >
                                 {getColumnDisplay(col.id, activeListId, col.name || col.id)}
                                 {isColumnEditable(col) && <Pencil className="h-3 w-3 text-muted-foreground" />}
                                 {active
@@ -349,10 +420,16 @@ export function SlackListsModule() {
                                         return (
                                           <div className="flex flex-wrap gap-1">
                                             {pills.map((p) => (
-                                              <span key={p.id}
-                                                className={cn('inline-flex items-center rounded-full border px-3 h-6 text-xs font-medium', p.className)}>
+                                              <button key={p.id} type="button"
+                                                title={`Alt+Klick um Label umzubenennen (Slack-ID: ${p.id})`}
+                                                onClick={(e) => {
+                                                  if (!e.altKey) return;
+                                                  e.stopPropagation();
+                                                  renameOptionAlias(col.id, p.id, p.label);
+                                                }}
+                                                className={cn('inline-flex items-center rounded-full border px-3 h-6 text-xs font-medium transition-opacity hover:opacity-80', p.className)}>
                                                 {p.label}
-                                              </span>
+                                              </button>
                                             ))}
                                           </div>
                                         );
