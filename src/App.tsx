@@ -81,6 +81,7 @@ import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
 import { useFunnelGuard } from "./hooks/useFunnelGuard";
 import DailyFunnel from "./pages/DailyFunnel.tsx";
 import CheckinOverview from "./pages/hr/CheckinOverview.tsx";
+import TimeTracking from "./pages/hr/TimeTracking.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -198,6 +199,7 @@ const App = () => (
                 <Route path="/funnel" element={<DailyFunnel />} />
                 <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
                 <Route path="/hr/checkins" element={<AdminRoute><DL><CheckinOverview /></DL></AdminRoute>} />
+                <Route path="/hr/time-tracking" element={<AdminRoute><DL><TimeTracking /></DL></AdminRoute>} />
                 <Route path="/hr/mitarbeiter/:id" element={<DL><MitarbeiterDetail /></DL>} />
                 <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
                 <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
