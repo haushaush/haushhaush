@@ -1,0 +1,2 @@
+ALTER TABLE public.slack_list_aliases DROP CONSTRAINT IF EXISTS slack_list_aliases_alias_type_check;
+ALTER TABLE public.slack_list_aliases ADD CONSTRAINT slack_list_aliases_alias_type_check CHECK (alias_type IN ('column','option','user'));
