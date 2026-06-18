@@ -420,10 +420,16 @@ export function SlackListsModule() {
                                         return (
                                           <div className="flex flex-wrap gap-1">
                                             {pills.map((p) => (
-                                              <span key={p.id}
-                                                className={cn('inline-flex items-center rounded-full border px-3 h-6 text-xs font-medium', p.className)}>
+                                              <button key={p.id} type="button"
+                                                title={`Alt+Klick um Label umzubenennen (Slack-ID: ${p.id})`}
+                                                onClick={(e) => {
+                                                  if (!e.altKey) return;
+                                                  e.stopPropagation();
+                                                  renameOptionAlias(col.id, p.id, p.label);
+                                                }}
+                                                className={cn('inline-flex items-center rounded-full border px-3 h-6 text-xs font-medium transition-opacity hover:opacity-80', p.className)}>
                                                 {p.label}
-                                              </span>
+                                              </button>
                                             ))}
                                           </div>
                                         );
