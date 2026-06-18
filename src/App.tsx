@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ARIAProvider } from "@/contexts/ARIAContext";
+import { PreferencesProvider } from "@/hooks/usePreferences";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import { ErrorProvider } from "@/contexts/ErrorContext";
 import { ErrorCardOverlay } from "@/components/ErrorCardOverlay";
@@ -131,6 +132,7 @@ const App = () => (
         <OfflineDetector />
         <BrowserRouter>
           <AuthProvider>
+            <PreferencesProvider>
             <MusicPlayerProvider>
             <ARIAProvider>
               <MetaAdsProvider>
@@ -241,6 +243,7 @@ const App = () => (
               </MetaAdsProvider>
             </ARIAProvider>
             </MusicPlayerProvider>
+            </PreferencesProvider>
           </AuthProvider>
         </BrowserRouter>
         <ErrorCardOverlay />

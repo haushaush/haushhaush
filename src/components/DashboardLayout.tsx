@@ -11,6 +11,7 @@ import { MiniPlayerBar } from '@/components/layout/MiniPlayerBar';
 import { ARIASearchBar } from '@/components/aria/ARIASearchBar';
 import { ARIAPanel } from '@/components/aria/ARIAPanel';
 import { useARIA } from '@/contexts/ARIAContext';
+import { usePreferences } from '@/hooks/usePreferences';
 import { MfaGate } from '@/components/mfa/MfaGate';
 
 function SidebarWidthSync() {
@@ -27,6 +28,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const isMobile = useIsMobile();
   const { isOpen, modalOpen } = useARIA();
+  const { showAria } = usePreferences();
   const location = useLocation();
   const isOnHome = location.pathname === '/';
   const [ariaInput, setAriaInput] = useState('');
@@ -70,7 +72,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <BugReportWidget />
 
         {/* Unified ARIA wrapper: panel + pill — hidden on home page */}
-        {!isOnHome && (
+        {!isOnHome && showAria && (
           <div
             className={`aria-bottom-bar ${isOpen ? 'aria-bottom-bar--open' : ''}`}
             tabIndex={-1}
