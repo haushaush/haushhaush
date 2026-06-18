@@ -81,16 +81,6 @@ const toolsNavItems: NavItem[] = [
     ],
   },
   {
-    title: 'Pipedrive', url: '/pipedrive', icon: BarChart3,
-    adminOnly: true,
-    children: [
-      { title: 'Übersicht', url: '/pipedrive/uebersicht' },
-      { title: 'Deals', url: '/pipedrive/deals' },
-      { title: 'Personen', url: '/pipedrive/personen' },
-      { title: 'Pipelines', url: '/pipedrive/pipelines' },
-    ],
-  },
-  {
     title: 'Meta Ads', url: '/meta', icon: Facebook,
     children: [
       { title: 'Übersicht', url: '/meta/uebersicht' },
@@ -157,10 +147,6 @@ export function AppSidebar() {
   const [pendingCount, setPendingCount] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [bugModalOpen, setBugModalOpen] = useState(false);
-  const [pipedriveAccounts, setPipedriveAccounts] = useState<{ id: string; name: string; color_hex: string | null }[]>([]);
-  const [activePipedriveId, setActivePipedriveId] = useState<string | null>(
-    () => (typeof window !== 'undefined' ? localStorage.getItem('pipedrive-active-account') : null)
-  );
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadSidebarState();
     const result = { ...saved };
@@ -220,34 +206,6 @@ export function AppSidebar() {
     };
   }, [user?.id]);
 
-  // Load Pipedrive accounts (for sidebar account switcher)
-  useEffect(() => {
-    if (!isAdmin) return;
-    let mounted = true;
-    const load = async () => {
-      const { data } = await supabase
-        .from('pipedrive_accounts' as any)
-        .select('id, name, color_hex')
-        .eq('is_active', true)
-        .order('created_at', { ascending: true });
-      if (!mounted) return;
-      const list = ((data ?? []) as any[]) as { id: string; name: string; color_hex: string | null }[];
-      setPipedriveAccounts(list);
-      setActivePipedriveId(prev => {
-        if (prev && list.some(a => a.id === prev)) return prev;
-        return list[0]?.id || null;
-      });
-    };
-    load();
-    const ch = supabase
-      .channel('sidebar-pipedrive-accounts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipedrive_accounts' }, load)
-      .subscribe();
-    return () => {
-      mounted = false;
-      supabase.removeChannel(ch);
-    };
-  }, [isAdmin]);
 
 
   const toggleTheme = () => {
@@ -349,44 +307,10 @@ export function AppSidebar() {
         </button>
         <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', isOpen ? 'max-h-[28rem]' : 'max-h-0')}>
           <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
-            {item.title === 'Pipedrive' && (
-              <div className="px-1 pb-2">
-                {pipedriveAccounts.length === 0 ? (
-                  <NavLink
-                    to="/einstellungen?tab=integrationen"
-                    className="block text-[11px] text-muted-foreground hover:text-foreground italic px-2 py-1.5 rounded border border-dashed border-border"
-                  >
-                    Kein Konto verbunden →
-                  </NavLink>
-                ) : (
-                  <select
-                    value={activePipedriveId || ''}
-                    onChange={(e) => {
-                      const id = e.target.value;
-                      setActivePipedriveId(id);
-                      localStorage.setItem('pipedrive-active-account', id);
-                      if (location.pathname.startsWith('/pipedrive')) {
-                        navigate(`${location.pathname}?account=${id}`);
-                      }
-                    }}
-                    className="w-full text-[11px] bg-muted text-foreground rounded px-2 py-1.5 border border-border focus:outline-none focus:ring-1 focus:ring-primary"
-                    aria-label="Pipedrive Account auswählen"
-                  >
-                    {pipedriveAccounts.map(a => (
-                      <option key={a.id} value={a.id}>● {a.name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            )}
             {item.children!.filter(c => !c.adminOnly || isAdmin).map(child => {
               const childActive = isActive(child.url);
-              const isPipedriveChild = item.title === 'Pipedrive';
-              const href = isPipedriveChild && activePipedriveId
-                ? `${child.url}?account=${activePipedriveId}`
-                : child.url;
               return (
-                <NavLink key={child.url} to={href} end={child.url === item.url} className={cn(
+                <NavLink key={child.url} to={child.url} end={child.url === item.url} className={cn(
                   'block px-3 py-2 rounded-md text-sm transition-colors min-h-[36px] truncate',
                   childActive ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary -ml-[calc(0.75rem+1px)] pl-[calc(0.75rem+1px)]' : 'text-muted-foreground hover:bg-muted/60'
                 )} aria-current={childActive ? 'page' : undefined}>
@@ -592,44 +516,10 @@ export function AppSidebar() {
                           </button>
                           <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', toolOpen ? 'max-h-[28rem]' : 'max-h-0')}>
                             <div className="ml-6 border-l border-border pl-2 py-0.5 space-y-0.5">
-                              {toolItem.title === 'Pipedrive' && (
-                                <div className="px-1 pb-2">
-                                  {pipedriveAccounts.length === 0 ? (
-                                    <NavLink
-                                      to="/einstellungen?tab=integrationen"
-                                      className="block text-[11px] text-muted-foreground hover:text-foreground italic px-2 py-1.5 rounded border border-dashed border-border"
-                                    >
-                                      Kein Konto verbunden →
-                                    </NavLink>
-                                  ) : (
-                                    <select
-                                      value={activePipedriveId || ''}
-                                      onChange={(e) => {
-                                        const id = e.target.value;
-                                        setActivePipedriveId(id);
-                                        localStorage.setItem('pipedrive-active-account', id);
-                                        if (location.pathname.startsWith('/pipedrive')) {
-                                          navigate(`${location.pathname}?account=${id}`);
-                                        }
-                                      }}
-                                      className="w-full text-[11px] bg-muted text-foreground rounded px-2 py-1.5 border border-border focus:outline-none focus:ring-1 focus:ring-primary"
-                                      aria-label="Pipedrive Account auswählen"
-                                    >
-                                      {pipedriveAccounts.map(a => (
-                                        <option key={a.id} value={a.id}>● {a.name}</option>
-                                      ))}
-                                    </select>
-                                  )}
-                                </div>
-                              )}
                               {toolItem.children!.map(child => {
                                 const childActive = isActive(child.url);
-                                const isPipedriveChild = toolItem.title === 'Pipedrive';
-                                const href = isPipedriveChild && activePipedriveId
-                                  ? `${child.url}?account=${activePipedriveId}`
-                                  : child.url;
                                 return (
-                                  <NavLink key={child.url} to={href} end={child.url === toolItem.url} className={cn(
+                                  <NavLink key={child.url} to={child.url} end={child.url === toolItem.url} className={cn(
                                     'block px-3 py-1.5 rounded-md text-[12px] transition-colors min-h-[30px] truncate',
                                     childActive ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary -ml-[calc(0.5rem+1px)] pl-[calc(0.75rem+1px)]' : 'text-muted-foreground hover:bg-muted/60'
                                   )} aria-current={childActive ? 'page' : undefined}>
