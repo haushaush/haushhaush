@@ -142,6 +142,19 @@ function richTextToPlain(rich: any): string {
 }
 
 /**
+ * Robustly derive a boolean checked value from Slack checkbox cells,
+ * which may arrive as primitives, objects, or arrays.
+ */
+function extractCheckboxValue(cell: any): boolean {
+  const raw =
+    Array.isArray((cell as any)?.checkbox) ? (cell as any).checkbox[0] :
+    (cell as any)?.checkbox !== undefined ? (cell as any).checkbox :
+    Array.isArray(cell) ? cell[0] :
+    cell;
+  return raw === true || raw === 'true' || raw === 1 || raw === '1';
+}
+
+/**
  * Cell input can be:
  *  - primitive (string / number / boolean / null)
  *  - object: { value, text, rich_text }
