@@ -31,9 +31,18 @@ type MappingRow = { colId: string; varName: string };
 
 const EDITABLE_COLUMN_IDS = ['Col0B645A1WL8'];
 const EDITABLE_COLUMN_NAMES = ['status'];
-const isColumnEditable = (col: SlackColumn) => {
-  const n = (col.name || '').toLowerCase().trim();
-  return EDITABLE_COLUMN_IDS.includes(col.id) || EDITABLE_COLUMN_NAMES.includes(n);
+const isColumnEditable = (
+  col: SlackColumn,
+  slackListId: string | null,
+  variableMapping?: Record<string, string> | null
+) => {
+  // Vorquali-Liste: alte Allowlist als Fallback behalten
+  if (slackListId === 'F0B56EJPTEZ') {
+    const n = (col.name || '').toLowerCase().trim();
+    return EDITABLE_COLUMN_IDS.includes(col.id) || EDITABLE_COLUMN_NAMES.includes(n);
+  }
+  // Alle anderen Listen: editierbar, wenn im variable_mapping der Liste enthalten
+  return !!variableMapping && col.id in variableMapping;
 };
 
 interface SlackList {
@@ -420,7 +429,7 @@ export function SlackListsModule() {
                                 }}
                               >
                                 {getColumnDisplay(col.id, activeListId, col.name || col.id)}
-                                {isColumnEditable(col) && <Pencil className="h-3 w-3 text-muted-foreground" />}
+                                {isColumnEditable(col, activeListId, activeList?.variable_mapping) && <Pencil className="h-3 w-3 text-muted-foreground" />}
                                 {active
                                   ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)
                                   : <ArrowUpDown className="h-3 w-3 opacity-30" />}
@@ -449,7 +458,7 @@ export function SlackListsModule() {
                         <tr key={it.slack_item_id} className="border-t border-border hover:bg-muted/20">
                           {columns.map((col) => {
                             const cellKey = `${it.slack_item_id}::${col.id}`;
-                            const editable = isColumnEditable(col);
+                            const editable = isColumnEditable(col, activeListId, activeList?.variable_mapping);
                             const isEditing = editing?.itemId === it.slack_item_id && editing?.colId === col.id && editable;
                             const isSaving = savingCell === cellKey;
                             const isError = errorCell === cellKey;
