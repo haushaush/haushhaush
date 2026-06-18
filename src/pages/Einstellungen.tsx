@@ -364,25 +364,9 @@ export default function Einstellungen() {
     setDeleteTarget(null);
     setDeleteConfirmName('');
     fetchData();
-    loadAllUsers();
   };
 
-  const handleDeleteOrphan = async () => {
-    if (!orphanDeleteTarget) return;
-    setOrphanDeleting(true);
-    const { data, error } = await supabase.functions.invoke('delete-orphan-auth-user', {
-      body: { user_id: orphanDeleteTarget.id },
-    });
-    setOrphanDeleting(false);
-    const errMsg = (data as any)?.error || error?.message;
-    if (errMsg) {
-      showDeleteError(errMsg, (data as any)?.hint);
-      return;
-    }
-    toast.success(`Verwaister Auth-User ${orphanDeleteTarget.email} gelöscht`);
-    setOrphanDeleteTarget(null);
-    loadAllUsers();
-  };
+
 
   const pendingCount = requests.filter(r => r.status === 'Ausstehend').length;
 
