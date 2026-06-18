@@ -20,8 +20,7 @@ import { toast } from 'sonner';
 
 import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
-import { SlackChannelsTab } from '@/components/settings/SlackChannelsTab';
-import { SlackListsTab } from '@/components/settings/SlackListsTab';
+import { SlackWebhookConfig } from '@/components/settings/SlackWebhookConfig';
 import { usePreferences } from '@/hooks/usePreferences';
 
 function AriaVisibilityCard() {
@@ -86,103 +85,6 @@ interface EmployeeRequest {
 
 
 
-function SlackWebhookConfig() {
-  const [webhookUrl, setWebhookUrl] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'slack_tech_support_webhook')
-        .maybeSingle();
-      if (data?.value) {
-        setWebhookUrl(typeof data.value === 'string' ? data.value : (data.value as any)?.url || String(data.value));
-      }
-      setLoading(false);
-    })();
-  }, []);
-
-  const handleSave = async () => {
-    setSaving(true);
-    const { error } = await supabase.from('app_settings').upsert(
-      { key: 'slack_tech_support_webhook', value: webhookUrl.trim() as any, updated_at: new Date().toISOString() },
-      { onConflict: 'key' }
-    );
-    setSaving(false);
-    if (error) { toast.error('Fehler beim Speichern'); return; }
-    toast.success('Webhook URL gespeichert ✓');
-  };
-
-  const handleTest = async () => {
-    if (!webhookUrl.trim()) { toast.error('Bitte zuerst eine URL eingeben'); return; }
-    setTesting(true);
-    try {
-      const res = await fetch(webhookUrl.trim(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: '✅ Agency Hub Webhook-Verbindung erfolgreich!',
-          blocks: [{
-            type: 'section',
-            text: { type: 'mrkdwn', text: '✅ *Webhook-Test erfolgreich!*\nDas Agency Hub Dashboard ist jetzt mit #tech-support verbunden.' }
-          }]
-        }),
-      });
-      if (res.ok) toast.success('✓ Webhook funktioniert!');
-      else toast.error(`❌ Webhook fehlgeschlagen (${res.status})`);
-    } catch {
-      toast.error('❌ Webhook-URL ungültig oder nicht erreichbar');
-    }
-    setTesting(false);
-  };
-
-  if (loading) return <Skeleton className="h-40" />;
-
-  return (
-    <Card className="border-border bg-card">
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Hash className="h-4 w-4 text-primary" />
-          Slack Tech Support Webhook
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Bug-Reports und Support-Tickets werden an diesen Slack-Channel gesendet.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div>
-          <Label className="text-xs text-muted-foreground">Webhook URL</Label>
-          <Input
-            value={webhookUrl}
-            onChange={e => setWebhookUrl(e.target.value)}
-            placeholder="https://hooks.slack.com/services/..."
-            className="mt-1 font-mono text-xs"
-          />
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Slack → Apps → Incoming WebHooks → Channel wählen → URL kopieren
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={handleSave} disabled={saving || !webhookUrl.trim()} size="sm">
-            {saving ? <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Speichern...</> : 'Speichern'}
-          </Button>
-          <Button onClick={handleTest} disabled={testing || !webhookUrl.trim()} variant="outline" size="sm">
-            {testing ? <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Testen...</> : 'Testen'}
-          </Button>
-        </div>
-        {!webhookUrl.trim() && (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-xs text-destructive">
-            ⚠️ Keine Webhook URL konfiguriert — Bug-Reports und Support-Tickets werden nicht an Slack gesendet.
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 function CompanyLogoManager() {
   const [logos, setLogos] = useState<{ unternehmen: string; logo_url: string | null; bg_color: string | null }[]>([]);
@@ -284,8 +186,8 @@ export default function Einstellungen() {
   const defaultTab = 'branding';
   const adminOnlyTabs: string[] = [];
   const allowedTabs = isAdmin
-    ? ['branding', 'benachrichtigungen', 'sicherheit', 'slack']
-    : ['branding', 'benachrichtigungen', 'sicherheit', 'slack'];
+    ? ['branding', 'benachrichtigungen', 'sicherheit']
+    : ['branding', 'benachrichtigungen', 'sicherheit'];
   const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
 
   // Redirect non-admins away from admin-only tabs
@@ -449,10 +351,6 @@ export default function Einstellungen() {
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="benachrichtigungen">Benachrichtigungen</TabsTrigger>
           <TabsTrigger value="sicherheit">Sicherheit</TabsTrigger>
-          <TabsTrigger value="slack" className="flex items-center gap-1.5">
-            <MessageSquare className="h-3.5 w-3.5" />
-            Slack
-          </TabsTrigger>
         </TabsList>
 
 
@@ -525,12 +423,6 @@ export default function Einstellungen() {
           <SecuritySettingsTab />
         </TabsContent>
 
-        {/* ═══════ SLACK TAB ═══════ */}
-        <TabsContent value="slack" className="mt-6 space-y-6">
-          <SlackChannelsTab />
-          <SlackListsTab />
-          <SlackWebhookConfig />
-        </TabsContent>
 
       </Tabs>
 

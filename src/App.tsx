@@ -82,6 +82,7 @@ import { useFunnelGuard } from "./hooks/useFunnelGuard";
 import DailyFunnel from "./pages/DailyFunnel.tsx";
 import CheckinOverview from "./pages/hr/CheckinOverview.tsx";
 import TimeTracking from "./pages/hr/TimeTracking.tsx";
+import SlackPage from "./pages/SlackPage.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -208,6 +209,7 @@ const App = () => (
                 <Route path="/email-automatisierung/:slug" element={<AdminRoute><DL><EmailPage mode="shared" /></DL></AdminRoute>} />
                 <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
                 <Route path="/integrationen" element={<AdminRoute><DL><Integrationen /></DL></AdminRoute>} />
+                <Route path="/slack" element={<AdminRoute><DL><SlackPage /></DL></AdminRoute>} />
                 <Route path="/close/verknuepfungen" element={<AdminRoute><DL><CloseVerknuepfungen /></DL></AdminRoute>} />
                 <Route path="/meta/verknuepfungen" element={<AdminRoute><DL><MetaVerknuepfungen /></DL></AdminRoute>} />
                 <Route path="/aria" element={<DL><AriaPage /></DL>} />
