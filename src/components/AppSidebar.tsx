@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Mail, Globe, BarChart3, Video, MonitorPlay, Wrench, ShieldCheck, Plug } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Target, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Mail, Globe, BarChart3, Video, MonitorPlay, Wrench, Plug } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -39,6 +39,7 @@ const navItems: NavItem[] = [
       { title: 'Leadkauf', url: '/sales/leads' },
       { title: 'Cold Mail', url: '/sales/coldmail' },
       { title: 'Referenz Showcase', url: '/sales/referenz-showcase' },
+      { title: 'Lead Quality Audit', url: '/tools/lead-quality-audit' },
     ],
   },
   {
@@ -142,9 +143,6 @@ const toolsNavItems: NavItem[] = [
   { title: 'n8n Workflows', url: '/automationen/n8n', icon: Workflow },
   {
     title: 'A-Ad Creative Studio', url: '/tools/ad-creative-studio', icon: Wand2, adminOnly: true,
-  },
-  {
-    title: 'Lead Quality Audit', url: '/tools/lead-quality-audit', icon: ShieldCheck,
   },
 ];
 function loadSidebarState(): Record<string, boolean> {
