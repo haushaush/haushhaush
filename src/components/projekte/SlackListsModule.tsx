@@ -530,32 +530,69 @@ export function SlackListsModule() {
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Variablen-Mapping (Spalte → Slack-Workflow-Variable)</Label>
-              {columns.filter(isColumnEditable).length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Keine editierbaren Spalten in dieser Liste.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {columns.filter(isColumnEditable).map((col) => (
-                    <div key={col.id} className="grid grid-cols-[1fr_1fr] gap-2 items-center">
-                      <div className="text-xs">
-                        <div className="font-medium">{getColumnDisplay(col.id, activeListId, col.name || col.id)}</div>
-                        <div className="font-mono text-[10px] text-muted-foreground">{col.id}</div>
-                      </div>
-                      <Input
-                        placeholder="variable_name"
-                        className="font-mono text-xs h-8"
-                        value={configMapping[col.id] || ''}
-                        onChange={(e) => setConfigMapping((m) => ({ ...m, [col.id]: e.target.value }))}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+              <Label>Variablen-Mapping</Label>
               <p className="text-[11px] text-muted-foreground">
-                Leerer Wert = automatischer Name (abgeleitet aus Spaltennamen).
+                Trage die Variablennamen deines Slack-Workflows ein und wähle, welche Spalte den Wert liefert. <span className="font-mono">zeilenid</span> wird automatisch mitgesendet und muss nicht gemappt werden.
               </p>
+              <div className="space-y-2">
+                {configRows.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">
+                    Noch keine Variablen. Füge mit "+ Variable hinzufügen" eine hinzu.
+                  </p>
+                )}
+                {configRows.map((row, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                    <Input
+                      placeholder="slack_variable"
+                      className="font-mono text-xs h-8"
+                      value={row.varName}
+                      onChange={(e) =>
+                        setConfigRows((rows) =>
+                          rows.map((r, i) => (i === idx ? { ...r, varName: e.target.value } : r))
+                        )
+                      }
+                    />
+                    <Select
+                      value={row.colId || undefined}
+                      onValueChange={(val) =>
+                        setConfigRows((rows) =>
+                          rows.map((r, i) => (i === idx ? { ...r, colId: val } : r))
+                        )
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Spalte wählen…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {columns.map((col) => (
+                          <SelectItem key={col.id} value={col.id} className="text-xs">
+                            {getColumnDisplay(col.id, activeListId, col.name || col.id)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() =>
+                        setConfigRows((rows) => rows.filter((_, i) => i !== idx))
+                      }
+                      aria-label="Variable entfernen"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => setConfigRows((rows) => [...rows, { colId: '', varName: '' }])}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" /> Variable hinzufügen
+              </Button>
             </div>
           </div>
           <DialogFooter>
