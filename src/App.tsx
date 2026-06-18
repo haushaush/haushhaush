@@ -60,7 +60,7 @@ import N8nWorkflowsPage from "./pages/automationen/N8nWorkflows.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import EmailPage from "./pages/Email.tsx";
 import EmailAutomationRules from "./pages/EmailAutomationRules.tsx";
-import Pipedrive from "./pages/Pipedrive.tsx";
+
 import Recovery from "./pages/Recovery.tsx";
 import OnePageKunden from "./pages/OnePageKunden.tsx";
 import OnePageKundeDetail from "./pages/OnePageKundeDetail.tsx";
@@ -151,8 +151,6 @@ const App = () => (
                 <Route path="/close" element={<Navigate to="/close/leads" replace />} />
                 <Route path="/close/leads" element={<DL><CloseLeads /></DL>} />
                 <Route path="/close/deals" element={<DL><CloseDeals /></DL>} />
-                <Route path="/pipedrive" element={<AdminRoute><Navigate to="/pipedrive/uebersicht" replace /></AdminRoute>} />
-                <Route path="/pipedrive/:tab" element={<AdminRoute><DL><Pipedrive /></DL></AdminRoute>} />
                 <Route path="/meta" element={<Navigate to="/meta/uebersicht" replace />} />
                 <Route path="/meta/uebersicht" element={<DL><MetaUebersicht /></DL>} />
                 <Route path="/meta/kampagnen" element={<DL><MetaKampagnen /></DL>} />
