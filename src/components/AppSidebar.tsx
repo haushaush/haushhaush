@@ -90,6 +90,7 @@ const toolsNavItems: NavItem[] = [
     children: [
       { title: 'Leads', url: '/close/leads' },
       { title: 'Deals', url: '/close/deals' },
+      { title: 'Verknüpfungen', url: '/close/verknuepfungen' },
     ],
   },
   {
@@ -107,6 +108,7 @@ const toolsNavItems: NavItem[] = [
     children: [
       { title: 'Übersicht', url: '/meta/uebersicht' },
       { title: 'Ads Manager', url: '/meta/kampagnen' },
+      { title: 'Verknüpfungen', url: '/meta/verknuepfungen' },
     ],
   },
   {

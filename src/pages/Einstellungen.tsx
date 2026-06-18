@@ -20,9 +20,6 @@ import { toast } from 'sonner';
 import { CreateTeamMemberTab } from '@/components/settings/CreateTeamMemberTab';
 import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
-import { MetaMatchingCard } from '@/components/integrations/MetaMatchingCard';
-import { CloseMatchingCard } from '@/components/integrations/CloseMatchingCard';
-import { CloseSyncCard } from '@/components/integrations/CloseSyncCard';
 import { SlackChannelsTab } from '@/components/settings/SlackChannelsTab';
 import { SlackListsTab } from '@/components/settings/SlackListsTab';
 
@@ -250,10 +247,10 @@ export default function Einstellungen() {
   const isAdmin = hasRole('admin');
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
-  const defaultTab = isAdmin ? 'verknuepfungen' : 'branding';
-  const adminOnlyTabs = ['verknuepfungen', 'mitarbeiter-erstellen'];
+  const defaultTab = 'branding';
+  const adminOnlyTabs = ['mitarbeiter-erstellen'];
   const allowedTabs = isAdmin
-    ? ['verknuepfungen', 'branding', 'benutzer', 'mitarbeiter-erstellen', 'benachrichtigungen', 'sicherheit', 'slack']
+    ? ['branding', 'benutzer', 'mitarbeiter-erstellen', 'benachrichtigungen', 'sicherheit', 'slack']
     : ['branding', 'benutzer', 'benachrichtigungen', 'sicherheit', 'slack'];
   const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
 
@@ -454,13 +451,6 @@ export default function Einstellungen() {
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="flex flex-wrap h-auto gap-1">
-          
-          {isAdmin && (
-            <TabsTrigger value="verknuepfungen" className="flex items-center gap-1.5">
-              <GitMerge className="h-3.5 w-3.5" />
-              Verknüpfungen
-            </TabsTrigger>
-          )}
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="benutzer" className="relative">
             Benutzer
@@ -482,24 +472,6 @@ export default function Einstellungen() {
         </TabsList>
 
 
-        {/* ═══════ VERKNÜPFUNGEN TAB ═══════ */}
-        {isAdmin && (
-        <TabsContent value="verknuepfungen" className="mt-6 space-y-8">
-          <div>
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <GitMerge className="h-5 w-5 text-primary" />
-              Verknüpfungen
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Datenquellen mit Kunden cross-referenzieren
-            </p>
-          </div>
-
-          <MetaMatchingCard />
-          <CloseMatchingCard />
-          <CloseSyncCard />
-        </TabsContent>
-        )}
 
 
         <TabsContent value="branding" className="mt-4 space-y-4">
