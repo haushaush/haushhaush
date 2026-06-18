@@ -142,6 +142,19 @@ function richTextToPlain(rich: any): string {
 }
 
 /**
+ * Robustly derive a boolean checked value from Slack checkbox cells,
+ * which may arrive as primitives, objects, or arrays.
+ */
+function extractCheckboxValue(cell: any): boolean {
+  const raw =
+    Array.isArray((cell as any)?.checkbox) ? (cell as any).checkbox[0] :
+    (cell as any)?.checkbox !== undefined ? (cell as any).checkbox :
+    Array.isArray(cell) ? cell[0] :
+    cell;
+  return raw === true || raw === 'true' || raw === 1 || raw === '1';
+}
+
+/**
  * Cell input can be:
  *  - primitive (string / number / boolean / null)
  *  - object: { value, text, rich_text }
@@ -187,6 +200,9 @@ export function renderCellPlain(cell: any, col?: SlackColumn, slackListId?: stri
 
 
   if (cell == null) return '';
+  if (col?.type === 'checkbox' || typeof cell === 'boolean') {
+    return extractCheckboxValue(cell) ? '✓' : '';
+  }
   if (typeof cell === 'boolean') return cell ? '✓' : '';
   if (typeof cell === 'number') return String(cell);
 
@@ -223,7 +239,7 @@ export function renderCellPlain(cell: any, col?: SlackColumn, slackListId?: stri
 export function renderCellNode(cell: any, col?: SlackColumn): ReactNode {
   const type = col?.type;
   if (type === 'checkbox' || typeof cell === 'boolean') {
-    const checked = cell === true || cell === 'true' || cell === 1;
+    const checked = extractCheckboxValue(cell);
     return checked
       ? <span className="inline-flex h-4 w-4 items-center justify-center rounded border border-primary bg-primary/20 text-primary text-[10px]">✓</span>
       : <span className="inline-flex h-4 w-4 rounded border border-border" />;
