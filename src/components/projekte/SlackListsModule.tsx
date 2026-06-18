@@ -270,10 +270,14 @@ export function SlackListsModule() {
     try {
       // Vorquali nutzt weiter den Webhook-Weg; alle anderen Listen direkt via Slack-API
       const fn = activeListId === 'F0B56EJPTEZ' ? 'send-slack-list-update' : 'update-slack-list-item';
+      // user: stets als Array senden (leeres Array = niemand)
+      const fieldValue = col.type === 'user'
+        ? (newValue ? [String(newValue)] : [])
+        : newValue;
       const body: any = {
         slack_item_id: itemId,
         slack_list_id: activeListId,
-        field_updates: { [col.id]: newValue },
+        field_updates: { [col.id]: fieldValue },
       };
       if (fn === 'update-slack-list-item') {
         body.column_types = { [col.id]: col.type };
