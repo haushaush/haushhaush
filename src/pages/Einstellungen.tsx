@@ -447,14 +447,6 @@ export default function Einstellungen() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="benutzer" className="relative">
-            Benutzer
-            {pendingCount > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center h-5 min-w-[20px] rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5">
-                {pendingCount}
-              </span>
-            )}
-          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="mitarbeiter-erstellen">Mitarbeiter erstellen</TabsTrigger>
           )}
