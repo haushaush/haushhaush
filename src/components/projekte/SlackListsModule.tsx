@@ -75,6 +75,11 @@ export function SlackListsModule() {
   const [newListName, setNewListName] = useState('');
   const [adding, setAdding] = useState(false);
 
+  const [configOpen, setConfigOpen] = useState(false);
+  const [configWebhook, setConfigWebhook] = useState('');
+  const [configMapping, setConfigMapping] = useState<Record<string, string>>({});
+  const [savingConfig, setSavingConfig] = useState(false);
+
   const activeList = lists.find((l) => l.slack_list_id === activeListId) || null;
   const columns = useMemo<SlackColumn[]>(() => {
     const fromMeta = normalizeColumns(activeList?.columns);
