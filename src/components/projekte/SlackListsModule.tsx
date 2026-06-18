@@ -26,6 +26,7 @@ import {
   loadAliases, subscribeAliases, getColumnDisplay, type SlackColumn,
 } from '@/utils/slack-list-renderer';
 import { SlackCellEditor } from '@/components/settings/SlackCellEditor';
+import { SlackAliasEditor } from '@/components/settings/SlackAliasEditor';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const getCheckboxValue = (cell: any): boolean => {
