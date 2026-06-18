@@ -31,6 +31,8 @@ import Finanzen from "./pages/Finanzen.tsx";
 import TeamPage from "./pages/Team.tsx";
 import Einstellungen from "./pages/Einstellungen.tsx";
 import Integrationen from "./pages/Integrationen.tsx";
+import CloseVerknuepfungen from "./pages/CloseVerknuepfungen.tsx";
+import MetaVerknuepfungen from "./pages/MetaVerknuepfungen.tsx";
 import Creatives from "./pages/Creatives.tsx";
 import CreativeDetail from "./pages/CreativeDetail.tsx";
 import CreativeReview from "./pages/CreativeReview.tsx";
@@ -207,6 +209,8 @@ const App = () => (
                 <Route path="/email-automatisierung/:slug" element={<AdminRoute><DL><EmailPage mode="shared" /></DL></AdminRoute>} />
                 <Route path="/einstellungen" element={<DL><Einstellungen /></DL>} />
                 <Route path="/integrationen" element={<AdminRoute><DL><Integrationen /></DL></AdminRoute>} />
+                <Route path="/close/verknuepfungen" element={<AdminRoute><DL><CloseVerknuepfungen /></DL></AdminRoute>} />
+                <Route path="/meta/verknuepfungen" element={<AdminRoute><DL><MetaVerknuepfungen /></DL></AdminRoute>} />
                 <Route path="/aria" element={<DL><AriaPage /></DL>} />
                 <Route path="/automationen" element={<Navigate to="/automationen/aria" replace />} />
                 <Route path="/automationen/aria" element={<DL><AriaPage /></DL>} />
