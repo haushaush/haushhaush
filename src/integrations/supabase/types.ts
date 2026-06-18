@@ -4845,6 +4845,8 @@ export type Database = {
           last_synced_at: string | null
           list_name: string | null
           slack_list_id: string
+          variable_mapping: Json
+          webhook_url: string | null
         }
         Insert: {
           channel_id?: string | null
@@ -4855,6 +4857,8 @@ export type Database = {
           last_synced_at?: string | null
           list_name?: string | null
           slack_list_id: string
+          variable_mapping?: Json
+          webhook_url?: string | null
         }
         Update: {
           channel_id?: string | null
@@ -4865,6 +4869,8 @@ export type Database = {
           last_synced_at?: string | null
           list_name?: string | null
           slack_list_id?: string
+          variable_mapping?: Json
+          webhook_url?: string | null
         }
         Relationships: []
       }

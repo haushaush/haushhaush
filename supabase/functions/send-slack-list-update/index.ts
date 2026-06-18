@@ -7,70 +7,77 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const VORQUALI_LIST_ID = "F0B56EJPTEZ";
+
 const toKey = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-
-const VARIABLE_KEY_OVERRIDES: Record<string, string> = {
-  'Col0B645A1WL8': 'status',
-  // "Status" → Slack-Workflow-Variable "status"
-  // Weitere Overrides hier ergänzbar
-};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const { slack_list_id, slack_item_id, field_updates } = await req.json();
-    if (!slack_item_id || !field_updates) {
-      return new Response(JSON.stringify({ error: "missing params" }), {
+    if (!slack_item_id || !field_updates || !slack_list_id) {
+      return new Response(JSON.stringify({ error: "missing params (slack_list_id, slack_item_id, field_updates required)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const webhookUrl = Deno.env.get("SLACK_WEBHOOK_VORQUALI_UPDATE");
-    if (!webhookUrl) throw new Error("SLACK_WEBHOOK_VORQUALI_UPDATE not configured");
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Load list columns
-    let columns: any[] = [];
-    if (slack_list_id) {
-      const { data: list } = await supabase
-        .from("slack_lists")
-        .select("columns")
-        .eq("slack_list_id", slack_list_id)
-        .maybeSingle();
-      columns = (list?.columns as any[]) || [];
+    // Load list config (webhook_url, variable_mapping, columns)
+    const { data: list } = await supabase
+      .from("slack_lists")
+      .select("columns, webhook_url, variable_mapping")
+      .eq("slack_list_id", slack_list_id)
+      .maybeSingle();
+
+    let webhookUrl: string | null = (list?.webhook_url as string | null) || null;
+    const variableMapping: Record<string, string> =
+      (list?.variable_mapping as Record<string, string> | null) || {};
+    const columns: any[] = (list?.columns as any[]) || [];
+
+    // Self-heal: backfill Vorquali webhook from legacy env secret on first run
+    if (!webhookUrl && slack_list_id === VORQUALI_LIST_ID) {
+      const legacy = Deno.env.get("SLACK_WEBHOOK_VORQUALI_UPDATE");
+      if (legacy) {
+        webhookUrl = legacy;
+        await supabase
+          .from("slack_lists")
+          .update({ webhook_url: legacy })
+          .eq("slack_list_id", slack_list_id);
+        console.log("[send-update] Vorquali webhook backfilled from env into slack_lists.");
+      }
     }
+
+    if (!webhookUrl) {
+      return new Response(
+        JSON.stringify({ error: "Keine Webhook-URL für diese Liste konfiguriert" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const columnsMap = new Map(columns.map((c: any) => [c.id, c]));
 
-    // Load Hub aliases for column display names
+    // Load Hub aliases for column display names (fallback for unmapped columns)
     const aliasMap = new Map<string, string>();
-    if (slack_list_id) {
-      const { data: aliases } = await supabase
-        .from("slack_list_aliases")
-        .select("slack_id, display_name")
-        .eq("slack_list_id", slack_list_id)
-        .eq("alias_type", "column");
-      for (const a of aliases || []) {
-        if (a.slack_id && a.display_name) aliasMap.set(a.slack_id, a.display_name);
-      }
+    const { data: aliases } = await supabase
+      .from("slack_list_aliases")
+      .select("slack_id, display_name")
+      .eq("slack_list_id", slack_list_id)
+      .eq("alias_type", "column");
+    for (const a of aliases || []) {
+      if (a.slack_id && a.display_name) aliasMap.set(a.slack_id, a.display_name);
     }
 
-    const getVariableKey = (column: any, fallbackId: string) => {
-      // Override hat Priorität (z.B. "Kampagnen Status" → "status")
-      if (VARIABLE_KEY_OVERRIDES[fallbackId]) {
-        return VARIABLE_KEY_OVERRIDES[fallbackId];
-      }
-
-      const displayName =
-        aliasMap.get(fallbackId) ||
-        column?.name ||
-        fallbackId;
+    const getVariableKey = (column: any, colId: string) => {
+      // Per-list mapping has priority
+      if (variableMapping[colId]) return variableMapping[colId];
+      const displayName = aliasMap.get(colId) || column?.name || colId;
       return toKey(String(displayName));
     };
 
@@ -106,25 +113,12 @@ serve(async (req) => {
       mappedUpdates[variableKey] = mapped;
     }
 
-    console.log("[send-update] Column → Variable-Key mapping:",
-      Object.entries(field_updates as Record<string, unknown>).map(([colId]) => {
-        const column: any = columnsMap.get(colId);
-        return {
-          column_id: colId,
-          slack_column_name: column?.name,
-          hub_alias: aliasMap.get(colId),
-          resolved_variable_key: getVariableKey(column, colId),
-          type: column?.type,
-        };
-      }),
-    );
-
     const body = {
       zeilenid: slack_item_id,
       ...mappedUpdates,
     };
 
-    console.log("[send-update] Webhook body (zeilenid format):", JSON.stringify(body, null, 2));
+    console.log("[send-update] Webhook body:", JSON.stringify(body, null, 2));
 
     const response = await fetch(webhookUrl, {
       method: "POST",
@@ -139,48 +133,46 @@ serve(async (req) => {
       throw new Error(`Webhook failed: ${response.status} ${respText}`);
     }
 
-    // ---- NEW: update meta_campaign_snapshot on manual Status edits ----
-    const STATUS_COL = "Col0B645A1WL8";
-    const statusOptId = (field_updates as Record<string, unknown>)[STATUS_COL];
-    if (statusOptId) {
-      const { data: linkage } = await supabase
-        .from("slack_item_meta_account")
-        .select("meta_account_id")
-        .eq("slack_item_id", slack_item_id)
-        .maybeSingle();
+    // ---- Vorquali-only: update meta_campaign_snapshot on manual Status edits ----
+    if (slack_list_id === VORQUALI_LIST_ID) {
+      const STATUS_COL = "Col0B645A1WL8";
+      const statusOptId = (field_updates as Record<string, unknown>)[STATUS_COL];
+      if (statusOptId) {
+        const { data: linkage } = await supabase
+          .from("slack_item_meta_account")
+          .select("meta_account_id")
+          .eq("slack_item_id", slack_item_id)
+          .maybeSingle();
 
-      if (linkage?.meta_account_id) {
-        let canonicalStatus: string;
-        if (statusOptId === "OptARVJ11UU") canonicalStatus = "ACTIVE";
-        else if (statusOptId === "OptH358HCYM") canonicalStatus = "PAUSED";
-        else canonicalStatus = "UNKNOWN";
+        if (linkage?.meta_account_id) {
+          let canonicalStatus: string;
+          if (statusOptId === "OptARVJ11UU") canonicalStatus = "ACTIVE";
+          else if (statusOptId === "OptH358HCYM") canonicalStatus = "PAUSED";
+          else canonicalStatus = "UNKNOWN";
 
-        const rawAcc = linkage.meta_account_id as string;
-        const accId = rawAcc.startsWith("act_") ? rawAcc : `act_${rawAcc}`;
-        const accIdAlt = rawAcc.startsWith("act_") ? rawAcc.slice(4) : rawAcc;
+          const rawAcc = linkage.meta_account_id as string;
+          const accId = rawAcc.startsWith("act_") ? rawAcc : `act_${rawAcc}`;
+          const accIdAlt = rawAcc.startsWith("act_") ? rawAcc.slice(4) : rawAcc;
 
-        const { error: snapshotError } = await supabase
-          .from("meta_campaign_snapshot")
-          .update({
-            status: canonicalStatus,
-            last_seen_at: new Date().toISOString(),
-          })
-          .in("account_id", [accId, accIdAlt]);
+          const { error: snapshotError } = await supabase
+            .from("meta_campaign_snapshot")
+            .update({
+              status: canonicalStatus,
+              last_seen_at: new Date().toISOString(),
+            })
+            .in("account_id", [accId, accIdAlt]);
 
-        if (snapshotError) {
-          console.warn(
-            `[send-update] Snapshot update failed (non-blocking) for item ${slack_item_id} / account ${rawAcc}:`,
-            snapshotError.message,
-          );
-        } else {
-          console.log(
-            `[send-update] Snapshot updated → ${canonicalStatus} for item ${slack_item_id} (account ${rawAcc})`,
-          );
+          if (snapshotError) {
+            console.warn(
+              `[send-update] Snapshot update failed (non-blocking) for item ${slack_item_id} / account ${rawAcc}:`,
+              snapshotError.message,
+            );
+          } else {
+            console.log(
+              `[send-update] Snapshot updated → ${canonicalStatus} for item ${slack_item_id} (account ${rawAcc})`,
+            );
+          }
         }
-      } else {
-        console.log(
-          `[send-update] No meta_account_id linkage for item ${slack_item_id} — snapshot update skipped`,
-        );
       }
     }
     // ------------------------------------------------------------------
