@@ -292,7 +292,16 @@
     background: hsl(var(--primary) / 0.18);
     color: hsl(174 70% 60%);
   }
+  /* Scrollbar hiding utility */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
+
 
 /* Sidebar collapsed icon centering */
 [data-sidebar="sidebar"][data-state="collapsed"] .sidebar-nav-item {
