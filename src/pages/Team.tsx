@@ -108,6 +108,9 @@ export default function TeamPage() {
       <Tabs value={currentTab} onValueChange={v => navigate(`/hr/${v}`)}>
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="mitarbeiter"><Users className="h-4 w-4 mr-1" />Mitarbeiter</TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="erstellen"><UserPlus className="h-4 w-4 mr-1" />Mitarbeiter erstellen</TabsTrigger>
+          )}
         </TabsList>
 
         {/* MITARBEITER */}
@@ -139,6 +142,12 @@ export default function TeamPage() {
             </div>
           ))}
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="erstellen" className="mt-4">
+            <CreateTeamMemberTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
