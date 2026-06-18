@@ -200,6 +200,9 @@ export function renderCellPlain(cell: any, col?: SlackColumn, slackListId?: stri
 
 
   if (cell == null) return '';
+  if (col?.type === 'checkbox' || typeof cell === 'boolean') {
+    return extractCheckboxValue(cell) ? '✓' : '';
+  }
   if (typeof cell === 'boolean') return cell ? '✓' : '';
   if (typeof cell === 'number') return String(cell);
 
