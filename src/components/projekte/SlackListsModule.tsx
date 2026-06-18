@@ -26,6 +26,16 @@ import {
   loadAliases, subscribeAliases, getColumnDisplay, type SlackColumn,
 } from '@/utils/slack-list-renderer';
 import { SlackCellEditor } from '@/components/settings/SlackCellEditor';
+import { Checkbox } from '@/components/ui/checkbox';
+
+const getCheckboxValue = (cell: any): boolean => {
+  const raw =
+    Array.isArray(cell?.checkbox) ? cell.checkbox[0] :
+    cell?.checkbox !== undefined ? cell.checkbox :
+    Array.isArray(cell) ? cell[0] :
+    cell;
+  return raw === true || raw === 'true' || raw === 1;
+};
 
 type MappingRow = { colId: string; varName: string };
 
@@ -463,10 +473,23 @@ export function SlackListsModule() {
                             const isSaving = savingCell === cellKey;
                             const isError = errorCell === cellKey;
                             const val = it.fields?.[col.id];
+                            const isCheckbox = col.type === 'checkbox';
                             return (
                               <td key={col.id} className={cn('px-3 py-2 align-top transition-colors',
                                 isError && 'bg-destructive/20')}>
-                                {isEditing ? (
+                                {isCheckbox ? (
+                                  <div className="min-h-[28px] flex items-center gap-2 px-1 -mx-1">
+                                    <Checkbox
+                                      checked={getCheckboxValue(val)}
+                                      disabled={isSaving}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onCheckedChange={(checked) => {
+                                        saveCell(it.slack_item_id, col as SlackColumn, checked === true);
+                                      }}
+                                    />
+                                    {isSaving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                                  </div>
+                                ) : isEditing ? (
                                   <SlackCellEditor
                                     field={val} column={col as SlackColumn} slackListId={activeListId}
                                     onSave={async (nv) => { await saveCell(it.slack_item_id, col as SlackColumn, nv); }}
@@ -476,7 +499,7 @@ export function SlackListsModule() {
                                     className={cn('min-h-[28px] flex items-center gap-2 rounded px-1 -mx-1',
                                       editable ? 'cursor-pointer hover:bg-accent/50' : 'cursor-default')}>
                                     {(() => {
-                                      if (col.type === 'checkbox' || typeof val === 'boolean') {
+                                      if (typeof val === 'boolean') {
                                         return renderCellNode(val, col as SlackColumn);
                                       }
                                       const pills = getCellPills(val, col as SlackColumn, activeListId);
