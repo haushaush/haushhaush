@@ -57,7 +57,6 @@ import DriveMeineDateien from "./pages/drive/DriveMeineDateien.tsx";
 import DriveGeteilt from "./pages/drive/DriveGeteilt.tsx";
 import DrivePapierkorb from "./pages/drive/DrivePapierkorb.tsx";
 import N8nWorkflowsPage from "./pages/automationen/N8nWorkflows.tsx";
-import N8nWorkflowsPage from "./pages/automationen/N8nWorkflows.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import EmailPage from "./pages/Email.tsx";
 import EmailAutomationRules from "./pages/EmailAutomationRules.tsx";
