@@ -390,6 +390,7 @@ export default function Einstellungen() {
     loadAllUsers();
   };
 
+  const pendingCount = requests.filter(r => r.status === 'Ausstehend').length;
 
   // Employee request handlers
   const openDrawer = (req: EmployeeRequest) => {
