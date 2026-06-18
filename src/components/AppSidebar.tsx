@@ -63,7 +63,7 @@ const navItems: NavItem[] = [
     title: 'Team & HR', url: '/hr', icon: UserCircle,
     children: [
       { title: 'Mitarbeiter', url: '/hr/mitarbeiter' },
-      { title: 'Check-in & Check-out', url: '/hr/checkins', adminOnly: true },
+      { title: 'Check-in & Check-out', url: '/hr/checkins' },
     ],
   },
 ];
