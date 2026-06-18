@@ -687,38 +687,6 @@ export default function Einstellungen() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Import Orphan Modal */}
-      <ImportOrphanModal
-        open={!!importOrphanEmail}
-        email={importOrphanEmail || ''}
-        onOpenChange={(o) => { if (!o) setImportOrphanEmail(null); }}
-        onImported={() => { fetchData(); loadAllUsers(); }}
-      />
-
-      {/* Orphan Delete Confirmation */}
-      <Dialog open={!!orphanDeleteTarget} onOpenChange={(o) => { if (!o) setOrphanDeleteTarget(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Verwaisten Auth-User löschen?
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Der Auth-User <span className="font-mono text-foreground">{orphanDeleteTarget?.email}</span> wird
-            unwiderruflich aus dem System entfernt.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOrphanDeleteTarget(null)} disabled={orphanDeleting}>
-              Abbrechen
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteOrphan} disabled={orphanDeleting}>
-              {orphanDeleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Lösche...</> : <><Trash2 className="h-4 w-4 mr-2" />Löschen</>}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
