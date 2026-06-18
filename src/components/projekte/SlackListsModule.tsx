@@ -429,7 +429,7 @@ export function SlackListsModule() {
                                 }}
                               >
                                 {getColumnDisplay(col.id, activeListId, col.name || col.id)}
-                                {isColumnEditable(col) && <Pencil className="h-3 w-3 text-muted-foreground" />}
+                                {isColumnEditable(col, activeListId, activeList?.variable_mapping) && <Pencil className="h-3 w-3 text-muted-foreground" />}
                                 {active
                                   ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)
                                   : <ArrowUpDown className="h-3 w-3 opacity-30" />}
@@ -458,7 +458,7 @@ export function SlackListsModule() {
                         <tr key={it.slack_item_id} className="border-t border-border hover:bg-muted/20">
                           {columns.map((col) => {
                             const cellKey = `${it.slack_item_id}::${col.id}`;
-                            const editable = isColumnEditable(col);
+                            const editable = isColumnEditable(col, activeListId, activeList?.variable_mapping);
                             const isEditing = editing?.itemId === it.slack_item_id && editing?.colId === col.id && editable;
                             const isSaving = savingCell === cellKey;
                             const isError = errorCell === cellKey;
