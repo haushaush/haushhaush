@@ -42,7 +42,6 @@ type TabKey = 'alle' | 'ungelesen' | 'slack' | 'email' | 'intern' | 'archiv';
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'alle', label: 'Alle' },
   { key: 'ungelesen', label: 'Ungelesen' },
-  { key: 'slack', label: 'Slack' },
   { key: 'email', label: 'E-Mail' },
   { key: 'intern', label: 'Intern' },
   { key: 'archiv', label: 'Archiv' },
