@@ -22,6 +22,40 @@ import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
 import { SlackChannelsTab } from '@/components/settings/SlackChannelsTab';
 import { SlackListsTab } from '@/components/settings/SlackListsTab';
+import { usePreferences } from '@/hooks/usePreferences';
+
+function AriaVisibilityCard() {
+  const { showAria, setShowAria, loading } = usePreferences();
+  return (
+    <Card className="border-border bg-card">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Bell className="h-4 w-4 text-primary" />Darstellung
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-foreground">ARIA-Assistent anzeigen</p>
+            <p className="text-xs text-muted-foreground">Blendet die schwebende ARIA-Hilfeleiste ein/aus.</p>
+          </div>
+          <Switch
+            checked={showAria}
+            disabled={loading}
+            onCheckedChange={async (v) => {
+              try {
+                await setShowAria(v);
+                toast.success(v ? 'ARIA-Assistent aktiviert' : 'ARIA-Assistent ausgeblendet');
+              } catch (e: any) {
+                toast.error('Speichern fehlgeschlagen: ' + (e?.message ?? 'unbekannt'));
+              }
+            }}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 
 interface EmployeeRequest {
