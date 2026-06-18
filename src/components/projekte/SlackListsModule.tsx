@@ -433,6 +433,10 @@ export function SlackListsModule() {
                     <Settings2 className="h-3.5 w-3.5 mr-1.5" />
                     Konfigurieren
                   </Button>
+                  <Button variant="outline" size="sm" onClick={() => setAliasOpen(true)}>
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                    Anzeige anpassen
+                  </Button>
                   <Button variant="ghost" size="sm" onClick={() => removeList(activeList.slack_list_id)}>
                     <Trash2 className="h-3.5 w-3.5 text-destructive" />
                   </Button>
