@@ -382,22 +382,32 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     if (!ACCESS_TOKEN) throw new Error("META_ACCESS_TOKEN not configured");
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } }
-    );
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY not configured");
     const svc = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKey);
-    const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", user.id);
-    if (!(roles ?? []).some((r: any) => r.role === "admin")) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    // Auth: either valid cron secret OR admin user
+    const cronSecret = Deno.env.get("CRON_TRIGGER_SECRET");
+    const providedCronSecret = req.headers.get("x-cron-secret") || req.headers.get("X-Cron-Secret");
+    const isCron = !!cronSecret && !!providedCronSecret && providedCronSecret === cronSecret;
+
+    if (!isCron) {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } }
+      );
+      const { data: { user }, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", user.id);
+      if (!(roles ?? []).some((r: any) => r.role === "admin")) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
-    const { adId, campaignId, accountId, datePreset = "maximum", force = false } = await req.json().catch(() => ({}));
+    const { adId, campaignId, accountId, datePreset = "maximum", force = false, onlyActive = false, trigger } = await req.json().catch(() => ({}));
+    console.log(`[refresh-metrics] start trigger=${trigger ?? "manual"} isCron=${isCron} onlyActive=${onlyActive} adId=${adId ?? "-"} campaignId=${campaignId ?? "-"} accountId=${accountId ?? "-"}`);
 
     let query = svc
       .from("referenz_meta_ads")
@@ -405,8 +415,9 @@ Deno.serve(async (req) => {
     if (adId) query = query.eq("id", adId);
     else if (campaignId) query = query.eq("meta_campaign_id", campaignId);
     else if (accountId) query = query.eq("meta_account_id", accountId);
+    if (onlyActive) query = query.eq("effective_status", "ACTIVE");
     const { data: rows } = await query;
-    if (!rows?.length) return new Response(JSON.stringify({ refreshed: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!rows?.length) return new Response(JSON.stringify({ refreshed: 0, errors: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const creativeFields = [
       "id", "name", "object_type",
