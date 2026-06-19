@@ -429,7 +429,12 @@ Deno.serve(async (req) => {
     ].join(",");
 
     let count = 0;
-    for (const r of rows as any[]) {
+    let errorCount = 0;
+    const BATCH_SIZE = 50;
+    const BATCH_PAUSE_MS = 1000;
+    const allRows = rows as any[];
+
+    const processOne = async (r: any, attempt = 1): Promise<void> => {
       try {
         const adFields = [
           "id", "name", "account_id",
@@ -440,13 +445,11 @@ Deno.serve(async (req) => {
         const creative = adData.creative ?? {};
         const accId = r.meta_account_id || `act_${adData.account_id}`;
 
-        // Force-clear old persisted file so we always re-fetch
         if (force) {
           const { error: rmErr } = await svc.storage
             .from("referenz-showcase")
             .remove([`meta-ads/${r.meta_ad_id}.jpg`]);
           if (rmErr) console.warn("[force] remove failed:", rmErr.message);
-          else console.log(`[force] removed meta-ads/${r.meta_ad_id}.jpg`);
         }
 
         const { thumbnail_url: rawThumb, video_url, ad_format, strategy, details } = await resolveCreativeUrls(creative, accId, r.meta_ad_id);
@@ -460,7 +463,6 @@ Deno.serve(async (req) => {
         const row = ins?.data?.[0];
         const metrics = extractMetrics(row);
 
-        // Re-run enrichment so branche, kunde-link, and auto-tags stay fresh
         const enrichment = await enrichAdData(
           svc,
           { meta_account_id: r.meta_account_id, meta_account_name: r.meta_account_name },
@@ -503,14 +505,37 @@ Deno.serve(async (req) => {
         }).eq("id", r.id);
         count++;
       } catch (e) {
-        console.error("refresh error", r.meta_ad_id, e);
+        const msg = (e as Error).message || "";
+        // Meta rate limit codes 17 / 4 / 32 / 613 → retry with backoff
+        const isRateLimit = /\b(code\s*[:=]?\s*(17|4|32|613)|rate limit|too many calls|user request limit)\b/i.test(msg);
+        if (isRateLimit && attempt < 3) {
+          const wait = 5000 * attempt;
+          console.warn(`[rate-limit] ${r.meta_ad_id} attempt=${attempt} waiting ${wait}ms`);
+          await new Promise((res) => setTimeout(res, wait));
+          return processOne(r, attempt + 1);
+        }
+        errorCount++;
+        console.error("refresh error", r.meta_ad_id, msg);
         await svc.from("referenz_meta_ads").update({
-          last_sync_error: (e as Error).message,
+          last_sync_error: msg,
           last_synced_at: new Date().toISOString(),
         }).eq("id", r.id);
       }
+    };
+
+    for (let i = 0; i < allRows.length; i += BATCH_SIZE) {
+      const batch = allRows.slice(i, i + BATCH_SIZE);
+      console.log(`[refresh-metrics] batch ${i / BATCH_SIZE + 1} / ${Math.ceil(allRows.length / BATCH_SIZE)} (${batch.length} ads)`);
+      for (const r of batch) {
+        await processOne(r);
+      }
+      if (i + BATCH_SIZE < allRows.length) {
+        await new Promise((res) => setTimeout(res, BATCH_PAUSE_MS));
+      }
     }
-    return new Response(JSON.stringify({ refreshed: count }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    console.log(`[refresh-metrics] done refreshed=${count} errors=${errorCount} total=${allRows.length}`);
+    return new Response(JSON.stringify({ refreshed: count, errors: errorCount, total: allRows.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("meta-ads-refresh", err);
     return new Response(JSON.stringify({ error: (err as Error).message }), {
