@@ -464,7 +464,26 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                                 />
                                 {savingKey === camp.key && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                               </div>
+                              {(() => {
+                                const key = `refresh:camp:${camp.key}`;
+                                const busy = refreshingKey === key;
+                                return (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={busy || !camp.campaignId}
+                                    onClick={(e) => { e.stopPropagation(); refreshMetrics(key, { campaignId: camp.campaignId! }); }}
+                                    className="shrink-0 h-8"
+                                    title={camp.campaignId ? "Kennzahlen aller Ads dieser Kampagne aktualisieren" : "Kampagnen-ID unbekannt"}
+                                  >
+                                    {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                                    {busy ? "Aktualisiere…" : "Kennzahlen aktualisieren"}
+                                  </Button>
+                                );
+                              })()}
                             </div>
+
 
                             {cExpanded && (
                               <div className="px-4 pb-3 space-y-1.5">
