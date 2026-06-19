@@ -37,14 +37,11 @@ type Action =
   | { action: 'breadcrumb'; fileId: string };
 
 async function handleUnauthorized() {
-  // Token revoked or invalid — delete connection row
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    await supabase.from('google_drive_connections').delete().eq('user_id', user.id);
-  }
-  toast.error('Google Drive Verbindung wurde getrennt — bitte neu verbinden');
+  // Token invalid for the central company connection — surface to user.
+  // Only admins can re-connect; we don't delete the row from here.
+  toast.error('Google Drive Verbindung ist ungültig — bitte einen Admin um Neuverbindung bitten');
   setTimeout(() => {
-    window.location.href = '/einstellungen';
+    window.location.href = '/integrationen';
   }, 1500);
 }
 

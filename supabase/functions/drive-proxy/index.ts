@@ -25,7 +25,6 @@ function json(body: unknown, status = 200) {
 
 async function refreshAccessToken(
   admin: ReturnType<typeof createClient>,
-  userId: string,
   refreshToken: string,
 ): Promise<string | null> {
   const { data: settings } = await admin
@@ -70,7 +69,7 @@ async function refreshAccessToken(
       expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
       last_refreshed_at: new Date().toISOString(),
     })
-    .eq('user_id', userId);
+    .eq('is_primary', true);
 
   return accessToken;
 }
@@ -100,7 +99,7 @@ Deno.serve(async (req) => {
     const { data: conn, error: connError } = await admin
       .from('google_drive_connections')
       .select('access_token, refresh_token, expires_at')
-      .eq('user_id', userId)
+      .eq('is_primary', true)
       .maybeSingle();
 
     if (connError || !conn) {
@@ -110,7 +109,7 @@ Deno.serve(async (req) => {
     let accessToken = conn.access_token as string;
     const expiresAt = new Date(conn.expires_at as string).getTime();
     if (expiresAt < Date.now() + 60_000) {
-      const refreshed = await refreshAccessToken(admin, userId, conn.refresh_token as string);
+      const refreshed = await refreshAccessToken(admin, conn.refresh_token as string);
       if (!refreshed) {
         return json({ error: 'token_refresh_failed', message: 'Token-Refresh fehlgeschlagen.' }, 401);
       }

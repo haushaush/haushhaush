@@ -1,31 +1,20 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 
 export function useDriveConnection() {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [connection, setConnection] = useState<{
-    id: string;
     google_email: string;
-    expires_at: string;
+    connected_at: string;
   } | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!user) {
-      setConnection(null);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
-    const { data } = await supabase
-      .from('google_drive_connections')
-      .select('id, google_email, expires_at')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    setConnection(data ?? null);
+    const { data } = await (supabase.rpc as any)('drive_connection_status');
+    const row = Array.isArray(data) ? data[0] : null;
+    setConnection(row ? { google_email: row.google_email, connected_at: row.connected_at } : null);
     setLoading(false);
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     refresh();
