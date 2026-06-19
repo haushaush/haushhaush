@@ -517,7 +517,25 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                                         />
                                         {saving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                                       </div>
+                                      {(() => {
+                                        const key = `refresh:ad:${ad.id}`;
+                                        const busy = refreshingKey === key;
+                                        return (
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="ghost"
+                                            disabled={busy}
+                                            onClick={() => refreshMetrics(key, { adId: ad.id })}
+                                            className="shrink-0 h-8 px-2"
+                                            title="Kennzahlen dieser Ad aktualisieren"
+                                          >
+                                            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                                          </Button>
+                                        );
+                                      })()}
                                     </div>
+
                                   );
                                 })}
                               </div>
