@@ -121,7 +121,13 @@ Deno.serve(async (req) => {
     }
     const googleEmail = userInfo.email as string;
 
-    // Upsert connection
+    // Clear any existing primary connection so the new one can become primary
+    await admin
+      .from('google_drive_connections')
+      .update({ is_primary: false })
+      .eq('is_primary', true);
+
+    // Upsert connection as the new primary (company-wide)
     const { error: upsertError } = await admin
       .from('google_drive_connections')
       .upsert(
@@ -134,6 +140,7 @@ Deno.serve(async (req) => {
           scope,
           connected_at: new Date().toISOString(),
           last_refreshed_at: new Date().toISOString(),
+          is_primary: true,
         },
         { onConflict: 'user_id' },
       );
