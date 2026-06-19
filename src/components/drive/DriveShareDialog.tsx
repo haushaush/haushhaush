@@ -25,7 +25,7 @@ const ROLES: TeamRolle[] = [
   'Freelancer','GF','Vollzeit','Teilzeit','Minijob','Werkstudent',
 ];
 
-type TeamMember = { id: string; email: string; vorname?: string | null; nachname?: string | null };
+type TeamMember = { auth_user_id: string; email: string; name: string | null; rolle: TeamRolle | null };
 type Permission = {
   id: string;
   grantee_type: 'user' | 'role';
@@ -50,19 +50,23 @@ export function DriveShareDialog({ file, open, onOpenChange }: Props) {
 
   const folder = file ? isFolder(file.mimeType) : false;
 
+  const loadPermissions = async (itemId: string) => {
+    const { data } = await (supabase as any)
+      .from('drive_permissions')
+      .select('id,grantee_type,grantee_user_id,grantee_role')
+      .eq('drive_item_id', itemId);
+    setPermissions((data ?? []) as Permission[]);
+  };
+
   useEffect(() => {
     if (!open || !file) return;
     setLoading(true);
     (async () => {
-      const [teamRes, permRes] = await Promise.all([
-        supabase.from('team').select('id,email,vorname,nachname').order('vorname'),
-        supabase
-          .from('drive_permissions')
-          .select('id,grantee_type,grantee_user_id,grantee_role')
-          .eq('drive_item_id', file.id),
+      const [teamRes] = await Promise.all([
+        (supabase as any).rpc('team_with_auth_ids'),
+        loadPermissions(file.id),
       ]);
-      setMembers((teamRes.data ?? []) as TeamMember[]);
-      setPermissions((permRes.data ?? []) as Permission[]);
+      setMembers(((teamRes?.data ?? []) as TeamMember[]));
       setSelectedUsers(new Set());
       setSelectedRoles(new Set());
       setLoading(false);
@@ -112,7 +116,7 @@ export function DriveShareDialog({ file, open, onOpenChange }: Props) {
         created_by: user?.id ?? null,
       });
     }
-    const { error } = await supabase.from('drive_permissions').insert(rows);
+    const { error } = await (supabase as any).from('drive_permissions').insert(rows);
     setSaving(false);
     if (error) {
       console.error(error);
@@ -120,18 +124,13 @@ export function DriveShareDialog({ file, open, onOpenChange }: Props) {
       return;
     }
     toast.success('Freigabe gespeichert');
-    // reload permissions
-    const { data } = await supabase
-      .from('drive_permissions')
-      .select('id,grantee_type,grantee_user_id,grantee_role')
-      .eq('drive_item_id', file.id);
-    setPermissions((data ?? []) as Permission[]);
+    await loadPermissions(file.id);
     setSelectedUsers(new Set());
     setSelectedRoles(new Set());
   };
 
   const removePermission = async (id: string) => {
-    const { error } = await supabase.from('drive_permissions').delete().eq('id', id);
+    const { error } = await (supabase as any).from('drive_permissions').delete().eq('id', id);
     if (error) {
       toast.error('Entfernen fehlgeschlagen');
       return;
@@ -139,12 +138,9 @@ export function DriveShareDialog({ file, open, onOpenChange }: Props) {
     setPermissions((prev) => prev.filter((p) => p.id !== id));
   };
 
-  // Team members keyed by auth.users.id? team has no user_id column visible; we use team.id as
-  // grantee_user_id only if team.id matches auth.users.id. In this project, team rows are linked
-  // via email to auth users, so we resolve auth user IDs for current selection.
   const memberLabel = (uid: string) => {
-    const m = members.find((mm) => mm.id === uid);
-    if (m) return [m.vorname, m.nachname].filter(Boolean).join(' ') || m.email;
+    const m = members.find((mm) => mm.auth_user_id === uid);
+    if (m) return m.name || m.email;
     return uid.slice(0, 8) + '…';
   };
 
@@ -217,12 +213,12 @@ export function DriveShareDialog({ file, open, onOpenChange }: Props) {
                   <p className="px-3 py-2 text-sm text-muted-foreground">Keine Teammitglieder.</p>
                 )}
                 {members.map((m) => (
-                  <label key={m.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer">
+                  <label key={m.auth_user_id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer">
                     <Checkbox
-                      checked={selectedUsers.has(m.id)}
-                      onCheckedChange={() => toggleUser(m.id)}
+                      checked={selectedUsers.has(m.auth_user_id)}
+                      onCheckedChange={() => toggleUser(m.auth_user_id)}
                     />
-                    <span>{[m.vorname, m.nachname].filter(Boolean).join(' ') || m.email}</span>
+                    <span>{m.name || m.email}</span>
                     <span className="ml-auto text-xs text-muted-foreground">{m.email}</span>
                   </label>
                 ))}
