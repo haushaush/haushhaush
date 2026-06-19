@@ -382,22 +382,36 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     if (!ACCESS_TOKEN) throw new Error("META_ACCESS_TOKEN not configured");
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } }
-    );
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY not configured");
     const svc = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKey);
-    const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", user.id);
-    if (!(roles ?? []).some((r: any) => r.role === "admin")) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    // Auth: either valid cron secret, service-role bearer, OR admin user
+    const cronSecret = Deno.env.get("CRON_TRIGGER_SECRET");
+    const providedCronSecret = req.headers.get("x-cron-secret") || req.headers.get("X-Cron-Secret");
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    const isCronSecret = !!cronSecret && !!providedCronSecret && providedCronSecret === cronSecret;
+    const isServiceRole = !!serviceRoleKey && !!bearerToken && bearerToken === serviceRoleKey;
+    const isCron = isCronSecret || isServiceRole;
+
+    if (!isCron) {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } }
+      );
+      const { data: { user }, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", user.id);
+      if (!(roles ?? []).some((r: any) => r.role === "admin")) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
-    const { adId, campaignId, accountId, datePreset = "maximum", force = false } = await req.json().catch(() => ({}));
+    const { adId, campaignId, accountId, datePreset = "maximum", force = false, onlyActive = false, trigger } = await req.json().catch(() => ({}));
+    console.log(`[refresh-metrics] start trigger=${trigger ?? "manual"} isCron=${isCron} onlyActive=${onlyActive} adId=${adId ?? "-"} campaignId=${campaignId ?? "-"} accountId=${accountId ?? "-"}`);
 
     let query = svc
       .from("referenz_meta_ads")
@@ -405,8 +419,9 @@ Deno.serve(async (req) => {
     if (adId) query = query.eq("id", adId);
     else if (campaignId) query = query.eq("meta_campaign_id", campaignId);
     else if (accountId) query = query.eq("meta_account_id", accountId);
+    if (onlyActive) query = query.eq("effective_status", "ACTIVE");
     const { data: rows } = await query;
-    if (!rows?.length) return new Response(JSON.stringify({ refreshed: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!rows?.length) return new Response(JSON.stringify({ refreshed: 0, errors: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const creativeFields = [
       "id", "name", "object_type",
@@ -418,7 +433,12 @@ Deno.serve(async (req) => {
     ].join(",");
 
     let count = 0;
-    for (const r of rows as any[]) {
+    let errorCount = 0;
+    const BATCH_SIZE = 50;
+    const BATCH_PAUSE_MS = 1000;
+    const allRows = rows as any[];
+
+    const processOne = async (r: any, attempt = 1): Promise<void> => {
       try {
         const adFields = [
           "id", "name", "account_id",
@@ -429,13 +449,11 @@ Deno.serve(async (req) => {
         const creative = adData.creative ?? {};
         const accId = r.meta_account_id || `act_${adData.account_id}`;
 
-        // Force-clear old persisted file so we always re-fetch
         if (force) {
           const { error: rmErr } = await svc.storage
             .from("referenz-showcase")
             .remove([`meta-ads/${r.meta_ad_id}.jpg`]);
           if (rmErr) console.warn("[force] remove failed:", rmErr.message);
-          else console.log(`[force] removed meta-ads/${r.meta_ad_id}.jpg`);
         }
 
         const { thumbnail_url: rawThumb, video_url, ad_format, strategy, details } = await resolveCreativeUrls(creative, accId, r.meta_ad_id);
@@ -449,7 +467,6 @@ Deno.serve(async (req) => {
         const row = ins?.data?.[0];
         const metrics = extractMetrics(row);
 
-        // Re-run enrichment so branche, kunde-link, and auto-tags stay fresh
         const enrichment = await enrichAdData(
           svc,
           { meta_account_id: r.meta_account_id, meta_account_name: r.meta_account_name },
@@ -492,14 +509,37 @@ Deno.serve(async (req) => {
         }).eq("id", r.id);
         count++;
       } catch (e) {
-        console.error("refresh error", r.meta_ad_id, e);
+        const msg = (e as Error).message || "";
+        // Meta rate limit codes 17 / 4 / 32 / 613 → retry with backoff
+        const isRateLimit = /\b(code\s*[:=]?\s*(17|4|32|613)|rate limit|too many calls|user request limit)\b/i.test(msg);
+        if (isRateLimit && attempt < 3) {
+          const wait = 5000 * attempt;
+          console.warn(`[rate-limit] ${r.meta_ad_id} attempt=${attempt} waiting ${wait}ms`);
+          await new Promise((res) => setTimeout(res, wait));
+          return processOne(r, attempt + 1);
+        }
+        errorCount++;
+        console.error("refresh error", r.meta_ad_id, msg);
         await svc.from("referenz_meta_ads").update({
-          last_sync_error: (e as Error).message,
+          last_sync_error: msg,
           last_synced_at: new Date().toISOString(),
         }).eq("id", r.id);
       }
+    };
+
+    for (let i = 0; i < allRows.length; i += BATCH_SIZE) {
+      const batch = allRows.slice(i, i + BATCH_SIZE);
+      console.log(`[refresh-metrics] batch ${i / BATCH_SIZE + 1} / ${Math.ceil(allRows.length / BATCH_SIZE)} (${batch.length} ads)`);
+      for (const r of batch) {
+        await processOne(r);
+      }
+      if (i + BATCH_SIZE < allRows.length) {
+        await new Promise((res) => setTimeout(res, BATCH_PAUSE_MS));
+      }
     }
-    return new Response(JSON.stringify({ refreshed: count }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    console.log(`[refresh-metrics] done refreshed=${count} errors=${errorCount} total=${allRows.length}`);
+    return new Response(JSON.stringify({ refreshed: count, errors: errorCount, total: allRows.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("meta-ads-refresh", err);
     return new Response(JSON.stringify({ error: (err as Error).message }), {
