@@ -69,7 +69,7 @@ async function refreshAccessToken(
       expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
       last_refreshed_at: new Date().toISOString(),
     })
-    .eq('user_id', userId);
+    .eq('is_primary', true);
 
   return accessToken;
 }
