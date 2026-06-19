@@ -390,7 +390,26 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                       />
                       {accSaving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                     </div>
+                    {(() => {
+                      const key = `refresh:acc:${acc.key}`;
+                      const busy = refreshingKey === key;
+                      return (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={busy || !acc.key || acc.key === "__unknown__"}
+                          onClick={(e) => { e.stopPropagation(); refreshMetrics(key, { accountId: acc.key }); }}
+                          className="shrink-0 h-8"
+                          title="Kennzahlen aller Ads dieses Accounts aktualisieren"
+                        >
+                          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                          {busy ? "Aktualisiere…" : "Kennzahlen aktualisieren"}
+                        </Button>
+                      );
+                    })()}
                   </div>
+
 
                   {expanded && (
                     <div className="border-t border-border divide-y divide-border">
