@@ -278,6 +278,29 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
     }
   };
 
+  const refreshMetrics = async (
+    scopeKey: string,
+    payload: { adId?: string; campaignId?: string; accountId?: string },
+  ) => {
+    setRefreshingKey(scopeKey);
+    try {
+      const { data, error } = await supabase.functions.invoke("meta-ads-refresh-metrics", { body: payload });
+      if (error) {
+        toast.error(`Aktualisieren fehlgeschlagen: ${error.message}`);
+        return;
+      }
+      const count = (data as any)?.refreshed ?? 0;
+      toast.success(`Kennzahlen aktualisiert (${count} Ads)`);
+      onSaved();
+    } catch (e: any) {
+      toast.error(`Aktualisieren fehlgeschlagen: ${e?.message ?? "unbekannt"}`);
+    } finally {
+      setRefreshingKey(null);
+    }
+  };
+
+
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] overflow-hidden p-0 flex flex-col">
