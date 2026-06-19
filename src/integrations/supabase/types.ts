@@ -2281,6 +2281,7 @@ export type Database = {
           expires_at: string
           google_email: string
           id: string
+          is_primary: boolean
           last_refreshed_at: string | null
           refresh_token: string
           scope: string
@@ -2292,6 +2293,7 @@ export type Database = {
           expires_at: string
           google_email: string
           id?: string
+          is_primary?: boolean
           last_refreshed_at?: string | null
           refresh_token: string
           scope: string
@@ -2303,6 +2305,7 @@ export type Database = {
           expires_at?: string
           google_email?: string
           id?: string
+          is_primary?: boolean
           last_refreshed_at?: string | null
           refresh_token?: string
           scope?: string
@@ -5615,6 +5618,14 @@ export type Database = {
       decrypt_imap_password: {
         Args: { encrypted: string; encryption_key: string }
         Returns: string
+      }
+      drive_connection_status: {
+        Args: never
+        Returns: {
+          connected_at: string
+          google_email: string
+          is_primary: boolean
+        }[]
       }
       encrypt_imap_password: {
         Args: { encryption_key: string; password: string }
