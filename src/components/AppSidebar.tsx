@@ -38,7 +38,7 @@ const navItems: NavItem[] = [
       { title: 'Vorqualifikation', url: '/sales/vorquali' },
       { title: 'Leadkauf', url: '/sales/leads' },
       { title: 'Cold Mail', url: '/sales/coldmail' },
-      { title: 'Referenz Showcase', url: '/sales/referenz-showcase' },
+      { title: 'Referenzen', url: '/sales/referenz-showcase' },
       { title: 'Lead Quality Audit', url: '/tools/lead-quality-audit' },
     ],
   },
