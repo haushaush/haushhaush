@@ -45,7 +45,7 @@ export function DriveFilesTable({ files, loading, onRowClick, onFolderOpen, empt
               <TableRow
                 key={file.id}
                 className="cursor-pointer"
-                onClick={() => onRowClick?.(file)}
+                onClick={() => folder ? onFolderOpen?.(file) : onRowClick?.(file)}
                 onDoubleClick={() => {
                   if (folder) onFolderOpen?.(file);
                   else if (file.webViewLink) window.open(file.webViewLink, '_blank', 'noreferrer');
