@@ -5729,6 +5729,15 @@ export type Database = {
           removed_count: number
         }[]
       }
+      team_with_auth_ids: {
+        Args: never
+        Returns: {
+          auth_user_id: string
+          email: string
+          name: string
+          rolle: Database["public"]["Enums"]["team_rolle"]
+        }[]
+      }
       upsert_client_from_notion: { Args: { p: Json }; Returns: string }
       user_can_see_item: {
         Args: { p_item_id: string; p_user_id: string }
