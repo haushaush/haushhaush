@@ -1,6 +1,6 @@
 // drive-proxy
-// Proxies Google Drive API v3 calls for the authenticated user.
-// Reads tokens from google_drive_connections, refreshes access_token if expired.
+// Proxies Google Drive API v3 calls using the central (is_primary) Google Drive connection.
+// Enforces per-user / per-role visibility for non-admins via drive_permissions.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 const corsHeaders = {
@@ -15,6 +15,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const FILE_FIELDS =
   'nextPageToken,files(id,name,mimeType,modifiedTime,size,iconLink,thumbnailLink,webViewLink,owners(displayName,emailAddress,photoLink),parents,shared,trashed)';
+
+const FOLDER_MIME = 'application/vnd.google-apps.folder';
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -74,6 +76,22 @@ async function refreshAccessToken(
   return accessToken;
 }
 
+type DriveFile = {
+  id: string;
+  name?: string;
+  mimeType?: string;
+  parents?: string[];
+};
+
+async function driveGet(accessToken: string, fileId: string, fields = 'id,name,mimeType,parents'): Promise<DriveFile | null> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=${encodeURIComponent(fields)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) return null;
+  return (await res.json()) as DriveFile;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -96,6 +114,42 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Determine admin status
+    const { data: adminRow } = await admin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .maybeSingle();
+    const isAdmin = !!adminRow;
+
+    // Load user's team_rolle (if any) for role-based grants
+    let userRole: string | null = null;
+    if (!isAdmin) {
+      const { data: userRow } = await admin.auth.admin.getUserById(userId);
+      const email = userRow?.user?.email;
+      if (email) {
+        const { data: teamRow } = await admin
+          .from('team')
+          .select('rolle')
+          .ilike('email', email)
+          .maybeSingle();
+        userRole = (teamRow?.rolle as string | null) ?? null;
+      }
+    }
+
+    // Load all permissions for this user (only needed for non-admins)
+    let grantedIds = new Set<string>();
+    if (!isAdmin) {
+      const orParts: string[] = [`grantee_user_id.eq.${userId}`];
+      if (userRole) orParts.push(`and(grantee_type.eq.role,grantee_role.eq.${userRole})`);
+      const { data: perms } = await admin
+        .from('drive_permissions')
+        .select('drive_item_id,item_type,item_name')
+        .or(orParts.join(','));
+      grantedIds = new Set((perms ?? []).map((p) => p.drive_item_id as string));
+    }
+
     const { data: conn, error: connError } = await admin
       .from('google_drive_connections')
       .select('access_token, refresh_token, expires_at')
@@ -116,12 +170,64 @@ Deno.serve(async (req) => {
       accessToken = refreshed;
     }
 
+    // ancestor cache per request
+    const ancestorCache = new Map<string, boolean>();
+    async function ancestorAllowed(itemId: string): Promise<boolean> {
+      if (isAdmin) return true;
+      if (grantedIds.has(itemId)) return true;
+      if (ancestorCache.has(itemId)) return ancestorCache.get(itemId)!;
+
+      let currentId = itemId;
+      const visited = new Set<string>();
+      for (let i = 0; i < 20; i++) {
+        if (visited.has(currentId)) break;
+        visited.add(currentId);
+        if (grantedIds.has(currentId)) {
+          ancestorCache.set(itemId, true);
+          return true;
+        }
+        const f = await driveGet(accessToken, currentId, 'id,parents');
+        const parent = f?.parents?.[0];
+        if (!parent) break;
+        currentId = parent;
+      }
+      ancestorCache.set(itemId, false);
+      return false;
+    }
+
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
     const action = body.action as string | undefined;
     if (!action) return json({ error: 'missing_action' }, 400);
 
-    let driveUrl = '';
+    // -------- Non-admin: virtual root for 'list' --------
+    if (!isAdmin && action === 'list') {
+      const folderId = (body.folderId as string | undefined) ?? 'root';
+      if (folderId === 'root') {
+        if (grantedIds.size === 0) {
+          return json({ files: [] }, 200);
+        }
+        // Fetch metadata for every directly granted item, return as virtual root listing
+        const files: DriveFile[] = [];
+        await Promise.all(
+          Array.from(grantedIds).map(async (id) => {
+            const f = await driveGet(
+              accessToken,
+              id,
+              'id,name,mimeType,modifiedTime,size,iconLink,thumbnailLink,webViewLink,owners(displayName,emailAddress,photoLink),parents,shared,trashed',
+            );
+            if (f && !(f as { trashed?: boolean }).trashed) files.push(f);
+          }),
+        );
+        return json({ files }, 200);
+      }
+      // Sub-folder: must be allowed (granted itself or descendant of granted)
+      const ok = await ancestorAllowed(folderId);
+      if (!ok) return json({ files: [] }, 200);
+      // proceed with normal Drive list below
+    }
 
+    // -------- Build Drive URL for the request --------
+    let driveUrl = '';
     if (action === 'list') {
       const folderId = (body.folderId as string | undefined) ?? 'root';
       const pageToken = body.pageToken as string | undefined;
@@ -179,9 +285,12 @@ Deno.serve(async (req) => {
     } else if (action === 'get') {
       const fileId = body.fileId as string | undefined;
       if (!fileId) return json({ error: 'missing_fileId' }, 400);
+      if (!isAdmin) {
+        const ok = await ancestorAllowed(fileId);
+        if (!ok) return json({ error: 'forbidden' }, 403);
+      }
       driveUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=*`;
     } else if (action === 'breadcrumb') {
-      // Fetches a single folder's name + parent for breadcrumb building
       const fileId = body.fileId as string | undefined;
       if (!fileId) return json({ error: 'missing_fileId' }, 400);
       driveUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(
@@ -198,12 +307,34 @@ Deno.serve(async (req) => {
     const driveJson = await driveRes.json().catch(() => ({}));
 
     if (driveRes.status === 401) {
-      console.error('Drive returned 401 — clearing connection for user', userId);
+      console.error('Drive returned 401 — token problem');
       return json({ error: 'unauthorized', message: 'Drive Verbindung ist ungültig.' }, 401);
     }
     if (!driveRes.ok) {
       console.error('Drive API error:', driveRes.status, driveJson);
       return json({ error: 'drive_api_error', status: driveRes.status, details: driveJson }, driveRes.status);
+    }
+
+    // -------- Non-admin filtering on results --------
+    if (!isAdmin) {
+      // 'about' is harmless metadata; allow as-is.
+      if (action === 'shared' || action === 'trash' || action === 'recent') {
+        const files = ((driveJson as { files?: DriveFile[] }).files ?? []);
+        const kept: DriveFile[] = [];
+        for (const f of files) {
+          if (await ancestorAllowed(f.id)) kept.push(f);
+        }
+        return json({ ...(driveJson as object), files: kept }, 200);
+      }
+      if (action === 'search') {
+        const files = ((driveJson as { files?: DriveFile[] }).files ?? []);
+        const kept: DriveFile[] = [];
+        for (const f of files) {
+          if (await ancestorAllowed(f.id)) kept.push(f);
+        }
+        return json({ ...(driveJson as object), files: kept }, 200);
+      }
+      // 'list' on an allowed sub-folder: full content is allowed (folder grant is recursive).
     }
 
     return json(driveJson, 200);
