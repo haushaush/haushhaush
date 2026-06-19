@@ -107,6 +107,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
   const [openAccounts, setOpenAccounts] = useState<Set<string>>(new Set());
   const [openCampaigns, setOpenCampaigns] = useState<Set<string>>(new Set());
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [refreshingKey, setRefreshingKey] = useState<string | null>(null);
   const [clients, setClients] = useState<ClientRow[]>([]);
 
   useEffect(() => {
