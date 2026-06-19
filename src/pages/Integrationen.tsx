@@ -29,7 +29,8 @@ interface CloseDeal {
 }
 
 export default function Integrationen() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
 
   const [loading, setLoading] = useState(true);
   const [driveConnected, setDriveConnected] = useState(false);
