@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Combobox } from "@/components/ui/Combobox";
-import { ChevronRight, Loader2, Search } from "lucide-react";
+import { ChevronRight, Loader2, RefreshCw, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { BRANCHEN, normalizeBranche, getBrancheLabel } from "@/lib/branchen";
@@ -20,6 +21,7 @@ interface Props {
 interface CampaignGroup {
   key: string;
   name: string;
+  campaignId: string | null;
   ads: MetaAdRow[];
 }
 interface AccountGroup {
@@ -31,26 +33,33 @@ interface AccountGroup {
 }
 
 function groupAds(rows: MetaAdRow[]): AccountGroup[] {
-  const accMap = new Map<string, Map<string, MetaAdRow[]>>();
+  const accMap = new Map<string, Map<string, { campaignId: string | null; name: string; ads: MetaAdRow[] }>>();
   for (const ad of rows) {
     const accKey = ad.meta_account_id || "__unknown__";
-    const campKey = ad.meta_campaign_name?.trim() || "__no_campaign__";
+    const campId = (ad as any).meta_campaign_id as string | null | undefined;
+    const campName = ad.meta_campaign_name?.trim() || "__no_campaign__";
+    const campKey = campId || campName;
     if (!accMap.has(accKey)) accMap.set(accKey, new Map());
     const cMap = accMap.get(accKey)!;
-    if (!cMap.has(campKey)) cMap.set(campKey, []);
-    cMap.get(campKey)!.push(ad);
+    if (!cMap.has(campKey)) cMap.set(campKey, { campaignId: campId ?? null, name: campName, ads: [] });
+    cMap.get(campKey)!.ads.push(ad);
   }
   const out: AccountGroup[] = [];
   for (const [accKey, cMap] of accMap) {
-    const first = cMap.values().next().value?.[0];
+    const first = cMap.values().next().value?.ads[0];
     const accName = first?.meta_account_name?.trim() || accKey;
     const campaigns: CampaignGroup[] = [];
     let total = 0;
     const allAds: MetaAdRow[] = [];
-    for (const [campKey, ads] of cMap) {
-      campaigns.push({ key: `${accKey}::${campKey}`, name: campKey === "__no_campaign__" ? "(Ohne Kampagne)" : campKey, ads });
-      total += ads.length;
-      allAds.push(...ads);
+    for (const [campKey, c] of cMap) {
+      campaigns.push({
+        key: `${accKey}::${campKey}`,
+        name: c.name === "__no_campaign__" ? "(Ohne Kampagne)" : c.name,
+        campaignId: c.campaignId,
+        ads: c.ads,
+      });
+      total += c.ads.length;
+      allAds.push(...c.ads);
     }
     campaigns.sort((a, b) => a.name.localeCompare(b.name, "de"));
     out.push({ key: accKey, name: accName, campaigns, totalAds: total, ads: allAds });
@@ -98,6 +107,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
   const [openAccounts, setOpenAccounts] = useState<Set<string>>(new Set());
   const [openCampaigns, setOpenCampaigns] = useState<Set<string>>(new Set());
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [refreshingKey, setRefreshingKey] = useState<string | null>(null);
   const [clients, setClients] = useState<ClientRow[]>([]);
 
   useEffect(() => {
@@ -268,6 +278,29 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
     }
   };
 
+  const refreshMetrics = async (
+    scopeKey: string,
+    payload: { adId?: string; campaignId?: string; accountId?: string },
+  ) => {
+    setRefreshingKey(scopeKey);
+    try {
+      const { data, error } = await supabase.functions.invoke("meta-ads-refresh-metrics", { body: payload });
+      if (error) {
+        toast.error(`Aktualisieren fehlgeschlagen: ${error.message}`);
+        return;
+      }
+      const count = (data as any)?.refreshed ?? 0;
+      toast.success(`Kennzahlen aktualisiert (${count} Ads)`);
+      onSaved();
+    } catch (e: any) {
+      toast.error(`Aktualisieren fehlgeschlagen: ${e?.message ?? "unbekannt"}`);
+    } finally {
+      setRefreshingKey(null);
+    }
+  };
+
+
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] overflow-hidden p-0 flex flex-col">
@@ -357,7 +390,26 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                       />
                       {accSaving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                     </div>
+                    {(() => {
+                      const key = `refresh:acc:${acc.key}`;
+                      const busy = refreshingKey === key;
+                      return (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={busy || !acc.key || acc.key === "__unknown__"}
+                          onClick={(e) => { e.stopPropagation(); refreshMetrics(key, { accountId: acc.key }); }}
+                          className="shrink-0 h-8"
+                          title="Kennzahlen aller Ads dieses Accounts aktualisieren"
+                        >
+                          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                          {busy ? "Aktualisiere…" : "Kennzahlen aktualisieren"}
+                        </Button>
+                      );
+                    })()}
                   </div>
+
 
                   {expanded && (
                     <div className="border-t border-border divide-y divide-border">
@@ -412,7 +464,26 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                                 />
                                 {savingKey === camp.key && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                               </div>
+                              {(() => {
+                                const key = `refresh:camp:${camp.key}`;
+                                const busy = refreshingKey === key;
+                                return (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={busy || !camp.campaignId}
+                                    onClick={(e) => { e.stopPropagation(); refreshMetrics(key, { campaignId: camp.campaignId! }); }}
+                                    className="shrink-0 h-8"
+                                    title={camp.campaignId ? "Kennzahlen aller Ads dieser Kampagne aktualisieren" : "Kampagnen-ID unbekannt"}
+                                  >
+                                    {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                                    {busy ? "Aktualisiere…" : "Kennzahlen aktualisieren"}
+                                  </Button>
+                                );
+                              })()}
                             </div>
+
 
                             {cExpanded && (
                               <div className="px-4 pb-3 space-y-1.5">
@@ -446,7 +517,25 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                                         />
                                         {saving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
                                       </div>
+                                      {(() => {
+                                        const key = `refresh:ad:${ad.id}`;
+                                        const busy = refreshingKey === key;
+                                        return (
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="ghost"
+                                            disabled={busy}
+                                            onClick={() => refreshMetrics(key, { adId: ad.id })}
+                                            className="shrink-0 h-8 px-2"
+                                            title="Kennzahlen dieser Ad aktualisieren"
+                                          >
+                                            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                                          </Button>
+                                        );
+                                      })()}
                                     </div>
+
                                   );
                                 })}
                               </div>

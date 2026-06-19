@@ -397,12 +397,14 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { adId, datePreset = "maximum", force = false } = await req.json().catch(() => ({}));
+    const { adId, campaignId, accountId, datePreset = "maximum", force = false } = await req.json().catch(() => ({}));
 
     let query = svc
       .from("referenz_meta_ads")
       .select("id, meta_ad_id, meta_account_id, meta_account_name, filter_values, custom_tags");
     if (adId) query = query.eq("id", adId);
+    else if (campaignId) query = query.eq("meta_campaign_id", campaignId);
+    else if (accountId) query = query.eq("meta_account_id", accountId);
     const { data: rows } = await query;
     if (!rows?.length) return new Response(JSON.stringify({ refreshed: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
