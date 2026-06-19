@@ -36,6 +36,7 @@ export interface MetaAdRow {
   meta_account_id: string;
   meta_account_name: string | null;
   meta_campaign_name: string | null;
+  meta_campaign_id: string | null;
   meta_adset_name: string | null;
   ad_format: string | null;
   thumbnail_url: string | null;
