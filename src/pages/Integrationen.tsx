@@ -203,6 +203,10 @@ export default function Integrationen() {
       }
       toast.success('Verbindungstest erfolgreich ✓');
     } else if (action === 'connect_google_drive') {
+      if (!isAdmin) {
+        toast.error('Nur Admins dürfen die zentrale Google-Drive-Verbindung herstellen.');
+        return;
+      }
       const toastId = toast.loading('Google Verbindung wird vorbereitet...');
       try {
         const { data, error } = await supabase.functions.invoke('google-oauth-start');
