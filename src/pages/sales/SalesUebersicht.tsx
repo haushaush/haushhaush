@@ -142,7 +142,7 @@ export default function SalesUebersicht() {
               <Skeleton className="h-10 w-40" />
             ) : (
               <div className="text-3xl font-bold tabular-nums tracking-tight">
-                {formatValue(totalRevenue)}
+                {formatValue(totalRevenue, 'currency')}
               </div>
             )}
             <p className="text-xs text-muted-foreground mt-1">
@@ -230,7 +230,7 @@ export default function SalesUebersicht() {
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-sm">
                         {deal.wert_eur != null
-                          ? formatValue(deal.wert_eur)
+                          ? formatValue(deal.wert_eur, 'currency')
                           : "–"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
