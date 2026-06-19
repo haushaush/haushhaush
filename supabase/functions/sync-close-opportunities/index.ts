@@ -7,7 +7,7 @@ const corsHeaders = {
 
 const CLOSE_BASE = "https://api.close.com/api/v1";
 const CLOSE_API_KEY = Deno.env.get("CLOSE_API_KEY");
-const MAX_ITEMS = 500;
+const MAX_ITEMS = 20000;
 const PAGE = 100;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const mem = () => Math.round((Deno.memoryUsage?.().heapUsed ?? 0) / 1024 / 1024);
@@ -18,8 +18,8 @@ async function closeFetch(path: string, attempt = 1): Promise<any> {
   const url = path.startsWith("http") ? path : `${CLOSE_BASE}${path}`;
   const res = await fetch(url, { headers: { Authorization: `Basic ${auth}`, Accept: "application/json" } });
   if (res.status === 429) {
-    if (attempt > 3) throw new Error("Rate limited");
-    await sleep(800 * attempt);
+    if (attempt > 6) throw new Error("Rate limited");
+    await sleep(1000 * attempt);
     return closeFetch(path, attempt + 1);
   }
   if (!res.ok) throw new Error(`Close ${res.status}: ${(await res.text()).slice(0, 200)}`);
