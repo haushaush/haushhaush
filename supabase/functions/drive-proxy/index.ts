@@ -25,7 +25,6 @@ function json(body: unknown, status = 200) {
 
 async function refreshAccessToken(
   admin: ReturnType<typeof createClient>,
-  userId: string,
   refreshToken: string,
 ): Promise<string | null> {
   const { data: settings } = await admin
