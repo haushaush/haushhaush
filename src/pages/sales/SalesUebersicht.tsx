@@ -4,101 +4,109 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, FileText, Calendar } from "lucide-react";
+import { TrendingUp, FileText, Calendar, User } from "lucide-react";
 import { formatValue } from "@/lib/utils";
 
-interface CloseDeal {
+interface CloseOpportunity {
   id: string;
-  client_name: string;
-  wert_eur: number | null;
-  start_datum: string | null;
-  created_at: string;
+  lead_name: string | null;
+  client_id: string | null;
+  value: number | null;
+  value_cents: number | null;
+  value_formatted: string | null;
+  value_currency: string | null;
+  status_type: string | null;
+  status_label: string | null;
+  date_won: string | null;
+  user_name: string | null;
 }
 
 type TimePeriod = "7d" | "30d" | "year" | "all";
 
-interface PeriodConfig {
-  label: string;
-  value: TimePeriod;
-}
-
-const PERIODS: PeriodConfig[] = [
+const PERIODS: { label: string; value: TimePeriod }[] = [
   { label: "Letzte 7 Tage", value: "7d" },
   { label: "Letzte 30 Tage", value: "30d" },
   { label: "Dieses Jahr", value: "year" },
   { label: "Insgesamt", value: "all" },
 ];
 
-function getPeriodFilter(period: TimePeriod): { start?: string; end?: string } {
+function getPeriodStart(period: TimePeriod): Date | null {
   const now = new Date();
-  const end = now.toISOString();
-
-  if (period === "all") return {};
+  if (period === "all") return null;
   if (period === "7d") {
     const d = new Date(now);
     d.setDate(d.getDate() - 7);
-    return { start: d.toISOString(), end };
+    return d;
   }
   if (period === "30d") {
     const d = new Date(now);
     d.setDate(d.getDate() - 30);
-    return { start: d.toISOString(), end };
+    return d;
   }
-  // year
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  return { start: startOfYear.toISOString(), end };
+  return new Date(now.getFullYear(), 0, 1);
 }
 
-function isInPeriod(deal: CloseDeal, period: TimePeriod): boolean {
-  if (period === "all") return true;
-  const { start, end } = getPeriodFilter(period);
-  const dateStr = deal.start_datum || deal.created_at;
-  if (!dateStr) return false;
-  const date = new Date(dateStr);
-  if (start && date < new Date(start)) return false;
-  if (end && date > new Date(end)) return false;
-  return true;
+function getOppValue(o: CloseOpportunity): number {
+  if (o.value != null) return Number(o.value) || 0;
+  if (o.value_cents != null) return Number(o.value_cents) / 100;
+  return 0;
 }
 
 export default function SalesUebersicht() {
-  const [deals, setDeals] = useState<CloseDeal[]>([]);
+  const [opps, setOpps] = useState<CloseOpportunity[]>([]);
+  const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<TimePeriod>("30d");
 
   useEffect(() => {
-    const fetch = async () => {
+    const load = async () => {
       setLoading(true);
       const { data, error } = await supabase
-        .from("close_deals")
-        .select("id, client_name, wert_eur, start_datum, created_at")
-        .order("start_datum", { ascending: false })
-        .limit(2000);
+        .from("close_opportunities")
+        .select("id, lead_name, client_id, value, value_cents, value_formatted, value_currency, status_type, status_label, date_won, user_name")
+        .eq("status_type", "won")
+        .order("date_won", { ascending: false })
+        .limit(5000);
 
-      if (error) {
-        console.error("Error fetching deals:", error);
+      if (error) console.error("Error fetching opportunities:", error);
+      const rows = (data || []) as CloseOpportunity[];
+      setOpps(rows);
+
+      const clientIds = Array.from(new Set(rows.map((r) => r.client_id).filter(Boolean))) as string[];
+      if (clientIds.length) {
+        const { data: clients } = await supabase
+          .from("clients")
+          .select("id, name")
+          .in("id", clientIds);
+        const map: Record<string, string> = {};
+        (clients || []).forEach((c: any) => { map[c.id] = c.name; });
+        setClientNames(map);
       }
-      setDeals(data || []);
       setLoading(false);
     };
-    fetch();
+    load();
   }, []);
 
-  const filteredDeals = useMemo(() => {
-    return deals.filter((d) => isInPeriod(d, period));
-  }, [deals, period]);
+  const filtered = useMemo(() => {
+    const start = getPeriodStart(period);
+    if (!start) return opps;
+    return opps.filter((o) => {
+      if (!o.date_won) return false;
+      return new Date(o.date_won) >= start;
+    });
+  }, [opps, period]);
 
-  const totalRevenue = useMemo(() => {
-    return filteredDeals.reduce((sum, d) => sum + (d.wert_eur || 0), 0);
-  }, [filteredDeals]);
+  const totalRevenue = useMemo(
+    () => filtered.reduce((sum, o) => sum + getOppValue(o), 0),
+    [filtered]
+  );
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "–";
-    return new Date(dateStr).toLocaleDateString("de-DE");
-  };
+  const formatDate = (s: string | null) => (s ? new Date(s).toLocaleDateString("de-DE") : "–");
+
+  const periodLabel = PERIODS.find((p) => p.value === period)?.label;
 
   return (
     <div className="space-y-6 p-6 max-w-6xl mx-auto">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
@@ -106,12 +114,11 @@ export default function SalesUebersicht() {
             Sales Übersicht
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Umsatz auf Basis von Close Deals
+            Umsatz auf Basis gewonnener Close-Opportunities
           </p>
         </div>
       </div>
 
-      {/* Period Selector */}
       <div className="flex flex-wrap gap-2">
         {PERIODS.map((p) => (
           <Button
@@ -127,9 +134,7 @@ export default function SalesUebersicht() {
         ))}
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Umsatz geschrieben */}
         <Card className="border border-border bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -145,18 +150,15 @@ export default function SalesUebersicht() {
                 {formatValue(totalRevenue, 'currency')}
               </div>
             )}
-            <p className="text-xs text-muted-foreground mt-1">
-              {PERIODS.find((p) => p.value === period)?.label}
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{periodLabel}</p>
           </CardContent>
         </Card>
 
-        {/* Anzahl Deals */}
         <Card className="border border-border bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Anzahl Abschlüsse
+              Gewonnene Opportunities
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -164,16 +166,13 @@ export default function SalesUebersicht() {
               <Skeleton className="h-10 w-20" />
             ) : (
               <div className="text-3xl font-bold tabular-nums tracking-tight">
-                {filteredDeals.length}
+                {filtered.length}
               </div>
             )}
-            <p className="text-xs text-muted-foreground mt-1">
-              {PERIODS.find((p) => p.value === period)?.label}
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{periodLabel}</p>
           </CardContent>
         </Card>
 
-        {/* Placeholder for future KPI */}
         <Card className="border border-dashed border-border bg-card/50 opacity-60">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -182,19 +181,16 @@ export default function SalesUebersicht() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold tabular-nums tracking-tight text-muted-foreground">
-              –
-            </div>
+            <div className="text-3xl font-bold tabular-nums tracking-tight text-muted-foreground">–</div>
             <p className="text-xs text-muted-foreground mt-1">Bald verfügbar</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Deal List */}
       <Card className="border border-border bg-card">
         <CardHeader>
           <CardTitle className="text-base font-medium">
-            Abschlüsse im Zeitraum ({filteredDeals.length})
+            Gewonnene Opportunities im Zeitraum ({filtered.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -204,10 +200,10 @@ export default function SalesUebersicht() {
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </div>
-          ) : filteredDeals.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <FileText className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p className="text-sm font-medium">Keine Abschlüsse im Zeitraum</p>
+              <p className="text-sm font-medium">Keine gewonnenen Opportunities im Zeitraum</p>
               <p className="text-xs mt-1">
                 Wähle einen anderen Zeitraum oder prüfe die Daten in Close.
               </p>
@@ -218,26 +214,41 @@ export default function SalesUebersicht() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Kunde</TableHead>
-                    <TableHead className="text-right">Wert (€)</TableHead>
-                    <TableHead>Startdatum</TableHead>
+                    <TableHead className="text-right">Wert</TableHead>
+                    <TableHead>Gewonnen am</TableHead>
+                    <TableHead>
+                      <span className="inline-flex items-center gap-1">
+                        <User className="h-3.5 w-3.5" /> Closer
+                      </span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredDeals.map((deal) => (
-                    <TableRow key={deal.id}>
-                      <TableCell className="font-medium text-sm">
-                        {deal.client_name}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-sm">
-                        {deal.wert_eur != null
-                          ? formatValue(deal.wert_eur, 'currency')
-                          : "–"}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(deal.start_datum)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filtered.map((o) => {
+                    const name =
+                      (o.client_id && clientNames[o.client_id]) ||
+                      o.lead_name ||
+                      "–";
+                    const valueDisplay =
+                      o.value_formatted ||
+                      (o.value != null || o.value_cents != null
+                        ? formatValue(getOppValue(o), 'currency')
+                        : "–");
+                    return (
+                      <TableRow key={o.id}>
+                        <TableCell className="font-medium text-sm">{name}</TableCell>
+                        <TableCell className="text-right tabular-nums text-sm">
+                          {valueDisplay}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(o.date_won)}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {o.user_name || "–"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
