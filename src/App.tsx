@@ -27,6 +27,7 @@ import Projekte from "./pages/Projekte.tsx";
 import ProjekteAufgaben from "./pages/ProjekteAufgaben.tsx";
 import ProjekteLaufzeiten from "./pages/ProjekteLaufzeiten.tsx";
 import Sales from "./pages/Sales.tsx";
+import SalesUebersicht from "./pages/sales/SalesUebersicht.tsx";
 
 import Finanzen from "./pages/Finanzen.tsx";
 import TeamPage from "./pages/Team.tsx";
@@ -167,7 +168,8 @@ const App = () => (
                 <Route path="/projekte" element={<DL><Projekte /></DL>} />
                 <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
                 <Route path="/projekte/laufzeiten" element={<DL><ProjekteLaufzeiten /></DL>} />
-                <Route path="/sales" element={<Navigate to="/sales/kpis" replace />} />
+                <Route path="/sales" element={<Navigate to="/sales/uebersicht" replace />} />
+                <Route path="/sales/uebersicht" element={<DL><SalesUebersicht /></DL>} />
                 <Route path="/sales/referenz-showcase" element={<ShowcaseAuthRedirect><DL><ReferenzShowcaseOverview /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/websites" element={<ShowcaseAuthRedirect><DL><ReferenzWebsitesPage /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/websites/:id" element={<ShowcaseAuthRedirect><DL><ReferenzWebsiteDetail /></DL></ShowcaseAuthRedirect>} />
