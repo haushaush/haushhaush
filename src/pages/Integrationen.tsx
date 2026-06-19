@@ -51,14 +51,15 @@ export default function Integrationen() {
   const fetchData = async () => {
     const [driveRes, googleDriveRes, intRes, dealsRes, pipedriveRes] = await Promise.all([
       user ? supabase.from('drive_connection').select('*').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
-      user ? supabase.from('google_drive_connections').select('google_email, connected_at').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
+      user ? (supabase.rpc as any)('drive_connection_status') : Promise.resolve({ data: null }),
       user ? supabase.from('integration_settings').select('*').eq('user_id', user.id) : Promise.resolve({ data: [] }),
       supabase.from('close_deals').select('id, client_name, art, wert_eur').order('client_name'),
       supabase.from('pipedrive_accounts' as any).select('id, name, domain, is_active, last_sync_at, last_sync_status, total_deals_synced').order('created_at', { ascending: true }),
     ]);
     if (driveRes.data) { setDriveConnected(true); setDriveEmail((driveRes.data as any).google_email); }
-    if (googleDriveRes.data) {
-      setGoogleDriveConn({ email: (googleDriveRes.data as any).google_email, connected_at: (googleDriveRes.data as any).connected_at });
+    const driveRow = Array.isArray((googleDriveRes as any).data) ? (googleDriveRes as any).data[0] : null;
+    if (driveRow) {
+      setGoogleDriveConn({ email: driveRow.google_email, connected_at: driveRow.connected_at });
     } else {
       setGoogleDriveConn(null);
     }
