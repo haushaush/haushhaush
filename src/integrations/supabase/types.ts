@@ -1812,6 +1812,42 @@ export type Database = {
         }
         Relationships: []
       }
+      drive_permissions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          drive_item_id: string
+          grantee_role: Database["public"]["Enums"]["team_rolle"] | null
+          grantee_type: string
+          grantee_user_id: string | null
+          id: string
+          item_name: string | null
+          item_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          drive_item_id: string
+          grantee_role?: Database["public"]["Enums"]["team_rolle"] | null
+          grantee_type: string
+          grantee_user_id?: string | null
+          id?: string
+          item_name?: string | null
+          item_type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          drive_item_id?: string
+          grantee_role?: Database["public"]["Enums"]["team_rolle"] | null
+          grantee_type?: string
+          grantee_user_id?: string | null
+          id?: string
+          item_name?: string | null
+          item_type?: string
+        }
+        Relationships: []
+      }
       drive_pinned_files: {
         Row: {
           drive_file_id: string
@@ -5615,6 +5651,10 @@ export type Database = {
     }
     Functions: {
       create_or_get_unternehmen: { Args: { p_name: string }; Returns: string }
+      current_user_team_rolle: {
+        Args: never
+        Returns: Database["public"]["Enums"]["team_rolle"]
+      }
       decrypt_imap_password: {
         Args: { encrypted: string; encryption_key: string }
         Returns: string
@@ -5669,6 +5709,7 @@ export type Database = {
         Args: { branche_id_in?: string; unt_name: string }
         Returns: string
       }
+      is_admin: { Args: never; Returns: boolean }
       is_admin_or_manager: { Args: { _user_id: string }; Returns: boolean }
       is_importable: {
         Args: {
@@ -5688,7 +5729,20 @@ export type Database = {
           removed_count: number
         }[]
       }
+      team_with_auth_ids: {
+        Args: never
+        Returns: {
+          auth_user_id: string
+          email: string
+          name: string
+          rolle: Database["public"]["Enums"]["team_rolle"]
+        }[]
+      }
       upsert_client_from_notion: { Args: { p: Json }; Returns: string }
+      user_can_see_item: {
+        Args: { p_item_id: string; p_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       ampelstatus: "Grün" | "Gelb" | "Rot" | "CC"
