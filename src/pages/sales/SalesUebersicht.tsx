@@ -20,7 +20,7 @@ interface CloseOpportunity {
   status_label: string | null;
   date_won: string | null;
   user_name: string | null;
-  updated_at?: string | null;
+  synced_at?: string | null;
 }
 
 type TimePeriod = "7d" | "30d" | "year" | "all";
@@ -76,7 +76,7 @@ export default function SalesUebersicht() {
     setLoading(true);
     const { data, error } = await supabase
       .from("close_opportunities")
-      .select("id, lead_name, client_id, value, value_cents, value_formatted, value_currency, status_type, status_label, date_won, user_name, updated_at")
+      .select("id, lead_name, client_id, value, value_cents, value_formatted, value_currency, status_type, status_label, date_won, user_name, synced_at")
       .eq("status_type", "won")
       .order("date_won", { ascending: false })
       .limit(5000);
@@ -138,8 +138,8 @@ export default function SalesUebersicht() {
   const lastUpdated = useMemo(() => {
     let max: Date | null = null;
     for (const o of opps) {
-      if (!o.updated_at) continue;
-      const d = new Date(o.updated_at);
+      if (!o.synced_at) continue;
+      const d = new Date(o.synced_at);
       if (!max || d > max) max = d;
     }
     return max;
