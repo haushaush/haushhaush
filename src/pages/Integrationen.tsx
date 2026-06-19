@@ -487,9 +487,8 @@ export default function Integrationen() {
               testing={testingProvider === provider.id}
               closeDeals={closeDeals}
               driveConnection={provider.id === 'google_drive' ? googleDriveConn : null}
-              onDriveDisconnect={provider.id === 'google_drive' ? async () => {
-                if (!user) return;
-                const { error } = await supabase.from('google_drive_connections').delete().eq('user_id', user.id);
+              onDriveDisconnect={provider.id === 'google_drive' && isAdmin ? async () => {
+                const { error } = await supabase.from('google_drive_connections').delete().eq('is_primary', true);
                 if (error) { toast.error('Trennen fehlgeschlagen'); return; }
                 toast.success('Google Drive getrennt');
                 setGoogleDriveConn(null);
