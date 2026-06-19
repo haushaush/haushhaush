@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, FileText, Calendar, User } from "lucide-react";
+import { TrendingUp, FileText, Calendar, User, RefreshCw } from "lucide-react";
 import { formatValue } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface CloseOpportunity {
   id: string;
@@ -19,6 +20,7 @@ interface CloseOpportunity {
   status_label: string | null;
   date_won: string | null;
   user_name: string | null;
+  updated_at?: string | null;
 }
 
 type TimePeriod = "7d" | "30d" | "year" | "all";
@@ -52,40 +54,72 @@ function getOppValue(o: CloseOpportunity): number {
   return 0;
 }
 
+function formatRelative(date: Date): string {
+  const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diffSec < 60) return "gerade eben";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `vor ${diffMin} Min.`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `vor ${diffH} Std.`;
+  const diffD = Math.floor(diffH / 24);
+  return `vor ${diffD} Tagen`;
+}
+
 export default function SalesUebersicht() {
   const [opps, setOpps] = useState<CloseOpportunity[]>([]);
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<TimePeriod>("30d");
+  const [syncing, setSyncing] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("close_opportunities")
+      .select("id, lead_name, client_id, value, value_cents, value_formatted, value_currency, status_type, status_label, date_won, user_name, updated_at")
+      .eq("status_type", "won")
+      .order("date_won", { ascending: false })
+      .limit(5000);
+
+    if (error) console.error("Error fetching opportunities:", error);
+    const rows = (data || []) as CloseOpportunity[];
+    setOpps(rows);
+
+    const clientIds = Array.from(new Set(rows.map((r) => r.client_id).filter(Boolean))) as string[];
+    if (clientIds.length) {
+      const { data: clients } = await supabase
+        .from("clients")
+        .select("id, name")
+        .in("id", clientIds);
+      const map: Record<string, string> = {};
+      (clients || []).forEach((c: any) => { map[c.id] = c.name; });
+      setClientNames(map);
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("close_opportunities")
-        .select("id, lead_name, client_id, value, value_cents, value_formatted, value_currency, status_type, status_label, date_won, user_name")
-        .eq("status_type", "won")
-        .order("date_won", { ascending: false })
-        .limit(5000);
-
-      if (error) console.error("Error fetching opportunities:", error);
-      const rows = (data || []) as CloseOpportunity[];
-      setOpps(rows);
-
-      const clientIds = Array.from(new Set(rows.map((r) => r.client_id).filter(Boolean))) as string[];
-      if (clientIds.length) {
-        const { data: clients } = await supabase
-          .from("clients")
-          .select("id, name")
-          .in("id", clientIds);
-        const map: Record<string, string> = {};
-        (clients || []).forEach((c: any) => { map[c.id] = c.name; });
-        setClientNames(map);
-      }
-      setLoading(false);
-    };
     load();
-  }, []);
+  }, [load]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-close-opportunities", {
+        body: { trigger: "manual" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const upserted = data?.upserted ?? 0;
+      toast.success(`${upserted} Opportunities aktualisiert`);
+      await load();
+    } catch (e: any) {
+      console.error("Sync error:", e);
+      toast.error(`Sync fehlgeschlagen: ${e?.message || "Unbekannter Fehler"}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const start = getPeriodStart(period);
@@ -101,13 +135,23 @@ export default function SalesUebersicht() {
     [filtered]
   );
 
+  const lastUpdated = useMemo(() => {
+    let max: Date | null = null;
+    for (const o of opps) {
+      if (!o.updated_at) continue;
+      const d = new Date(o.updated_at);
+      if (!max || d > max) max = d;
+    }
+    return max;
+  }, [opps]);
+
   const formatDate = (s: string | null) => (s ? new Date(s).toLocaleDateString("de-DE") : "–");
 
   const periodLabel = PERIODS.find((p) => p.value === period)?.label;
 
   return (
     <div className="space-y-6 p-6 max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
             <TrendingUp className="h-6 w-6 text-primary" />
@@ -116,6 +160,25 @@ export default function SalesUebersicht() {
           <p className="text-muted-foreground text-sm mt-1">
             Umsatz auf Basis gewonnener Close-Opportunities
           </p>
+        </div>
+        <div className="flex flex-col items-start sm:items-end gap-1">
+          <Button
+            onClick={handleSync}
+            disabled={syncing}
+            size="sm"
+            variant="outline"
+            className="rounded-lg"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Aktualisiere…" : "Jetzt aktualisieren"}
+          </Button>
+          {syncing ? (
+            <p className="text-xs text-muted-foreground">Hole aktuelle Daten von Close…</p>
+          ) : lastUpdated ? (
+            <p className="text-xs text-muted-foreground">
+              Zuletzt aktualisiert {formatRelative(lastUpdated)}
+            </p>
+          ) : null}
         </div>
       </div>
 
