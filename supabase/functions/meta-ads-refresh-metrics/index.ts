@@ -387,10 +387,14 @@ Deno.serve(async (req) => {
     if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY not configured");
     const svc = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKey);
 
-    // Auth: either valid cron secret OR admin user
+    // Auth: either valid cron secret, service-role bearer, OR admin user
     const cronSecret = Deno.env.get("CRON_TRIGGER_SECRET");
     const providedCronSecret = req.headers.get("x-cron-secret") || req.headers.get("X-Cron-Secret");
-    const isCron = !!cronSecret && !!providedCronSecret && providedCronSecret === cronSecret;
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    const isCronSecret = !!cronSecret && !!providedCronSecret && providedCronSecret === cronSecret;
+    const isServiceRole = !!serviceRoleKey && !!bearerToken && bearerToken === serviceRoleKey;
+    const isCron = isCronSecret || isServiceRole;
 
     if (!isCron) {
       const supabase = createClient(
