@@ -34,6 +34,7 @@ const navItems: NavItem[] = [
   {
     title: 'Sales', url: '/sales', icon: TrendingUp,
     children: [
+      { title: 'Übersicht', url: '/sales/uebersicht' },
       { title: 'A-KPIs & Leaderboard', url: '/sales/kpis', adminOnly: true },
       { title: 'Vorqualifikation', url: '/sales/vorquali' },
       { title: 'Leadkauf', url: '/sales/leads' },
