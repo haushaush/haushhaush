@@ -295,10 +295,10 @@ export default function SalesUebersicht() {
                       o.lead_name ||
                       "–";
                     const valueDisplay =
-                      o.value_formatted ||
-                      (o.value != null || o.value_cents != null
-                        ? formatValue(getOppValue(o), 'currency')
-                        : "–");
+                      o.abschlusswert != null
+                        ? formatValue(Number(o.abschlusswert), 'currency')
+                        : "—";
+
                     return (
                       <TableRow key={o.id}>
                         <TableCell className="font-medium text-sm">{name}</TableCell>
