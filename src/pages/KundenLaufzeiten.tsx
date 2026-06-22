@@ -10,6 +10,10 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertTriangle, Search, ChevronRight, ChevronDown } from 'lucide-react';
 import { Fragment } from 'react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+
+const KUNDENSTATUS_OPTIONS = ['Offen', 'Onboarding', 'In Betreuung', 'Follow Up', 'Done', 'Lead', 'Pausiert', 'Churned'] as const;
 
 const LAUFZEIT_MONTHS: Record<string, number> = {
   '1 Monat': 1, '2 Monate': 2, '3 Monate': 3,
