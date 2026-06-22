@@ -16,6 +16,7 @@ interface CloseOpportunity {
   value_cents: number | null;
   value_formatted: string | null;
   value_currency: string | null;
+  abschlusswert: number | null;
   status_type: string | null;
   status_label: string | null;
   date_won: string | null;
@@ -49,10 +50,10 @@ function getPeriodStart(period: TimePeriod): Date | null {
 }
 
 function getOppValue(o: CloseOpportunity): number {
-  if (o.value != null) return Number(o.value) || 0;
-  if (o.value_cents != null) return Number(o.value_cents) / 100;
+  if (o.abschlusswert != null) return Number(o.abschlusswert) || 0;
   return 0;
 }
+
 
 function formatRelative(date: Date): string {
   const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -76,10 +77,11 @@ export default function SalesUebersicht() {
     setLoading(true);
     const { data, error } = await supabase
       .from("close_opportunities")
-      .select("id, lead_name, client_id, value, value_cents, value_formatted, value_currency, status_type, status_label, date_won, user_name, synced_at")
+      .select("id, lead_name, client_id, value, value_cents, value_formatted, value_currency, abschlusswert, status_type, status_label, date_won, user_name, synced_at")
       .eq("status_type", "won")
       .order("date_won", { ascending: false })
       .limit(5000);
+
 
     if (error) console.error("Error fetching opportunities:", error);
     const rows = (data || []) as CloseOpportunity[];
@@ -293,10 +295,10 @@ export default function SalesUebersicht() {
                       o.lead_name ||
                       "–";
                     const valueDisplay =
-                      o.value_formatted ||
-                      (o.value != null || o.value_cents != null
-                        ? formatValue(getOppValue(o), 'currency')
-                        : "–");
+                      o.abschlusswert != null
+                        ? formatValue(Number(o.abschlusswert), 'currency')
+                        : "—";
+
                     return (
                       <TableRow key={o.id}>
                         <TableCell className="font-medium text-sm">{name}</TableCell>

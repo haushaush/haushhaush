@@ -1243,6 +1243,7 @@ export type Database = {
       }
       close_opportunities: {
         Row: {
+          abschlusswert: number | null
           client_id: string | null
           confidence: number | null
           custom_fields: Json | null
@@ -1267,6 +1268,7 @@ export type Database = {
           value_period: string | null
         }
         Insert: {
+          abschlusswert?: number | null
           client_id?: string | null
           confidence?: number | null
           custom_fields?: Json | null
@@ -1291,6 +1293,7 @@ export type Database = {
           value_period?: string | null
         }
         Update: {
+          abschlusswert?: number | null
           client_id?: string | null
           confidence?: number | null
           custom_fields?: Json | null

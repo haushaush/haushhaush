@@ -1,0 +1,1 @@
+ALTER TABLE public.close_opportunities ADD COLUMN IF NOT EXISTS abschlusswert numeric;

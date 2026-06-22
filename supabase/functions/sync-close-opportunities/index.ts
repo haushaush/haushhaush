@@ -49,6 +49,28 @@ Deno.serve(async (req) => {
         const valueCents =
           typeof item.value === "number" ? Math.round(item.value * 100) :
           typeof item.value === "string" ? Math.round(parseFloat(item.value) * 100) : null;
+
+        const CF_KEY = "cf_KLOXVrMLTeGZr5bAU1rsNE9rGtIhpdRy6hIVbsBK17G";
+        const rawAbschluss =
+          item[`custom.${CF_KEY}`] ??
+          (item.custom && typeof item.custom === "object" ? item.custom[CF_KEY] : undefined);
+        let abschlusswert: number | null = null;
+        if (rawAbschluss != null && rawAbschluss !== "") {
+          if (typeof rawAbschluss === "number") {
+            abschlusswert = isFinite(rawAbschluss) ? rawAbschluss : null;
+          } else {
+            const s = String(rawAbschluss).trim().replace(/[^\d,.\-]/g, "");
+            let normalized = s;
+            if (s.includes(",") && s.includes(".")) {
+              normalized = s.replace(/\./g, "").replace(",", ".");
+            } else if (s.includes(",")) {
+              normalized = s.replace(/\./g, "").replace(",", ".");
+            }
+            const n = parseFloat(normalized);
+            abschlusswert = isFinite(n) ? n : null;
+          }
+        }
+
         const row = {
           id: item.id,
           lead_id: item.lead_id,
@@ -64,6 +86,7 @@ Deno.serve(async (req) => {
           value_formatted: item.value_formatted || null,
           value_currency: item.value_currency || null,
           value_period: item.value_period || null,
+          abschlusswert,
           note: item.note || null,
           confidence: item.confidence ?? null,
           user_name: item.user_name || null,
@@ -73,6 +96,7 @@ Deno.serve(async (req) => {
           date_updated: item.date_updated || null,
           synced_at: new Date().toISOString(),
         };
+
         const { error } = await supabase.from("close_opportunities").upsert(row, { onConflict: "id" });
         if (error) errors.push(`${item.id}: ${error.message}`);
         else upserted++;
