@@ -80,11 +80,20 @@ export default function KundenLaufzeiten() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'alle' | 'abgelaufen' | 'aktiv' | 'abgeschlossen'>('alle');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     Promise.all([
       supabase.from('clients').select('*'),
-      supabase.from('projects').select('client_id, startdatum, laufzeit, enddatum, status'),
+      supabase.from('projects').select('id, name, client_id, startdatum, laufzeit, enddatum, status'),
     ]).then(([c, p]) => {
       setClients(c.data || []);
       setProjects(p.data || []);
