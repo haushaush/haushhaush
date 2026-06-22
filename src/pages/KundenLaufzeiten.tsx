@@ -7,7 +7,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, Search } from 'lucide-react';
+import { AlertTriangle, Search, ChevronRight, ChevronDown } from 'lucide-react';
+import { Fragment } from 'react';
+import { Button } from '@/components/ui/button';
 
 const LAUFZEIT_MONTHS: Record<string, number> = {
   '1 Monat': 1, '2 Monate': 2, '3 Monate': 3,
@@ -78,11 +80,20 @@ export default function KundenLaufzeiten() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'alle' | 'abgelaufen' | 'aktiv' | 'abgeschlossen'>('alle');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     Promise.all([
       supabase.from('clients').select('*'),
-      supabase.from('projects').select('client_id, startdatum, laufzeit, enddatum, status'),
+      supabase.from('projects').select('id, name, client_id, startdatum, laufzeit, enddatum, status'),
     ]).then(([c, p]) => {
       setClients(c.data || []);
       setProjects(p.data || []);
@@ -198,6 +209,7 @@ export default function KundenLaufzeiten() {
       <Card><CardContent className="p-0"><div className="overflow-x-auto">
         <Table>
           <TableHeader><TableRow>
+            <TableHead className="w-10"></TableHead>
             <TableHead>Kunde</TableHead>
             <TableHead>Startdatum</TableHead>
             <TableHead>Laufzeit</TableHead>
@@ -211,45 +223,106 @@ export default function KundenLaufzeiten() {
               const isDone = r.client.kundenstatus === 'Done';
               const hasEnd = r.endDate !== null && r.days !== null;
               const isRed = hasEnd && !isDone && r.days! <= 7;
+              const clientProjects = projectsByClient.get(r.client.id) || [];
+              const canExpand = clientProjects.length > 0;
+              const isOpen = expanded.has(r.client.id);
+              const sortedProjects = [...clientProjects].sort((a, b) => {
+                const aDone = a.status === 'Abgeschlossen' ? 1 : 0;
+                const bDone = b.status === 'Abgeschlossen' ? 1 : 0;
+                if (aDone !== bDone) return aDone - bDone;
+                return 0;
+              });
               return (
-                <TableRow key={r.client.id} className={isRed ? 'bg-destructive/10 hover:bg-destructive/15' : ''}>
-                  <TableCell className={`font-medium ${isRed ? 'text-destructive' : ''}`}>{r.client.name || '–'}</TableCell>
-                  <TableCell className="text-muted-foreground">{fmtDate(r.client.startdatum)}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {r.source === 'project'
-                      ? (r.sourceLaufzeit || 'Projektlaufzeit')
-                      : (r.client.laufzeit || '–')}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {r.endDate ? (
-                      <span>
-                        {fmtDate(r.endDate)}
-                        {r.source === 'project' && <span className="ml-1 text-[10px] text-muted-foreground/70">via Projekt</span>}
-                      </span>
-                    ) : (
-                      <span className="italic">kein Enddatum</span>
-                    )}
-                  </TableCell>
-                  <TableCell className={isRed ? 'text-destructive font-medium' : 'text-muted-foreground'}>{verbleibendLabel(r.days)}</TableCell>
-                  <TableCell>
-                    {r.client.kundenstatus && (
-                      <Badge className={`${STATUS_STYLES[r.client.kundenstatus] || 'bg-muted text-muted-foreground'} border-0`}>
-                        {r.client.kundenstatus}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {hasEnd ? (
-                      <Progress value={r.pct} className={`h-2 ${isRed ? '[&>div]:bg-destructive' : r.days! <= 30 ? '[&>div]:bg-warning' : ''}`} />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">–</span>
-                    )}
-                  </TableCell>
-                </TableRow>
+                <Fragment key={r.client.id}>
+                  <TableRow className={isRed ? 'bg-destructive/10 hover:bg-destructive/15' : ''}>
+                    <TableCell className="w-10 pr-0">
+                      {canExpand ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => toggleExpanded(r.client.id)}
+                          aria-label={isOpen ? 'Einklappen' : 'Ausklappen'}
+                        >
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                      ) : (
+                        <span className="inline-block h-6 w-6" />
+                      )}
+                    </TableCell>
+                    <TableCell className={`font-medium ${isRed ? 'text-destructive' : ''}`}>{r.client.name || '–'}</TableCell>
+                    <TableCell className="text-muted-foreground">{fmtDate(r.client.startdatum)}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {r.source === 'project'
+                        ? (r.sourceLaufzeit || 'Projektlaufzeit')
+                        : (r.client.laufzeit || '–')}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {r.endDate ? (
+                        <span>
+                          {fmtDate(r.endDate)}
+                          {r.source === 'project' && <span className="ml-1 text-[10px] text-muted-foreground/70">via Projekt</span>}
+                        </span>
+                      ) : (
+                        <span className="italic">kein Enddatum</span>
+                      )}
+                    </TableCell>
+                    <TableCell className={isRed ? 'text-destructive font-medium' : 'text-muted-foreground'}>{verbleibendLabel(r.days)}</TableCell>
+                    <TableCell>
+                      {r.client.kundenstatus && (
+                        <Badge className={`${STATUS_STYLES[r.client.kundenstatus] || 'bg-muted text-muted-foreground'} border-0`}>
+                          {r.client.kundenstatus}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {hasEnd ? (
+                        <Progress value={r.pct} className={`h-2 ${isRed ? '[&>div]:bg-destructive' : r.days! <= 30 ? '[&>div]:bg-warning' : ''}`} />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">–</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  {isOpen && sortedProjects.map(p => {
+                    const pEnd = computeEndFrom(p.enddatum, p.startdatum, p.laufzeit);
+                    const pDays = pEnd ? Math.ceil((pEnd.getTime() - Date.now()) / 86400000) : null;
+                    const pPct = progress(p.startdatum, pEnd);
+                    const pHasEnd = pEnd !== null && pDays !== null;
+                    const pDone = p.status === 'Abgeschlossen';
+                    const muted = pDone ? 'opacity-60' : '';
+                    return (
+                      <TableRow key={p.id} className={`bg-muted/30 hover:bg-muted/40 ${muted}`}>
+                        <TableCell className="w-10"></TableCell>
+                        <TableCell className="text-sm pl-2">
+                          <span className="text-muted-foreground mr-2">↳</span>
+                          <span className={pDone ? 'text-muted-foreground' : ''}>{p.name || '(ohne Name)'}</span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{fmtDate(p.startdatum)}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{p.laufzeit || '–'}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {pEnd ? fmtDate(pEnd) : <span className="italic">kein Enddatum</span>}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{verbleibendLabel(pDays)}</TableCell>
+                        <TableCell>
+                          {p.status && (
+                            <Badge variant="secondary" className="text-[10px]">{p.status}</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {pHasEnd && !pDone ? (
+                            <Progress value={pPct} className="h-1.5" />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">–</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </Fragment>
               );
             })}
             {filtered.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Keine Kunden in dieser Kategorie</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Keine Kunden in dieser Kategorie</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
