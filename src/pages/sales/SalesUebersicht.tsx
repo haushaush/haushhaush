@@ -77,10 +77,11 @@ export default function SalesUebersicht() {
     setLoading(true);
     const { data, error } = await supabase
       .from("close_opportunities")
-      .select("id, lead_name, client_id, value, value_cents, value_formatted, value_currency, status_type, status_label, date_won, user_name, synced_at")
+      .select("id, lead_name, client_id, value, value_cents, value_formatted, value_currency, abschlusswert, status_type, status_label, date_won, user_name, synced_at")
       .eq("status_type", "won")
       .order("date_won", { ascending: false })
       .limit(5000);
+
 
     if (error) console.error("Error fetching opportunities:", error);
     const rows = (data || []) as CloseOpportunity[];
