@@ -94,6 +94,18 @@ export default function KundenLaufzeiten() {
     });
   };
 
+  const updateStatus = async (clientId: string, newStatus: string) => {
+    const prev = clients;
+    setClients(curr => curr.map(c => c.id === clientId ? { ...c, kundenstatus: newStatus } : c));
+    const { error } = await supabase.from('clients').update({ kundenstatus: newStatus as any }).eq('id', clientId);
+    if (error) {
+      setClients(prev);
+      toast.error(`Status konnte nicht gespeichert werden: ${error.message}`);
+    } else {
+      toast.success('Status aktualisiert');
+    }
+  };
+
   useEffect(() => {
     Promise.all([
       supabase.from('clients').select('*'),
