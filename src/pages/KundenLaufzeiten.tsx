@@ -10,6 +10,10 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertTriangle, Search, ChevronRight, ChevronDown } from 'lucide-react';
 import { Fragment } from 'react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+
+const KUNDENSTATUS_OPTIONS = ['Offen', 'Onboarding', 'In Betreuung', 'Follow Up', 'Done', 'Lead', 'Pausiert', 'Churned'] as const;
 
 const LAUFZEIT_MONTHS: Record<string, number> = {
   '1 Monat': 1, '2 Monate': 2, '3 Monate': 3,
@@ -88,6 +92,18 @@ export default function KundenLaufzeiten() {
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+  };
+
+  const updateStatus = async (clientId: string, newStatus: string) => {
+    const prev = clients;
+    setClients(curr => curr.map(c => c.id === clientId ? { ...c, kundenstatus: newStatus } : c));
+    const { error } = await supabase.from('clients').update({ kundenstatus: newStatus as any }).eq('id', clientId);
+    if (error) {
+      setClients(prev);
+      toast.error(`Status konnte nicht gespeichert werden: ${error.message}`);
+    } else {
+      toast.success('Status aktualisiert');
+    }
   };
 
   useEffect(() => {
@@ -269,11 +285,16 @@ export default function KundenLaufzeiten() {
                     </TableCell>
                     <TableCell className={isRed ? 'text-destructive font-medium' : 'text-muted-foreground'}>{verbleibendLabel(r.days)}</TableCell>
                     <TableCell>
-                      {r.client.kundenstatus && (
-                        <Badge className={`${STATUS_STYLES[r.client.kundenstatus] || 'bg-muted text-muted-foreground'} border-0`}>
-                          {r.client.kundenstatus}
-                        </Badge>
-                      )}
+                      <Select value={r.client.kundenstatus || ''} onValueChange={(v) => updateStatus(r.client.id, v)}>
+                        <SelectTrigger className={`h-7 w-[140px] text-xs border-0 ${STATUS_STYLES[r.client.kundenstatus] || 'bg-muted text-muted-foreground'}`}>
+                          <SelectValue placeholder="–" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {KUNDENSTATUS_OPTIONS.map(opt => (
+                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
                       {hasEnd ? (
