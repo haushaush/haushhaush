@@ -16,6 +16,7 @@ interface CloseOpportunity {
   value_cents: number | null;
   value_formatted: string | null;
   value_currency: string | null;
+  abschlusswert: number | null;
   status_type: string | null;
   status_label: string | null;
   date_won: string | null;
@@ -49,10 +50,10 @@ function getPeriodStart(period: TimePeriod): Date | null {
 }
 
 function getOppValue(o: CloseOpportunity): number {
-  if (o.value != null) return Number(o.value) || 0;
-  if (o.value_cents != null) return Number(o.value_cents) / 100;
+  if (o.abschlusswert != null) return Number(o.abschlusswert) || 0;
   return 0;
 }
+
 
 function formatRelative(date: Date): string {
   const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
