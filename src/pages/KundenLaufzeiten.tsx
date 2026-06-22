@@ -7,7 +7,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, Search } from 'lucide-react';
+import { AlertTriangle, Search, ChevronRight, ChevronDown } from 'lucide-react';
+import { Fragment } from 'react';
+import { Button } from '@/components/ui/button';
 
 const LAUFZEIT_MONTHS: Record<string, number> = {
   '1 Monat': 1, '2 Monate': 2, '3 Monate': 3,
