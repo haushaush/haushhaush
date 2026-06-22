@@ -285,11 +285,16 @@ export default function KundenLaufzeiten() {
                     </TableCell>
                     <TableCell className={isRed ? 'text-destructive font-medium' : 'text-muted-foreground'}>{verbleibendLabel(r.days)}</TableCell>
                     <TableCell>
-                      {r.client.kundenstatus && (
-                        <Badge className={`${STATUS_STYLES[r.client.kundenstatus] || 'bg-muted text-muted-foreground'} border-0`}>
-                          {r.client.kundenstatus}
-                        </Badge>
-                      )}
+                      <Select value={r.client.kundenstatus || ''} onValueChange={(v) => updateStatus(r.client.id, v)}>
+                        <SelectTrigger className={`h-7 w-[140px] text-xs border-0 ${STATUS_STYLES[r.client.kundenstatus] || 'bg-muted text-muted-foreground'}`}>
+                          <SelectValue placeholder="–" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {KUNDENSTATUS_OPTIONS.map(opt => (
+                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
                       {hasEnd ? (
