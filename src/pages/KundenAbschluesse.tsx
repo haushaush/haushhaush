@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Fragment } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RefreshCw, ExternalLink } from 'lucide-react';
+import { RefreshCw, ExternalLink, ChevronDown, ChevronRight, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const ART_STYLES: Record<string, string> = {
@@ -28,7 +28,14 @@ export default function KundenAbschluesse() {
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('all');
   const [filterArt, setFilterArt] = useState('all');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const toggleExpand = (id: string) => setExpanded(prev => {
+    const n = new Set(prev);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
 
   useEffect(() => {
     supabase.from('close_deals').select('*').order('created_at', { ascending: false }).then(({ data }) => {
@@ -69,14 +76,25 @@ export default function KundenAbschluesse() {
       <Card><CardContent className="p-0"><div className="overflow-x-auto">
         <Table>
           <TableHeader><TableRow>
+            <TableHead className="w-8"></TableHead>
             <TableHead>Datum</TableHead><TableHead>Kunde</TableHead><TableHead>Art</TableHead><TableHead>Typ</TableHead>
             <TableHead>Wert</TableHead><TableHead>Laufzeit</TableHead><TableHead className="hidden sm:table-cell">Leistungen</TableHead><TableHead>Link</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Keine Deals gefunden</TableCell></TableRow>
-            ) : filtered.map(d => (
-              <TableRow key={d.id}>
+              <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Keine Deals gefunden</TableCell></TableRow>
+            ) : filtered.map(d => {
+              const isOpen = expanded.has(d.id);
+              const hasAnm = !!(d.anmerkungen && String(d.anmerkungen).trim());
+              return (
+              <Fragment key={d.id}>
+              <TableRow className="cursor-pointer" onClick={() => toggleExpand(d.id)}>
+                <TableCell className="pr-0">
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    {hasAnm && <MessageSquare className="h-3 w-3 text-primary" />}
+                  </div>
+                </TableCell>
                 <TableCell className="text-muted-foreground text-xs">{new Date(d.created_at).toLocaleDateString('de-DE')}</TableCell>
                 <TableCell className="font-medium">{d.client_name}</TableCell>
                 <TableCell><Badge variant="secondary" className={`text-[10px] border-0 ${ART_STYLES[d.art] || 'bg-muted text-muted-foreground'}`}>{d.art}</Badge></TableCell>
@@ -86,9 +104,21 @@ export default function KundenAbschluesse() {
                 <TableCell className="hidden sm:table-cell">
                   <div className="flex gap-1 flex-wrap">{Array.isArray(d.leistungen) && d.leistungen.map((l: string, i: number) => <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0">{LEISTUNG_SHORT[l] || l}</Badge>)}</div>
                 </TableCell>
-                <TableCell>{d.close_opportunity_url && <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => window.open(d.close_opportunity_url, '_blank')}><ExternalLink className="h-3 w-3" /></Button>}</TableCell>
+                <TableCell onClick={e => e.stopPropagation()}>{d.close_opportunity_url && <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => window.open(d.close_opportunity_url, '_blank')}><ExternalLink className="h-3 w-3" /></Button>}</TableCell>
               </TableRow>
-            ))}
+              {isOpen && (
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableCell></TableCell>
+                  <TableCell colSpan={8} className="py-3">
+                    <div className="text-xs">
+                      <div className="font-medium text-muted-foreground mb-1">Besondere Anmerkungen</div>
+                      <div className="whitespace-pre-wrap text-foreground">{hasAnm ? d.anmerkungen : '–'}</div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+              </Fragment>
+            );})}
           </TableBody>
         </Table>
       </div></CardContent></Card>

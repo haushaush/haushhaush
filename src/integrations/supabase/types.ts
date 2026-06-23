@@ -966,6 +966,7 @@ export type Database = {
           ads_budget: number | null
           ampel: string | null
           ampelstatus: string | null
+          anmerkungen: string | null
           art: string | null
           assigned_to: string | null
           branch_id: string | null
@@ -1016,6 +1017,7 @@ export type Database = {
           ads_budget?: number | null
           ampel?: string | null
           ampelstatus?: string | null
+          anmerkungen?: string | null
           art?: string | null
           assigned_to?: string | null
           branch_id?: string | null
@@ -1066,6 +1068,7 @@ export type Database = {
           ads_budget?: number | null
           ampel?: string | null
           ampelstatus?: string | null
+          anmerkungen?: string | null
           art?: string | null
           assigned_to?: string | null
           branch_id?: string | null
