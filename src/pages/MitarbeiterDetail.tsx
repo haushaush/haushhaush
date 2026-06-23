@@ -13,8 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { ChevronLeft, Save, Mail, Phone, Calendar, Euro, FileText } from 'lucide-react';
+import { ChevronLeft, Save, Mail, Phone, Calendar, Euro, FileText, Shield, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
+import { RollenUndRechteTab } from '@/components/team/RollenUndRechteTab';
+import { DriveFreigabenTab } from '@/components/team/DriveFreigabenTab';
+import { ZugriffStatusCard } from '@/components/team/ZugriffStatusCard';
 
 const PORTAL_ROLLEN = [
   { value: 'admin', label: 'Admin', desc: 'Vollzugriff auf alles inkl. Finanzen' },
