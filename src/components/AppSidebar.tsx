@@ -136,10 +136,25 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user, isAdminOrManager, hasRole } = useAuth();
+  const { hasPermission } = usePermissions();
   const isAdmin = hasRole('admin');
   const filterByPermission = (item: NavItem) => {
-    if (item.adminOnly) return isAdmin;
-    if (item.url.startsWith('/onepage-leads')) return isAdmin;
+    if (item.adminOnly && !isAdmin) return false;
+    if (item.url.startsWith('/onepage-leads') && !isAdmin) return false;
+    if (item.permissionKey && !hasPermission(item.permissionKey)) return false;
+    if (item.children && item.children.length > 0) {
+      const anyChildVisible = item.children.some(c => {
+        if (c.adminOnly && !isAdmin) return false;
+        if (c.permissionKey && !hasPermission(c.permissionKey)) return false;
+        return true;
+      });
+      if (!anyChildVisible) return false;
+    }
+    return true;
+  };
+  const childVisible = (c: { adminOnly?: boolean; permissionKey?: string }) => {
+    if (c.adminOnly && !isAdmin) return false;
+    if (c.permissionKey && !hasPermission(c.permissionKey)) return false;
     return true;
   };
   const visibleNavItems = navItems.filter(filterByPermission);
