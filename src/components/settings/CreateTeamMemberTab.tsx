@@ -91,6 +91,7 @@ export function CreateTeamMemberTab() {
   const [abteilung, setAbteilung] = useState<string>('');
   const [position, setPosition] = useState<string>('');
   const [rolle, setRolle] = useState<Rolle>('setter');
+  const [mitarbeiterTyp, setMitarbeiterTyp] = useState<string>('');
   const [startdatum, setStartdatum] = useState(new Date().toISOString().slice(0, 10));
   const [avatarUrl, setAvatarUrl] = useState('');
   const [notizen, setNotizen] = useState('');
