@@ -269,7 +269,7 @@ export default function MitarbeiterDetail() {
                 <Select value={form.mitarbeiter_typ || ''} onValueChange={v => setForm({...form, mitarbeiter_typ: v})} disabled={!isAdmin}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Wählen" /></SelectTrigger>
                   <SelectContent>
-                    {['Fulfillment', 'Management', 'Sales'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {MITARBEITER_TYP_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
