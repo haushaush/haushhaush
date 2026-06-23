@@ -37,6 +37,7 @@ export default function MitarbeiterDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
