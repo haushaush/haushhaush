@@ -38,6 +38,7 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Übersicht', url: '/sales/uebersicht', permissionKey: 'sales.view' },
       { title: 'A-KPIs & Leaderboard', url: '/sales/kpis', adminOnly: true, permissionKey: 'sales.kpis.view' },
+      { title: 'Close KPI Test', url: '/sales/close-kpi-test', adminOnly: true },
       { title: 'Vorqualifikation', url: '/sales/vorquali', permissionKey: 'sales.view' },
       { title: 'Leadkauf', url: '/sales/leads', permissionKey: 'sales.view' },
       { title: 'Cold Mail', url: '/sales/coldmail', permissionKey: 'sales.view' },
