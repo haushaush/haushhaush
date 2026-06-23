@@ -14,9 +14,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { DEPARTMENT_OPTIONS, MITARBEITER_TYP_OPTIONS } from '@/constants/team';
+
 type Rolle = 'admin' | 'account-manager' | 'setter';
 
-const ABTEILUNGEN = ['Management', 'Intern', 'Fulfillment', 'Sales', 'Buchhaltung'] as const;
+const ABTEILUNGEN = DEPARTMENT_OPTIONS;
 
 const POSITIONEN = [
   'CEO', 'Head of Fulfillment', 'Head of Sales', 'Head of Development',
