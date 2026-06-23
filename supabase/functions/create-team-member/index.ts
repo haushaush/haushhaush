@@ -228,6 +228,7 @@ Deno.serve(async (req) => {
       einstiegsdatum: data.startdatum,
       avatar_url: data.avatar_url,
       notizen: data.notizen,
+      mitarbeiter_typ: data.mitarbeiter_typ,
       mitarbeiter_status: 'Aktiv',
       must_change_password: true,
     });
