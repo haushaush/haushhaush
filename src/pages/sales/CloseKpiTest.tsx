@@ -617,17 +617,17 @@ export default function CloseKpiTest() {
               <TableBody>
                 <TableRow>
                   <TableCell><code>abschlusswert</code></TableCell>
-                  <TableCell className="text-right tabular-nums">{formatValue(opps.filter(o => o.status_type === 'won').reduce((s, o) => s + Number(o.abschlusswert || 0), 0))} €</TableCell>
+                  <TableCell className="text-right tabular-nums">{eur(opps.filter(o => o.status_type === 'won').reduce((s, o) => s + Number(o.abschlusswert || 0), 0))}</TableCell>
                   <TableCell>✅ richtige Quelle (Close Custom Field)</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell><code>value</code></TableCell>
-                  <TableCell className="text-right tabular-nums">{formatValue(opps.filter(o => o.status_type === 'won').reduce((s, o) => s + Number(o.value || 0), 0))} €</TableCell>
+                  <TableCell className="text-right tabular-nums">{eur(opps.filter(o => o.status_type === 'won').reduce((s, o) => s + Number(o.value || 0), 0))}</TableCell>
                   <TableCell>⚠️ Close-Standardfeld, oft falsch / nicht gepflegt</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell><code>value_cents</code></TableCell>
-                  <TableCell className="text-right tabular-nums">{formatValue(opps.filter(o => o.status_type === 'won').reduce((s, o) => s + Number(o.value_cents || 0), 0) / 100)} €</TableCell>
+                  <TableCell className="text-right tabular-nums">{eur(opps.filter(o => o.status_type === 'won').reduce((s, o) => s + Number(o.value_cents || 0), 0) / 100)}</TableCell>
                   <TableCell>⚠️ Cent-Wert ÷ 100 – ebenfalls Standardfeld, nicht nutzen</TableCell>
                 </TableRow>
               </TableBody>
