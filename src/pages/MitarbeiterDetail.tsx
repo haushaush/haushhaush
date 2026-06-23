@@ -70,6 +70,7 @@ export default function MitarbeiterDetail() {
       position: form.position,
       portal_rolle: form.portal_rolle,
       abteilung: form.abteilung,
+      department: Array.isArray(form.abteilung) ? (form.abteilung[0] ?? null) : null,
       mitarbeiter_typ: form.mitarbeiter_typ,
       mitarbeiter_status: form.mitarbeiter_status,
       telefonnummer: form.telefonnummer,
