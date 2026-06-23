@@ -260,7 +260,7 @@ export default function MitarbeiterDetail() {
                 <Select value={form.mitarbeiter_status || 'Aktiv'} onValueChange={v => setForm({...form, mitarbeiter_status: v})} disabled={!isAdmin}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {['Aktiv', 'Probezeit', 'Freelancer', 'Onboarding', 'Gekündigt'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    {MITARBEITER_STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
