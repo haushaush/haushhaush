@@ -167,7 +167,7 @@ export function CreateTeamMemberTab() {
   const resetForm = () => {
     setVorname(''); setNachname(''); setEmail(''); setEmailError(''); setTelefon('');
     setPassword(''); setPasswordConfirm(''); setShowPassword(false);
-    setAbteilung(''); setPosition(''); setRolle('setter');
+    setAbteilung(''); setPosition(''); setRolle('setter'); setMitarbeiterTyp('');
     setStartdatum(new Date().toISOString().slice(0, 10));
     setOverrides({}); setAdvancedOpen(false);
     setAvatarUrl(''); setNotizen(''); setExtraOpen(false);
