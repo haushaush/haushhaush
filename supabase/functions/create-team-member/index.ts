@@ -25,6 +25,7 @@ interface CreatePayload {
   startdatum: string;
   avatar_url?: string | null;
   notizen?: string | null;
+  mitarbeiter_typ?: string | null;
   // Nur explizite Abweichungen vom Rollen-Default. Schlüssel = permission_key, Wert = granted.
   permission_overrides: Record<string, boolean>;
 }
