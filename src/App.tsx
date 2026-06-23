@@ -78,6 +78,7 @@ import PublicShowcaseView from "./pages/PublicShowcaseView.tsx";
 import PublicShowcaseLayout from "./pages/PublicShowcaseLayout.tsx";
 import { ShowcaseAuthRedirect } from "./components/ShowcaseAuthRedirect";
 import { AdminRoute } from "./components/AdminRoute";
+import { PermissionRoute } from "./components/PermissionRoute";
 import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
 import { useFunnelGuard } from "./hooks/useFunnelGuard";
 import DailyFunnel from "./pages/DailyFunnel.tsx";
@@ -145,11 +146,11 @@ const App = () => (
                 <Route path="/register" element={<Register />} />
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/recovery" element={<Recovery />} />
-                <Route path="/" element={<DL><Dashboard /></DL>} />
-                <Route path="/kunden" element={<DL><Kunden /></DL>} />
-                <Route path="/kunden/abschluesse" element={<DL><KundenAbschluesse /></DL>} />
-                <Route path="/kunden/laufzeiten" element={<DL><KundenLaufzeiten /></DL>} />
-                <Route path="/kunden/:id" element={<DL><KundenDetail /></DL>} />
+                <Route path="/" element={<PermissionRoute permissionKey="dashboard.view"><DL><Dashboard /></DL></PermissionRoute>} />
+                <Route path="/kunden" element={<PermissionRoute permissionKey="clients.view"><DL><Kunden /></DL></PermissionRoute>} />
+                <Route path="/kunden/abschluesse" element={<PermissionRoute permissionKey="clients.view"><DL><KundenAbschluesse /></DL></PermissionRoute>} />
+                <Route path="/kunden/laufzeiten" element={<PermissionRoute permissionKey="clients.laufzeiten.view"><DL><KundenLaufzeiten /></DL></PermissionRoute>} />
+                <Route path="/kunden/:id" element={<PermissionRoute permissionKey="clients.view"><DL><KundenDetail /></DL></PermissionRoute>} />
                 <Route path="/close" element={<Navigate to="/close/leads" replace />} />
                 <Route path="/close/leads" element={<DL><CloseLeads /></DL>} />
                 <Route path="/close/deals" element={<DL><CloseDeals /></DL>} />
@@ -161,15 +162,15 @@ const App = () => (
                 <Route path="/onepage-leads" element={<AdminRoute><Navigate to="/onepage-leads/kunden" replace /></AdminRoute>} />
                 <Route path="/onepage-leads/kunden" element={<AdminRoute><DL><OnePageKunden /></DL></AdminRoute>} />
                 <Route path="/onepage-leads/kunden/:id" element={<AdminRoute><DL><OnePageKundeDetail /></DL></AdminRoute>} />
-                <Route path="/drive" element={<DL><DriveUebersicht /></DL>} />
-                <Route path="/drive/meine-dateien" element={<DL><DriveMeineDateien /></DL>} />
-                <Route path="/drive/geteilt" element={<DL><DriveGeteilt /></DL>} />
-                <Route path="/drive/papierkorb" element={<DL><DrivePapierkorb /></DL>} />
-                <Route path="/projekte" element={<DL><Projekte /></DL>} />
-                <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
+                <Route path="/drive" element={<PermissionRoute permissionKey="drive.view"><DL><DriveUebersicht /></DL></PermissionRoute>} />
+                <Route path="/drive/meine-dateien" element={<PermissionRoute permissionKey="drive.view"><DL><DriveMeineDateien /></DL></PermissionRoute>} />
+                <Route path="/drive/geteilt" element={<PermissionRoute permissionKey="drive.view"><DL><DriveGeteilt /></DL></PermissionRoute>} />
+                <Route path="/drive/papierkorb" element={<PermissionRoute permissionKey="drive.view"><DL><DrivePapierkorb /></DL></PermissionRoute>} />
+                <Route path="/projekte" element={<PermissionRoute permissionKey="projects.view"><DL><Projekte /></DL></PermissionRoute>} />
+                <Route path="/projekte/aufgaben" element={<PermissionRoute permissionKey="tasks.view"><DL><ProjekteAufgaben /></DL></PermissionRoute>} />
                 
                 <Route path="/sales" element={<Navigate to="/sales/uebersicht" replace />} />
-                <Route path="/sales/uebersicht" element={<DL><SalesUebersicht /></DL>} />
+                <Route path="/sales/uebersicht" element={<PermissionRoute permissionKey="sales.view"><DL><SalesUebersicht /></DL></PermissionRoute>} />
                 <Route path="/sales/referenz-showcase" element={<ShowcaseAuthRedirect><DL><ReferenzShowcaseOverview /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/websites" element={<ShowcaseAuthRedirect><DL><ReferenzWebsitesPage /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/websites/:id" element={<ShowcaseAuthRedirect><DL><ReferenzWebsiteDetail /></DL></ShowcaseAuthRedirect>} />
@@ -194,15 +195,15 @@ const App = () => (
                   <Route path="ad-performance" element={<AdPerformancePage />} />
                   <Route path="ad-performance/:id" element={<AdPerformanceDetail />} />
                 </Route>
-                <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
-                <Route path="/finanzen" element={<DL><Finanzen /></DL>} />
-                <Route path="/finanzen/:tab" element={<DL><Finanzen /></DL>} />
+                <Route path="/sales/:tab" element={<PermissionRoute permissionKey="sales.view"><DL><Sales /></DL></PermissionRoute>} />
+                <Route path="/finanzen" element={<PermissionRoute permissionKey="finanzen.view"><DL><Finanzen /></DL></PermissionRoute>} />
+                <Route path="/finanzen/:tab" element={<PermissionRoute permissionKey="finanzen.view"><DL><Finanzen /></DL></PermissionRoute>} />
                 <Route path="/funnel" element={<DailyFunnel />} />
                 <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
                 <Route path="/hr/checkins" element={<AdminRoute><DL><CheckinOverview /></DL></AdminRoute>} />
                 <Route path="/hr/time-tracking" element={<AdminRoute><DL><TimeTracking /></DL></AdminRoute>} />
-                <Route path="/hr/mitarbeiter/:id" element={<DL><MitarbeiterDetail /></DL>} />
-                <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
+                <Route path="/hr/mitarbeiter/:id" element={<PermissionRoute permissionKey="team.view"><DL><MitarbeiterDetail /></DL></PermissionRoute>} />
+                <Route path="/hr/:tab" element={<PermissionRoute permissionKey="team.view"><DL><TeamPage /></DL></PermissionRoute>} />
                 <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
                 <Route path="/email" element={<Navigate to="/nachrichten?tab=email" replace />} />
                 <Route path="/email/:slug" element={<Navigate to="/nachrichten?tab=email" replace />} />

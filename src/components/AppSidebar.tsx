@@ -6,6 +6,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   Sidebar, SidebarContent, SidebarFooter, useSidebar,
 } from '@/components/ui/sidebar';
@@ -17,65 +18,64 @@ interface NavItem {
   title: string;
   url: string;
   icon: any;
-  children?: { title: string; url: string; adminOnly?: boolean }[];
+  children?: { title: string; url: string; adminOnly?: boolean; permissionKey?: string }[];
   adminOnly?: boolean;
+  permissionKey?: string;
 }
 
 const navItems: NavItem[] = [
-  { title: 'Übersicht', url: '/', icon: Home },
+  { title: 'Übersicht', url: '/', icon: Home, permissionKey: 'dashboard.view' },
   {
-    title: 'Kunden', url: '/kunden', icon: Users,
+    title: 'Kunden', url: '/kunden', icon: Users, permissionKey: 'clients.view',
     children: [
-      { title: 'Übersicht', url: '/kunden' },
-      { title: 'Abschlüsse', url: '/kunden/abschluesse' },
-      { title: 'Laufzeiten', url: '/kunden/laufzeiten' },
+      { title: 'Übersicht', url: '/kunden', permissionKey: 'clients.view' },
+      { title: 'Abschlüsse', url: '/kunden/abschluesse', permissionKey: 'clients.view' },
+      { title: 'Laufzeiten', url: '/kunden/laufzeiten', permissionKey: 'clients.laufzeiten.view' },
     ],
   },
   {
-    title: 'Sales', url: '/sales', icon: TrendingUp,
+    title: 'Sales', url: '/sales', icon: TrendingUp, permissionKey: 'sales.view',
     children: [
-      { title: 'Übersicht', url: '/sales/uebersicht' },
-      { title: 'A-KPIs & Leaderboard', url: '/sales/kpis', adminOnly: true },
-      { title: 'Vorqualifikation', url: '/sales/vorquali' },
-      { title: 'Leadkauf', url: '/sales/leads' },
-      { title: 'Cold Mail', url: '/sales/coldmail' },
-      { title: 'Referenzen', url: '/sales/referenz-showcase' },
+      { title: 'Übersicht', url: '/sales/uebersicht', permissionKey: 'sales.view' },
+      { title: 'A-KPIs & Leaderboard', url: '/sales/kpis', adminOnly: true, permissionKey: 'sales.kpis.view' },
+      { title: 'Vorqualifikation', url: '/sales/vorquali', permissionKey: 'sales.view' },
+      { title: 'Leadkauf', url: '/sales/leads', permissionKey: 'sales.view' },
+      { title: 'Cold Mail', url: '/sales/coldmail', permissionKey: 'sales.view' },
+      { title: 'Referenzen', url: '/sales/referenz-showcase', permissionKey: 'sales.referenzen.view' },
       { title: 'Lead Quality Audit', url: '/tools/lead-quality-audit' },
     ],
   },
   {
-    title: 'Projekte & Aufgaben', url: '/projekte', icon: ClipboardList,
+    title: 'Projekte & Aufgaben', url: '/projekte', icon: ClipboardList, permissionKey: 'projects.view',
     children: [
-      { title: 'Projekte', url: '/projekte' },
-      { title: 'Aufgaben', url: '/projekte/aufgaben' },
-      
-    ],
-  },
-  // "Tools" is rendered separately
-  {
-    title: 'Finanzen', url: '/finanzen', icon: Euro,
-    children: [
-      { title: 'Übersicht', url: '/finanzen' },
-      { title: 'Rechnungen', url: '/finanzen/rechnungen' },
-      { title: 'Werbebudgets', url: '/finanzen/werbebudgets' },
+      { title: 'Projekte', url: '/projekte', permissionKey: 'projects.view' },
+      { title: 'Aufgaben', url: '/projekte/aufgaben', permissionKey: 'tasks.view' },
     ],
   },
   {
-    title: 'Team & HR', url: '/hr', icon: UserCircle,
+    title: 'Finanzen', url: '/finanzen', icon: Euro, permissionKey: 'finanzen.view',
     children: [
-      { title: 'Mitarbeiter', url: '/hr/mitarbeiter' },
+      { title: 'Übersicht', url: '/finanzen', permissionKey: 'finanzen.view' },
+      { title: 'Rechnungen', url: '/finanzen/rechnungen', permissionKey: 'finanzen.view' },
+      { title: 'Werbebudgets', url: '/finanzen/werbebudgets', permissionKey: 'finanzen.view' },
+    ],
+  },
+  {
+    title: 'Team & HR', url: '/hr', icon: UserCircle, permissionKey: 'team.view',
+    children: [
+      { title: 'Mitarbeiter', url: '/hr/mitarbeiter', permissionKey: 'team.view' },
       { title: 'Check-in & Check-out', url: '/hr/checkins' },
-      { title: 'Time Tracking', url: '/hr/time-tracking', adminOnly: true },
+      { title: 'Time Tracking', url: '/hr/time-tracking', adminOnly: true, permissionKey: 'time_tracking.admin.view' },
     ],
   },
 ];
 
 // Items that go under the "Tools" expandable category
 const toolsNavItems: NavItem[] = [
-  { title: 'Integrationen', url: '/integrationen', icon: Plug, adminOnly: true },
-  { title: 'Slack', url: '/slack', icon: Hash, adminOnly: true },
+  { title: 'Integrationen', url: '/integrationen', icon: Plug, adminOnly: true, permissionKey: 'integrationen.view' },
+  { title: 'Slack', url: '/slack', icon: Hash, adminOnly: true, permissionKey: 'slack.view' },
   {
-    title: 'Close', url: '/close', icon: Briefcase,
+    title: 'Close', url: '/close', icon: Briefcase, permissionKey: 'sales.close.view',
     children: [
       { title: 'Leads', url: '/close/leads' },
       { title: 'Deals', url: '/close/deals' },
@@ -83,7 +83,7 @@ const toolsNavItems: NavItem[] = [
     ],
   },
   {
-    title: 'Meta Ads', url: '/meta', icon: Facebook,
+    title: 'Meta Ads', url: '/meta', icon: Facebook, permissionKey: 'sales.meta.view',
     children: [
       { title: 'Übersicht', url: '/meta/uebersicht' },
       { title: 'Ads Manager', url: '/meta/kampagnen' },
@@ -98,7 +98,7 @@ const toolsNavItems: NavItem[] = [
     ],
   },
   {
-    title: 'Drive', url: '/drive', icon: FolderOpen,
+    title: 'Drive', url: '/drive', icon: FolderOpen, permissionKey: 'drive.view',
     children: [
       { title: 'Übersicht', url: '/drive' },
       { title: 'Meine Dateien', url: '/drive/meine-dateien' },
@@ -136,10 +136,25 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user, isAdminOrManager, hasRole } = useAuth();
+  const { hasPermission } = usePermissions();
   const isAdmin = hasRole('admin');
   const filterByPermission = (item: NavItem) => {
-    if (item.adminOnly) return isAdmin;
-    if (item.url.startsWith('/onepage-leads')) return isAdmin;
+    if (item.adminOnly && !isAdmin) return false;
+    if (item.url.startsWith('/onepage-leads') && !isAdmin) return false;
+    if (item.permissionKey && !hasPermission(item.permissionKey)) return false;
+    if (item.children && item.children.length > 0) {
+      const anyChildVisible = item.children.some(c => {
+        if (c.adminOnly && !isAdmin) return false;
+        if (c.permissionKey && !hasPermission(c.permissionKey)) return false;
+        return true;
+      });
+      if (!anyChildVisible) return false;
+    }
+    return true;
+  };
+  const childVisible = (c: { adminOnly?: boolean; permissionKey?: string }) => {
+    if (c.adminOnly && !isAdmin) return false;
+    if (c.permissionKey && !hasPermission(c.permissionKey)) return false;
     return true;
   };
   const visibleNavItems = navItems.filter(filterByPermission);
@@ -309,7 +324,7 @@ export function AppSidebar() {
         </button>
         <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', isOpen ? 'max-h-[28rem]' : 'max-h-0')}>
           <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
-            {item.children!.filter(c => !c.adminOnly || isAdmin).map(child => {
+            {item.children!.filter(childVisible).map(child => {
               const childActive = isActive(child.url);
               return (
                 <NavLink key={child.url} to={child.url} end={child.url === item.url} className={cn(

@@ -13,8 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
-import { ChevronLeft, Save, Mail, Phone, Calendar, Euro, FileText } from 'lucide-react';
+import { ChevronLeft, Save, Mail, Phone, Calendar, Euro, FileText, Shield, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
+import { RollenUndRechteTab } from '@/components/team/RollenUndRechteTab';
+import { DriveFreigabenTab } from '@/components/team/DriveFreigabenTab';
+import { ZugriffStatusCard } from '@/components/team/ZugriffStatusCard';
 
 const PORTAL_ROLLEN = [
   { value: 'admin', label: 'Admin', desc: 'Vollzugriff auf alles inkl. Finanzen' },
@@ -34,6 +37,7 @@ export default function MitarbeiterDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -42,11 +46,16 @@ export default function MitarbeiterDetail() {
       if (data) {
         setMember(data);
         setForm(data);
+        if (isAdmin && data.email) {
+          const { data: mapping } = await (supabase.rpc as any)('team_with_auth_ids');
+          const row = (mapping || []).find((r: any) => (r.email || '').toLowerCase() === (data.email || '').toLowerCase());
+          setAuthUserId(row?.auth_user_id ?? null);
+        }
       }
       setLoading(false);
     };
     load();
-  }, [id]);
+  }, [id, isAdmin]);
 
   const handleSave = async () => {
     if (!isAdmin) return;
@@ -194,7 +203,21 @@ export default function MitarbeiterDetail() {
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="profil">👤 Profil</TabsTrigger>
           <TabsTrigger value="vertrag">📄 Vertrag & Gehalt</TabsTrigger>
+          {isAdmin && <TabsTrigger value="rechte"><Shield className="h-3.5 w-3.5 mr-1" />Rollen & Rechte</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="drive"><FolderOpen className="h-3.5 w-3.5 mr-1" />Drive-Freigaben</TabsTrigger>}
         </TabsList>
+
+        {isAdmin && (
+          <TabsContent value="rechte" className="space-y-4 mt-4">
+            <ZugriffStatusCard targetUserId={authUserId} member={member} />
+            <RollenUndRechteTab targetUserId={authUserId} targetEmail={member?.email} />
+          </TabsContent>
+        )}
+        {isAdmin && (
+          <TabsContent value="drive" className="mt-4">
+            <DriveFreigabenTab targetUserId={authUserId} />
+          </TabsContent>
+        )}
 
         {/* PROFIL TAB */}
         <TabsContent value="profil" className="space-y-4 mt-4">

@@ -330,6 +330,36 @@ export type Database = {
         }
         Relationships: []
       }
+      app_permissions: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean
+          label: string
+          permission_key: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          label: string
+          permission_key: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          label?: string
+          permission_key?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           id: string
@@ -4371,6 +4401,35 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission_key: string
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission_key: string
+          role: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission_key?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_key_fkey"
+            columns: ["permission_key"]
+            isOneToOne: false
+            referencedRelation: "app_permissions"
+            referencedColumns: ["permission_key"]
+          },
+        ]
+      }
       salary_payments: {
         Row: {
           betrag_brutto: number | null
@@ -5369,6 +5428,33 @@ export type Database = {
           },
         ]
       }
+      user_access_status: {
+        Row: {
+          created_at: string
+          deactivated_at: string | null
+          deactivated_by: string | null
+          is_active: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          is_active?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          is_active?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_mfa_status: {
         Row: {
           last_enrolled_factor_id: string | null
@@ -5391,6 +5477,38 @@ export type Database = {
         Relationships: []
       }
       user_permissions: {
+        Row: {
+          created_at: string
+          granted: boolean
+          id: string
+          permission_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted?: boolean
+          id?: string
+          permission_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted?: boolean
+          id?: string
+          permission_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permissions_permission_key_fkey"
+            columns: ["permission_key"]
+            isOneToOne: false
+            referencedRelation: "app_permissions"
+            referencedColumns: ["permission_key"]
+          },
+        ]
+      }
+      user_permissions_legacy: {
         Row: {
           can_manage_settings: boolean
           can_view_close: boolean
@@ -5699,6 +5817,18 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_effective_user_permissions: {
+        Args: { target_user_id: string }
+        Returns: {
+          category: string
+          description: string
+          effective_granted: boolean
+          label: string
+          permission_key: string
+          role_granted: boolean
+          user_override: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -5747,6 +5877,10 @@ export type Database = {
       upsert_client_from_notion: { Args: { p: Json }; Returns: string }
       user_can_see_item: {
         Args: { p_item_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      user_has_permission: {
+        Args: { requested_permission_key: string; target_user_id: string }
         Returns: boolean
       }
     }
