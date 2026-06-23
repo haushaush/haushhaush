@@ -195,15 +195,15 @@ const App = () => (
                   <Route path="ad-performance" element={<AdPerformancePage />} />
                   <Route path="ad-performance/:id" element={<AdPerformanceDetail />} />
                 </Route>
-                <Route path="/sales/:tab" element={<DL><Sales /></DL>} />
-                <Route path="/finanzen" element={<DL><Finanzen /></DL>} />
-                <Route path="/finanzen/:tab" element={<DL><Finanzen /></DL>} />
+                <Route path="/sales/:tab" element={<PermissionRoute permissionKey="sales.view"><DL><Sales /></DL></PermissionRoute>} />
+                <Route path="/finanzen" element={<PermissionRoute permissionKey="finanzen.view"><DL><Finanzen /></DL></PermissionRoute>} />
+                <Route path="/finanzen/:tab" element={<PermissionRoute permissionKey="finanzen.view"><DL><Finanzen /></DL></PermissionRoute>} />
                 <Route path="/funnel" element={<DailyFunnel />} />
                 <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
                 <Route path="/hr/checkins" element={<AdminRoute><DL><CheckinOverview /></DL></AdminRoute>} />
                 <Route path="/hr/time-tracking" element={<AdminRoute><DL><TimeTracking /></DL></AdminRoute>} />
-                <Route path="/hr/mitarbeiter/:id" element={<DL><MitarbeiterDetail /></DL>} />
-                <Route path="/hr/:tab" element={<DL><TeamPage /></DL>} />
+                <Route path="/hr/mitarbeiter/:id" element={<PermissionRoute permissionKey="team.view"><DL><MitarbeiterDetail /></DL></PermissionRoute>} />
+                <Route path="/hr/:tab" element={<PermissionRoute permissionKey="team.view"><DL><TeamPage /></DL></PermissionRoute>} />
                 <Route path="/nachrichten" element={<DL><Nachrichten /></DL>} />
                 <Route path="/email" element={<Navigate to="/nachrichten?tab=email" replace />} />
                 <Route path="/email/:slug" element={<Navigate to="/nachrichten?tab=email" replace />} />
