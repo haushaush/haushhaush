@@ -28,7 +28,14 @@ export default function KundenAbschluesse() {
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('all');
   const [filterArt, setFilterArt] = useState('all');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const toggleExpand = (id: string) => setExpanded(prev => {
+    const n = new Set(prev);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
 
   useEffect(() => {
     supabase.from('close_deals').select('*').order('created_at', { ascending: false }).then(({ data }) => {
