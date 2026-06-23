@@ -6,6 +6,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   Sidebar, SidebarContent, SidebarFooter, useSidebar,
 } from '@/components/ui/sidebar';
