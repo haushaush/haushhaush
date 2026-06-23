@@ -348,6 +348,15 @@ export function CreateTeamMemberTab() {
                   </datalist>
                 </div>
                 <div>
+                  <Label className="text-xs">Typ</Label>
+                  <Select value={mitarbeiterTyp} onValueChange={setMitarbeiterTyp}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Wählen..." /></SelectTrigger>
+                    <SelectContent>
+                      {MITARBEITER_TYP_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label htmlFor="startdatum" className="text-xs">Startdatum *</Label>
                   <Input id="startdatum" type="date" value={startdatum} onChange={e => setStartdatum(e.target.value)} className="mt-1" />
                 </div>
