@@ -162,15 +162,15 @@ const App = () => (
                 <Route path="/onepage-leads" element={<AdminRoute><Navigate to="/onepage-leads/kunden" replace /></AdminRoute>} />
                 <Route path="/onepage-leads/kunden" element={<AdminRoute><DL><OnePageKunden /></DL></AdminRoute>} />
                 <Route path="/onepage-leads/kunden/:id" element={<AdminRoute><DL><OnePageKundeDetail /></DL></AdminRoute>} />
-                <Route path="/drive" element={<DL><DriveUebersicht /></DL>} />
-                <Route path="/drive/meine-dateien" element={<DL><DriveMeineDateien /></DL>} />
-                <Route path="/drive/geteilt" element={<DL><DriveGeteilt /></DL>} />
-                <Route path="/drive/papierkorb" element={<DL><DrivePapierkorb /></DL>} />
-                <Route path="/projekte" element={<DL><Projekte /></DL>} />
-                <Route path="/projekte/aufgaben" element={<DL><ProjekteAufgaben /></DL>} />
+                <Route path="/drive" element={<PermissionRoute permissionKey="drive.view"><DL><DriveUebersicht /></DL></PermissionRoute>} />
+                <Route path="/drive/meine-dateien" element={<PermissionRoute permissionKey="drive.view"><DL><DriveMeineDateien /></DL></PermissionRoute>} />
+                <Route path="/drive/geteilt" element={<PermissionRoute permissionKey="drive.view"><DL><DriveGeteilt /></DL></PermissionRoute>} />
+                <Route path="/drive/papierkorb" element={<PermissionRoute permissionKey="drive.view"><DL><DrivePapierkorb /></DL></PermissionRoute>} />
+                <Route path="/projekte" element={<PermissionRoute permissionKey="projects.view"><DL><Projekte /></DL></PermissionRoute>} />
+                <Route path="/projekte/aufgaben" element={<PermissionRoute permissionKey="tasks.view"><DL><ProjekteAufgaben /></DL></PermissionRoute>} />
                 
                 <Route path="/sales" element={<Navigate to="/sales/uebersicht" replace />} />
-                <Route path="/sales/uebersicht" element={<DL><SalesUebersicht /></DL>} />
+                <Route path="/sales/uebersicht" element={<PermissionRoute permissionKey="sales.view"><DL><SalesUebersicht /></DL></PermissionRoute>} />
                 <Route path="/sales/referenz-showcase" element={<ShowcaseAuthRedirect><DL><ReferenzShowcaseOverview /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/websites" element={<ShowcaseAuthRedirect><DL><ReferenzWebsitesPage /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/websites/:id" element={<ShowcaseAuthRedirect><DL><ReferenzWebsiteDetail /></DL></ShowcaseAuthRedirect>} />
