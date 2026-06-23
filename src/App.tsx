@@ -146,11 +146,11 @@ const App = () => (
                 <Route path="/register" element={<Register />} />
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/recovery" element={<Recovery />} />
-                <Route path="/" element={<DL><Dashboard /></DL>} />
-                <Route path="/kunden" element={<DL><Kunden /></DL>} />
-                <Route path="/kunden/abschluesse" element={<DL><KundenAbschluesse /></DL>} />
-                <Route path="/kunden/laufzeiten" element={<DL><KundenLaufzeiten /></DL>} />
-                <Route path="/kunden/:id" element={<DL><KundenDetail /></DL>} />
+                <Route path="/" element={<PermissionRoute permissionKey="dashboard.view"><DL><Dashboard /></DL></PermissionRoute>} />
+                <Route path="/kunden" element={<PermissionRoute permissionKey="clients.view"><DL><Kunden /></DL></PermissionRoute>} />
+                <Route path="/kunden/abschluesse" element={<PermissionRoute permissionKey="clients.view"><DL><KundenAbschluesse /></DL></PermissionRoute>} />
+                <Route path="/kunden/laufzeiten" element={<PermissionRoute permissionKey="clients.laufzeiten.view"><DL><KundenLaufzeiten /></DL></PermissionRoute>} />
+                <Route path="/kunden/:id" element={<PermissionRoute permissionKey="clients.view"><DL><KundenDetail /></DL></PermissionRoute>} />
                 <Route path="/close" element={<Navigate to="/close/leads" replace />} />
                 <Route path="/close/leads" element={<DL><CloseLeads /></DL>} />
                 <Route path="/close/deals" element={<DL><CloseDeals /></DL>} />
