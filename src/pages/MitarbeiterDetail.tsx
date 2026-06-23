@@ -46,11 +46,16 @@ export default function MitarbeiterDetail() {
       if (data) {
         setMember(data);
         setForm(data);
+        if (isAdmin && data.email) {
+          const { data: mapping } = await (supabase.rpc as any)('team_with_auth_ids');
+          const row = (mapping || []).find((r: any) => (r.email || '').toLowerCase() === (data.email || '').toLowerCase());
+          setAuthUserId(row?.auth_user_id ?? null);
+        }
       }
       setLoading(false);
     };
     load();
-  }, [id]);
+  }, [id, isAdmin]);
 
   const handleSave = async () => {
     if (!isAdmin) return;
