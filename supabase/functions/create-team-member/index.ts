@@ -25,6 +25,7 @@ interface CreatePayload {
   startdatum: string;
   avatar_url?: string | null;
   notizen?: string | null;
+  mitarbeiter_typ?: string | null;
   // Nur explizite Abweichungen vom Rollen-Default. Schlüssel = permission_key, Wert = granted.
   permission_overrides: Record<string, boolean>;
 }
@@ -87,6 +88,7 @@ function validatePayload(p: any): { ok: true; data: CreatePayload } | { ok: fals
       startdatum: String(p.startdatum).trim(),
       avatar_url: p.avatar_url ? String(p.avatar_url).trim() : null,
       notizen: p.notizen ? String(p.notizen).trim() : null,
+      mitarbeiter_typ: p.mitarbeiter_typ ? String(p.mitarbeiter_typ).trim() : null,
       permission_overrides: cleanOverrides,
     },
   };
@@ -226,6 +228,7 @@ Deno.serve(async (req) => {
       einstiegsdatum: data.startdatum,
       avatar_url: data.avatar_url,
       notizen: data.notizen,
+      mitarbeiter_typ: data.mitarbeiter_typ,
       mitarbeiter_status: 'Aktiv',
       must_change_password: true,
     });

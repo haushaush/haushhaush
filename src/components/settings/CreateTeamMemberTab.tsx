@@ -14,9 +14,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { DEPARTMENT_OPTIONS, MITARBEITER_TYP_OPTIONS } from '@/constants/team';
+
 type Rolle = 'admin' | 'account-manager' | 'setter';
 
-const ABTEILUNGEN = ['Management', 'Intern', 'Fulfillment', 'Sales', 'Buchhaltung'] as const;
+const ABTEILUNGEN = DEPARTMENT_OPTIONS;
 
 const POSITIONEN = [
   'CEO', 'Head of Fulfillment', 'Head of Sales', 'Head of Development',
@@ -89,6 +91,7 @@ export function CreateTeamMemberTab() {
   const [abteilung, setAbteilung] = useState<string>('');
   const [position, setPosition] = useState<string>('');
   const [rolle, setRolle] = useState<Rolle>('setter');
+  const [mitarbeiterTyp, setMitarbeiterTyp] = useState<string>('');
   const [startdatum, setStartdatum] = useState(new Date().toISOString().slice(0, 10));
   const [avatarUrl, setAvatarUrl] = useState('');
   const [notizen, setNotizen] = useState('');
@@ -164,7 +167,7 @@ export function CreateTeamMemberTab() {
   const resetForm = () => {
     setVorname(''); setNachname(''); setEmail(''); setEmailError(''); setTelefon('');
     setPassword(''); setPasswordConfirm(''); setShowPassword(false);
-    setAbteilung(''); setPosition(''); setRolle('setter');
+    setAbteilung(''); setPosition(''); setRolle('setter'); setMitarbeiterTyp('');
     setStartdatum(new Date().toISOString().slice(0, 10));
     setOverrides({}); setAdvancedOpen(false);
     setAvatarUrl(''); setNotizen(''); setExtraOpen(false);
@@ -191,6 +194,7 @@ export function CreateTeamMemberTab() {
           abteilung,
           position: position.trim(),
           rolle,
+          mitarbeiter_typ: mitarbeiterTyp || null,
           startdatum,
           avatar_url: avatarUrl.trim() || null,
           notizen: notizen.trim() || null,
@@ -342,6 +346,15 @@ export function CreateTeamMemberTab() {
                   <datalist id="position-list">
                     {POSITIONEN.map(p => <option key={p} value={p} />)}
                   </datalist>
+                </div>
+                <div>
+                  <Label className="text-xs">Typ</Label>
+                  <Select value={mitarbeiterTyp} onValueChange={setMitarbeiterTyp}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Wählen..." /></SelectTrigger>
+                    <SelectContent>
+                      {MITARBEITER_TYP_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="startdatum" className="text-xs">Startdatum *</Label>

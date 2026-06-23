@@ -19,13 +19,9 @@ import { RollenUndRechteTab } from '@/components/team/RollenUndRechteTab';
 import { DriveFreigabenTab } from '@/components/team/DriveFreigabenTab';
 import { ZugriffStatusCard } from '@/components/team/ZugriffStatusCard';
 
-const PORTAL_ROLLEN = [
-  { value: 'admin', label: 'Admin', desc: 'Vollzugriff auf alles inkl. Finanzen' },
-  { value: 'management', label: 'Management', desc: 'Alles außer Kontostand & Bankdaten' },
-  { value: 'mitarbeiter', label: 'Mitarbeiter', desc: 'Nur eigene Daten & Aufgaben' },
-];
+import { DEPARTMENT_OPTIONS, MITARBEITER_TYP_OPTIONS, MITARBEITER_STATUS_OPTIONS, PORTAL_ROLLEN } from '@/constants/team';
 
-const ABTEILUNGEN = ['Sales', 'Setter', 'Closer', 'Design', 'Tech', 'Development', 'Websites', 'Media Buying', 'Operation', 'Support', 'Backoffice', 'Foto & Video', 'Copywriting', 'Sonstiges'];
+const ABTEILUNGEN = DEPARTMENT_OPTIONS;
 
 export default function MitarbeiterDetail() {
   const { id } = useParams<{ id: string }>();
@@ -44,8 +40,15 @@ export default function MitarbeiterDetail() {
     const load = async () => {
       const { data } = await supabase.from('team').select('*').eq('id', id).single();
       if (data) {
-        setMember(data);
-        setForm(data);
+        // Fallback: konsolidiere legacy `department` (text) → `abteilung` (text[])
+        const abt = Array.isArray((data as any).abteilung) ? (data as any).abteilung : [];
+        const legacyDept = (data as any).department;
+        const normalized = {
+          ...data,
+          abteilung: abt.length > 0 ? abt : (legacyDept ? [legacyDept] : []),
+        };
+        setMember(normalized);
+        setForm(normalized);
         if (isAdmin && data.email) {
           const { data: mapping } = await (supabase.rpc as any)('team_with_auth_ids');
           const row = (mapping || []).find((r: any) => (r.email || '').toLowerCase() === (data.email || '').toLowerCase());
@@ -67,6 +70,7 @@ export default function MitarbeiterDetail() {
       position: form.position,
       portal_rolle: form.portal_rolle,
       abteilung: form.abteilung,
+      department: Array.isArray(form.abteilung) ? (form.abteilung[0] ?? null) : null,
       mitarbeiter_typ: form.mitarbeiter_typ,
       mitarbeiter_status: form.mitarbeiter_status,
       telefonnummer: form.telefonnummer,
@@ -256,7 +260,7 @@ export default function MitarbeiterDetail() {
                 <Select value={form.mitarbeiter_status || 'Aktiv'} onValueChange={v => setForm({...form, mitarbeiter_status: v})} disabled={!isAdmin}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {['Aktiv', 'Probezeit', 'Freelancer', 'Onboarding', 'Gekündigt'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    {MITARBEITER_STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -265,7 +269,7 @@ export default function MitarbeiterDetail() {
                 <Select value={form.mitarbeiter_typ || ''} onValueChange={v => setForm({...form, mitarbeiter_typ: v})} disabled={!isAdmin}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Wählen" /></SelectTrigger>
                   <SelectContent>
-                    {['Fulfillment', 'Management', 'Sales'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {MITARBEITER_TYP_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
