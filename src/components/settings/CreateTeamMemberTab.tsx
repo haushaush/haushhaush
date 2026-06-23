@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,13 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Eye, EyeOff, Wand2, Copy, Mail, Check, Loader2, Info, ChevronDown, ChevronUp, UserPlus } from 'lucide-react';
+import {
+  Eye, EyeOff, Wand2, Copy, Mail, Check, Loader2, Info, ChevronDown, ChevronUp,
+  UserPlus, Shield, X, Minus,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
-type Rolle = 'admin' | 'account-manager' | 'user';
+type Rolle = 'admin' | 'account-manager' | 'setter';
 
 const ABTEILUNGEN = ['Management', 'Intern', 'Fulfillment', 'Sales', 'Buchhaltung'] as const;
 
@@ -23,44 +25,26 @@ const POSITIONEN = [
   'Vorqualifikation', 'Cold Calling', 'Media Buying', 'Buchhaltung', 'Closer', 'Setter',
 ];
 
-const PERMISSION_FIELDS = [
-  { key: 'can_view_kunden', label: 'Notion Kunden (lesen/schreiben)' },
-  { key: 'can_view_close', label: 'Close CRM' },
-  { key: 'can_view_meta_ads', label: 'Meta Ads' },
-  { key: 'can_view_projekte', label: 'Projekte & Aufgaben' },
-  { key: 'can_view_sales_kpis', label: 'Sales KPIs & Leaderboard' },
-  { key: 'can_view_fulfillment', label: 'Fulfillment Dashboards' },
-  { key: 'can_view_finanzen', label: 'Finanzen (nur für Management)' },
-  { key: 'can_view_team_hr', label: 'Team & HR (nur für Management)' },
-  { key: 'can_manage_settings', label: 'Einstellungen verwalten (nur Admin)' },
-] as const;
-
-type PermissionKey = typeof PERMISSION_FIELDS[number]['key'];
-type Permissions = Record<PermissionKey, boolean>;
-
-const DEFAULT_PERMISSIONS_BY_ROLE: Record<Rolle, Permissions> = {
-  user: {
-    can_view_kunden: true,
-    can_view_close: true,
-    can_view_meta_ads: true,
-    can_view_projekte: true,
-    can_view_sales_kpis: true,
-    can_view_fulfillment: false,
-    can_view_finanzen: false,
-    can_view_team_hr: false,
-    can_manage_settings: false,
-  },
-  admin: {
-    can_view_kunden: true, can_view_close: true, can_view_meta_ads: true,
-    can_view_projekte: true, can_view_sales_kpis: true, can_view_fulfillment: true,
-    can_view_finanzen: true, can_view_team_hr: true, can_manage_settings: true,
-  },
-  'account-manager': {
-    can_view_kunden: true, can_view_close: true, can_view_meta_ads: true,
-    can_view_projekte: true, can_view_sales_kpis: true, can_view_fulfillment: true,
-    can_view_finanzen: false, can_view_team_hr: false, can_manage_settings: false,
-  },
+const ROLE_LABELS: Record<Rolle, string> = {
+  setter: 'Mitarbeiter',
+  'account-manager': 'Account-Manager',
+  admin: 'Admin',
 };
+
+const ROLE_HINTS: Record<Rolle, string> = {
+  setter: 'Standard-Mitarbeiter mit Basisrechten (Dashboard, Kunden ansehen, Projekte, Aufgaben, Drive, Zeiterfassung).',
+  'account-manager': 'Erweiterte Rechte: bearbeitet Kunden & Projekte, sieht Sales-Bereiche und Tools.',
+  admin: 'Voller Zugriff auf alle Bereiche inkl. Team- und Berechtigungsverwaltung.',
+};
+
+interface AppPermission {
+  permission_key: string;
+  label: string;
+  category: string;
+  description: string | null;
+}
+interface RolePermission { role: string; permission_key: string; }
+type OverrideMode = 'inherit' | 'allow' | 'deny';
 
 function generatePassword(length = 16): string {
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -104,16 +88,58 @@ export function CreateTeamMemberTab() {
   const [showPassword, setShowPassword] = useState(false);
   const [abteilung, setAbteilung] = useState<string>('');
   const [position, setPosition] = useState<string>('');
-  const [rolle, setRolle] = useState<Rolle>('user');
+  const [rolle, setRolle] = useState<Rolle>('setter');
   const [startdatum, setStartdatum] = useState(new Date().toISOString().slice(0, 10));
-  const [permissions, setPermissions] = useState<Permissions>(DEFAULT_PERMISSIONS_BY_ROLE.user);
   const [avatarUrl, setAvatarUrl] = useState('');
   const [notizen, setNotizen] = useState('');
   const [extraOpen, setExtraOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [successData, setSuccessData] = useState<{ name: string; email: string; password: string } | null>(null);
 
+  // Permission-System
+  const [allPerms, setAllPerms] = useState<AppPermission[]>([]);
+  const [rolePerms, setRolePerms] = useState<RolePermission[]>([]);
+  const [permsLoading, setPermsLoading] = useState(true);
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({}); // permission_key -> granted
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setPermsLoading(true);
+      const [a, r] = await Promise.all([
+        supabase.from('app_permissions' as any).select('permission_key,label,category,description').order('category').order('label'),
+        supabase.from('role_permissions' as any).select('role,permission_key'),
+      ]);
+      setAllPerms(((a.data as any) || []) as AppPermission[]);
+      setRolePerms(((r.data as any) || []) as RolePermission[]);
+      setPermsLoading(false);
+    })();
+  }, []);
+
   const strength = useMemo(() => passwordStrength(password), [password]);
+
+  const roleGrantedKeys = useMemo(() => {
+    const keys = new Set<string>();
+    if (rolle === 'admin') {
+      // Admin = alle Rechte effektiv (über has_role-Bypass), trotzdem hier markieren
+      allPerms.forEach(p => keys.add(p.permission_key));
+    } else {
+      rolePerms.filter(r => r.role === rolle).forEach(r => keys.add(r.permission_key));
+    }
+    return keys;
+  }, [rolePerms, rolle, allPerms]);
+
+  const grouped = useMemo(() => {
+    return allPerms.reduce<Record<string, AppPermission[]>>((acc, p) => {
+      (acc[p.category] ||= []).push(p);
+      return acc;
+    }, {});
+  }, [allPerms]);
+
+  const effectiveActive = (key: string) => {
+    if (key in overrides) return overrides[key];
+    return roleGrantedKeys.has(key);
+  };
 
   const validateEmail = (val: string) => {
     if (!val) { setEmailError(''); return; }
@@ -123,19 +149,24 @@ export function CreateTeamMemberTab() {
 
   const handleRolleChange = (r: Rolle) => {
     setRolle(r);
-    setPermissions(DEFAULT_PERMISSIONS_BY_ROLE[r]);
+    // Overrides bleiben – sie sind explizite Abweichungen. User kann sie zurücksetzen.
   };
 
-  const togglePermission = (key: PermissionKey) => {
-    setPermissions(p => ({ ...p, [key]: !p[key] }));
+  const setMode = (permission_key: string, mode: OverrideMode) => {
+    setOverrides(prev => {
+      const next = { ...prev };
+      if (mode === 'inherit') delete next[permission_key];
+      else next[permission_key] = mode === 'allow';
+      return next;
+    });
   };
 
   const resetForm = () => {
     setVorname(''); setNachname(''); setEmail(''); setEmailError(''); setTelefon('');
     setPassword(''); setPasswordConfirm(''); setShowPassword(false);
-    setAbteilung(''); setPosition(''); setRolle('user');
+    setAbteilung(''); setPosition(''); setRolle('setter');
     setStartdatum(new Date().toISOString().slice(0, 10));
-    setPermissions(DEFAULT_PERMISSIONS_BY_ROLE.user);
+    setOverrides({}); setAdvancedOpen(false);
     setAvatarUrl(''); setNotizen(''); setExtraOpen(false);
   };
 
@@ -163,7 +194,7 @@ export function CreateTeamMemberTab() {
           startdatum,
           avatar_url: avatarUrl.trim() || null,
           notizen: notizen.trim() || null,
-          permissions,
+          permission_overrides: overrides,
         },
       });
 
@@ -190,7 +221,12 @@ export function CreateTeamMemberTab() {
 
   const previewName = `${vorname || 'Vorname'} ${nachname || 'Nachname'}`.trim();
   const previewInitials = initials(vorname, nachname);
-  const activePermissionLabels = PERMISSION_FIELDS.filter(p => permissions[p.key]).map(p => p.label);
+
+  const inheritedLabels = allPerms
+    .filter(p => roleGrantedKeys.has(p.permission_key) && !(p.permission_key in overrides))
+    .map(p => p.label);
+  const explicitAllow = allPerms.filter(p => overrides[p.permission_key] === true).map(p => p.label);
+  const explicitDeny = allPerms.filter(p => overrides[p.permission_key] === false).map(p => p.label);
 
   return (
     <div className="space-y-6">
@@ -308,22 +344,6 @@ export function CreateTeamMemberTab() {
                   </datalist>
                 </div>
                 <div>
-                  <Label className="text-xs">Rolle *</Label>
-                  <Select value={rolle} onValueChange={v => handleRolleChange(v as Rolle)}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">Mitarbeiter</SelectItem>
-                      <SelectItem value="account-manager">Account-Manager</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    {rolle === 'admin' ? 'Admin kann andere Mitarbeiter erstellen und alles verwalten.' :
-                      rolle === 'account-manager' ? 'Account-Manager hat erweiterten Zugriff auf Kunden und Projekte.' :
-                        'Mitarbeiter hat normalen Zugriff.'}
-                  </p>
-                </div>
-                <div>
                   <Label htmlFor="startdatum" className="text-xs">Startdatum *</Label>
                   <Input id="startdatum" type="date" value={startdatum} onChange={e => setStartdatum(e.target.value)} className="mt-1" />
                 </div>
@@ -332,24 +352,115 @@ export function CreateTeamMemberTab() {
 
             <div className="border-t border-border" />
 
-            {/* Berechtigungen */}
+            {/* Rolle & Zugriffsrechte */}
             <section className="space-y-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Berechtigungen</h3>
-              <div className="grid grid-cols-1 gap-2">
-                {PERMISSION_FIELDS.map(f => {
-                  const lockedOwner = false; // owner not in role set; reserved for future
-                  return (
-                    <label key={f.key} className="flex items-center gap-2 cursor-pointer text-sm hover:bg-muted/30 rounded-sm px-2 py-1.5">
-                      <Checkbox
-                        checked={permissions[f.key]}
-                        onCheckedChange={() => !lockedOwner && togglePermission(f.key)}
-                        disabled={lockedOwner}
-                      />
-                      <span className="text-foreground">{f.label}</span>
-                    </label>
-                  );
-                })}
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Shield className="h-3.5 w-3.5" /> Rolle & Zugriffsrechte
+              </h3>
+
+              <div>
+                <Label className="text-xs">Rolle *</Label>
+                <Select value={rolle} onValueChange={v => handleRolleChange(v as Rolle)}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="setter">Mitarbeiter</SelectItem>
+                    <SelectItem value="account-manager">Account-Manager</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">{ROLE_HINTS[rolle]}</p>
               </div>
+
+              {/* Vorschau geerbter Rechte */}
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="text-[11px] font-medium text-foreground mb-1.5">
+                  Geerbte Rechte aus Rolle „{ROLE_LABELS[rolle]}" ({roleGrantedKeys.size})
+                </p>
+                {permsLoading ? (
+                  <p className="text-[11px] text-muted-foreground">Wird geladen…</p>
+                ) : roleGrantedKeys.size === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">Keine — nur explizit erlaubte Rechte gelten.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1">
+                    {allPerms
+                      .filter(p => roleGrantedKeys.has(p.permission_key))
+                      .slice(0, 12)
+                      .map(p => (
+                        <Badge key={p.permission_key} variant="secondary" className="text-[10px] rounded-[4px]">{p.label}</Badge>
+                      ))}
+                    {roleGrantedKeys.size > 12 && (
+                      <Badge variant="outline" className="text-[10px] rounded-[4px]">+{roleGrantedKeys.size - 12} weitere</Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Toggle: Individuelle Rechte */}
+              <button
+                type="button"
+                onClick={() => setAdvancedOpen(v => !v)}
+                className="w-full flex items-center justify-between text-xs font-medium text-foreground hover:text-primary transition-colors border border-border rounded-lg px-3 py-2"
+              >
+                <span className="flex items-center gap-2">
+                  Individuelle Rechte anpassen
+                  {(Object.keys(overrides).length > 0) && (
+                    <Badge variant="secondary" className="text-[10px] rounded-[4px]">{Object.keys(overrides).length} Override(s)</Badge>
+                  )}
+                </span>
+                {advancedOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+
+              {advancedOpen && (
+                <div className="space-y-4 pt-1">
+                  {permsLoading ? (
+                    <p className="text-xs text-muted-foreground">Wird geladen…</p>
+                  ) : (
+                    Object.entries(grouped).map(([cat, list]) => (
+                      <div key={cat}>
+                        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">{cat}</p>
+                        <div className="space-y-1">
+                          {list.map(p => {
+                            const inRole = roleGrantedKeys.has(p.permission_key);
+                            const hasOverride = p.permission_key in overrides;
+                            const mode: OverrideMode = !hasOverride ? 'inherit' : overrides[p.permission_key] ? 'allow' : 'deny';
+                            const effective = effectiveActive(p.permission_key);
+                            return (
+                              <div key={p.permission_key} className="flex items-center justify-between gap-2 p-2 rounded-md border border-border/60">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <p className="text-xs font-medium truncate">{p.label}</p>
+                                    {inRole && <Badge variant="secondary" className="text-[9px] rounded-[3px]">via Rolle</Badge>}
+                                    {effective
+                                      ? <Badge className="text-[9px] rounded-[3px] bg-success/20 text-success border-success/30"><Check className="h-2.5 w-2.5 mr-0.5" />aktiv</Badge>
+                                      : <Badge variant="outline" className="text-[9px] rounded-[3px] text-muted-foreground"><X className="h-2.5 w-2.5 mr-0.5" />inaktiv</Badge>}
+                                  </div>
+                                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">{p.permission_key}</p>
+                                </div>
+                                <Select value={mode} onValueChange={(v) => setMode(p.permission_key, v as OverrideMode)}>
+                                  <SelectTrigger className="w-[130px] h-7 text-[11px]"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="inherit"><span className="flex items-center gap-1.5 text-[11px]"><Minus className="h-3 w-3" />Rolle erben</span></SelectItem>
+                                    <SelectItem value="allow"><span className="flex items-center gap-1.5 text-[11px] text-success"><Check className="h-3 w-3" />Erlauben</span></SelectItem>
+                                    <SelectItem value="deny"><span className="flex items-center gap-1.5 text-[11px] text-destructive"><X className="h-3 w-3" />Verweigern</span></SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {Object.keys(overrides).length > 0 && (
+                    <Button type="button" size="sm" variant="outline" onClick={() => setOverrides({})}>
+                      Alle Overrides zurücksetzen
+                    </Button>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    Drive-Datei- und Ordner-Freigaben werden separat im Mitarbeiter-Detail unter „Drive-Freigaben" verwaltet.
+                  </p>
+                </div>
+              )}
             </section>
 
             <div className="border-t border-border" />
@@ -416,9 +527,7 @@ export function CreateTeamMemberTab() {
                 </div>
                 <div className="flex justify-between gap-4 items-center">
                   <span className="text-muted-foreground">Rolle:</span>
-                  <Badge variant="secondary" className="rounded-[4px] text-xs">
-                    {rolle === 'admin' ? 'Admin' : rolle === 'account-manager' ? 'Account-Manager' : 'Mitarbeiter'}
-                  </Badge>
+                  <Badge variant="secondary" className="rounded-[4px] text-xs">{ROLE_LABELS[rolle]}</Badge>
                 </div>
                 <div className="flex justify-between gap-4">
                   <span className="text-muted-foreground">Start:</span>
@@ -427,18 +536,32 @@ export function CreateTeamMemberTab() {
                   </span>
                 </div>
               </div>
-              <div className="border-t border-border pt-3">
-                <p className="text-xs font-medium text-foreground mb-1.5">Berechtigungen:</p>
-                {activePermissionLabels.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Keine Berechtigungen</p>
-                ) : (
-                  <ul className="space-y-0.5">
-                    {activePermissionLabels.map(l => (
-                      <li key={l} className="text-xs text-muted-foreground flex gap-1.5">
-                        <span className="text-primary">•</span><span>{l}</span>
-                      </li>
+              <div className="border-t border-border pt-3 space-y-2">
+                <div>
+                  <p className="text-xs font-medium text-foreground mb-1">Effektive Rechte:</p>
+                  {permsLoading ? (
+                    <p className="text-xs text-muted-foreground">…</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {inheritedLabels.length + explicitAllow.length} aktiv
+                      {explicitAllow.length > 0 && <> · {explicitAllow.length} individuell erlaubt</>}
+                      {explicitDeny.length > 0 && <> · {explicitDeny.length} individuell verweigert</>}
+                    </p>
+                  )}
+                </div>
+                {explicitAllow.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {explicitAllow.map(l => (
+                      <Badge key={l} className="text-[10px] rounded-[4px] bg-success/15 text-success border-success/30">+ {l}</Badge>
                     ))}
-                  </ul>
+                  </div>
+                )}
+                {explicitDeny.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {explicitDeny.map(l => (
+                      <Badge key={l} variant="outline" className="text-[10px] rounded-[4px] text-destructive border-destructive/30">– {l}</Badge>
+                    ))}
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -451,7 +574,8 @@ export function CreateTeamMemberTab() {
             <ul className="space-y-1 ml-5 list-disc text-muted-foreground">
               <li>Mitarbeiter erhält Zugangsdaten (per Slack/Mail manuell weiterleiten)</li>
               <li>Kann sich sofort unter haushhaush.lovable.app anmelden</li>
-              <li>Position und Berechtigungen können später geändert werden</li>
+              <li>Rolle und individuelle Rechte können im Mitarbeiter-Detail unter „Rollen &amp; Rechte" jederzeit angepasst werden</li>
+              <li>Drive-Freigaben werden separat im Tab „Drive-Freigaben" gepflegt</li>
             </ul>
           </div>
         </div>
