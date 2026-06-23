@@ -19,13 +19,9 @@ import { RollenUndRechteTab } from '@/components/team/RollenUndRechteTab';
 import { DriveFreigabenTab } from '@/components/team/DriveFreigabenTab';
 import { ZugriffStatusCard } from '@/components/team/ZugriffStatusCard';
 
-const PORTAL_ROLLEN = [
-  { value: 'admin', label: 'Admin', desc: 'Vollzugriff auf alles inkl. Finanzen' },
-  { value: 'management', label: 'Management', desc: 'Alles außer Kontostand & Bankdaten' },
-  { value: 'mitarbeiter', label: 'Mitarbeiter', desc: 'Nur eigene Daten & Aufgaben' },
-];
+import { DEPARTMENT_OPTIONS, MITARBEITER_TYP_OPTIONS, MITARBEITER_STATUS_OPTIONS, PORTAL_ROLLEN } from '@/constants/team';
 
-const ABTEILUNGEN = ['Sales', 'Setter', 'Closer', 'Design', 'Tech', 'Development', 'Websites', 'Media Buying', 'Operation', 'Support', 'Backoffice', 'Foto & Video', 'Copywriting', 'Sonstiges'];
+const ABTEILUNGEN = DEPARTMENT_OPTIONS;
 
 export default function MitarbeiterDetail() {
   const { id } = useParams<{ id: string }>();
