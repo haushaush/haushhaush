@@ -28,6 +28,7 @@ import ProjekteAufgaben from "./pages/ProjekteAufgaben.tsx";
 
 import Sales from "./pages/Sales.tsx";
 import SalesUebersicht from "./pages/sales/SalesUebersicht.tsx";
+import CloseKpiTest from "./pages/sales/CloseKpiTest.tsx";
 
 import Finanzen from "./pages/Finanzen.tsx";
 import TeamPage from "./pages/Team.tsx";
