@@ -203,7 +203,21 @@ export default function MitarbeiterDetail() {
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="profil">👤 Profil</TabsTrigger>
           <TabsTrigger value="vertrag">📄 Vertrag & Gehalt</TabsTrigger>
+          {isAdmin && <TabsTrigger value="rechte"><Shield className="h-3.5 w-3.5 mr-1" />Rollen & Rechte</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="drive"><FolderOpen className="h-3.5 w-3.5 mr-1" />Drive-Freigaben</TabsTrigger>}
         </TabsList>
+
+        {isAdmin && (
+          <TabsContent value="rechte" className="space-y-4 mt-4">
+            <ZugriffStatusCard targetUserId={authUserId} member={member} />
+            <RollenUndRechteTab targetUserId={authUserId} targetEmail={member?.email} />
+          </TabsContent>
+        )}
+        {isAdmin && (
+          <TabsContent value="drive" className="mt-4">
+            <DriveFreigabenTab targetUserId={authUserId} />
+          </TabsContent>
+        )}
 
         {/* PROFIL TAB */}
         <TabsContent value="profil" className="space-y-4 mt-4">
