@@ -314,7 +314,7 @@ export default function CloseKpiTest() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <KpiCard
             title="Umsatz geschrieben"
-            value={`${formatValue(sumAfter)} €`}
+            value={`${eur(sumAfter)}`}
             sub={`Quelle: close_opportunities · Feld: abschlusswert · Datum: ${dateColUsed}`}
             hint="Cent-Konvertierung: nein (abschlusswert ist bereits EUR)"
           />
@@ -325,7 +325,7 @@ export default function CloseKpiTest() {
           />
           <KpiCard
             title="Ø Auftragswert"
-            value={countDeals > 0 ? `${formatValue(avgDeal)} €` : '–'}
+            value={countDeals > 0 ? `${eur(avgDeal)}` : '–'}
             sub={countDeals > 0 ? 'Umsatz ÷ Abschlüsse' : 'keine Abschlüsse im Zeitraum'}
           />
           <Card>
@@ -355,10 +355,10 @@ export default function CloseKpiTest() {
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Teil 2 · Pipeline & Funnel</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <KpiCard title="Pipeline-Wert (offen)" value={`${formatValue(pipelineValue)} €`} sub={`${oppsActive.length} aktive Opportunities`} />
+          <KpiCard title="Pipeline-Wert (offen)" value={`${eur(pipelineValue)}`} sub={`${oppsActive.length} aktive Opportunities`} />
           <KpiCard
             title="Pipeline gewichtet"
-            value={hasConfidence ? `${formatValue(pipelineWeighted)} €` : '–'}
+            value={hasConfidence ? `${eur(pipelineWeighted)}` : '–'}
             sub={hasConfidence ? 'mit confidence/100' : 'Keine Stage-Wahrscheinlichkeiten vorhanden.'}
           />
           <KpiCard
@@ -386,7 +386,7 @@ export default function CloseKpiTest() {
                     <TableCell className="font-medium">{g.stage}</TableCell>
                     <TableCell><Badge variant="outline" className="text-xs">{g.status}</Badge></TableCell>
                     <TableCell className="text-right tabular-nums">{g.count}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatValue(g.value)} €</TableCell>
+                    <TableCell className="text-right tabular-nums">{eur(g.value)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -477,8 +477,8 @@ export default function CloseKpiTest() {
                     <TableRow key={i}>
                       <TableCell className="font-medium">{c.user}</TableCell>
                       <TableCell className="text-right tabular-nums">{c.closes}</TableCell>
-                      <TableCell className="text-right tabular-nums">{c.closes > 0 ? formatValue(c.revenue / c.closes) + ' €' : '–'}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatValue(c.revenue)} €</TableCell>
+                      <TableCell className="text-right tabular-nums">{c.closes > 0 ? eur(c.revenue / c.closes) : '–'}</TableCell>
+                      <TableCell className="text-right tabular-nums">{eur(c.revenue)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -546,8 +546,8 @@ export default function CloseKpiTest() {
               <div>Filter: <span className="text-foreground">status_type = 'won'</span></div>
               <div>Rohdatensätze im Zeitraum: <span className="text-foreground">{wonOppsInRange.length}</span></div>
               <div>Eindeutige nach Dedup: <span className="text-foreground">{dedupedWon.length}</span></div>
-              <div>Summe vor Dedup: <span className="text-foreground">{formatValue(sumBefore)} €</span></div>
-              <div>Summe nach Dedup: <span className="text-foreground">{formatValue(sumAfter)} €</span></div>
+              <div>Summe vor Dedup: <span className="text-foreground">{eur(sumBefore)}</span></div>
+              <div>Summe nach Dedup: <span className="text-foreground">{eur(sumAfter)}</span></div>
             </CardContent>
           </Card>
         </div>
