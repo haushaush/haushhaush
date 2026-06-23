@@ -88,6 +88,7 @@ function validatePayload(p: any): { ok: true; data: CreatePayload } | { ok: fals
       startdatum: String(p.startdatum).trim(),
       avatar_url: p.avatar_url ? String(p.avatar_url).trim() : null,
       notizen: p.notizen ? String(p.notizen).trim() : null,
+      mitarbeiter_typ: p.mitarbeiter_typ ? String(p.mitarbeiter_typ).trim() : null,
       permission_overrides: cleanOverrides,
     },
   };
