@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { AlertTriangle, FlaskConical, Info } from 'lucide-react';
 import { formatValue } from '@/lib/utils';
+const eur = (n: number) => formatValue(n, 'currency');
 
 type RangeKey = '7d' | '30d' | 'ytd' | 'all' | 'custom';
 
