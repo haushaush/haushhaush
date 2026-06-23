@@ -1,0 +1,1 @@
+ALTER TABLE public.close_deals ADD COLUMN IF NOT EXISTS anmerkungen text;
