@@ -115,6 +115,7 @@ Deno.serve(async (req) => {
             start_datum: startRaw,
             leistungen,
             status: 'Aktiv',
+            anmerkungen: q.Anmerkungen ?? null,
           });
           if (error) console.error('abschluss insert failed', error);
         }
