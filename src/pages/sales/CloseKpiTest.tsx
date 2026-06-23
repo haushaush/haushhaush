@@ -587,7 +587,7 @@ export default function CloseKpiTest() {
                   <TableRow key={o.id}>
                     <TableCell className="font-medium">{o.lead_name || '–'}</TableCell>
                     <TableCell className="text-xs">{o.date_won ? new Date(o.date_won).toLocaleDateString('de-DE') : '–'}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatValue(Number(o.abschlusswert || 0))} €</TableCell>
+                    <TableCell className="text-right tabular-nums">{eur(Number(o.abschlusswert || 0))}</TableCell>
                     <TableCell>{o.user_name || '–'}</TableCell>
                     <TableCell className="font-mono text-[10px] text-muted-foreground">{o.id}</TableCell>
                   </TableRow>
