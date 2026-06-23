@@ -78,6 +78,7 @@ import PublicShowcaseView from "./pages/PublicShowcaseView.tsx";
 import PublicShowcaseLayout from "./pages/PublicShowcaseLayout.tsx";
 import { ShowcaseAuthRedirect } from "./components/ShowcaseAuthRedirect";
 import { AdminRoute } from "./components/AdminRoute";
+import { PermissionRoute } from "./components/PermissionRoute";
 import { useOnboardingGuard } from "./hooks/useOnboardingGuard";
 import { useFunnelGuard } from "./hooks/useFunnelGuard";
 import DailyFunnel from "./pages/DailyFunnel.tsx";
