@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { AlertTriangle, FlaskConical, Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FlaskConical, Info } from 'lucide-react';
 import { formatValue } from '@/lib/utils';
 const eur = (n: number) => formatValue(n, 'currency');
 
@@ -19,6 +19,17 @@ const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
   { key: 'all', label: 'Insgesamt' },
   { key: 'custom', label: 'Custom' },
 ];
+
+// Mirrors SalesUebersicht.getPeriodStart EXACTLY (no upper bound)
+function getOverviewStart(key: RangeKey, from?: string): Date | null {
+  const now = new Date();
+  if (key === 'all') return null;
+  if (key === 'custom') return from ? new Date(from) : null;
+  if (key === '7d') { const d = new Date(now); d.setDate(d.getDate() - 7); return d; }
+  if (key === '30d') { const d = new Date(now); d.setDate(d.getDate() - 30); return d; }
+  if (key === 'ytd') return new Date(now.getFullYear(), 0, 1);
+  return null;
+}
 
 function getRange(key: RangeKey, from?: string, to?: string): { from: Date | null; to: Date | null } {
   const now = new Date();
@@ -68,7 +79,7 @@ function KpiCard({ title, value, sub, hint }: { title: string; value: React.Reac
   );
 }
 
-const CONNECT_THRESHOLD_SEC = 30; // duration_seconds >= 30 => Connect
+const CONNECT_THRESHOLD_SEC = 30;
 
 export default function CloseKpiTest() {
   const [loading, setLoading] = useState(true);
@@ -89,10 +100,10 @@ export default function CloseKpiTest() {
       try {
         setLoading(true);
         const [oRes, dRes, aRes, lRes] = await Promise.all([
-          supabase.from('close_opportunities').select('*'),
-          supabase.from('close_deals').select('*'),
-          supabase.from('close_activities').select('*'),
-          supabase.from('close_leads').select('id,date_created,status_label'),
+          supabase.from('close_opportunities').select('*').limit(5000),
+          supabase.from('close_deals').select('*').limit(5000),
+          supabase.from('close_activities').select('*').limit(5000),
+          supabase.from('close_leads').select('id,date_created,status_label').limit(5000),
         ]);
         if (oRes.error) throw oRes.error;
         setOpps(oRes.data || []);
@@ -110,14 +121,36 @@ export default function CloseKpiTest() {
   }, []);
 
   const { from, to } = useMemo(() => getRange(range, customFrom, customTo), [range, customFrom, customTo]);
+  const overviewStart = useMemo(() => getOverviewStart(range, customFrom), [range, customFrom]);
   const dateLabel = useMemo(() => {
     if (range === 'all') return 'Insgesamt';
     if (range === 'custom') return `${customFrom || '…'} → ${customTo || '…'}`;
     return RANGE_OPTIONS.find(r => r.key === range)?.label || '';
   }, [range, customFrom, customTo]);
 
-  // ===== Umsatz / Abschluss-KPIs =====
-  // Quelle: close_opportunities, status_type=won, Datumsspalte: date_won (fallback date_updated)
+  // ============================================================
+  // BLOCK A: "Sales-Übersicht-Logik" — exakt nachgebaut wie /sales
+  // close_opportunities, status_type='won', date_won (NO fallback),
+  // KEIN Dedup, count = .length, value = sum(abschlusswert || 0)
+  // ============================================================
+  const overviewWon = useMemo(() => {
+    return opps.filter(o => {
+      if (o.status_type !== 'won') return false;
+      if (!o.date_won) return false;
+      if (!overviewStart) return true;
+      return new Date(o.date_won) >= overviewStart;
+    });
+  }, [opps, overviewStart]);
+  const overviewRevenue = useMemo(
+    () => overviewWon.reduce((s, o) => s + Number(o.abschlusswert || 0), 0),
+    [overviewWon]
+  );
+  const overviewCount = overviewWon.length;
+
+  // ============================================================
+  // BLOCK B: KPI-Test-Logik (Diagnose)
+  // mit Fallback date_updated + Dedup by ID
+  // ============================================================
   const dateColUsed = 'date_won (Fallback: date_updated)';
 
   const wonOppsInRange = useMemo(() => {
@@ -128,7 +161,6 @@ export default function CloseKpiTest() {
     });
   }, [opps, from, to]);
 
-  // Dedup by opportunity id
   const dedupedWon = useMemo(() => {
     const map = new Map<string, any>();
     for (const o of wonOppsInRange) {
@@ -137,38 +169,68 @@ export default function CloseKpiTest() {
     return Array.from(map.values());
   }, [wonOppsInRange]);
 
+  const wonWithValue = useMemo(() => dedupedWon.filter(o => Number(o.abschlusswert || 0) > 0), [dedupedWon]);
+  const wonWithoutValue = useMemo(() => dedupedWon.filter(o => o.abschlusswert == null), [dedupedWon]);
+  const wonZeroValue = useMemo(() => dedupedWon.filter(o => o.abschlusswert != null && Number(o.abschlusswert) === 0), [dedupedWon]);
+
   const sumBefore = useMemo(() => wonOppsInRange.reduce((s, o) => s + Number(o.abschlusswert || 0), 0), [wonOppsInRange]);
   const sumAfter = useMemo(() => dedupedWon.reduce((s, o) => s + Number(o.abschlusswert || 0), 0), [dedupedWon]);
   const countDeals = dedupedWon.length;
-  const avgDeal = countDeals > 0 ? sumAfter / countDeals : 0;
+  const avgAll = countDeals > 0 ? sumAfter / countDeals : 0;
+  const avgWithValue = wonWithValue.length > 0 ? sumAfter / wonWithValue.length : 0;
 
-  // Setup vs Retainer detection
-  const setupRetainerFields = useMemo(() => {
-    const keys = new Set([...oppColumns, ...dealColumns].map(k => k.toLowerCase()));
-    const setup = ['setup', 'setup_fee', 'einrichtung'].find(k => keys.has(k));
-    const retainer = ['retainer', 'monthly', 'recurring', 'mrr'].find(k => keys.has(k));
-    return { setup, retainer };
-  }, [oppColumns, dealColumns]);
+  // Vergleich Übersicht <-> KPI-Test
+  const diffRevenue = sumAfter - overviewRevenue;
+  const diffCount = countDeals - overviewCount;
+  const matches = diffRevenue === 0 && diffCount === 0;
 
-  // ===== Pipeline / Funnel =====
-  const oppsActive = useMemo(() => opps.filter(o => o.status_type === 'active'), [opps]);
+  // Sets für Detail-Tabelle: was ist nur in Übersicht? was nur in KPI-Test?
+  const overviewIds = useMemo(() => new Set(overviewWon.map(o => o.id)), [overviewWon]);
+  const kpiIds = useMemo(() => new Set(dedupedWon.map(o => o.id)), [dedupedWon]);
+  const onlyInOverview = useMemo(() => overviewWon.filter(o => !kpiIds.has(o.id)), [overviewWon, kpiIds]);
+  const onlyInKpi = useMemo(() => dedupedWon.filter(o => !overviewIds.has(o.id)), [dedupedWon, overviewIds]);
 
-  const stageGroups = useMemo(() => {
-    const map = new Map<string, { stage: string; status: string; count: number; value: number; weighted: number }>();
-    for (const o of opps) {
-      const key = `${o.status_label || '–'}|${o.status_type || '–'}`;
-      const cur = map.get(key) || { stage: o.status_label || '–', status: o.status_type || '–', count: 0, value: 0, weighted: 0 };
+  // Doppelte IDs in der Übersichts-Quelle (zeigt Dedup-Effekt)
+  const overviewDupeCount = useMemo(() => overviewWon.length - new Set(overviewWon.map(o => o.id)).size, [overviewWon]);
+
+  // ===== Pipeline =====
+  const oppsOpen = useMemo(() => opps.filter(o => o.status_type === 'active'), [opps]);
+  const oppsWon = useMemo(() => opps.filter(o => o.status_type === 'won'), [opps]);
+  const oppsLost = useMemo(() => opps.filter(o => o.status_type === 'lost'), [opps]);
+
+  const pipelineValue = useMemo(() => oppsOpen.reduce((s, o) => s + Number(o.abschlusswert || 0), 0), [oppsOpen]);
+  const hasConfidence = useMemo(() => oppsOpen.some(o => o.confidence != null && Number(o.confidence) > 0), [oppsOpen]);
+  const pipelineWeighted = useMemo(
+    () => hasConfidence ? oppsOpen.reduce((s, o) => s + Number(o.abschlusswert || 0) * (Number(o.confidence || 0) / 100), 0) : 0,
+    [oppsOpen, hasConfidence]
+  );
+
+  // Stage-Gruppierung NUR für offene Pipeline
+  const openStageGroups = useMemo(() => {
+    const map = new Map<string, { stage: string; count: number; value: number; zeroValue: number }>();
+    for (const o of oppsOpen) {
+      const key = o.status_label || '–';
+      const cur = map.get(key) || { stage: key, count: 0, value: 0, zeroValue: 0 };
       cur.count += 1;
       cur.value += Number(o.abschlusswert || 0);
-      cur.weighted += Number(o.abschlusswert || 0) * (Number(o.confidence || 0) / 100);
+      if (!o.abschlusswert || Number(o.abschlusswert) === 0) cur.zeroValue += 1;
       map.set(key, cur);
     }
     return Array.from(map.values()).sort((a, b) => b.count - a.count);
-  }, [opps]);
+  }, [oppsOpen]);
 
-  const pipelineValue = useMemo(() => oppsActive.reduce((s, o) => s + Number(o.abschlusswert || 0), 0), [oppsActive]);
-  const pipelineWeighted = useMemo(() => oppsActive.reduce((s, o) => s + Number(o.abschlusswert || 0) * (Number(o.confidence || 0) / 100), 0), [oppsActive]);
-  const hasConfidence = useMemo(() => opps.some(o => o.confidence != null && o.confidence !== 0), [opps]);
+  // Won/Lost-Gruppen separat
+  const wonLostGroups = useMemo(() => {
+    const map = new Map<string, { stage: string; status: string; count: number; value: number }>();
+    for (const o of [...oppsWon, ...oppsLost]) {
+      const key = `${o.status_label || '–'}|${o.status_type}`;
+      const cur = map.get(key) || { stage: o.status_label || '–', status: o.status_type, count: 0, value: 0 };
+      cur.count += 1;
+      cur.value += Number(o.abschlusswert || 0);
+      map.set(key, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [oppsWon, oppsLost]);
 
   // ===== Sales Cycle =====
   const cycle = useMemo(() => {
@@ -194,14 +256,13 @@ export default function CloseKpiTest() {
     };
   }, [dedupedWon, leads]);
 
-  // ===== Aktivitäts-KPIs =====
-  const actsInRange = useMemo(() => acts.filter(a => inRange(a.date_created, from, to)), [acts, from]);
+  // ===== Aktivitäten =====
+  const actsInRange = useMemo(() => acts.filter(a => inRange(a.date_created, from, to)), [acts, from, to]);
   const calls = useMemo(() => actsInRange.filter(a => a.activity_type === 'Call'), [actsInRange]);
   const meetings = useMemo(() => actsInRange.filter(a => a.activity_type === 'Meeting'), [actsInRange]);
   const connects = useMemo(() => calls.filter(c => Number(c.duration_seconds || 0) >= CONNECT_THRESHOLD_SEC), [calls]);
   const connectRate = calls.length > 0 ? (connects.length / calls.length) * 100 : 0;
 
-  // Team-Auswertungen by user_name on activities
   const userStats = useMemo(() => {
     const map = new Map<string, { user: string; dials: number; connects: number; meetings: number }>();
     for (const a of actsInRange) {
@@ -232,29 +293,29 @@ export default function CloseKpiTest() {
   // ===== Warnungen =====
   const warnings = useMemo(() => {
     const ws: string[] = [];
-    // Cent-Heuristik: value_cents/100 deutlich anders als abschlusswert
-    const sumValue = opps.filter(o => o.status_type === 'won').reduce((s, o) => s + Number(o.value || 0), 0);
-    const sumValueCents = opps.filter(o => o.status_type === 'won').reduce((s, o) => s + Number(o.value_cents || 0), 0);
-    if (sumValueCents > sumValue * 50) ws.push('value_cents enthält offenbar Cent-Beträge (× 100 zu groß) – darum NICHT für Umsatz nutzen.');
-    const wonNoVal = opps.filter(o => o.status_type === 'won' && !o.abschlusswert).length;
-    if (wonNoVal > 0) ws.push(`${wonNoVal} Won-Opportunities ohne abschlusswert.`);
-    const wonNoDate = opps.filter(o => o.status_type === 'won' && !o.date_won).length;
-    if (wonNoDate > 0) ws.push(`${wonNoDate} Won-Opportunities ohne date_won (Fallback genutzt).`);
+    const sumValue = oppsWon.reduce((s, o) => s + Number(o.value || 0), 0);
+    const sumValueCents = oppsWon.reduce((s, o) => s + Number(o.value_cents || 0), 0);
+    if (sumValueCents > sumValue * 50) ws.push('value_cents enthält Cent-Beträge (×100). Würde value_cents ohne /100 verwendet, wäre der Umsatz um Faktor 100 zu hoch.');
+    if (wonWithoutValue.length > 0) ws.push(`${wonWithoutValue.length} Won-Opportunities im Zeitraum ohne abschlusswert (NULL).`);
+    if (wonZeroValue.length > 0) ws.push(`${wonZeroValue.length} Won-Opportunities im Zeitraum mit abschlusswert = 0.`);
+    const wonNoDate = oppsWon.filter(o => !o.date_won).length;
+    if (wonNoDate > 0) ws.push(`${wonNoDate} Won-Opportunities ohne date_won (Sales-Übersicht würde diese ausschließen, KPI-Test nutzt Fallback date_updated).`);
     const ids = wonOppsInRange.map(o => o.id);
     const dupes = ids.length - new Set(ids).size;
     if (dupes > 0) ws.push(`${dupes} doppelte Opportunity-IDs im Zeitraum (dedupliziert).`);
+    if (overviewDupeCount > 0) ws.push(`Sales-Übersicht zählt ${overviewDupeCount} doppelte Datensätze mit (dort kein Dedup) – dadurch ist deren Count höher.`);
     const extreme = dedupedWon.filter(o => Number(o.abschlusswert) > 500000 || Number(o.abschlusswert) < 0);
     if (extreme.length > 0) ws.push(`${extreme.length} Abschlüsse mit extrem hohem/negativem Wert.`);
+    if (!matches) ws.push(`Abweichung zur Sales-Übersicht: ${diffCount > 0 ? '+' : ''}${diffCount} Deals, ${diffRevenue > 0 ? '+' : ''}${eur(diffRevenue)}.`);
     return ws;
-  }, [opps, wonOppsInRange, dedupedWon]);
+  }, [oppsWon, wonOppsInRange, dedupedWon, wonWithoutValue, wonZeroValue, overviewDupeCount, matches, diffCount, diffRevenue]);
 
-  // ===== Datenquellen-Check =====
   const sourceCheck = useMemo(() => ({
-    close_opportunities: { found: opps.length > 0, count: opps.length, cols: oppColumns },
-    close_deals: { found: deals.length > 0, count: deals.length, cols: dealColumns },
+    close_opportunities: { found: opps.length > 0, count: opps.length },
+    close_deals: { found: deals.length > 0, count: deals.length },
     close_activities: { found: acts.length > 0, count: acts.length },
     close_leads: { found: leads.length > 0, count: leads.length },
-  }), [opps, deals, acts, leads, oppColumns, dealColumns]);
+  }), [opps, deals, acts, leads]);
 
   if (loading) {
     return (
@@ -268,6 +329,27 @@ export default function CloseKpiTest() {
   }
   if (error) return <div className="p-6 text-destructive">Fehler: {error}</div>;
 
+  // Detail-Tabelle: Won Deals im Zeitraum (Vereinigung beider Logiken, mit Flags)
+  const unionMap = new Map<string, any>();
+  for (const o of overviewWon) unionMap.set(o.id, { ...o, _inOverview: true });
+  for (const o of dedupedWon) {
+    const existing = unionMap.get(o.id);
+    if (existing) existing._inKpi = true;
+    else unionMap.set(o.id, { ...o, _inKpi: true });
+  }
+  // markiere duplicate_id basierend auf wonOppsInRange-Rohzählung
+  const rawIdCounts = new Map<string, number>();
+  for (const o of wonOppsInRange) rawIdCounts.set(o.id, (rawIdCounts.get(o.id) || 0) + 1);
+  const overviewIdCounts = new Map<string, number>();
+  for (const o of overviewWon) overviewIdCounts.set(o.id, (overviewIdCounts.get(o.id) || 0) + 1);
+  const detailRows = Array.from(unionMap.values()).map(o => ({
+    ...o,
+    _missing_abschlusswert: o.abschlusswert == null,
+    _zero_abschlusswert: o.abschlusswert != null && Number(o.abschlusswert) === 0,
+    _duplicate_id: (rawIdCounts.get(o.id) || 0) > 1 || (overviewIdCounts.get(o.id) || 0) > 1,
+    _missing_date_won: !o.date_won,
+  })).sort((a, b) => (new Date(b.date_won || b.date_updated || 0).getTime()) - (new Date(a.date_won || a.date_updated || 0).getTime()));
+
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
       {/* Header */}
@@ -276,10 +358,10 @@ export default function CloseKpiTest() {
           <div className="flex items-center gap-2">
             <FlaskConical className="h-5 w-5 text-muted-foreground" />
             <h1 className="text-2xl font-semibold">Close KPI Test</h1>
-            <Badge variant="outline" className="text-xs">Experimentell</Badge>
+            <Badge variant="outline" className="text-xs">Diagnose</Badge>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Diagnose-Sprint: welche Sales-KPIs lassen sich zuverlässig aus Close ableiten? Lesend, ohne Sync-Änderungen.
+            Vergleicht die Sales-Übersicht mit einer transparenten Diagnose-Berechnung und erklärt jede Abweichung.
           </p>
         </div>
       </div>
@@ -308,123 +390,351 @@ export default function CloseKpiTest() {
         </CardContent>
       </Card>
 
-      {/* Teil 1: Umsatz / Abschlüsse */}
+      {/* ===== ABGLEICH ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Teil 1 · Umsatz & Abschlüsse</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <KpiCard
-            title="Umsatz geschrieben"
-            value={`${eur(sumAfter)}`}
-            sub={`Quelle: close_opportunities · Feld: abschlusswert · Datum: ${dateColUsed}`}
-            hint="Cent-Konvertierung: nein (abschlusswert ist bereits EUR)"
-          />
-          <KpiCard
-            title="Anzahl Abschlüsse"
-            value={countDeals}
-            sub="dedupliziert nach Opportunity-ID, status_type=won"
-          />
-          <KpiCard
-            title="Ø Auftragswert"
-            value={countDeals > 0 ? `${eur(avgDeal)}` : '–'}
-            sub={countDeals > 0 ? 'Umsatz ÷ Abschlüsse' : 'keine Abschlüsse im Zeitraum'}
-          />
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Setup vs. Retainer</CardTitle></CardHeader>
-            <CardContent>
-              {setupRetainerFields.setup || setupRetainerFields.retainer ? (
-                <div className="text-xs">
-                  Setup-Feld: <code>{setupRetainerFields.setup || '–'}</code><br />
-                  Retainer-Feld: <code>{setupRetainerFields.retainer || '–'}</code>
-                </div>
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Abgleich mit Sales-Übersicht</h2>
+        <Card className={matches ? 'border-emerald-500/40' : 'border-amber-500/50'}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              {matches ? (
+                <><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Stimmt überein</>
               ) : (
-                <NotComputable reason="Setup/Retainer wird aktuell nicht getrennt gespeichert." />
+                <><AlertTriangle className="h-4 w-4 text-amber-500" /> Abweichung erkannt</>
               )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Ziel vs. Ist</CardTitle></CardHeader>
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            <NotComputable reason="Quota/Zielwert-Tabelle fehlt. Vorschlag: neue Tabelle sales_targets (user_id, period, target_value)." />
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Kennzahl</TableHead>
+                  <TableHead className="text-right">Sales-Übersicht</TableHead>
+                  <TableHead className="text-right">KPI-Test</TableHead>
+                  <TableHead className="text-right">Differenz</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="font-medium">Umsatz geschrieben</TableCell>
+                  <TableCell className="text-right tabular-nums">{eur(overviewRevenue)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{eur(sumAfter)}</TableCell>
+                  <TableCell className={`text-right tabular-nums ${diffRevenue === 0 ? 'text-muted-foreground' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {diffRevenue === 0 ? '–' : `${diffRevenue > 0 ? '+' : ''}${eur(diffRevenue)}`}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Anzahl Abschlüsse</TableCell>
+                  <TableCell className="text-right tabular-nums">{overviewCount}</TableCell>
+                  <TableCell className="text-right tabular-nums">{countDeals}</TableCell>
+                  <TableCell className={`text-right tabular-nums ${diffCount === 0 ? 'text-muted-foreground' : 'text-amber-600 dark:text-amber-400'}`}>
+                    {diffCount === 0 ? '–' : `${diffCount > 0 ? '+' : ''}${diffCount}`}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="border rounded-md p-3 space-y-1">
+                <div className="font-medium">Sales-Übersicht-Logik</div>
+                <div className="text-muted-foreground font-mono">Quelle: close_opportunities</div>
+                <div className="text-muted-foreground font-mono">Filter: status_type = 'won'</div>
+                <div className="text-muted-foreground font-mono">Datumsfeld: date_won (kein Fallback)</div>
+                <div className="text-muted-foreground font-mono">Wertfeld: abschlusswert (NULL → 0)</div>
+                <div className="text-muted-foreground font-mono">Dedup: nein</div>
+                <div className="text-muted-foreground font-mono">Zeitraum: ab {overviewStart ? overviewStart.toLocaleDateString('de-DE') : 'Anfang'}</div>
+              </div>
+              <div className="border rounded-md p-3 space-y-1">
+                <div className="font-medium">KPI-Test-Logik</div>
+                <div className="text-muted-foreground font-mono">Quelle: close_opportunities</div>
+                <div className="text-muted-foreground font-mono">Filter: status_type = 'won'</div>
+                <div className="text-muted-foreground font-mono">Datumsfeld: {dateColUsed}</div>
+                <div className="text-muted-foreground font-mono">Wertfeld: abschlusswert</div>
+                <div className="text-muted-foreground font-mono">Dedup: ja (nach Opportunity-ID)</div>
+                <div className="text-muted-foreground font-mono">Zeitraum: {from ? from.toLocaleDateString('de-DE') : 'Anfang'} → {to ? to.toLocaleDateString('de-DE') : 'jetzt'}</div>
+              </div>
+            </div>
+
+            {(onlyInOverview.length > 0 || onlyInKpi.length > 0) && (
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="border rounded-md p-3">
+                  <div className="font-medium mb-1">Nur in Sales-Übersicht ({onlyInOverview.length})</div>
+                  {onlyInOverview.length === 0 ? (
+                    <div className="text-muted-foreground">–</div>
+                  ) : (
+                    <ul className="space-y-0.5">
+                      {onlyInOverview.slice(0, 10).map(o => (
+                        <li key={o.id} className="font-mono text-[10px] flex justify-between gap-2">
+                          <span className="truncate">{o.lead_name || o.id}</span>
+                          <span className="text-muted-foreground">{eur(Number(o.abschlusswert || 0))}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div className="border rounded-md p-3">
+                  <div className="font-medium mb-1">Nur im KPI-Test ({onlyInKpi.length})</div>
+                  {onlyInKpi.length === 0 ? (
+                    <div className="text-muted-foreground">–</div>
+                  ) : (
+                    <ul className="space-y-0.5">
+                      {onlyInKpi.slice(0, 10).map(o => (
+                        <li key={o.id} className="font-mono text-[10px] flex justify-between gap-2">
+                          <span className="truncate">{o.lead_name || o.id}</span>
+                          <span className="text-muted-foreground">{eur(Number(o.abschlusswert || 0))}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </section>
 
-      {/* Teil 2: Pipeline / Funnel */}
+      {/* ===== Won-Logik transparent ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Teil 2 · Pipeline & Funnel</h2>
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Won-Logik transparent</h2>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <KpiCard title="Won Deals gesamt (Zeitraum)" value={wonOppsInRange.length} sub="vor Dedup, inkl. Fallback-Datum" />
+          <KpiCard title="Eindeutige Won-IDs" value={countDeals} sub="nach Dedup nach Opportunity-ID" />
+          <KpiCard title="Mit abschlusswert > 0" value={wonWithValue.length} />
+          <KpiCard title="Ohne abschlusswert (NULL)" value={wonWithoutValue.length} />
+          <KpiCard title="abschlusswert = 0" value={wonZeroValue.length} />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <KpiCard title="Pipeline-Wert (offen)" value={`${eur(pipelineValue)}`} sub={`${oppsActive.length} aktive Opportunities`} />
+          <KpiCard
+            title="Abschlüsse gesamt"
+            value={countDeals}
+            sub="zählt ALLE Won-Deals, auch ohne Wert"
+          />
+          <KpiCard
+            title="Abschlüsse mit Wert"
+            value={wonWithValue.length}
+            sub="nur Deals mit abschlusswert > 0"
+          />
+          <KpiCard
+            title="Abschlüsse ohne Wert"
+            value={wonWithoutValue.length + wonZeroValue.length}
+            sub={`NULL: ${wonWithoutValue.length} · 0 €: ${wonZeroValue.length}`}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <KpiCard
+            title="Ø Auftragswert (gesamt)"
+            value={countDeals > 0 ? eur(avgAll) : '–'}
+            sub="Umsatz ÷ Abschlüsse gesamt"
+          />
+          <KpiCard
+            title="Ø Auftragswert (mit Wertbasis)"
+            value={wonWithValue.length > 0 ? eur(avgWithValue) : '–'}
+            sub={`Umsatz ÷ ${wonWithValue.length} Abschlüsse mit Wert`}
+          />
+        </div>
+      </section>
+
+      {/* ===== Umsatz-Debug ===== */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Umsatz-Debug</h2>
+        <Card>
+          <CardContent className="text-xs space-y-1 font-mono pt-4">
+            <div>Quelle: <span className="text-foreground">close_opportunities</span></div>
+            <div>Wertfeld: <span className="text-foreground">abschlusswert (numeric, EUR – keine Cent-Konvertierung)</span></div>
+            <div>Datumsfeld: <span className="text-foreground">{dateColUsed}</span></div>
+            <div>Filter: <span className="text-foreground">status_type = 'won'</span></div>
+            <div className="pt-1 border-t mt-2">Rohdatensätze im Zeitraum: <span className="text-foreground">{wonOppsInRange.length}</span></div>
+            <div>Nach Dedup: <span className="text-foreground">{dedupedWon.length}</span></div>
+            <div>Summe abschlusswert (vor Dedup): <span className="text-foreground">{eur(sumBefore)}</span></div>
+            <div>Summe abschlusswert (nach Dedup): <span className="text-foreground">{eur(sumAfter)}</span></div>
+            <div>Summe value (Standardfeld, NICHT verwendet): <span className="text-foreground">{eur(wonOppsInRange.reduce((s, o) => s + Number(o.value || 0), 0))}</span></div>
+            <div>Summe value_cents ÷ 100: <span className="text-foreground">{eur(wonOppsInRange.reduce((s, o) => s + Number(o.value_cents || 0), 0) / 100)}</span></div>
+            <div className="text-muted-foreground pt-2">Cent-Konvertierung: nein. Warnung greift, falls value_cents ohne /100 genutzt würde.</div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ===== Detail-Tabelle Won Deals ===== */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Won Deals im Zeitraum (Rohbasis)</h2>
+        <Card>
+          <CardContent className="overflow-x-auto pt-4">
+            {detailRows.length === 0 ? (
+              <div className="text-xs text-muted-foreground">Keine Datensätze.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Closer</TableHead>
+                    <TableHead>date_won</TableHead>
+                    <TableHead className="text-right">abschlusswert</TableHead>
+                    <TableHead className="text-right">value</TableHead>
+                    <TableHead className="text-right">value_cents/100</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Quelle</TableHead>
+                    <TableHead>Flags</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {detailRows.map(o => {
+                    const flags: string[] = [];
+                    if (o._missing_abschlusswert) flags.push('missing_abschlusswert');
+                    if (o._zero_abschlusswert) flags.push('zero_abschlusswert');
+                    if (o._duplicate_id) flags.push('duplicate_id');
+                    if (o._missing_date_won) flags.push('missing_date_won');
+                    const source =
+                      o._inOverview && o._inKpi ? 'Beide'
+                      : o._inOverview ? 'nur Übersicht'
+                      : 'nur KPI-Test';
+                    return (
+                      <TableRow key={o.id}>
+                        <TableCell className="font-mono text-[10px] text-muted-foreground">{String(o.id).slice(0, 8)}…</TableCell>
+                        <TableCell className="font-medium text-xs">{o.lead_name || '–'}</TableCell>
+                        <TableCell className="text-xs">{o.user_name || '–'}</TableCell>
+                        <TableCell className="text-xs">{o.date_won ? new Date(o.date_won).toLocaleDateString('de-DE') : <span className="text-amber-600">–</span>}</TableCell>
+                        <TableCell className="text-right tabular-nums text-xs">{o.abschlusswert == null ? <span className="text-amber-600">NULL</span> : eur(Number(o.abschlusswert))}</TableCell>
+                        <TableCell className="text-right tabular-nums text-xs text-muted-foreground">{o.value == null ? '–' : eur(Number(o.value))}</TableCell>
+                        <TableCell className="text-right tabular-nums text-xs text-muted-foreground">{o.value_cents == null ? '–' : eur(Number(o.value_cents) / 100)}</TableCell>
+                        <TableCell><Badge variant="outline" className="text-[10px]">{o.status_label || o.status_type || '–'}</Badge></TableCell>
+                        <TableCell><Badge variant={source === 'Beide' ? 'secondary' : 'outline'} className="text-[10px]">{source}</Badge></TableCell>
+                        <TableCell>
+                          {flags.length === 0 ? <span className="text-[10px] text-muted-foreground">–</span> : (
+                            <div className="flex flex-wrap gap-1">
+                              {flags.map(f => <Badge key={f} variant="outline" className="text-[9px] border-amber-500/40 text-amber-600 dark:text-amber-400">{f}</Badge>)}
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ===== Pipeline ===== */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Pipeline & Funnel (offen vs. abgeschlossen)</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <KpiCard
+            title="Pipeline-Wert (nur offen)"
+            value={eur(pipelineValue)}
+            sub={`${oppsOpen.length} aktive Opportunities · ohne Won/Lost`}
+          />
           <KpiCard
             title="Pipeline gewichtet"
-            value={hasConfidence ? `${eur(pipelineWeighted)}` : '–'}
-            sub={hasConfidence ? 'mit confidence/100' : 'Keine Stage-Wahrscheinlichkeiten vorhanden.'}
+            value={hasConfidence ? eur(pipelineWeighted) : '–'}
+            sub={hasConfidence ? 'mit confidence/100' : 'Gewichtete Pipeline nicht belastbar – keine Stage-Wahrscheinlichkeiten vorhanden.'}
           />
           <KpiCard
             title="Ø Sales-Cycle"
             value={cycle.avg != null ? `${cycle.avg.toFixed(1)} Tage` : '–'}
-            sub={cycle.avg != null ? `n=${cycle.n} · Lead-Date: ${cycle.usedLeadDate} · Opp-Date: ${cycle.usedOppDate}` : 'kein Won-Deal mit Start-Datum'}
+            sub={cycle.avg != null
+              ? `Basis: ${cycle.n} Won Deals · Start: lead.date_created (Fallback opp.date_created) · Ende: date_won`
+              : 'kein Won-Deal mit Start-Datum'}
+            hint={cycle.avg != null ? `Lead-Date verwendet: ${cycle.usedLeadDate} · Opp-Date Fallback: ${cycle.usedOppDate}` : undefined}
           />
         </div>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">Funnel nach Stage</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Offene Pipeline nach Stage</CardTitle></CardHeader>
           <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Stage</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Anzahl</TableHead>
-                  <TableHead className="text-right">Summe Abschlusswert</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {stageGroups.map((g, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="font-medium">{g.stage}</TableCell>
-                    <TableCell><Badge variant="outline" className="text-xs">{g.status}</Badge></TableCell>
-                    <TableCell className="text-right tabular-nums">{g.count}</TableCell>
-                    <TableCell className="text-right tabular-nums">{eur(g.value)}</TableCell>
+            {openStageGroups.length === 0 ? (
+              <div className="text-xs text-muted-foreground">Keine offenen Opportunities.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Stage</TableHead>
+                    <TableHead className="text-right">Anzahl</TableHead>
+                    <TableHead className="text-right">Summe Abschlusswert</TableHead>
+                    <TableHead className="text-right">Davon 0 € / NULL</TableHead>
+                    <TableHead>Hinweis</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {openStageGroups.map((g, i) => {
+                    const manyZero = g.count > 0 && g.zeroValue / g.count >= 0.5;
+                    return (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium">{g.stage}</TableCell>
+                        <TableCell className="text-right tabular-nums">{g.count}</TableCell>
+                        <TableCell className="text-right tabular-nums">{eur(g.value)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{g.zeroValue}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {manyZero ? 'Viele Opportunities in dieser Stage haben keinen gespeicherten Abschlusswert.' : '–'}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Won / Lost (separat – nicht Teil der offenen Pipeline)</CardTitle></CardHeader>
+          <CardContent className="overflow-x-auto">
+            {wonLostGroups.length === 0 ? (
+              <div className="text-xs text-muted-foreground">Keine Won/Lost-Opportunities.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Stage</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Anzahl</TableHead>
+                    <TableHead className="text-right">Summe Abschlusswert</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {wonLostGroups.map((g, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="font-medium">{g.stage}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-xs">{g.status}</Badge></TableCell>
+                      <TableCell className="text-right tabular-nums">{g.count}</TableCell>
+                      <TableCell className="text-right tabular-nums">{eur(g.value)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </section>
 
-      {/* Teil 3: Aktivitäten */}
+      {/* ===== Aktivitäten ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Teil 3 · Aktivitäts-KPIs</h2>
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Aktivitäts-KPIs</h2>
         {acts.length === 0 ? (
           <NotComputable reason="close_activities ist leer." />
         ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <KpiCard title="Dials / Calls" value={calls.length} sub="Aktivitätstyp = Call" />
-              <KpiCard
-                title="Connect-Quote"
-                value={`${connectRate.toFixed(1)}%`}
-                sub={`Connects: ${connects.length} / ${calls.length}`}
-                hint={`Connect-Heuristik: duration_seconds ≥ ${CONNECT_THRESHOLD_SEC} (Outcome-Feld fehlt)`}
-              />
-              <KpiCard title="Termine gesetzt" value={meetings.length} sub="Aktivitätstyp = Meeting" />
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Setting / Show / Closing-Quote</CardTitle></CardHeader>
-                <CardContent>
-                  <NotComputable reason="Keine eindeutigen Gesprächs-/Show/Closing-Outcomes in close_activities (kein status/outcome-Feld)." />
-                </CardContent>
-              </Card>
-            </div>
-          </>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <KpiCard title="Dials / Calls" value={calls.length} sub="Aktivitätstyp = Call" />
+            <KpiCard
+              title="Connect-Quote"
+              value={`${connectRate.toFixed(1)}%`}
+              sub={`Connects: ${connects.length} / ${calls.length}`}
+              hint={`Heuristik: duration_seconds ≥ ${CONNECT_THRESHOLD_SEC}`}
+            />
+            <KpiCard title="Termine gesetzt" value={meetings.length} sub="Aktivitätstyp = Meeting" />
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Setting / Show / Closing-Quote</CardTitle></CardHeader>
+              <CardContent>
+                <NotComputable reason="Keine Outcome-Felder in close_activities." />
+              </CardContent>
+            </Card>
+          </div>
         )}
       </section>
 
-      {/* Teil 4: Team-Auswertung */}
+      {/* ===== Team ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Teil 4 · Team-Auswertung</h2>
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Team-Auswertung</h2>
         <Card>
           <CardHeader><CardTitle className="text-sm">Activity je User</CardTitle></CardHeader>
           <CardContent className="overflow-x-auto">
@@ -486,76 +796,15 @@ export default function CloseKpiTest() {
             )}
           </CardContent>
         </Card>
-
-        <NotComputable reason="Setter ↔ Closer Attribution (welcher Setter hat zu welchem Abschluss geführt) ist aus den vorhandenen Close-Feldern nicht eindeutig herstellbar." />
       </section>
 
-      {/* Teil 5: Cash bewusst nicht berechenbar */}
+      {/* ===== Warnungen / Datenqualität ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Teil 5 · Cash / Zahlungs-KPIs</h2>
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Nicht aus Close allein berechenbar</CardTitle></CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-              <li>Umsatz eingegangen / Cash Collected</li>
-              <li>Cash-Collect-Quote (gesamt & pro Closer)</li>
-              <li>Offene Forderungen & überfällige Beträge</li>
-              <li>Zahlungsausfall- / Stornoquote pro Closer</li>
-              <li>Rückbuchungen / Refunds</li>
-            </ul>
-            <p className="text-xs text-muted-foreground">
-              Diese Kennzahlen brauchen echte Zahlungs-/Rechnungsdaten, z.B. Bank, Stripe, Lexoffice, SevDesk oder eine eigene Payment-Tabelle.
-            </p>
-            <div className="text-xs">
-              <span className="font-medium">Vorschlag für spätere Tabellen:</span>
-              <code className="ml-2">sales_payments</code>,
-              <code className="ml-2">sales_invoices</code>,
-              <code className="ml-2">sales_refunds</code>,
-              <code className="ml-2">sales_targets</code>.
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* Teil 6: Debug */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Teil 6 · Debug & Validierung</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Datenquellen-Check</CardTitle></CardHeader>
-            <CardContent className="text-xs space-y-1 font-mono">
-              {Object.entries(sourceCheck).map(([k, v]: any) => (
-                <div key={k} className="flex justify-between">
-                  <span>{v.found ? '✅' : '❌'} {k}</span>
-                  <span className="text-muted-foreground">{v.count} Zeilen</span>
-                </div>
-              ))}
-              <div className="pt-2 text-muted-foreground">
-                opp-Spalten: {oppColumns.length} · deal-Spalten: {dealColumns.length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle className="text-sm">Umsatz-Debug</CardTitle></CardHeader>
-            <CardContent className="text-xs space-y-1 font-mono">
-              <div>Quelle: <span className="text-foreground">close_opportunities</span></div>
-              <div>Wertfeld: <span className="text-foreground">abschlusswert (numeric, EUR)</span></div>
-              <div>Datumsfeld: <span className="text-foreground">{dateColUsed}</span></div>
-              <div>Filter: <span className="text-foreground">status_type = 'won'</span></div>
-              <div>Rohdatensätze im Zeitraum: <span className="text-foreground">{wonOppsInRange.length}</span></div>
-              <div>Eindeutige nach Dedup: <span className="text-foreground">{dedupedWon.length}</span></div>
-              <div>Summe vor Dedup: <span className="text-foreground">{eur(sumBefore)}</span></div>
-              <div>Summe nach Dedup: <span className="text-foreground">{eur(sumAfter)}</span></div>
-            </CardContent>
-          </Card>
-        </div>
-
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Warnungen / Datenqualität</h2>
         <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" /> Warnungen
+              <AlertTriangle className="h-4 w-4 text-amber-500" /> Auffälligkeiten
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -570,80 +819,37 @@ export default function CloseKpiTest() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">Top 20 Abschlüsse im Zeitraum</CardTitle></CardHeader>
-          <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Datum</TableHead>
-                  <TableHead className="text-right">Wert</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>ID</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[...dedupedWon].sort((a, b) => Number(b.abschlusswert || 0) - Number(a.abschlusswert || 0)).slice(0, 20).map(o => (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-medium">{o.lead_name || '–'}</TableCell>
-                    <TableCell className="text-xs">{o.date_won ? new Date(o.date_won).toLocaleDateString('de-DE') : '–'}</TableCell>
-                    <TableCell className="text-right tabular-nums">{eur(Number(o.abschlusswert || 0))}</TableCell>
-                    <TableCell>{o.user_name || '–'}</TableCell>
-                    <TableCell className="font-mono text-[10px] text-muted-foreground">{o.id}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <CardHeader><CardTitle className="text-sm">Datenquellen-Check</CardTitle></CardHeader>
+          <CardContent className="text-xs space-y-1 font-mono">
+            {Object.entries(sourceCheck).map(([k, v]: any) => (
+              <div key={k} className="flex justify-between">
+                <span>{v.found ? '✅' : '❌'} {k}</span>
+                <span className="text-muted-foreground">{v.count} Zeilen</span>
+              </div>
+            ))}
+            <div className="pt-2 text-muted-foreground">
+              opp-Spalten: {oppColumns.length} · deal-Spalten: {dealColumns.length}
+            </div>
           </CardContent>
         </Card>
       </section>
 
-      {/* Teil 7: Warum Umsatz zu hoch? */}
+      {/* ===== Cash bewusst nicht berechenbar ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Teil 7 · „Umsatz zu hoch?" – Ursachen-Check</h2>
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Cash / Zahlungs-KPIs</h2>
         <Card>
-          <CardContent className="p-4 text-xs space-y-2">
-            <p className="text-muted-foreground">
-              Vergleich der drei verfügbaren Wert-Felder in <code>close_opportunities</code> (status_type=won, gesamter Bestand):
-            </p>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Feld</TableHead>
-                  <TableHead className="text-right">Summe (alle Won)</TableHead>
-                  <TableHead>Bewertung</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell><code>abschlusswert</code></TableCell>
-                  <TableCell className="text-right tabular-nums">{eur(opps.filter(o => o.status_type === 'won').reduce((s, o) => s + Number(o.abschlusswert || 0), 0))}</TableCell>
-                  <TableCell>✅ richtige Quelle (Close Custom Field)</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell><code>value</code></TableCell>
-                  <TableCell className="text-right tabular-nums">{eur(opps.filter(o => o.status_type === 'won').reduce((s, o) => s + Number(o.value || 0), 0))}</TableCell>
-                  <TableCell>⚠️ Close-Standardfeld, oft falsch / nicht gepflegt</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell><code>value_cents</code></TableCell>
-                  <TableCell className="text-right tabular-nums">{eur(opps.filter(o => o.status_type === 'won').reduce((s, o) => s + Number(o.value_cents || 0), 0) / 100)}</TableCell>
-                  <TableCell>⚠️ Cent-Wert ÷ 100 – ebenfalls Standardfeld, nicht nutzen</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-            <p className="text-muted-foreground pt-2">
-              Mögliche Ursachen, wenn Umsatz in anderen Ansichten zu hoch wirkt:
-            </p>
-            <ul className="list-disc pl-5 text-muted-foreground space-y-0.5">
-              <li><code>value_cents</code> wird fälschlich nicht durch 100 geteilt.</li>
-              <li><code>abschlusswert</code> wird zusätzlich durch 100 geteilt oder gar nicht verwendet.</li>
-              <li>Opportunities werden doppelt geladen / nicht dedupliziert.</li>
-              <li><code>close_deals</code> und <code>close_opportunities</code> werden gleichzeitig addiert.</li>
-              <li>Zeitraumfilter greift auf <code>created_at</code> statt <code>date_won</code>.</li>
-              <li>Won/Lost/Active wird nicht sauber gefiltert.</li>
-              <li>Setup + Retainer + brutto wird in einem Feld doppelt aufaddiert.</li>
+          <CardHeader><CardTitle className="text-sm">Nicht aus Close allein berechenbar</CardTitle></CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+              <li>Umsatz eingegangen / Cash Collected</li>
+              <li>Cash-Collect-Quote (gesamt & pro Closer)</li>
+              <li>Offene Forderungen & überfällige Beträge</li>
+              <li>Zahlungsausfall- / Stornoquote pro Closer</li>
+              <li>Rückbuchungen / Refunds</li>
             </ul>
+            <p className="text-xs text-muted-foreground">
+              Diese Kennzahlen brauchen echte Zahlungs-/Rechnungsdaten (Bank, Stripe, Lexoffice, SevDesk).
+            </p>
           </CardContent>
         </Card>
       </section>
