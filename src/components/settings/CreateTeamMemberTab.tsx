@@ -194,6 +194,7 @@ export function CreateTeamMemberTab() {
           abteilung,
           position: position.trim(),
           rolle,
+          mitarbeiter_typ: mitarbeiterTyp || null,
           startdatum,
           avatar_url: avatarUrl.trim() || null,
           notizen: notizen.trim() || null,
