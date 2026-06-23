@@ -324,7 +324,7 @@ export function AppSidebar() {
         </button>
         <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', isOpen ? 'max-h-[28rem]' : 'max-h-0')}>
           <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
-            {item.children!.filter(c => !c.adminOnly || isAdmin).map(child => {
+            {item.children!.filter(childVisible).map(child => {
               const childActive = isActive(child.url);
               return (
                 <NavLink key={child.url} to={child.url} end={child.url === item.url} className={cn(
