@@ -1,5 +1,6 @@
 // Edge Function: create-team-member
-// Erstellt einen neuen Mitarbeiter (Auth-User + team-Eintrag + user_permissions + user_roles)
+// Erstellt einen neuen Mitarbeiter (Auth-User + team-Eintrag + user_roles + user_permissions overrides)
+// Nutzt das neue App-Permission-System (app_permissions / role_permissions / user_permissions).
 // Nur für eingeloggte Admins.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
@@ -10,17 +11,7 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-interface Permissions {
-  can_view_kunden: boolean;
-  can_view_close: boolean;
-  can_view_meta_ads: boolean;
-  can_view_projekte: boolean;
-  can_view_sales_kpis: boolean;
-  can_view_fulfillment: boolean;
-  can_view_finanzen: boolean;
-  can_view_team_hr: boolean;
-  can_manage_settings: boolean;
-}
+type AppRole = 'admin' | 'account-manager' | 'setter';
 
 interface CreatePayload {
   vorname: string;
@@ -30,14 +21,16 @@ interface CreatePayload {
   password: string;
   abteilung: string;
   position: string;
-  rolle: 'admin' | 'account-manager' | 'user';
+  rolle: AppRole;
   startdatum: string;
   avatar_url?: string | null;
   notizen?: string | null;
-  permissions: Permissions;
+  // Nur explizite Abweichungen vom Rollen-Default. Schlüssel = permission_key, Wert = granted.
+  permission_overrides: Record<string, boolean>;
 }
 
 const ALLOWED_DOMAINS = ['viralconnect.de', 'haushhaush.de'];
+const VALID_ROLES: AppRole[] = ['admin', 'account-manager', 'setter'];
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -65,23 +58,20 @@ function validatePayload(p: any): { ok: true; data: CreatePayload } | { ok: fals
   if (String(p.password).length < 8) {
     return { ok: false, error: 'Passwort muss mindestens 8 Zeichen enthalten' };
   }
-  if (!['admin', 'account-manager', 'user'].includes(p.rolle)) {
+  if (!VALID_ROLES.includes(p.rolle)) {
     return { ok: false, error: 'Ungültige Rolle' };
   }
-  const perms = p.permissions || {};
-  const permKeys: (keyof Permissions)[] = [
-    'can_view_kunden',
-    'can_view_close',
-    'can_view_meta_ads',
-    'can_view_projekte',
-    'can_view_sales_kpis',
-    'can_view_fulfillment',
-    'can_view_finanzen',
-    'can_view_team_hr',
-    'can_manage_settings',
-  ];
-  const cleanPerms: Permissions = {} as Permissions;
-  for (const k of permKeys) cleanPerms[k] = !!perms[k];
+
+  // permission_overrides säubern
+  const rawOverrides = (p.permission_overrides && typeof p.permission_overrides === 'object')
+    ? p.permission_overrides as Record<string, unknown>
+    : {};
+  const cleanOverrides: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries(rawOverrides)) {
+    if (typeof k === 'string' && k.length > 0 && k.length < 200 && typeof v === 'boolean') {
+      cleanOverrides[k] = v;
+    }
+  }
 
   return {
     ok: true,
@@ -93,17 +83,17 @@ function validatePayload(p: any): { ok: true; data: CreatePayload } | { ok: fals
       password: String(p.password),
       abteilung: String(p.abteilung).trim(),
       position: String(p.position).trim(),
-      rolle: p.rolle,
+      rolle: p.rolle as AppRole,
       startdatum: String(p.startdatum).trim(),
       avatar_url: p.avatar_url ? String(p.avatar_url).trim() : null,
       notizen: p.notizen ? String(p.notizen).trim() : null,
-      permissions: cleanPerms,
+      permission_overrides: cleanOverrides,
     },
   };
 }
 
-// Map Portal-Rolle (app_role) → team_rolle Enum
-function mapTeamRolle(role: string): string {
+// Map App-Rolle (app_role) → team_rolle Enum
+function mapTeamRolle(role: AppRole): string {
   switch (role) {
     case 'admin':
       return 'Admin';
@@ -248,21 +238,38 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: `team-Insert fehlgeschlagen: ${teamErr.message}` }, 500);
     }
 
-    // 6. user_roles (upsert-style: delete + insert to avoid unique conflicts on import)
+    // 6. user_roles & user_permissions sauber setzen (Orphan-Import: vorher leeren)
     if (importedOrphan) {
       await admin.from('user_roles').delete().eq('user_id', newUserId).then(() => {}, () => {});
       await admin.from('user_permissions').delete().eq('user_id', newUserId).then(() => {}, () => {});
+      await admin.from('user_access_status').delete().eq('user_id', newUserId).then(() => {}, () => {});
     }
+
+    // Rolle in user_roles
     await admin.from('user_roles').insert({
       user_id: newUserId,
       role: data.rolle as any,
     });
 
-    // 7. user_permissions
-    await admin.from('user_permissions').insert({
+    // Aktiv-Status (damit user_has_permission nicht durch fehlenden Eintrag false ist – Default ist true, aber sicherheitshalber explizit)
+    await admin.from('user_access_status').upsert(
+      { user_id: newUserId, is_active: true },
+      { onConflict: 'user_id' },
+    ).then(() => {}, () => {});
+
+    // Individuelle Permission-Overrides (nur Abweichungen von der Rolle)
+    const overrideRows = Object.entries(data.permission_overrides).map(([permission_key, granted]) => ({
       user_id: newUserId,
-      ...data.permissions,
-    });
+      permission_key,
+      granted,
+    }));
+    if (overrideRows.length > 0) {
+      const { error: permErr } = await admin.from('user_permissions').insert(overrideRows);
+      if (permErr) {
+        // nicht fatal – Mitarbeiter ist trotzdem angelegt
+        console.warn('user_permissions insert warning:', permErr.message);
+      }
+    }
 
     return jsonResponse({
       success: true,
