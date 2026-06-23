@@ -28,6 +28,7 @@ import ProjekteAufgaben from "./pages/ProjekteAufgaben.tsx";
 
 import Sales from "./pages/Sales.tsx";
 import SalesUebersicht from "./pages/sales/SalesUebersicht.tsx";
+import CloseKpiTest from "./pages/sales/CloseKpiTest.tsx";
 
 import Finanzen from "./pages/Finanzen.tsx";
 import TeamPage from "./pages/Team.tsx";
@@ -171,6 +172,7 @@ const App = () => (
                 
                 <Route path="/sales" element={<Navigate to="/sales/uebersicht" replace />} />
                 <Route path="/sales/uebersicht" element={<PermissionRoute permissionKey="sales.view"><DL><SalesUebersicht /></DL></PermissionRoute>} />
+                <Route path="/sales/close-kpi-test" element={<AdminRoute><DL><CloseKpiTest /></DL></AdminRoute>} />
                 <Route path="/sales/referenz-showcase" element={<ShowcaseAuthRedirect><DL><ReferenzShowcaseOverview /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/websites" element={<ShowcaseAuthRedirect><DL><ReferenzWebsitesPage /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/websites/:id" element={<ShowcaseAuthRedirect><DL><ReferenzWebsiteDetail /></DL></ShowcaseAuthRedirect>} />
