@@ -48,7 +48,7 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Projekte', url: '/projekte' },
       { title: 'Aufgaben', url: '/projekte/aufgaben' },
-      { title: 'Laufzeit Projekte', url: '/projekte/laufzeiten' },
+      
     ],
   },
   // "Tools" is rendered separately
