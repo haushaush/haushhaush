@@ -39,6 +39,7 @@ export function PermissionRoute({ children, permissionKey }: Props) {
   }
 
   if (permissionKey && !hasPermission(permissionKey)) {
+    const canSeeDashboard = hasPermission('dashboard.view');
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
         <ShieldAlert className="w-16 h-16 text-destructive mb-4" />
@@ -47,7 +48,12 @@ export function PermissionRoute({ children, permissionKey }: Props) {
           Du hast keine Berechtigung für diesen Bereich.
         </p>
         <p className="text-xs text-muted-foreground mb-6 font-mono">{permissionKey}</p>
-        <Button onClick={() => navigate('/')}>Zurück zur Übersicht</Button>
+        <div className="flex gap-3">
+          {canSeeDashboard && (
+            <Button onClick={() => navigate('/')}>Zurück zur Übersicht</Button>
+          )}
+          <Button variant="outline" onClick={() => signOut()}>Abmelden</Button>
+        </div>
       </div>
     );
   }
