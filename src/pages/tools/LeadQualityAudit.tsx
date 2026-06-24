@@ -48,6 +48,9 @@ interface Audit {
   notizen: string;
 }
 
+const DEFAULT_AUDIT_WINDOW_START_DAYS = 14;
+const DEFAULT_AUDIT_WINDOW_END_DAYS = 28;
+
 const EMPTY_FORM = (): Audit => {
   const today = new Date();
   const plus = (d: number) => {
@@ -60,8 +63,8 @@ const EMPTY_FORM = (): Audit => {
     kunde_name: "",
     funnel_link: "",
     kampagnenstart: today.toISOString().slice(0, 10),
-    audit_fenster_start: plus(14),
-    audit_fenster_ende: plus(21),
+    audit_fenster_start: plus(DEFAULT_AUDIT_WINDOW_START_DAYS),
+    audit_fenster_ende: plus(DEFAULT_AUDIT_WINDOW_END_DAYS),
     zustaendiger_tester: "",
     tester_email: "",
     status: "aktiv",
