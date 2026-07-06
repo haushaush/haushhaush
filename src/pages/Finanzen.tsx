@@ -373,10 +373,26 @@ export default function Finanzen() {
             </>
           )}
           {isAdmin && (
-            <Button onClick={runSync} disabled={syncing} size="sm" className="h-9">
-              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'Synchronisiere…' : 'Qonto Sync'}
-            </Button>
+            <>
+              <Button onClick={() => runSync('incremental')} disabled={syncing} size="sm" className="h-9">
+                <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Synchronisiere…' : 'Qonto Sync'}
+              </Button>
+              <Button
+                onClick={() => {
+                  if (confirm('Vollständigen Backfill starten? Holt ALLE historischen Rechnungen & Transaktionen (kann mehrere Minuten dauern).')) {
+                    runSync('backfill');
+                  }
+                }}
+                disabled={syncing}
+                size="sm"
+                variant="outline"
+                className="h-9"
+              >
+                <Database className="h-4 w-4 mr-2" />
+                Vollständiger Backfill
+              </Button>
+            </>
           )}
         </div>
       </div>
