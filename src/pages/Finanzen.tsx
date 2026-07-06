@@ -396,6 +396,10 @@ export default function Finanzen() {
           <p className="text-xs text-muted-foreground">
             Qonto Finanzübersicht
             {lastSync && <> · Letzter Sync: {new Date(lastSync).toLocaleString('de-DE')}</>}
+            {invoiceSync?.triggered_by && (
+              <> ({invoiceSync.triggered_by === 'cron' ? 'automatisch' : 'manuell'})</>
+            )}
+            <> · Auto-Sync: täglich 06:00 & alle 3 h (09–21 Uhr)</>
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
