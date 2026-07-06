@@ -381,7 +381,7 @@ export default function Finanzen() {
     </div><Skeleton className="h-64" /></div>
   );
 
-  const hasQontoData = accounts.length > 0 || invoices.length > 0;
+  const hasQontoData = accounts.length > 0 || dbInvoiceTotal > 0 || invoices.length > 0;
   const top3Share = topCustomers.length > 0 && (inv.paid_sum || 0) > 0
     ? topCustomers.slice(0, 3).reduce((s, c) => s + Number(c.total_paid), 0) / (inv.paid_sum || 1)
     : null;
@@ -827,8 +827,19 @@ export default function Finanzen() {
             <Kpi title="Offen" value={eur(invSummary.openS)} source="Qonto Rechnungen" />
             <Kpi title="Überfällig" value={eur(invSummary.overS)} source="Qonto Rechnungen" />
             <Kpi title="Bezahlt (Filter)" value={eur(invSummary.paidS)} source="Qonto Rechnungen" />
-            <Kpi title="Summe gefiltert" value={eur(invSummary.totalS)} source="Qonto Rechnungen" subtitle={`${filteredInvoices.length} Einträge`} />
+            <Kpi title="Summe gefiltert" value={eur(invSummary.totalS)} source="Qonto Rechnungen" subtitle={`${num(invSummary.count)} Einträge`} />
           </div>
+
+          {invoiceSyncIncomplete && (
+            <Card className="border-amber-200 bg-amber-50">
+              <CardContent className="p-3 text-xs text-amber-800 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>
+                  Qonto-Rechnungssync wirkt unvollständig. Starte als Admin einen vollständigen Backfill; die Tabelle zeigt nur Daten, die bereits in der Datenbank gespeichert sind.
+                </span>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -872,10 +883,13 @@ export default function Finanzen() {
                 <TableHead></TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {filteredInvoices.length === 0 && (
+                {!invoiceLoading && invoices.length === 0 && (
                   <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Keine Rechnungen gefunden</TableCell></TableRow>
                 )}
-                {filteredInvoices.slice(pageIdx * pageSize, pageIdx * pageSize + pageSize).map(i => {
+                {invoiceLoading && (
+                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Lade Rechnungen…</TableCell></TableRow>
+                )}
+                {invoices.map(i => {
                   const overdueDays = i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today
                     ? Math.floor((today.getTime() - new Date(i.due_date).getTime()) / 86400000)
                     : null;
@@ -907,13 +921,13 @@ export default function Finanzen() {
               </TableBody>
             </Table>
           </div>
-          {/* Pagination footer — nur Tabellen-Pagination. KPIs oben nutzen alle {filteredInvoices.length} Rechnungen. */}
+          {/* Pagination footer — nur Tabellen-Pagination. KPIs oben nutzen alle gefilterten Rechnungen laut DB-Count/RPC. */}
           <div className="flex items-center justify-between px-4 py-3 border-t text-xs">
             <div className="text-muted-foreground">
-              {filteredInvoices.length === 0
+              {invoiceTotal === 0
                 ? '0 Rechnungen'
-                : `${pageIdx * pageSize + 1}–${Math.min(filteredInvoices.length, (pageIdx + 1) * pageSize)} von ${filteredInvoices.length}`}
-              {' · KPIs oben basieren auf allen '}<strong>{filteredInvoices.length}</strong>{' gefilterten Rechnungen'}
+                : `${pageIdx * pageSize + 1}–${Math.min(invoiceTotal, (pageIdx + 1) * pageSize)} von ${invoiceTotal}`}
+              {' · KPIs oben basieren auf allen '}<strong>{num(invSummary.count)}</strong>{' gefilterten Rechnungen'}
             </div>
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Pro Seite:</span>
@@ -929,19 +943,28 @@ export default function Finanzen() {
                 <ChevronLeft className="h-3 w-3" />
               </Button>
               <span className="tabular-nums">
-                {pageIdx + 1} / {Math.max(1, Math.ceil(filteredInvoices.length / pageSize))}
+                {pageIdx + 1} / {Math.max(1, Math.ceil(invoiceTotal / pageSize))}
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7 px-2"
-                disabled={(pageIdx + 1) * pageSize >= filteredInvoices.length}
+                disabled={(pageIdx + 1) * pageSize >= invoiceTotal}
                 onClick={() => setPageIdx(p => p + 1)}
               >
                 <ChevronRight className="h-3 w-3" />
               </Button>
             </div>
           </div>
+          {isAdmin && (
+            <div className="px-4 py-3 border-t text-[11px] text-muted-foreground grid grid-cols-2 md:grid-cols-5 gap-2">
+              <span>DB gesamt: <strong className="text-foreground tabular-nums">{num(dbInvoiceTotal)}</strong></span>
+              <span>Gefiltert laut Count: <strong className="text-foreground tabular-nums">{num(invoiceTotal)}</strong></span>
+              <span>Geladene Zeilen: <strong className="text-foreground tabular-nums">{num(invoices.length)}</strong></span>
+              <span>Page Size: <strong className="text-foreground tabular-nums">{pageSize}</strong></span>
+              <span>Seite: <strong className="text-foreground tabular-nums">{pageIdx + 1}</strong></span>
+            </div>
+          )}
           </CardContent></Card>
         </TabsContent>
 
