@@ -3851,6 +3851,168 @@ export type Database = {
           },
         ]
       }
+      qonto_bank_accounts: {
+        Row: {
+          authorized_balance: number | null
+          authorized_balance_cents: number | null
+          balance: number | null
+          balance_cents: number | null
+          bic: string | null
+          currency: string | null
+          iban: string | null
+          id: string
+          is_main: boolean | null
+          name: string | null
+          qonto_account_id: string | null
+          raw: Json | null
+          slug: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          authorized_balance?: number | null
+          authorized_balance_cents?: number | null
+          balance?: number | null
+          balance_cents?: number | null
+          bic?: string | null
+          currency?: string | null
+          iban?: string | null
+          id?: string
+          is_main?: boolean | null
+          name?: string | null
+          qonto_account_id?: string | null
+          raw?: Json | null
+          slug?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          authorized_balance?: number | null
+          authorized_balance_cents?: number | null
+          balance?: number | null
+          balance_cents?: number | null
+          bic?: string | null
+          currency?: string | null
+          iban?: string | null
+          id?: string
+          is_main?: boolean | null
+          name?: string | null
+          qonto_account_id?: string | null
+          raw?: Json | null
+          slug?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      qonto_client_invoices: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          contact_email: string | null
+          created_at: string
+          created_at_qonto: string | null
+          currency: string | null
+          due_date: string | null
+          id: string
+          invoice_url: string | null
+          issue_date: string | null
+          number: string | null
+          paid_at: string | null
+          qonto_invoice_id: string
+          raw: Json | null
+          status: string | null
+          subtotal_amount: number | null
+          subtotal_amount_cents: number | null
+          total_amount: number | null
+          total_amount_cents: number | null
+          updated_at: string
+          updated_at_qonto: string | null
+          vat_amount: number | null
+          vat_amount_cents: number | null
+        }
+        Insert: {
+          client_id?: string | null
+          client_name?: string | null
+          contact_email?: string | null
+          created_at?: string
+          created_at_qonto?: string | null
+          currency?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_url?: string | null
+          issue_date?: string | null
+          number?: string | null
+          paid_at?: string | null
+          qonto_invoice_id: string
+          raw?: Json | null
+          status?: string | null
+          subtotal_amount?: number | null
+          subtotal_amount_cents?: number | null
+          total_amount?: number | null
+          total_amount_cents?: number | null
+          updated_at?: string
+          updated_at_qonto?: string | null
+          vat_amount?: number | null
+          vat_amount_cents?: number | null
+        }
+        Update: {
+          client_id?: string | null
+          client_name?: string | null
+          contact_email?: string | null
+          created_at?: string
+          created_at_qonto?: string | null
+          currency?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_url?: string | null
+          issue_date?: string | null
+          number?: string | null
+          paid_at?: string | null
+          qonto_invoice_id?: string
+          raw?: Json | null
+          status?: string | null
+          subtotal_amount?: number | null
+          subtotal_amount_cents?: number | null
+          total_amount?: number | null
+          total_amount_cents?: number | null
+          updated_at?: string
+          updated_at_qonto?: string | null
+          vat_amount?: number | null
+          vat_amount_cents?: number | null
+        }
+        Relationships: []
+      }
+      qonto_sync_status: {
+        Row: {
+          created_at: string
+          id: string
+          last_error: string | null
+          last_success_at: string | null
+          last_synced_at: string | null
+          resource: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_success_at?: string | null
+          last_synced_at?: string | null
+          resource: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_success_at?: string | null
+          last_synced_at?: string | null
+          resource?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       qonto_transactions: {
         Row: {
           amount_cents: number | null
@@ -3902,6 +4064,78 @@ export type Database = {
           reference?: string | null
           settled_at?: string | null
           status?: string | null
+        }
+        Relationships: []
+      }
+      qonto_transactions_new: {
+        Row: {
+          amount: number | null
+          amount_cents: number | null
+          bank_account_iban: string | null
+          bank_account_id: string | null
+          cashflow_category_name: string | null
+          category: string | null
+          created_at: string
+          created_at_qonto: string | null
+          currency: string | null
+          emitted_at: string | null
+          id: string
+          label: string | null
+          operation_type: string | null
+          raw: Json | null
+          reference: string | null
+          settled_at: string | null
+          side: string | null
+          status: string | null
+          transaction_id: string
+          updated_at: string
+          updated_at_qonto: string | null
+        }
+        Insert: {
+          amount?: number | null
+          amount_cents?: number | null
+          bank_account_iban?: string | null
+          bank_account_id?: string | null
+          cashflow_category_name?: string | null
+          category?: string | null
+          created_at?: string
+          created_at_qonto?: string | null
+          currency?: string | null
+          emitted_at?: string | null
+          id?: string
+          label?: string | null
+          operation_type?: string | null
+          raw?: Json | null
+          reference?: string | null
+          settled_at?: string | null
+          side?: string | null
+          status?: string | null
+          transaction_id: string
+          updated_at?: string
+          updated_at_qonto?: string | null
+        }
+        Update: {
+          amount?: number | null
+          amount_cents?: number | null
+          bank_account_iban?: string | null
+          bank_account_id?: string | null
+          cashflow_category_name?: string | null
+          category?: string | null
+          created_at?: string
+          created_at_qonto?: string | null
+          currency?: string | null
+          emitted_at?: string | null
+          id?: string
+          label?: string | null
+          operation_type?: string | null
+          raw?: Json | null
+          reference?: string | null
+          settled_at?: string | null
+          side?: string | null
+          status?: string | null
+          transaction_id?: string
+          updated_at?: string
+          updated_at_qonto?: string | null
         }
         Relationships: []
       }
