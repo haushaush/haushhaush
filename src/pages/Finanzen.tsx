@@ -172,6 +172,19 @@ export default function Finanzen() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [chartMode, setChartMode] = useState<'net' | 'bank_in' | 'bank_out' | 'invoices_paid'>('net');
+  const [invoiceTotal, setInvoiceTotal] = useState(0);
+  const [invoiceMetrics, setInvoiceMetrics] = useState<any>(null);
+  const [dbInvoiceTotal, setDbInvoiceTotal] = useState(0);
+  const [clientList, setClientList] = useState<string[]>([]);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+
+  // Invoices tab state
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterOverdue, setFilterOverdue] = useState(false);
+  const [filterClient, setFilterClient] = useState('all');
+  const [search, setSearch] = useState('');
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [pageIdx, setPageIdx] = useState<number>(0);
 
   const { from, to } = useMemo(() => rangeBounds(range, customRange), [range, customRange]);
   const fromISO = toISO(from), toISOd = toISO(to);
@@ -196,26 +209,14 @@ export default function Finanzen() {
   }, [fromISO, toISOd]);
 
   const loadBase = useCallback(async () => {
-    const a = await supabase.from('qonto_bank_accounts' as any).select('*').order('is_main', { ascending: false });
+    const [a, invoiceCount, clients] = await Promise.all([
+      supabase.from('qonto_bank_accounts' as any).select('*').order('is_main', { ascending: false }),
+      supabase.from('qonto_client_invoices' as any).select('id', { count: 'exact', head: true }),
+      (supabase.rpc as any)('get_qonto_invoice_clients'),
+    ]);
     setAccounts((a.data as any) || []);
-
-    // Full pagination over invoices — bypass PostgREST 1000-row limit
-    const CHUNK = 1000;
-    let start = 0;
-    let all: Invoice[] = [];
-    while (true) {
-      const { data, error } = await supabase
-        .from('qonto_client_invoices' as any)
-        .select('*')
-        .order('issue_date', { ascending: false, nullsFirst: false })
-        .range(start, start + CHUNK - 1);
-      if (error || !data) break;
-      all = all.concat(data as any);
-      if ((data as any[]).length < CHUNK) break;
-      start += CHUNK;
-      if (start > 50000) break; // safety cap
-    }
-    setInvoices(all);
+    setDbInvoiceTotal(invoiceCount.count || 0);
+    setClientList(((clients.data as any[]) || []).map(c => c.client_name).filter(Boolean));
   }, []);
 
   useEffect(() => {
@@ -238,7 +239,7 @@ export default function Finanzen() {
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
-        await Promise.all([loadBase(), loadAggregates()]);
+        await Promise.all([loadBase(), loadAggregates(), loadInvoicePage(), loadInvoiceMetrics()]);
         if (attempts >= (mode === 'backfill' ? 60 : 24)) { clearInterval(poll); setSyncing(false); }
       }, 5000);
     } catch (e: any) {
@@ -289,41 +290,79 @@ export default function Finanzen() {
   const netLiquidity = reserveAcc ? totalBalance - Number(reserveAcc.balance || 0) : null;
   const reserveShare = reserveAcc && totalBalance > 0 ? Number(reserveAcc.balance || 0) / totalBalance : null;
 
-  const lastSync = syncStatus.find(s => s.resource === 'client_invoices')?.last_success_at
-    || syncStatus.find(s => s.resource === 'bank_accounts')?.last_success_at;
+  const invoiceSync = syncStatus.find(s => s.resource === 'client_invoices');
+  const lastSync = invoiceSync?.last_success_at || syncStatus.find(s => s.resource === 'bank_accounts')?.last_success_at;
+  const invoiceSyncIncomplete = !!invoiceSync && (
+    !!invoiceSync.last_error
+    || invoiceSync.completed === false
+    || (!!invoiceSync.total_pages && !!invoiceSync.pages_loaded && invoiceSync.pages_loaded < invoiceSync.total_pages)
+    || (dbInvoiceTotal <= 100 && invoiceSync.completed !== true)
+  );
 
-  // Invoices tab state
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterOverdue, setFilterOverdue] = useState(false);
-  const [filterClient, setFilterClient] = useState('all');
-  const [search, setSearch] = useState('');
-  const [pageSize, setPageSize] = useState<number>(25);
-  const [pageIdx, setPageIdx] = useState<number>(0);
   // Reset page when filters change
   useEffect(() => { setPageIdx(0); }, [filterStatus, filterOverdue, filterClient, search, range, pageSize]);
 
-  const filteredInvoices = useMemo(() => {
-    let out = invoices;
-    if (filterStatus !== 'all') out = out.filter(i => i.status === filterStatus);
-    if (filterOverdue) out = out.filter(i => i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today);
-    if (filterClient !== 'all') out = out.filter(i => (i.client_name || '') === filterClient);
-    if (range !== 'all') out = out.filter(i => i.issue_date && new Date(i.issue_date) >= from && new Date(i.issue_date) <= to);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      out = out.filter(i => (i.number || '').toLowerCase().includes(q) || (i.client_name || '').toLowerCase().includes(q));
-    }
-    return out;
-  }, [invoices, filterStatus, filterOverdue, filterClient, range, from, to, search, today]);
+  const cleanSearch = search.trim().replace(/[%(),]/g, ' ');
 
-  const clientList = useMemo(() => Array.from(new Set(invoices.map(i => i.client_name).filter(Boolean))) as string[], [invoices]);
+  const buildInvoiceQuery = useCallback((withCount = true) => {
+    let query = supabase
+      .from('qonto_client_invoices' as any)
+      .select('*', withCount ? { count: 'exact' } : undefined)
+      .order('issue_date', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false });
+
+    if (range !== 'all') query = query.gte('issue_date', fromISO).lte('issue_date', toISOd);
+    if (filterStatus !== 'all') query = query.eq('status', filterStatus);
+    if (filterOverdue) query = query.eq('status', 'unpaid').lt('due_date', toISO(today));
+    if (filterClient !== 'all') query = query.eq('client_name', filterClient);
+    if (cleanSearch) query = query.or(`number.ilike.%${cleanSearch}%,client_name.ilike.%${cleanSearch}%`);
+
+    return query;
+  }, [range, fromISO, toISOd, filterStatus, filterOverdue, filterClient, cleanSearch, today]);
+
+  const loadInvoicePage = useCallback(async () => {
+    setInvoiceLoading(true);
+    const fromRow = pageIdx * pageSize;
+    const toRow = fromRow + pageSize - 1;
+    const { data, count, error } = await buildInvoiceQuery(true).range(fromRow, toRow);
+    if (!error) {
+      setInvoices((data as any) || []);
+      setInvoiceTotal(count || 0);
+    }
+    setInvoiceLoading(false);
+  }, [buildInvoiceQuery, pageIdx, pageSize]);
+
+  const loadInvoiceMetrics = useCallback(async () => {
+    const { data } = await (supabase.rpc as any)('get_qonto_invoice_metrics', {
+      p_start: range === 'all' ? null : fromISO,
+      p_end: range === 'all' ? null : toISOd,
+      p_status: filterStatus === 'all' ? null : filterStatus,
+      p_overdue: filterOverdue,
+      p_client: filterClient === 'all' ? null : filterClient,
+      p_search: cleanSearch || null,
+    });
+    setInvoiceMetrics(data || null);
+  }, [range, fromISO, toISOd, filterStatus, filterOverdue, filterClient, cleanSearch]);
+
+  useEffect(() => {
+    Promise.all([loadInvoicePage(), loadInvoiceMetrics()]);
+  }, [loadInvoicePage, loadInvoiceMetrics]);
+
+  useEffect(() => {
+    if (pageIdx > 0 && invoiceTotal > 0 && pageIdx * pageSize >= invoiceTotal) {
+      setPageIdx(Math.max(0, Math.ceil(invoiceTotal / pageSize) - 1));
+    }
+  }, [invoiceTotal, pageIdx, pageSize]);
 
   const invSummary = useMemo(() => {
-    const openS = filteredInvoices.filter(i => i.status === 'unpaid').reduce((s, i) => s + Number(i.total_amount || 0), 0);
-    const overS = filteredInvoices.filter(i => i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today).reduce((s, i) => s + Number(i.total_amount || 0), 0);
-    const paidS = filteredInvoices.filter(i => i.status === 'paid').reduce((s, i) => s + Number(i.total_amount || 0), 0);
-    const totalS = filteredInvoices.reduce((s, i) => s + Number(i.total_amount || 0), 0);
-    return { openS, overS, paidS, totalS };
-  }, [filteredInvoices, today]);
+    return {
+      openS: Number(invoiceMetrics?.open_amount || 0),
+      overS: Number(invoiceMetrics?.overdue_amount || 0),
+      paidS: Number(invoiceMetrics?.paid_amount || 0),
+      totalS: Number(invoiceMetrics?.total_amount || 0),
+      count: Number(invoiceMetrics?.filtered_count ?? invoiceTotal),
+    };
+  }, [invoiceMetrics, invoiceTotal]);
 
   const statusBadge = (i: Invoice) => {
     const isOverdue = i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today;
@@ -342,7 +381,7 @@ export default function Finanzen() {
     </div><Skeleton className="h-64" /></div>
   );
 
-  const hasQontoData = accounts.length > 0 || invoices.length > 0;
+  const hasQontoData = accounts.length > 0 || dbInvoiceTotal > 0 || invoices.length > 0;
   const top3Share = topCustomers.length > 0 && (inv.paid_sum || 0) > 0
     ? topCustomers.slice(0, 3).reduce((s, c) => s + Number(c.total_paid), 0) / (inv.paid_sum || 1)
     : null;
@@ -788,8 +827,19 @@ export default function Finanzen() {
             <Kpi title="Offen" value={eur(invSummary.openS)} source="Qonto Rechnungen" />
             <Kpi title="Überfällig" value={eur(invSummary.overS)} source="Qonto Rechnungen" />
             <Kpi title="Bezahlt (Filter)" value={eur(invSummary.paidS)} source="Qonto Rechnungen" />
-            <Kpi title="Summe gefiltert" value={eur(invSummary.totalS)} source="Qonto Rechnungen" subtitle={`${filteredInvoices.length} Einträge`} />
+            <Kpi title="Summe gefiltert" value={eur(invSummary.totalS)} source="Qonto Rechnungen" subtitle={`${num(invSummary.count)} Einträge`} />
           </div>
+
+          {invoiceSyncIncomplete && (
+            <Card className="border-amber-200 bg-amber-50">
+              <CardContent className="p-3 text-xs text-amber-800 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>
+                  Qonto-Rechnungssync wirkt unvollständig. Starte als Admin einen vollständigen Backfill; die Tabelle zeigt nur Daten, die bereits in der Datenbank gespeichert sind.
+                </span>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -833,10 +883,13 @@ export default function Finanzen() {
                 <TableHead></TableHead>
               </TableRow></TableHeader>
               <TableBody>
-                {filteredInvoices.length === 0 && (
+                {!invoiceLoading && invoices.length === 0 && (
                   <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Keine Rechnungen gefunden</TableCell></TableRow>
                 )}
-                {filteredInvoices.slice(pageIdx * pageSize, pageIdx * pageSize + pageSize).map(i => {
+                {invoiceLoading && (
+                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Lade Rechnungen…</TableCell></TableRow>
+                )}
+                {invoices.map(i => {
                   const overdueDays = i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today
                     ? Math.floor((today.getTime() - new Date(i.due_date).getTime()) / 86400000)
                     : null;
@@ -868,13 +921,13 @@ export default function Finanzen() {
               </TableBody>
             </Table>
           </div>
-          {/* Pagination footer — nur Tabellen-Pagination. KPIs oben nutzen alle {filteredInvoices.length} Rechnungen. */}
+          {/* Pagination footer — nur Tabellen-Pagination. KPIs oben nutzen alle gefilterten Rechnungen laut DB-Count/RPC. */}
           <div className="flex items-center justify-between px-4 py-3 border-t text-xs">
             <div className="text-muted-foreground">
-              {filteredInvoices.length === 0
+              {invoiceTotal === 0
                 ? '0 Rechnungen'
-                : `${pageIdx * pageSize + 1}–${Math.min(filteredInvoices.length, (pageIdx + 1) * pageSize)} von ${filteredInvoices.length}`}
-              {' · KPIs oben basieren auf allen '}<strong>{filteredInvoices.length}</strong>{' gefilterten Rechnungen'}
+                : `${pageIdx * pageSize + 1}–${Math.min(invoiceTotal, (pageIdx + 1) * pageSize)} von ${invoiceTotal}`}
+              {' · KPIs oben basieren auf allen '}<strong>{num(invSummary.count)}</strong>{' gefilterten Rechnungen'}
             </div>
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Pro Seite:</span>
@@ -890,19 +943,28 @@ export default function Finanzen() {
                 <ChevronLeft className="h-3 w-3" />
               </Button>
               <span className="tabular-nums">
-                {pageIdx + 1} / {Math.max(1, Math.ceil(filteredInvoices.length / pageSize))}
+                {pageIdx + 1} / {Math.max(1, Math.ceil(invoiceTotal / pageSize))}
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7 px-2"
-                disabled={(pageIdx + 1) * pageSize >= filteredInvoices.length}
+                disabled={(pageIdx + 1) * pageSize >= invoiceTotal}
                 onClick={() => setPageIdx(p => p + 1)}
               >
                 <ChevronRight className="h-3 w-3" />
               </Button>
             </div>
           </div>
+          {isAdmin && (
+            <div className="px-4 py-3 border-t text-[11px] text-muted-foreground grid grid-cols-2 md:grid-cols-5 gap-2">
+              <span>DB gesamt: <strong className="text-foreground tabular-nums">{num(dbInvoiceTotal)}</strong></span>
+              <span>Gefiltert laut Count: <strong className="text-foreground tabular-nums">{num(invoiceTotal)}</strong></span>
+              <span>Geladene Zeilen: <strong className="text-foreground tabular-nums">{num(invoices.length)}</strong></span>
+              <span>Page Size: <strong className="text-foreground tabular-nums">{pageSize}</strong></span>
+              <span>Seite: <strong className="text-foreground tabular-nums">{pageIdx + 1}</strong></span>
+            </div>
+          )}
           </CardContent></Card>
         </TabsContent>
 

@@ -120,6 +120,59 @@ Deno.serve(async (req) => {
     const errors: Record<string, string> = {};
     const synced = { bank_accounts: 0, transactions: 0, invoices: 0, tx_pages: 0, inv_pages: 0 };
 
+    const syncClientInvoices = async () => {
+      let page = 1;
+      let hasMore = true;
+      let totalPages: number | null = null;
+      while (hasMore && page <= MAX_PAGES) {
+        const params = new URLSearchParams({
+          page: String(page),
+          per_page: String(PER_PAGE),
+          exclude_imported: "false",
+          sort_by: "created_at:desc",
+        });
+        const body = await qontoFetch(`/client_invoices?${params.toString()}`, login, secret);
+        const invs = body.client_invoices || body.invoices || [];
+        for (const inv of invs) {
+          const row = {
+            qonto_invoice_id: inv.id,
+            number: inv.number || null,
+            status: inv.status || null,
+            invoice_url: inv.invoice_url || inv.url || null,
+            contact_email: inv.contact_email || inv.client?.email || null,
+            client_name: inv.client?.name || inv.client_name || null,
+            client_id: inv.client?.id || inv.client_id || null,
+            currency: inv.currency || "EUR",
+            total_amount: inv.total_amount?.value != null ? Number(inv.total_amount.value) : (inv.total_amount_cents != null ? toEur(inv.total_amount_cents) : null),
+            total_amount_cents: inv.total_amount_cents ?? (inv.total_amount?.value != null ? Math.round(Number(inv.total_amount.value) * 100) : null),
+            subtotal_amount: inv.subtotal_amount?.value != null ? Number(inv.subtotal_amount.value) : (inv.subtotal_amount_cents != null ? toEur(inv.subtotal_amount_cents) : null),
+            subtotal_amount_cents: inv.subtotal_amount_cents ?? null,
+            vat_amount: inv.vat_amount?.value != null ? Number(inv.vat_amount.value) : (inv.vat_amount_cents != null ? toEur(inv.vat_amount_cents) : null),
+            vat_amount_cents: inv.vat_amount_cents ?? null,
+            issue_date: inv.issue_date || null,
+            due_date: inv.due_date || null,
+            paid_at: inv.paid_at || inv.payment_date || null,
+            created_at_qonto: inv.created_at || null,
+            updated_at_qonto: inv.updated_at || null,
+            raw: inv,
+            updated_at: now(),
+          };
+          if (row.qonto_invoice_id) {
+            const { error } = await supabase.from("qonto_client_invoices").upsert(row, { onConflict: "qonto_invoice_id" });
+            if (!error) synced.invoices++;
+          }
+        }
+        const meta = body.meta || {};
+        totalPages = meta.total_pages ?? totalPages;
+        const hasNext = meta.next_page != null || (totalPages != null && page < totalPages);
+        hasMore = invs.length > 0 && hasNext;
+        synced.inv_pages++;
+        await markProgress("client_invoices", synced.inv_pages, synced.invoices, totalPages);
+        page++;
+      }
+      await markDone("client_invoices", true, undefined, synced.inv_pages, synced.invoices, totalPages);
+    };
+
     // 1. Organization + Bank Accounts
     let bankAccounts: any[] = [];
     try {
@@ -154,7 +207,15 @@ Deno.serve(async (req) => {
       await markDone("bank_accounts", false, e.message);
     }
 
-    // 2. Transactions per bank account — full pagination
+    // 2. Client Invoices first — table count/KPIs must be complete even if transaction sync is still running
+    try {
+      await syncClientInvoices();
+    } catch (e: any) {
+      errors.client_invoices = e.message;
+      await markDone("client_invoices", false, e.message, synced.inv_pages, synced.invoices);
+    }
+
+    // 3. Transactions per bank account — full pagination
     try {
       let since: string | null = null;
       if (mode === "backfill") {
@@ -224,60 +285,6 @@ Deno.serve(async (req) => {
     } catch (e: any) {
       errors.transactions = e.message;
       await markDone("transactions", false, e.message, synced.tx_pages, synced.transactions);
-    }
-
-    // 3. Client Invoices — full pagination, ALL pages
-    try {
-      let page = 1;
-      let hasMore = true;
-      let totalPages: number | null = null;
-      while (hasMore && page <= MAX_PAGES) {
-        const params = new URLSearchParams({ current_page: String(page), per_page: String(PER_PAGE) });
-        const body = await qontoFetch(`/client_invoices?${params.toString()}`, login, secret);
-        const invs = body.client_invoices || body.invoices || [];
-        for (const inv of invs) {
-          const row = {
-            qonto_invoice_id: inv.id,
-            number: inv.number || null,
-            status: inv.status || null,
-            invoice_url: inv.invoice_url || inv.url || null,
-            contact_email: inv.contact_email || inv.client?.email || null,
-            client_name: inv.client?.name || inv.client_name || null,
-            client_id: inv.client?.id || inv.client_id || null,
-            currency: inv.currency || "EUR",
-            total_amount: inv.total_amount?.value != null ? Number(inv.total_amount.value) : (inv.total_amount_cents != null ? toEur(inv.total_amount_cents) : null),
-            total_amount_cents: inv.total_amount_cents ?? (inv.total_amount?.value != null ? Math.round(Number(inv.total_amount.value) * 100) : null),
-            subtotal_amount: inv.subtotal_amount?.value != null ? Number(inv.subtotal_amount.value) : (inv.subtotal_amount_cents != null ? toEur(inv.subtotal_amount_cents) : null),
-            subtotal_amount_cents: inv.subtotal_amount_cents ?? null,
-            vat_amount: inv.vat_amount?.value != null ? Number(inv.vat_amount.value) : (inv.vat_amount_cents != null ? toEur(inv.vat_amount_cents) : null),
-            vat_amount_cents: inv.vat_amount_cents ?? null,
-            issue_date: inv.issue_date || null,
-            due_date: inv.due_date || null,
-            paid_at: inv.paid_at || inv.payment_date || null,
-            created_at_qonto: inv.created_at || null,
-            updated_at_qonto: inv.updated_at || null,
-            raw: inv,
-            updated_at: now(),
-          };
-          if (row.qonto_invoice_id) {
-            const { error } = await supabase.from("qonto_client_invoices").upsert(row, { onConflict: "qonto_invoice_id" });
-            if (!error) synced.invoices++;
-          }
-        }
-        const meta = body.meta || {};
-        totalPages = meta.total_pages ?? totalPages;
-        const hasNext = !!meta.next_page || (totalPages != null && page < totalPages);
-        hasMore = invs.length > 0 && hasNext;
-        synced.inv_pages++;
-        if (synced.inv_pages % 3 === 0) {
-          await markProgress("client_invoices", synced.inv_pages, synced.invoices, totalPages);
-        }
-        page++;
-      }
-      await markDone("client_invoices", true, undefined, synced.inv_pages, synced.invoices, totalPages);
-    } catch (e: any) {
-      errors.client_invoices = e.message;
-      await markDone("client_invoices", false, e.message, synced.inv_pages, synced.invoices);
     }
 
     console.log("sync-qonto finished", { mode, synced, errors });
