@@ -494,7 +494,7 @@ export default function Finanzen() {
                 <p className="text-xs text-muted-foreground py-8 text-center">Keine Monatsdaten.</p>
               ) : (
                 <ResponsiveContainer width="100%" height={isMobile ? 220 : 280}>
-                  <BarChart data={monthlyEnriched}>
+                  <ComposedChart data={monthlyEnriched}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F5F5F7" />
                     <XAxis dataKey="month" stroke="#AEAEB2" fontSize={11} />
                     <YAxis stroke="#AEAEB2" fontSize={11} tickFormatter={(v) => `€${(v / 1000).toFixed(0)}k`} />
@@ -505,7 +505,7 @@ export default function Finanzen() {
                       ))}
                     </Bar>
                     <Line type="monotone" dataKey="rolling3" stroke="#8B5CF6" strokeWidth={2} dot={false} />
-                  </BarChart>
+                  </ComposedChart>
                 </ResponsiveContainer>
               )}
               <div className="grid grid-cols-4 gap-3 mt-3 text-[11px]">
