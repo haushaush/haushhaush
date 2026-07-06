@@ -226,7 +226,17 @@ Deno.serve(async (req) => {
     await setStatus("client_invoices", false, e.message);
   }
 
-  return new Response(JSON.stringify({ success: Object.keys(errors).length === 0, synced, errors }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+    console.log("sync-qonto finished", { synced, errors });
+  };
+
+  // Fire-and-forget: run the actual Qonto sync in the background so we don't
+  // hit the 150s edge function timeout for large datasets. The UI polls
+  // qonto_sync_status + the data tables to observe progress.
+  // @ts-ignore - EdgeRuntime is available in the Supabase edge runtime
+  EdgeRuntime.waitUntil(runSync());
+
+  return new Response(
+    JSON.stringify({ success: true, started: true, message: "Qonto sync gestartet – läuft im Hintergrund." }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 });
