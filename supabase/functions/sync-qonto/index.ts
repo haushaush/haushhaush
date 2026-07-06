@@ -41,18 +41,17 @@ Deno.serve(async (req) => {
   let triggeredBy: "manual" | "cron" = "manual";
   try {
     const cronSecretHeader = req.headers.get("x-cron-secret");
-    let expectedCron = Deno.env.get("QONTO_CRON_SECRET") ?? "";
-    if (cronSecretHeader && !expectedCron) {
-      const { data: vaultSecret } = await supabase
-        .from("vault" as any)
-        .schema("vault" as any)
-        .from("decrypted_secrets")
-        .select("decrypted_secret")
-        .eq("name", "qonto_cron_secret")
-        .maybeSingle();
-      expectedCron = (vaultSecret as any)?.decrypted_secret ?? "";
+    let cronOk = false;
+    if (cronSecretHeader) {
+      const envSecret = Deno.env.get("QONTO_CRON_SECRET");
+      if (envSecret && cronSecretHeader === envSecret) {
+        cronOk = true;
+      } else {
+        const { data: vOk } = await supabase.rpc("verify_qonto_cron_secret", { p_secret: cronSecretHeader });
+        cronOk = !!vOk;
+      }
     }
-    if (cronSecretHeader && expectedCron && cronSecretHeader === expectedCron) {
+    if (cronOk) {
       triggeredBy = "cron";
     } else {
       const authHeader = req.headers.get("Authorization");
