@@ -62,9 +62,6 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "QONTO_LOGIN / QONTO_SECRET_KEY not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  const errors: Record<string, string> = {};
-  const synced = { bank_accounts: 0, transactions: 0, invoices: 0 };
-
   const setStatus = async (resource: string, ok: boolean, err?: string) => {
     const patch: any = {
       resource,
@@ -74,6 +71,19 @@ Deno.serve(async (req) => {
     if (ok) patch.last_success_at = new Date().toISOString();
     await supabase.from("qonto_sync_status").upsert(patch, { onConflict: "resource" });
   };
+
+  // Mark all resources as "in progress" now so the UI shows immediate feedback.
+  const nowIso = new Date().toISOString();
+  for (const r of ["organization", "bank_accounts", "transactions", "client_invoices"]) {
+    await supabase.from("qonto_sync_status").upsert(
+      { resource: r, last_synced_at: nowIso, last_error: null },
+      { onConflict: "resource" }
+    );
+  }
+
+  const runSync = async () => {
+    const errors: Record<string, string> = {};
+    const synced = { bank_accounts: 0, transactions: 0, invoices: 0 };
 
   // 1. Organization + Bank Accounts
   let bankAccounts: any[] = [];
