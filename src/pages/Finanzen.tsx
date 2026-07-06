@@ -22,6 +22,7 @@ import {
   Wallet, TrendingUp, TrendingDown, AlertTriangle, RefreshCw, Search,
   ExternalLink, CheckCircle2, XCircle, FileText, ChevronDown, Info,
   ArrowUpRight, ArrowDownRight, Users, Receipt, Landmark, PiggyBank,
+  Database, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 const ALLOWED_TABS = ['uebersicht', 'rechnungen', 'werbebudgets'];
@@ -133,7 +134,18 @@ type Invoice = {
   total_amount: number | null; issue_date: string | null; due_date: string | null;
   paid_at: string | null; updated_at_qonto: string | null;
 };
-type SyncStatus = { resource: string; last_success_at: string | null; last_error: string | null; last_synced_at: string | null };
+type SyncStatus = {
+  resource: string;
+  last_success_at: string | null;
+  last_error: string | null;
+  last_synced_at: string | null;
+  fetched_count?: number | null;
+  pages_loaded?: number | null;
+  total_pages?: number | null;
+  completed?: boolean | null;
+  mode?: string | null;
+  started_at?: string | null;
+};
 type Dashboard = any;
 
 // -------------------- Page --------------------
@@ -184,12 +196,26 @@ export default function Finanzen() {
   }, [fromISO, toISOd]);
 
   const loadBase = useCallback(async () => {
-    const [a, i] = await Promise.all([
-      supabase.from('qonto_bank_accounts' as any).select('*').order('is_main', { ascending: false }),
-      supabase.from('qonto_client_invoices' as any).select('*').order('issue_date', { ascending: false }).limit(1000),
-    ]);
+    const a = await supabase.from('qonto_bank_accounts' as any).select('*').order('is_main', { ascending: false });
     setAccounts((a.data as any) || []);
-    setInvoices((i.data as any) || []);
+
+    // Full pagination over invoices — bypass PostgREST 1000-row limit
+    const CHUNK = 1000;
+    let start = 0;
+    let all: Invoice[] = [];
+    while (true) {
+      const { data, error } = await supabase
+        .from('qonto_client_invoices' as any)
+        .select('*')
+        .order('issue_date', { ascending: false, nullsFirst: false })
+        .range(start, start + CHUNK - 1);
+      if (error || !data) break;
+      all = all.concat(data as any);
+      if ((data as any[]).length < CHUNK) break;
+      start += CHUNK;
+      if (start > 50000) break; // safety cap
+    }
+    setInvoices(all);
   }, []);
 
   useEffect(() => {
@@ -197,18 +223,23 @@ export default function Finanzen() {
     Promise.all([loadBase(), loadAggregates()]).finally(() => setLoading(false));
   }, [loadBase, loadAggregates]);
 
-  const runSync = async () => {
+  const runSync = async (mode: 'incremental' | 'backfill' = 'incremental') => {
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-qonto');
+      const { data, error } = await supabase.functions.invoke('sync-qonto', {
+        body: mode === 'backfill' ? { mode: 'backfill', since: '2020-01-01T00:00:00Z' } : {},
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({ title: 'Qonto Sync gestartet', description: 'Läuft im Hintergrund – Daten aktualisieren sich automatisch.' });
+      toast({
+        title: mode === 'backfill' ? 'Vollständiger Backfill gestartet' : 'Qonto Sync gestartet',
+        description: 'Läuft im Hintergrund – Fortschritt siehe „Sync & Datenqualität“.',
+      });
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
         await Promise.all([loadBase(), loadAggregates()]);
-        if (attempts >= 24) { clearInterval(poll); setSyncing(false); }
+        if (attempts >= (mode === 'backfill' ? 60 : 24)) { clearInterval(poll); setSyncing(false); }
       }, 5000);
     } catch (e: any) {
       toast({ title: 'Qonto Sync fehlgeschlagen', description: String(e?.message || e), variant: 'destructive' });
@@ -266,6 +297,10 @@ export default function Finanzen() {
   const [filterOverdue, setFilterOverdue] = useState(false);
   const [filterClient, setFilterClient] = useState('all');
   const [search, setSearch] = useState('');
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [pageIdx, setPageIdx] = useState<number>(0);
+  // Reset page when filters change
+  useEffect(() => { setPageIdx(0); }, [filterStatus, filterOverdue, filterClient, search, range, pageSize]);
 
   const filteredInvoices = useMemo(() => {
     let out = invoices;
@@ -342,10 +377,26 @@ export default function Finanzen() {
             </>
           )}
           {isAdmin && (
-            <Button onClick={runSync} disabled={syncing} size="sm" className="h-9">
-              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'Synchronisiere…' : 'Qonto Sync'}
-            </Button>
+            <>
+              <Button onClick={() => runSync('incremental')} disabled={syncing} size="sm" className="h-9">
+                <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Synchronisiere…' : 'Qonto Sync'}
+              </Button>
+              <Button
+                onClick={() => {
+                  if (confirm('Vollständigen Backfill starten? Holt ALLE historischen Rechnungen & Transaktionen (kann mehrere Minuten dauern).')) {
+                    runSync('backfill');
+                  }
+                }}
+                disabled={syncing}
+                size="sm"
+                variant="outline"
+                className="h-9"
+              >
+                <Database className="h-4 w-4 mr-2" />
+                Vollständiger Backfill
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -692,16 +743,38 @@ export default function Finanzen() {
                     </div>
                   )}
                   <div className="border-t pt-2">
-                    <p className="font-medium mb-1">Sync-Status je Ressource</p>
-                    {syncStatus.map(s => (
-                      <div key={s.resource} className="flex justify-between py-0.5">
-                        <span className="text-muted-foreground">{s.resource}</span>
-                        <span>
-                          {s.last_success_at ? new Date(s.last_success_at).toLocaleString('de-DE') : '—'}
-                          {s.last_error && <span className="text-destructive ml-2">✗ {s.last_error.slice(0, 80)}</span>}
-                        </span>
-                      </div>
-                    ))}
+                    <p className="font-medium mb-2">Sync-Status je Ressource</p>
+                    <div className="space-y-1.5">
+                      {syncStatus.map(s => {
+                        const isDone = s.completed === true;
+                        const isRunning = s.completed === false && !s.last_error;
+                        const dot = s.last_error ? 'bg-red-500' : isDone ? 'bg-emerald-500' : isRunning ? 'bg-amber-500 animate-pulse' : 'bg-muted';
+                        return (
+                          <div key={s.resource} className="border rounded p-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className={`h-2 w-2 rounded-full ${dot}`} />
+                                <span className="font-medium">{s.resource}</span>
+                                {s.mode && <Badge variant="outline" className="text-[10px] py-0 h-4">{s.mode}</Badge>}
+                                {isDone && <span className="text-[10px] text-emerald-700">✓ vollständig</span>}
+                                {isRunning && <span className="text-[10px] text-amber-700">läuft…</span>}
+                                {s.completed === false && !isRunning && s.last_error && <span className="text-[10px] text-destructive">✗ unvollständig</span>}
+                              </div>
+                              <span className="text-muted-foreground">
+                                {s.last_success_at ? new Date(s.last_success_at).toLocaleString('de-DE') : '—'}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-3 mt-1 text-[10px] text-muted-foreground pl-4">
+                              {s.pages_loaded != null && <span>Seiten: <strong className="text-foreground tabular-nums">{s.pages_loaded}{s.total_pages ? ` / ${s.total_pages}` : ''}</strong></span>}
+                              {s.fetched_count != null && <span>Datensätze: <strong className="text-foreground tabular-nums">{num(s.fetched_count)}</strong></span>}
+                            </div>
+                            {s.last_error && (
+                              <p className="text-[10px] text-destructive mt-1 pl-4 break-all">✗ {s.last_error.slice(0, 200)}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </CardContent>
               </CollapsibleContent>
@@ -763,7 +836,7 @@ export default function Finanzen() {
                 {filteredInvoices.length === 0 && (
                   <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Keine Rechnungen gefunden</TableCell></TableRow>
                 )}
-                {filteredInvoices.map(i => {
+                {filteredInvoices.slice(pageIdx * pageSize, pageIdx * pageSize + pageSize).map(i => {
                   const overdueDays = i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today
                     ? Math.floor((today.getTime() - new Date(i.due_date).getTime()) / 86400000)
                     : null;
@@ -794,7 +867,43 @@ export default function Finanzen() {
                 })}
               </TableBody>
             </Table>
-          </div></CardContent></Card>
+          </div>
+          {/* Pagination footer — nur Tabellen-Pagination. KPIs oben nutzen alle {filteredInvoices.length} Rechnungen. */}
+          <div className="flex items-center justify-between px-4 py-3 border-t text-xs">
+            <div className="text-muted-foreground">
+              {filteredInvoices.length === 0
+                ? '0 Rechnungen'
+                : `${pageIdx * pageSize + 1}–${Math.min(filteredInvoices.length, (pageIdx + 1) * pageSize)} von ${filteredInvoices.length}`}
+              {' · KPIs oben basieren auf allen '}<strong>{filteredInvoices.length}</strong>{' gefilterten Rechnungen'}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Pro Seite:</span>
+              <Select value={String(pageSize)} onValueChange={v => setPageSize(Number(v))}>
+                <SelectTrigger className="h-7 w-[70px] text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" className="h-7 px-2" disabled={pageIdx === 0} onClick={() => setPageIdx(p => Math.max(0, p - 1))}>
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+              <span className="tabular-nums">
+                {pageIdx + 1} / {Math.max(1, Math.ceil(filteredInvoices.length / pageSize))}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2"
+                disabled={(pageIdx + 1) * pageSize >= filteredInvoices.length}
+                onClick={() => setPageIdx(p => p + 1)}
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+          </CardContent></Card>
         </TabsContent>
 
         <TabsContent value="werbebudgets" className="space-y-4 mt-4">
