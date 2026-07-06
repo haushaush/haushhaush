@@ -297,6 +297,10 @@ export default function Finanzen() {
   const [filterOverdue, setFilterOverdue] = useState(false);
   const [filterClient, setFilterClient] = useState('all');
   const [search, setSearch] = useState('');
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [pageIdx, setPageIdx] = useState<number>(0);
+  // Reset page when filters change
+  useEffect(() => { setPageIdx(0); }, [filterStatus, filterOverdue, filterClient, search, range, pageSize]);
 
   const filteredInvoices = useMemo(() => {
     let out = invoices;
