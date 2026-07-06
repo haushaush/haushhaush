@@ -95,6 +95,7 @@ Deno.serve(async (req) => {
       fetched_count: 0,
       total_pages: null,
       mode,
+      triggered_by: triggeredBy,
     }, { onConflict: "resource" });
   };
 
