@@ -172,6 +172,19 @@ export default function Finanzen() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [chartMode, setChartMode] = useState<'net' | 'bank_in' | 'bank_out' | 'invoices_paid'>('net');
+  const [invoiceTotal, setInvoiceTotal] = useState(0);
+  const [invoiceMetrics, setInvoiceMetrics] = useState<any>(null);
+  const [dbInvoiceTotal, setDbInvoiceTotal] = useState(0);
+  const [clientList, setClientList] = useState<string[]>([]);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+
+  // Invoices tab state
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterOverdue, setFilterOverdue] = useState(false);
+  const [filterClient, setFilterClient] = useState('all');
+  const [search, setSearch] = useState('');
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [pageIdx, setPageIdx] = useState<number>(0);
 
   const { from, to } = useMemo(() => rangeBounds(range, customRange), [range, customRange]);
   const fromISO = toISO(from), toISOd = toISO(to);
@@ -196,26 +209,14 @@ export default function Finanzen() {
   }, [fromISO, toISOd]);
 
   const loadBase = useCallback(async () => {
-    const a = await supabase.from('qonto_bank_accounts' as any).select('*').order('is_main', { ascending: false });
+    const [a, invoiceCount, clients] = await Promise.all([
+      supabase.from('qonto_bank_accounts' as any).select('*').order('is_main', { ascending: false }),
+      supabase.from('qonto_client_invoices' as any).select('id', { count: 'exact', head: true }),
+      (supabase.rpc as any)('get_qonto_invoice_clients'),
+    ]);
     setAccounts((a.data as any) || []);
-
-    // Full pagination over invoices — bypass PostgREST 1000-row limit
-    const CHUNK = 1000;
-    let start = 0;
-    let all: Invoice[] = [];
-    while (true) {
-      const { data, error } = await supabase
-        .from('qonto_client_invoices' as any)
-        .select('*')
-        .order('issue_date', { ascending: false, nullsFirst: false })
-        .range(start, start + CHUNK - 1);
-      if (error || !data) break;
-      all = all.concat(data as any);
-      if ((data as any[]).length < CHUNK) break;
-      start += CHUNK;
-      if (start > 50000) break; // safety cap
-    }
-    setInvoices(all);
+    setDbInvoiceTotal(invoiceCount.count || 0);
+    setClientList(((clients.data as any[]) || []).map(c => c.client_name).filter(Boolean));
   }, []);
 
   useEffect(() => {
@@ -289,41 +290,79 @@ export default function Finanzen() {
   const netLiquidity = reserveAcc ? totalBalance - Number(reserveAcc.balance || 0) : null;
   const reserveShare = reserveAcc && totalBalance > 0 ? Number(reserveAcc.balance || 0) / totalBalance : null;
 
-  const lastSync = syncStatus.find(s => s.resource === 'client_invoices')?.last_success_at
-    || syncStatus.find(s => s.resource === 'bank_accounts')?.last_success_at;
+  const invoiceSync = syncStatus.find(s => s.resource === 'client_invoices');
+  const lastSync = invoiceSync?.last_success_at || syncStatus.find(s => s.resource === 'bank_accounts')?.last_success_at;
+  const invoiceSyncIncomplete = !!invoiceSync && (
+    !!invoiceSync.last_error
+    || invoiceSync.completed === false
+    || (!!invoiceSync.total_pages && !!invoiceSync.pages_loaded && invoiceSync.pages_loaded < invoiceSync.total_pages)
+    || (dbInvoiceTotal <= 100 && invoiceSync.completed !== true)
+  );
 
-  // Invoices tab state
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterOverdue, setFilterOverdue] = useState(false);
-  const [filterClient, setFilterClient] = useState('all');
-  const [search, setSearch] = useState('');
-  const [pageSize, setPageSize] = useState<number>(25);
-  const [pageIdx, setPageIdx] = useState<number>(0);
   // Reset page when filters change
   useEffect(() => { setPageIdx(0); }, [filterStatus, filterOverdue, filterClient, search, range, pageSize]);
 
-  const filteredInvoices = useMemo(() => {
-    let out = invoices;
-    if (filterStatus !== 'all') out = out.filter(i => i.status === filterStatus);
-    if (filterOverdue) out = out.filter(i => i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today);
-    if (filterClient !== 'all') out = out.filter(i => (i.client_name || '') === filterClient);
-    if (range !== 'all') out = out.filter(i => i.issue_date && new Date(i.issue_date) >= from && new Date(i.issue_date) <= to);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      out = out.filter(i => (i.number || '').toLowerCase().includes(q) || (i.client_name || '').toLowerCase().includes(q));
-    }
-    return out;
-  }, [invoices, filterStatus, filterOverdue, filterClient, range, from, to, search, today]);
+  const cleanSearch = search.trim().replace(/[,%]/g, ' ');
 
-  const clientList = useMemo(() => Array.from(new Set(invoices.map(i => i.client_name).filter(Boolean))) as string[], [invoices]);
+  const buildInvoiceQuery = useCallback((withCount = true) => {
+    let query = supabase
+      .from('qonto_client_invoices' as any)
+      .select('*', withCount ? { count: 'exact' } : undefined)
+      .order('issue_date', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false });
+
+    if (range !== 'all') query = query.gte('issue_date', fromISO).lte('issue_date', toISOd);
+    if (filterStatus !== 'all') query = query.eq('status', filterStatus);
+    if (filterOverdue) query = query.eq('status', 'unpaid').lt('due_date', toISO(today));
+    if (filterClient !== 'all') query = query.eq('client_name', filterClient);
+    if (cleanSearch) query = query.or(`number.ilike.%${cleanSearch}%,client_name.ilike.%${cleanSearch}%`);
+
+    return query;
+  }, [range, fromISO, toISOd, filterStatus, filterOverdue, filterClient, cleanSearch, today]);
+
+  const loadInvoicePage = useCallback(async () => {
+    setInvoiceLoading(true);
+    const fromRow = pageIdx * pageSize;
+    const toRow = fromRow + pageSize - 1;
+    const { data, count, error } = await buildInvoiceQuery(true).range(fromRow, toRow);
+    if (!error) {
+      setInvoices((data as any) || []);
+      setInvoiceTotal(count || 0);
+    }
+    setInvoiceLoading(false);
+  }, [buildInvoiceQuery, pageIdx, pageSize]);
+
+  const loadInvoiceMetrics = useCallback(async () => {
+    const { data } = await (supabase.rpc as any)('get_qonto_invoice_metrics', {
+      p_start: range === 'all' ? null : fromISO,
+      p_end: range === 'all' ? null : toISOd,
+      p_status: filterStatus === 'all' ? null : filterStatus,
+      p_overdue: filterOverdue,
+      p_client: filterClient === 'all' ? null : filterClient,
+      p_search: cleanSearch || null,
+    });
+    setInvoiceMetrics(data || null);
+  }, [range, fromISO, toISOd, filterStatus, filterOverdue, filterClient, cleanSearch]);
+
+  useEffect(() => {
+    Promise.all([loadInvoicePage(), loadInvoiceMetrics()]);
+  }, [loadInvoicePage, loadInvoiceMetrics]);
+
+  useEffect(() => {
+    if (pageIdx > 0 && invoiceTotal > 0 && pageIdx * pageSize >= invoiceTotal) {
+      setPageIdx(Math.max(0, Math.ceil(invoiceTotal / pageSize) - 1));
+    }
+  }, [invoiceTotal, pageIdx, pageSize]);
 
   const invSummary = useMemo(() => {
-    const openS = filteredInvoices.filter(i => i.status === 'unpaid').reduce((s, i) => s + Number(i.total_amount || 0), 0);
-    const overS = filteredInvoices.filter(i => i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today).reduce((s, i) => s + Number(i.total_amount || 0), 0);
-    const paidS = filteredInvoices.filter(i => i.status === 'paid').reduce((s, i) => s + Number(i.total_amount || 0), 0);
-    const totalS = filteredInvoices.reduce((s, i) => s + Number(i.total_amount || 0), 0);
-    return { openS, overS, paidS, totalS };
-  }, [filteredInvoices, today]);
+    return {
+      openS: Number(invoiceMetrics?.open_amount || 0),
+      overS: Number(invoiceMetrics?.overdue_amount || 0),
+      paidS: Number(invoiceMetrics?.paid_amount || 0),
+      totalS: Number(invoiceMetrics?.total_amount || 0),
+      count: Number(invoiceMetrics?.filtered_count ?? invoiceTotal),
+    };
+  }, [invoiceMetrics, invoiceTotal]);
 
   const statusBadge = (i: Invoice) => {
     const isOverdue = i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today;
