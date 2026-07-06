@@ -6008,6 +6008,7 @@ export type Database = {
       }
     }
     Functions: {
+      _finanzen_can_read: { Args: never; Returns: boolean }
       create_or_get_unternehmen: { Args: { p_name: string }; Returns: string }
       current_user_team_rolle: {
         Args: never
@@ -6061,6 +6062,47 @@ export type Database = {
           permission_key: string
           role_granted: boolean
           user_override: boolean
+        }[]
+      }
+      get_qonto_data_quality: { Args: never; Returns: Json }
+      get_qonto_finance_dashboard: {
+        Args: { p_end: string; p_start: string }
+        Returns: Json
+      }
+      get_qonto_monthly_finance: {
+        Args: { p_months?: number }
+        Returns: {
+          bank_in: number
+          bank_out: number
+          invoices_paid: number
+          month: string
+          net: number
+          result_positive: boolean
+        }[]
+      }
+      get_qonto_receivables_aging: {
+        Args: never
+        Returns: {
+          bucket: string
+          count: number
+          total: number
+        }[]
+      }
+      get_qonto_top_customers: {
+        Args: { p_end: string; p_limit?: number; p_start: string }
+        Returns: {
+          client_name: string
+          invoice_count: number
+          total_paid: number
+        }[]
+      }
+      get_qonto_top_expenses: {
+        Args: { p_end: string; p_limit?: number; p_start: string }
+        Returns: {
+          category: string
+          count: number
+          label: string
+          total: number
         }[]
       }
       has_role: {
