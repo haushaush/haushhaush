@@ -3985,30 +3985,48 @@ export type Database = {
       }
       qonto_sync_status: {
         Row: {
+          completed: boolean | null
           created_at: string
+          fetched_count: number | null
           id: string
           last_error: string | null
           last_success_at: string | null
           last_synced_at: string | null
+          mode: string | null
+          pages_loaded: number | null
           resource: string
+          started_at: string | null
+          total_pages: number | null
           updated_at: string
         }
         Insert: {
+          completed?: boolean | null
           created_at?: string
+          fetched_count?: number | null
           id?: string
           last_error?: string | null
           last_success_at?: string | null
           last_synced_at?: string | null
+          mode?: string | null
+          pages_loaded?: number | null
           resource: string
+          started_at?: string | null
+          total_pages?: number | null
           updated_at?: string
         }
         Update: {
+          completed?: boolean | null
           created_at?: string
+          fetched_count?: number | null
           id?: string
           last_error?: string | null
           last_success_at?: string | null
           last_synced_at?: string | null
+          mode?: string | null
+          pages_loaded?: number | null
           resource?: string
+          started_at?: string | null
+          total_pages?: number | null
           updated_at?: string
         }
         Relationships: []
