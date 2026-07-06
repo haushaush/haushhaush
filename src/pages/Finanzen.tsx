@@ -196,12 +196,26 @@ export default function Finanzen() {
   }, [fromISO, toISOd]);
 
   const loadBase = useCallback(async () => {
-    const [a, i] = await Promise.all([
-      supabase.from('qonto_bank_accounts' as any).select('*').order('is_main', { ascending: false }),
-      supabase.from('qonto_client_invoices' as any).select('*').order('issue_date', { ascending: false }).limit(1000),
-    ]);
+    const a = await supabase.from('qonto_bank_accounts' as any).select('*').order('is_main', { ascending: false });
     setAccounts((a.data as any) || []);
-    setInvoices((i.data as any) || []);
+
+    // Full pagination over invoices — bypass PostgREST 1000-row limit
+    const CHUNK = 1000;
+    let start = 0;
+    let all: Invoice[] = [];
+    while (true) {
+      const { data, error } = await supabase
+        .from('qonto_client_invoices' as any)
+        .select('*')
+        .order('issue_date', { ascending: false, nullsFirst: false })
+        .range(start, start + CHUNK - 1);
+      if (error || !data) break;
+      all = all.concat(data as any);
+      if ((data as any[]).length < CHUNK) break;
+      start += CHUNK;
+      if (start > 50000) break; // safety cap
+    }
+    setInvoices(all);
   }, []);
 
   useEffect(() => {
@@ -209,18 +223,23 @@ export default function Finanzen() {
     Promise.all([loadBase(), loadAggregates()]).finally(() => setLoading(false));
   }, [loadBase, loadAggregates]);
 
-  const runSync = async () => {
+  const runSync = async (mode: 'incremental' | 'backfill' = 'incremental') => {
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-qonto');
+      const { data, error } = await supabase.functions.invoke('sync-qonto', {
+        body: mode === 'backfill' ? { mode: 'backfill', since: '2020-01-01T00:00:00Z' } : {},
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({ title: 'Qonto Sync gestartet', description: 'Läuft im Hintergrund – Daten aktualisieren sich automatisch.' });
+      toast({
+        title: mode === 'backfill' ? 'Vollständiger Backfill gestartet' : 'Qonto Sync gestartet',
+        description: 'Läuft im Hintergrund – Fortschritt siehe „Sync & Datenqualität“.',
+      });
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
         await Promise.all([loadBase(), loadAggregates()]);
-        if (attempts >= 24) { clearInterval(poll); setSyncing(false); }
+        if (attempts >= (mode === 'backfill' ? 60 : 24)) { clearInterval(poll); setSyncing(false); }
       }, 5000);
     } catch (e: any) {
       toast({ title: 'Qonto Sync fehlgeschlagen', description: String(e?.message || e), variant: 'destructive' });
