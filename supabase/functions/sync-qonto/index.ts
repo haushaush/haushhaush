@@ -62,9 +62,6 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "QONTO_LOGIN / QONTO_SECRET_KEY not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  const errors: Record<string, string> = {};
-  const synced = { bank_accounts: 0, transactions: 0, invoices: 0 };
-
   const setStatus = async (resource: string, ok: boolean, err?: string) => {
     const patch: any = {
       resource,
@@ -74,6 +71,19 @@ Deno.serve(async (req) => {
     if (ok) patch.last_success_at = new Date().toISOString();
     await supabase.from("qonto_sync_status").upsert(patch, { onConflict: "resource" });
   };
+
+  // Mark all resources as "in progress" now so the UI shows immediate feedback.
+  const nowIso = new Date().toISOString();
+  for (const r of ["organization", "bank_accounts", "transactions", "client_invoices"]) {
+    await supabase.from("qonto_sync_status").upsert(
+      { resource: r, last_synced_at: nowIso, last_error: null },
+      { onConflict: "resource" }
+    );
+  }
+
+  const runSync = async () => {
+    const errors: Record<string, string> = {};
+    const synced = { bank_accounts: 0, transactions: 0, invoices: 0 };
 
   // 1. Organization + Bank Accounts
   let bankAccounts: any[] = [];
@@ -216,7 +226,17 @@ Deno.serve(async (req) => {
     await setStatus("client_invoices", false, e.message);
   }
 
-  return new Response(JSON.stringify({ success: Object.keys(errors).length === 0, synced, errors }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+    console.log("sync-qonto finished", { synced, errors });
+  };
+
+  // Fire-and-forget: run the actual Qonto sync in the background so we don't
+  // hit the 150s edge function timeout for large datasets. The UI polls
+  // qonto_sync_status + the data tables to observe progress.
+  // @ts-ignore - EdgeRuntime is available in the Supabase edge runtime
+  EdgeRuntime.waitUntil(runSync());
+
+  return new Response(
+    JSON.stringify({ success: true, started: true, message: "Qonto sync gestartet – läuft im Hintergrund." }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 });

@@ -116,13 +116,21 @@ export default function Finanzen() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({
-        title: 'Qonto Sync abgeschlossen',
-        description: `Konten: ${data.synced?.bank_accounts ?? 0} · TX: ${data.synced?.transactions ?? 0} · Rechnungen: ${data.synced?.invoices ?? 0}`,
+        title: 'Qonto Sync gestartet',
+        description: 'Läuft im Hintergrund – Daten aktualisieren sich automatisch.',
       });
-      await loadAll();
+      // Poll for updates for ~2 minutes
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        await loadAll();
+        if (attempts >= 24) {
+          clearInterval(poll);
+          setSyncing(false);
+        }
+      }, 5000);
     } catch (e: any) {
       toast({ title: 'Qonto Sync fehlgeschlagen', description: String(e?.message || e), variant: 'destructive' });
-    } finally {
       setSyncing(false);
     }
   };
