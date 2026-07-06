@@ -1,0 +1,1 @@
+ALTER TABLE public.qonto_sync_status ADD COLUMN IF NOT EXISTS triggered_by text;

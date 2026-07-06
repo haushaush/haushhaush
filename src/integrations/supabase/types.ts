@@ -3997,6 +3997,7 @@ export type Database = {
           resource: string
           started_at: string | null
           total_pages: number | null
+          triggered_by: string | null
           updated_at: string
         }
         Insert: {
@@ -4012,6 +4013,7 @@ export type Database = {
           resource: string
           started_at?: string | null
           total_pages?: number | null
+          triggered_by?: string | null
           updated_at?: string
         }
         Update: {
@@ -4027,6 +4029,7 @@ export type Database = {
           resource?: string
           started_at?: string | null
           total_pages?: number | null
+          triggered_by?: string | null
           updated_at?: string
         }
         Relationships: []
