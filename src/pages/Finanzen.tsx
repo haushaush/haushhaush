@@ -10,19 +10,119 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { StatCard } from '@/components/StatCard';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tooltip as UiTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  BarChart, Bar, ComposedChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
+} from 'recharts';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import {
   Wallet, TrendingUp, TrendingDown, AlertTriangle, RefreshCw, Search,
-  ExternalLink, CheckCircle2, XCircle, FileText,
+  ExternalLink, CheckCircle2, XCircle, FileText, ChevronDown, Info,
+  ArrowUpRight, ArrowDownRight, Users, Receipt, Landmark, PiggyBank,
 } from 'lucide-react';
 
-const tooltipStyle = { backgroundColor: '#fff', border: '1px solid #E5E5E7', borderRadius: '8px', color: '#1D1D1F' };
 const ALLOWED_TABS = ['uebersicht', 'rechnungen', 'werbebudgets'];
+type Range = 'this_month' | 'last_month' | 'this_year' | 'last_12m' | 'all' | 'custom';
 
+const tooltipStyle = { backgroundColor: '#fff', border: '1px solid #E5E5E7', borderRadius: '8px', color: '#1D1D1F', fontSize: 12 };
+
+const eur = (n: number | null | undefined) =>
+  '€' + (Number(n || 0)).toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+const eur2 = (n: number | null | undefined) =>
+  '€' + (Number(n || 0)).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pct = (n: number | null | undefined) =>
+  n == null ? '–' : `${(n * 100).toFixed(1)} %`;
+const num = (n: number | null | undefined) => (n == null ? '–' : Number(n).toLocaleString('de-DE'));
+
+function rangeBounds(r: Range, custom?: { from: string; to: string }): { from: Date; to: Date } {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+  const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+  switch (r) {
+    case 'this_month': return { from: startOfMonth, to: now };
+    case 'last_month': return { from: startOfLastMonth, to: endOfLastMonth };
+    case 'this_year': return { from: startOfYear, to: now };
+    case 'last_12m': return { from: twelveMonthsAgo, to: now };
+    case 'custom':
+      return {
+        from: custom?.from ? new Date(custom.from) : startOfMonth,
+        to: custom?.to ? new Date(custom.to) : now,
+      };
+    default: return { from: new Date(2000, 0, 1), to: now };
+  }
+}
+
+const toISO = (d: Date) => d.toISOString().slice(0, 10);
+const daysBetween = (a: string | null, b: Date) =>
+  a ? Math.floor((b.getTime() - new Date(a).getTime()) / 86400000) : null;
+
+// -------------------- KPI card --------------------
+function Kpi({
+  title, value, subtitle, source, icon: Icon, delta, warn, reliability = 'reliable',
+}: {
+  title: string; value: string; subtitle?: string; source?: string;
+  icon?: any; delta?: { pct: number | null; label?: string };
+  warn?: string; reliability?: 'reliable' | 'partial' | 'na';
+}) {
+  const relColor =
+    reliability === 'na' ? 'bg-muted text-muted-foreground'
+      : reliability === 'partial' ? 'bg-amber-100 text-amber-800'
+        : 'bg-emerald-50 text-emerald-700';
+  return (
+    <Card className="relative">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">{title}</p>
+            <p className="text-2xl font-semibold tabular-nums mt-0.5">{value}</p>
+            {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
+          </div>
+          {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
+        </div>
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center gap-1.5">
+            {source && (
+              <span className={`text-[9px] px-1.5 py-0.5 rounded ${relColor}`}>
+                {source}
+              </span>
+            )}
+            {warn && (
+              <TooltipProvider><UiTooltip>
+                <TooltipTrigger asChild>
+                  <AlertTriangle className="h-3 w-3 text-amber-600 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs text-xs">{warn}</TooltipContent>
+              </UiTooltip></TooltipProvider>
+            )}
+          </div>
+          {delta && delta.pct != null && (
+            <span className={`text-[11px] font-medium flex items-center gap-0.5 ${delta.pct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {delta.pct >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+              {Math.abs(delta.pct * 100).toFixed(1)}%
+            </span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="flex items-baseline justify-between mt-2 mb-3">
+      <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
+      {subtitle && <span className="text-[11px] text-muted-foreground">{subtitle}</span>}
+    </div>
+  );
+}
+
+// -------------------- Types --------------------
 type Account = {
   id: string; iban: string | null; name: string | null; balance: number | null;
   currency: string | null; is_main: boolean; status: string | null;
@@ -33,43 +133,10 @@ type Invoice = {
   total_amount: number | null; issue_date: string | null; due_date: string | null;
   paid_at: string | null; updated_at_qonto: string | null;
 };
-type Tx = {
-  id: string; amount: number | null; side: string | null; label: string | null;
-  status: string | null; settled_at: string | null; emitted_at: string | null;
-};
-type SyncStatus = {
-  resource: string; last_synced_at: string | null; last_success_at: string | null; last_error: string | null;
-};
+type SyncStatus = { resource: string; last_success_at: string | null; last_error: string | null; last_synced_at: string | null };
+type Dashboard = any;
 
-type Range = 'this_month' | 'last_month' | 'this_year' | 'last_12m' | 'all';
-
-const eur = (n: number | null | undefined) =>
-  '€' + (Number(n || 0)).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-function rangeBounds(r: Range): { from: Date | null; to: Date | null } {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-  const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-  switch (r) {
-    case 'this_month': return { from: startOfMonth, to: null };
-    case 'last_month': return { from: startOfLastMonth, to: endOfLastMonth };
-    case 'this_year': return { from: startOfYear, to: null };
-    case 'last_12m': return { from: twelveMonthsAgo, to: null };
-    default: return { from: null, to: null };
-  }
-}
-
-function inRange(dateStr: string | null, from: Date | null, to: Date | null) {
-  if (!dateStr) return false;
-  const d = new Date(dateStr);
-  if (from && d < from) return false;
-  if (to && d > to) return false;
-  return true;
-}
-
+// -------------------- Page --------------------
 export default function Finanzen() {
   const { tab } = useParams();
   const navigate = useNavigate();
@@ -79,35 +146,56 @@ export default function Finanzen() {
   const isAdmin = hasRole?.('admin') ?? false;
   const { toast } = useToast();
 
+  const [range, setRange] = useState<Range>('this_year');
+  const [customRange, setCustomRange] = useState({ from: '', to: '' });
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [txs, setTxs] = useState<Tx[]>([]);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [monthly, setMonthly] = useState<any[]>([]);
+  const [aging, setAging] = useState<any[]>([]);
+  const [topCustomers, setTopCustomers] = useState<any[]>([]);
+  const [topExpenses, setTopExpenses] = useState<any[]>([]);
+  const [dq, setDq] = useState<any>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [chartMode, setChartMode] = useState<'net' | 'bank_in' | 'bank_out' | 'invoices_paid'>('net');
 
-  const [range, setRange] = useState<Range>('this_year');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterOverdue, setFilterOverdue] = useState(false);
-  const [search, setSearch] = useState('');
-  const [chartMode, setChartMode] = useState<'invoices' | 'bank'>('invoices');
+  const { from, to } = useMemo(() => rangeBounds(range, customRange), [range, customRange]);
+  const fromISO = toISO(from), toISOd = toISO(to);
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
-    const [a, i, t, s] = await Promise.all([
-      supabase.from('qonto_bank_accounts' as any).select('*').order('is_main', { ascending: false }),
-      supabase.from('qonto_client_invoices' as any).select('*').order('issue_date', { ascending: false }),
-      supabase.from('qonto_transactions_new' as any).select('*').order('settled_at', { ascending: false }).limit(5000),
+  const loadAggregates = useCallback(async () => {
+    const [d, m, a, tc, te, q, s] = await Promise.all([
+      (supabase.rpc as any)('get_qonto_finance_dashboard', { p_start: fromISO, p_end: toISOd }),
+      (supabase.rpc as any)('get_qonto_monthly_finance', { p_months: 12 }),
+      (supabase.rpc as any)('get_qonto_receivables_aging'),
+      (supabase.rpc as any)('get_qonto_top_customers', { p_start: fromISO, p_end: toISOd, p_limit: 10 }),
+      (supabase.rpc as any)('get_qonto_top_expenses', { p_start: fromISO, p_end: toISOd, p_limit: 10 }),
+      (supabase.rpc as any)('get_qonto_data_quality'),
       supabase.from('qonto_sync_status' as any).select('*'),
+    ]);
+    setDashboard(d.data || null);
+    setMonthly((m.data as any[]) || []);
+    setAging((a.data as any[]) || []);
+    setTopCustomers((tc.data as any[]) || []);
+    setTopExpenses((te.data as any[]) || []);
+    setDq(q.data || null);
+    setSyncStatus((s.data as any) || []);
+  }, [fromISO, toISOd]);
+
+  const loadBase = useCallback(async () => {
+    const [a, i] = await Promise.all([
+      supabase.from('qonto_bank_accounts' as any).select('*').order('is_main', { ascending: false }),
+      supabase.from('qonto_client_invoices' as any).select('*').order('issue_date', { ascending: false }).limit(1000),
     ]);
     setAccounts((a.data as any) || []);
     setInvoices((i.data as any) || []);
-    setTxs((t.data as any) || []);
-    setSyncStatus((s.data as any) || []);
-    setLoading(false);
   }, []);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([loadBase(), loadAggregates()]).finally(() => setLoading(false));
+  }, [loadBase, loadAggregates]);
 
   const runSync = async () => {
     setSyncing(true);
@@ -115,19 +203,12 @@ export default function Finanzen() {
       const { data, error } = await supabase.functions.invoke('sync-qonto');
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast({
-        title: 'Qonto Sync gestartet',
-        description: 'Läuft im Hintergrund – Daten aktualisieren sich automatisch.',
-      });
-      // Poll for updates for ~2 minutes
+      toast({ title: 'Qonto Sync gestartet', description: 'Läuft im Hintergrund – Daten aktualisieren sich automatisch.' });
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
-        await loadAll();
-        if (attempts >= 24) {
-          clearInterval(poll);
-          setSyncing(false);
-        }
+        await Promise.all([loadBase(), loadAggregates()]);
+        if (attempts >= 24) { clearInterval(poll); setSyncing(false); }
       }, 5000);
     } catch (e: any) {
       toast({ title: 'Qonto Sync fehlgeschlagen', description: String(e?.message || e), variant: 'destructive' });
@@ -135,70 +216,79 @@ export default function Finanzen() {
     }
   };
 
-  const { from, to } = useMemo(() => rangeBounds(range), [range]);
+  // Derived
   const today = useMemo(() => new Date(new Date().toISOString().slice(0, 10)), []);
-
   const totalBalance = accounts.reduce((s, a) => s + Number(a.balance || 0), 0);
   const mainAccount = accounts.find(a => a.is_main) || accounts[0];
 
-  const unpaidInvoices = invoices.filter(i => i.status === 'unpaid');
-  const openTotal = unpaidInvoices.reduce((s, i) => s + Number(i.total_amount || 0), 0);
-  const overdueInvoices = unpaidInvoices.filter(i => i.due_date && new Date(i.due_date) < today);
-  const overdueTotal = overdueInvoices.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+  const cf = dashboard?.cashflow || {};
+  const inv = dashboard?.invoices || {};
+  const recv = dashboard?.receivables || {};
 
-  const paidInRange = invoices.filter(i => i.status === 'paid' && inRange(i.paid_at || i.issue_date, from, to));
-  const cashCollected = paidInRange.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+  const collectionRate = inv.issued_sum > 0 ? (inv.paid_sum || 0) / inv.issued_sum : null;
+  const overdueRate = recv.open_sum > 0 ? (recv.overdue_sum || 0) / recv.open_sum : null;
+  const deltaBank = (cf.inflow || 0) - (inv.paid_sum || 0);
+  const cashflowDelta = cf.prev_net != null && cf.prev_net !== 0 ? ((cf.net || 0) - cf.prev_net) / Math.abs(cf.prev_net) : null;
+  const revenueDelta = inv.prev_paid_sum != null && inv.prev_paid_sum !== 0 ? ((inv.paid_sum || 0) - inv.prev_paid_sum) / Math.abs(inv.prev_paid_sum) : null;
 
-  // Current month revenue (paid invoices)
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const monthPaid = invoices
-    .filter(i => i.status === 'paid' && inRange(i.paid_at || i.issue_date, monthStart, null))
-    .reduce((s, i) => s + Number(i.total_amount || 0), 0);
+  const rollingAvg = (arr: any[], key: string, n: number, i: number) => {
+    const slice = arr.slice(Math.max(0, i - n + 1), i + 1);
+    return slice.reduce((s, r) => s + Number(r[key] || 0), 0) / Math.max(1, slice.length);
+  };
+  const monthlyEnriched = useMemo(() =>
+    monthly.map((m, i) => ({
+      ...m,
+      bank_in: Number(m.bank_in), bank_out: Number(m.bank_out), net: Number(m.net),
+      invoices_paid: Number(m.invoices_paid),
+      rolling3: rollingAvg(monthly, chartMode, 3, i),
+    })), [monthly, chartMode]);
 
-  const txsInRange = txs.filter(t => t.status === 'completed' && inRange(t.settled_at || t.emitted_at, from, to));
-  const bankIn = txsInRange.filter(t => t.side === 'credit').reduce((s, t) => s + Math.abs(Number(t.amount || 0)), 0);
-  const bankOut = txsInRange.filter(t => t.side === 'debit').reduce((s, t) => s + Math.abs(Number(t.amount || 0)), 0);
+  const monthValues = monthlyEnriched.map(m => Number(m.invoices_paid));
+  const avgMonthlyRev = monthValues.length ? monthValues.reduce((s, v) => s + v, 0) / monthValues.length : 0;
+  const highMonth = monthlyEnriched.reduce((a, b) => (Number(b.invoices_paid) > Number(a?.invoices_paid || -1) ? b : a), null as any);
+  const lowMonth = monthlyEnriched.reduce((a, b) => (a && Number(b.invoices_paid) >= Number(a.invoices_paid) ? a : b), null as any);
+  const posMonths = monthlyEnriched.filter(m => Number(m.net) > 0).length;
+  const negMonths = monthlyEnriched.filter(m => Number(m.net) < 0).length;
 
-  // Monthly chart (last 12 months)
-  const monthly = useMemo(() => {
-    const map: Record<string, { month: string; invoices: number; bank: number }> = {};
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const key = d.toISOString().slice(0, 7);
-      map[key] = { month: key, invoices: 0, bank: 0 };
-    }
-    invoices.forEach(inv => {
-      if (inv.status !== 'paid') return;
-      const d = inv.paid_at || inv.issue_date;
-      if (!d) return;
-      const key = d.slice(0, 7);
-      if (map[key]) map[key].invoices += Number(inv.total_amount || 0);
-    });
-    txs.forEach(t => {
-      if (t.status !== 'completed' || t.side !== 'credit') return;
-      const d = t.settled_at || t.emitted_at;
-      if (!d) return;
-      const key = d.slice(0, 7);
-      if (map[key]) map[key].bank += Math.abs(Number(t.amount || 0));
-    });
-    return Object.values(map);
-  }, [invoices, txs, today]);
+  // Detect specialized accounts by name
+  const findAcc = (regex: RegExp) => accounts.find(a => (a.name || '').match(regex));
+  const reserveAcc = findAcc(/rücklage|reserve|steuer.?rücklage/i);
+  const adsAcc = findAcc(/werbe|ads|marketing/i);
+  const taxAcc = findAcc(/umsatzsteuer|ust|tax/i);
+  const netLiquidity = reserveAcc ? totalBalance - Number(reserveAcc.balance || 0) : null;
+  const reserveShare = reserveAcc && totalBalance > 0 ? Number(reserveAcc.balance || 0) / totalBalance : null;
 
-  // Rechnungen filter
+  const lastSync = syncStatus.find(s => s.resource === 'client_invoices')?.last_success_at
+    || syncStatus.find(s => s.resource === 'bank_accounts')?.last_success_at;
+
+  // Invoices tab state
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterOverdue, setFilterOverdue] = useState(false);
+  const [filterClient, setFilterClient] = useState('all');
+  const [search, setSearch] = useState('');
+
   const filteredInvoices = useMemo(() => {
     let out = invoices;
     if (filterStatus !== 'all') out = out.filter(i => i.status === filterStatus);
     if (filterOverdue) out = out.filter(i => i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today);
-    if (range !== 'all') out = out.filter(i => inRange(i.issue_date, from, to));
+    if (filterClient !== 'all') out = out.filter(i => (i.client_name || '') === filterClient);
+    if (range !== 'all') out = out.filter(i => i.issue_date && new Date(i.issue_date) >= from && new Date(i.issue_date) <= to);
     if (search.trim()) {
       const q = search.toLowerCase();
-      out = out.filter(i =>
-        (i.number || '').toLowerCase().includes(q) ||
-        (i.client_name || '').toLowerCase().includes(q)
-      );
+      out = out.filter(i => (i.number || '').toLowerCase().includes(q) || (i.client_name || '').toLowerCase().includes(q));
     }
     return out;
-  }, [invoices, filterStatus, filterOverdue, range, from, to, search, today]);
+  }, [invoices, filterStatus, filterOverdue, filterClient, range, from, to, search, today]);
+
+  const clientList = useMemo(() => Array.from(new Set(invoices.map(i => i.client_name).filter(Boolean))) as string[], [invoices]);
+
+  const invSummary = useMemo(() => {
+    const openS = filteredInvoices.filter(i => i.status === 'unpaid').reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const overS = filteredInvoices.filter(i => i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today).reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const paidS = filteredInvoices.filter(i => i.status === 'paid').reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const totalS = filteredInvoices.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    return { openS, overS, paidS, totalS };
+  }, [filteredInvoices, today]);
 
   const statusBadge = (i: Invoice) => {
     const isOverdue = i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today;
@@ -211,51 +301,59 @@ export default function Finanzen() {
     return <Badge variant="outline">{i.status}</Badge>;
   };
 
-  const lastSync = syncStatus.find(s => s.resource === 'client_invoices')?.last_success_at
-    || syncStatus.find(s => s.resource === 'bank_accounts')?.last_success_at;
-  const lastError = syncStatus.find(s => s.last_error)?.last_error;
-
-  if (loading) return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-96" /></div>;
+  if (loading) return (
+    <div className="space-y-4"><Skeleton className="h-8 w-48" /><div className="grid grid-cols-6 gap-3">
+      {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+    </div><Skeleton className="h-64" /></div>
+  );
 
   const hasQontoData = accounts.length > 0 || invoices.length > 0;
+  const top3Share = topCustomers.length > 0 && (inv.paid_sum || 0) > 0
+    ? topCustomers.slice(0, 3).reduce((s, c) => s + Number(c.total_paid), 0) / (inv.paid_sum || 1)
+    : null;
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Finanzen</h1>
-          {lastSync && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Letzter Qonto-Sync: {new Date(lastSync).toLocaleString('de-DE')}
-            </p>
+          <p className="text-xs text-muted-foreground">
+            Qonto Finanzübersicht
+            {lastSync && <> · Letzter Sync: {new Date(lastSync).toLocaleString('de-DE')}</>}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={range} onValueChange={v => setRange(v as Range)}>
+            <SelectTrigger className="w-44 h-9 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="this_month">Dieser Monat</SelectItem>
+              <SelectItem value="last_month">Letzter Monat</SelectItem>
+              <SelectItem value="this_year">Dieses Jahr</SelectItem>
+              <SelectItem value="last_12m">Letzte 12 Monate</SelectItem>
+              <SelectItem value="all">Insgesamt</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
+            </SelectContent>
+          </Select>
+          {range === 'custom' && (
+            <>
+              <Input type="date" value={customRange.from} onChange={e => setCustomRange({ ...customRange, from: e.target.value })} className="w-36 h-9 text-sm" />
+              <Input type="date" value={customRange.to} onChange={e => setCustomRange({ ...customRange, to: e.target.value })} className="w-36 h-9 text-sm" />
+            </>
+          )}
+          {isAdmin && (
+            <Button onClick={runSync} disabled={syncing} size="sm" className="h-9">
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Synchronisiere…' : 'Qonto Sync'}
+            </Button>
           )}
         </div>
-        {isAdmin && (
-          <Button onClick={runSync} disabled={syncing} size="sm">
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Synchronisiere…' : 'Qonto synchronisieren'}
-          </Button>
-        )}
       </div>
 
       {!hasQontoData && (
-        <Card className="border-dashed">
-          <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            Noch keine Qonto-Daten vorhanden. {isAdmin ? 'Starte oben den Sync.' : 'Bitte einen Admin, den Qonto-Sync auszulösen.'}
-          </CardContent>
-        </Card>
-      )}
-
-      {lastError && isAdmin && (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardContent className="p-3 flex items-start gap-2 text-xs">
-            <XCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="font-medium text-destructive">Letzter Sync-Fehler</p>
-              <p className="text-muted-foreground">{lastError}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <Card className="border-dashed"><CardContent className="p-6 text-center text-sm text-muted-foreground">
+          Noch keine Qonto-Daten. {isAdmin ? 'Starte oben den Sync.' : 'Bitte einen Admin, den Sync auszulösen.'}
+        </CardContent></Card>
       )}
 
       <Tabs value={currentTab} onValueChange={v => navigate(v === 'uebersicht' ? '/finanzen' : `/finanzen/${v}`)}>
@@ -265,116 +363,368 @@ export default function Finanzen() {
           <TabsTrigger value="werbebudgets">Werbebudgets</TabsTrigger>
         </TabsList>
 
+        {/* ============ ÜBERSICHT ============ */}
         <TabsContent value="uebersicht" className="space-y-6 mt-4">
-          {/* Bank accounts */}
-          {accounts.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-primary" />Qonto Konten
-                </h3>
-                <span className="text-sm font-bold text-primary">Gesamt: {eur(totalBalance)}</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                {accounts.map(acc => (
-                  <Card key={acc.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-medium">{acc.name || 'Konto'}</p>
-                        {acc.is_main && <Badge variant="secondary" className="text-[9px]">HAUPT</Badge>}
+
+          {/* HERO KPIs */}
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+            <Kpi title="Kontostand gesamt" value={eur(totalBalance)} icon={Wallet} source="Qonto Konten"
+              subtitle={mainAccount?.name ? `Haupt: ${mainAccount.name}` : undefined} />
+            <Kpi title="Netto-Cashflow" value={eur(cf.net)} icon={cf.net >= 0 ? TrendingUp : TrendingDown} source="Qonto Bank"
+              delta={cashflowDelta != null ? { pct: cashflowDelta } : undefined}
+              subtitle={`Zeitraum · ${num(cf.inflow_count)} ein / ${num(cf.outflow_count)} aus`} />
+            <Kpi title="Cash Collected" value={eur(inv.paid_sum)} icon={CheckCircle2} source="Qonto Rechnungen"
+              subtitle={`${num(inv.paid_count)} bezahlte Rechnungen`}
+              delta={revenueDelta != null ? { pct: revenueDelta } : undefined} />
+            <Kpi title="Offene Forderungen" value={eur(recv.open_sum)} icon={Receipt} source="Qonto Rechnungen"
+              subtitle={`${num(recv.open_n)} offen`} />
+            <Kpi title="Überfällig" value={eur(recv.overdue_sum)} icon={AlertTriangle} source="Qonto Rechnungen"
+              subtitle={`${num(recv.overdue_n)} Rechnungen · ${pct(overdueRate)}`} />
+            <Kpi title="Cash-Ergebnis" value={eur(cf.net)} icon={PiggyBank} source="Qonto Bank"
+              subtitle="Einnahmen − Ausgaben"
+              warn="Cash-basiertes Ergebnis, keine Buchhaltungs-/Steuergröße." />
+          </div>
+
+          {/* A. LIQUIDITÄT */}
+          <div>
+            <SectionTitle title="A · Liquidität" subtitle="Qonto Konten" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <Card className="lg:col-span-1">
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground">Gesamt-Guthaben</p>
+                  <p className="text-3xl font-semibold tabular-nums mt-1">{eur(totalBalance)}</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">{accounts.length} Konten</p>
+                  <div className="mt-4 space-y-2 border-t pt-3">
+                    {netLiquidity != null && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Netto-Liquidität (ohne Rücklagen)</span>
+                        <span className="font-medium tabular-nums">{eur(netLiquidity)}</span>
                       </div>
-                      <p className={`text-xl font-bold ${Number(acc.balance) < 100 ? 'text-warning' : ''}`}>
-                        {eur(acc.balance)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground font-mono mt-1">{acc.iban}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                    )}
+                    {reserveShare != null && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Rücklagen-Anteil</span>
+                        <span className="font-medium">{pct(reserveShare)}</span>
+                      </div>
+                    )}
+                    {adsAcc && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Werbebudget-Konto</span>
+                        <span className="font-medium tabular-nums">{eur(adsAcc.balance)}</span>
+                      </div>
+                    )}
+                    {taxAcc && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Umsatzsteuer-Konto</span>
+                        <span className="font-medium tabular-nums">{eur(taxAcc.balance)}</span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="lg:col-span-2">
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground mb-2">Konten</p>
+                  <div className="divide-y">
+                    {accounts.map(a => (
+                      <TooltipProvider key={a.id}>
+                        <div className="flex items-center justify-between py-2 text-sm">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Landmark className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span className="truncate font-medium">{a.name || 'Konto'}</span>
+                            {a.is_main && <Badge variant="secondary" className="text-[9px] h-4">HAUPT</Badge>}
+                            <UiTooltip>
+                              <TooltipTrigger asChild>
+                                <span className="text-[10px] text-muted-foreground font-mono truncate">
+                                  {a.iban ? '…' + a.iban.slice(-6) : ''}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="font-mono text-xs">{a.iban}</TooltipContent>
+                            </UiTooltip>
+                          </div>
+                          <span className={`tabular-nums font-medium ${Number(a.balance) < 100 ? 'text-amber-600' : ''}`}>
+                            {eur2(a.balance)}
+                          </span>
+                        </div>
+                      </TooltipProvider>
+                    ))}
+                    {accounts.length === 0 && <p className="text-xs text-muted-foreground py-3">Keine Konten synchronisiert.</p>}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          )}
-
-          {/* Zeitraum */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">Zeitraum:</span>
-            <Select value={range} onValueChange={v => setRange(v as Range)}>
-              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="this_month">Dieser Monat</SelectItem>
-                <SelectItem value="last_month">Letzter Monat</SelectItem>
-                <SelectItem value="this_year">Dieses Jahr</SelectItem>
-                <SelectItem value="last_12m">Letzte 12 Monate</SelectItem>
-                <SelectItem value="all">Insgesamt</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
-          {/* KPI Kacheln */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <StatCard title="Kontostand (gesamt)" value={eur(totalBalance)} icon={Wallet} subtitle={mainAccount?.name ? `Haupt: ${mainAccount.name}` : undefined} />
-            <StatCard title="Offene Rechnungen" value={eur(openTotal)} icon={FileText} subtitle={`${unpaidInvoices.length} offen`} />
-            <StatCard title="Überfällig" value={eur(overdueTotal)} icon={AlertTriangle} subtitle={`${overdueInvoices.length} Rechnungen`} />
-            <StatCard title="Cash Collected" value={eur(cashCollected)} icon={CheckCircle2} subtitle={`bezahlte Rechnungen (${paidInRange.length})`} />
-            <StatCard title="Umsatz Monat" value={eur(monthPaid)} icon={TrendingUp} subtitle="bezahlte Rechnungen dieser Monat" />
-            <StatCard title="Bankeingänge" value={eur(bankIn)} icon={TrendingUp} subtitle="Qonto credit (completed)" />
-            <StatCard title="Bankausgaben" value={eur(bankOut)} icon={TrendingDown} subtitle="Qonto debit (completed)" />
-            <StatCard title="Rechnungen ↔ Bank" value={eur(cashCollected - bankIn)} icon={AlertTriangle} subtitle="Delta Invoices vs. Bank" />
+          {/* B. CASHFLOW */}
+          <div>
+            <SectionTitle title="B · Cashflow" subtitle={`${fromISO} → ${toISOd}`} />
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
+              <Kpi title="Bankeingänge" value={eur(cf.inflow)} icon={ArrowUpRight} source="Qonto Bank"
+                subtitle={`${num(cf.inflow_count)} Zahlungen`} />
+              <Kpi title="Bankausgänge" value={eur(cf.outflow)} icon={ArrowDownRight} source="Qonto Bank"
+                subtitle={`${num(cf.outflow_count)} Zahlungen`} />
+              <Kpi title="Ø Zahlungseingang" value={eur(cf.avg_inflow)} source="Qonto Bank" />
+              <Kpi title="Ø Zahlungsausgang" value={eur(cf.avg_outflow)} source="Qonto Bank" />
+              <Kpi title="Größter Eingang" value={eur(cf.max_inflow)} source="Qonto Bank" />
+              <Kpi title="Größter Ausgang" value={eur(cf.max_outflow)} source="Qonto Bank" />
+            </div>
           </div>
 
-          {/* Monatschart */}
+          {/* CHART */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg">Monatsumsatz (letzte 12 Monate)</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle className="text-sm">Monatsentwicklung (letzte 12 Monate)</CardTitle>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {highMonth && lowMonth ? `Hoch: ${highMonth.month} · Tief: ${lowMonth.month}` : ''}
+                </p>
+              </div>
               <Select value={chartMode} onValueChange={v => setChartMode(v as any)}>
-                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-52 h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="invoices">Rechnungen (bezahlt)</SelectItem>
-                  <SelectItem value="bank">Bankeingänge</SelectItem>
+                  <SelectItem value="net">Netto-Cashflow</SelectItem>
+                  <SelectItem value="bank_in">Bankeingänge</SelectItem>
+                  <SelectItem value="bank_out">Bankausgänge</SelectItem>
+                  <SelectItem value="invoices_paid">Bezahlte Rechnungen</SelectItem>
                 </SelectContent>
               </Select>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={isMobile ? 200 : 260}>
-                <BarChart data={monthly}>
-                  <XAxis dataKey="month" stroke="#AEAEB2" fontSize={11} />
-                  <YAxis stroke="#AEAEB2" fontSize={11} tickFormatter={(v) => `€${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => eur(Number(v))} />
-                  <Bar dataKey={chartMode} fill="hsl(174, 90%, 31%)" name={chartMode === 'invoices' ? 'Bezahlt' : 'Bankeingänge'} radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {monthlyEnriched.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-8 text-center">Keine Monatsdaten.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={isMobile ? 220 : 280}>
+                  <ComposedChart data={monthlyEnriched}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F5F5F7" />
+                    <XAxis dataKey="month" stroke="#AEAEB2" fontSize={11} />
+                    <YAxis stroke="#AEAEB2" fontSize={11} tickFormatter={(v) => `€${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => eur2(Number(v))} />
+                    <Bar dataKey={chartMode} radius={[4, 4, 0, 0]}>
+                      {monthlyEnriched.map((m, i) => (
+                        <Cell key={i} fill={chartMode === 'net' && Number(m.net) < 0 ? '#dc2626' : 'hsl(174, 90%, 31%)'} />
+                      ))}
+                    </Bar>
+                    <Line type="monotone" dataKey="rolling3" stroke="#8B5CF6" strokeWidth={2} dot={false} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
+              <div className="grid grid-cols-4 gap-3 mt-3 text-[11px]">
+                <div><span className="text-muted-foreground">Ø Monatsumsatz:</span> <span className="font-medium">{eur(avgMonthlyRev)}</span></div>
+                <div><span className="text-muted-foreground">Positive Monate:</span> <span className="font-medium">{posMonths}</span></div>
+                <div><span className="text-muted-foreground">Negative Monate:</span> <span className="font-medium">{negMonths}</span></div>
+                <div><span className="text-muted-foreground">Rolling 3M (Ø):</span> <span className="font-medium">{eur(monthlyEnriched.at(-1)?.rolling3 || 0)}</span></div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Sync Debug */}
-          {isAdmin && syncStatus.length > 0 && (
+          {/* C. RECHNUNGEN & CASH COLLECTED */}
+          <div>
+            <SectionTitle title="C · Rechnungen & Cash Collected" subtitle="Qonto Rechnungen" />
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
+              <Kpi title="Bezahlt (Rechnungen)" value={eur(inv.paid_sum)} source="Qonto Rechnungen" subtitle={`${num(inv.paid_count)} Stück`} />
+              <Kpi title="Bank-Eingänge" value={eur(cf.inflow)} source="Qonto Bank" subtitle="Vergleichsbasis" />
+              <Kpi title="Δ Bank − Rechnungen" value={eur(deltaBank)} source="Qonto"
+                warn="Differenz zwischen Bankeingängen und bezahlten Rechnungen kann auf nicht-Rechnungsumsatz oder fehlende Zuordnung hindeuten." />
+              <Kpi title="Collection Rate" value={pct(collectionRate)} source="Qonto Rechnungen"
+                subtitle="bezahlt ÷ ausgestellt"
+                reliability={inv.issued_sum ? 'reliable' : 'na'} />
+              <Kpi title="Ø Rechnungsbetrag" value={eur(inv.issued_count ? (inv.issued_sum || 0) / inv.issued_count : 0)}
+                source="Qonto Rechnungen" reliability={inv.issued_count ? 'reliable' : 'na'} />
+              <Kpi title="Ø Zahlungsdauer"
+                value={inv.avg_days_to_pay != null ? `${Number(inv.avg_days_to_pay).toFixed(1)} T` : '–'}
+                source="Qonto Rechnungen"
+                subtitle="issue → paid"
+                reliability={inv.avg_days_to_pay != null ? 'reliable' : 'na'} />
+              <Kpi title="Größte offene" value={eur(recv.largest_open)} source="Qonto Rechnungen" />
+              <Kpi title="Älteste offene" value={recv.oldest_open_issue || '–'} source="Qonto Rechnungen"
+                subtitle={recv.oldest_open_issue ? `${daysBetween(recv.oldest_open_issue, today)} Tage` : ''} />
+            </div>
+          </div>
+
+          {/* H. FORDERUNGSALTER */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
-              <CardHeader><CardTitle className="text-sm">Qonto Sync Status</CardTitle></CardHeader>
-              <CardContent className="text-xs space-y-1">
-                <div>Bankkonten: <strong>{accounts.length}</strong></div>
-                <div>Rechnungen: <strong>{invoices.length}</strong></div>
-                <div>Transaktionen (letzte 5000): <strong>{txs.length}</strong></div>
-                {syncStatus.map(s => (
-                  <div key={s.resource} className="flex justify-between border-t pt-1 mt-1">
-                    <span className="text-muted-foreground">{s.resource}</span>
-                    <span>
-                      {s.last_success_at ? new Date(s.last_success_at).toLocaleString('de-DE') : '—'}
-                      {s.last_error && <span className="text-destructive ml-2">✗ {s.last_error.slice(0, 60)}</span>}
-                    </span>
-                  </div>
-                ))}
+              <CardHeader className="pb-2"><CardTitle className="text-sm">H · Forderungsalter</CardTitle></CardHeader>
+              <CardContent>
+                {aging.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-6 text-center">Keine offenen Forderungen.</p>
+                ) : (
+                  <>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={aging}>
+                        <XAxis dataKey="bucket" stroke="#AEAEB2" fontSize={11} />
+                        <YAxis stroke="#AEAEB2" fontSize={11} tickFormatter={(v) => `€${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => eur2(Number(v))} />
+                        <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                          {aging.map((a, i) => (
+                            <Cell key={i} fill={a.bucket === '60+' ? '#dc2626' : a.bucket === '31-60' ? '#f59e0b' : 'hsl(174, 90%, 31%)'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <div className="grid grid-cols-5 gap-1 mt-2 text-[10px] text-center">
+                      {aging.map(a => (
+                        <div key={a.bucket}>
+                          <p className="text-muted-foreground">{a.bucket}T</p>
+                          <p className="font-medium">{num(a.count)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
-          )}
+
+            {/* Top Kunden */}
+            <Card>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4" />Top 10 Kunden</CardTitle>
+                {top3Share != null && (
+                  <span className="text-[11px] text-muted-foreground">Top-3-Anteil: <strong>{pct(top3Share)}</strong></span>
+                )}
+              </CardHeader>
+              <CardContent className="p-0">
+                {topCustomers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-6 text-center">Keine bezahlten Rechnungen im Zeitraum.</p>
+                ) : (
+                  <Table>
+                    <TableHeader><TableRow>
+                      <TableHead className="h-8 text-xs">Kunde</TableHead>
+                      <TableHead className="h-8 text-xs text-right">Rechnungen</TableHead>
+                      <TableHead className="h-8 text-xs text-right">Umsatz</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>
+                      {topCustomers.map((c, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="py-1.5 text-sm truncate max-w-[200px]">{c.client_name}</TableCell>
+                          <TableCell className="py-1.5 text-sm text-right">{num(c.invoice_count)}</TableCell>
+                          <TableCell className="py-1.5 text-sm text-right font-medium tabular-nums">{eur(c.total_paid)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* E. AUSGABEN & Top Empfänger */}
+          <div>
+            <SectionTitle title="E · Ausgaben & Top Empfänger" subtitle="Qonto Banktransaktionen" />
+            <Card>
+              <CardContent className="p-0">
+                {topExpenses.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-6 text-center">Keine Ausgaben im Zeitraum.</p>
+                ) : (
+                  <Table>
+                    <TableHeader><TableRow>
+                      <TableHead className="h-8 text-xs">Empfänger / Label</TableHead>
+                      <TableHead className="h-8 text-xs">Kategorie</TableHead>
+                      <TableHead className="h-8 text-xs text-right">Anzahl</TableHead>
+                      <TableHead className="h-8 text-xs text-right">Gesamt</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>
+                      {topExpenses.map((e, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="py-1.5 text-sm truncate max-w-[300px]">{e.label}</TableCell>
+                          <TableCell className="py-1.5 text-xs text-muted-foreground">{e.category}</TableCell>
+                          <TableCell className="py-1.5 text-sm text-right">{num(e.count)}</TableCell>
+                          <TableCell className="py-1.5 text-sm text-right font-medium tabular-nums">{eur(e.total)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* G. USt Indikatoren */}
+          <div>
+            <SectionTitle title="G · Umsatzsteuer-Indikatoren" subtitle="Indikator, keine Steuerberechnung" />
+            {taxAcc ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Kpi title="USt-Konto Stand" value={eur(taxAcc.balance)} source="Qonto Konto"
+                  warn="Reiner Kontostand – kein Steuerbescheid." />
+                <Kpi title="USt/Umsatz-Verhältnis"
+                  value={inv.paid_sum ? pct(Number(taxAcc.balance || 0) / Number(inv.paid_sum)) : '–'}
+                  source="Qonto" reliability={inv.paid_sum ? 'partial' : 'na'}
+                  warn="Grobe Näherung, keine echte USt-Quote." />
+              </div>
+            ) : (
+              <Card className="border-dashed"><CardContent className="p-4 text-xs text-muted-foreground">
+                Nicht berechenbar – Qonto-Daten enthalten kein eindeutiges USt-Konto oder USt-Kategorien.
+              </CardContent></Card>
+            )}
+          </div>
+
+          {/* I. DATENQUALITÄT (collapsible) */}
+          <Collapsible>
+            <Card>
+              <CollapsibleTrigger className="w-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Info className="h-4 w-4" />Sync & Datenqualität
+                  </CardTitle>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0 text-xs space-y-3">
+                  {dq && (
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                      {[
+                        ['Bankkonten', dq.accounts_count],
+                        ['Rechnungen', dq.invoices_count],
+                        ['Transaktionen', dq.transactions_count],
+                        ['Rechnungen ohne Kunde', dq.invoices_no_client],
+                        ['Rechnungen ohne Fälligkeit', dq.invoices_no_due_date],
+                        ['Bezahlt ohne paid_at', dq.paid_no_paid_at],
+                        ['Tx ohne Kategorie', dq.tx_no_category],
+                        ['Tx ohne Label', dq.tx_no_label],
+                        ['Mögliche Duplikate', dq.possible_duplicate_tx],
+                      ].map(([label, v]) => (
+                        <div key={String(label)} className="border rounded p-2">
+                          <p className="text-muted-foreground text-[10px]">{label}</p>
+                          <p className="font-semibold tabular-nums">{num(Number(v))}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="border-t pt-2">
+                    <p className="font-medium mb-1">Sync-Status je Ressource</p>
+                    {syncStatus.map(s => (
+                      <div key={s.resource} className="flex justify-between py-0.5">
+                        <span className="text-muted-foreground">{s.resource}</span>
+                        <span>
+                          {s.last_success_at ? new Date(s.last_success_at).toLocaleString('de-DE') : '—'}
+                          {s.last_error && <span className="text-destructive ml-2">✗ {s.last_error.slice(0, 80)}</span>}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         </TabsContent>
 
+        {/* ============ RECHNUNGEN ============ */}
         <TabsContent value="rechnungen" className="space-y-4 mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Kpi title="Offen" value={eur(invSummary.openS)} source="Qonto Rechnungen" />
+            <Kpi title="Überfällig" value={eur(invSummary.overS)} source="Qonto Rechnungen" />
+            <Kpi title="Bezahlt (Filter)" value={eur(invSummary.paidS)} source="Qonto Rechnungen" />
+            <Kpi title="Summe gefiltert" value={eur(invSummary.totalS)} source="Qonto Rechnungen" subtitle={`${filteredInvoices.length} Einträge`} />
+          </div>
+
           <div className="flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Kunde oder Nr. suchen" value={search} onChange={e => setSearch(e.target.value)} className="pl-8" />
+              <Input placeholder="Kunde oder Nr. suchen" value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9" />
             </div>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Alle Status</SelectItem>
                 <SelectItem value="paid">Bezahlt</SelectItem>
@@ -383,14 +733,11 @@ export default function Finanzen() {
                 <SelectItem value="canceled">Storniert</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={range} onValueChange={v => setRange(v as Range)}>
-              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <Select value={filterClient} onValueChange={setFilterClient}>
+              <SelectTrigger className="w-44 h-9"><SelectValue placeholder="Kunde" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Alle</SelectItem>
-                <SelectItem value="this_month">Dieser Monat</SelectItem>
-                <SelectItem value="last_month">Letzter Monat</SelectItem>
-                <SelectItem value="this_year">Dieses Jahr</SelectItem>
-                <SelectItem value="last_12m">Letzte 12 Monate</SelectItem>
+                <SelectItem value="all">Alle Kunden</SelectItem>
+                {clientList.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
             <Button variant={filterOverdue ? 'default' : 'outline'} size="sm" onClick={() => setFilterOverdue(!filterOverdue)}>
@@ -408,30 +755,43 @@ export default function Finanzen() {
                 <TableHead>Ausgestellt</TableHead>
                 <TableHead>Fällig</TableHead>
                 <TableHead>Bezahlt</TableHead>
+                <TableHead className="text-right">Überfällig (T)</TableHead>
+                <TableHead>Zuletzt aktual.</TableHead>
                 <TableHead></TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {filteredInvoices.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Keine Rechnungen gefunden</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Keine Rechnungen gefunden</TableCell></TableRow>
                 )}
-                {filteredInvoices.map(i => (
-                  <TableRow key={i.id}>
-                    <TableCell className="font-medium">{i.number || '–'}</TableCell>
-                    <TableCell className="text-muted-foreground">{i.client_name || '–'}</TableCell>
-                    <TableCell>{statusBadge(i)}</TableCell>
-                    <TableCell className="text-right font-medium">{eur(i.total_amount)}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{i.issue_date || '–'}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{i.due_date || '–'}</TableCell>
-                    <TableCell className="text-muted-foreground text-xs">{i.paid_at || '–'}</TableCell>
-                    <TableCell>
-                      {i.invoice_url && (
-                        <a href={i.invoice_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1 text-xs">
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredInvoices.map(i => {
+                  const overdueDays = i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today
+                    ? Math.floor((today.getTime() - new Date(i.due_date).getTime()) / 86400000)
+                    : null;
+                  return (
+                    <TableRow key={i.id}>
+                      <TableCell className="font-medium">{i.number || '–'}</TableCell>
+                      <TableCell className="text-muted-foreground">{i.client_name || '–'}</TableCell>
+                      <TableCell>{statusBadge(i)}</TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">{eur2(i.total_amount)}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{i.issue_date || '–'}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{i.due_date || '–'}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{i.paid_at || '–'}</TableCell>
+                      <TableCell className="text-right text-xs">
+                        {overdueDays != null ? <span className="text-red-600 font-medium">{overdueDays}</span> : '–'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {i.updated_at_qonto ? new Date(i.updated_at_qonto).toLocaleDateString('de-DE') : '–'}
+                      </TableCell>
+                      <TableCell>
+                        {i.invoice_url && (
+                          <a href={i.invoice_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1 text-xs">
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div></CardContent></Card>
