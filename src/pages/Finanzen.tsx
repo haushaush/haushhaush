@@ -22,6 +22,7 @@ import {
   Wallet, TrendingUp, TrendingDown, AlertTriangle, RefreshCw, Search,
   ExternalLink, CheckCircle2, XCircle, FileText, ChevronDown, Info,
   ArrowUpRight, ArrowDownRight, Users, Receipt, Landmark, PiggyBank,
+  Database, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 const ALLOWED_TABS = ['uebersicht', 'rechnungen', 'werbebudgets'];
