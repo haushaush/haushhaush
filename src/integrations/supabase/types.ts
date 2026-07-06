@@ -6197,6 +6197,7 @@ export type Database = {
         Args: { requested_permission_key: string; target_user_id: string }
         Returns: boolean
       }
+      verify_qonto_cron_secret: { Args: { p_secret: string }; Returns: boolean }
     }
     Enums: {
       ampelstatus: "Grün" | "Gelb" | "Rot" | "CC"
