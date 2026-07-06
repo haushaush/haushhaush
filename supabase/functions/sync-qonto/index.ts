@@ -37,22 +37,29 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  // Auth: admin only
+  // Auth: admin JWT OR valid cron secret
+  let triggeredBy: "manual" | "cron" = "manual";
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: claims, error: cErr } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
-    if (cErr || !claims?.claims?.sub) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    const { data: isAdminData } = await supabase.rpc("has_role", { _user_id: claims.claims.sub, _role: "admin" });
-    if (!isAdminData) {
-      return new Response(JSON.stringify({ error: "Forbidden – Admin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const cronSecretHeader = req.headers.get("x-cron-secret");
+    const expectedCron = Deno.env.get("QONTO_CRON_SECRET");
+    if (cronSecretHeader && expectedCron && cronSecretHeader === expectedCron) {
+      triggeredBy = "cron";
+    } else {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader?.startsWith("Bearer ")) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const userClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: claims, error: cErr } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
+      if (cErr || !claims?.claims?.sub) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const { data: isAdminData } = await supabase.rpc("has_role", { _user_id: claims.claims.sub, _role: "admin" });
+      if (!isAdminData) {
+        return new Response(JSON.stringify({ error: "Forbidden – Admin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
   } catch (e) {
     return new Response(JSON.stringify({ error: "Auth error" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -88,6 +95,7 @@ Deno.serve(async (req) => {
       fetched_count: 0,
       total_pages: null,
       mode,
+      triggered_by: triggeredBy,
     }, { onConflict: "resource" });
   };
 
