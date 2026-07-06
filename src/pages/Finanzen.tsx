@@ -145,6 +145,7 @@ type SyncStatus = {
   completed?: boolean | null;
   mode?: string | null;
   started_at?: string | null;
+  triggered_by?: string | null;
 };
 type Dashboard = any;
 
