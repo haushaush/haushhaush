@@ -134,7 +134,18 @@ type Invoice = {
   total_amount: number | null; issue_date: string | null; due_date: string | null;
   paid_at: string | null; updated_at_qonto: string | null;
 };
-type SyncStatus = { resource: string; last_success_at: string | null; last_error: string | null; last_synced_at: string | null };
+type SyncStatus = {
+  resource: string;
+  last_success_at: string | null;
+  last_error: string | null;
+  last_synced_at: string | null;
+  fetched_count?: number | null;
+  pages_loaded?: number | null;
+  total_pages?: number | null;
+  completed?: boolean | null;
+  mode?: string | null;
+  started_at?: string | null;
+};
 type Dashboard = any;
 
 // -------------------- Page --------------------
