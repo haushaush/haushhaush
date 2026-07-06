@@ -814,7 +814,7 @@ export default function Finanzen() {
                 {filteredInvoices.length === 0 && (
                   <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Keine Rechnungen gefunden</TableCell></TableRow>
                 )}
-                {filteredInvoices.map(i => {
+                {filteredInvoices.slice(pageIdx * pageSize, pageIdx * pageSize + pageSize).map(i => {
                   const overdueDays = i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today
                     ? Math.floor((today.getTime() - new Date(i.due_date).getTime()) / 86400000)
                     : null;
@@ -845,7 +845,43 @@ export default function Finanzen() {
                 })}
               </TableBody>
             </Table>
-          </div></CardContent></Card>
+          </div>
+          {/* Pagination footer — nur Tabellen-Pagination. KPIs oben nutzen alle {filteredInvoices.length} Rechnungen. */}
+          <div className="flex items-center justify-between px-4 py-3 border-t text-xs">
+            <div className="text-muted-foreground">
+              {filteredInvoices.length === 0
+                ? '0 Rechnungen'
+                : `${pageIdx * pageSize + 1}–${Math.min(filteredInvoices.length, (pageIdx + 1) * pageSize)} von ${filteredInvoices.length}`}
+              {' · KPIs oben basieren auf allen '}<strong>{filteredInvoices.length}</strong>{' gefilterten Rechnungen'}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Pro Seite:</span>
+              <Select value={String(pageSize)} onValueChange={v => setPageSize(Number(v))}>
+                <SelectTrigger className="h-7 w-[70px] text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" className="h-7 px-2" disabled={pageIdx === 0} onClick={() => setPageIdx(p => Math.max(0, p - 1))}>
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+              <span className="tabular-nums">
+                {pageIdx + 1} / {Math.max(1, Math.ceil(filteredInvoices.length / pageSize))}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2"
+                disabled={(pageIdx + 1) * pageSize >= filteredInvoices.length}
+                onClick={() => setPageIdx(p => p + 1)}
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+          </CardContent></Card>
         </TabsContent>
 
         <TabsContent value="werbebudgets" className="space-y-4 mt-4">
