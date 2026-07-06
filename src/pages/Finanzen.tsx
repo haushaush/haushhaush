@@ -796,6 +796,11 @@ export default function Finanzen() {
                                 <span className={`h-2 w-2 rounded-full ${dot}`} />
                                 <span className="font-medium">{s.resource}</span>
                                 {s.mode && <Badge variant="outline" className="text-[10px] py-0 h-4">{s.mode}</Badge>}
+                                {s.triggered_by && (
+                                  <Badge variant="outline" className="text-[10px] py-0 h-4">
+                                    {s.triggered_by === 'cron' ? 'automatisch' : 'manuell'}
+                                  </Badge>
+                                )}
                                 {isDone && <span className="text-[10px] text-emerald-700">✓ vollständig</span>}
                                 {isRunning && <span className="text-[10px] text-amber-700">läuft…</span>}
                                 {s.completed === false && !isRunning && s.last_error && <span className="text-[10px] text-destructive">✗ unvollständig</span>}
