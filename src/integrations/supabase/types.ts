@@ -6087,6 +6087,23 @@ export type Database = {
         Args: { p_end: string; p_start: string }
         Returns: Json
       }
+      get_qonto_invoice_clients: {
+        Args: never
+        Returns: {
+          client_name: string
+        }[]
+      }
+      get_qonto_invoice_metrics: {
+        Args: {
+          p_client?: string
+          p_end?: string
+          p_overdue?: boolean
+          p_search?: string
+          p_start?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
       get_qonto_monthly_finance: {
         Args: { p_months?: number }
         Returns: {
