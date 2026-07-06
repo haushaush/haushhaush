@@ -226,13 +226,18 @@ Deno.serve(async (req) => {
       await markDone("transactions", false, e.message, synced.tx_pages, synced.transactions);
     }
 
-    // 3. Client Invoices — full pagination, ALL pages
+      // 3. Client Invoices — full pagination, ALL pages
     try {
       let page = 1;
       let hasMore = true;
       let totalPages: number | null = null;
       while (hasMore && page <= MAX_PAGES) {
-        const params = new URLSearchParams({ current_page: String(page), per_page: String(PER_PAGE) });
+        const params = new URLSearchParams({
+          page: String(page),
+          per_page: String(PER_PAGE),
+          exclude_imported: "false",
+          sort_by: "created_at:desc",
+        });
         const body = await qontoFetch(`/client_invoices?${params.toString()}`, login, secret);
         const invs = body.client_invoices || body.invoices || [];
         for (const inv of invs) {
