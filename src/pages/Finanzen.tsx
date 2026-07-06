@@ -239,7 +239,7 @@ export default function Finanzen() {
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
-        await Promise.all([loadBase(), loadAggregates()]);
+        await Promise.all([loadBase(), loadAggregates(), loadInvoicePage(), loadInvoiceMetrics()]);
         if (attempts >= (mode === 'backfill' ? 60 : 24)) { clearInterval(poll); setSyncing(false); }
       }, 5000);
     } catch (e: any) {
@@ -302,7 +302,7 @@ export default function Finanzen() {
   // Reset page when filters change
   useEffect(() => { setPageIdx(0); }, [filterStatus, filterOverdue, filterClient, search, range, pageSize]);
 
-  const cleanSearch = search.trim().replace(/[,%]/g, ' ');
+  const cleanSearch = search.trim().replace(/[%(),]/g, ' ');
 
   const buildInvoiceQuery = useCallback((withCount = true) => {
     let query = supabase
