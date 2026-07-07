@@ -39,6 +39,7 @@ Deno.serve(async (req) => {
 
   // Auth: admin JWT OR valid cron secret
   let triggeredBy: "manual" | "cron" = "manual";
+  const syncTriggerHeader = (req.headers.get("x-sync-trigger") || "").toLowerCase();
   try {
     const cronSecretHeader = req.headers.get("x-cron-secret");
     let cronOk = false;
