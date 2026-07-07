@@ -308,7 +308,19 @@ export default function Finanzen() {
   const reserveShare = reserveAcc && totalBalance > 0 ? Number(reserveAcc.balance || 0) / totalBalance : null;
 
   const invoiceSync = syncStatus.find(s => s.resource === 'client_invoices');
-  const lastSync = invoiceSync?.last_success_at || syncStatus.find(s => s.resource === 'bank_accounts')?.last_success_at;
+  const lastSuccessByType = (t: string) =>
+    syncRuns.find(r => r.status === 'success' && r.trigger_type === t)?.finished_at
+    || syncRuns.find(r => r.status === 'success' && r.trigger_type === t)?.started_at
+    || null;
+  const lastAnySync = syncRuns.find(r => r.status === 'success')?.finished_at
+    || syncRuns.find(r => r.status === 'success')?.started_at
+    || invoiceSync?.last_success_at
+    || null;
+  const lastAutoSync = lastSuccessByType('auto_cron');
+  const lastManualSync = lastSuccessByType('manual');
+  const lastBackfill = lastSuccessByType('backfill');
+  const fmtDT = (v: string | null) => v ? new Date(v).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : 'noch keiner';
+
   const invoiceSyncIncomplete = !!invoiceSync && (
     !!invoiceSync.last_error
     || invoiceSync.completed === false
