@@ -39,6 +39,7 @@ Deno.serve(async (req) => {
 
   // Auth: admin JWT OR valid cron secret
   let triggeredBy: "manual" | "cron" = "manual";
+  const syncTriggerHeader = (req.headers.get("x-sync-trigger") || "").toLowerCase();
   try {
     const cronSecretHeader = req.headers.get("x-cron-secret");
     let cronOk = false;
@@ -84,6 +85,21 @@ Deno.serve(async (req) => {
       backfillSince = body?.since || "2020-01-01T00:00:00Z";
     }
   } catch { /* ignore */ }
+
+  // Determine trigger_type for sync-run history
+  let triggerType: "manual" | "auto_cron" | "backfill" = "manual";
+  if (mode === "backfill") triggerType = "backfill";
+  else if (triggeredBy === "cron" || syncTriggerHeader === "auto_cron") triggerType = "auto_cron";
+  else if (syncTriggerHeader === "backfill") triggerType = "backfill";
+  else if (syncTriggerHeader === "manual") triggerType = "manual";
+
+  // Create sync-run record
+  const { data: runRow } = await supabase
+    .from("qonto_sync_runs")
+    .insert({ trigger_type: triggerType, status: "running" })
+    .select("id")
+    .single();
+  const runId: string | null = runRow?.id ?? null;
 
   const login = Deno.env.get("QONTO_LOGIN");
   const secret = Deno.env.get("QONTO_SECRET_KEY");
@@ -304,7 +320,18 @@ Deno.serve(async (req) => {
       await markDone("transactions", false, e.message, synced.tx_pages, synced.transactions);
     }
 
-    console.log("sync-qonto finished", { mode, synced, errors });
+    const hasErrors = Object.keys(errors).length > 0;
+    if (runId) {
+      await supabase.from("qonto_sync_runs").update({
+        status: hasErrors ? "failed" : "success",
+        finished_at: new Date().toISOString(),
+        records_bank_accounts: synced.bank_accounts,
+        records_transactions: synced.transactions,
+        records_invoices: synced.invoices,
+        error_message: hasErrors ? JSON.stringify(errors).slice(0, 1000) : null,
+      }).eq("id", runId);
+    }
+    console.log("sync-qonto finished", { mode, triggerType, synced, errors });
   };
 
   // @ts-ignore - EdgeRuntime is available in the Supabase edge runtime

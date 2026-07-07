@@ -148,6 +148,17 @@ type SyncStatus = {
   triggered_by?: string | null;
 };
 type Dashboard = any;
+type SyncRun = {
+  id: string;
+  started_at: string;
+  finished_at: string | null;
+  status: string;
+  trigger_type: string;
+  records_bank_accounts: number | null;
+  records_transactions: number | null;
+  records_invoices: number | null;
+  error_message: string | null;
+};
 
 // -------------------- Page --------------------
 export default function Finanzen() {
@@ -170,6 +181,7 @@ export default function Finanzen() {
   const [topExpenses, setTopExpenses] = useState<any[]>([]);
   const [dq, setDq] = useState<any>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus[]>([]);
+  const [syncRuns, setSyncRuns] = useState<SyncRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [chartMode, setChartMode] = useState<'net' | 'bank_in' | 'bank_out' | 'invoices_paid'>('net');
@@ -191,7 +203,7 @@ export default function Finanzen() {
   const fromISO = toISO(from), toISOd = toISO(to);
 
   const loadAggregates = useCallback(async () => {
-    const [d, m, a, tc, te, q, s] = await Promise.all([
+    const [d, m, a, tc, te, q, s, runs] = await Promise.all([
       (supabase.rpc as any)('get_qonto_finance_dashboard', { p_start: fromISO, p_end: toISOd }),
       (supabase.rpc as any)('get_qonto_monthly_finance', { p_months: 12 }),
       (supabase.rpc as any)('get_qonto_receivables_aging'),
@@ -199,6 +211,7 @@ export default function Finanzen() {
       (supabase.rpc as any)('get_qonto_top_expenses', { p_start: fromISO, p_end: toISOd, p_limit: 10 }),
       (supabase.rpc as any)('get_qonto_data_quality'),
       supabase.from('qonto_sync_status' as any).select('*'),
+      supabase.from('qonto_sync_runs' as any).select('*').order('started_at', { ascending: false }).limit(20),
     ]);
     setDashboard(d.data || null);
     setMonthly((m.data as any[]) || []);
@@ -207,6 +220,7 @@ export default function Finanzen() {
     setTopExpenses((te.data as any[]) || []);
     setDq(q.data || null);
     setSyncStatus((s.data as any) || []);
+    setSyncRuns(((runs as any)?.data as SyncRun[]) || []);
   }, [fromISO, toISOd]);
 
   const loadBase = useCallback(async () => {
@@ -228,14 +242,16 @@ export default function Finanzen() {
   const runSync = async (mode: 'incremental' | 'backfill' = 'incremental') => {
     setSyncing(true);
     try {
+      const triggerHeader = mode === 'backfill' ? 'backfill' : 'manual';
       const { data, error } = await supabase.functions.invoke('sync-qonto', {
         body: mode === 'backfill' ? { mode: 'backfill', since: '2020-01-01T00:00:00Z' } : {},
+        headers: { 'X-Sync-Trigger': triggerHeader },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({
         title: mode === 'backfill' ? 'Vollständiger Backfill gestartet' : 'Qonto Sync gestartet',
-        description: 'Läuft im Hintergrund – Fortschritt siehe „Sync & Datenqualität“.',
+        description: 'Läuft im Hintergrund – Fortschritt siehe „Sync & Datenqualität".',
       });
       let attempts = 0;
       const poll = setInterval(async () => {
@@ -292,7 +308,19 @@ export default function Finanzen() {
   const reserveShare = reserveAcc && totalBalance > 0 ? Number(reserveAcc.balance || 0) / totalBalance : null;
 
   const invoiceSync = syncStatus.find(s => s.resource === 'client_invoices');
-  const lastSync = invoiceSync?.last_success_at || syncStatus.find(s => s.resource === 'bank_accounts')?.last_success_at;
+  const lastSuccessByType = (t: string) =>
+    syncRuns.find(r => r.status === 'success' && r.trigger_type === t)?.finished_at
+    || syncRuns.find(r => r.status === 'success' && r.trigger_type === t)?.started_at
+    || null;
+  const lastAnySync = syncRuns.find(r => r.status === 'success')?.finished_at
+    || syncRuns.find(r => r.status === 'success')?.started_at
+    || invoiceSync?.last_success_at
+    || null;
+  const lastAutoSync = lastSuccessByType('auto_cron');
+  const lastManualSync = lastSuccessByType('manual');
+  const lastBackfill = lastSuccessByType('backfill');
+  const fmtDT = (v: string | null) => v ? new Date(v).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : 'noch keiner';
+
   const invoiceSyncIncomplete = !!invoiceSync && (
     !!invoiceSync.last_error
     || invoiceSync.completed === false
@@ -395,11 +423,11 @@ export default function Finanzen() {
           <h1 className="text-2xl font-semibold">Finanzen</h1>
           <p className="text-xs text-muted-foreground">
             Qonto Finanzübersicht
-            {lastSync && <> · Letzter Sync: {new Date(lastSync).toLocaleString('de-DE')}</>}
-            {invoiceSync?.triggered_by && (
-              <> ({invoiceSync.triggered_by === 'cron' ? 'automatisch' : 'manuell'})</>
-            )}
-            <> · Auto-Sync: täglich 06:00 & alle 3 h (09–21 Uhr)</>
+            {lastAnySync && <> · Letzter Sync: <span className="font-medium text-foreground">{fmtDT(lastAnySync)}</span></>}
+            <> · Letzter Auto-Sync: <span className={`font-medium ${lastAutoSync ? 'text-foreground' : 'text-amber-600'}`}>{fmtDT(lastAutoSync)}</span></>
+            {lastManualSync && <> · Letzter manueller Sync: <span className="font-medium text-foreground">{fmtDT(lastManualSync)}</span></>}
+            {lastBackfill && <> · Letzter Backfill: <span className="font-medium text-foreground">{fmtDT(lastBackfill)}</span></>}
+            <> · Auto-Sync-Plan: täglich 06:00 & alle 3 h (09–21 Uhr)</>
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -825,6 +853,63 @@ export default function Finanzen() {
                       })}
                     </div>
                   </div>
+
+                  {isAdmin && (
+                    <div className="border-t pt-2">
+                      <p className="font-medium mb-2">Sync-Historie (letzte 20 Läufe)</p>
+                      {syncRuns.length === 0 ? (
+                        <p className="text-muted-foreground text-[11px]">Noch keine Sync-Läufe protokolliert.</p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="h-7 text-[10px]">Start</TableHead>
+                                <TableHead className="h-7 text-[10px]">Ende</TableHead>
+                                <TableHead className="h-7 text-[10px]">Typ</TableHead>
+                                <TableHead className="h-7 text-[10px]">Status</TableHead>
+                                <TableHead className="h-7 text-[10px] text-right">Rechn.</TableHead>
+                                <TableHead className="h-7 text-[10px] text-right">Trans.</TableHead>
+                                <TableHead className="h-7 text-[10px] text-right">Konten</TableHead>
+                                <TableHead className="h-7 text-[10px]">Fehler</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {syncRuns.map(r => (
+                                <TableRow key={r.id}>
+                                  <TableCell className="py-1 text-[11px] whitespace-nowrap">{fmtDT(r.started_at)}</TableCell>
+                                  <TableCell className="py-1 text-[11px] whitespace-nowrap">{r.finished_at ? fmtDT(r.finished_at) : '—'}</TableCell>
+                                  <TableCell className="py-1">
+                                    <Badge variant="outline" className="text-[10px] py-0 h-4">
+                                      {r.trigger_type === 'auto_cron' ? 'automatisch' : r.trigger_type === 'backfill' ? 'Backfill' : 'manuell'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="py-1">
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[10px] py-0 h-4 ${
+                                        r.status === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        : r.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200'
+                                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                                      }`}
+                                    >
+                                      {r.status === 'success' ? '✓ ok' : r.status === 'failed' ? '✗ fehlgeschlagen' : 'läuft'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="py-1 text-[11px] text-right tabular-nums">{num(r.records_invoices || 0)}</TableCell>
+                                  <TableCell className="py-1 text-[11px] text-right tabular-nums">{num(r.records_transactions || 0)}</TableCell>
+                                  <TableCell className="py-1 text-[11px] text-right tabular-nums">{num(r.records_bank_accounts || 0)}</TableCell>
+                                  <TableCell className="py-1 text-[10px] text-destructive max-w-[240px] truncate" title={r.error_message || ''}>
+                                    {r.error_message ? r.error_message.slice(0, 80) : ''}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </CollapsibleContent>
             </Card>
