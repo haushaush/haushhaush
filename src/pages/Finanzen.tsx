@@ -242,12 +242,31 @@ export default function Finanzen() {
   const runSync = async (mode: 'incremental' | 'backfill' = 'incremental') => {
     setSyncing(true);
     try {
-      const triggerHeader = mode === 'backfill' ? 'backfill' : 'manual';
+      const triggerType = mode === 'backfill' ? 'backfill' : 'manual';
+      const body: Record<string, any> = { trigger_type: triggerType };
+      if (mode === 'backfill') { body.mode = 'backfill'; body.since = '2020-01-01T00:00:00Z'; }
       const { data, error } = await supabase.functions.invoke('sync-qonto', {
-        body: mode === 'backfill' ? { mode: 'backfill', since: '2020-01-01T00:00:00Z' } : {},
-        headers: { 'X-Sync-Trigger': triggerHeader },
+        body,
+        headers: { 'X-Sync-Trigger': triggerType },
       });
-      if (error) throw error;
+      if (error) {
+        console.error('sync-qonto error', error);
+        const ctx: any = (error as any).context;
+        let detail = error.message || String(error);
+        try {
+          if (ctx && typeof ctx.json === 'function') {
+            const j = await ctx.json();
+            if (j?.error) detail = j.error;
+          } else if (ctx && typeof ctx.text === 'function') {
+            const t = await ctx.text();
+            if (t) detail = t;
+          }
+        } catch { /* ignore */ }
+        if (/Failed to (send|fetch)/i.test(detail)) {
+          detail = 'Edge Function nicht erreichbar (Netzwerk oder CORS). Bitte erneut versuchen.';
+        }
+        throw new Error(detail);
+      }
       if (data?.error) throw new Error(data.error);
       toast({
         title: mode === 'backfill' ? 'Vollständiger Backfill gestartet' : 'Qonto Sync gestartet',
@@ -260,6 +279,7 @@ export default function Finanzen() {
         if (attempts >= (mode === 'backfill' ? 60 : 24)) { clearInterval(poll); setSyncing(false); }
       }, 5000);
     } catch (e: any) {
+      console.error('sync-qonto exception', e);
       toast({ title: 'Qonto Sync fehlgeschlagen', description: String(e?.message || e), variant: 'destructive' });
       setSyncing(false);
     }

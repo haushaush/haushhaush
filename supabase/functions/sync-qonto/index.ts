@@ -2,7 +2,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-sync-trigger, x-cron-secret",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 const QONTO_BASE = "https://thirdparty.qonto.com/v2";
@@ -75,23 +76,26 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "Auth error" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  // Parse body for mode
+  // Parse body for mode + trigger_type
   let mode: "incremental" | "backfill" = "incremental";
   let backfillSince: string | null = null;
+  let bodyTrigger: string | null = null;
   try {
     const body = await req.json().catch(() => ({}));
     if (body?.mode === "backfill") {
       mode = "backfill";
       backfillSince = body?.since || "2020-01-01T00:00:00Z";
     }
+    if (typeof body?.trigger_type === "string") bodyTrigger = body.trigger_type.toLowerCase();
   } catch { /* ignore */ }
 
-  // Determine trigger_type for sync-run history
-  let triggerType: "manual" | "auto_cron" | "backfill" = "manual";
+  // Determine trigger_type for sync-run history — priority: body > header > cron auth > fallback
+  const rawTrigger = bodyTrigger || syncTriggerHeader || (triggeredBy === "cron" ? "auto_cron" : "manual");
+  let triggerType: "manual" | "auto_cron" | "backfill" =
+    rawTrigger === "auto_cron" ? "auto_cron"
+    : rawTrigger === "backfill" ? "backfill"
+    : "manual";
   if (mode === "backfill") triggerType = "backfill";
-  else if (triggeredBy === "cron" || syncTriggerHeader === "auto_cron") triggerType = "auto_cron";
-  else if (syncTriggerHeader === "backfill") triggerType = "backfill";
-  else if (syncTriggerHeader === "manual") triggerType = "manual";
 
   // Create sync-run record
   const { data: runRow } = await supabase
