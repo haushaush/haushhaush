@@ -853,6 +853,63 @@ export default function Finanzen() {
                       })}
                     </div>
                   </div>
+
+                  {isAdmin && (
+                    <div className="border-t pt-2">
+                      <p className="font-medium mb-2">Sync-Historie (letzte 20 Läufe)</p>
+                      {syncRuns.length === 0 ? (
+                        <p className="text-muted-foreground text-[11px]">Noch keine Sync-Läufe protokolliert.</p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="h-7 text-[10px]">Start</TableHead>
+                                <TableHead className="h-7 text-[10px]">Ende</TableHead>
+                                <TableHead className="h-7 text-[10px]">Typ</TableHead>
+                                <TableHead className="h-7 text-[10px]">Status</TableHead>
+                                <TableHead className="h-7 text-[10px] text-right">Rechn.</TableHead>
+                                <TableHead className="h-7 text-[10px] text-right">Trans.</TableHead>
+                                <TableHead className="h-7 text-[10px] text-right">Konten</TableHead>
+                                <TableHead className="h-7 text-[10px]">Fehler</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {syncRuns.map(r => (
+                                <TableRow key={r.id}>
+                                  <TableCell className="py-1 text-[11px] whitespace-nowrap">{fmtDT(r.started_at)}</TableCell>
+                                  <TableCell className="py-1 text-[11px] whitespace-nowrap">{r.finished_at ? fmtDT(r.finished_at) : '—'}</TableCell>
+                                  <TableCell className="py-1">
+                                    <Badge variant="outline" className="text-[10px] py-0 h-4">
+                                      {r.trigger_type === 'auto_cron' ? 'automatisch' : r.trigger_type === 'backfill' ? 'Backfill' : 'manuell'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="py-1">
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[10px] py-0 h-4 ${
+                                        r.status === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        : r.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200'
+                                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                                      }`}
+                                    >
+                                      {r.status === 'success' ? '✓ ok' : r.status === 'failed' ? '✗ fehlgeschlagen' : 'läuft'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="py-1 text-[11px] text-right tabular-nums">{num(r.records_invoices || 0)}</TableCell>
+                                  <TableCell className="py-1 text-[11px] text-right tabular-nums">{num(r.records_transactions || 0)}</TableCell>
+                                  <TableCell className="py-1 text-[11px] text-right tabular-nums">{num(r.records_bank_accounts || 0)}</TableCell>
+                                  <TableCell className="py-1 text-[10px] text-destructive max-w-[240px] truncate" title={r.error_message || ''}>
+                                    {r.error_message ? r.error_message.slice(0, 80) : ''}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </CollapsibleContent>
             </Card>
