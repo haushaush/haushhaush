@@ -242,14 +242,16 @@ export default function Finanzen() {
   const runSync = async (mode: 'incremental' | 'backfill' = 'incremental') => {
     setSyncing(true);
     try {
+      const triggerHeader = mode === 'backfill' ? 'backfill' : 'manual';
       const { data, error } = await supabase.functions.invoke('sync-qonto', {
         body: mode === 'backfill' ? { mode: 'backfill', since: '2020-01-01T00:00:00Z' } : {},
+        headers: { 'X-Sync-Trigger': triggerHeader },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast({
         title: mode === 'backfill' ? 'Vollständiger Backfill gestartet' : 'Qonto Sync gestartet',
-        description: 'Läuft im Hintergrund – Fortschritt siehe „Sync & Datenqualität“.',
+        description: 'Läuft im Hintergrund – Fortschritt siehe „Sync & Datenqualität".',
       });
       let attempts = 0;
       const poll = setInterval(async () => {
