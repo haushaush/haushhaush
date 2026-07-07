@@ -6156,6 +6156,24 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_client_qonto_finance_summary: {
+        Args: { client_uuid: string }
+        Returns: Json
+      }
+      get_client_qonto_open_invoices: {
+        Args: { client_uuid: string }
+        Returns: {
+          currency: string
+          due_date: string
+          id: string
+          invoice_url: string
+          issue_date: string
+          number: string
+          paid_at: string
+          status: string
+          total_amount: number
+        }[]
+      }
       get_effective_user_permissions: {
         Args: { target_user_id: string }
         Returns: {
