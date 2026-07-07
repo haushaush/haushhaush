@@ -62,7 +62,8 @@ function Kpi({ label, value, icon: Icon }: { label: string; value: string | numb
 
 export function QontoVerknuepfungen() {
   const { toast } = useToast();
-  const { isAdmin } = useAuth();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
   const [rows, setRows] = useState<LinkRow[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
