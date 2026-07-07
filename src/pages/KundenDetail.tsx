@@ -134,6 +134,43 @@ export default function KundenDetail() {
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
 
+  // Qonto finance summary for this client
+  const [qontoSummary, setQontoSummary] = useState<{
+    has_link: boolean;
+    open_invoice_amount: number;
+    open_invoice_count: number;
+    overdue_invoice_amount: number;
+    overdue_invoice_count: number;
+    paid_invoice_amount: number;
+    paid_invoice_count: number;
+    last_invoice_date: string | null;
+  } | null>(null);
+  const [qontoOpenInvoices, setQontoOpenInvoices] = useState<any[]>([]);
+  const [qontoForbidden, setQontoForbidden] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.rpc('get_client_qonto_finance_summary' as any, { client_uuid: id });
+      if (cancelled) return;
+      if (error) {
+        setQontoForbidden(true);
+        setQontoSummary(null);
+        return;
+      }
+      setQontoForbidden(false);
+      setQontoSummary(data as any);
+      if ((data as any)?.open_invoice_count > 0) {
+        const { data: inv } = await supabase.rpc('get_client_qonto_open_invoices' as any, { client_uuid: id });
+        if (!cancelled) setQontoOpenInvoices((inv as any) || []);
+      } else {
+        setQontoOpenInvoices([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
+
   useEffect(() => {
     if (!client?.meta_account_id) {
       setLiveCampaigns([]);
