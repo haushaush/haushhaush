@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Werbebudgets } from '@/components/finanzen/Werbebudgets';
+import { QontoVerknuepfungen } from '@/components/finanzen/QontoVerknuepfungen';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
