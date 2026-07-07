@@ -62,12 +62,13 @@ const fmtEur = (v: any): string => {
 };
 const getBrancheLabel = (id: string | null | undefined) => id ? (getBranche(id)?.label || id) : null;
 
-function KpiCard({ label, value }: { label: string; value: string }) {
+function KpiCard({ label, value, hint, footer }: { label: string; value: string; hint?: string; footer?: React.ReactNode }) {
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className="p-4" title={hint}>
         <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
         <p className="text-2xl font-bold tabular-nums mt-1">{value}</p>
+        {footer && <div className="mt-1 text-xs text-muted-foreground">{footer}</div>}
       </CardContent>
     </Card>
   );
