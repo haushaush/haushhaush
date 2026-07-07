@@ -148,6 +148,17 @@ type SyncStatus = {
   triggered_by?: string | null;
 };
 type Dashboard = any;
+type SyncRun = {
+  id: string;
+  started_at: string;
+  finished_at: string | null;
+  status: string;
+  trigger_type: string;
+  records_bank_accounts: number | null;
+  records_transactions: number | null;
+  records_invoices: number | null;
+  error_message: string | null;
+};
 
 // -------------------- Page --------------------
 export default function Finanzen() {
