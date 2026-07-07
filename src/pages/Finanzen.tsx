@@ -26,7 +26,7 @@ import {
   Database, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
-const ALLOWED_TABS = ['uebersicht', 'rechnungen', 'werbebudgets'];
+const ALLOWED_TABS = ['uebersicht', 'rechnungen', 'werbebudgets', 'verknuepfungen'];
 type Range = 'this_month' | 'last_month' | 'this_year' | 'last_12m' | 'all' | 'custom';
 
 const tooltipStyle = { backgroundColor: '#fff', border: '1px solid #E5E5E7', borderRadius: '8px', color: '#1D1D1F', fontSize: 12 };
