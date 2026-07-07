@@ -203,7 +203,7 @@ export default function Finanzen() {
   const fromISO = toISO(from), toISOd = toISO(to);
 
   const loadAggregates = useCallback(async () => {
-    const [d, m, a, tc, te, q, s] = await Promise.all([
+    const [d, m, a, tc, te, q, s, runs] = await Promise.all([
       (supabase.rpc as any)('get_qonto_finance_dashboard', { p_start: fromISO, p_end: toISOd }),
       (supabase.rpc as any)('get_qonto_monthly_finance', { p_months: 12 }),
       (supabase.rpc as any)('get_qonto_receivables_aging'),
@@ -211,6 +211,7 @@ export default function Finanzen() {
       (supabase.rpc as any)('get_qonto_top_expenses', { p_start: fromISO, p_end: toISOd, p_limit: 10 }),
       (supabase.rpc as any)('get_qonto_data_quality'),
       supabase.from('qonto_sync_status' as any).select('*'),
+      supabase.from('qonto_sync_runs' as any).select('*').order('started_at', { ascending: false }).limit(20),
     ]);
     setDashboard(d.data || null);
     setMonthly((m.data as any[]) || []);
@@ -219,6 +220,7 @@ export default function Finanzen() {
     setTopExpenses((te.data as any[]) || []);
     setDq(q.data || null);
     setSyncStatus((s.data as any) || []);
+    setSyncRuns(((runs as any)?.data as SyncRun[]) || []);
   }, [fromISO, toISOd]);
 
   const loadBase = useCallback(async () => {
