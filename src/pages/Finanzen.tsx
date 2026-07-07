@@ -1088,6 +1088,10 @@ export default function Finanzen() {
         <TabsContent value="werbebudgets" className="space-y-4 mt-4">
           <Werbebudgets />
         </TabsContent>
+
+        <TabsContent value="verknuepfungen" className="space-y-4 mt-4">
+          <QontoVerknuepfungen />
+        </TabsContent>
       </Tabs>
     </div>
   );
