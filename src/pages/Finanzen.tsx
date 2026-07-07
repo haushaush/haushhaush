@@ -181,6 +181,7 @@ export default function Finanzen() {
   const [topExpenses, setTopExpenses] = useState<any[]>([]);
   const [dq, setDq] = useState<any>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus[]>([]);
+  const [syncRuns, setSyncRuns] = useState<SyncRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [chartMode, setChartMode] = useState<'net' | 'bank_in' | 'bank_out' | 'invoices_paid'>('net');
