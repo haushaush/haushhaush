@@ -86,6 +86,21 @@ Deno.serve(async (req) => {
     }
   } catch { /* ignore */ }
 
+  // Determine trigger_type for sync-run history
+  let triggerType: "manual" | "auto_cron" | "backfill" = "manual";
+  if (mode === "backfill") triggerType = "backfill";
+  else if (triggeredBy === "cron" || syncTriggerHeader === "auto_cron") triggerType = "auto_cron";
+  else if (syncTriggerHeader === "backfill") triggerType = "backfill";
+  else if (syncTriggerHeader === "manual") triggerType = "manual";
+
+  // Create sync-run record
+  const { data: runRow } = await supabase
+    .from("qonto_sync_runs")
+    .insert({ trigger_type: triggerType, status: "running" })
+    .select("id")
+    .single();
+  const runId: string | null = runRow?.id ?? null;
+
   const login = Deno.env.get("QONTO_LOGIN");
   const secret = Deno.env.get("QONTO_SECRET_KEY");
   if (!login || !secret) {
