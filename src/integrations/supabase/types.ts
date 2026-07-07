@@ -3983,6 +3983,45 @@ export type Database = {
         }
         Relationships: []
       }
+      qonto_sync_runs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          records_bank_accounts: number | null
+          records_invoices: number | null
+          records_transactions: number | null
+          started_at: string
+          status: string
+          trigger_type: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          records_bank_accounts?: number | null
+          records_invoices?: number | null
+          records_transactions?: number | null
+          started_at?: string
+          status?: string
+          trigger_type?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          records_bank_accounts?: number | null
+          records_invoices?: number | null
+          records_transactions?: number | null
+          started_at?: string
+          status?: string
+          trigger_type?: string
+        }
+        Relationships: []
+      }
       qonto_sync_status: {
         Row: {
           completed: boolean | null
