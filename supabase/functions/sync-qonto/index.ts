@@ -320,7 +320,18 @@ Deno.serve(async (req) => {
       await markDone("transactions", false, e.message, synced.tx_pages, synced.transactions);
     }
 
-    console.log("sync-qonto finished", { mode, synced, errors });
+    const hasErrors = Object.keys(errors).length > 0;
+    if (runId) {
+      await supabase.from("qonto_sync_runs").update({
+        status: hasErrors ? "failed" : "success",
+        finished_at: new Date().toISOString(),
+        records_bank_accounts: synced.bank_accounts,
+        records_transactions: synced.transactions,
+        records_invoices: synced.invoices,
+        error_message: hasErrors ? JSON.stringify(errors).slice(0, 1000) : null,
+      }).eq("id", runId);
+    }
+    console.log("sync-qonto finished", { mode, triggerType, synced, errors });
   };
 
   // @ts-ignore - EdgeRuntime is available in the Supabase edge runtime
