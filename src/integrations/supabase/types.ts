@@ -3983,6 +3983,50 @@ export type Database = {
         }
         Relationships: []
       }
+      qonto_client_links: {
+        Row: {
+          client_id: string | null
+          confidence: number | null
+          created_at: string
+          id: string
+          is_confirmed: boolean
+          match_type: string
+          qonto_client_id: string | null
+          qonto_client_name: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          is_confirmed?: boolean
+          match_type?: string
+          qonto_client_id?: string | null
+          qonto_client_name: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          is_confirmed?: boolean
+          match_type?: string
+          qonto_client_id?: string | null
+          qonto_client_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qonto_client_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       qonto_sync_runs: {
         Row: {
           created_at: string
@@ -6216,6 +6260,32 @@ export type Database = {
           merged_name: string
           primary_id: string
           removed_count: number
+        }[]
+      }
+      qonto_auto_link_clients: { Args: never; Returns: Json }
+      qonto_client_link_rows: {
+        Args: never
+        Returns: {
+          client_id: string
+          client_name: string
+          confidence: number
+          id: string
+          invoice_count: number
+          is_confirmed: boolean
+          match_type: string
+          qonto_client_id: string
+          qonto_client_name: string
+          total_amount: number
+          updated_at: string
+        }[]
+      }
+      qonto_client_link_stats: { Args: never; Returns: Json }
+      qonto_client_link_suggestions: {
+        Args: { p_limit?: number; p_link_id: string }
+        Returns: {
+          client_id: string
+          client_name: string
+          similarity: number
         }[]
       }
       team_with_auth_ids: {

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Werbebudgets } from '@/components/finanzen/Werbebudgets';
+import { QontoVerknuepfungen } from '@/components/finanzen/QontoVerknuepfungen';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,7 +26,7 @@ import {
   Database, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
-const ALLOWED_TABS = ['uebersicht', 'rechnungen', 'werbebudgets'];
+const ALLOWED_TABS = ['uebersicht', 'rechnungen', 'werbebudgets', 'verknuepfungen'];
 type Range = 'this_month' | 'last_month' | 'this_year' | 'last_12m' | 'all' | 'custom';
 
 const tooltipStyle = { backgroundColor: '#fff', border: '1px solid #E5E5E7', borderRadius: '8px', color: '#1D1D1F', fontSize: 12 };
@@ -504,6 +505,7 @@ export default function Finanzen() {
           <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
           <TabsTrigger value="rechnungen">Rechnungen</TabsTrigger>
           <TabsTrigger value="werbebudgets">Werbebudgets</TabsTrigger>
+          <TabsTrigger value="verknuepfungen">Verknüpfungen</TabsTrigger>
         </TabsList>
 
         {/* ============ ÜBERSICHT ============ */}
@@ -1085,6 +1087,10 @@ export default function Finanzen() {
 
         <TabsContent value="werbebudgets" className="space-y-4 mt-4">
           <Werbebudgets />
+        </TabsContent>
+
+        <TabsContent value="verknuepfungen" className="space-y-4 mt-4">
+          <QontoVerknuepfungen />
         </TabsContent>
       </Tabs>
     </div>
