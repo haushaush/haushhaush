@@ -505,6 +505,7 @@ export default function Finanzen() {
           <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
           <TabsTrigger value="rechnungen">Rechnungen</TabsTrigger>
           <TabsTrigger value="werbebudgets">Werbebudgets</TabsTrigger>
+          <TabsTrigger value="verknuepfungen">Verknüpfungen</TabsTrigger>
         </TabsList>
 
         {/* ============ ÜBERSICHT ============ */}
