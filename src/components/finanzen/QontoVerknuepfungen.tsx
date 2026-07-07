@@ -102,8 +102,12 @@ export function QontoVerknuepfungen() {
     try {
       const { data, error } = await (supabase.rpc as any)('qonto_auto_link_clients');
       if (error) throw error;
-      toast({ title: 'Automatischer Abgleich abgeschlossen',
-        description: `${data?.auto_exact ?? 0} auto · ${data?.suggested ?? 0} Vorschläge · ${data?.ambiguous ?? 0} mehrdeutig · ${data?.unlinked ?? 0} offen` });
+      const errs = data?.errors ?? 0;
+      toast({
+        title: errs > 0 ? `Abgleich abgeschlossen mit ${errs} Fehlern` : 'Automatischer Abgleich abgeschlossen',
+        description: `${data?.auto_exact ?? 0} auto · ${data?.suggested ?? 0} Vorschläge · ${data?.ambiguous ?? 0} mehrdeutig · ${data?.unlinked ?? 0} offen`,
+        variant: errs > 0 ? 'destructive' : undefined,
+      });
       await load();
     } catch (e: any) {
       toast({ title: 'Abgleich fehlgeschlagen', description: e?.message || String(e), variant: 'destructive' });
