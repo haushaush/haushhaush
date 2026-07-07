@@ -766,8 +766,95 @@ export default function KundenDetail() {
             <KpiCard label="CLV" value={fmtEur(client.clv)} />
             <KpiCard label="Gesamt-Saldo" value={fmtEur(client.gesamt_saldo)} />
             <KpiCard label="Ads-Budget" value={fmtEur(client.ads_budget)} />
-            <KpiCard label="Cash Collect offen" value={fmtEur(client.cash_collect_offen)} />
+            {(() => {
+              if (qontoForbidden) {
+                return <KpiCard label="Cash Collect offen" value={fmtEur(client.cash_collect_offen)} hint="Keine Finanzen-Berechtigung – zeige Hub-Wert" />;
+              }
+              if (!qontoSummary || !qontoSummary.has_link) {
+                return (
+                  <KpiCard
+                    label="Cash Collect offen"
+                    value="—"
+                    hint="Keine Qonto-Verknüpfung vorhanden"
+                    footer={
+                      <Link to="/finanzen/verknuepfungen" className="text-primary hover:underline">
+                        Qonto-Verknüpfung erstellen
+                      </Link>
+                    }
+                  />
+                );
+              }
+              const s = qontoSummary;
+              const hint =
+                `Offen: ${fmtEur(s.open_invoice_amount)} (${s.open_invoice_count})` +
+                ` · Überfällig: ${fmtEur(s.overdue_invoice_amount)} (${s.overdue_invoice_count})` +
+                ` · Bezahlt: ${fmtEur(s.paid_invoice_amount)} (${s.paid_invoice_count})`;
+              return (
+                <KpiCard
+                  label="Cash Collect offen"
+                  value={fmtEur(s.open_invoice_amount)}
+                  hint={hint}
+                  footer={
+                    s.overdue_invoice_count > 0 ? (
+                      <span className="text-destructive">
+                        {s.overdue_invoice_count} überfällig · {fmtEur(s.overdue_invoice_amount)}
+                      </span>
+                    ) : (
+                      <span>{s.open_invoice_count} offene Rechnung{s.open_invoice_count === 1 ? '' : 'en'}</span>
+                    )
+                  }
+                />
+              );
+            })()}
           </div>
+
+          {/* Offene Qonto-Rechnungen */}
+          {qontoSummary?.has_link && qontoOpenInvoices.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Offene Rechnungen aus Qonto</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nr.</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Ausgestellt</TableHead>
+                      <TableHead>Fällig</TableHead>
+                      <TableHead className="text-right">Betrag</TableHead>
+                      <TableHead />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {qontoOpenInvoices.map((inv) => {
+                      const overdue = inv.due_date && new Date(inv.due_date) < new Date();
+                      return (
+                        <TableRow key={inv.id}>
+                          <TableCell className="font-mono text-xs">{inv.number || '–'}</TableCell>
+                          <TableCell>
+                            <Badge variant={overdue ? 'destructive' : 'secondary'}>
+                              {overdue ? 'überfällig' : inv.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{fmtDate(inv.issue_date)}</TableCell>
+                          <TableCell className={overdue ? 'text-destructive' : ''}>{fmtDate(inv.due_date)}</TableCell>
+                          <TableCell className="text-right tabular-nums">{fmtEur(inv.total_amount)}</TableCell>
+                          <TableCell>
+                            {inv.invoice_url && (
+                              <a href={inv.invoice_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1 text-xs">
+                                Öffnen <ExternalLink className="h-3 w-3" />
+                              </a>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Stammdaten */}
           <Card>
