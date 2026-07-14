@@ -172,21 +172,23 @@ serve(async (req) => {
       accountToSlackItems.set(accId, arr);
     }
 
-    // 8) Filter status changes
+    // 8) Status changes (nur für Log/Hinweis, nicht direkt für Zielstatus)
     const statusChanges = changes.filter(
       (c) => c.type === "UPDATED" && c.old_status !== c.new_status,
     );
     console.log(`[check] ${statusChanges.length} status changes`);
 
-    // 9) Group by account
-    const byAccount = new Map<string, any[]>();
-    for (const change of statusChanges) {
-      const arr = byAccount.get(change.account_id) || [];
-      arr.push(change);
-      byAccount.set(change.account_id, arr);
+    // Kampagnen & letzte Änderung pro Account gruppieren
+    const campaignsByAccount = new Map<string, typeof allCampaigns>();
+    for (const c of allCampaigns) {
+      const arr = campaignsByAccount.get(c.account_id) || [];
+      arr.push(c);
+      campaignsByAccount.set(c.account_id, arr);
     }
+    const lastChangeByAccount = new Map<string, any>();
+    for (const ch of statusChanges) lastChangeByAccount.set(ch.account_id, ch);
 
-    // 10) Option aliases
+    // 9) Option aliases
     const { data: aliases } = await supabase
       .from("slack_list_aliases")
       .select("slack_id, display_name, parent_column_id")
@@ -194,36 +196,48 @@ serve(async (req) => {
       .eq("parent_column_id", KAMPAGNEN_STATUS_COL);
     const AKTIV_OPT = aliases?.find((a: any) => (a.display_name || "").toLowerCase() === "aktiv")?.slack_id;
     const INAKTIV_OPT = aliases?.find((a: any) => (a.display_name || "").toLowerCase() === "inaktiv")?.slack_id;
-    console.log('[option-mapping]', {
-      AKTIV_OPT,
-      INAKTIV_OPT,
-      total_options_found: aliases?.length,
-    });
+    console.log('[option-mapping]', { AKTIV_OPT, INAKTIV_OPT, total_options_found: aliases?.length });
 
     let updatesSent = 0;
     let errors = 0;
 
-    if (byAccount.size > 0 && (!AKTIV_OPT || !INAKTIV_OPT)) {
-      throw new Error(
-        `Status-Aliase fehlen: AKTIV=${AKTIV_OPT}, INAKTIV=${INAKTIV_OPT}. ` +
-        `Bitte in slack_list_aliases anlegen für column ${KAMPAGNEN_STATUS_COL}.`
-      );
-    }
-
-    for (const [accountId, accChanges] of byAccount) {
-      const slackItems = accountToSlackItems.get(accountId);
-      if (!slackItems || slackItems.length === 0) continue;
-
-      const lastChange = accChanges[accChanges.length - 1];
-      const newOptId = lastChange.new_status === "ACTIVE" ? AKTIV_OPT! : INAKTIV_OPT!;
+    // 10) Pro verknüpftem Account: Zielstatus aus ALLEN Kampagnen ableiten
+    for (const [accountId, slackItems] of accountToSlackItems) {
+      if (!AKTIV_OPT || !INAKTIV_OPT) break;
+      if (!accountFetchOk.get(accountId)) {
+        console.log(`[skip] Account ${accountId}: fetch failed – Slack-Status bleibt unverändert.`);
+        continue;
+      }
+      const accCampaigns = campaignsByAccount.get(accountId) || [];
+      if (accCampaigns.length === 0) {
+        // Keine Kampagnen sichtbar → nichts inaktivieren
+        continue;
+      }
+      const active = accCampaigns.filter((c) => (c.status || "").toUpperCase() === "ACTIVE");
+      const targetOptId = active.length > 0 ? AKTIV_OPT : INAKTIV_OPT;
+      const trigger = lastChangeByAccount.get(accountId);
 
       for (const item of slackItems) {
+        // Aktuellen Slack-Status prüfen – nur schreiben bei echter Änderung
+        const { data: cur } = await supabase
+          .from("slack_list_items")
+          .select("fields")
+          .eq("slack_item_id", item.slack_item_id)
+          .maybeSingle();
+        const fieldVal: any = (cur?.fields as any)?.[KAMPAGNEN_STATUS_COL];
+        const currentOptId = Array.isArray(fieldVal?.select) ? fieldVal.select[0] : fieldVal?.value;
+        if (currentOptId === targetOptId) continue;
+        // Ohne aktuellen Trigger und ohne Status-Diff nichts tun (idle re-sync vermeiden)
+        if (!trigger && currentOptId) {
+          // Snapshot ist frisch, aber die Slack-Row wurde manuell verändert – korrigieren
+        }
+
         try {
           const { data, error } = await supabase.functions.invoke("send-slack-list-update", {
             body: {
               slack_list_id: item.slack_list_id,
               slack_item_id: item.slack_item_id,
-              field_updates: { [KAMPAGNEN_STATUS_COL]: newOptId },
+              field_updates: { [KAMPAGNEN_STATUS_COL]: targetOptId },
             },
           });
           if (error) throw error;
@@ -234,11 +248,11 @@ serve(async (req) => {
             slack_item_id: item.slack_item_id,
             slack_list_id: item.slack_list_id,
             meta_account_id: accountId,
-            meta_campaign_id: lastChange.campaign_id,
-            meta_campaign_name: lastChange.campaign_name,
-            old_value: lastChange.old_status,
-            new_value: lastChange.new_status,
-            slack_status_after: newOptId,
+            meta_campaign_id: trigger?.campaign_id ?? null,
+            meta_campaign_name: trigger?.campaign_name ?? `${active.length}/${accCampaigns.length} aktiv`,
+            old_value: trigger?.old_status ?? null,
+            new_value: trigger?.new_status ?? (active.length > 0 ? "ACTIVE" : "PAUSED"),
+            slack_status_after: targetOptId,
             trigger_source,
             webhook_success: true,
           });
@@ -249,10 +263,10 @@ serve(async (req) => {
             slack_item_id: item.slack_item_id,
             slack_list_id: item.slack_list_id,
             meta_account_id: accountId,
-            meta_campaign_id: lastChange.campaign_id,
-            meta_campaign_name: lastChange.campaign_name,
-            old_value: lastChange.old_status,
-            new_value: lastChange.new_status,
+            meta_campaign_id: trigger?.campaign_id ?? null,
+            meta_campaign_name: trigger?.campaign_name ?? null,
+            old_value: trigger?.old_status ?? null,
+            new_value: trigger?.new_status ?? null,
             trigger_source,
             webhook_success: false,
             error_message: (e as Error).message,
@@ -261,6 +275,7 @@ serve(async (req) => {
         await new Promise((r) => setTimeout(r, 300));
       }
     }
+
 
     const duration_ms = Date.now() - startTime;
     await supabase.from("meta_check_runs").insert({
