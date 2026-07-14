@@ -161,6 +161,7 @@ const App = () => (
                 <Route path="/meta/kampagnen" element={<DL><MetaKampagnen /></DL>} />
                 <Route path="/meta/anzeigengruppen" element={<DL><MetaAnzeigengruppen /></DL>} />
                 <Route path="/meta/anzeigen" element={<DL><MetaAnzeigen /></DL>} />
+                <Route path="/meta/abrechnungen" element={<PermissionRoute permissionKey="meta.billing.view"><DL><MetaAbrechnungen /></DL></PermissionRoute>} />
                 <Route path="/onepage-leads" element={<AdminRoute><Navigate to="/onepage-leads/kunden" replace /></AdminRoute>} />
                 <Route path="/onepage-leads/kunden" element={<AdminRoute><DL><OnePageKunden /></DL></AdminRoute>} />
                 <Route path="/onepage-leads/kunden/:id" element={<AdminRoute><DL><OnePageKundeDetail /></DL></AdminRoute>} />
