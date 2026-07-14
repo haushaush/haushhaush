@@ -475,8 +475,6 @@ export default function MetaDiagnosticPanel() {
                     Aufruf: <span className="font-mono">GET /{'{BUSINESS_ID}'}/business_invoices</span> · start_date = heute − 12 Monate · limit = 100 · Pagination via <span className="font-mono">paging.next</span>.
                   </p>
                 </div>
-                  </div>
-                </div>
               </>
             )}
           </AccordionContent>
