@@ -101,8 +101,14 @@ export default function MetaDiagnosticPanel() {
       unavailable_fields: (t.fields?.rows ?? []).filter((r: any) => r.status !== 'Verfügbar').map((r: any) => r.field),
       insights_ok: !!t.insights?.ok,
       spend_available: !!t.insights?.spend_available,
-      invoices_supported: !!t.invoices?.supported,
-      payments_supported: !!t.payments?.supported,
+      business_id_present: !!t.business_id?.present,
+      invoices_state: t.invoices?.state ?? null,
+      invoices_count: t.invoices?.items_count ?? 0,
+      invoices_pages: t.invoices?.pages_loaded ?? 0,
+      invoices_pagination_complete: t.invoices?.pagination_complete ?? null,
+      invoices_fields: t.invoices?.detected_fields ?? [],
+      invoices_statuses: t.invoices?.statuses ?? [],
+      invoices_currencies: t.invoices?.currencies ?? [],
     };
     navigator.clipboard.writeText(JSON.stringify(cleaned, null, 2));
     toast.success('Diagnose-JSON kopiert (ohne Secrets)');
@@ -111,14 +117,26 @@ export default function MetaDiagnosticPanel() {
   const t = diag?.tests ?? {};
   const overall = diag ? overallBadge(diag.overall) : null;
 
+  const inv = t.invoices || {};
+  const invState = inv.state as string | undefined;
+  const invLabelMap: Record<string, { label: string; cls: string }> = {
+    ok: { label: 'Erfolgreich', cls: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30' },
+    empty: { label: 'Leer', cls: 'bg-slate-500/15 text-slate-600 border-slate-500/30' },
+    permission_denied: { label: 'Berechtigung fehlt', cls: 'bg-amber-500/15 text-amber-600 border-amber-500/30' },
+    endpoint_unavailable: { label: 'Nicht verfügbar', cls: 'bg-slate-500/15 text-slate-600 border-slate-500/30' },
+    no_business_id: { label: 'Business ID fehlt', cls: 'bg-rose-500/15 text-rose-600 border-rose-500/30' },
+    error: { label: 'Fehler', cls: 'bg-rose-500/15 text-rose-600 border-rose-500/30' },
+  };
+  const invBadge = invState ? invLabelMap[invState] : null;
+
   const summaryRows = diag ? [
     { name: 'Edge Function', ok: t.edge_function?.reachable, detail: t.edge_function?.reachable ? `erreichbar (${t.edge_function.runtime_ms}ms)` : (t.edge_function?.error || 'nicht erreichbar') },
     { name: 'Meta Token', ok: t.token?.valid, detail: t.token?.valid ? 'gültig' : (t.token?.error || 'ungültig / nicht prüfbar') },
     { name: 'Werbekonten', ok: t.accounts?.ok, detail: t.accounts?.ok ? `${t.accounts.total} Accounts` : (t.accounts?.error || '–') },
     { name: 'Account-Felder', ok: t.fields?.ok, detail: t.fields?.ok ? `${(t.fields.rows || []).filter((r: any) => r.status === 'Verfügbar').length}/${(t.fields.rows || []).length} verfügbar` : (t.fields?.error || '–') },
     { name: 'Insights', ok: t.insights?.ok, detail: t.insights?.ok ? (t.insights.spend_available ? 'Spend abrufbar' : 'keine Zeilen') : (t.insights?.error || '–') },
-    { name: 'Rechnungen', ok: t.invoices?.supported, detail: t.invoices?.supported ? 'unterstützt' : 'keine Rechnungsdaten über Meta API' },
-    { name: 'Zahlungen', ok: t.payments?.supported, detail: t.payments?.supported ? 'unterstützt' : 'keine einzelnen Payments über Meta API' },
+    { name: 'Business ID', ok: !!t.business_id?.present, detail: t.business_id?.present ? `verfügbar (${t.business_id.masked})` : 'Keine Meta Business ID konfiguriert' },
+    { name: 'Business Invoices Edge', ok: invState === 'ok' || invState === 'empty', detail: inv.note || '–' },
   ] : [];
 
   return (
@@ -334,25 +352,128 @@ export default function MetaDiagnosticPanel() {
                   </div>
                 )}
 
-                {/* Invoices / Payments */}
-                <div>
-                  <h3 className="text-sm font-semibold mb-2">Rechnungen &amp; Zahlungen</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                    <div className="border rounded p-3">
-                      <div className="font-medium mb-1">Rechnungen</div>
-                      <div className="text-muted-foreground">
-                        {t.invoices?.supported ? 'Unterstützt' : (t.invoices?.note || 'Nicht über die aktuell verwendete Meta API verfügbar')}
-                      </div>
-                      {t.invoices?.error && <div className="text-rose-600 mt-1">{t.invoices.error}</div>}
-                    </div>
-                    <div className="border rounded p-3">
-                      <div className="font-medium mb-1">Zahlungen</div>
-                      <div className="text-muted-foreground">
-                        {t.payments?.supported ? 'Unterstützt' : (t.payments?.note || 'Nicht über die aktuell verwendete Meta API verfügbar')}
-                      </div>
-                      {t.payments?.error && <div className="text-rose-600 mt-1">{t.payments.error}</div>}
-                    </div>
+                {/* Summary — replace generic status cell for invoices with dedicated badge */}
+                {invBadge && (
+                  <div className="text-xs text-muted-foreground -mt-2">
+                    Business Invoices Status: <Badge variant="outline" className={invBadge.cls}>{invBadge.label}</Badge>
                   </div>
+                )}
+
+                {/* Business Invoices detailed diagnostics */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Business Invoices Diagnose</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Test</TableHead>
+                        <TableHead>Ergebnis</TableHead>
+                        <TableHead>Details</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell>Business ID</TableCell>
+                        <TableCell>{t.business_id?.present
+                          ? <Badge variant="outline" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">Verfügbar</Badge>
+                          : <Badge variant="outline" className="bg-rose-500/15 text-rose-600 border-rose-500/30">Fehlt</Badge>}</TableCell>
+                        <TableCell className="font-mono text-xs">{t.business_id?.masked ?? '—'}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Business Invoices Edge</TableCell>
+                        <TableCell>{invBadge ? <Badge variant="outline" className={invBadge.cls}>{invBadge.label}</Badge> : '—'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {inv.endpoint && <div className="font-mono">{inv.endpoint}</div>}
+                          {inv.note}
+                          {inv.error_code != null && (
+                            <div className="text-rose-600 mt-1">
+                              HTTP {inv.http_status ?? '?'} · code {inv.error_code}{inv.error_subcode ? ` / ${inv.error_subcode}` : ''} — {inv.error_message}
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Pagination</TableCell>
+                        <TableCell>
+                          {invState === 'ok' || invState === 'empty'
+                            ? (inv.pagination_complete
+                                ? <Badge variant="outline" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">Vollständig</Badge>
+                                : <Badge variant="outline" className="bg-amber-500/15 text-amber-600 border-amber-500/30">Unvollständig</Badge>)
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {(invState === 'ok' || invState === 'empty')
+                            ? `${inv.pages_loaded ?? 0} Seiten · ${inv.items_count ?? 0} Rechnungen`
+                            : '—'}
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Rechnungsfelder</TableCell>
+                        <TableCell>
+                          {(inv.detected_fields?.length ?? 0) > 0
+                            ? <Badge variant="outline" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">{inv.detected_fields.length} Felder</Badge>
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div className="flex flex-wrap gap-1">
+                            {(inv.detected_fields ?? []).map((f: string) => (
+                              <Badge key={f} variant="outline" className="font-mono text-[10px]">{f}</Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Rechnungsstatus</TableCell>
+                        <TableCell>
+                          {(inv.statuses?.length ?? 0) > 0
+                            ? <Badge variant="outline" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">Verfügbar</Badge>
+                            : <Badge variant="outline" className="bg-slate-500/15 text-slate-600 border-slate-500/30">Nicht vorhanden</Badge>}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div className="flex flex-wrap gap-1">
+                            {(inv.statuses ?? []).map((s: string) => (
+                              <Badge key={s} variant="outline" className="text-[10px]">{s}</Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Währungen</TableCell>
+                        <TableCell>
+                          {(inv.currencies?.length ?? 0) > 0
+                            ? <Badge variant="outline">{inv.currencies.length}</Badge>
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {(inv.currencies ?? []).join(', ') || '—'}
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Zeitraum</TableCell>
+                        <TableCell>
+                          {inv.min_date || inv.max_date
+                            ? <Badge variant="outline">Erkannt</Badge>
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {inv.min_date && inv.max_date ? `${inv.min_date} → ${inv.max_date}` : '—'}
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Rechnungsdokumente</TableCell>
+                        <TableCell>
+                          {(inv.downloadable_count ?? 0) > 0
+                            ? <Badge variant="outline" className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">Verfügbar</Badge>
+                            : <Badge variant="outline" className="bg-slate-500/15 text-slate-600 border-slate-500/30">Nicht vorhanden</Badge>}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {inv.downloadable_count ?? 0} URLs
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                  <p className="text-[10px] text-muted-foreground mt-2">
+                    Aufruf: <span className="font-mono">GET /{'{BUSINESS_ID}'}/business_invoices</span> · start_date = heute − 12 Monate · limit = 100 · Pagination via <span className="font-mono">paging.next</span>.
+                  </p>
                 </div>
               </>
             )}
