@@ -89,6 +89,7 @@ const toolsNavItems: NavItem[] = [
       { title: 'Übersicht', url: '/meta/uebersicht' },
       { title: 'Ads Manager', url: '/meta/kampagnen' },
       { title: 'Verknüpfungen', url: '/meta/verknuepfungen' },
+      { title: 'Abrechnungen & Zahlungen', url: '/meta/abrechnungen' },
     ],
   },
   {
