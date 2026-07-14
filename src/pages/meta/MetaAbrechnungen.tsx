@@ -31,6 +31,26 @@ type Snapshot = {
   synced_at: string;
 };
 
+type Invoice = {
+  id: string;
+  meta_invoice_id: string;
+  meta_business_id: string | null;
+  meta_account_id: string | null;
+  account_name: string | null;
+  billing_period: string | null;
+  invoice_date: string | null;
+  due_date: string | null;
+  amount: number | null;
+  currency: string | null;
+  status: string | null;
+  status_mapped: string | null;
+  payment_method: string | null;
+  payment_reference: string | null;
+  document_url: string | null;
+  entity: string | null;
+  synced_at: string;
+};
+
 type Preset =
   | 'today' | 'last_7d' | 'last_30d' | 'this_month' | 'last_month'
   | 'this_year' | 'last_12m' | 'maximum' | 'custom';
@@ -71,8 +91,35 @@ function rangeFor(p: Preset, custom?: { from: string; to: string }): { since?: s
 type DiagState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'ready'; invoicesSupported: boolean; paymentsSupported: boolean; token: boolean }
+  | { status: 'ready'; invoicesSupported: boolean; token: boolean }
   | { status: 'error'; message: string };
+
+const STATUS_LABEL: Record<string, string> = {
+  paid: 'Bezahlt',
+  open: 'Offen',
+  failed: 'Fehlgeschlagen',
+  pending: 'Ausstehend',
+  canceled: 'Storniert',
+  unknown: 'Unbekannt',
+};
+
+const STATUS_STYLE: Record<string, string> = {
+  paid: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30',
+  open: 'bg-amber-500/15 text-amber-600 border-amber-500/30',
+  failed: 'bg-rose-500/15 text-rose-600 border-rose-500/30',
+  pending: 'bg-sky-500/15 text-sky-600 border-sky-500/30',
+  canceled: 'bg-muted text-muted-foreground border-border',
+  unknown: 'bg-muted text-muted-foreground border-border',
+};
+
+function statusLabel(s: string | null | undefined) {
+  const k = String(s ?? 'unknown').toLowerCase();
+  return STATUS_LABEL[k] ?? s ?? '–';
+}
+function statusStyle(s: string | null | undefined) {
+  const k = String(s ?? 'unknown').toLowerCase();
+  return STATUS_STYLE[k] ?? STATUS_STYLE.unknown;
+}
 
 export default function MetaAbrechnungen() {
   const { callMeta } = useMetaAds();
@@ -80,6 +127,7 @@ export default function MetaAbrechnungen() {
   const canManage = isAdmin || hasPermission('meta.billing.manage');
 
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [preset, setPreset] = useState<Preset>('last_30d');
@@ -95,10 +143,20 @@ export default function MetaAbrechnungen() {
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [diag, setDiag] = useState<DiagState>({ status: 'idle' });
 
+  // Invoice tab filters
+  const [invStatus, setInvStatus] = useState<string>('all');
+  const [invAccount, setInvAccount] = useState<string>('all');
+  const [invMin, setInvMin] = useState('');
+  const [invMax, setInvMax] = useState('');
+  const [invSearch, setInvSearch] = useState('');
+  const [invRange, setInvRange] = useState<Preset>('maximum');
+  const [invPage, setInvPage] = useState(1);
+  const [invPageSize, setInvPageSize] = useState<25 | 50 | 100>(25);
+
   const range = useMemo(() => rangeFor(preset, { from: customFrom, to: customTo }), [preset, customFrom, customTo]);
+  const invPeriod = useMemo(() => rangeFor(invRange, { from: customFrom, to: customTo }), [invRange, customFrom, customTo]);
 
   async function loadSnapshots() {
-    setLoading(true);
     const { data, error } = await supabase
       .from('meta_billing_account_snapshots')
       .select('*')
@@ -106,11 +164,22 @@ export default function MetaAbrechnungen() {
       .limit(2000);
     if (error) toast.error('Konnte Snapshots nicht laden: ' + error.message);
     setSnapshots((data as any) || []);
-    setLoading(false);
   }
 
-  // Silent, page-load diagnostic to determine whether real invoice/payment
-  // records are available. NEVER falls back to spend data if unsupported.
+  async function loadInvoices() {
+    const { data, error } = await (supabase as any)
+      .from('meta_billing_invoices')
+      .select('*')
+      .order('invoice_date', { ascending: false, nullsFirst: false })
+      .limit(5000);
+    if (error) {
+      // Silently ignore for non-admins / not-yet-populated
+      setInvoices([]);
+      return;
+    }
+    setInvoices((data as any) || []);
+  }
+
   const runDiagnostic = useCallback(async () => {
     setDiag({ status: 'loading' });
     try {
@@ -120,16 +189,21 @@ export default function MetaAbrechnungen() {
       setDiag({
         status: 'ready',
         invoicesSupported: !!data?.tests?.invoices?.supported,
-        paymentsSupported: !!data?.tests?.payments?.supported,
         token: !!data?.tests?.token?.valid,
       });
     } catch (e) {
-      // Non-admins get 403 — treat as "unknown, assume unsupported"
       setDiag({ status: 'error', message: (e as Error).message });
     }
   }, []);
 
-  useEffect(() => { loadSnapshots(); runDiagnostic(); }, [runDiagnostic]);
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      await Promise.all([loadSnapshots(), loadInvoices()]);
+      setLoading(false);
+    })();
+    runDiagnostic();
+  }, [runDiagnostic]);
 
   useEffect(() => {
     if (!loading && snapshots.length === 0 && canManage && !syncing) handleSync();
@@ -142,12 +216,14 @@ export default function MetaAbrechnungen() {
       const { data, error } = await supabase.functions.invoke('sync-meta-billing', { body: {} });
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
+      const invPart = data.invoices_endpoint === 'ok' || data.invoices_endpoint === 'ok_fallback'
+        ? `, ${data.invoices_upserted}/${data.invoices_fetched} Rechnungen`
+        : (data.invoices_endpoint ? `, Rechnungen: ${data.invoices_endpoint}` : '');
       toast.success(
-        `Sync fertig: ${data.accounts_checked} geprüft, ${data.accounts_updated} aktualisiert` +
-        (data.unsupported_accounts ? `, ${data.unsupported_accounts} ohne Abrechnungsdaten` : '') +
+        `Sync fertig: ${data.accounts_checked} Konten geprüft, ${data.accounts_updated} aktualisiert${invPart}` +
         (data.errors?.length ? ` (${data.errors.length} Fehler)` : '')
       );
-      await loadSnapshots();
+      await Promise.all([loadSnapshots(), loadInvoices()]);
       runDiagnostic();
     } catch (e) {
       toast.error('Sync fehlgeschlagen: ' + (e as Error).message);
@@ -174,7 +250,7 @@ export default function MetaAbrechnungen() {
     });
   }, [snapshots, accountFilter, currencyFilter, statusFilter, search, minAmt, maxAmt]);
 
-  // Insights loader — supports 'maximum' (no time_range) and dated ranges.
+  // Insights loader
   useEffect(() => {
     let cancelled = false;
     async function run() {
@@ -207,7 +283,6 @@ export default function MetaAbrechnungen() {
     return () => { cancelled = true; };
   }, [filteredAccounts, range.since, range.until, range.maximum, callMeta]);
 
-  // Aggregates by currency — Ausgaben (Insights)
   const spendByCurrency = useMemo(() => {
     const m: Record<string, number> = {};
     for (const acc of filteredAccounts) {
@@ -235,7 +310,6 @@ export default function MetaAbrechnungen() {
     return m;
   }, [filteredAccounts, insights]);
 
-  // Available data history — first & last date_start across all loaded insight rows
   const availableHistory = useMemo(() => {
     let min: string | null = null; let max: string | null = null;
     for (const acc of filteredAccounts) {
@@ -268,6 +342,47 @@ export default function MetaAbrechnungen() {
     }
     return m;
   }, [filteredAccounts]);
+
+  // Per-account invoice aggregates (from real business invoice records).
+  type AcctAgg = {
+    openAmount: number;
+    failedAmount: number;
+    unsettledAmount: number; // open + failed + pending
+    paidAmount: number;
+    openCount: number;
+    failedCount: number;
+    pendingCount: number;
+    paidCount: number;
+    currencies: Set<string>;
+  };
+  const invoicesByAccount = useMemo(() => {
+    const map = new Map<string, AcctAgg>();
+    const push = (key: string) => {
+      if (!map.has(key)) map.set(key, {
+        openAmount: 0, failedAmount: 0, unsettledAmount: 0, paidAmount: 0,
+        openCount: 0, failedCount: 0, pendingCount: 0, paidCount: 0,
+        currencies: new Set(),
+      });
+      return map.get(key)!;
+    };
+    for (const inv of invoices) {
+      const key = inv.meta_account_id || '__unassigned__';
+      const agg = push(key);
+      if (inv.currency) agg.currencies.add(inv.currency);
+      const amt = inv.amount ?? 0;
+      switch ((inv.status_mapped || '').toLowerCase()) {
+        case 'paid':
+          agg.paidAmount += amt; agg.paidCount++; break;
+        case 'open':
+          agg.openAmount += amt; agg.openCount++; agg.unsettledAmount += amt; break;
+        case 'failed':
+          agg.failedAmount += amt; agg.failedCount++; agg.unsettledAmount += amt; break;
+        case 'pending':
+          agg.pendingCount++; agg.unsettledAmount += amt; break;
+      }
+    }
+    return map;
+  }, [invoices]);
 
   const activeCount = filteredAccounts.filter((a) => a.account_status === '1').length;
   const unsupportedCount = filteredAccounts.filter((a) => a.amount_spent == null && a.balance == null).length;
@@ -309,12 +424,76 @@ export default function MetaAbrechnungen() {
     return entries.map(([cur, val]) => formatCurrency(val, cur)).join(' · ');
   }
 
+  function fmtInvoiceMoney(amount: number, currencies: Set<string>) {
+    if (amount === 0) return '–';
+    if (currencies.size === 1) return formatCurrency(amount, Array.from(currencies)[0]);
+    if (currencies.size === 0) return formatCurrency(amount, 'EUR');
+    // Mixed currencies — do not add up ambiguously.
+    return `${amount.toFixed(2)} (gemischt)`;
+  }
+
+  // Global invoice KPIs (per currency, from real records).
+  const invoiceKpis = useMemo(() => {
+    const groupByCur = (pred: (i: Invoice) => boolean) => {
+      const m: Record<string, { count: number; sum: number }> = {};
+      for (const i of invoices) {
+        if (!pred(i)) continue;
+        const cur = i.currency || 'EUR';
+        m[cur] = m[cur] || { count: 0, sum: 0 };
+        m[cur].count += 1;
+        m[cur].sum += i.amount ?? 0;
+      }
+      return m;
+    };
+    const total = groupByCur(() => true);
+    const open = groupByCur((i) => i.status_mapped === 'open');
+    const failed = groupByCur((i) => i.status_mapped === 'failed');
+    const paid = groupByCur((i) => i.status_mapped === 'paid');
+    const pending = groupByCur((i) => i.status_mapped === 'pending');
+    const asSum = (m: Record<string, { sum: number }>) => Object.fromEntries(Object.entries(m).map(([c, v]) => [c, v.sum]));
+    const asCount = (m: Record<string, { count: number }>) => Object.values(m).reduce((a, b) => a + b.count, 0);
+    return {
+      totalCount: asCount(total), totalSum: asSum(total),
+      openCount: asCount(open), openSum: asSum(open),
+      failedCount: asCount(failed), failedSum: asSum(failed),
+      paidCount: asCount(paid), paidSum: asSum(paid),
+      pendingCount: asCount(pending), pendingSum: asSum(pending),
+    };
+  }, [invoices]);
+
   const invoicesSupported = diag.status === 'ready' && diag.invoicesSupported;
-  const paymentsSupported = diag.status === 'ready' && diag.paymentsSupported;
+  const hasInvoices = invoices.length > 0;
 
   const rangeLabel = range.maximum
     ? 'Insgesamt (max. verfügbare Historie)'
     : `${range.since} → ${range.until}`;
+
+  // Invoice tab filtered rows
+  const invoicesFiltered = useMemo(() => {
+    return invoices.filter((i) => {
+      if (invStatus !== 'all' && (i.status_mapped || 'unknown') !== invStatus) return false;
+      if (invAccount !== 'all') {
+        if (invAccount === '__unassigned__') { if (i.meta_account_id) return false; }
+        else if (i.meta_account_id !== invAccount) return false;
+      }
+      if (invMin && (i.amount ?? -Infinity) < Number(invMin)) return false;
+      if (invMax && (i.amount ?? Infinity) > Number(invMax)) return false;
+      if (invSearch) {
+        const q = invSearch.toLowerCase();
+        const hit = [i.meta_invoice_id, i.account_name, i.entity, i.payment_reference, i.billing_period]
+          .some((v) => (v || '').toLowerCase().includes(q));
+        if (!hit) return false;
+      }
+      if (!invPeriod.maximum && invPeriod.since && invPeriod.until && i.invoice_date) {
+        if (i.invoice_date < invPeriod.since || i.invoice_date > invPeriod.until) return false;
+      }
+      return true;
+    });
+  }, [invoices, invStatus, invAccount, invMin, invMax, invSearch, invPeriod]);
+
+  const invoicesPageCount = Math.max(1, Math.ceil(invoicesFiltered.length / invPageSize));
+  const invoicesPage = invoicesFiltered.slice((invPage - 1) * invPageSize, invPage * invPageSize);
+  useEffect(() => { setInvPage(1); }, [invStatus, invAccount, invMin, invMax, invSearch, invRange]);
 
   return (
     <TooltipProvider>
@@ -324,7 +503,7 @@ export default function MetaAbrechnungen() {
         <div>
           <h1 className="text-2xl font-semibold">Abrechnungen & Zahlungen</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Werbekontenübergreifende Übersicht — Werbeausgaben (Meta Insights), Abrechnungskonto-Daten (Meta Ad Accounts) und, sofern von der Meta API bereitgestellt, echte Rechnungen und Zahlungen.
+            Werbekontenübergreifende Übersicht — Werbeausgaben (Meta Insights), Abrechnungskonto-Daten (Meta Ad Accounts) und echte Rechnungen aus <code className="text-xs">/business_invoices</code>.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -415,14 +594,11 @@ export default function MetaAbrechnungen() {
             {range.maximum && availableHistory.min && availableHistory.max && (
               <> · Verfügbare Daten: {availableHistory.min} bis {availableHistory.max}</>
             )}
-            {range.maximum && (
-              <> · Basiert auf der aktuell über Meta verfügbaren bzw. synchronisierten Historie.</>
-            )}
           </span>
         </div>
       </Card>
 
-      {/* PRIMARY KPIs — Ausgaben (Insights) */}
+      {/* Werbeausgaben KPIs */}
       <section>
         <SectionHeader title="Werbeausgaben" source="Meta Insights" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -433,7 +609,7 @@ export default function MetaAbrechnungen() {
         </div>
       </section>
 
-      {/* PRIMARY KPIs — Abrechnungskonto */}
+      {/* Abrechnungskonto KPIs */}
       <section>
         <SectionHeader title="Abrechnungskonto" source="Meta Ad Accounts" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -444,37 +620,22 @@ export default function MetaAbrechnungen() {
         </div>
       </section>
 
-      {/* PRIMARY KPIs — Rechnungen (diagnostic-gated) */}
+      {/* Rechnungen KPIs — from real business_invoices */}
       <section>
         <SectionHeader
           title="Rechnungen"
-          source={invoicesSupported ? 'Meta Billing API' : 'Nicht über Meta API verfügbar'}
-          unavailable={!invoicesSupported}
+          source={hasInvoices ? 'Meta Business Invoices' : (invoicesSupported ? 'Meta Business Invoices · Sync ausstehend' : 'Nicht über Meta API verfügbar')}
+          unavailable={!invoicesSupported && !hasInvoices}
         />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KpiUnavailable label="Rechnungen gesamt" available={invoicesSupported} />
-          <KpiUnavailable label="Rechnungsbetrag gesamt" available={invoicesSupported} />
-          <KpiUnavailable label="Offene Rechnungen" available={invoicesSupported} />
-          <KpiUnavailable label="Offener Betrag" available={invoicesSupported} />
-          <KpiUnavailable label="Bezahlte Rechnungen" available={invoicesSupported} />
-          <KpiUnavailable label="Bezahlter Betrag" available={invoicesSupported} />
-          <KpiUnavailable label="Überfällige Rechnungen" available={invoicesSupported} />
-          <KpiUnavailable label="Überfälliger Betrag" available={invoicesSupported} />
-        </div>
-      </section>
-
-      {/* PRIMARY KPIs — Zahlungen */}
-      <section>
-        <SectionHeader
-          title="Zahlungen"
-          source={paymentsSupported ? 'Meta Billing API' : 'Nicht über Meta API verfügbar'}
-          unavailable={!paymentsSupported}
-        />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KpiUnavailable label="Zahlungen gesamt" available={paymentsSupported} />
-          <KpiUnavailable label="Erfolgreicher Betrag" available={paymentsSupported} />
-          <KpiUnavailable label="Ausstehender Betrag" available={paymentsSupported} />
-          <KpiUnavailable label="Fehlgeschlagene Zahlungen" available={paymentsSupported} />
+          <KpiCard label="Abrechnungen gesamt" value={hasInvoices ? String(invoiceKpis.totalCount) : (invoicesSupported ? '–' : 'n/a')} source="Business Invoices" />
+          <KpiCard label="Gesamtbetrag" value={hasInvoices ? fmtMulti(invoiceKpis.totalSum) : '–'} source="Business Invoices" />
+          <KpiCard label="Offene Abrechnungen" value={hasInvoices ? String(invoiceKpis.openCount) : '–'} source="Business Invoices" />
+          <KpiCard label="Offener Betrag" value={hasInvoices ? fmtMulti(invoiceKpis.openSum) : '–'} source="Business Invoices" />
+          <KpiCard label="Fehlgeschlagene Abrechnungen" value={hasInvoices ? String(invoiceKpis.failedCount) : '–'} source="Business Invoices" />
+          <KpiCard label="Fehlgeschlagener Betrag" value={hasInvoices ? fmtMulti(invoiceKpis.failedSum) : '–'} source="Business Invoices" />
+          <KpiCard label="Bezahlte Abrechnungen" value={hasInvoices ? String(invoiceKpis.paidCount) : '–'} source="Business Invoices" />
+          <KpiCard label="Bezahlter Betrag" value={hasInvoices ? fmtMulti(invoiceKpis.paidSum) : '–'} source="Business Invoices" />
         </div>
       </section>
 
@@ -511,7 +672,10 @@ export default function MetaAbrechnungen() {
 
       {/* Per-account status */}
       <Card className="p-4">
-        <h2 className="text-lg font-semibold mb-3">Abrechnungsstatus je Werbekonto</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Abrechnungsstatus je Werbekonto</h2>
+          <span className="text-xs text-muted-foreground">Saldo aus Ad Account · Beträge aus Business Invoices</span>
+        </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -521,9 +685,11 @@ export default function MetaAbrechnungen() {
                 <TableHead>Währung</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Saldo</TableHead>
-                <TableHead className="text-right">Gesamtausgaben</TableHead>
+                <TableHead className="text-right">Offener Betrag</TableHead>
+                <TableHead className="text-right">Fehlgeschlagen</TableHead>
+                <TableHead className="text-right">Unsettled ges.</TableHead>
+                <TableHead className="text-center">Offen · Fehler</TableHead>
                 <TableHead className="text-right">Spend Cap</TableHead>
-                <TableHead className="text-right">Verbleibendes Limit</TableHead>
                 <TableHead>Zahlungsmethode</TableHead>
                 <TableHead>Warnungen</TableHead>
                 <TableHead>Letzter Sync</TableHead>
@@ -531,19 +697,21 @@ export default function MetaAbrechnungen() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground">Lade…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground">Lade…</TableCell></TableRow>
               ) : filteredAccounts.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground">Keine Werbekonten. Klicke „Meta-Abrechnungen aktualisieren" oben rechts.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground">Keine Werbekonten. Klicke „Meta-Abrechnungen aktualisieren" oben rechts.</TableCell></TableRow>
               ) : filteredAccounts.map((a) => {
                 const cur = a.currency || 'EUR';
                 const badge = accountStatusBadge(Number(a.account_status));
                 const spent = a.amount_spent != null ? a.amount_spent / 100 : null;
                 const cap = a.spend_cap != null ? a.spend_cap / 100 : null;
-                const remaining = cap != null && spent != null ? cap - spent : null;
+                const agg = invoicesByAccount.get(a.meta_account_id);
                 const warn: string[] = [];
                 if (cap != null && spent != null && spent / cap >= 0.9) warn.push('Limit fast erreicht');
                 if (a.amount_spent == null && a.balance == null) warn.push('Keine Abrechnungsdaten');
                 if (a.account_status && a.account_status !== '1') warn.push(badge.label);
+                if (agg && agg.failedCount > 0) warn.push(`${agg.failedCount} fehlgeschlagene Abrechnung${agg.failedCount === 1 ? '' : 'en'}`);
+                if (agg && agg.openCount > 0) warn.push(`${agg.openCount} offene Abrechnung${agg.openCount === 1 ? '' : 'en'}`);
                 if (!a.funding_source_details) warn.push('Zahlungsmethode unbekannt');
                 const funding = a.funding_source_details as any;
                 const paymentMethod = funding?.display_string || funding?.type_name || (funding ? 'verknüpft' : '–');
@@ -554,9 +722,13 @@ export default function MetaAbrechnungen() {
                     <TableCell>{cur}</TableCell>
                     <TableCell><Badge variant="outline" className={badge.className}>{badge.label}</Badge></TableCell>
                     <TableCell className="text-right font-mono">{a.balance != null ? formatCurrency(a.balance / 100, cur) : '–'}</TableCell>
-                    <TableCell className="text-right font-mono">{spent != null ? formatCurrency(spent, cur) : '–'}</TableCell>
+                    <TableCell className="text-right font-mono">{agg && agg.openAmount > 0 ? fmtInvoiceMoney(agg.openAmount, agg.currencies) : '–'}</TableCell>
+                    <TableCell className="text-right font-mono text-rose-600">{agg && agg.failedAmount > 0 ? fmtInvoiceMoney(agg.failedAmount, agg.currencies) : '–'}</TableCell>
+                    <TableCell className="text-right font-mono">{agg && agg.unsettledAmount > 0 ? fmtInvoiceMoney(agg.unsettledAmount, agg.currencies) : '–'}</TableCell>
+                    <TableCell className="text-center text-xs">
+                      {agg ? `${agg.openCount} · ${agg.failedCount}` : '–'}
+                    </TableCell>
                     <TableCell className="text-right font-mono">{cap != null ? formatCurrency(cap, cur) : '–'}</TableCell>
-                    <TableCell className="text-right font-mono">{remaining != null ? formatCurrency(remaining, cur) : '–'}</TableCell>
                     <TableCell className="text-xs">{paymentMethod}</TableCell>
                     <TableCell>
                       {warn.length > 0 ? (
@@ -578,35 +750,145 @@ export default function MetaAbrechnungen() {
         </div>
       </Card>
 
-      {/* Invoices / Payments Tabs */}
+      {/* Invoices Tab */}
       <Tabs defaultValue="invoices">
         <TabsList>
-          <TabsTrigger value="invoices">Rechnungen</TabsTrigger>
+          <TabsTrigger value="invoices">Rechnungen ({invoices.length})</TabsTrigger>
           <TabsTrigger value="payments">Zahlungen</TabsTrigger>
         </TabsList>
 
         <TabsContent value="invoices">
-          {invoicesSupported ? (
-            <InvoicesEmptyPending kind="invoices" />
+          {!invoicesSupported && !hasInvoices ? (
+            <UnavailableCard kind="invoices" diagLoading={diag.status === 'loading'} />
+          ) : !hasInvoices ? (
+            <Card className="p-8 text-center text-sm text-muted-foreground">
+              Business-Invoices-Endpunkt verfügbar, aber noch keine Datensätze synchronisiert.
+              {canManage && <div className="mt-3"><Button size="sm" variant="outline" onClick={handleSync} disabled={syncing}>Jetzt synchronisieren</Button></div>}
+            </Card>
           ) : (
-            <UnavailableCard
-              kind="invoices"
-              diagLoading={diag.status === 'loading'}
-            />
+            <Card className="p-4 space-y-4">
+              {/* Filters */}
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+                <Select value={invStatus} onValueChange={setInvStatus}>
+                  <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Status</SelectItem>
+                    <SelectItem value="open">Offen / Unsettled</SelectItem>
+                    <SelectItem value="paid">Bezahlt</SelectItem>
+                    <SelectItem value="failed">Fehlgeschlagen</SelectItem>
+                    <SelectItem value="pending">Ausstehend</SelectItem>
+                    <SelectItem value="canceled">Storniert</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={invAccount} onValueChange={setInvAccount}>
+                  <SelectTrigger><SelectValue placeholder="Werbekonto" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Werbekonten</SelectItem>
+                    <SelectItem value="__unassigned__">Nicht zugeordnet</SelectItem>
+                    {snapshots.map((s) => (
+                      <SelectItem key={s.meta_account_id} value={s.meta_account_id}>
+                        {s.account_name || s.meta_account_id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={invRange} onValueChange={(v) => setInvRange(v as Preset)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PRESETS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Input type="number" placeholder="Mindestbetrag" value={invMin} onChange={(e) => setInvMin(e.target.value)} />
+                <Input type="number" placeholder="Maximalbetrag" value={invMax} onChange={(e) => setInvMax(e.target.value)} />
+                <Input placeholder="ID / Konto / Referenz" value={invSearch} onChange={(e) => setInvSearch(e.target.value)} />
+              </div>
+
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Abrechnungs-ID</TableHead>
+                      <TableHead>Datum</TableHead>
+                      <TableHead>Werbekonto</TableHead>
+                      <TableHead>Account-ID</TableHead>
+                      <TableHead className="text-right">Betrag</TableHead>
+                      <TableHead>Währung</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Zahlungsmethode</TableHead>
+                      <TableHead>Referenz</TableHead>
+                      <TableHead>Letzter Sync</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoicesPage.length === 0 ? (
+                      <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground">Keine Rechnungen entsprechen den Filtern.</TableCell></TableRow>
+                    ) : invoicesPage.map((i) => (
+                      <TableRow key={i.id}>
+                        <TableCell className="font-mono text-xs">{i.meta_invoice_id}</TableCell>
+                        <TableCell className="text-xs">{i.invoice_date || '–'}{i.due_date && <div className="text-muted-foreground">fällig: {i.due_date}</div>}</TableCell>
+                        <TableCell>{i.account_name || (i.meta_account_id ? '–' : <span className="text-muted-foreground italic">Nicht zugeordnet</span>)}</TableCell>
+                        <TableCell className="font-mono text-xs">{i.meta_account_id || '–'}</TableCell>
+                        <TableCell className="text-right font-mono">{i.amount != null ? formatCurrency(i.amount, i.currency || 'EUR') : '–'}</TableCell>
+                        <TableCell className="text-xs">{i.currency || '–'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={statusStyle(i.status_mapped)}>{statusLabel(i.status_mapped)}</Badge>
+                          {i.status && String(i.status).toLowerCase() !== String(i.status_mapped).toLowerCase() && (
+                            <div className="text-[10px] text-muted-foreground mt-1">Meta: {i.status}</div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">{i.payment_method || '–'}</TableCell>
+                        <TableCell className="text-xs">{i.payment_reference || '–'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{new Date(i.synced_at).toLocaleString('de-DE')}</TableCell>
+                        <TableCell>
+                          {i.document_url && (
+                            <Button variant="ghost" size="sm" asChild>
+                              <a href={i.document_url} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span>Pro Seite:</span>
+                  <Select value={String(invPageSize)} onValueChange={(v) => { setInvPageSize(Number(v) as 25 | 50 | 100); setInvPage(1); }}>
+                    <SelectTrigger className="h-7 w-20"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>Seite {invPage} von {invoicesPageCount} · {invoicesFiltered.length} Einträge</span>
+                  <Button variant="outline" size="sm" className="h-7" disabled={invPage <= 1} onClick={() => setInvPage((p) => Math.max(1, p - 1))}><ChevronLeft className="h-3 w-3" /></Button>
+                  <Button variant="outline" size="sm" className="h-7" disabled={invPage >= invoicesPageCount} onClick={() => setInvPage((p) => Math.min(invoicesPageCount, p + 1))}><ChevronRight className="h-3 w-3" /></Button>
+                </div>
+              </div>
+            </Card>
           )}
         </TabsContent>
 
         <TabsContent value="payments">
-          {paymentsSupported ? (
-            <InvoicesEmptyPending kind="payments" />
-          ) : (
-            <UnavailableCard
-              kind="payments"
-              diagLoading={diag.status === 'loading'}
-            />
-          )}
+          <UnavailableCard kind="payments" diagLoading={diag.status === 'loading'} />
         </TabsContent>
       </Tabs>
+
+      {/* Admin: Data quality summary */}
+      {isAdmin && (
+        <Card className="p-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Datenqualität — Business Invoices</h2>
+          <DataQualityGrid invoices={invoices} />
+        </Card>
+      )}
 
       {isAdmin && <MetaDiagnosticPanel />}
     </div>
@@ -633,52 +915,20 @@ function KpiCard({ label, value, source }: { label: string; value: string; sourc
   );
 }
 
-function KpiUnavailable({ label, available }: { label: string; available: boolean }) {
-  if (available) {
-    // Diagnose meldet unterstützt, aber wir haben noch keine Datenpipeline für einzelne Datensätze.
-    // Wir zeigen ehrlich: "Wird geladen" statt eine erfundene Zahl.
-    return (
-      <Card className="p-4">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
-        <p className="text-xl font-semibold mt-1 font-mono text-muted-foreground">–</p>
-        <p className="text-[10px] text-muted-foreground mt-2">Meta API unterstützt Rechnungen · Sync ausstehend</p>
-      </Card>
-    );
-  }
-  return (
-    <Card className="p-4 bg-muted/30">
-      <div className="flex items-center gap-1">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
-        <UITooltip>
-          <TooltipTrigger asChild>
-            <HelpCircle className="h-3 w-3 text-muted-foreground" />
-          </TooltipTrigger>
-          <TooltipContent className="max-w-xs text-xs">
-            Der verbundene Meta-Zugriff liefert keine einzelnen Rechnungs-/Zahlungsdatensätze.
-          </TooltipContent>
-        </UITooltip>
-      </div>
-      <p className="text-sm font-medium mt-2 text-muted-foreground">Nicht über Meta API verfügbar</p>
-    </Card>
-  );
-}
-
 function UnavailableCard({ kind, diagLoading }: { kind: 'invoices' | 'payments'; diagLoading: boolean }) {
   const heading = kind === 'invoices'
     ? 'Keine einzelnen Rechnungsdatensätze über die Meta API'
     : 'Keine einzelnen Zahlungsvorgänge über die Meta API';
   const body = kind === 'invoices'
-    ? 'Der aktuell verbundene Meta-Zugriff liefert keine einzelnen Rechnungsdokumente. Rechnungen findest du im Meta-Abrechnungsbereich (Business Manager). Werbeausgaben sind keine Rechnungen und werden hier nicht als solche dargestellt.'
-    : 'Einzelne Zahlungsvorgänge werden über die aktuell verfügbare Meta Graph API nicht bereitgestellt. Werbeausgaben sind keine Zahlungen und werden hier nicht als solche dargestellt.';
+    ? 'Der aktuell verbundene Meta-Zugriff liefert keine Business-Invoice-Datensätze für dieses Business oder es fehlt eine Berechtigung. Rechnungen findest du im Meta-Abrechnungsbereich. Werbeausgaben werden hier nicht als Rechnungen dargestellt.'
+    : 'Einzelne Zahlungsvorgänge werden über die aktuell verfügbare Meta Graph API nicht bereitgestellt. Werbeausgaben werden hier nicht als Zahlungen dargestellt.';
   return (
     <Card className="p-8">
       <div className="flex flex-col items-center text-center gap-3 py-6">
         <Info className="h-8 w-8 text-muted-foreground" />
         <div>
           <h3 className="font-semibold">{diagLoading ? 'Prüfe Verfügbarkeit…' : heading}</h3>
-          {!diagLoading && (
-            <p className="text-sm text-muted-foreground max-w-xl mt-1">{body}</p>
-          )}
+          {!diagLoading && <p className="text-sm text-muted-foreground max-w-xl mt-1">{body}</p>}
         </div>
         {!diagLoading && kind === 'invoices' && (
           <Button variant="outline" asChild>
@@ -692,49 +942,45 @@ function UnavailableCard({ kind, diagLoading }: { kind: 'invoices' | 'payments';
   );
 }
 
-// Placeholder when diagnostic reports support but sync pipeline is not yet populated.
-// Shows an honest "no records yet" empty state — never fabricated data.
-function InvoicesEmptyPending({ kind }: { kind: 'invoices' | 'payments' }) {
-  const [pageSize, setPageSize] = useState<25 | 50 | 100>(25);
-  const [page, setPage] = useState(1);
-  const title = kind === 'invoices' ? 'Rechnungen' : 'Zahlungen';
+function DataQualityGrid({ invoices }: { invoices: Invoice[] }) {
+  const total = invoices.length;
+  const attributed = invoices.filter((i) => !!i.meta_account_id).length;
+  const noAmount = invoices.filter((i) => i.amount == null).length;
+  const noCurrency = invoices.filter((i) => !i.currency).length;
+  const statusBuckets = invoices.reduce((m: Record<string, { c: number; sum: number }>, i) => {
+    const k = i.status_mapped || 'unknown';
+    m[k] = m[k] || { c: 0, sum: 0 };
+    m[k].c++; m[k].sum += i.amount ?? 0;
+    return m;
+  }, {});
+  const rawStatuses = Array.from(new Set(invoices.map((i) => i.status).filter(Boolean))) as string[];
+
+  const items = [
+    { label: 'Business-Invoices gesamt', value: String(total) },
+    { label: 'Mit Account-Zuordnung', value: String(attributed) },
+    { label: 'Ohne Account-Zuordnung', value: String(total - attributed) },
+    { label: 'Ohne Betrag', value: String(noAmount) },
+    { label: 'Ohne Währung', value: String(noCurrency) },
+    { label: 'Original-Statuswerte', value: rawStatuses.join(', ') || '–' },
+  ];
   return (
-    <Card className="p-4 space-y-4">
-      <div className="flex items-start gap-2 p-3 rounded-md border border-amber-500/30 bg-amber-500/5 text-xs">
-        <Info className="h-4 w-4 text-amber-600 mt-0.5" />
-        <div>
-          Die Meta-Diagnose meldet {title.toLowerCase()}-Endpunkte als verfügbar, es sind aber noch keine
-          einzelnen Datensätze synchronisiert worden. Bitte führe einen Sync aus (oder warte auf den nächsten Cron).
-          Bis dahin werden hier keine Kennzahlen aus Werbeausgaben oder Salden konstruiert.
-        </div>
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
+        {items.map((it) => (
+          <div key={it.label} className="p-2 rounded border">
+            <div className="text-muted-foreground">{it.label}</div>
+            <div className="font-mono font-medium">{it.value}</div>
+          </div>
+        ))}
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label={`${title} gesamt`} value="–" source="Ausstehend" />
-        <KpiCard label="Gesamtbetrag" value="–" source="Ausstehend" />
-        <KpiCard label="Offen / Erfolgreich" value="–" source="Ausstehend" />
-        <KpiCard label="Überfällig / Fehlgeschlagen" value="–" source="Ausstehend" />
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
+        {Object.entries(statusBuckets).map(([status, v]) => (
+          <div key={status} className="p-2 rounded border">
+            <div className="text-muted-foreground">{statusLabel(status)}</div>
+            <div className="font-mono font-medium">{v.c} · {v.sum.toFixed(2)}</div>
+          </div>
+        ))}
       </div>
-      <div className="rounded-md border p-8 text-center text-sm text-muted-foreground">
-        Noch keine synchronisierten {title.toLowerCase()}.
-      </div>
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <span>Pro Seite:</span>
-          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v) as 25 | 50 | 100); setPage(1); }}>
-            <SelectTrigger className="h-7 w-20"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-2">
-          <span>Seite {page} von 1 · 0 Einträge</span>
-          <Button variant="outline" size="sm" className="h-7" disabled onClick={() => setPage((p) => Math.max(1, p - 1))}><ChevronLeft className="h-3 w-3" /></Button>
-          <Button variant="outline" size="sm" className="h-7" disabled onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-3 w-3" /></Button>
-        </div>
-      </div>
-    </Card>
+    </div>
   );
 }

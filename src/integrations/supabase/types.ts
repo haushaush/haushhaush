@@ -2765,6 +2765,78 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_billing_invoices: {
+        Row: {
+          account_breakdown: Json | null
+          account_name: string | null
+          amount: number | null
+          billing_period: string | null
+          created_at: string
+          currency: string | null
+          document_url: string | null
+          due_date: string | null
+          entity: string | null
+          id: string
+          invoice_date: string | null
+          meta_account_id: string | null
+          meta_business_id: string | null
+          meta_invoice_id: string
+          payment_method: string | null
+          payment_reference: string | null
+          raw: Json | null
+          status: string | null
+          status_mapped: string | null
+          synced_at: string
+          updated_at: string
+        }
+        Insert: {
+          account_breakdown?: Json | null
+          account_name?: string | null
+          amount?: number | null
+          billing_period?: string | null
+          created_at?: string
+          currency?: string | null
+          document_url?: string | null
+          due_date?: string | null
+          entity?: string | null
+          id?: string
+          invoice_date?: string | null
+          meta_account_id?: string | null
+          meta_business_id?: string | null
+          meta_invoice_id: string
+          payment_method?: string | null
+          payment_reference?: string | null
+          raw?: Json | null
+          status?: string | null
+          status_mapped?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Update: {
+          account_breakdown?: Json | null
+          account_name?: string | null
+          amount?: number | null
+          billing_period?: string | null
+          created_at?: string
+          currency?: string | null
+          document_url?: string | null
+          due_date?: string | null
+          entity?: string | null
+          id?: string
+          invoice_date?: string | null
+          meta_account_id?: string | null
+          meta_business_id?: string | null
+          meta_invoice_id?: string
+          payment_method?: string | null
+          payment_reference?: string | null
+          raw?: Json | null
+          status?: string | null
+          status_mapped?: string | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meta_campaign_snapshot: {
         Row: {
           account_id: string
