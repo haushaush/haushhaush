@@ -9,6 +9,23 @@ const corsHeaders = {
 
 const KAMPAGNEN_STATUS_COL = 'Col0B645A1WL8';
 
+async function fetchAllCampaigns(accountId: string, token: string) {
+  const campaigns: any[] = [];
+  let url: string | null =
+    `https://graph.facebook.com/v19.0/${accountId}/campaigns` +
+    `?fields=id,name,status,effective_status&limit=200&access_token=${token}`;
+  let pages = 0;
+  while (url && pages < 20) {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error) throw new Error(`Meta API: ${data.error.message}`);
+    for (const c of data.data || []) campaigns.push(c);
+    url = data.paging?.next || null;
+    pages++;
+  }
+  return campaigns;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -30,7 +47,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // 1. Account-Zuweisung
     const { data: assignment } = await supabase
       .from('slack_item_meta_account')
       .select('meta_account_id, meta_account_name')
@@ -52,34 +68,33 @@ serve(async (req) => {
       ? assignment.meta_account_id
       : `act_${assignment.meta_account_id}`;
 
-    // 2. Meta Campaigns
-    const url =
-      `https://graph.facebook.com/v19.0/${accountId}/campaigns` +
-      `?fields=id,name,status&limit=100&access_token=${TOKEN}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.error) throw new Error(`Meta API: ${data.error.message}`);
-    const campaigns = data.data || [];
+    // 1. Alle Kampagnen laden (mit Pagination). Fehler → nie automatisch inaktivieren.
+    let campaigns: any[];
+    try {
+      campaigns = await fetchAllCampaigns(accountId, TOKEN);
+    } catch (e: any) {
+      throw new Error(`Meta API Fehler – Status bleibt unverändert: ${e.message}`);
+    }
     console.log(`[single-check] Account ${accountId}: ${campaigns.length} campaigns`);
 
-    // 3. Snapshot-Diff
+    // 2. Snapshot-Diff für Log/Hinweis
     const { data: oldSnapshot } = await supabase
       .from('meta_campaign_snapshot')
       .select('campaign_id, status, campaign_name')
       .eq('account_id', accountId);
-
     const oldMap = new Map<string, any>();
     for (const old of oldSnapshot || []) oldMap.set(old.campaign_id, old);
 
     const statusChanges: any[] = [];
     for (const camp of campaigns) {
+      const effective = camp.effective_status ?? camp.status;
       const old = oldMap.get(camp.id);
-      if (old && old.status !== camp.status) {
+      if (old && old.status !== effective) {
         statusChanges.push({
           campaign_id: camp.id,
           campaign_name: camp.name,
           old_status: old.status,
-          new_status: camp.status,
+          new_status: effective,
         });
       }
       await supabase.from('meta_campaign_snapshot').upsert(
@@ -88,81 +103,80 @@ serve(async (req) => {
           campaign_name: camp.name,
           account_id: accountId,
           account_name: assignment.meta_account_name,
-          status: camp.status,
+          status: effective,
           last_seen_at: new Date().toISOString(),
         },
         { onConflict: 'campaign_id' },
       );
     }
 
-    // 4. Last change -> opt id
-    let newOptId: string | null = null;
-    let triggerEvent: any = null;
-    if (statusChanges.length > 0) {
-      const lastChange = statusChanges[0];
+    // 3. Zielstatus aus ALLEN Kampagnen (nicht nur der geänderten)
+    const activeCampaigns = campaigns.filter((c) => {
+      const s = (c.effective_status ?? c.status ?? '').toString().toUpperCase();
+      return s === 'ACTIVE';
+    });
+
+    let updateSent = false;
+    let targetLabel: 'Aktiv' | 'Inaktiv' | null = null;
+    let currentLabel: 'Aktiv' | 'Inaktiv' | 'Unbekannt' = 'Unbekannt';
+
+    if (campaigns.length === 0) {
+      // Keine Kampagnen sichtbar → nichts inaktivieren
+      console.log('[single-check] Keine Kampagnen sichtbar – Slack-Status bleibt unverändert.');
+    } else {
+      targetLabel = activeCampaigns.length > 0 ? 'Aktiv' : 'Inaktiv';
+
       const { data: aliases } = await supabase
         .from('slack_list_aliases')
-        .select('slack_id, display_name, parent_column_id')
+        .select('slack_id, display_name')
         .eq('alias_type', 'option')
         .eq('parent_column_id', KAMPAGNEN_STATUS_COL);
       const AKTIV_OPT = aliases?.find((a: any) => (a.display_name || '').toLowerCase() === 'aktiv')?.slack_id;
       const INAKTIV_OPT = aliases?.find((a: any) => (a.display_name || '').toLowerCase() === 'inaktiv')?.slack_id;
-      console.log('[option-mapping]', {
-        AKTIV_OPT,
-        INAKTIV_OPT,
-        total_options_found: aliases?.length,
-      });
       if (!AKTIV_OPT || !INAKTIV_OPT) {
-        throw new Error(
-          `Status-Aliase fehlen: AKTIV=${AKTIV_OPT}, INAKTIV=${INAKTIV_OPT}. ` +
-          `Bitte in slack_list_aliases anlegen für column ${KAMPAGNEN_STATUS_COL}.`
-        );
+        throw new Error(`Status-Aliase fehlen: AKTIV=${AKTIV_OPT}, INAKTIV=${INAKTIV_OPT}.`);
       }
-      newOptId = lastChange.new_status === 'ACTIVE' ? AKTIV_OPT : INAKTIV_OPT;
-      triggerEvent = lastChange;
-    }
+      const targetOptId = targetLabel === 'Aktiv' ? AKTIV_OPT : INAKTIV_OPT;
 
-    // 5. Update senden falls nötig
-    let updateSent = false;
-    if (newOptId && triggerEvent) {
       const { data: item } = await supabase
         .from('slack_list_items')
         .select('fields')
         .eq('slack_item_id', slack_item_id)
         .maybeSingle();
-
       const fieldVal: any = (item?.fields as any)?.[KAMPAGNEN_STATUS_COL];
-      const currentStatus = Array.isArray(fieldVal?.select) ? fieldVal.select[0] : fieldVal?.value;
+      const currentOptId = Array.isArray(fieldVal?.select) ? fieldVal.select[0] : fieldVal?.value;
+      currentLabel = currentOptId === AKTIV_OPT ? 'Aktiv' : currentOptId === INAKTIV_OPT ? 'Inaktiv' : 'Unbekannt';
 
-      if (currentStatus !== newOptId) {
-        try {
-          const { error: invokeErr } = await supabase.functions.invoke('send-slack-list-update', {
-            body: {
-              slack_list_id,
-              slack_item_id,
-              field_updates: { [KAMPAGNEN_STATUS_COL]: newOptId },
-            },
-          });
-          if (invokeErr) throw new Error(invokeErr.message);
-          updateSent = true;
-
-          await supabase.from('meta_campaign_status_log').insert({
-            slack_item_id,
+      if (currentOptId !== targetOptId) {
+        const { error: invokeErr } = await supabase.functions.invoke('send-slack-list-update', {
+          body: {
             slack_list_id,
-            meta_account_id: accountId,
-            meta_account_name: assignment.meta_account_name,
-            meta_campaign_id: triggerEvent.campaign_id,
-            meta_campaign_name: triggerEvent.campaign_name,
-            old_value: triggerEvent.old_status,
-            new_value: triggerEvent.new_status,
-            slack_status_after: newOptId,
-            trigger_source: 'manual_single',
-            webhook_success: true,
-          });
-        } catch (e: any) {
-          console.error('[update failed]', e.message);
-          throw new Error(`Slack-Update fehlgeschlagen: ${e.message}`);
-        }
+            slack_item_id,
+            field_updates: { [KAMPAGNEN_STATUS_COL]: targetOptId },
+          },
+        });
+        if (invokeErr) throw new Error(`Slack-Update fehlgeschlagen: ${invokeErr.message}`);
+        updateSent = true;
+
+        const trigger = statusChanges[0] || {
+          campaign_id: null,
+          campaign_name: `${activeCampaigns.length}/${campaigns.length} aktiv`,
+          old_status: currentLabel,
+          new_status: targetLabel,
+        };
+        await supabase.from('meta_campaign_status_log').insert({
+          slack_item_id,
+          slack_list_id,
+          meta_account_id: accountId,
+          meta_account_name: assignment.meta_account_name,
+          meta_campaign_id: trigger.campaign_id,
+          meta_campaign_name: trigger.campaign_name,
+          old_value: trigger.old_status,
+          new_value: trigger.new_status,
+          slack_status_after: targetOptId,
+          trigger_source: 'manual_single',
+          webhook_success: true,
+        });
       }
     }
 
@@ -172,10 +186,13 @@ serve(async (req) => {
         account_id: accountId,
         account_name: assignment.meta_account_name,
         campaigns_checked: campaigns.length,
+        active_campaigns: activeCampaigns.length,
         status_changes_detected: statusChanges.length,
+        current_slack_status: currentLabel,
+        target_slack_status: targetLabel,
         update_sent: updateSent,
         duration_ms: Date.now() - startTime,
-        details: triggerEvent || null,
+        details: statusChanges[0] || null,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
