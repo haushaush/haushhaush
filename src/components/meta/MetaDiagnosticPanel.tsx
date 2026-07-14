@@ -101,8 +101,14 @@ export default function MetaDiagnosticPanel() {
       unavailable_fields: (t.fields?.rows ?? []).filter((r: any) => r.status !== 'Verfügbar').map((r: any) => r.field),
       insights_ok: !!t.insights?.ok,
       spend_available: !!t.insights?.spend_available,
-      invoices_supported: !!t.invoices?.supported,
-      payments_supported: !!t.payments?.supported,
+      business_id_present: !!t.business_id?.present,
+      invoices_state: t.invoices?.state ?? null,
+      invoices_count: t.invoices?.items_count ?? 0,
+      invoices_pages: t.invoices?.pages_loaded ?? 0,
+      invoices_pagination_complete: t.invoices?.pagination_complete ?? null,
+      invoices_fields: t.invoices?.detected_fields ?? [],
+      invoices_statuses: t.invoices?.statuses ?? [],
+      invoices_currencies: t.invoices?.currencies ?? [],
     };
     navigator.clipboard.writeText(JSON.stringify(cleaned, null, 2));
     toast.success('Diagnose-JSON kopiert (ohne Secrets)');
@@ -111,14 +117,26 @@ export default function MetaDiagnosticPanel() {
   const t = diag?.tests ?? {};
   const overall = diag ? overallBadge(diag.overall) : null;
 
+  const inv = t.invoices || {};
+  const invState = inv.state as string | undefined;
+  const invLabelMap: Record<string, { label: string; cls: string }> = {
+    ok: { label: 'Erfolgreich', cls: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30' },
+    empty: { label: 'Leer', cls: 'bg-slate-500/15 text-slate-600 border-slate-500/30' },
+    permission_denied: { label: 'Berechtigung fehlt', cls: 'bg-amber-500/15 text-amber-600 border-amber-500/30' },
+    endpoint_unavailable: { label: 'Nicht verfügbar', cls: 'bg-slate-500/15 text-slate-600 border-slate-500/30' },
+    no_business_id: { label: 'Business ID fehlt', cls: 'bg-rose-500/15 text-rose-600 border-rose-500/30' },
+    error: { label: 'Fehler', cls: 'bg-rose-500/15 text-rose-600 border-rose-500/30' },
+  };
+  const invBadge = invState ? invLabelMap[invState] : null;
+
   const summaryRows = diag ? [
     { name: 'Edge Function', ok: t.edge_function?.reachable, detail: t.edge_function?.reachable ? `erreichbar (${t.edge_function.runtime_ms}ms)` : (t.edge_function?.error || 'nicht erreichbar') },
     { name: 'Meta Token', ok: t.token?.valid, detail: t.token?.valid ? 'gültig' : (t.token?.error || 'ungültig / nicht prüfbar') },
     { name: 'Werbekonten', ok: t.accounts?.ok, detail: t.accounts?.ok ? `${t.accounts.total} Accounts` : (t.accounts?.error || '–') },
     { name: 'Account-Felder', ok: t.fields?.ok, detail: t.fields?.ok ? `${(t.fields.rows || []).filter((r: any) => r.status === 'Verfügbar').length}/${(t.fields.rows || []).length} verfügbar` : (t.fields?.error || '–') },
     { name: 'Insights', ok: t.insights?.ok, detail: t.insights?.ok ? (t.insights.spend_available ? 'Spend abrufbar' : 'keine Zeilen') : (t.insights?.error || '–') },
-    { name: 'Rechnungen', ok: t.invoices?.supported, detail: t.invoices?.supported ? 'unterstützt' : 'keine Rechnungsdaten über Meta API' },
-    { name: 'Zahlungen', ok: t.payments?.supported, detail: t.payments?.supported ? 'unterstützt' : 'keine einzelnen Payments über Meta API' },
+    { name: 'Business ID', ok: !!t.business_id?.present, detail: t.business_id?.present ? `verfügbar (${t.business_id.masked})` : 'Keine Meta Business ID konfiguriert' },
+    { name: 'Business Invoices Edge', ok: invState === 'ok' || invState === 'empty', detail: inv.note || '–' },
   ] : [];
 
   return (
