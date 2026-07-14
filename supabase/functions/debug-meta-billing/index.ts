@@ -276,23 +276,129 @@ Deno.serve(async (req) => {
       result.tests.insights = { ok: false, error: 'Kein Testkonto verfügbar' };
     }
 
-    // TEST 7: Invoices / Payments — probe unsupported endpoints
-    async function probe(path: string) {
-      const t = await timed(() => metaFetch(path, { limit: '1' }));
-      return {
-        supported: t.ok,
-        runtime_ms: t.ms,
-        error: t.error ?? null,
-        status: t.status ?? null,
-        note: t.ok ? null : 'Nicht über die aktuell verwendete Meta API verfügbar',
+    // TEST 7: Business Invoices — official /{BUSINESS_ID}/business_invoices edge
+    // Ref: https://developers.facebook.com/docs/marketing-api/reference/business/business_invoices
+    if (!BUSINESS_ID) {
+      result.tests.business_id = { present: false, note: 'Keine Meta Business ID konfiguriert' };
+      result.tests.invoices = {
+        state: 'no_business_id',
+        supported: false,
+        note: 'Keine Meta Business ID konfiguriert',
       };
-    }
-    if (testAccountId) {
-      result.tests.invoices = await probe(`/${testAccountId}/invoices`);
-      result.tests.payments = await probe(`/${testAccountId}/payments`);
     } else {
-      result.tests.invoices = { supported: false, note: 'Nicht über die aktuell verwendete Meta API verfügbar' };
-      result.tests.payments = { supported: false, note: 'Nicht über die aktuell verwendete Meta API verfügbar' };
+      const maskedBiz = `•••• ${BUSINESS_ID.slice(-4)}`;
+      result.tests.business_id = { present: true, masked: maskedBiz };
+
+      const since = new Date();
+      since.setMonth(since.getMonth() - 12);
+      const startDate = since.toISOString().slice(0, 10);
+
+      const invTest = await timed(async () => {
+        const items: any[] = [];
+        const fieldSet = new Set<string>();
+        const currencies = new Set<string>();
+        const statuses = new Set<string>();
+        let pages = 0;
+        let paginationComplete = true;
+        let firstError: any = null;
+        let downloadableCount = 0;
+        let minDate: string | null = null;
+        let maxDate: string | null = null;
+
+        let url: string | null =
+          `${API}/${BUSINESS_ID}/business_invoices` +
+          `?start_date=${startDate}` +
+          `&limit=100&access_token=${TOKEN}`;
+
+        while (url && pages < 30) {
+          const res = await fetch(url);
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || data?.error) {
+            firstError = {
+              status: res.status,
+              code: data?.error?.code ?? null,
+              subcode: data?.error?.error_subcode ?? null,
+              message: sanitize(data?.error?.message || `HTTP ${res.status}`),
+              type: data?.error?.type ?? null,
+            };
+            break;
+          }
+          for (const row of data?.data ?? []) {
+            items.push(row);
+            for (const k of Object.keys(row)) fieldSet.add(k);
+            const cur = row.currency ?? row.billing_period_currency ?? null;
+            if (cur) currencies.add(String(cur));
+            const st = row.payment_status ?? row.status ?? null;
+            if (st) statuses.add(String(st));
+            if (row.download_uri || row.pdf_uri || row.invoice_uri) downloadableCount++;
+            const d = row.billing_period_end || row.due_date || row.issue_date || row.created_time || null;
+            if (d) {
+              const dd = String(d).slice(0, 10);
+              if (!minDate || dd < minDate) minDate = dd;
+              if (!maxDate || dd > maxDate) maxDate = dd;
+            }
+          }
+          url = data?.paging?.next || null;
+          pages++;
+        }
+        if (url) paginationComplete = false;
+
+        return {
+          items_count: items.length,
+          pages_loaded: pages,
+          pagination_complete: paginationComplete,
+          detected_fields: Array.from(fieldSet).sort(),
+          currencies: Array.from(currencies),
+          statuses: Array.from(statuses),
+          downloadable_count: downloadableCount,
+          min_date: minDate,
+          max_date: maxDate,
+          error: firstError,
+        };
+      });
+
+      const v = invTest.value;
+      let state: string;
+      let note: string;
+      let supported = false;
+      const err = v?.error;
+
+      if (!invTest.ok || err) {
+        const code = err?.code;
+        // 200 = permission error, 190 = auth, 100 with "nonexisting" = endpoint N/A
+        if (code === 200 || code === 10 || err?.subcode === 2018012) {
+          state = 'permission_denied';
+          note = 'Business-Invoices-Endpunkt erreichbar, aber der verwendete System-User-Token besitzt nicht die erforderliche Berechtigung';
+        } else if (code === 100 && /nonexist/i.test(err?.message || '')) {
+          state = 'endpoint_unavailable';
+          note = 'Business-Invoices-Endpunkt ist für dieses Business oder den aktuellen API-Zugriff nicht verfügbar';
+        } else {
+          state = 'error';
+          note = err?.message || invTest.error || 'Unbekannter Fehler';
+        }
+      } else if ((v?.items_count ?? 0) === 0) {
+        state = 'empty';
+        supported = true;
+        note = 'Business-Invoices-Endpunkt verfügbar, aber keine Rechnungen im abgefragten Zeitraum gefunden';
+      } else {
+        state = 'ok';
+        supported = true;
+        note = 'Business-Rechnungen verfügbar';
+      }
+
+      result.tests.invoices = {
+        state,
+        supported,
+        note,
+        runtime_ms: invTest.ms,
+        endpoint: `/${BUSINESS_ID}/business_invoices`,
+        start_date: startDate,
+        http_status: err?.status ?? null,
+        error_code: err?.code ?? null,
+        error_subcode: err?.subcode ?? null,
+        error_message: err?.message ?? null,
+        ...(v ?? {}),
+      };
     }
 
     // Overall
