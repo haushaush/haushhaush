@@ -53,6 +53,7 @@ import MetaUebersicht from "./pages/meta/MetaUebersicht.tsx";
 import MetaKampagnen from "./pages/meta/MetaKampagnen.tsx";
 import MetaAnzeigengruppen from "./pages/meta/MetaAnzeigengruppen.tsx";
 import MetaAnzeigen from "./pages/meta/MetaAnzeigen.tsx";
+import MetaAbrechnungen from "./pages/meta/MetaAbrechnungen.tsx";
 import { MetaAdsProvider } from "./contexts/MetaAdsContext";
 import DriveUebersicht from "./pages/drive/DriveUebersicht.tsx";
 import DriveMeineDateien from "./pages/drive/DriveMeineDateien.tsx";
@@ -160,6 +161,7 @@ const App = () => (
                 <Route path="/meta/kampagnen" element={<DL><MetaKampagnen /></DL>} />
                 <Route path="/meta/anzeigengruppen" element={<DL><MetaAnzeigengruppen /></DL>} />
                 <Route path="/meta/anzeigen" element={<DL><MetaAnzeigen /></DL>} />
+                <Route path="/meta/abrechnungen" element={<PermissionRoute permissionKey="meta.billing.view"><DL><MetaAbrechnungen /></DL></PermissionRoute>} />
                 <Route path="/onepage-leads" element={<AdminRoute><Navigate to="/onepage-leads/kunden" replace /></AdminRoute>} />
                 <Route path="/onepage-leads/kunden" element={<AdminRoute><DL><OnePageKunden /></DL></AdminRoute>} />
                 <Route path="/onepage-leads/kunden/:id" element={<AdminRoute><DL><OnePageKundeDetail /></DL></AdminRoute>} />
