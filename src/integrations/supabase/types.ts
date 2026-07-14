@@ -2714,6 +2714,57 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_billing_account_snapshots: {
+        Row: {
+          account_name: string | null
+          account_status: string | null
+          amount_spent: number | null
+          balance: number | null
+          business_name: string | null
+          created_at: string
+          currency: string | null
+          funding_source_details: Json | null
+          id: string
+          meta_account_id: string
+          raw: Json | null
+          spend_cap: number | null
+          synced_at: string
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_status?: string | null
+          amount_spent?: number | null
+          balance?: number | null
+          business_name?: string | null
+          created_at?: string
+          currency?: string | null
+          funding_source_details?: Json | null
+          id?: string
+          meta_account_id: string
+          raw?: Json | null
+          spend_cap?: number | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string | null
+          account_status?: string | null
+          amount_spent?: number | null
+          balance?: number | null
+          business_name?: string | null
+          created_at?: string
+          currency?: string | null
+          funding_source_details?: Json | null
+          id?: string
+          meta_account_id?: string
+          raw?: Json | null
+          spend_cap?: number | null
+          synced_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meta_campaign_snapshot: {
         Row: {
           account_id: string
