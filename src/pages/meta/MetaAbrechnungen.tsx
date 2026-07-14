@@ -502,6 +502,8 @@ export default function MetaAbrechnungen() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {isAdmin && <MetaDiagnosticPanel />}
     </div>
   );
 }
