@@ -15,6 +15,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from 'recharts';
+import MetaDiagnosticPanel from '@/components/meta/MetaDiagnosticPanel';
 
 type Snapshot = {
   meta_account_id: string;
