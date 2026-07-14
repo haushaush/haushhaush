@@ -54,7 +54,8 @@ serve(async (req) => {
     const accounts = accountsData.data || [];
     console.log(`[check] Found ${accounts.length} accounts`);
 
-    // 2) All campaigns per account
+    // 2) All campaigns per account (with pagination + effective_status).
+    // Accounts whose fetch fails are marked so we never derive "Inaktiv" from partial data.
     const allCampaigns: Array<{
       campaign_id: string;
       campaign_name: string;
@@ -63,33 +64,43 @@ serve(async (req) => {
       status: string;
       daily_budget: number | null;
     }> = [];
+    const accountFetchOk = new Map<string, boolean>();
 
     for (const acc of accounts) {
+      let ok = true;
       try {
-        const url =
+        let url: string | null =
           `https://graph.facebook.com/v19.0/${acc.id}/campaigns` +
-          `?fields=id,name,status,daily_budget,lifetime_budget&limit=100` +
+          `?fields=id,name,status,effective_status,daily_budget,lifetime_budget&limit=200` +
           `&access_token=${TOKEN}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.error) {
-          console.error(`[${acc.id}]`, data.error.message);
-          continue;
-        }
-        for (const camp of (data.data || [])) {
-          allCampaigns.push({
-            campaign_id: camp.id,
-            campaign_name: camp.name,
-            account_id: acc.id,
-            account_name: acc.name,
-            status: camp.status,
-            daily_budget: camp.daily_budget ? parseInt(camp.daily_budget) : null,
-          });
+        let pages = 0;
+        while (url && pages < 20) {
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.error) {
+            console.error(`[${acc.id}]`, data.error.message);
+            ok = false;
+            break;
+          }
+          for (const camp of (data.data || [])) {
+            allCampaigns.push({
+              campaign_id: camp.id,
+              campaign_name: camp.name,
+              account_id: acc.id,
+              account_name: acc.name,
+              status: camp.effective_status ?? camp.status,
+              daily_budget: camp.daily_budget ? parseInt(camp.daily_budget) : null,
+            });
+          }
+          url = data.paging?.next || null;
+          pages++;
         }
       } catch (e) {
+        ok = false;
         console.error(`[${acc.id}] fetch failed:`, (e as Error).message);
       }
-      await new Promise((r) => setTimeout(r, 200));
+      accountFetchOk.set(acc.id, ok);
+      await new Promise((r) => setTimeout(r, 150));
     }
     console.log(`[check] Found ${allCampaigns.length} campaigns total`);
 
