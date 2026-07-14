@@ -182,13 +182,21 @@ export function MetaAccountAssignModal({
 
   const filtered = useMemo(() => {
     if (!search.trim()) return accounts;
-    const q = search.toLowerCase();
-    return accounts.filter(
-      (a) =>
-        (a.name || '').toLowerCase().includes(q) ||
-        a.meta_account_id.toLowerCase().includes(q) ||
-        (a.business_name || '').toLowerCase().includes(q),
-    );
+    const q = search.toLowerCase().trim();
+    const qNorm = normalize(q);
+    const qId = q.replace(/^act_/, '');
+    return accounts.filter((a) => {
+      const name = (a.name || '').toLowerCase();
+      const biz = (a.business_name || '').toLowerCase();
+      const id = a.meta_account_id.toLowerCase();
+      return (
+        name.includes(q) ||
+        biz.includes(q) ||
+        id.includes(q) ||
+        id.replace(/^act_/, '').includes(qId) ||
+        (qNorm && normalize(name).includes(qNorm))
+      );
+    });
   }, [accounts, search]);
 
   const save = async (source: 'auto' | 'manual') => {
