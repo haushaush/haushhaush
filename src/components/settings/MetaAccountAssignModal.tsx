@@ -87,17 +87,46 @@ export function MetaAccountAssignModal({
   const loadAccounts = async () => {
     setLoading(true);
     try {
+      // Load ALL accounts from cache with explicit high limit (avoid PostgREST 1000 default silently truncating)
       const { data: cache } = await supabase
         .from('meta_accounts_cache')
         .select('meta_account_id, name, business_name')
-        .order('name', { ascending: true });
-      let list = (cache || []) as MetaAccount[];
-      if (list.length === 0) {
-        const { data } = await supabase.functions.invoke('list-meta-accounts', { body: {} });
-        list = (data as any)?.accounts || [];
+        .order('name', { ascending: true })
+        .limit(10000);
+      const byId = new Map<string, MetaAccount>();
+      for (const a of (cache || []) as MetaAccount[]) byId.set(a.meta_account_id, a);
+
+      // Always merge business owned + client accounts (matches MetaAccountSelector data source).
+      // The cache may be built from /me/adaccounts (owned only) and miss client accounts.
+      try {
+        const { data: biz } = await supabase.functions.invoke('list-meta-ad-accounts', { body: {} });
+        for (const a of ((biz as any)?.accounts || [])) {
+          const id: string = a.id || a.meta_account_id || (a.account_id ? `act_${a.account_id}` : '');
+          if (!id) continue;
+          const prev = byId.get(id);
+          byId.set(id, {
+            meta_account_id: id,
+            name: a.name ?? prev?.name ?? null,
+            business_name: a.business_name ?? prev?.business_name ?? null,
+          });
+        }
+      } catch (_e) {
+        // fall back to cache only
       }
+
+      // Fallback if still empty
+      if (byId.size === 0) {
+        const { data } = await supabase.functions.invoke('list-meta-accounts', { body: {} });
+        for (const a of ((data as any)?.accounts || []) as MetaAccount[]) {
+          byId.set(a.meta_account_id, a);
+        }
+      }
+
+      const list = Array.from(byId.values()).sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '')
+      );
       setAccounts(list);
-      await computeSuggestion(list);
+      await computeSuggestion(list, byId);
     } catch (e: any) {
       toast.error('Konten laden fehlgeschlagen: ' + (e.message || ''));
     } finally {
@@ -105,7 +134,7 @@ export function MetaAccountAssignModal({
     }
   };
 
-  const computeSuggestion = async (list: MetaAccount[]) => {
+  const computeSuggestion = async (list: MetaAccount[], byId: Map<string, MetaAccount>) => {
     if (!slackItemName) { setSuggestion(null); return; }
     const target = normalize(slackItemName);
     if (!target) { setSuggestion(null); return; }
@@ -122,10 +151,10 @@ export function MetaAccountAssignModal({
         const accId = (c.meta_account_id || '').startsWith('act_')
           ? c.meta_account_id
           : `act_${c.meta_account_id}`;
-        const acc = list.find((a) => a.meta_account_id === accId);
+        const acc = byId.get(accId);
         const cand: Suggestion = {
           account_id: accId,
-          account_name: acc?.name || accId,
+          account_name: acc?.name || c.name || accId,
           client_id: c.id,
           client_name: c.name,
           confidence: s,
@@ -134,17 +163,40 @@ export function MetaAccountAssignModal({
       }
     }
     setSuggestion(best);
+
+    // Ensure the suggested account is ALWAYS present in the searchable list,
+    // even if it is missing from the cache and business account fetch.
+    if (best && !byId.has(best.account_id)) {
+      const stub: MetaAccount = {
+        meta_account_id: best.account_id,
+        name: best.account_name,
+        business_name: null,
+      };
+      byId.set(best.account_id, stub);
+      const merged = Array.from(byId.values()).sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '')
+      );
+      setAccounts(merged);
+    }
   };
 
   const filtered = useMemo(() => {
     if (!search.trim()) return accounts;
-    const q = search.toLowerCase();
-    return accounts.filter(
-      (a) =>
-        (a.name || '').toLowerCase().includes(q) ||
-        a.meta_account_id.toLowerCase().includes(q) ||
-        (a.business_name || '').toLowerCase().includes(q),
-    );
+    const q = search.toLowerCase().trim();
+    const qNorm = normalize(q);
+    const qId = q.replace(/^act_/, '');
+    return accounts.filter((a) => {
+      const name = (a.name || '').toLowerCase();
+      const biz = (a.business_name || '').toLowerCase();
+      const id = a.meta_account_id.toLowerCase();
+      return (
+        name.includes(q) ||
+        biz.includes(q) ||
+        id.includes(q) ||
+        id.replace(/^act_/, '').includes(qId) ||
+        (qNorm && normalize(name).includes(qNorm))
+      );
+    });
   }, [accounts, search]);
 
   const save = async (source: 'auto' | 'manual') => {
