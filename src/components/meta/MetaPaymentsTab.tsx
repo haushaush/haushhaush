@@ -904,26 +904,17 @@ export default function MetaPaymentsTab() {
                       </TableCell>
                       <TableCell className="text-xs">{r.campaign_count ?? (r.campaigns?.length ?? 0)}</TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()} className="text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2 text-[11px]"
-                            disabled={!canGeneratePdf(r)}
-                            onClick={() => {
-                              try { generatePaymentReceiptPdf(r); }
-                              catch (e: any) { toast.error('PDF konnte nicht erzeugt werden: ' + (e?.message || e)); }
-                            }}
-                            title="PDF herunterladen"
+                        {r.transaction_url ? (
+                          <a
+                            href={r.transaction_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Meta-Zahlungsbeleg in neuem Tab öffnen"
+                            className="inline-flex items-center gap-1 h-7 px-2 text-[11px] rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
                           >
-                            <FileDown className="h-3 w-3 mr-1" /> PDF
-                          </Button>
-                          {r.transaction_url && (
-                            <a href={r.transaction_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground p-1">
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
-                        </div>
+                            <ExternalLink className="h-3 w-3" /> Zur Rechnung
+                          </a>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                     {isOpen && (
