@@ -19,6 +19,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from 'recharts';
 import MetaDiagnosticPanel from '@/components/meta/MetaDiagnosticPanel';
+import MetaPaymentsTab from '@/components/meta/MetaPaymentsTab';
 
 type Snapshot = {
   meta_account_id: string;
@@ -934,7 +935,7 @@ export default function MetaAbrechnungen() {
 
       {/* ==================== Zahlungen Tab ==================== */}
       <TabsContent value="zahlungen" className="space-y-6">
-        <UnavailableCard kind="payments" diagLoading={diag.status === 'loading'} />
+        <MetaPaymentsTab />
       </TabsContent>
 
       </Tabs>
