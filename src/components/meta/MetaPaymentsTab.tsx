@@ -619,7 +619,7 @@ export default function MetaPaymentsTab() {
                 const isOpen = expanded.has(r.id);
                 return (
                   <React.Fragment key={r.id}>
-                    <TableRow className="cursor-pointer hover:bg-muted/40" onClick={() => toggle(r.id)}>
+                    <TableRow className={`cursor-pointer hover:bg-muted/40 ${highlightId === r.id ? 'bg-emerald-500/10 ring-1 ring-emerald-500/40' : ''}`} onClick={() => toggle(r.id)}>
                       <TableCell>{isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}</TableCell>
                       <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.transaction_date)}</TableCell>
                       <TableCell className="text-xs">
