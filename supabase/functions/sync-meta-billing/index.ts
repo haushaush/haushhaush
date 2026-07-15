@@ -149,128 +149,164 @@ Deno.serve(async (req) => {
     let invoicesUpserted = 0;
     let invoicesUnattributed = 0;
     let invoicesEndpointState: string = 'not_attempted';
+    let invoicesNote: string | null = null;
+    let invoicesSupportedFields: string[] = [];
+
+    function sanitize(m: string) {
+      let s = String(m || '');
+      if (TOKEN) s = s.split(TOKEN).join('[REDACTED]');
+      return s;
+    }
 
     if (BUSINESS_ID) {
-      // Fetch invoices for the last 24 months (start_date is required per docs).
       const since = new Date();
       since.setMonth(since.getMonth() - 24);
       const startDate = since.toISOString().slice(0, 10);
 
-      async function fetchInvoices(fields: string): Promise<any[]> {
-        const out: any[] = [];
-        let url: string | null = `${API}/${BUSINESS_ID}/business_invoices?start_date=${startDate}&fields=${fields}&limit=100&access_token=${TOKEN}`;
-        let guard = 0;
-        while (url && guard++ < 40) {
-          const res = await fetch(url);
-          const data = await res.json();
-          if (data?.error) throw new Error(data.error.message || 'Meta API error');
-          if (Array.isArray(data?.data)) out.push(...data.data);
-          url = data?.paging?.next || null;
-        }
-        return out;
-      }
+      // Step A: minimal probe (id only) — determines endpoint state without assuming fields.
+      const probeUrl = `${API}/${BUSINESS_ID}/business_invoices?start_date=${startDate}&fields=id&limit=25&access_token=${TOKEN}`;
+      const probeRes = await fetch(probeUrl);
+      const probeData = await probeRes.json().catch(() => ({}));
 
-      let invoices: any[] = [];
-      try {
-        invoices = await fetchInvoices(INVOICE_FIELDS_PRIMARY);
-        invoicesEndpointState = 'ok';
-      } catch (e) {
-        // Try a minimal, safer field set as a fallback.
-        try {
-          invoices = await fetchInvoices(INVOICE_FIELDS_MIN);
-          invoicesEndpointState = 'ok_fallback';
-          errors.push({ path: 'business_invoices_primary', message: (e as Error).message });
-        } catch (e2) {
+      if (!probeRes.ok || probeData?.error) {
+        const err = probeData?.error || { message: `HTTP ${probeRes.status}` };
+        const code = err.code;
+        const msg = String(err.message || '');
+        if (code === 200 || code === 10 || err.error_subcode === 2018012) {
+          invoicesEndpointState = 'permission_denied';
+          invoicesNote = 'Business-Invoices Endpoint erreichbar, aber Token besitzt nicht die erforderlichen Rechte';
+        } else if (code === 100 && /nonexist|Unknown/i.test(msg)) {
+          invoicesEndpointState = 'endpoint_unavailable';
+          invoicesNote = 'Business-Invoices Endpoint für dieses Business nicht verfügbar';
+        } else {
           invoicesEndpointState = 'error';
-          errors.push({ path: 'business_invoices', message: (e2 as Error).message });
+          invoicesNote = sanitize(msg);
         }
-      }
+        errors.push({ path: 'business_invoices_probe', message: invoicesNote || 'probe failed' });
+      } else {
+        const sample: any[] = Array.isArray(probeData?.data) ? probeData.data : [];
+        if (sample.length === 0) {
+          invoicesEndpointState = 'empty';
+          invoicesNote = 'Business-Invoices Endpoint verfügbar, aber keine Rechnungen im Zeitraum (24 Monate)';
+        } else {
+          invoicesEndpointState = 'ok';
+          invoicesNote = 'Business-Rechnungen verfügbar';
 
-      invoicesFetched = invoices.length;
-
-      if (invoices.length > 0) {
-        const rows: any[] = [];
-        for (const inv of invoices) {
-          const rawId = inv.id ?? inv.invoice_id ?? null;
-          if (!rawId) continue;
-
-          // Attribution attempt: try nested campaigns endpoint for per-account breakdown.
-          let attributedAccountId: string | null = null;
-          let breakdown: any = null;
-          try {
-            const campUrl = `${API}/${rawId}/campaigns?fields=ad_account_id,name,amount&limit=200&access_token=${TOKEN}`;
-            const campRes = await fetch(campUrl);
-            const campData = await campRes.json();
-            if (!campData?.error && Array.isArray(campData?.data) && campData.data.length > 0) {
-              breakdown = campData.data;
-              const acctIds = new Set<string>();
-              for (const c of campData.data) {
-                const aid = c.ad_account_id ? (String(c.ad_account_id).startsWith('act_') ? String(c.ad_account_id) : `act_${c.ad_account_id}`) : null;
-                if (aid) acctIds.add(aid);
-              }
-              if (acctIds.size === 1) attributedAccountId = Array.from(acctIds)[0];
+          // Step B: discover which candidate fields Meta actually returns for this business.
+          const CANDIDATE_FIELDS = [
+            'id', 'billing_period', 'invoice_date', 'due_date',
+            'amount_due', 'billed_amount', 'currency',
+            'payment_status', 'type', 'entity', 'download_uri',
+          ];
+          const firstId = sample[0].id;
+          const supported = new Set<string>(['id']);
+          const bulkUrl = `${API}/${firstId}?fields=${CANDIDATE_FIELDS.join(',')}&access_token=${TOKEN}`;
+          const bulkRes = await fetch(bulkUrl);
+          const bulkData = await bulkRes.json().catch(() => ({}));
+          if (bulkRes.ok && !bulkData?.error) {
+            for (const f of CANDIDATE_FIELDS) if (bulkData[f] !== undefined) supported.add(f);
+          } else {
+            // Per-field probe fallback.
+            for (const f of CANDIDATE_FIELDS) {
+              const r = await fetch(`${API}/${firstId}?fields=${f}&access_token=${TOKEN}`);
+              const d = await r.json().catch(() => ({}));
+              if (r.ok && !d?.error) supported.add(f);
             }
-          } catch { /* attribution optional */ }
+          }
+          invoicesSupportedFields = Array.from(supported);
+          const fields = invoicesSupportedFields.join(',');
 
-          if (!attributedAccountId) invoicesUnattributed++;
+          // Step C: paginate full history using only supported fields.
+          const invoices: any[] = [];
+          let url: string | null = `${API}/${BUSINESS_ID}/business_invoices?start_date=${startDate}&fields=${fields}&limit=100&access_token=${TOKEN}`;
+          let guard = 0;
+          while (url && guard++ < 60) {
+            const res = await fetch(url);
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data?.error) {
+              errors.push({ path: 'business_invoices_page', message: sanitize(data?.error?.message || `HTTP ${res.status}`) });
+              break;
+            }
+            if (Array.isArray(data?.data)) invoices.push(...data.data);
+            url = data?.paging?.next || null;
+          }
 
-          const amt = normalizeAmount(inv.amount_due ?? inv.billed_amount);
-          const currency = inv.currency ?? amt.currency ?? null;
+          invoicesFetched = invoices.length;
 
-          const paymentMethod =
-            inv.payment_method?.display_string ??
-            inv.payment_method?.type_name ??
-            (typeof inv.payment_method === 'string' ? inv.payment_method : null);
+          if (invoices.length > 0) {
+            const rows: any[] = [];
+            for (const inv of invoices) {
+              const rawId = inv.id ?? null;
+              if (!rawId) continue;
 
-          const paymentRef =
-            inv.payment_reference ??
-            inv.transaction_id ??
-            inv.reference ?? null;
+              let attributedAccountId: string | null = null;
+              let breakdown: any = null;
+              try {
+                const campUrl = `${API}/${rawId}/campaigns?fields=ad_account_id,name,amount&limit=200&access_token=${TOKEN}`;
+                const campRes = await fetch(campUrl);
+                const campData = await campRes.json();
+                if (!campData?.error && Array.isArray(campData?.data) && campData.data.length > 0) {
+                  breakdown = campData.data;
+                  const acctIds = new Set<string>();
+                  for (const c of campData.data) {
+                    const aid = c.ad_account_id
+                      ? (String(c.ad_account_id).startsWith('act_') ? String(c.ad_account_id) : `act_${c.ad_account_id}`)
+                      : null;
+                    if (aid) acctIds.add(aid);
+                  }
+                  if (acctIds.size === 1) attributedAccountId = Array.from(acctIds)[0];
+                }
+              } catch { /* optional */ }
 
-          const billingPeriodStr =
-            typeof inv.billing_period === 'string'
-              ? inv.billing_period
-              : inv.billing_period
-                ? `${inv.billing_period.start ?? ''}${inv.billing_period.end ? ` – ${inv.billing_period.end}` : ''}`
-                : null;
+              if (!attributedAccountId) invoicesUnattributed++;
 
-          rows.push({
-            meta_invoice_id: String(rawId),
-            meta_business_id: BUSINESS_ID,
-            meta_account_id: attributedAccountId,
-            account_name: attributedAccountId ? accountNameById.get(attributedAccountId) ?? null : null,
-            billing_period: billingPeriodStr,
-            invoice_date: inv.invoice_date ? String(inv.invoice_date).slice(0, 10) : null,
-            due_date: inv.due_date ? String(inv.due_date).slice(0, 10) : null,
-            amount: amt.value,
-            currency,
-            status: inv.payment_status ?? inv.status ?? null,
-            status_mapped: mapStatus(inv.payment_status ?? inv.status),
-            payment_method: paymentMethod,
-            payment_reference: paymentRef,
-            document_url: inv.download_uri ?? inv.pdf_uri ?? inv.invoice_uri ?? null,
-            entity: typeof inv.entity === 'string' ? inv.entity : inv.entity?.name ?? null,
-            account_breakdown: breakdown,
-            raw: inv,
-            synced_at: new Date().toISOString(),
-          });
-        }
+              const amt = normalizeAmount(inv.amount_due ?? inv.billed_amount);
+              const currency = inv.currency ?? amt.currency ?? null;
+              const billingPeriodStr =
+                typeof inv.billing_period === 'string'
+                  ? inv.billing_period
+                  : inv.billing_period
+                    ? `${inv.billing_period.start ?? ''}${inv.billing_period.end ? ` – ${inv.billing_period.end}` : ''}`
+                    : null;
 
-        if (rows.length > 0) {
-          // Chunked upsert to keep requests small.
-          for (let i = 0; i < rows.length; i += 200) {
-            const chunk = rows.slice(i, i + 200);
-            const { error } = await supabase
-              .from('meta_billing_invoices')
-              .upsert(chunk, { onConflict: 'meta_invoice_id' });
-            if (error) errors.push({ path: 'upsert_invoices', message: error.message });
-            else invoicesUpserted += chunk.length;
+              rows.push({
+                meta_invoice_id: String(rawId),
+                meta_business_id: BUSINESS_ID,
+                meta_account_id: attributedAccountId,
+                account_name: attributedAccountId ? accountNameById.get(attributedAccountId) ?? null : null,
+                billing_period: billingPeriodStr,
+                invoice_date: inv.invoice_date ? String(inv.invoice_date).slice(0, 10) : null,
+                due_date: inv.due_date ? String(inv.due_date).slice(0, 10) : null,
+                amount: amt.value,
+                currency,
+                status: inv.payment_status ?? null,
+                status_mapped: mapStatus(inv.payment_status),
+                payment_method: null,
+                payment_reference: null,
+                document_url: inv.download_uri ?? null,
+                entity: typeof inv.entity === 'string' ? inv.entity : inv.entity?.name ?? null,
+                account_breakdown: breakdown,
+                raw: inv,
+                synced_at: new Date().toISOString(),
+              });
+            }
+
+            for (let i = 0; i < rows.length; i += 200) {
+              const chunk = rows.slice(i, i + 200);
+              const { error } = await supabase
+                .from('meta_billing_invoices')
+                .upsert(chunk, { onConflict: 'meta_invoice_id' });
+              if (error) errors.push({ path: 'upsert_invoices', message: error.message });
+              else invoicesUpserted += chunk.length;
+            }
           }
         }
       }
     } else {
       invoicesEndpointState = 'no_business_id';
+      invoicesNote = 'Keine Meta Business ID konfiguriert';
     }
+
 
     return new Response(JSON.stringify({
       success: true,
