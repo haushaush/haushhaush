@@ -754,6 +754,12 @@ export default function MetaPaymentsTab() {
         Zahlungsbelege werden über n8n aus Meta-Bestätigungsmails
         (<code className="bg-muted px-1 rounded">noreply@business-updates.facebook.com</code>) importiert. Idempotent per Gmail-ID.
       </p>
+
+      <GmailReceiptSearchDialog
+        open={searchDialogOpen}
+        onOpenChange={setSearchDialogOpen}
+        onImported={load}
+      />
     </div>
   );
 }
