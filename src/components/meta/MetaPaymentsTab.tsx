@@ -6,9 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronDown, ChevronRight, ExternalLink, Mail, RefreshCw, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, Mail, RefreshCw, Info, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/components/meta/metaUtils';
+import { generatePaymentReceiptPdf, canGeneratePdf } from '@/components/meta/generatePaymentReceiptPdf';
 
 export type PaymentReceipt = {
   id: string;
@@ -221,7 +222,7 @@ export default function MetaPaymentsTab() {
                 <TableHead>Status</TableHead>
                 <TableHead>Zeitraum</TableHead>
                 <TableHead>Kampagnen</TableHead>
-                <TableHead className="w-8"></TableHead>
+                <TableHead className="text-right">Aktionen</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -253,12 +254,27 @@ export default function MetaPaymentsTab() {
                           : '–'}
                       </TableCell>
                       <TableCell className="text-xs">{r.campaign_count ?? (r.campaigns?.length ?? 0)}</TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        {r.transaction_url && (
-                          <a href={r.transaction_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground">
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
+                      <TableCell onClick={(e) => e.stopPropagation()} className="text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-[11px]"
+                            disabled={!canGeneratePdf(r)}
+                            onClick={() => {
+                              try { generatePaymentReceiptPdf(r); }
+                              catch (e: any) { toast.error('PDF konnte nicht erzeugt werden: ' + (e?.message || e)); }
+                            }}
+                            title="PDF herunterladen"
+                          >
+                            <FileDown className="h-3 w-3 mr-1" /> PDF
+                          </Button>
+                          {r.transaction_url && (
+                            <a href={r.transaction_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground p-1">
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                     {isOpen && (
@@ -280,13 +296,27 @@ export default function MetaPaymentsTab() {
                                 <div>{r.product_type || '–'}</div>
                               </div>
                             </div>
-                            {r.email_subject && (
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <Mail className="h-3 w-3" />
-                                <span>{r.email_subject}</span>
-                                {r.email_received_at && <span>· {fmtDate(r.email_received_at)}</span>}
-                              </div>
-                            )}
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              {r.email_subject ? (
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <Mail className="h-3 w-3" />
+                                  <span>{r.email_subject}</span>
+                                  {r.email_received_at && <span>· {fmtDate(r.email_received_at)}</span>}
+                                </div>
+                              ) : <span />}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2 text-[11px]"
+                                disabled={!canGeneratePdf(r)}
+                                onClick={() => {
+                                  try { generatePaymentReceiptPdf(r); }
+                                  catch (e: any) { toast.error('PDF konnte nicht erzeugt werden: ' + (e?.message || e)); }
+                                }}
+                              >
+                                <FileDown className="h-3 w-3 mr-1" /> PDF herunterladen
+                              </Button>
+                            </div>
                             {Array.isArray(r.campaigns) && r.campaigns.length > 0 && (
                               <div>
                                 <div className="text-[10px] uppercase text-muted-foreground mb-1">Kampagnenaufschlüsselung</div>
