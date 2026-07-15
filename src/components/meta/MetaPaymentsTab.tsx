@@ -6,8 +6,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronDown, ChevronRight, ExternalLink, Mail, RefreshCw, Info, FileDown } from 'lucide-react';
+import {
+  ChevronDown, ChevronRight, ExternalLink, Mail, RefreshCw, Info, FileDown,
+  ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, RotateCcw, X,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Label } from '@/components/ui/label';
 import { formatCurrency } from '@/components/meta/metaUtils';
 import { generatePaymentReceiptPdf, canGeneratePdf } from '@/components/meta/generatePaymentReceiptPdf';
 
@@ -48,13 +53,59 @@ function fmtDate(iso: string | null) {
   catch { return iso; }
 }
 
+type DateRangeKey = 'all' | 'today' | '7d' | '30d' | '90d' | 'ytd' | 'custom';
+type SortKey = 'transaction_date' | 'account_name' | 'amount' | 'payment_method' | 'payment_status' | 'campaign_count';
+type SortDir = 'asc' | 'desc';
+
+const DEFAULT_STATE = {
+  search: '',
+  accountFilter: 'all',
+  currencyFilter: 'all',
+  statusFilter: 'all',
+  dateRange: 'all' as DateRangeKey,
+  customFrom: '',
+  customTo: '',
+  minAmount: '',
+  maxAmount: '',
+  paymentMethodFilter: 'all',
+  hasCampaignsFilter: 'all' as 'all' | 'with' | 'without',
+  hasPdfFilter: 'all' as 'all' | 'yes' | 'no',
+};
+
+function computeRangeStart(key: DateRangeKey): number | null {
+  const now = new Date();
+  switch (key) {
+    case 'today': {
+      const d = new Date(now); d.setHours(0,0,0,0); return d.getTime();
+    }
+    case '7d': return now.getTime() - 7 * 24 * 3600 * 1000;
+    case '30d': return now.getTime() - 30 * 24 * 3600 * 1000;
+    case '90d': return now.getTime() - 90 * 24 * 3600 * 1000;
+    case 'ytd': return new Date(now.getFullYear(), 0, 1).getTime();
+    default: return null;
+  }
+}
+
 export default function MetaPaymentsTab() {
   const [rows, setRows] = useState<PaymentReceipt[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [accountFilter, setAccountFilter] = useState<string>('all');
-  const [currencyFilter, setCurrencyFilter] = useState<string>('all');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const [search, setSearch] = useState(DEFAULT_STATE.search);
+  const [accountFilter, setAccountFilter] = useState<string>(DEFAULT_STATE.accountFilter);
+  const [currencyFilter, setCurrencyFilter] = useState<string>(DEFAULT_STATE.currencyFilter);
+  const [statusFilter, setStatusFilter] = useState<string>(DEFAULT_STATE.statusFilter);
+  const [dateRange, setDateRange] = useState<DateRangeKey>(DEFAULT_STATE.dateRange);
+  const [customFrom, setCustomFrom] = useState<string>(DEFAULT_STATE.customFrom);
+  const [customTo, setCustomTo] = useState<string>(DEFAULT_STATE.customTo);
+  const [minAmount, setMinAmount] = useState<string>(DEFAULT_STATE.minAmount);
+  const [maxAmount, setMaxAmount] = useState<string>(DEFAULT_STATE.maxAmount);
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>(DEFAULT_STATE.paymentMethodFilter);
+  const [hasCampaignsFilter, setHasCampaignsFilter] = useState<typeof DEFAULT_STATE.hasCampaignsFilter>(DEFAULT_STATE.hasCampaignsFilter);
+  const [hasPdfFilter, setHasPdfFilter] = useState<typeof DEFAULT_STATE.hasPdfFilter>(DEFAULT_STATE.hasPdfFilter);
+
+  const [sortKey, setSortKey] = useState<SortKey>('transaction_date');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   async function load() {
     setLoading(true);
@@ -98,18 +149,104 @@ export default function MetaPaymentsTab() {
     return Array.from(s).sort();
   }, [rows]);
 
+  const statuses = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of rows) {
+      const key = (r.payment_status || r.payment_status_label || '').trim();
+      if (!key) continue;
+      if (!m.has(key)) m.set(key, r.payment_status_label || key);
+    }
+    return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rows]);
+
+  const paymentMethods = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of rows) if (r.payment_method) s.add(r.payment_method);
+    return Array.from(s).sort();
+  }, [rows]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const rangeStart = computeRangeStart(dateRange);
+    const customFromTs = dateRange === 'custom' && customFrom ? new Date(customFrom).getTime() : null;
+    const customToTs = dateRange === 'custom' && customTo ? new Date(customTo).getTime() + 24 * 3600 * 1000 - 1 : null;
+    const minA = minAmount ? Number(minAmount.replace(',', '.')) : null;
+    const maxA = maxAmount ? Number(maxAmount.replace(',', '.')) : null;
+
     return rows.filter((r) => {
       if (accountFilter !== 'all' && (r.meta_account_id || r.meta_account_id_numeric) !== accountFilter) return false;
       if (currencyFilter !== 'all' && r.currency !== currencyFilter) return false;
+      if (statusFilter !== 'all') {
+        const s = (r.payment_status || r.payment_status_label || '').trim();
+        if (s !== statusFilter) return false;
+      }
+      if (paymentMethodFilter !== 'all' && r.payment_method !== paymentMethodFilter) return false;
+
+      if (rangeStart != null) {
+        const t = r.transaction_date ? new Date(r.transaction_date).getTime() : null;
+        if (t == null || t < rangeStart) return false;
+      }
+      if (customFromTs != null) {
+        const t = r.transaction_date ? new Date(r.transaction_date).getTime() : null;
+        if (t == null || t < customFromTs) return false;
+      }
+      if (customToTs != null) {
+        const t = r.transaction_date ? new Date(r.transaction_date).getTime() : null;
+        if (t == null || t > customToTs) return false;
+      }
+
+      if (minA != null && !Number.isNaN(minA)) {
+        if (r.amount == null || r.amount < minA) return false;
+      }
+      if (maxA != null && !Number.isNaN(maxA)) {
+        if (r.amount == null || r.amount > maxA) return false;
+      }
+
+      if (hasCampaignsFilter !== 'all') {
+        const count = r.campaign_count ?? (r.campaigns?.length ?? 0);
+        if (hasCampaignsFilter === 'with' && count <= 0) return false;
+        if (hasCampaignsFilter === 'without' && count > 0) return false;
+      }
+
+      if (hasPdfFilter !== 'all') {
+        const ok = canGeneratePdf(r);
+        if (hasPdfFilter === 'yes' && !ok) return false;
+        if (hasPdfFilter === 'no' && ok) return false;
+      }
+
       if (!q) return true;
       return [
         r.account_name, r.meta_account_id, r.transaction_id, r.payment_method,
         r.billing_reason, r.email_subject,
       ].some((v) => (v || '').toLowerCase().includes(q));
     });
-  }, [rows, search, accountFilter, currencyFilter]);
+  }, [
+    rows, search, accountFilter, currencyFilter, statusFilter, dateRange,
+    customFrom, customTo, minAmount, maxAmount, paymentMethodFilter,
+    hasCampaignsFilter, hasPdfFilter,
+  ]);
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    const dir = sortDir === 'asc' ? 1 : -1;
+    arr.sort((a, b) => {
+      const get = (r: PaymentReceipt): any => {
+        switch (sortKey) {
+          case 'transaction_date': return r.transaction_date ? new Date(r.transaction_date).getTime() : 0;
+          case 'account_name': return (r.account_name || '').toLowerCase();
+          case 'amount': return r.amount ?? -Infinity;
+          case 'payment_method': return (r.payment_method || '').toLowerCase();
+          case 'payment_status': return (r.payment_status_label || r.payment_status || '').toLowerCase();
+          case 'campaign_count': return r.campaign_count ?? (r.campaigns?.length ?? 0);
+        }
+      };
+      const av = get(a); const bv = get(b);
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+    return arr;
+  }, [filtered, sortKey, sortDir]);
 
   const kpis = useMemo(() => {
     const totalByCur: Record<string, number> = {};
@@ -135,6 +272,55 @@ export default function MetaPaymentsTab() {
       return n;
     });
   };
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'transaction_date' || key === 'amount' ? 'desc' : 'asc');
+    }
+  };
+
+  const SortIcon = ({ k }: { k: SortKey }) => {
+    if (sortKey !== k) return <ArrowUpDown className="h-3 w-3 opacity-40" />;
+    return sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
+  };
+
+  const resetAll = () => {
+    setSearch(DEFAULT_STATE.search);
+    setAccountFilter(DEFAULT_STATE.accountFilter);
+    setCurrencyFilter(DEFAULT_STATE.currencyFilter);
+    setStatusFilter(DEFAULT_STATE.statusFilter);
+    setDateRange(DEFAULT_STATE.dateRange);
+    setCustomFrom(DEFAULT_STATE.customFrom);
+    setCustomTo(DEFAULT_STATE.customTo);
+    setMinAmount(DEFAULT_STATE.minAmount);
+    setMaxAmount(DEFAULT_STATE.maxAmount);
+    setPaymentMethodFilter(DEFAULT_STATE.paymentMethodFilter);
+    setHasCampaignsFilter(DEFAULT_STATE.hasCampaignsFilter);
+    setHasPdfFilter(DEFAULT_STATE.hasPdfFilter);
+  };
+
+  const activeFilterCount =
+    (search ? 1 : 0) +
+    (accountFilter !== 'all' ? 1 : 0) +
+    (statusFilter !== 'all' ? 1 : 0) +
+    (dateRange !== 'all' ? 1 : 0) +
+    (currencyFilter !== 'all' ? 1 : 0) +
+    (paymentMethodFilter !== 'all' ? 1 : 0) +
+    (minAmount ? 1 : 0) +
+    (maxAmount ? 1 : 0) +
+    (hasCampaignsFilter !== 'all' ? 1 : 0) +
+    (hasPdfFilter !== 'all' ? 1 : 0);
+
+  const advancedCount =
+    (currencyFilter !== 'all' ? 1 : 0) +
+    (paymentMethodFilter !== 'all' ? 1 : 0) +
+    (minAmount ? 1 : 0) +
+    (maxAmount ? 1 : 0) +
+    (hasCampaignsFilter !== 'all' ? 1 : 0) +
+    (hasPdfFilter !== 'all' ? 1 : 0);
 
   return (
     <div className="space-y-4">
@@ -178,7 +364,7 @@ export default function MetaPaymentsTab() {
             className="h-8 max-w-xs text-xs"
           />
           <Select value={accountFilter} onValueChange={setAccountFilter}>
-            <SelectTrigger className="h-8 w-[220px] text-xs"><SelectValue placeholder="Werbekonto" /></SelectTrigger>
+            <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue placeholder="Werbekonto" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Werbekonten</SelectItem>
               {accounts.map(([id, name]) => (
@@ -186,51 +372,249 @@ export default function MetaPaymentsTab() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
-            <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue placeholder="Währung" /></SelectTrigger>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Alle Währungen</SelectItem>
-              {currencies.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              <SelectItem value="all">Alle Status</SelectItem>
+              {statuses.map(([key, label]) => (
+                <SelectItem key={key} value={key}>{label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
+          <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangeKey)}>
+            <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Zeitraum" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Gesamter Zeitraum</SelectItem>
+              <SelectItem value="today">Heute</SelectItem>
+              <SelectItem value="7d">Letzte 7 Tage</SelectItem>
+              <SelectItem value="30d">Letzte 30 Tage</SelectItem>
+              <SelectItem value="90d">Letzte 90 Tage</SelectItem>
+              <SelectItem value="ytd">Dieses Jahr</SelectItem>
+              <SelectItem value="custom">Benutzerdefiniert…</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs">
+                <SlidersHorizontal className="h-3 w-3 mr-1" />
+                Weitere Filter
+                {advancedCount > 0 && (
+                  <Badge variant="secondary" className="ml-2 h-4 px-1.5 text-[10px]">{advancedCount}</Badge>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[340px] p-3 space-y-3" align="start">
+              {dateRange === 'custom' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-[10px] uppercase text-muted-foreground">Von</Label>
+                    <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-8 text-xs" />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] uppercase text-muted-foreground">Bis</Label>
+                    <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-8 text-xs" />
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[10px] uppercase text-muted-foreground">Betrag min</Label>
+                  <Input inputMode="decimal" placeholder="0,00" value={minAmount} onChange={(e) => setMinAmount(e.target.value)} className="h-8 text-xs" />
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase text-muted-foreground">Betrag max</Label>
+                  <Input inputMode="decimal" placeholder="∞" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} className="h-8 text-xs" />
+                </div>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground">Währung</Label>
+                <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Währungen</SelectItem>
+                    {currencies.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground">Zahlungsmethode</Label>
+                <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alle Methoden</SelectItem>
+                    {paymentMethods.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[10px] uppercase text-muted-foreground">Kampagnen</Label>
+                  <Select value={hasCampaignsFilter} onValueChange={(v) => setHasCampaignsFilter(v as any)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle</SelectItem>
+                      <SelectItem value="with">Mit Kampagnen</SelectItem>
+                      <SelectItem value="without">Ohne Kampagnen</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase text-muted-foreground">PDF verfügbar</Label>
+                  <Select value={hasPdfFilter} onValueChange={(v) => setHasPdfFilter(v as any)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle</SelectItem>
+                      <SelectItem value="yes">Nur mit PDF</SelectItem>
+                      <SelectItem value="no">Nur ohne PDF</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={resetAll}
+            disabled={activeFilterCount === 0}
+          >
+            <RotateCcw className="h-3 w-3 mr-1" /> Zurücksetzen
+          </Button>
           <Button variant="outline" size="sm" className="h-8" onClick={load} disabled={loading}>
             <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} /> Aktualisieren
           </Button>
+
+          <span className="text-[11px] text-muted-foreground ml-auto">
+            {sorted.length} von {rows.length}
+          </span>
         </div>
+
+        {activeFilterCount > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t">
+            {search && (
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                Suche: „{search}"
+                <button onClick={() => setSearch('')}><X className="h-2.5 w-2.5" /></button>
+              </Badge>
+            )}
+            {accountFilter !== 'all' && (
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                {accounts.find(([id]) => id === accountFilter)?.[1] || accountFilter}
+                <button onClick={() => setAccountFilter('all')}><X className="h-2.5 w-2.5" /></button>
+              </Badge>
+            )}
+            {statusFilter !== 'all' && (
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                Status: {statuses.find(([k]) => k === statusFilter)?.[1] || statusFilter}
+                <button onClick={() => setStatusFilter('all')}><X className="h-2.5 w-2.5" /></button>
+              </Badge>
+            )}
+            {dateRange !== 'all' && (
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                Zeitraum: {dateRange}
+                <button onClick={() => setDateRange('all')}><X className="h-2.5 w-2.5" /></button>
+              </Badge>
+            )}
+            {currencyFilter !== 'all' && (
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                {currencyFilter}
+                <button onClick={() => setCurrencyFilter('all')}><X className="h-2.5 w-2.5" /></button>
+              </Badge>
+            )}
+            {paymentMethodFilter !== 'all' && (
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                {paymentMethodFilter}
+                <button onClick={() => setPaymentMethodFilter('all')}><X className="h-2.5 w-2.5" /></button>
+              </Badge>
+            )}
+            {(minAmount || maxAmount) && (
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                Betrag {minAmount || '0'}–{maxAmount || '∞'}
+                <button onClick={() => { setMinAmount(''); setMaxAmount(''); }}><X className="h-2.5 w-2.5" /></button>
+              </Badge>
+            )}
+            {hasCampaignsFilter !== 'all' && (
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                {hasCampaignsFilter === 'with' ? 'Mit Kampagnen' : 'Ohne Kampagnen'}
+                <button onClick={() => setHasCampaignsFilter('all')}><X className="h-2.5 w-2.5" /></button>
+              </Badge>
+            )}
+            {hasPdfFilter !== 'all' && (
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                {hasPdfFilter === 'yes' ? 'Mit PDF' : 'Ohne PDF'}
+                <button onClick={() => setHasPdfFilter('all')}><X className="h-2.5 w-2.5" /></button>
+              </Badge>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Table */}
       <Card className="overflow-hidden">
-        {filtered.length === 0 && !loading ? (
+        {sorted.length === 0 && !loading ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             <Mail className="h-6 w-6 mx-auto mb-2 opacity-60" />
-            <p>Noch keine Zahlungsbelege importiert.</p>
-            <p className="text-xs mt-1">
-              Belege werden automatisch aus Meta-Zahlungsbeleg-Mails über n8n importiert (Webhook{' '}
-              <code className="bg-muted px-1 py-0.5 rounded">import-meta-payment-email</code>).
-            </p>
+            <p>{rows.length === 0 ? 'Noch keine Zahlungsbelege importiert.' : 'Keine Zahlungen entsprechen den Filtern.'}</p>
+            {rows.length === 0 && (
+              <p className="text-xs mt-1">
+                Belege werden automatisch aus Meta-Zahlungsbeleg-Mails über n8n importiert (Webhook{' '}
+                <code className="bg-muted px-1 py-0.5 rounded">import-meta-payment-email</code>).
+              </p>
+            )}
+            {rows.length > 0 && activeFilterCount > 0 && (
+              <Button variant="ghost" size="sm" className="mt-3 h-7 text-xs" onClick={resetAll}>
+                <RotateCcw className="h-3 w-3 mr-1" /> Filter zurücksetzen
+              </Button>
+            )}
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-6"></TableHead>
-                <TableHead>Datum</TableHead>
-                <TableHead>Werbekonto</TableHead>
-                <TableHead>Zahlungsmethode</TableHead>
-                <TableHead className="text-right">Betrag</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>
+                  <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => toggleSort('transaction_date')}>
+                    Datum <SortIcon k="transaction_date" />
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => toggleSort('account_name')}>
+                    Werbekonto <SortIcon k="account_name" />
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => toggleSort('payment_method')}>
+                    Zahlungsmethode <SortIcon k="payment_method" />
+                  </button>
+                </TableHead>
+                <TableHead className="text-right">
+                  <button className="inline-flex items-center gap-1 hover:text-foreground ml-auto" onClick={() => toggleSort('amount')}>
+                    Betrag <SortIcon k="amount" />
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => toggleSort('payment_status')}>
+                    Status <SortIcon k="payment_status" />
+                  </button>
+                </TableHead>
                 <TableHead>Zeitraum</TableHead>
-                <TableHead>Kampagnen</TableHead>
+                <TableHead>
+                  <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => toggleSort('campaign_count')}>
+                    Kampagnen <SortIcon k="campaign_count" />
+                  </button>
+                </TableHead>
                 <TableHead className="text-right">Aktionen</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((r) => {
+              {sorted.map((r) => {
                 const isOpen = expanded.has(r.id);
                 return (
                   <React.Fragment key={r.id}>
-                    <TableRow key={r.id} className="cursor-pointer hover:bg-muted/40" onClick={() => toggle(r.id)}>
+                    <TableRow className="cursor-pointer hover:bg-muted/40" onClick={() => toggle(r.id)}>
                       <TableCell>{isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}</TableCell>
                       <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.transaction_date)}</TableCell>
                       <TableCell className="text-xs">
@@ -278,7 +662,7 @@ export default function MetaPaymentsTab() {
                       </TableCell>
                     </TableRow>
                     {isOpen && (
-                      <TableRow key={`${r.id}-detail`} className="bg-muted/30">
+                      <TableRow className="bg-muted/30">
                         <TableCell></TableCell>
                         <TableCell colSpan={8} className="py-3">
                           <div className="space-y-3 text-xs">
