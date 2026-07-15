@@ -3,18 +3,17 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   ChevronDown, ChevronRight, ExternalLink, Mail, RefreshCw, Info, FileDown,
-  ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, RotateCcw, X, MailSearch,
+  ArrowUp, ArrowDown, ArrowUpDown, RotateCcw,
   Search, Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
+
 import { formatCurrency } from '@/components/meta/metaUtils';
 import GmailReceiptSearchDialog, { type GmailSearchCriteria } from '@/components/meta/GmailReceiptSearchDialog';
 import { generatePaymentReceiptPdf, canGeneratePdf } from '@/components/meta/generatePaymentReceiptPdf';
