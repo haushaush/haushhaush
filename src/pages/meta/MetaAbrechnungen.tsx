@@ -127,6 +127,16 @@ export default function MetaAbrechnungen() {
   const { callMeta } = useMetaAds();
   const { hasPermission, isAdmin } = usePermissions();
   const canManage = isAdmin || hasPermission('meta.billing.manage');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab = tabParam === 'rechnungen' || tabParam === 'zahlungen' ? tabParam : 'uebersicht';
+  const setActiveTab = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === 'uebersicht') next.delete('tab'); else next.set('tab', v);
+    setSearchParams(next, { replace: true });
+  };
+  const [backfilling, setBackfilling] = useState(false);
+
 
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
