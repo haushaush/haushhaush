@@ -8,12 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   ChevronDown, ChevronRight, ExternalLink, Mail, RefreshCw, Info, FileDown,
-  ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, RotateCcw, X,
+  ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, RotateCcw, X, MailSearch,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { formatCurrency } from '@/components/meta/metaUtils';
+import GmailReceiptSearchDialog from '@/components/meta/GmailReceiptSearchDialog';
 import { generatePaymentReceiptPdf, canGeneratePdf } from '@/components/meta/generatePaymentReceiptPdf';
 
 export type PaymentReceipt = {
@@ -90,6 +91,7 @@ export default function MetaPaymentsTab() {
   const [rows, setRows] = useState<PaymentReceipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
 
   const [search, setSearch] = useState(DEFAULT_STATE.search);
   const [accountFilter, setAccountFilter] = useState<string>(DEFAULT_STATE.accountFilter);
@@ -486,6 +488,9 @@ export default function MetaPaymentsTab() {
           <Button variant="outline" size="sm" className="h-8" onClick={load} disabled={loading}>
             <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} /> Aktualisieren
           </Button>
+          <Button variant="outline" size="sm" className="h-8" onClick={() => setSearchDialogOpen(true)}>
+            <MailSearch className="h-3 w-3 mr-1" /> Zahlungsbeleg in Gmail suchen
+          </Button>
 
           <span className="text-[11px] text-muted-foreground ml-auto">
             {sorted.length} von {rows.length}
@@ -749,6 +754,12 @@ export default function MetaPaymentsTab() {
         Zahlungsbelege werden über n8n aus Meta-Bestätigungsmails
         (<code className="bg-muted px-1 rounded">noreply@business-updates.facebook.com</code>) importiert. Idempotent per Gmail-ID.
       </p>
+
+      <GmailReceiptSearchDialog
+        open={searchDialogOpen}
+        onOpenChange={setSearchDialogOpen}
+        onImported={load}
+      />
     </div>
   );
 }
