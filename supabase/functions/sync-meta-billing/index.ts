@@ -84,7 +84,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'META_ACCESS_TOKEN not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+    // Optional: { months?: number, backfill?: boolean } — controls how far back invoices are pulled.
+    let body: any = {};
+    try { body = await req.json(); } catch { /* no body */ }
+    const monthsBack = Math.max(1, Math.min(120, Number(body?.months) || (body?.backfill ? 60 : 24)));
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
 
     // ================== 1) Accounts snapshot (unchanged behavior) ==================
     const errors: any[] = [];
