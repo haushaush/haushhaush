@@ -104,7 +104,6 @@ Deno.serve(async (req) => {
 
     // TEST 2: Secrets presence
     result.tests.secrets = {
-    result.tests.secrets = {
       META_BILLING_ACCESS_TOKEN: !!TOKEN,
       META_APP_ID: !!APP_ID,
       META_APP_SECRET: !!APP_SECRET,
