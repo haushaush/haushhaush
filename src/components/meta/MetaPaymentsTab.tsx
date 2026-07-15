@@ -188,66 +188,54 @@ export default function MetaPaymentsTab() {
     return Array.from(s).sort();
   }, [rows]);
 
+  function matchesFilters(r: PaymentReceipt, f: SearchFilters): boolean {
+    // Transaction ID (exact)
+    if (f.transactionId.trim()) {
+      if ((r.transaction_id || '').trim() !== f.transactionId.trim()) return false;
+    }
+    // Date range: compare against transaction_date, email_received_at, period_start_raw, period_end_raw
+    if (f.dateFrom || f.dateTo) {
+      const fromMs = f.dateFrom ? new Date(f.dateFrom + 'T00:00:00').getTime() : null;
+      const toMs = f.dateTo ? new Date(f.dateTo + 'T23:59:59.999').getTime() : (fromMs != null ? new Date(f.dateFrom + 'T23:59:59.999').getTime() : null);
+      const candidates: (string | null)[] = [
+        r.transaction_date, r.email_received_at, r.period_start_raw, r.period_end_raw,
+      ];
+      const hit = candidates.some((v) => {
+        if (!v) return false;
+        const t = new Date(v).getTime();
+        if (!Number.isFinite(t)) return false;
+        if (fromMs != null && t < fromMs) return false;
+        if (toMs != null && t > toMs) return false;
+        return true;
+      });
+      if (!hit) return false;
+    }
+    // Amount (± 0.01 tolerance)
+    if (f.amount.trim()) {
+      const target = parseDeAmount(f.amount);
+      if (target == null) return false;
+      if (r.amount == null || Math.abs(r.amount - target) >= 0.01) return false;
+    }
+    // Meta account id (accept both act_ / numeric)
+    if (f.metaAccountId.trim()) {
+      const numeric = normalizeMetaAccountNumeric(f.metaAccountId);
+      const rowNumeric = r.meta_account_id_numeric ||
+        (r.meta_account_id ? r.meta_account_id.replace(/^act_/i, '') : null);
+      if (!numeric || rowNumeric !== numeric) return false;
+    }
+    // Account name (case-insensitive, space-normalized, substring)
+    if (f.accountName.trim()) {
+      const needle = normalizeName(f.accountName);
+      const hay = normalizeName(r.account_name);
+      if (!hay.includes(needle)) return false;
+    }
+    return true;
+  }
+
   const filtered = useMemo(() => {
-    const q = appliedSearch.trim().toLowerCase();
-    const rangeStart = computeRangeStart(dateRange);
-    const customFromTs = dateRange === 'custom' && customFrom ? new Date(customFrom).getTime() : null;
-    const customToTs = dateRange === 'custom' && customTo ? new Date(customTo).getTime() + 24 * 3600 * 1000 - 1 : null;
-    const minA = minAmount ? Number(minAmount.replace(',', '.')) : null;
-    const maxA = maxAmount ? Number(maxAmount.replace(',', '.')) : null;
-
-    return rows.filter((r) => {
-      if (accountFilter !== 'all' && (r.meta_account_id || r.meta_account_id_numeric) !== accountFilter) return false;
-      if (currencyFilter !== 'all' && r.currency !== currencyFilter) return false;
-      if (statusFilter !== 'all') {
-        const s = (r.payment_status || r.payment_status_label || '').trim();
-        if (s !== statusFilter) return false;
-      }
-      if (paymentMethodFilter !== 'all' && r.payment_method !== paymentMethodFilter) return false;
-
-      if (rangeStart != null) {
-        const t = r.transaction_date ? new Date(r.transaction_date).getTime() : null;
-        if (t == null || t < rangeStart) return false;
-      }
-      if (customFromTs != null) {
-        const t = r.transaction_date ? new Date(r.transaction_date).getTime() : null;
-        if (t == null || t < customFromTs) return false;
-      }
-      if (customToTs != null) {
-        const t = r.transaction_date ? new Date(r.transaction_date).getTime() : null;
-        if (t == null || t > customToTs) return false;
-      }
-
-      if (minA != null && !Number.isNaN(minA)) {
-        if (r.amount == null || r.amount < minA) return false;
-      }
-      if (maxA != null && !Number.isNaN(maxA)) {
-        if (r.amount == null || r.amount > maxA) return false;
-      }
-
-      if (hasCampaignsFilter !== 'all') {
-        const count = r.campaign_count ?? (r.campaigns?.length ?? 0);
-        if (hasCampaignsFilter === 'with' && count <= 0) return false;
-        if (hasCampaignsFilter === 'without' && count > 0) return false;
-      }
-
-      if (hasPdfFilter !== 'all') {
-        const ok = canGeneratePdf(r);
-        if (hasPdfFilter === 'yes' && !ok) return false;
-        if (hasPdfFilter === 'no' && ok) return false;
-      }
-
-      if (!q) return true;
-      return [
-        r.account_name, r.meta_account_id, r.transaction_id, r.payment_method,
-        r.billing_reason, r.email_subject,
-      ].some((v) => (v || '').toLowerCase().includes(q));
-    });
-  }, [
-    rows, appliedSearch, accountFilter, currencyFilter, statusFilter, dateRange,
-    customFrom, customTo, minAmount, maxAmount, paymentMethodFilter,
-    hasCampaignsFilter, hasPdfFilter,
-  ]);
+    if (!hasAnyFilter(appliedFilters)) return rows;
+    return rows.filter((r) => matchesFilters(r, appliedFilters));
+  }, [rows, appliedFilters]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -310,80 +298,38 @@ export default function MetaPaymentsTab() {
     return sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
   };
 
-  // URL sync (only for confirmed appliedSearch)
+  // URL sync (only for confirmed appliedFilters)
   useEffect(() => {
-    const current = searchParams.get('search') || '';
-    if (appliedSearch === current) return;
     const next = new URLSearchParams(searchParams);
-    if (appliedSearch) next.set('search', appliedSearch);
-    else next.delete('search');
-    setSearchParams(next, { replace: true });
+    const set = (k: string, v: string) => { if (v) next.set(k, v); else next.delete(k); };
+    set('txn', appliedFilters.transactionId);
+    set('from', appliedFilters.dateFrom);
+    set('to', appliedFilters.dateTo);
+    set('amount', appliedFilters.amount);
+    set('acct', appliedFilters.metaAccountId);
+    set('name', appliedFilters.accountName);
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appliedSearch]);
-
-  const clearSearch = () => {
-    setDraftSearch('');
-    setAppliedSearch('');
-  };
+  }, [appliedFilters]);
 
   const resetAll = () => {
-    setDraftSearch('');
-    setAppliedSearch('');
-    setAccountFilter(DEFAULT_STATE.accountFilter);
-    setCurrencyFilter(DEFAULT_STATE.currencyFilter);
-    setStatusFilter(DEFAULT_STATE.statusFilter);
-    setDateRange(DEFAULT_STATE.dateRange);
-    setCustomFrom(DEFAULT_STATE.customFrom);
-    setCustomTo(DEFAULT_STATE.customTo);
-    setMinAmount(DEFAULT_STATE.minAmount);
-    setMaxAmount(DEFAULT_STATE.maxAmount);
-    setPaymentMethodFilter(DEFAULT_STATE.paymentMethodFilter);
-    setHasCampaignsFilter(DEFAULT_STATE.hasCampaignsFilter);
-    setHasPdfFilter(DEFAULT_STATE.hasPdfFilter);
-    setGTxnId(''); setGDateFrom(''); setGDateTo(''); setGAmount('');
-    setGMetaAccountId(''); setGAccountName('');
+    setDraftFilters(EMPTY_FILTERS);
+    setAppliedFilters(EMPTY_FILTERS);
+    setNoResultsMsg(null);
   };
 
-  // Local match against currently loaded rows for a confirmed query
-  function localMatches(text: string, parsed: ParsedCriteria): PaymentReceipt[] {
-    const q = text.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (parsed.transactionId && r.transaction_id === parsed.transactionId) return true;
-      if (parsed.metaAccountId && (r.meta_account_id === parsed.metaAccountId ||
-          r.meta_account_id_numeric === parsed.accountNumeric)) return true;
-      // Composite text match
-      const hay = [
-        r.account_name, r.meta_account_id, r.meta_account_id_numeric,
-        r.transaction_id, r.payment_method, r.billing_reason, r.email_subject,
-        r.transaction_date, r.amount != null ? String(r.amount) : null,
-        r.amount != null ? r.amount.toFixed(2).replace('.', ',') : null,
-      ].filter(Boolean).join(' ').toLowerCase();
-      if (q && hay.includes(q)) return true;
-      // Date + amount pair
-      if (parsed.date) {
-        const iso = r.transaction_date ? r.transaction_date.slice(0, 10) : null;
-        if (iso === parsed.date) {
-          if (parsed.amount == null || (r.amount != null && Math.abs(r.amount - parsed.amount) < 0.01)) return true;
-        }
-      }
-      if (parsed.remainingText && r.account_name &&
-          r.account_name.toLowerCase().includes(parsed.remainingText.toLowerCase())) {
-        if (parsed.amount == null || (r.amount != null && Math.abs(r.amount - parsed.amount) < 0.01)) return true;
-      }
-      return false;
-    });
-  }
-
-  async function runGmailFallback(parsed: ParsedCriteria, rawText: string) {
+  async function runGmailFallback(f: SearchFilters) {
+    const numeric = normalizeMetaAccountNumeric(f.metaAccountId);
     const criteria: GmailSearchCriteria = {
-      transaction_id: parsed.transactionId || null,
-      date_from: parsed.date || null,
-      date_to: parsed.date || null,
-      amount: parsed.amountRaw || null,
-      meta_account_id: parsed.metaAccountId || null,
-      account_name: parsed.remainingText || null,
+      transaction_id: f.transactionId.trim() || null,
+      date_from: f.dateFrom || null,
+      date_to: f.dateTo || f.dateFrom || null,
+      amount: f.amount.trim() || null,
+      meta_account_id: numeric ? `act_${numeric}` : null,
+      account_name: f.accountName.trim() || null,
     };
-    setSearchPhase('gmail');
     setGmailSearching(true);
     try {
       const { data, error } = await supabase.functions.invoke('gmail-search-meta-receipts', {
@@ -392,7 +338,7 @@ export default function MetaPaymentsTab() {
           transaction_id: criteria.transaction_id,
           date_from: criteria.date_from,
           date_to: criteria.date_to,
-          amount: parsed.amount,
+          amount: parseDeAmount(f.amount),
           meta_account_id: criteria.meta_account_id,
           account_name: criteria.account_name,
         },
@@ -402,132 +348,8 @@ export default function MetaPaymentsTab() {
       const list: any[] = (data as any)?.results || [];
       const importable = list.filter((r) => !r.already_imported);
 
-      if (importable.length === 0) {
-        toast.info(list.length > 0
-          ? 'Gmail-Treffer sind bereits importiert.'
-          : `Kein Treffer für „${rawText}" — weder lokal noch in Gmail.`);
-        return;
-      }
-      if (importable.length === 1) {
-        // Auto-import the single hit
-        const { data: imp, error: impErr } = await supabase.functions.invoke('gmail-search-meta-receipts', {
-          body: { action: 'import', items: importable },
-        });
-        if (impErr) throw new Error(impErr.message);
-        const upserted = (imp as any)?.upserted ?? 0;
-        if (upserted > 0) {
-          toast.success('Gmail-Treffer automatisch importiert.');
-          await load();
-        } else {
-          toast.warning('Import fehlgeschlagen.');
-        }
-        return;
-      }
-      // Multiple → open dialog with preview
-      setSearchDialogInitial({ criteria, results: list });
-      setSearchDialogOpen(true);
-      toast.info(`${list.length} Gmail-Treffer — bitte auswählen.`);
-    } catch (e: any) {
-      toast.error('Gmail-Suche fehlgeschlagen: ' + (e?.message || e));
-    } finally {
-      setGmailSearching(false);
-      setSearchPhase('idle');
-    }
-  }
-
-  const handleSearchSubmit = async () => {
-    if (searchInFlightRef.current || gmailSearching) return;
-    const normalized = draftSearch.trim();
-    if (!normalized) return;
-    searchInFlightRef.current = true;
-    try {
-      setSearchPhase('local');
-      setAppliedSearch(normalized);
-      const parsed = parseConfirmedQuery(normalized);
-      const hits = localMatches(normalized, parsed);
-      if (hits.length > 0) {
-        setSearchPhase('idle');
-        return;
-      }
-      if (!isGmailQualified(parsed)) {
-        toast.info('Kein lokaler Treffer. Bitte Datum, Werbekonto oder Account-ID ergänzen, um Gmail zu durchsuchen.');
-        setSearchPhase('idle');
-        return;
-      }
-      await runGmailFallback(parsed, normalized);
-    } finally {
-      searchInFlightRef.current = false;
-    }
-  };
-
-  function parseDeAmountLocal(v: string): number | null {
-    if (!v) return null;
-    const n = parseFloat(v.trim().replace(/\./g, '').replace(',', '.'));
-    return Number.isFinite(n) ? n : null;
-  }
-
-  function normalizeMetaAccountId(v: string): string | null {
-    const t = v.trim();
-    if (!t) return null;
-    if (/^act_/i.test(t)) return t;
-    if (/^\d{6,}$/.test(t)) return `act_${t}`;
-    return t;
-  }
-
-  const inlineGmailHasAny = !!(
-    gTxnId.trim() || gDateFrom || gDateTo || gAmount.trim() ||
-    gMetaAccountId.trim() || gAccountName.trim()
-  );
-
-  const clearInlineGmail = () => {
-    setGTxnId(''); setGDateFrom(''); setGDateTo(''); setGAmount('');
-    setGMetaAccountId(''); setGAccountName('');
-  };
-
-  async function runInlineGmailSearch() {
-    if (gmailInlineLoading || gmailSearching) return;
-    if (!inlineGmailHasAny) {
-      toast.error('Bitte mindestens ein Gmail-Suchkriterium angeben.');
-      return;
-    }
-    const metaId = normalizeMetaAccountId(gMetaAccountId);
-    const parsed: ParsedCriteria = {
-      transactionId: gTxnId.trim() || null,
-      metaAccountId: metaId,
-      accountNumeric: metaId ? metaId.replace(/^act_/i, '') : null,
-      date: gDateFrom || gDateTo || null,
-      amount: parseDeAmountLocal(gAmount),
-      amountRaw: gAmount.trim() || null,
-      remainingText: gAccountName.trim(),
-    };
-    // Reuse fallback logic but with explicit date_from/date_to
-    setGmailInlineLoading(true);
-    try {
-      const criteria: GmailSearchCriteria = {
-        transaction_id: parsed.transactionId,
-        date_from: gDateFrom || null,
-        date_to: gDateTo || null,
-        amount: parsed.amountRaw,
-        meta_account_id: parsed.metaAccountId,
-        account_name: parsed.remainingText || null,
-      };
-      const { data, error } = await supabase.functions.invoke('gmail-search-meta-receipts', {
-        body: {
-          action: 'search',
-          transaction_id: criteria.transaction_id,
-          date_from: criteria.date_from,
-          date_to: criteria.date_to,
-          amount: parsed.amount,
-          meta_account_id: criteria.meta_account_id,
-          account_name: criteria.account_name,
-        },
-      });
-      if (error) throw new Error(error.message);
-      if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
-      const list: any[] = (data as any)?.results || [];
-      const importable = list.filter((r) => !r.already_imported);
       if (list.length === 0) {
-        toast.info('Keine Treffer in Gmail gefunden.');
+        setNoResultsMsg('Keine passende Zahlung gefunden. Die Suche ergab weder im Portal noch in Gmail einen Treffer.');
         return;
       }
       if (importable.length === 0) {
@@ -540,9 +362,14 @@ export default function MetaPaymentsTab() {
         });
         if (impErr) throw new Error(impErr.message);
         const upserted = (imp as any)?.upserted ?? 0;
+        const importedId = (imp as any)?.results?.[0]?.id ?? null;
         if (upserted > 0) {
-          toast.success('Gmail-Treffer automatisch importiert.');
+          toast.success('Zahlungsbeleg in Gmail gefunden und importiert.');
           await load();
+          if (importedId) {
+            setHighlightId(importedId);
+            setTimeout(() => setHighlightId(null), 4000);
+          }
         } else {
           toast.warning('Import fehlgeschlagen.');
         }
@@ -554,29 +381,34 @@ export default function MetaPaymentsTab() {
     } catch (e: any) {
       toast.error('Gmail-Suche fehlgeschlagen: ' + (e?.message || e));
     } finally {
-      setGmailInlineLoading(false);
+      setGmailSearching(false);
     }
   }
 
-  const activeFilterCount =
-    (appliedSearch ? 1 : 0) +
-    (accountFilter !== 'all' ? 1 : 0) +
-    (statusFilter !== 'all' ? 1 : 0) +
-    (dateRange !== 'all' ? 1 : 0) +
-    (currencyFilter !== 'all' ? 1 : 0) +
-    (paymentMethodFilter !== 'all' ? 1 : 0) +
-    (minAmount ? 1 : 0) +
-    (maxAmount ? 1 : 0) +
-    (hasCampaignsFilter !== 'all' ? 1 : 0) +
-    (hasPdfFilter !== 'all' ? 1 : 0);
+  const handleSearchSubmit = async () => {
+    if (searchInFlightRef.current || gmailSearching) return;
+    if (!hasAnyFilter(draftFilters)) {
+      resetAll();
+      return;
+    }
+    searchInFlightRef.current = true;
+    setNoResultsMsg(null);
+    try {
+      const applied = { ...draftFilters };
+      setAppliedFilters(applied);
+      const localHits = rows.filter((r) => matchesFilters(r, applied));
+      if (localHits.length > 0) return; // local hit → do NOT call Gmail
+      await runGmailFallback(applied);
+    } finally {
+      searchInFlightRef.current = false;
+    }
+  };
 
-  const advancedCount =
-    (currencyFilter !== 'all' ? 1 : 0) +
-    (paymentMethodFilter !== 'all' ? 1 : 0) +
-    (minAmount ? 1 : 0) +
-    (maxAmount ? 1 : 0) +
-    (hasCampaignsFilter !== 'all' ? 1 : 0) +
-    (hasPdfFilter !== 'all' ? 1 : 0);
+  const onFieldKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleSearchSubmit(); }
+  };
+
+  const activeFilterCount = hasAnyFilter(appliedFilters) ? 1 : 0;
 
   return (
     <div className="space-y-4">
@@ -610,350 +442,120 @@ export default function MetaPaymentsTab() {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Filters — one single bar, six fields + Suchen + Zurücksetzen */}
       <Card className="p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex items-center max-w-sm w-full sm:w-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2">
+          <div className="lg:col-span-3">
+            <Label className="text-[10px] uppercase text-muted-foreground">Transaktions-ID</Label>
             <Input
-              placeholder="Konto, Account-ID, Transaktions-ID, Betrag oder Datum eingeben …"
-              value={draftSearch}
-              onChange={(e) => setDraftSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleSearchSubmit();
-                }
-              }}
-              className="h-8 pr-14 text-xs w-[320px] max-w-full"
+              placeholder="z. B. 27951790884507869-27902250049461958"
+              value={draftFilters.transactionId}
+              onChange={(e) => setDraftFilters((s) => ({ ...s, transactionId: e.target.value }))}
+              onKeyDown={onFieldKeyDown}
+              className="h-8 text-xs font-mono"
               disabled={gmailSearching}
             />
-            {draftSearch && !gmailSearching && (
-              <button
-                type="button"
-                onClick={clearSearch}
-                className="absolute right-8 text-muted-foreground hover:text-foreground p-1"
-                aria-label="Suche löschen"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="absolute right-0 h-8 px-2"
-              onClick={handleSearchSubmit}
-              disabled={!draftSearch.trim() || gmailSearching}
-              aria-label="Suchen"
-              title="Suchen (Enter)"
-            >
-              {gmailSearching
-                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <Search className="h-3.5 w-3.5" />}
-            </Button>
           </div>
-          <Select value={accountFilter} onValueChange={setAccountFilter}>
-            <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue placeholder="Werbekonto" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Werbekonten</SelectItem>
-              {accounts.map(([id, name]) => (
-                <SelectItem key={id} value={id}>{name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Status</SelectItem>
-              {statuses.map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangeKey)}>
-            <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Zeitraum" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Gesamter Zeitraum</SelectItem>
-              <SelectItem value="today">Heute</SelectItem>
-              <SelectItem value="7d">Letzte 7 Tage</SelectItem>
-              <SelectItem value="30d">Letzte 30 Tage</SelectItem>
-              <SelectItem value="90d">Letzte 90 Tage</SelectItem>
-              <SelectItem value="ytd">Dieses Jahr</SelectItem>
-              <SelectItem value="custom">Benutzerdefiniert…</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 text-xs">
-                <SlidersHorizontal className="h-3 w-3 mr-1" />
-                Weitere Filter
-                {advancedCount > 0 && (
-                  <Badge variant="secondary" className="ml-2 h-4 px-1.5 text-[10px]">{advancedCount}</Badge>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[340px] p-3 space-y-3" align="start">
-              {dateRange === 'custom' && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-[10px] uppercase text-muted-foreground">Von</Label>
-                    <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-8 text-xs" />
-                  </div>
-                  <div>
-                    <Label className="text-[10px] uppercase text-muted-foreground">Bis</Label>
-                    <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-8 text-xs" />
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-[10px] uppercase text-muted-foreground">Betrag min</Label>
-                  <Input inputMode="decimal" placeholder="0,00" value={minAmount} onChange={(e) => setMinAmount(e.target.value)} className="h-8 text-xs" />
-                </div>
-                <div>
-                  <Label className="text-[10px] uppercase text-muted-foreground">Betrag max</Label>
-                  <Input inputMode="decimal" placeholder="∞" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} className="h-8 text-xs" />
-                </div>
-              </div>
-              <div>
-                <Label className="text-[10px] uppercase text-muted-foreground">Währung</Label>
-                <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Währungen</SelectItem>
-                    {currencies.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-[10px] uppercase text-muted-foreground">Zahlungsmethode</Label>
-                <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Methoden</SelectItem>
-                    {paymentMethods.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-[10px] uppercase text-muted-foreground">Kampagnen</Label>
-                  <Select value={hasCampaignsFilter} onValueChange={(v) => setHasCampaignsFilter(v as any)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Alle</SelectItem>
-                      <SelectItem value="with">Mit Kampagnen</SelectItem>
-                      <SelectItem value="without">Ohne Kampagnen</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-[10px] uppercase text-muted-foreground">PDF verfügbar</Label>
-                  <Select value={hasPdfFilter} onValueChange={(v) => setHasPdfFilter(v as any)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Alle</SelectItem>
-                      <SelectItem value="yes">Nur mit PDF</SelectItem>
-                      <SelectItem value="no">Nur ohne PDF</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-
+          <div className="lg:col-span-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">Datum von</Label>
+            <Input
+              type="date"
+              value={draftFilters.dateFrom}
+              onChange={(e) => setDraftFilters((s) => ({ ...s, dateFrom: e.target.value }))}
+              onKeyDown={onFieldKeyDown}
+              className="h-8 text-xs"
+              disabled={gmailSearching}
+            />
+          </div>
+          <div className="lg:col-span-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">Datum bis</Label>
+            <Input
+              type="date"
+              value={draftFilters.dateTo}
+              onChange={(e) => setDraftFilters((s) => ({ ...s, dateTo: e.target.value }))}
+              onKeyDown={onFieldKeyDown}
+              className="h-8 text-xs"
+              disabled={gmailSearching}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <Label className="text-[10px] uppercase text-muted-foreground">Betrag</Label>
+            <Input
+              inputMode="decimal"
+              placeholder="z. B. 46,00"
+              value={draftFilters.amount}
+              onChange={(e) => setDraftFilters((s) => ({ ...s, amount: e.target.value }))}
+              onKeyDown={onFieldKeyDown}
+              className="h-8 text-xs"
+              disabled={gmailSearching}
+            />
+          </div>
+          <div className="lg:col-span-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">Meta Account ID</Label>
+            <Input
+              placeholder="z. B. act_2070598240224366"
+              value={draftFilters.metaAccountId}
+              onChange={(e) => setDraftFilters((s) => ({ ...s, metaAccountId: e.target.value }))}
+              onKeyDown={onFieldKeyDown}
+              className="h-8 text-xs font-mono"
+              disabled={gmailSearching}
+            />
+          </div>
+          <div className="lg:col-span-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">Werbekonto-Name</Label>
+            <Input
+              placeholder="z. B. Alexander Stursberg"
+              value={draftFilters.accountName}
+              onChange={(e) => setDraftFilters((s) => ({ ...s, accountName: e.target.value }))}
+              onKeyDown={onFieldKeyDown}
+              className="h-8 text-xs"
+              disabled={gmailSearching}
+            />
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <Button
+            size="sm"
+            className="h-8"
+            onClick={handleSearchSubmit}
+            disabled={!hasAnyFilter(draftFilters) || gmailSearching}
+          >
+            {gmailSearching
+              ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+              : <Search className="h-3.5 w-3.5 mr-1" />}
+            Suchen
+          </Button>
           <Button
             variant="ghost"
             size="sm"
             className="h-8 text-xs"
             onClick={resetAll}
-            disabled={activeFilterCount === 0}
+            disabled={!hasAnyFilter(draftFilters) && !hasAnyFilter(appliedFilters)}
           >
             <RotateCcw className="h-3 w-3 mr-1" /> Zurücksetzen
           </Button>
           <Button variant="outline" size="sm" className="h-8" onClick={load} disabled={loading}>
             <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} /> Aktualisieren
           </Button>
-          <Button variant="outline" size="sm" className="h-8" onClick={() => {
-            setSearchDialogInitial({
-              criteria: {
-                transaction_id: gTxnId || null,
-                date_from: gDateFrom || null,
-                date_to: gDateTo || null,
-                amount: gAmount || null,
-                meta_account_id: normalizeMetaAccountId(gMetaAccountId),
-                account_name: gAccountName || null,
-              },
-            });
-            setSearchDialogOpen(true);
-          }}>
-            <MailSearch className="h-3 w-3 mr-1" /> Zahlungsbeleg in Gmail suchen
-          </Button>
-
           <span className="text-[11px] text-muted-foreground ml-auto">
             {sorted.length} von {rows.length}
           </span>
         </div>
 
-        {/* Gmail-Suchfelder (bestätigungspflichtig, gleiche Logik wie Dialog) */}
-        <div className="grid grid-cols-2 md:grid-cols-12 gap-2 mt-3 pt-3 border-t">
-          <div className="col-span-2 md:col-span-3">
-            <Label className="text-[10px] uppercase text-muted-foreground">Transaktions-ID</Label>
-            <Input
-              placeholder="z. B. 27951790884507869-27902250049461958"
-              value={gTxnId}
-              onChange={(e) => setGTxnId(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
-              className="h-8 text-xs font-mono"
-              disabled={gmailInlineLoading}
-            />
+        {gmailSearching && (
+          <div className="mt-3 pt-3 border-t flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Kein Treffer im Portal – Gmail wird durchsucht …
           </div>
-          <div className="col-span-1 md:col-span-2">
-            <Label className="text-[10px] uppercase text-muted-foreground">Datum von</Label>
-            <Input
-              type="date"
-              value={gDateFrom}
-              onChange={(e) => setGDateFrom(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
-              className="h-8 text-xs"
-              disabled={gmailInlineLoading}
-            />
-          </div>
-          <div className="col-span-1 md:col-span-2">
-            <Label className="text-[10px] uppercase text-muted-foreground">Datum bis</Label>
-            <Input
-              type="date"
-              value={gDateTo}
-              onChange={(e) => setGDateTo(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
-              className="h-8 text-xs"
-              disabled={gmailInlineLoading}
-            />
-          </div>
-          <div className="col-span-1 md:col-span-1">
-            <Label className="text-[10px] uppercase text-muted-foreground">Betrag</Label>
-            <Input
-              inputMode="decimal"
-              placeholder="z. B. 10,00"
-              value={gAmount}
-              onChange={(e) => setGAmount(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
-              className="h-8 text-xs"
-              disabled={gmailInlineLoading}
-            />
-          </div>
-          <div className="col-span-1 md:col-span-2">
-            <Label className="text-[10px] uppercase text-muted-foreground">Meta Account ID</Label>
-            <Input
-              placeholder="z. B. act_2070598240224366"
-              value={gMetaAccountId}
-              onChange={(e) => setGMetaAccountId(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
-              className="h-8 text-xs font-mono"
-              disabled={gmailInlineLoading}
-            />
-          </div>
-          <div className="col-span-2 md:col-span-2">
-            <Label className="text-[10px] uppercase text-muted-foreground">Werbekonto-Name</Label>
-            <Input
-              placeholder="z. B. Alexander Stursberg"
-              value={gAccountName}
-              onChange={(e) => setGAccountName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
-              className="h-8 text-xs"
-              disabled={gmailInlineLoading}
-            />
-          </div>
-          <div className="col-span-2 md:col-span-12 flex items-center gap-2">
-            <Button
-              size="sm"
-              className="h-8"
-              onClick={runInlineGmailSearch}
-              disabled={!inlineGmailHasAny || gmailInlineLoading}
-            >
-              {gmailInlineLoading
-                ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                : <MailSearch className="h-3 w-3 mr-1" />}
-              In Gmail suchen
-            </Button>
-            {inlineGmailHasAny && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={clearInlineGmail}
-                disabled={gmailInlineLoading}
-              >
-                <X className="h-3 w-3 mr-1" /> Leeren
-              </Button>
-            )}
-            <span className="text-[10px] text-muted-foreground">
-              Suche startet erst nach Enter oder Klick — reines Tippen löst keine Anfrage aus.
-            </span>
-          </div>
-        </div>
-
-
-        {activeFilterCount > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t">
-            {appliedSearch && (
-              <Badge variant="secondary" className="text-[10px] gap-1">
-                Suche: „{appliedSearch}"
-                <button onClick={clearSearch}><X className="h-2.5 w-2.5" /></button>
-              </Badge>
-            )}
-            {accountFilter !== 'all' && (
-              <Badge variant="secondary" className="text-[10px] gap-1">
-                {accounts.find(([id]) => id === accountFilter)?.[1] || accountFilter}
-                <button onClick={() => setAccountFilter('all')}><X className="h-2.5 w-2.5" /></button>
-              </Badge>
-            )}
-            {statusFilter !== 'all' && (
-              <Badge variant="secondary" className="text-[10px] gap-1">
-                Status: {statuses.find(([k]) => k === statusFilter)?.[1] || statusFilter}
-                <button onClick={() => setStatusFilter('all')}><X className="h-2.5 w-2.5" /></button>
-              </Badge>
-            )}
-            {dateRange !== 'all' && (
-              <Badge variant="secondary" className="text-[10px] gap-1">
-                Zeitraum: {dateRange}
-                <button onClick={() => setDateRange('all')}><X className="h-2.5 w-2.5" /></button>
-              </Badge>
-            )}
-            {currencyFilter !== 'all' && (
-              <Badge variant="secondary" className="text-[10px] gap-1">
-                {currencyFilter}
-                <button onClick={() => setCurrencyFilter('all')}><X className="h-2.5 w-2.5" /></button>
-              </Badge>
-            )}
-            {paymentMethodFilter !== 'all' && (
-              <Badge variant="secondary" className="text-[10px] gap-1">
-                {paymentMethodFilter}
-                <button onClick={() => setPaymentMethodFilter('all')}><X className="h-2.5 w-2.5" /></button>
-              </Badge>
-            )}
-            {(minAmount || maxAmount) && (
-              <Badge variant="secondary" className="text-[10px] gap-1">
-                Betrag {minAmount || '0'}–{maxAmount || '∞'}
-                <button onClick={() => { setMinAmount(''); setMaxAmount(''); }}><X className="h-2.5 w-2.5" /></button>
-              </Badge>
-            )}
-            {hasCampaignsFilter !== 'all' && (
-              <Badge variant="secondary" className="text-[10px] gap-1">
-                {hasCampaignsFilter === 'with' ? 'Mit Kampagnen' : 'Ohne Kampagnen'}
-                <button onClick={() => setHasCampaignsFilter('all')}><X className="h-2.5 w-2.5" /></button>
-              </Badge>
-            )}
-            {hasPdfFilter !== 'all' && (
-              <Badge variant="secondary" className="text-[10px] gap-1">
-                {hasPdfFilter === 'yes' ? 'Mit PDF' : 'Ohne PDF'}
-                <button onClick={() => setHasPdfFilter('all')}><X className="h-2.5 w-2.5" /></button>
-              </Badge>
-            )}
+        )}
+        {noResultsMsg && !gmailSearching && (
+          <div className="mt-3 pt-3 border-t text-xs">
+            <p className="font-medium">Keine passende Zahlung gefunden.</p>
+            <p className="text-muted-foreground">Die Suche ergab weder im Portal noch in Gmail einen Treffer.</p>
           </div>
         )}
       </Card>
+
 
       {/* Table */}
       <Card className="overflow-hidden">
