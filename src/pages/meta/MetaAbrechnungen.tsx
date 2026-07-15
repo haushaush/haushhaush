@@ -653,24 +653,8 @@ export default function MetaAbrechnungen() {
         </div>
       </section>
 
-      {/* Rechnungen KPIs — from real business_invoices */}
-      <section>
-        <SectionHeader
-          title="Rechnungen"
-          source={hasInvoices ? 'Meta Business Invoices' : (invoicesSupported ? 'Meta Business Invoices · Sync ausstehend' : 'Nicht über Meta API verfügbar')}
-          unavailable={!invoicesSupported && !hasInvoices}
-        />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KpiCard label="Abrechnungen gesamt" value={hasInvoices ? String(invoiceKpis.totalCount) : (invoicesSupported ? '–' : 'n/a')} source="Business Invoices" />
-          <KpiCard label="Gesamtbetrag" value={hasInvoices ? fmtMulti(invoiceKpis.totalSum) : '–'} source="Business Invoices" />
-          <KpiCard label="Offene Abrechnungen" value={hasInvoices ? String(invoiceKpis.openCount) : '–'} source="Business Invoices" />
-          <KpiCard label="Offener Betrag" value={hasInvoices ? fmtMulti(invoiceKpis.openSum) : '–'} source="Business Invoices" />
-          <KpiCard label="Fehlgeschlagene Abrechnungen" value={hasInvoices ? String(invoiceKpis.failedCount) : '–'} source="Business Invoices" />
-          <KpiCard label="Fehlgeschlagener Betrag" value={hasInvoices ? fmtMulti(invoiceKpis.failedSum) : '–'} source="Business Invoices" />
-          <KpiCard label="Bezahlte Abrechnungen" value={hasInvoices ? String(invoiceKpis.paidCount) : '–'} source="Business Invoices" />
-          <KpiCard label="Bezahlter Betrag" value={hasInvoices ? fmtMulti(invoiceKpis.paidSum) : '–'} source="Business Invoices" />
-        </div>
-      </section>
+
+
 
       {/* Chart */}
       <Card className="p-4">
