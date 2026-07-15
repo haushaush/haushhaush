@@ -549,6 +549,18 @@ export default function MetaAbrechnungen() {
         </div>
       </div>
 
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
+          <TabsTrigger value="rechnungen">Rechnungen{invoices.length > 0 ? ` (${invoices.length})` : ''}</TabsTrigger>
+          <TabsTrigger value="zahlungen">Zahlungen</TabsTrigger>
+        </TabsList>
+
+      {/* ==================== Übersicht Tab ==================== */}
+      <TabsContent value="uebersicht" className="space-y-6">
+
+
+
       {/* Filters */}
       <Card className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
