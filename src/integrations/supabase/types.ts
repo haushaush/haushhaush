@@ -3023,6 +3023,99 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_payment_receipts: {
+        Row: {
+          account_name: string | null
+          amount: number | null
+          billing_reason: string | null
+          campaign_count: number | null
+          campaigns: Json
+          created_at: string
+          currency: string | null
+          document_type: string
+          email_message_id: string | null
+          email_received_at: string | null
+          email_subject: string | null
+          gmail_id: string | null
+          gmail_thread_id: string | null
+          id: string
+          meta_account_id: string | null
+          meta_account_id_numeric: string | null
+          payment_method: string | null
+          payment_status: string | null
+          payment_status_label: string | null
+          period_end_raw: string | null
+          period_start_raw: string | null
+          product_type: string | null
+          raw: Json | null
+          source: string
+          transaction_date: string | null
+          transaction_id: string | null
+          transaction_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string | null
+          amount?: number | null
+          billing_reason?: string | null
+          campaign_count?: number | null
+          campaigns?: Json
+          created_at?: string
+          currency?: string | null
+          document_type?: string
+          email_message_id?: string | null
+          email_received_at?: string | null
+          email_subject?: string | null
+          gmail_id?: string | null
+          gmail_thread_id?: string | null
+          id?: string
+          meta_account_id?: string | null
+          meta_account_id_numeric?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          payment_status_label?: string | null
+          period_end_raw?: string | null
+          period_start_raw?: string | null
+          product_type?: string | null
+          raw?: Json | null
+          source?: string
+          transaction_date?: string | null
+          transaction_id?: string | null
+          transaction_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string | null
+          amount?: number | null
+          billing_reason?: string | null
+          campaign_count?: number | null
+          campaigns?: Json
+          created_at?: string
+          currency?: string | null
+          document_type?: string
+          email_message_id?: string | null
+          email_received_at?: string | null
+          email_subject?: string | null
+          gmail_id?: string | null
+          gmail_thread_id?: string | null
+          id?: string
+          meta_account_id?: string | null
+          meta_account_id_numeric?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          payment_status_label?: string | null
+          period_end_raw?: string | null
+          period_start_raw?: string | null
+          product_type?: string | null
+          raw?: Json | null
+          source?: string
+          transaction_date?: string | null
+          transaction_id?: string | null
+          transaction_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       mfa_recovery_codes: {
         Row: {
           code_hash: string
