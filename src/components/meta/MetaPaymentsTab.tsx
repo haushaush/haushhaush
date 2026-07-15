@@ -374,8 +374,25 @@ export default function MetaPaymentsTab() {
     return sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
   };
 
+  // URL sync (only for confirmed appliedSearch)
+  useEffect(() => {
+    const current = searchParams.get('search') || '';
+    if (appliedSearch === current) return;
+    const next = new URLSearchParams(searchParams);
+    if (appliedSearch) next.set('search', appliedSearch);
+    else next.delete('search');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedSearch]);
+
+  const clearSearch = () => {
+    setDraftSearch('');
+    setAppliedSearch('');
+  };
+
   const resetAll = () => {
-    setSearch(DEFAULT_STATE.search);
+    setDraftSearch('');
+    setAppliedSearch('');
     setAccountFilter(DEFAULT_STATE.accountFilter);
     setCurrencyFilter(DEFAULT_STATE.currencyFilter);
     setStatusFilter(DEFAULT_STATE.statusFilter);
@@ -389,8 +406,124 @@ export default function MetaPaymentsTab() {
     setHasPdfFilter(DEFAULT_STATE.hasPdfFilter);
   };
 
+  // Local match against currently loaded rows for a confirmed query
+  function localMatches(text: string, parsed: ParsedCriteria): PaymentReceipt[] {
+    const q = text.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (parsed.transactionId && r.transaction_id === parsed.transactionId) return true;
+      if (parsed.metaAccountId && (r.meta_account_id === parsed.metaAccountId ||
+          r.meta_account_id_numeric === parsed.accountNumeric)) return true;
+      // Composite text match
+      const hay = [
+        r.account_name, r.meta_account_id, r.meta_account_id_numeric,
+        r.transaction_id, r.payment_method, r.billing_reason, r.email_subject,
+        r.transaction_date, r.amount != null ? String(r.amount) : null,
+        r.amount != null ? r.amount.toFixed(2).replace('.', ',') : null,
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (q && hay.includes(q)) return true;
+      // Date + amount pair
+      if (parsed.date) {
+        const iso = r.transaction_date ? r.transaction_date.slice(0, 10) : null;
+        if (iso === parsed.date) {
+          if (parsed.amount == null || (r.amount != null && Math.abs(r.amount - parsed.amount) < 0.01)) return true;
+        }
+      }
+      if (parsed.remainingText && r.account_name &&
+          r.account_name.toLowerCase().includes(parsed.remainingText.toLowerCase())) {
+        if (parsed.amount == null || (r.amount != null && Math.abs(r.amount - parsed.amount) < 0.01)) return true;
+      }
+      return false;
+    });
+  }
+
+  async function runGmailFallback(parsed: ParsedCriteria, rawText: string) {
+    const criteria: GmailSearchCriteria = {
+      transaction_id: parsed.transactionId || null,
+      date_from: parsed.date || null,
+      date_to: parsed.date || null,
+      amount: parsed.amountRaw || null,
+      meta_account_id: parsed.metaAccountId || null,
+      account_name: parsed.remainingText || null,
+    };
+    setSearchPhase('gmail');
+    setGmailSearching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('gmail-search-meta-receipts', {
+        body: {
+          action: 'search',
+          transaction_id: criteria.transaction_id,
+          date_from: criteria.date_from,
+          date_to: criteria.date_to,
+          amount: parsed.amount,
+          meta_account_id: criteria.meta_account_id,
+          account_name: criteria.account_name,
+        },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
+      const list: any[] = (data as any)?.results || [];
+      const importable = list.filter((r) => !r.already_imported);
+
+      if (importable.length === 0) {
+        toast.info(list.length > 0
+          ? 'Gmail-Treffer sind bereits importiert.'
+          : `Kein Treffer für „${rawText}" — weder lokal noch in Gmail.`);
+        return;
+      }
+      if (importable.length === 1) {
+        // Auto-import the single hit
+        const { data: imp, error: impErr } = await supabase.functions.invoke('gmail-search-meta-receipts', {
+          body: { action: 'import', items: importable },
+        });
+        if (impErr) throw new Error(impErr.message);
+        const upserted = (imp as any)?.upserted ?? 0;
+        if (upserted > 0) {
+          toast.success('Gmail-Treffer automatisch importiert.');
+          await load();
+        } else {
+          toast.warning('Import fehlgeschlagen.');
+        }
+        return;
+      }
+      // Multiple → open dialog with preview
+      setSearchDialogInitial({ criteria, results: list });
+      setSearchDialogOpen(true);
+      toast.info(`${list.length} Gmail-Treffer — bitte auswählen.`);
+    } catch (e: any) {
+      toast.error('Gmail-Suche fehlgeschlagen: ' + (e?.message || e));
+    } finally {
+      setGmailSearching(false);
+      setSearchPhase('idle');
+    }
+  }
+
+  const handleSearchSubmit = async () => {
+    if (searchInFlightRef.current || gmailSearching) return;
+    const normalized = draftSearch.trim();
+    if (!normalized) return;
+    searchInFlightRef.current = true;
+    try {
+      setSearchPhase('local');
+      setAppliedSearch(normalized);
+      const parsed = parseConfirmedQuery(normalized);
+      const hits = localMatches(normalized, parsed);
+      if (hits.length > 0) {
+        setSearchPhase('idle');
+        return;
+      }
+      if (!isGmailQualified(parsed)) {
+        toast.info('Kein lokaler Treffer. Bitte Datum, Werbekonto oder Account-ID ergänzen, um Gmail zu durchsuchen.');
+        setSearchPhase('idle');
+        return;
+      }
+      await runGmailFallback(parsed, normalized);
+    } finally {
+      searchInFlightRef.current = false;
+    }
+  };
+
   const activeFilterCount =
-    (search ? 1 : 0) +
+    (appliedSearch ? 1 : 0) +
     (accountFilter !== 'all' ? 1 : 0) +
     (statusFilter !== 'all' ? 1 : 0) +
     (dateRange !== 'all' ? 1 : 0) +
