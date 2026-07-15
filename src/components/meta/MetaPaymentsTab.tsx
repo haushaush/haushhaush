@@ -56,108 +56,47 @@ function fmtDate(iso: string | null) {
   catch { return iso; }
 }
 
-type DateRangeKey = 'all' | 'today' | '7d' | '30d' | '90d' | 'ytd' | 'custom';
 type SortKey = 'transaction_date' | 'account_name' | 'amount' | 'payment_method' | 'payment_status' | 'campaign_count';
 type SortDir = 'asc' | 'desc';
 
-const DEFAULT_STATE = {
-  search: '',
-  accountFilter: 'all',
-  currencyFilter: 'all',
-  statusFilter: 'all',
-  dateRange: 'all' as DateRangeKey,
-  customFrom: '',
-  customTo: '',
-  minAmount: '',
-  maxAmount: '',
-  paymentMethodFilter: 'all',
-  hasCampaignsFilter: 'all' as 'all' | 'with' | 'without',
-  hasPdfFilter: 'all' as 'all' | 'yes' | 'no',
+type SearchFilters = {
+  transactionId: string;
+  dateFrom: string;   // YYYY-MM-DD
+  dateTo: string;     // YYYY-MM-DD
+  amount: string;     // de format e.g. "46,00"
+  metaAccountId: string;
+  accountName: string;
 };
 
-function computeRangeStart(key: DateRangeKey): number | null {
-  const now = new Date();
-  switch (key) {
-    case 'today': {
-      const d = new Date(now); d.setHours(0,0,0,0); return d.getTime();
-    }
-    case '7d': return now.getTime() - 7 * 24 * 3600 * 1000;
-    case '30d': return now.getTime() - 30 * 24 * 3600 * 1000;
-    case '90d': return now.getTime() - 90 * 24 * 3600 * 1000;
-    case 'ytd': return new Date(now.getFullYear(), 0, 1).getTime();
-    default: return null;
-  }
-}
-
-// ── Confirmed search parser ────────────────────────────────────────
-type ParsedCriteria = {
-  transactionId: string | null;
-  metaAccountId: string | null;
-  accountNumeric: string | null;
-  date: string | null;      // ISO yyyy-mm-dd
-  amount: number | null;    // parsed as EUR
-  amountRaw: string | null; // de format "46,00"
-  remainingText: string;    // leftover, potential account name
+const EMPTY_FILTERS: SearchFilters = {
+  transactionId: '',
+  dateFrom: '',
+  dateTo: '',
+  amount: '',
+  metaAccountId: '',
+  accountName: '',
 };
 
-function parseConfirmedQuery(input: string): ParsedCriteria {
-  let text = ` ${input.trim()} `;
-  const out: ParsedCriteria = {
-    transactionId: null, metaAccountId: null, accountNumeric: null,
-    date: null, amount: null, amountRaw: null, remainingText: '',
-  };
-
-  // Transaction ID: 12+ digits - 12+ digits
-  const txn = text.match(/\b(\d{10,}-\d{10,})\b/);
-  if (txn) { out.transactionId = txn[1]; text = text.replace(txn[0], ' '); }
-
-  // Meta account id (act_ prefix or standalone long numeric 10-17 digits)
-  const acct = text.match(/\bact_(\d{6,})\b/i);
-  if (acct) {
-    out.metaAccountId = `act_${acct[1]}`;
-    out.accountNumeric = acct[1];
-    text = text.replace(acct[0], ' ');
-  } else {
-    const num = text.match(/\b(\d{10,17})\b/);
-    if (num) {
-      out.metaAccountId = `act_${num[1]}`;
-      out.accountNumeric = num[1];
-      text = text.replace(num[0], ' ');
-    }
-  }
-
-  // Date dd.mm.yyyy
-  const date = text.match(/\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/);
-  if (date) {
-    const dd = date[1].padStart(2, '0');
-    const mm = date[2].padStart(2, '0');
-    out.date = `${date[3]}-${mm}-${dd}`;
-    text = text.replace(date[0], ' ');
-  }
-
-  // Amount: 1.234,56 or 46,00 (with optional € / EUR)
-  const amt = text.match(/\b(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|EUR)?/i);
-  if (amt) {
-    out.amountRaw = amt[1];
-    const n = parseFloat(amt[1].replace(/\./g, '').replace(',', '.'));
-    if (Number.isFinite(n)) out.amount = n;
-    text = text.replace(amt[0], ' ');
-  }
-
-  // Strip standalone € / EUR / PayPal noise words for remainingText check
-  const remaining = text.replace(/\b(€|EUR|PayPal)\b/gi, ' ').replace(/\s+/g, ' ').trim();
-  out.remainingText = remaining;
-  return out;
+function parseDeAmount(v: string): number | null {
+  if (!v) return null;
+  const n = parseFloat(v.trim().replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
 }
 
-function isGmailQualified(p: ParsedCriteria): boolean {
-  if (p.transactionId) return true;
-  if (p.metaAccountId) return true;
-  if (p.date) return true;
-  const hasName = p.remainingText.length >= 3;
-  if (hasName) return true;
-  // amount alone is not enough
-  return false;
+function normalizeMetaAccountNumeric(v: string): string | null {
+  const t = v.trim();
+  if (!t) return null;
+  const m = t.match(/^(?:act_)?(\d+)$/i);
+  return m ? m[1] : t.replace(/^act_/i, '');
+}
+
+function normalizeName(v: string | null | undefined): string {
+  return (v || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function hasAnyFilter(f: SearchFilters): boolean {
+  return !!(f.transactionId.trim() || f.dateFrom || f.dateTo || f.amount.trim() ||
+            f.metaAccountId.trim() || f.accountName.trim());
 }
 
 export default function MetaPaymentsTab() {
@@ -170,35 +109,23 @@ export default function MetaPaymentsTab() {
   }>({});
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialApplied = searchParams.get('search') || '';
 
   // ── Confirmed-search states ──────────────────────────────────────
-  const [draftSearch, setDraftSearch] = useState<string>(initialApplied);
-  const [appliedSearch, setAppliedSearch] = useState<string>(initialApplied);
+  const initialFilters: SearchFilters = {
+    transactionId: searchParams.get('txn') || '',
+    dateFrom: searchParams.get('from') || '',
+    dateTo: searchParams.get('to') || '',
+    amount: searchParams.get('amount') || '',
+    metaAccountId: searchParams.get('acct') || '',
+    accountName: searchParams.get('name') || '',
+  };
+  const [draftFilters, setDraftFilters] = useState<SearchFilters>(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState<SearchFilters>(initialFilters);
   const [gmailSearching, setGmailSearching] = useState(false);
-  const [searchPhase, setSearchPhase] = useState<'idle' | 'local' | 'gmail'>('idle');
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [noResultsMsg, setNoResultsMsg] = useState<string | null>(null);
   const searchInFlightRef = useRef(false);
 
-  const [accountFilter, setAccountFilter] = useState<string>(DEFAULT_STATE.accountFilter);
-  const [currencyFilter, setCurrencyFilter] = useState<string>(DEFAULT_STATE.currencyFilter);
-  const [statusFilter, setStatusFilter] = useState<string>(DEFAULT_STATE.statusFilter);
-  const [dateRange, setDateRange] = useState<DateRangeKey>(DEFAULT_STATE.dateRange);
-  const [customFrom, setCustomFrom] = useState<string>(DEFAULT_STATE.customFrom);
-  const [customTo, setCustomTo] = useState<string>(DEFAULT_STATE.customTo);
-  const [minAmount, setMinAmount] = useState<string>(DEFAULT_STATE.minAmount);
-  const [maxAmount, setMaxAmount] = useState<string>(DEFAULT_STATE.maxAmount);
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>(DEFAULT_STATE.paymentMethodFilter);
-  const [hasCampaignsFilter, setHasCampaignsFilter] = useState<typeof DEFAULT_STATE.hasCampaignsFilter>(DEFAULT_STATE.hasCampaignsFilter);
-  const [hasPdfFilter, setHasPdfFilter] = useState<typeof DEFAULT_STATE.hasPdfFilter>(DEFAULT_STATE.hasPdfFilter);
-
-  // Inline Gmail search (structured criteria row)
-  const [gTxnId, setGTxnId] = useState('');
-  const [gDateFrom, setGDateFrom] = useState('');
-  const [gDateTo, setGDateTo] = useState('');
-  const [gAmount, setGAmount] = useState('');
-  const [gMetaAccountId, setGMetaAccountId] = useState('');
-  const [gAccountName, setGAccountName] = useState('');
-  const [gmailInlineLoading, setGmailInlineLoading] = useState(false);
 
   const [sortKey, setSortKey] = useState<SortKey>('transaction_date');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
