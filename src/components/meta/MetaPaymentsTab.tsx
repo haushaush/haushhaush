@@ -91,6 +91,7 @@ export default function MetaPaymentsTab() {
   const [rows, setRows] = useState<PaymentReceipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
 
   const [search, setSearch] = useState(DEFAULT_STATE.search);
   const [accountFilter, setAccountFilter] = useState<string>(DEFAULT_STATE.accountFilter);
