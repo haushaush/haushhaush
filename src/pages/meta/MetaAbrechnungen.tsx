@@ -783,137 +783,166 @@ export default function MetaAbrechnungen() {
         </div>
       </Card>
 
-      {/* Invoices Tab */}
-      <Tabs defaultValue="invoices">
-        <TabsList>
-          <TabsTrigger value="invoices">Rechnungen ({invoices.length})</TabsTrigger>
-          <TabsTrigger value="payments">Zahlungen</TabsTrigger>
-        </TabsList>
+      </TabsContent>
 
-        <TabsContent value="invoices">
-          {!invoicesSupported && !hasInvoices ? (
-            <UnavailableCard kind="invoices" diagLoading={diag.status === 'loading'} />
-          ) : !hasInvoices ? (
-            <Card className="p-8 text-center text-sm text-muted-foreground">
-              Business-Invoices-Endpunkt verfügbar, aber noch keine Datensätze synchronisiert.
-              {canManage && <div className="mt-3"><Button size="sm" variant="outline" onClick={handleSync} disabled={syncing}>Jetzt synchronisieren</Button></div>}
-            </Card>
-          ) : (
-            <Card className="p-4 space-y-4">
-              {/* Filters */}
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
-                <Select value={invStatus} onValueChange={setInvStatus}>
-                  <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Status</SelectItem>
-                    <SelectItem value="open">Offen / Unsettled</SelectItem>
-                    <SelectItem value="paid">Bezahlt</SelectItem>
-                    <SelectItem value="failed">Fehlgeschlagen</SelectItem>
-                    <SelectItem value="pending">Ausstehend</SelectItem>
-                    <SelectItem value="canceled">Storniert</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={invAccount} onValueChange={setInvAccount}>
-                  <SelectTrigger><SelectValue placeholder="Werbekonto" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alle Werbekonten</SelectItem>
-                    <SelectItem value="__unassigned__">Nicht zugeordnet</SelectItem>
-                    {snapshots.map((s) => (
-                      <SelectItem key={s.meta_account_id} value={s.meta_account_id}>
-                        {s.account_name || s.meta_account_id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={invRange} onValueChange={(v) => setInvRange(v as Preset)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PRESETS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Input type="number" placeholder="Mindestbetrag" value={invMin} onChange={(e) => setInvMin(e.target.value)} />
-                <Input type="number" placeholder="Maximalbetrag" value={invMax} onChange={(e) => setInvMax(e.target.value)} />
-                <Input placeholder="ID / Konto / Referenz" value={invSearch} onChange={(e) => setInvSearch(e.target.value)} />
-              </div>
+      {/* ==================== Rechnungen Tab ==================== */}
+      <TabsContent value="rechnungen" className="space-y-6">
+        {/* Rechnungen KPIs — from real business_invoices */}
+        <section>
+          <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
+            <SectionHeader
+              title="Rechnungen"
+              source={hasInvoices ? 'Meta Business Invoices' : (invoicesSupported ? 'Meta Business Invoices · Sync ausstehend' : 'Nicht über Meta API verfügbar')}
+              unavailable={!invoicesSupported && !hasInvoices}
+            />
+            {canManage && invoicesSupported && (
+              <Button onClick={handleBackfill} disabled={backfilling || syncing} variant="outline" size="sm">
+                <RefreshCw className={`h-3.5 w-3.5 mr-2 ${backfilling ? 'animate-spin' : ''}`} />
+                Historische Rechnungen synchronisieren
+              </Button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KpiCard label="Abrechnungen gesamt" value={hasInvoices ? String(invoiceKpis.totalCount) : (invoicesSupported ? '–' : 'n/a')} source="Business Invoices" />
+            <KpiCard label="Gesamtbetrag" value={hasInvoices ? fmtMulti(invoiceKpis.totalSum) : '–'} source="Business Invoices" />
+            <KpiCard label="Offene Abrechnungen" value={hasInvoices ? String(invoiceKpis.openCount) : '–'} source="Business Invoices" />
+            <KpiCard label="Offener Betrag" value={hasInvoices ? fmtMulti(invoiceKpis.openSum) : '–'} source="Business Invoices" />
+            <KpiCard label="Fehlgeschlagene Abrechnungen" value={hasInvoices ? String(invoiceKpis.failedCount) : '–'} source="Business Invoices" />
+            <KpiCard label="Fehlgeschlagener Betrag" value={hasInvoices ? fmtMulti(invoiceKpis.failedSum) : '–'} source="Business Invoices" />
+            <KpiCard label="Bezahlte Abrechnungen" value={hasInvoices ? String(invoiceKpis.paidCount) : '–'} source="Business Invoices" />
+            <KpiCard label="Bezahlter Betrag" value={hasInvoices ? fmtMulti(invoiceKpis.paidSum) : '–'} source="Business Invoices" />
+          </div>
+        </section>
 
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Abrechnungs-ID</TableHead>
-                      <TableHead>Datum</TableHead>
-                      <TableHead>Werbekonto</TableHead>
-                      <TableHead>Account-ID</TableHead>
-                      <TableHead className="text-right">Betrag</TableHead>
-                      <TableHead>Währung</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Zahlungsmethode</TableHead>
-                      <TableHead>Referenz</TableHead>
-                      <TableHead>Letzter Sync</TableHead>
-                      <TableHead></TableHead>
+        {!invoicesSupported && !hasInvoices ? (
+          <UnavailableCard kind="invoices" diagLoading={diag.status === 'loading'} />
+        ) : !hasInvoices ? (
+          <Card className="p-8 text-center text-sm text-muted-foreground">
+            Business-Invoices-Endpunkt verfügbar, aber noch keine Datensätze synchronisiert.
+            {canManage && <div className="mt-3 flex justify-center gap-2">
+              <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing}>Jetzt synchronisieren</Button>
+              <Button size="sm" variant="outline" onClick={handleBackfill} disabled={backfilling}>Historischen Backfill starten</Button>
+            </div>}
+          </Card>
+        ) : (
+          <Card className="p-4 space-y-4">
+            {/* Filters */}
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+              <Select value={invStatus} onValueChange={setInvStatus}>
+                <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Status</SelectItem>
+                  <SelectItem value="open">Offen / Unsettled</SelectItem>
+                  <SelectItem value="paid">Bezahlt</SelectItem>
+                  <SelectItem value="failed">Fehlgeschlagen</SelectItem>
+                  <SelectItem value="pending">Ausstehend</SelectItem>
+                  <SelectItem value="canceled">Storniert</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={invAccount} onValueChange={setInvAccount}>
+                <SelectTrigger><SelectValue placeholder="Werbekonto" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Werbekonten</SelectItem>
+                  <SelectItem value="__unassigned__">Nicht zugeordnet</SelectItem>
+                  {snapshots.map((s) => (
+                    <SelectItem key={s.meta_account_id} value={s.meta_account_id}>
+                      {s.account_name || s.meta_account_id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={invRange} onValueChange={(v) => setInvRange(v as Preset)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PRESETS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Input type="number" placeholder="Mindestbetrag" value={invMin} onChange={(e) => setInvMin(e.target.value)} />
+              <Input type="number" placeholder="Maximalbetrag" value={invMax} onChange={(e) => setInvMax(e.target.value)} />
+              <Input placeholder="ID / Konto / Referenz" value={invSearch} onChange={(e) => setInvSearch(e.target.value)} />
+            </div>
+
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Abrechnungs-ID</TableHead>
+                    <TableHead>Datum</TableHead>
+                    <TableHead>Werbekonto</TableHead>
+                    <TableHead>Account-ID</TableHead>
+                    <TableHead className="text-right">Betrag</TableHead>
+                    <TableHead>Währung</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Zahlungsmethode</TableHead>
+                    <TableHead>Referenz</TableHead>
+                    <TableHead>Letzter Sync</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoicesPage.length === 0 ? (
+                    <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground">Keine Rechnungen entsprechen den Filtern.</TableCell></TableRow>
+                  ) : invoicesPage.map((i) => (
+                    <TableRow key={i.id}>
+                      <TableCell className="font-mono text-xs">{i.meta_invoice_id}</TableCell>
+                      <TableCell className="text-xs">{i.invoice_date || '–'}{i.due_date && <div className="text-muted-foreground">fällig: {i.due_date}</div>}</TableCell>
+                      <TableCell>{i.account_name || (i.meta_account_id ? '–' : <span className="text-muted-foreground italic">Nicht zugeordnet</span>)}</TableCell>
+                      <TableCell className="font-mono text-xs">{i.meta_account_id || '–'}</TableCell>
+                      <TableCell className="text-right font-mono">{i.amount != null ? formatCurrency(i.amount, i.currency || 'EUR') : '–'}</TableCell>
+                      <TableCell className="text-xs">{i.currency || '–'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={statusStyle(i.status_mapped)}>{statusLabel(i.status_mapped)}</Badge>
+                        {i.status && String(i.status).toLowerCase() !== String(i.status_mapped).toLowerCase() && (
+                          <div className="text-[10px] text-muted-foreground mt-1">Meta: {i.status}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">{i.payment_method || '–'}</TableCell>
+                      <TableCell className="text-xs">{i.payment_reference || '–'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{new Date(i.synced_at).toLocaleString('de-DE')}</TableCell>
+                      <TableCell>
+                        {i.document_url && (
+                          <Button variant="ghost" size="sm" asChild>
+                            <a href={i.document_url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {invoicesPage.length === 0 ? (
-                      <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground">Keine Rechnungen entsprechen den Filtern.</TableCell></TableRow>
-                    ) : invoicesPage.map((i) => (
-                      <TableRow key={i.id}>
-                        <TableCell className="font-mono text-xs">{i.meta_invoice_id}</TableCell>
-                        <TableCell className="text-xs">{i.invoice_date || '–'}{i.due_date && <div className="text-muted-foreground">fällig: {i.due_date}</div>}</TableCell>
-                        <TableCell>{i.account_name || (i.meta_account_id ? '–' : <span className="text-muted-foreground italic">Nicht zugeordnet</span>)}</TableCell>
-                        <TableCell className="font-mono text-xs">{i.meta_account_id || '–'}</TableCell>
-                        <TableCell className="text-right font-mono">{i.amount != null ? formatCurrency(i.amount, i.currency || 'EUR') : '–'}</TableCell>
-                        <TableCell className="text-xs">{i.currency || '–'}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={statusStyle(i.status_mapped)}>{statusLabel(i.status_mapped)}</Badge>
-                          {i.status && String(i.status).toLowerCase() !== String(i.status_mapped).toLowerCase() && (
-                            <div className="text-[10px] text-muted-foreground mt-1">Meta: {i.status}</div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-xs">{i.payment_method || '–'}</TableCell>
-                        <TableCell className="text-xs">{i.payment_reference || '–'}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{new Date(i.synced_at).toLocaleString('de-DE')}</TableCell>
-                        <TableCell>
-                          {i.document_url && (
-                            <Button variant="ghost" size="sm" asChild>
-                              <a href={i.document_url} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <span>Pro Seite:</span>
-                  <Select value={String(invPageSize)} onValueChange={(v) => { setInvPageSize(Number(v) as 25 | 50 | 100); setInvPage(1); }}>
-                    <SelectTrigger className="h-7 w-20"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="25">25</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span>Seite {invPage} von {invoicesPageCount} · {invoicesFiltered.length} Einträge</span>
-                  <Button variant="outline" size="sm" className="h-7" disabled={invPage <= 1} onClick={() => setInvPage((p) => Math.max(1, p - 1))}><ChevronLeft className="h-3 w-3" /></Button>
-                  <Button variant="outline" size="sm" className="h-7" disabled={invPage >= invoicesPageCount} onClick={() => setInvPage((p) => Math.min(invoicesPageCount, p + 1))}><ChevronRight className="h-3 w-3" /></Button>
-                </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span>Pro Seite:</span>
+                <Select value={String(invPageSize)} onValueChange={(v) => { setInvPageSize(Number(v) as 25 | 50 | 100); setInvPage(1); }}>
+                  <SelectTrigger className="h-7 w-20"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </Card>
-          )}
-        </TabsContent>
+              <div className="flex items-center gap-2">
+                <span>{invoicesFiltered.length === 0 ? '0' : `${(invPage - 1) * invPageSize + 1}–${Math.min(invPage * invPageSize, invoicesFiltered.length)}`} von {invoicesFiltered.length} Rechnungen · Seite {invPage} von {invoicesPageCount}</span>
+                <Button variant="outline" size="sm" className="h-7" disabled={invPage <= 1} onClick={() => setInvPage((p) => Math.max(1, p - 1))}><ChevronLeft className="h-3 w-3" /></Button>
+                <Button variant="outline" size="sm" className="h-7" disabled={invPage >= invoicesPageCount} onClick={() => setInvPage((p) => Math.min(invoicesPageCount, p + 1))}><ChevronRight className="h-3 w-3" /></Button>
+              </div>
+            </div>
+          </Card>
+        )}
+      </TabsContent>
 
-        <TabsContent value="payments">
-          <UnavailableCard kind="payments" diagLoading={diag.status === 'loading'} />
-        </TabsContent>
+      {/* ==================== Zahlungen Tab ==================== */}
+      <TabsContent value="zahlungen" className="space-y-6">
+        <UnavailableCard kind="payments" diagLoading={diag.status === 'loading'} />
+      </TabsContent>
+
       </Tabs>
+
 
       {/* Admin: Data quality summary */}
       {isAdmin && (
