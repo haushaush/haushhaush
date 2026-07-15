@@ -935,7 +935,7 @@ export default function MetaAbrechnungen() {
 
       {/* ==================== Zahlungen Tab ==================== */}
       <TabsContent value="zahlungen" className="space-y-6">
-        <UnavailableCard kind="payments" diagLoading={diag.status === 'loading'} />
+        <MetaPaymentsTab />
       </TabsContent>
 
       </Tabs>
