@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,12 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   ChevronDown, ChevronRight, ExternalLink, Mail, RefreshCw, Info, FileDown,
   ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, RotateCcw, X, MailSearch,
+  Search, Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { formatCurrency } from '@/components/meta/metaUtils';
-import GmailReceiptSearchDialog from '@/components/meta/GmailReceiptSearchDialog';
+import GmailReceiptSearchDialog, { type GmailSearchCriteria } from '@/components/meta/GmailReceiptSearchDialog';
 import { generatePaymentReceiptPdf, canGeneratePdf } from '@/components/meta/generatePaymentReceiptPdf';
 
 export type PaymentReceipt = {
@@ -87,13 +89,96 @@ function computeRangeStart(key: DateRangeKey): number | null {
   }
 }
 
+// ── Confirmed search parser ────────────────────────────────────────
+type ParsedCriteria = {
+  transactionId: string | null;
+  metaAccountId: string | null;
+  accountNumeric: string | null;
+  date: string | null;      // ISO yyyy-mm-dd
+  amount: number | null;    // parsed as EUR
+  amountRaw: string | null; // de format "46,00"
+  remainingText: string;    // leftover, potential account name
+};
+
+function parseConfirmedQuery(input: string): ParsedCriteria {
+  let text = ` ${input.trim()} `;
+  const out: ParsedCriteria = {
+    transactionId: null, metaAccountId: null, accountNumeric: null,
+    date: null, amount: null, amountRaw: null, remainingText: '',
+  };
+
+  // Transaction ID: 12+ digits - 12+ digits
+  const txn = text.match(/\b(\d{10,}-\d{10,})\b/);
+  if (txn) { out.transactionId = txn[1]; text = text.replace(txn[0], ' '); }
+
+  // Meta account id (act_ prefix or standalone long numeric 10-17 digits)
+  const acct = text.match(/\bact_(\d{6,})\b/i);
+  if (acct) {
+    out.metaAccountId = `act_${acct[1]}`;
+    out.accountNumeric = acct[1];
+    text = text.replace(acct[0], ' ');
+  } else {
+    const num = text.match(/\b(\d{10,17})\b/);
+    if (num) {
+      out.metaAccountId = `act_${num[1]}`;
+      out.accountNumeric = num[1];
+      text = text.replace(num[0], ' ');
+    }
+  }
+
+  // Date dd.mm.yyyy
+  const date = text.match(/\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/);
+  if (date) {
+    const dd = date[1].padStart(2, '0');
+    const mm = date[2].padStart(2, '0');
+    out.date = `${date[3]}-${mm}-${dd}`;
+    text = text.replace(date[0], ' ');
+  }
+
+  // Amount: 1.234,56 or 46,00 (with optional € / EUR)
+  const amt = text.match(/\b(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*(?:€|EUR)?/i);
+  if (amt) {
+    out.amountRaw = amt[1];
+    const n = parseFloat(amt[1].replace(/\./g, '').replace(',', '.'));
+    if (Number.isFinite(n)) out.amount = n;
+    text = text.replace(amt[0], ' ');
+  }
+
+  // Strip standalone € / EUR / PayPal noise words for remainingText check
+  const remaining = text.replace(/\b(€|EUR|PayPal)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+  out.remainingText = remaining;
+  return out;
+}
+
+function isGmailQualified(p: ParsedCriteria): boolean {
+  if (p.transactionId) return true;
+  if (p.metaAccountId) return true;
+  if (p.date) return true;
+  const hasName = p.remainingText.length >= 3;
+  if (hasName) return true;
+  // amount alone is not enough
+  return false;
+}
+
 export default function MetaPaymentsTab() {
   const [rows, setRows] = useState<PaymentReceipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+  const [searchDialogInitial, setSearchDialogInitial] = useState<{
+    criteria?: GmailSearchCriteria; results?: any[];
+  }>({});
 
-  const [search, setSearch] = useState(DEFAULT_STATE.search);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialApplied = searchParams.get('search') || '';
+
+  // ── Confirmed-search states ──────────────────────────────────────
+  const [draftSearch, setDraftSearch] = useState<string>(initialApplied);
+  const [appliedSearch, setAppliedSearch] = useState<string>(initialApplied);
+  const [gmailSearching, setGmailSearching] = useState(false);
+  const [searchPhase, setSearchPhase] = useState<'idle' | 'local' | 'gmail'>('idle');
+  const searchInFlightRef = useRef(false);
+
   const [accountFilter, setAccountFilter] = useState<string>(DEFAULT_STATE.accountFilter);
   const [currencyFilter, setCurrencyFilter] = useState<string>(DEFAULT_STATE.currencyFilter);
   const [statusFilter, setStatusFilter] = useState<string>(DEFAULT_STATE.statusFilter);
@@ -168,7 +253,7 @@ export default function MetaPaymentsTab() {
   }, [rows]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = appliedSearch.trim().toLowerCase();
     const rangeStart = computeRangeStart(dateRange);
     const customFromTs = dateRange === 'custom' && customFrom ? new Date(customFrom).getTime() : null;
     const customToTs = dateRange === 'custom' && customTo ? new Date(customTo).getTime() + 24 * 3600 * 1000 - 1 : null;
@@ -223,7 +308,7 @@ export default function MetaPaymentsTab() {
       ].some((v) => (v || '').toLowerCase().includes(q));
     });
   }, [
-    rows, search, accountFilter, currencyFilter, statusFilter, dateRange,
+    rows, appliedSearch, accountFilter, currencyFilter, statusFilter, dateRange,
     customFrom, customTo, minAmount, maxAmount, paymentMethodFilter,
     hasCampaignsFilter, hasPdfFilter,
   ]);
@@ -289,8 +374,25 @@ export default function MetaPaymentsTab() {
     return sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
   };
 
+  // URL sync (only for confirmed appliedSearch)
+  useEffect(() => {
+    const current = searchParams.get('search') || '';
+    if (appliedSearch === current) return;
+    const next = new URLSearchParams(searchParams);
+    if (appliedSearch) next.set('search', appliedSearch);
+    else next.delete('search');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedSearch]);
+
+  const clearSearch = () => {
+    setDraftSearch('');
+    setAppliedSearch('');
+  };
+
   const resetAll = () => {
-    setSearch(DEFAULT_STATE.search);
+    setDraftSearch('');
+    setAppliedSearch('');
     setAccountFilter(DEFAULT_STATE.accountFilter);
     setCurrencyFilter(DEFAULT_STATE.currencyFilter);
     setStatusFilter(DEFAULT_STATE.statusFilter);
@@ -304,8 +406,124 @@ export default function MetaPaymentsTab() {
     setHasPdfFilter(DEFAULT_STATE.hasPdfFilter);
   };
 
+  // Local match against currently loaded rows for a confirmed query
+  function localMatches(text: string, parsed: ParsedCriteria): PaymentReceipt[] {
+    const q = text.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (parsed.transactionId && r.transaction_id === parsed.transactionId) return true;
+      if (parsed.metaAccountId && (r.meta_account_id === parsed.metaAccountId ||
+          r.meta_account_id_numeric === parsed.accountNumeric)) return true;
+      // Composite text match
+      const hay = [
+        r.account_name, r.meta_account_id, r.meta_account_id_numeric,
+        r.transaction_id, r.payment_method, r.billing_reason, r.email_subject,
+        r.transaction_date, r.amount != null ? String(r.amount) : null,
+        r.amount != null ? r.amount.toFixed(2).replace('.', ',') : null,
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (q && hay.includes(q)) return true;
+      // Date + amount pair
+      if (parsed.date) {
+        const iso = r.transaction_date ? r.transaction_date.slice(0, 10) : null;
+        if (iso === parsed.date) {
+          if (parsed.amount == null || (r.amount != null && Math.abs(r.amount - parsed.amount) < 0.01)) return true;
+        }
+      }
+      if (parsed.remainingText && r.account_name &&
+          r.account_name.toLowerCase().includes(parsed.remainingText.toLowerCase())) {
+        if (parsed.amount == null || (r.amount != null && Math.abs(r.amount - parsed.amount) < 0.01)) return true;
+      }
+      return false;
+    });
+  }
+
+  async function runGmailFallback(parsed: ParsedCriteria, rawText: string) {
+    const criteria: GmailSearchCriteria = {
+      transaction_id: parsed.transactionId || null,
+      date_from: parsed.date || null,
+      date_to: parsed.date || null,
+      amount: parsed.amountRaw || null,
+      meta_account_id: parsed.metaAccountId || null,
+      account_name: parsed.remainingText || null,
+    };
+    setSearchPhase('gmail');
+    setGmailSearching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('gmail-search-meta-receipts', {
+        body: {
+          action: 'search',
+          transaction_id: criteria.transaction_id,
+          date_from: criteria.date_from,
+          date_to: criteria.date_to,
+          amount: parsed.amount,
+          meta_account_id: criteria.meta_account_id,
+          account_name: criteria.account_name,
+        },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
+      const list: any[] = (data as any)?.results || [];
+      const importable = list.filter((r) => !r.already_imported);
+
+      if (importable.length === 0) {
+        toast.info(list.length > 0
+          ? 'Gmail-Treffer sind bereits importiert.'
+          : `Kein Treffer für „${rawText}" — weder lokal noch in Gmail.`);
+        return;
+      }
+      if (importable.length === 1) {
+        // Auto-import the single hit
+        const { data: imp, error: impErr } = await supabase.functions.invoke('gmail-search-meta-receipts', {
+          body: { action: 'import', items: importable },
+        });
+        if (impErr) throw new Error(impErr.message);
+        const upserted = (imp as any)?.upserted ?? 0;
+        if (upserted > 0) {
+          toast.success('Gmail-Treffer automatisch importiert.');
+          await load();
+        } else {
+          toast.warning('Import fehlgeschlagen.');
+        }
+        return;
+      }
+      // Multiple → open dialog with preview
+      setSearchDialogInitial({ criteria, results: list });
+      setSearchDialogOpen(true);
+      toast.info(`${list.length} Gmail-Treffer — bitte auswählen.`);
+    } catch (e: any) {
+      toast.error('Gmail-Suche fehlgeschlagen: ' + (e?.message || e));
+    } finally {
+      setGmailSearching(false);
+      setSearchPhase('idle');
+    }
+  }
+
+  const handleSearchSubmit = async () => {
+    if (searchInFlightRef.current || gmailSearching) return;
+    const normalized = draftSearch.trim();
+    if (!normalized) return;
+    searchInFlightRef.current = true;
+    try {
+      setSearchPhase('local');
+      setAppliedSearch(normalized);
+      const parsed = parseConfirmedQuery(normalized);
+      const hits = localMatches(normalized, parsed);
+      if (hits.length > 0) {
+        setSearchPhase('idle');
+        return;
+      }
+      if (!isGmailQualified(parsed)) {
+        toast.info('Kein lokaler Treffer. Bitte Datum, Werbekonto oder Account-ID ergänzen, um Gmail zu durchsuchen.');
+        setSearchPhase('idle');
+        return;
+      }
+      await runGmailFallback(parsed, normalized);
+    } finally {
+      searchInFlightRef.current = false;
+    }
+  };
+
   const activeFilterCount =
-    (search ? 1 : 0) +
+    (appliedSearch ? 1 : 0) +
     (accountFilter !== 'all' ? 1 : 0) +
     (statusFilter !== 'all' ? 1 : 0) +
     (dateRange !== 'all' ? 1 : 0) +
@@ -359,12 +577,45 @@ export default function MetaPaymentsTab() {
       {/* Filters */}
       <Card className="p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Input
-            placeholder="Suche: Konto, Transaktions-ID, Grund…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-8 max-w-xs text-xs"
-          />
+          <div className="relative flex items-center max-w-sm w-full sm:w-auto">
+            <Input
+              placeholder="Konto, Account-ID, Transaktions-ID, Betrag oder Datum eingeben …"
+              value={draftSearch}
+              onChange={(e) => setDraftSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSearchSubmit();
+                }
+              }}
+              className="h-8 pr-14 text-xs w-[320px] max-w-full"
+              disabled={gmailSearching}
+            />
+            {draftSearch && !gmailSearching && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="absolute right-8 text-muted-foreground hover:text-foreground p-1"
+                aria-label="Suche löschen"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="absolute right-0 h-8 px-2"
+              onClick={handleSearchSubmit}
+              disabled={!draftSearch.trim() || gmailSearching}
+              aria-label="Suchen"
+              title="Suchen (Enter)"
+            >
+              {gmailSearching
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Search className="h-3.5 w-3.5" />}
+            </Button>
+          </div>
           <Select value={accountFilter} onValueChange={setAccountFilter}>
             <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue placeholder="Werbekonto" /></SelectTrigger>
             <SelectContent>
@@ -488,7 +739,7 @@ export default function MetaPaymentsTab() {
           <Button variant="outline" size="sm" className="h-8" onClick={load} disabled={loading}>
             <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} /> Aktualisieren
           </Button>
-          <Button variant="outline" size="sm" className="h-8" onClick={() => setSearchDialogOpen(true)}>
+          <Button variant="outline" size="sm" className="h-8" onClick={() => { setSearchDialogInitial({}); setSearchDialogOpen(true); }}>
             <MailSearch className="h-3 w-3 mr-1" /> Zahlungsbeleg in Gmail suchen
           </Button>
 
@@ -499,10 +750,10 @@ export default function MetaPaymentsTab() {
 
         {activeFilterCount > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t">
-            {search && (
+            {appliedSearch && (
               <Badge variant="secondary" className="text-[10px] gap-1">
-                Suche: „{search}"
-                <button onClick={() => setSearch('')}><X className="h-2.5 w-2.5" /></button>
+                Suche: „{appliedSearch}"
+                <button onClick={clearSearch}><X className="h-2.5 w-2.5" /></button>
               </Badge>
             )}
             {accountFilter !== 'all' && (
@@ -757,8 +1008,13 @@ export default function MetaPaymentsTab() {
 
       <GmailReceiptSearchDialog
         open={searchDialogOpen}
-        onOpenChange={setSearchDialogOpen}
+        onOpenChange={(v) => {
+          setSearchDialogOpen(v);
+          if (!v) setSearchDialogInitial({});
+        }}
         onImported={load}
+        initialCriteria={searchDialogInitial.criteria}
+        initialResults={searchDialogInitial.results as any}
       />
     </div>
   );

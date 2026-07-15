@@ -43,24 +43,63 @@ function fmtDate(iso?: string | null) {
   catch { return String(iso); }
 }
 
+export type GmailSearchCriteria = {
+  transaction_id?: string | null;
+  date_from?: string | null;
+  date_to?: string | null;
+  amount?: string | null;
+  meta_account_id?: string | null;
+  account_name?: string | null;
+};
+
 export default function GmailReceiptSearchDialog({
-  open, onOpenChange, onImported,
+  open, onOpenChange, onImported, initialCriteria, initialResults,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onImported?: () => void;
+  initialCriteria?: GmailSearchCriteria;
+  initialResults?: Preview[];
 }) {
-  const [txnId, setTxnId] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [amount, setAmount] = useState('');
-  const [metaAccountId, setMetaAccountId] = useState('');
-  const [accountName, setAccountName] = useState('');
+  const [txnId, setTxnId] = useState(initialCriteria?.transaction_id || '');
+  const [dateFrom, setDateFrom] = useState(initialCriteria?.date_from || '');
+  const [dateTo, setDateTo] = useState(initialCriteria?.date_to || '');
+  const [amount, setAmount] = useState(initialCriteria?.amount || '');
+  const [metaAccountId, setMetaAccountId] = useState(initialCriteria?.meta_account_id || '');
+  const [accountName, setAccountName] = useState(initialCriteria?.account_name || '');
 
   const [searching, setSearching] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [results, setResults] = useState<Preview[] | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [results, setResults] = useState<Preview[] | null>(initialResults ?? null);
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    (initialResults || []).forEach((r, i) => {
+      if (!r.already_imported) s.add((r.gmail_id || r.transaction_id || `idx-${i}`) as string);
+    });
+    return s;
+  });
+
+  // Re-sync when dialog is opened with new initial values
+  React.useEffect(() => {
+    if (!open) return;
+    if (initialCriteria) {
+      setTxnId(initialCriteria.transaction_id || '');
+      setDateFrom(initialCriteria.date_from || '');
+      setDateTo(initialCriteria.date_to || '');
+      setAmount(initialCriteria.amount || '');
+      setMetaAccountId(initialCriteria.meta_account_id || '');
+      setAccountName(initialCriteria.account_name || '');
+    }
+    if (initialResults) {
+      setResults(initialResults);
+      const s = new Set<string>();
+      initialResults.forEach((r, i) => {
+        if (!r.already_imported) s.add((r.gmail_id || r.transaction_id || `idx-${i}`) as string);
+      });
+      setSelected(s);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const rowKey = (r: Preview, i: number) =>
     (r.gmail_id || r.transaction_id || `idx-${i}`) as string;
