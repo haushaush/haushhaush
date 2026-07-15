@@ -314,6 +314,8 @@ Deno.serve(async (req) => {
       accounts_updated: accountsUpdated,
       unsupported_accounts: unsupported,
       invoices_endpoint: invoicesEndpointState,
+      invoices_note: invoicesNote,
+      invoices_supported_fields: invoicesSupportedFields,
       invoices_fetched: invoicesFetched,
       invoices_upserted: invoicesUpserted,
       invoices_unattributed: invoicesUnattributed,
