@@ -488,6 +488,9 @@ export default function MetaPaymentsTab() {
           <Button variant="outline" size="sm" className="h-8" onClick={load} disabled={loading}>
             <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} /> Aktualisieren
           </Button>
+          <Button variant="outline" size="sm" className="h-8" onClick={() => setSearchDialogOpen(true)}>
+            <MailSearch className="h-3 w-3 mr-1" /> Zahlungsbeleg in Gmail suchen
+          </Button>
 
           <span className="text-[11px] text-muted-foreground ml-auto">
             {sorted.length} von {rows.length}
