@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -228,7 +228,7 @@ export default function MetaPaymentsTab() {
               {filtered.map((r) => {
                 const isOpen = expanded.has(r.id);
                 return (
-                  <>
+                  <React.Fragment key={r.id}>
                     <TableRow key={r.id} className="cursor-pointer hover:bg-muted/40" onClick={() => toggle(r.id)}>
                       <TableCell>{isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}</TableCell>
                       <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.transaction_date)}</TableCell>
@@ -322,7 +322,7 @@ export default function MetaPaymentsTab() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </TableBody>
