@@ -8,7 +8,10 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
 };
 
-const TOKEN = Deno.env.get('META_ACCESS_TOKEN');
+// Billing-only token — MUST NOT fall back to META_ACCESS_TOKEN.
+// Falls das Secret fehlt, wird ein klarer Fehler ausgegeben, damit
+// die Abrechnungs-Diagnose nicht versehentlich auf den Haupt-Token zugreift.
+const TOKEN = Deno.env.get('META_BILLING_ACCESS_TOKEN');
 const APP_ID = Deno.env.get('META_APP_ID');
 const APP_SECRET = Deno.env.get('META_APP_SECRET');
 const BUSINESS_ID = Deno.env.get('META_BUSINESS_ID');
@@ -101,7 +104,7 @@ Deno.serve(async (req) => {
 
     // TEST 2: Secrets presence
     result.tests.secrets = {
-      META_ACCESS_TOKEN: !!TOKEN,
+      META_BILLING_ACCESS_TOKEN: !!TOKEN,
       META_APP_ID: !!APP_ID,
       META_APP_SECRET: !!APP_SECRET,
       META_BUSINESS_ID: !!BUSINESS_ID,
