@@ -84,7 +84,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'META_ACCESS_TOKEN not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+    // Optional: { months?: number, backfill?: boolean } — controls how far back invoices are pulled.
+    let body: any = {};
+    try { body = await req.json(); } catch { /* no body */ }
+    const monthsBack = Math.max(1, Math.min(120, Number(body?.months) || (body?.backfill ? 60 : 24)));
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
 
     // ================== 1) Accounts snapshot (unchanged behavior) ==================
     const errors: any[] = [];
@@ -160,8 +165,9 @@ Deno.serve(async (req) => {
 
     if (BUSINESS_ID) {
       const since = new Date();
-      since.setMonth(since.getMonth() - 24);
+      since.setMonth(since.getMonth() - monthsBack);
       const startDate = since.toISOString().slice(0, 10);
+
 
       // Step A: minimal probe (id only) — determines endpoint state without assuming fields.
       const probeUrl = `${API}/${BUSINESS_ID}/business_invoices?start_date=${startDate}&fields=id&limit=25&access_token=${TOKEN}`;
@@ -310,6 +316,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
+      months_back: monthsBack,
       accounts_checked: acctMap.size,
       accounts_updated: accountsUpdated,
       unsupported_accounts: unsupported,
@@ -321,6 +328,7 @@ Deno.serve(async (req) => {
       invoices_unattributed: invoicesUnattributed,
       errors,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
   } catch (e) {
     return new Response(JSON.stringify({ success: false, error: (e as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
