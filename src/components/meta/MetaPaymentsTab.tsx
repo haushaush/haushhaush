@@ -413,6 +413,8 @@ export default function MetaPaymentsTab() {
     setPaymentMethodFilter(DEFAULT_STATE.paymentMethodFilter);
     setHasCampaignsFilter(DEFAULT_STATE.hasCampaignsFilter);
     setHasPdfFilter(DEFAULT_STATE.hasPdfFilter);
+    setGTxnId(''); setGDateFrom(''); setGDateTo(''); setGAmount('');
+    setGMetaAccountId(''); setGAccountName('');
   };
 
   // Local match against currently loaded rows for a confirmed query
@@ -530,6 +532,104 @@ export default function MetaPaymentsTab() {
       searchInFlightRef.current = false;
     }
   };
+
+  function parseDeAmountLocal(v: string): number | null {
+    if (!v) return null;
+    const n = parseFloat(v.trim().replace(/\./g, '').replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function normalizeMetaAccountId(v: string): string | null {
+    const t = v.trim();
+    if (!t) return null;
+    if (/^act_/i.test(t)) return t;
+    if (/^\d{6,}$/.test(t)) return `act_${t}`;
+    return t;
+  }
+
+  const inlineGmailHasAny = !!(
+    gTxnId.trim() || gDateFrom || gDateTo || gAmount.trim() ||
+    gMetaAccountId.trim() || gAccountName.trim()
+  );
+
+  const clearInlineGmail = () => {
+    setGTxnId(''); setGDateFrom(''); setGDateTo(''); setGAmount('');
+    setGMetaAccountId(''); setGAccountName('');
+  };
+
+  async function runInlineGmailSearch() {
+    if (gmailInlineLoading || gmailSearching) return;
+    if (!inlineGmailHasAny) {
+      toast.error('Bitte mindestens ein Gmail-Suchkriterium angeben.');
+      return;
+    }
+    const metaId = normalizeMetaAccountId(gMetaAccountId);
+    const parsed: ParsedCriteria = {
+      transactionId: gTxnId.trim() || null,
+      metaAccountId: metaId,
+      accountNumeric: metaId ? metaId.replace(/^act_/i, '') : null,
+      date: gDateFrom || gDateTo || null,
+      amount: parseDeAmountLocal(gAmount),
+      amountRaw: gAmount.trim() || null,
+      remainingText: gAccountName.trim(),
+    };
+    // Reuse fallback logic but with explicit date_from/date_to
+    setGmailInlineLoading(true);
+    try {
+      const criteria: GmailSearchCriteria = {
+        transaction_id: parsed.transactionId,
+        date_from: gDateFrom || null,
+        date_to: gDateTo || null,
+        amount: parsed.amountRaw,
+        meta_account_id: parsed.metaAccountId,
+        account_name: parsed.remainingText || null,
+      };
+      const { data, error } = await supabase.functions.invoke('gmail-search-meta-receipts', {
+        body: {
+          action: 'search',
+          transaction_id: criteria.transaction_id,
+          date_from: criteria.date_from,
+          date_to: criteria.date_to,
+          amount: parsed.amount,
+          meta_account_id: criteria.meta_account_id,
+          account_name: criteria.account_name,
+        },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
+      const list: any[] = (data as any)?.results || [];
+      const importable = list.filter((r) => !r.already_imported);
+      if (list.length === 0) {
+        toast.info('Keine Treffer in Gmail gefunden.');
+        return;
+      }
+      if (importable.length === 0) {
+        toast.info('Alle Gmail-Treffer sind bereits importiert.');
+        return;
+      }
+      if (importable.length === 1) {
+        const { data: imp, error: impErr } = await supabase.functions.invoke('gmail-search-meta-receipts', {
+          body: { action: 'import', items: importable },
+        });
+        if (impErr) throw new Error(impErr.message);
+        const upserted = (imp as any)?.upserted ?? 0;
+        if (upserted > 0) {
+          toast.success('Gmail-Treffer automatisch importiert.');
+          await load();
+        } else {
+          toast.warning('Import fehlgeschlagen.');
+        }
+        return;
+      }
+      setSearchDialogInitial({ criteria, results: list });
+      setSearchDialogOpen(true);
+      toast.info(`${list.length} Gmail-Treffer — bitte auswählen.`);
+    } catch (e: any) {
+      toast.error('Gmail-Suche fehlgeschlagen: ' + (e?.message || e));
+    } finally {
+      setGmailInlineLoading(false);
+    }
+  }
 
   const activeFilterCount =
     (appliedSearch ? 1 : 0) +
@@ -748,7 +848,19 @@ export default function MetaPaymentsTab() {
           <Button variant="outline" size="sm" className="h-8" onClick={load} disabled={loading}>
             <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} /> Aktualisieren
           </Button>
-          <Button variant="outline" size="sm" className="h-8" onClick={() => { setSearchDialogInitial({}); setSearchDialogOpen(true); }}>
+          <Button variant="outline" size="sm" className="h-8" onClick={() => {
+            setSearchDialogInitial({
+              criteria: {
+                transaction_id: gTxnId || null,
+                date_from: gDateFrom || null,
+                date_to: gDateTo || null,
+                amount: gAmount || null,
+                meta_account_id: normalizeMetaAccountId(gMetaAccountId),
+                account_name: gAccountName || null,
+              },
+            });
+            setSearchDialogOpen(true);
+          }}>
             <MailSearch className="h-3 w-3 mr-1" /> Zahlungsbeleg in Gmail suchen
           </Button>
 
@@ -756,6 +868,105 @@ export default function MetaPaymentsTab() {
             {sorted.length} von {rows.length}
           </span>
         </div>
+
+        {/* Gmail-Suchfelder (bestätigungspflichtig, gleiche Logik wie Dialog) */}
+        <div className="grid grid-cols-2 md:grid-cols-12 gap-2 mt-3 pt-3 border-t">
+          <div className="col-span-2 md:col-span-3">
+            <Label className="text-[10px] uppercase text-muted-foreground">Transaktions-ID</Label>
+            <Input
+              placeholder="z. B. 27951790884507869-27902250049461958"
+              value={gTxnId}
+              onChange={(e) => setGTxnId(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
+              className="h-8 text-xs font-mono"
+              disabled={gmailInlineLoading}
+            />
+          </div>
+          <div className="col-span-1 md:col-span-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">Datum von</Label>
+            <Input
+              type="date"
+              value={gDateFrom}
+              onChange={(e) => setGDateFrom(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
+              className="h-8 text-xs"
+              disabled={gmailInlineLoading}
+            />
+          </div>
+          <div className="col-span-1 md:col-span-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">Datum bis</Label>
+            <Input
+              type="date"
+              value={gDateTo}
+              onChange={(e) => setGDateTo(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
+              className="h-8 text-xs"
+              disabled={gmailInlineLoading}
+            />
+          </div>
+          <div className="col-span-1 md:col-span-1">
+            <Label className="text-[10px] uppercase text-muted-foreground">Betrag</Label>
+            <Input
+              inputMode="decimal"
+              placeholder="z. B. 10,00"
+              value={gAmount}
+              onChange={(e) => setGAmount(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
+              className="h-8 text-xs"
+              disabled={gmailInlineLoading}
+            />
+          </div>
+          <div className="col-span-1 md:col-span-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">Meta Account ID</Label>
+            <Input
+              placeholder="z. B. act_2070598240224366"
+              value={gMetaAccountId}
+              onChange={(e) => setGMetaAccountId(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
+              className="h-8 text-xs font-mono"
+              disabled={gmailInlineLoading}
+            />
+          </div>
+          <div className="col-span-2 md:col-span-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">Werbekonto-Name</Label>
+            <Input
+              placeholder="z. B. Alexander Stursberg"
+              value={gAccountName}
+              onChange={(e) => setGAccountName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
+              className="h-8 text-xs"
+              disabled={gmailInlineLoading}
+            />
+          </div>
+          <div className="col-span-2 md:col-span-12 flex items-center gap-2">
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={runInlineGmailSearch}
+              disabled={!inlineGmailHasAny || gmailInlineLoading}
+            >
+              {gmailInlineLoading
+                ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                : <MailSearch className="h-3 w-3 mr-1" />}
+              In Gmail suchen
+            </Button>
+            {inlineGmailHasAny && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={clearInlineGmail}
+                disabled={gmailInlineLoading}
+              >
+                <X className="h-3 w-3 mr-1" /> Leeren
+              </Button>
+            )}
+            <span className="text-[10px] text-muted-foreground">
+              Suche startet erst nach Enter oder Klick — reines Tippen löst keine Anfrage aus.
+            </span>
+          </div>
+        </div>
+
 
         {activeFilterCount > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t">
@@ -904,26 +1115,17 @@ export default function MetaPaymentsTab() {
                       </TableCell>
                       <TableCell className="text-xs">{r.campaign_count ?? (r.campaigns?.length ?? 0)}</TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()} className="text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2 text-[11px]"
-                            disabled={!canGeneratePdf(r)}
-                            onClick={() => {
-                              try { generatePaymentReceiptPdf(r); }
-                              catch (e: any) { toast.error('PDF konnte nicht erzeugt werden: ' + (e?.message || e)); }
-                            }}
-                            title="PDF herunterladen"
+                        {r.transaction_url ? (
+                          <a
+                            href={r.transaction_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Meta-Zahlungsbeleg in neuem Tab öffnen"
+                            className="inline-flex items-center gap-1 h-7 px-2 text-[11px] rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
                           >
-                            <FileDown className="h-3 w-3 mr-1" /> PDF
-                          </Button>
-                          {r.transaction_url && (
-                            <a href={r.transaction_url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground p-1">
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
-                        </div>
+                            <ExternalLink className="h-3 w-3" /> Zur Rechnung
+                          </a>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                     {isOpen && (
