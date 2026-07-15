@@ -8,7 +8,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
 };
 
-const TOKEN = Deno.env.get('META_ACCESS_TOKEN');
+// Billing-only token — MUST NOT fall back to META_ACCESS_TOKEN.
+const TOKEN = Deno.env.get('META_BILLING_ACCESS_TOKEN');
 const BUSINESS_ID = Deno.env.get('META_BUSINESS_ID');
 const API = 'https://graph.facebook.com/v19.0';
 
