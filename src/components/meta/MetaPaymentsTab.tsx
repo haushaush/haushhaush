@@ -1008,8 +1008,13 @@ export default function MetaPaymentsTab() {
 
       <GmailReceiptSearchDialog
         open={searchDialogOpen}
-        onOpenChange={setSearchDialogOpen}
+        onOpenChange={(v) => {
+          setSearchDialogOpen(v);
+          if (!v) setSearchDialogInitial({});
+        }}
         onImported={load}
+        initialCriteria={searchDialogInitial.criteria}
+        initialResults={searchDialogInitial.results as any}
       />
     </div>
   );
