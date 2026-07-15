@@ -165,8 +165,20 @@ export default function MetaPaymentsTab() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+  const [searchDialogInitial, setSearchDialogInitial] = useState<{
+    criteria?: GmailSearchCriteria; results?: any[];
+  }>({});
 
-  const [search, setSearch] = useState(DEFAULT_STATE.search);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialApplied = searchParams.get('search') || '';
+
+  // ── Confirmed-search states ──────────────────────────────────────
+  const [draftSearch, setDraftSearch] = useState<string>(initialApplied);
+  const [appliedSearch, setAppliedSearch] = useState<string>(initialApplied);
+  const [gmailSearching, setGmailSearching] = useState(false);
+  const [searchPhase, setSearchPhase] = useState<'idle' | 'local' | 'gmail'>('idle');
+  const searchInFlightRef = useRef(false);
+
   const [accountFilter, setAccountFilter] = useState<string>(DEFAULT_STATE.accountFilter);
   const [currencyFilter, setCurrencyFilter] = useState<string>(DEFAULT_STATE.currencyFilter);
   const [statusFilter, setStatusFilter] = useState<string>(DEFAULT_STATE.statusFilter);
