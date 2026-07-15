@@ -941,8 +941,8 @@ export default function MetaAbrechnungen() {
       </Tabs>
 
 
-      {/* Admin: Data quality summary */}
-      {isAdmin && (
+      {/* Admin: Data quality summary — only relevant for Business Invoices */}
+      {isAdmin && activeTab !== 'zahlungen' && (
         <Card className="p-4">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Datenqualität — Business Invoices</h2>
           <DataQualityGrid invoices={invoices} />
