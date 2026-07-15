@@ -165,8 +165,9 @@ Deno.serve(async (req) => {
 
     if (BUSINESS_ID) {
       const since = new Date();
-      since.setMonth(since.getMonth() - 24);
+      since.setMonth(since.getMonth() - monthsBack);
       const startDate = since.toISOString().slice(0, 10);
+
 
       // Step A: minimal probe (id only) — determines endpoint state without assuming fields.
       const probeUrl = `${API}/${BUSINESS_ID}/business_invoices?start_date=${startDate}&fields=id&limit=25&access_token=${TOKEN}`;
