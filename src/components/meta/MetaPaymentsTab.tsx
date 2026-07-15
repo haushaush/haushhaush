@@ -253,7 +253,7 @@ export default function MetaPaymentsTab() {
   }, [rows]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = appliedSearch.trim().toLowerCase();
     const rangeStart = computeRangeStart(dateRange);
     const customFromTs = dateRange === 'custom' && customFrom ? new Date(customFrom).getTime() : null;
     const customToTs = dateRange === 'custom' && customTo ? new Date(customTo).getTime() + 24 * 3600 * 1000 - 1 : null;
