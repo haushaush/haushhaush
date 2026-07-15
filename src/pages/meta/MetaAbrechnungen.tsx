@@ -244,6 +244,27 @@ export default function MetaAbrechnungen() {
     }
   }
 
+  async function handleBackfill() {
+    if (!confirm('Historischen Backfill starten? Es werden bis zu 60 Monate an Business-Rechnungen von Meta geladen. Das kann einige Minuten dauern.')) return;
+    setBackfilling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-meta-billing', { body: { months: 60, backfill: true } });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      const invPart = data.invoices_endpoint === 'ok' || data.invoices_endpoint === 'ok_fallback'
+        ? `${data.invoices_upserted}/${data.invoices_fetched} Rechnungen`
+        : `Rechnungen: ${data.invoices_endpoint}`;
+      toast.success(`Backfill fertig (${data.months_back} Monate): ${invPart}`);
+      await loadInvoices();
+      runDiagnostic();
+    } catch (e) {
+      toast.error('Backfill fehlgeschlagen: ' + (e as Error).message);
+    } finally {
+      setBackfilling(false);
+    }
+  }
+
+
   const filteredAccounts = useMemo(() => {
     return snapshots.filter((s) => {
       if (accountFilter !== 'all' && s.meta_account_id !== accountFilter) return false;
