@@ -413,6 +413,8 @@ export default function MetaPaymentsTab() {
     setPaymentMethodFilter(DEFAULT_STATE.paymentMethodFilter);
     setHasCampaignsFilter(DEFAULT_STATE.hasCampaignsFilter);
     setHasPdfFilter(DEFAULT_STATE.hasPdfFilter);
+    setGTxnId(''); setGDateFrom(''); setGDateTo(''); setGAmount('');
+    setGMetaAccountId(''); setGAccountName('');
   };
 
   // Local match against currently loaded rows for a confirmed query
