@@ -750,10 +750,10 @@ export default function MetaPaymentsTab() {
 
         {activeFilterCount > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t">
-            {search && (
+            {appliedSearch && (
               <Badge variant="secondary" className="text-[10px] gap-1">
-                Suche: „{search}"
-                <button onClick={() => setSearch('')}><X className="h-2.5 w-2.5" /></button>
+                Suche: „{appliedSearch}"
+                <button onClick={clearSearch}><X className="h-2.5 w-2.5" /></button>
               </Badge>
             )}
             {accountFilter !== 'all' && (
