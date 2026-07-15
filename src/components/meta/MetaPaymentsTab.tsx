@@ -165,27 +165,8 @@ export default function MetaPaymentsTab() {
     return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [rows]);
 
-  const currencies = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of rows) if (r.currency) s.add(r.currency);
-    return Array.from(s).sort();
-  }, [rows]);
 
-  const statuses = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const r of rows) {
-      const key = (r.payment_status || r.payment_status_label || '').trim();
-      if (!key) continue;
-      if (!m.has(key)) m.set(key, r.payment_status_label || key);
-    }
-    return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  }, [rows]);
 
-  const paymentMethods = useMemo(() => {
-    const s = new Set<string>();
-    for (const r of rows) if (r.payment_method) s.add(r.payment_method);
-    return Array.from(s).sort();
-  }, [rows]);
 
   function matchesFilters(r: PaymentReceipt, f: SearchFilters): boolean {
     // Transaction ID (exact)
