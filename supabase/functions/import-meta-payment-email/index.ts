@@ -95,12 +95,32 @@ Deno.serve(async (req) => {
     const metaAccountNumeric = str(it.meta_account_id_numeric);
     if (!metaAccountId && metaAccountNumeric) metaAccountId = `act_${metaAccountNumeric}`;
 
-    const row = {
+    // Check for existing row (transaction_id preferred, gmail_id fallback) so we can
+    // preserve any manually curated account assignment on re-import.
+    let existing: any = null;
+    if (transactionId) {
+      const { data } = await admin
+        .from('meta_payment_receipts')
+        .select('id, meta_account_id, meta_account_id_numeric, account_name')
+        .eq('transaction_id', transactionId)
+        .maybeSingle();
+      existing = data;
+    }
+    if (!existing && gmailId) {
+      const { data } = await admin
+        .from('meta_payment_receipts')
+        .select('id, meta_account_id, meta_account_id_numeric, account_name')
+        .eq('gmail_id', gmailId)
+        .maybeSingle();
+      existing = data;
+    }
+
+    const row: Record<string, unknown> = {
       source: str(it.source) || 'meta_email',
       document_type: str(it.document_type) || 'payment_receipt',
-      account_name: str(it.account_name),
-      meta_account_id: metaAccountId,
-      meta_account_id_numeric: metaAccountNumeric,
+      account_name: existing?.account_name ?? str(it.account_name),
+      meta_account_id: existing?.meta_account_id ?? metaAccountId,
+      meta_account_id_numeric: existing?.meta_account_id_numeric ?? metaAccountNumeric,
       transaction_id: transactionId,
       transaction_date: toIsoOrNull(it.transaction_date),
       amount: toNumberOrNull(it.amount),
@@ -125,19 +145,33 @@ Deno.serve(async (req) => {
       updated_at: new Date().toISOString(),
     };
 
-    const conflictCol = gmailId ? 'gmail_id' : 'transaction_id';
+    let error: any = null;
+    let id: string | undefined = existing?.id;
 
-    const { data, error } = await admin
-      .from('meta_payment_receipts')
-      .upsert(row, { onConflict: conflictCol })
-      .select('id')
-      .maybeSingle();
+    if (existing) {
+      const res = await admin
+        .from('meta_payment_receipts')
+        .update(row)
+        .eq('id', existing.id)
+        .select('id')
+        .maybeSingle();
+      error = res.error;
+      id = res.data?.id ?? existing.id;
+    } else {
+      const res = await admin
+        .from('meta_payment_receipts')
+        .insert(row)
+        .select('id')
+        .maybeSingle();
+      error = res.error;
+      id = res.data?.id;
+    }
 
     if (error) {
       console.error('upsert error', error, { gmailId, transactionId });
       results.push({ ok: false, error: error.message, gmail_id: gmailId, transaction_id: transactionId });
     } else {
-      results.push({ ok: true, id: data?.id, gmail_id: gmailId, transaction_id: transactionId });
+      results.push({ ok: true, id, gmail_id: gmailId, transaction_id: transactionId });
     }
   }
 
