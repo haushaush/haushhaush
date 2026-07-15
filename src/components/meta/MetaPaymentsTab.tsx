@@ -308,7 +308,7 @@ export default function MetaPaymentsTab() {
       ].some((v) => (v || '').toLowerCase().includes(q));
     });
   }, [
-    rows, search, accountFilter, currencyFilter, statusFilter, dateRange,
+    rows, appliedSearch, accountFilter, currencyFilter, statusFilter, dateRange,
     customFrom, customTo, minAmount, maxAmount, paymentMethodFilter,
     hasCampaignsFilter, hasPdfFilter,
   ]);
