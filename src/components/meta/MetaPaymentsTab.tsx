@@ -577,12 +577,45 @@ export default function MetaPaymentsTab() {
       {/* Filters */}
       <Card className="p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Input
-            placeholder="Suche: Konto, Transaktions-ID, Grund…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-8 max-w-xs text-xs"
-          />
+          <div className="relative flex items-center max-w-sm w-full sm:w-auto">
+            <Input
+              placeholder="Konto, Account-ID, Transaktions-ID, Betrag oder Datum eingeben …"
+              value={draftSearch}
+              onChange={(e) => setDraftSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSearchSubmit();
+                }
+              }}
+              className="h-8 pr-14 text-xs w-[320px] max-w-full"
+              disabled={gmailSearching}
+            />
+            {draftSearch && !gmailSearching && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="absolute right-8 text-muted-foreground hover:text-foreground p-1"
+                aria-label="Suche löschen"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="absolute right-0 h-8 px-2"
+              onClick={handleSearchSubmit}
+              disabled={!draftSearch.trim() || gmailSearching}
+              aria-label="Suchen"
+              title="Suchen (Enter)"
+            >
+              {gmailSearching
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Search className="h-3.5 w-3.5" />}
+            </Button>
+          </div>
           <Select value={accountFilter} onValueChange={setAccountFilter}>
             <SelectTrigger className="h-8 w-[200px] text-xs"><SelectValue placeholder="Werbekonto" /></SelectTrigger>
             <SelectContent>
