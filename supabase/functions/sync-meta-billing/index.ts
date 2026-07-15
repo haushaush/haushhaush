@@ -316,6 +316,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
+      months_back: monthsBack,
       accounts_checked: acctMap.size,
       accounts_updated: accountsUpdated,
       unsupported_accounts: unsupported,
@@ -327,6 +328,7 @@ Deno.serve(async (req) => {
       invoices_unattributed: invoicesUnattributed,
       errors,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
   } catch (e) {
     return new Response(JSON.stringify({ success: false, error: (e as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
