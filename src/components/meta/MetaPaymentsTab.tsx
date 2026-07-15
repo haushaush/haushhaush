@@ -848,7 +848,19 @@ export default function MetaPaymentsTab() {
           <Button variant="outline" size="sm" className="h-8" onClick={load} disabled={loading}>
             <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} /> Aktualisieren
           </Button>
-          <Button variant="outline" size="sm" className="h-8" onClick={() => { setSearchDialogInitial({}); setSearchDialogOpen(true); }}>
+          <Button variant="outline" size="sm" className="h-8" onClick={() => {
+            setSearchDialogInitial({
+              criteria: {
+                transaction_id: gTxnId || null,
+                date_from: gDateFrom || null,
+                date_to: gDateTo || null,
+                amount: gAmount || null,
+                meta_account_id: normalizeMetaAccountId(gMetaAccountId),
+                account_name: gAccountName || null,
+              },
+            });
+            setSearchDialogOpen(true);
+          }}>
             <MailSearch className="h-3 w-3 mr-1" /> Zahlungsbeleg in Gmail suchen
           </Button>
 
@@ -856,6 +868,105 @@ export default function MetaPaymentsTab() {
             {sorted.length} von {rows.length}
           </span>
         </div>
+
+        {/* Gmail-Suchfelder (bestätigungspflichtig, gleiche Logik wie Dialog) */}
+        <div className="grid grid-cols-2 md:grid-cols-12 gap-2 mt-3 pt-3 border-t">
+          <div className="col-span-2 md:col-span-3">
+            <Label className="text-[10px] uppercase text-muted-foreground">Transaktions-ID</Label>
+            <Input
+              placeholder="z. B. 27951790884507869-27902250049461958"
+              value={gTxnId}
+              onChange={(e) => setGTxnId(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
+              className="h-8 text-xs font-mono"
+              disabled={gmailInlineLoading}
+            />
+          </div>
+          <div className="col-span-1 md:col-span-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">Datum von</Label>
+            <Input
+              type="date"
+              value={gDateFrom}
+              onChange={(e) => setGDateFrom(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
+              className="h-8 text-xs"
+              disabled={gmailInlineLoading}
+            />
+          </div>
+          <div className="col-span-1 md:col-span-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">Datum bis</Label>
+            <Input
+              type="date"
+              value={gDateTo}
+              onChange={(e) => setGDateTo(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
+              className="h-8 text-xs"
+              disabled={gmailInlineLoading}
+            />
+          </div>
+          <div className="col-span-1 md:col-span-1">
+            <Label className="text-[10px] uppercase text-muted-foreground">Betrag</Label>
+            <Input
+              inputMode="decimal"
+              placeholder="z. B. 10,00"
+              value={gAmount}
+              onChange={(e) => setGAmount(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
+              className="h-8 text-xs"
+              disabled={gmailInlineLoading}
+            />
+          </div>
+          <div className="col-span-1 md:col-span-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">Meta Account ID</Label>
+            <Input
+              placeholder="z. B. act_2070598240224366"
+              value={gMetaAccountId}
+              onChange={(e) => setGMetaAccountId(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
+              className="h-8 text-xs font-mono"
+              disabled={gmailInlineLoading}
+            />
+          </div>
+          <div className="col-span-2 md:col-span-2">
+            <Label className="text-[10px] uppercase text-muted-foreground">Werbekonto-Name</Label>
+            <Input
+              placeholder="z. B. Alexander Stursberg"
+              value={gAccountName}
+              onChange={(e) => setGAccountName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runInlineGmailSearch(); } }}
+              className="h-8 text-xs"
+              disabled={gmailInlineLoading}
+            />
+          </div>
+          <div className="col-span-2 md:col-span-12 flex items-center gap-2">
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={runInlineGmailSearch}
+              disabled={!inlineGmailHasAny || gmailInlineLoading}
+            >
+              {gmailInlineLoading
+                ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                : <MailSearch className="h-3 w-3 mr-1" />}
+              In Gmail suchen
+            </Button>
+            {inlineGmailHasAny && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={clearInlineGmail}
+                disabled={gmailInlineLoading}
+              >
+                <X className="h-3 w-3 mr-1" /> Leeren
+              </Button>
+            )}
+            <span className="text-[10px] text-muted-foreground">
+              Suche startet erst nach Enter oder Klick — reines Tippen löst keine Anfrage aus.
+            </span>
+          </div>
+        </div>
+
 
         {activeFilterCount > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t">
