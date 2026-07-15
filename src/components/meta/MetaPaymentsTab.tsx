@@ -531,6 +531,104 @@ export default function MetaPaymentsTab() {
     }
   };
 
+  function parseDeAmountLocal(v: string): number | null {
+    if (!v) return null;
+    const n = parseFloat(v.trim().replace(/\./g, '').replace(',', '.'));
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function normalizeMetaAccountId(v: string): string | null {
+    const t = v.trim();
+    if (!t) return null;
+    if (/^act_/i.test(t)) return t;
+    if (/^\d{6,}$/.test(t)) return `act_${t}`;
+    return t;
+  }
+
+  const inlineGmailHasAny = !!(
+    gTxnId.trim() || gDateFrom || gDateTo || gAmount.trim() ||
+    gMetaAccountId.trim() || gAccountName.trim()
+  );
+
+  const clearInlineGmail = () => {
+    setGTxnId(''); setGDateFrom(''); setGDateTo(''); setGAmount('');
+    setGMetaAccountId(''); setGAccountName('');
+  };
+
+  async function runInlineGmailSearch() {
+    if (gmailInlineLoading || gmailSearching) return;
+    if (!inlineGmailHasAny) {
+      toast.error('Bitte mindestens ein Gmail-Suchkriterium angeben.');
+      return;
+    }
+    const metaId = normalizeMetaAccountId(gMetaAccountId);
+    const parsed: ParsedCriteria = {
+      transactionId: gTxnId.trim() || null,
+      metaAccountId: metaId,
+      accountNumeric: metaId ? metaId.replace(/^act_/i, '') : null,
+      date: gDateFrom || gDateTo || null,
+      amount: parseDeAmountLocal(gAmount),
+      amountRaw: gAmount.trim() || null,
+      remainingText: gAccountName.trim(),
+    };
+    // Reuse fallback logic but with explicit date_from/date_to
+    setGmailInlineLoading(true);
+    try {
+      const criteria: GmailSearchCriteria = {
+        transaction_id: parsed.transactionId,
+        date_from: gDateFrom || null,
+        date_to: gDateTo || null,
+        amount: parsed.amountRaw,
+        meta_account_id: parsed.metaAccountId,
+        account_name: parsed.remainingText || null,
+      };
+      const { data, error } = await supabase.functions.invoke('gmail-search-meta-receipts', {
+        body: {
+          action: 'search',
+          transaction_id: criteria.transaction_id,
+          date_from: criteria.date_from,
+          date_to: criteria.date_to,
+          amount: parsed.amount,
+          meta_account_id: criteria.meta_account_id,
+          account_name: criteria.account_name,
+        },
+      });
+      if (error) throw new Error(error.message);
+      if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
+      const list: any[] = (data as any)?.results || [];
+      const importable = list.filter((r) => !r.already_imported);
+      if (list.length === 0) {
+        toast.info('Keine Treffer in Gmail gefunden.');
+        return;
+      }
+      if (importable.length === 0) {
+        toast.info('Alle Gmail-Treffer sind bereits importiert.');
+        return;
+      }
+      if (importable.length === 1) {
+        const { data: imp, error: impErr } = await supabase.functions.invoke('gmail-search-meta-receipts', {
+          body: { action: 'import', items: importable },
+        });
+        if (impErr) throw new Error(impErr.message);
+        const upserted = (imp as any)?.upserted ?? 0;
+        if (upserted > 0) {
+          toast.success('Gmail-Treffer automatisch importiert.');
+          await load();
+        } else {
+          toast.warning('Import fehlgeschlagen.');
+        }
+        return;
+      }
+      setSearchDialogInitial({ criteria, results: list });
+      setSearchDialogOpen(true);
+      toast.info(`${list.length} Gmail-Treffer — bitte auswählen.`);
+    } catch (e: any) {
+      toast.error('Gmail-Suche fehlgeschlagen: ' + (e?.message || e));
+    } finally {
+      setGmailInlineLoading(false);
+    }
+  }
+
   const activeFilterCount =
     (appliedSearch ? 1 : 0) +
     (accountFilter !== 'all' ? 1 : 0) +
