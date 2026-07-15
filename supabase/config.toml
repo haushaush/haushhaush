@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.audit-bridge]
 verify_jwt = false
+
+[functions.import-meta-payment-email]
+verify_jwt = false
