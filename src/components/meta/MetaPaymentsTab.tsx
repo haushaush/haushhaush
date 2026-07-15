@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,12 +10,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   ChevronDown, ChevronRight, ExternalLink, Mail, RefreshCw, Info, FileDown,
   ArrowUp, ArrowDown, ArrowUpDown, SlidersHorizontal, RotateCcw, X, MailSearch,
+  Search, Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { formatCurrency } from '@/components/meta/metaUtils';
-import GmailReceiptSearchDialog from '@/components/meta/GmailReceiptSearchDialog';
+import GmailReceiptSearchDialog, { type GmailSearchCriteria } from '@/components/meta/GmailReceiptSearchDialog';
 import { generatePaymentReceiptPdf, canGeneratePdf } from '@/components/meta/generatePaymentReceiptPdf';
 
 export type PaymentReceipt = {
