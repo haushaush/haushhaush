@@ -191,6 +191,15 @@ export default function MetaPaymentsTab() {
   const [hasCampaignsFilter, setHasCampaignsFilter] = useState<typeof DEFAULT_STATE.hasCampaignsFilter>(DEFAULT_STATE.hasCampaignsFilter);
   const [hasPdfFilter, setHasPdfFilter] = useState<typeof DEFAULT_STATE.hasPdfFilter>(DEFAULT_STATE.hasPdfFilter);
 
+  // Inline Gmail search (structured criteria row)
+  const [gTxnId, setGTxnId] = useState('');
+  const [gDateFrom, setGDateFrom] = useState('');
+  const [gDateTo, setGDateTo] = useState('');
+  const [gAmount, setGAmount] = useState('');
+  const [gMetaAccountId, setGMetaAccountId] = useState('');
+  const [gAccountName, setGAccountName] = useState('');
+  const [gmailInlineLoading, setGmailInlineLoading] = useState(false);
+
   const [sortKey, setSortKey] = useState<SortKey>('transaction_date');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
