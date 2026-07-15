@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
 
   try {
     if (!TOKEN) {
-      return new Response(JSON.stringify({ error: 'META_ACCESS_TOKEN not configured' }),
+      return new Response(JSON.stringify({ error: 'META_BILLING_ACCESS_TOKEN ist nicht konfiguriert' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     // Optional: { months?: number, backfill?: boolean } — controls how far back invoices are pulled.
