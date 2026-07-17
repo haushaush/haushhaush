@@ -87,6 +87,7 @@ import DailyFunnel from "./pages/DailyFunnel.tsx";
 import CheckinOverview from "./pages/hr/CheckinOverview.tsx";
 import TimeTracking from "./pages/hr/TimeTracking.tsx";
 import SlackPage from "./pages/SlackPage.tsx";
+import Placeholder from "./pages/Placeholder.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -152,6 +153,7 @@ const App = () => (
                 <Route path="/kunden" element={<PermissionRoute permissionKey="clients.view"><DL><Kunden /></DL></PermissionRoute>} />
                 <Route path="/kunden/abschluesse" element={<PermissionRoute permissionKey="clients.view"><DL><KundenAbschluesse /></DL></PermissionRoute>} />
                 <Route path="/kunden/laufzeiten" element={<PermissionRoute permissionKey="clients.laufzeiten.view"><DL><KundenLaufzeiten /></DL></PermissionRoute>} />
+                <Route path="/kunden/liste" element={<PermissionRoute permissionKey="clients.view"><DL><Placeholder title="Kunden" /></DL></PermissionRoute>} />
                 <Route path="/kunden/:id" element={<PermissionRoute permissionKey="clients.view"><DL><KundenDetail /></DL></PermissionRoute>} />
                 <Route path="/close" element={<Navigate to="/close/leads" replace />} />
                 <Route path="/close/leads" element={<DL><CloseLeads /></DL>} />
@@ -174,6 +176,14 @@ const App = () => (
                 
                 <Route path="/sales" element={<Navigate to="/sales/uebersicht" replace />} />
                 <Route path="/sales/uebersicht" element={<PermissionRoute permissionKey="sales.view"><DL><SalesUebersicht /></DL></PermissionRoute>} />
+                <Route path="/sales/kpi" element={<PermissionRoute permissionKey="sales.view"><DL><Placeholder title="Sales KPI" /></DL></PermissionRoute>} />
+
+                {/* Paid Ads */}
+                <Route path="/paid-ads" element={<DL><Placeholder title="Paid Ads – Übersicht" /></DL>} />
+                <Route path="/paid-ads/kunden" element={<DL><Placeholder title="Paid Ads – Kunden" /></DL>} />
+                <Route path="/paid-ads/untermarken" element={<DL><Placeholder title="Paid Ads – Untermarken" /></DL>} />
+                <Route path="/paid-ads/leadsharks" element={<DL><Placeholder title="Paid Ads – Leadsharks" /></DL>} />
+                <Route path="/paid-ads/attentionx" element={<DL><Placeholder title="Paid Ads – AttentionX" /></DL>} />
                 <Route path="/sales/close-kpi-test" element={<AdminRoute><DL><CloseKpiTest /></DL></AdminRoute>} />
                 <Route path="/sales/referenz-showcase" element={<ShowcaseAuthRedirect><DL><ReferenzShowcaseOverview /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/websites" element={<ShowcaseAuthRedirect><DL><ReferenzWebsitesPage /></DL></ShowcaseAuthRedirect>} />
@@ -201,6 +211,7 @@ const App = () => (
                 </Route>
                 <Route path="/sales/:tab" element={<PermissionRoute permissionKey="sales.view"><DL><Sales /></DL></PermissionRoute>} />
                 <Route path="/finanzen" element={<PermissionRoute permissionKey="finanzen.view"><DL><Finanzen /></DL></PermissionRoute>} />
+                <Route path="/finanzen/kpi" element={<PermissionRoute permissionKey="finanzen.view"><DL><Placeholder title="Finanzen KPI" /></DL></PermissionRoute>} />
                 <Route path="/finanzen/:tab" element={<PermissionRoute permissionKey="finanzen.view"><DL><Finanzen /></DL></PermissionRoute>} />
                 <Route path="/funnel" element={<DailyFunnel />} />
                 <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
