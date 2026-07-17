@@ -87,6 +87,7 @@ import DailyFunnel from "./pages/DailyFunnel.tsx";
 import CheckinOverview from "./pages/hr/CheckinOverview.tsx";
 import TimeTracking from "./pages/hr/TimeTracking.tsx";
 import SlackPage from "./pages/SlackPage.tsx";
+import Placeholder from "./pages/Placeholder.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
