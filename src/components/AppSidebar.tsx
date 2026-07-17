@@ -470,7 +470,7 @@ export function AppSidebar() {
                   aria-expanded={toolsOpen}
                 >
                   <Wrench className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-                  <span className="flex-1 truncate">Connections</span>
+                  <span className="flex-1 truncate">Integrationen</span>
                   <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200', toolsOpen && 'rotate-90')} aria-hidden="true" />
                 </button>
                 <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', toolsOpen ? 'max-h-[80rem]' : 'max-h-0')}>
