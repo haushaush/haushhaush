@@ -211,6 +211,7 @@ const App = () => (
                 </Route>
                 <Route path="/sales/:tab" element={<PermissionRoute permissionKey="sales.view"><DL><Sales /></DL></PermissionRoute>} />
                 <Route path="/finanzen" element={<PermissionRoute permissionKey="finanzen.view"><DL><Finanzen /></DL></PermissionRoute>} />
+                <Route path="/finanzen/kpi" element={<PermissionRoute permissionKey="finanzen.view"><DL><Placeholder title="Finanzen KPI" /></DL></PermissionRoute>} />
                 <Route path="/finanzen/:tab" element={<PermissionRoute permissionKey="finanzen.view"><DL><Finanzen /></DL></PermissionRoute>} />
                 <Route path="/funnel" element={<DailyFunnel />} />
                 <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
