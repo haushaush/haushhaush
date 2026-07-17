@@ -6011,20 +6011,29 @@ export type Database = {
       }
       user_mfa_status: {
         Row: {
+          exempt_set_at: string | null
+          exempt_set_by: string | null
           last_enrolled_factor_id: string | null
           mfa_enrolled_at: string | null
+          two_factor_exempt: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
+          exempt_set_at?: string | null
+          exempt_set_by?: string | null
           last_enrolled_factor_id?: string | null
           mfa_enrolled_at?: string | null
+          two_factor_exempt?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
+          exempt_set_at?: string | null
+          exempt_set_by?: string | null
           last_enrolled_factor_id?: string | null
           mfa_enrolled_at?: string | null
+          two_factor_exempt?: boolean
           updated_at?: string
           user_id?: string
         }
