@@ -348,7 +348,14 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const key = req.headers.get("x-mcp-key") ?? url.searchParams.get("key");
   if (key !== MCP_ACCESS_KEY) {
-    return json({ error: "Unauthorized" }, 401);
+    // Use 403 (not 401) so MCP clients like Claude don't interpret this as
+    // "OAuth required" and attempt dynamic client registration against a
+    // server that has no OAuth endpoints. This is a shared-secret endpoint;
+    // the caller must include ?key= or the x-mcp-key header.
+    return json(
+      { error: "Forbidden: missing or invalid MCP access key. Append ?key=<MCP_ACCESS_KEY> to the URL or send the x-mcp-key header." },
+      403,
+    );
   }
 
   if (req.method === "GET") {
