@@ -153,6 +153,7 @@ const App = () => (
                 <Route path="/kunden" element={<PermissionRoute permissionKey="clients.view"><DL><Kunden /></DL></PermissionRoute>} />
                 <Route path="/kunden/abschluesse" element={<PermissionRoute permissionKey="clients.view"><DL><KundenAbschluesse /></DL></PermissionRoute>} />
                 <Route path="/kunden/laufzeiten" element={<PermissionRoute permissionKey="clients.laufzeiten.view"><DL><KundenLaufzeiten /></DL></PermissionRoute>} />
+                <Route path="/kunden/liste" element={<PermissionRoute permissionKey="clients.view"><DL><Placeholder title="Kunden" /></DL></PermissionRoute>} />
                 <Route path="/kunden/:id" element={<PermissionRoute permissionKey="clients.view"><DL><KundenDetail /></DL></PermissionRoute>} />
                 <Route path="/close" element={<Navigate to="/close/leads" replace />} />
                 <Route path="/close/leads" element={<DL><CloseLeads /></DL>} />
