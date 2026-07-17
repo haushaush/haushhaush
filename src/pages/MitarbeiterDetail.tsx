@@ -215,6 +215,7 @@ export default function MitarbeiterDetail() {
         {isAdmin && (
           <TabsContent value="rechte" className="space-y-4 mt-4">
             <ZugriffStatusCard targetUserId={authUserId} member={member} />
+            <MfaExemptCard targetUserId={authUserId} memberEmail={member?.email} />
             <RollenUndRechteTab targetUserId={authUserId} targetEmail={member?.email} />
           </TabsContent>
         )}
