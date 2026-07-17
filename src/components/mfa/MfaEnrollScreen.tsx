@@ -66,6 +66,18 @@ export function MfaEnrollScreen({ onComplete, required }: Props) {
         setCode('');
         return;
       }
+      // Enrollment successful → clear exemption flag
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('user_mfa_status').upsert({
+          user_id: user.id,
+          two_factor_exempt: false,
+          mfa_enrolled_at: new Date().toISOString(),
+          exempt_set_by: null,
+          exempt_set_at: null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      }
       // Generate + persist recovery codes
       const codes = generateRecoveryCodes(8);
       setRecoveryCodes(codes);

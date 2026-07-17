@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { RollenUndRechteTab } from '@/components/team/RollenUndRechteTab';
 import { DriveFreigabenTab } from '@/components/team/DriveFreigabenTab';
 import { ZugriffStatusCard } from '@/components/team/ZugriffStatusCard';
+import { MfaExemptCard } from '@/components/team/MfaExemptCard';
 
 import { DEPARTMENT_OPTIONS, MITARBEITER_TYP_OPTIONS, MITARBEITER_STATUS_OPTIONS, PORTAL_ROLLEN } from '@/constants/team';
 
@@ -214,6 +215,7 @@ export default function MitarbeiterDetail() {
         {isAdmin && (
           <TabsContent value="rechte" className="space-y-4 mt-4">
             <ZugriffStatusCard targetUserId={authUserId} member={member} />
+            <MfaExemptCard targetUserId={authUserId} memberEmail={member?.email} />
             <RollenUndRechteTab targetUserId={authUserId} targetEmail={member?.email} />
           </TabsContent>
         )}
