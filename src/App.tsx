@@ -176,6 +176,14 @@ const App = () => (
                 
                 <Route path="/sales" element={<Navigate to="/sales/uebersicht" replace />} />
                 <Route path="/sales/uebersicht" element={<PermissionRoute permissionKey="sales.view"><DL><SalesUebersicht /></DL></PermissionRoute>} />
+                <Route path="/sales/kpi" element={<PermissionRoute permissionKey="sales.view"><DL><Placeholder title="Sales KPI" /></DL></PermissionRoute>} />
+
+                {/* Paid Ads */}
+                <Route path="/paid-ads" element={<DL><Placeholder title="Paid Ads – Übersicht" /></DL>} />
+                <Route path="/paid-ads/kunden" element={<DL><Placeholder title="Paid Ads – Kunden" /></DL>} />
+                <Route path="/paid-ads/untermarken" element={<DL><Placeholder title="Paid Ads – Untermarken" /></DL>} />
+                <Route path="/paid-ads/leadsharks" element={<DL><Placeholder title="Paid Ads – Leadsharks" /></DL>} />
+                <Route path="/paid-ads/attentionx" element={<DL><Placeholder title="Paid Ads – AttentionX" /></DL>} />
                 <Route path="/sales/close-kpi-test" element={<AdminRoute><DL><CloseKpiTest /></DL></AdminRoute>} />
                 <Route path="/sales/referenz-showcase" element={<ShowcaseAuthRedirect><DL><ReferenzShowcaseOverview /></DL></ShowcaseAuthRedirect>} />
                 <Route path="/sales/referenz-showcase/websites" element={<ShowcaseAuthRedirect><DL><ReferenzWebsitesPage /></DL></ShowcaseAuthRedirect>} />
