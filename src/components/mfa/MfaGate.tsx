@@ -33,11 +33,19 @@ export function MfaGate({ children }: { children: React.ReactNode }) {
     }
     setStage('checking');
     try {
+      const { data: statusRow } = await supabase
+        .from('user_mfa_status')
+        .select('two_factor_exempt')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const isExempt = (statusRow as any)?.two_factor_exempt === true;
+
       const { data: factors } = await supabase.auth.mfa.listFactors();
       const totpFactors = (factors?.totp ?? []) as Array<{ id: string; status: string }>;
       const verified = totpFactors.find((f) => f.status === 'verified');
 
       if (!verified) {
+        if (isExempt) { setStage('ok'); return; }
         setStage('enroll');
         return;
       }
