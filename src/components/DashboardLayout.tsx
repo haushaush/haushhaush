@@ -70,30 +70,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
         {isMobile && <MobileTabBar />}
         <BugReportWidget />
-
-        {/* Unified ARIA wrapper: panel + pill — hidden on home page */}
-        {!isOnHome && showAria && (
-          <div
-            className={`aria-bottom-bar ${isOpen ? 'aria-bottom-bar--open' : ''}`}
-            tabIndex={-1}
-            style={{
-              opacity: modalOpen ? 0.4 : 1,
-              pointerEvents: modalOpen ? 'none' : 'all',
-              transition: 'opacity 200ms ease',
-            }}
-            onFocus={(e) => {
-              e.stopPropagation();
-              window.scrollTo(window.scrollX, window.scrollY);
-            }}
-          >
-            <ARIAPanel />
-            <ARIASearchBar
-              onSend={handleAriaSend}
-              input={ariaInput}
-              setInput={setAriaInput}
-            />
-          </div>
-        )}
       </div>
     </SidebarProvider>
     </MfaGate>
