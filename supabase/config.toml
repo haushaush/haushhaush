@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.gmail-search-meta-receipts]
 verify_jwt = true
+
+[functions.meta-mcp]
+verify_jwt = false
