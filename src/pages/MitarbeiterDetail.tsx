@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { RollenUndRechteTab } from '@/components/team/RollenUndRechteTab';
 import { DriveFreigabenTab } from '@/components/team/DriveFreigabenTab';
 import { ZugriffStatusCard } from '@/components/team/ZugriffStatusCard';
+import { MfaExemptCard } from '@/components/team/MfaExemptCard';
 
 import { DEPARTMENT_OPTIONS, MITARBEITER_TYP_OPTIONS, MITARBEITER_STATUS_OPTIONS, PORTAL_ROLLEN } from '@/constants/team';
 
