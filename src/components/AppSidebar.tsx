@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, ClipboardList, TrendingUp, Wand2, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Mail, Globe, Video, MonitorPlay, Wrench, Plug, Hash } from 'lucide-react';
+import { Home, Users, ClipboardList, TrendingUp, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Mail, Globe, Wrench, Plug, Hash, Megaphone, Code2 } from 'lucide-react';
 
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -29,6 +29,7 @@ const navItems: NavItem[] = [
     title: 'Kunden', url: '/kunden', icon: Users, permissionKey: 'clients.view',
     children: [
       { title: 'Übersicht', url: '/kunden', permissionKey: 'clients.view' },
+      { title: 'Kunden', url: '/kunden/liste', permissionKey: 'clients.view' },
       { title: 'Abschlüsse', url: '/kunden/abschluesse', permissionKey: 'clients.view' },
       { title: 'Laufzeiten', url: '/kunden/laufzeiten', permissionKey: 'clients.laufzeiten.view' },
     ],
@@ -37,17 +38,29 @@ const navItems: NavItem[] = [
     title: 'Sales', url: '/sales', icon: TrendingUp, permissionKey: 'sales.view',
     children: [
       { title: 'Übersicht', url: '/sales/uebersicht', permissionKey: 'sales.view' },
-      { title: 'A-KPIs & Leaderboard', url: '/sales/kpis', adminOnly: true, permissionKey: 'sales.kpis.view' },
-      { title: 'Close KPI Test', url: '/sales/close-kpi-test', adminOnly: true },
-      { title: 'Vorqualifikation', url: '/sales/vorquali', permissionKey: 'sales.view' },
-      { title: 'Leadkauf', url: '/sales/leads', permissionKey: 'sales.view' },
-      { title: 'Cold Mail', url: '/sales/coldmail', permissionKey: 'sales.view' },
+      { title: 'KPI', url: '/sales/kpi', permissionKey: 'sales.view' },
       { title: 'Referenzen', url: '/sales/referenz-showcase', permissionKey: 'sales.referenzen.view' },
       { title: 'Lead Quality Audit', url: '/tools/lead-quality-audit' },
     ],
   },
   {
-    title: 'Projekte & Aufgaben', url: '/projekte', icon: ClipboardList, permissionKey: 'projects.view',
+    title: 'Paid Ads', url: '/paid-ads', icon: Megaphone,
+    children: [
+      { title: 'Übersicht', url: '/paid-ads' },
+      { title: 'Kunden', url: '/paid-ads/kunden' },
+      { title: 'Untermarken', url: '/paid-ads/untermarken' },
+      { title: 'Leadsharks', url: '/paid-ads/leadsharks' },
+      { title: 'AttentionX', url: '/paid-ads/attentionx' },
+    ],
+  },
+  {
+    title: 'Development', url: '/sales/close-kpi-test', icon: Code2, adminOnly: true,
+    children: [
+      { title: 'Close KPI Test', url: '/sales/close-kpi-test', adminOnly: true },
+    ],
+  },
+  {
+    title: 'Fulfillment', url: '/projekte', icon: ClipboardList, permissionKey: 'projects.view',
     children: [
       { title: 'Projekte', url: '/projekte', permissionKey: 'projects.view' },
       { title: 'Aufgaben', url: '/projekte/aufgaben', permissionKey: 'tasks.view' },
@@ -57,6 +70,7 @@ const navItems: NavItem[] = [
     title: 'Finanzen', url: '/finanzen', icon: Euro, permissionKey: 'finanzen.view',
     children: [
       { title: 'Übersicht', url: '/finanzen', permissionKey: 'finanzen.view' },
+      { title: 'KPI', url: '/finanzen/kpi', permissionKey: 'finanzen.view' },
       { title: 'Rechnungen', url: '/finanzen/rechnungen', permissionKey: 'finanzen.view' },
       { title: 'Werbebudgets', url: '/finanzen/werbebudgets', permissionKey: 'finanzen.view' },
     ],
@@ -71,60 +85,19 @@ const navItems: NavItem[] = [
   },
 ];
 
-// Items that go under the "Tools" expandable category
+// Items that go under the "Integrationen" expandable category
 const toolsNavItems: NavItem[] = [
-  { title: 'Integrationen', url: '/integrationen', icon: Plug, adminOnly: true, permissionKey: 'integrationen.view' },
+  { title: 'Übersicht', url: '/integrationen', icon: Plug, adminOnly: true, permissionKey: 'integrationen.view' },
   { title: 'Slack', url: '/slack', icon: Hash, adminOnly: true, permissionKey: 'slack.view' },
-  {
-    title: 'Close', url: '/close', icon: Briefcase, permissionKey: 'sales.close.view',
-    children: [
-      { title: 'Leads', url: '/close/leads' },
-      { title: 'Deals', url: '/close/deals' },
-      { title: 'Verknüpfungen', url: '/close/verknuepfungen' },
-    ],
-  },
-  {
-    title: 'Meta Ads', url: '/meta', icon: Facebook, permissionKey: 'sales.meta.view',
-    children: [
-      { title: 'Übersicht', url: '/meta/uebersicht' },
-      { title: 'Ads Manager', url: '/meta/kampagnen' },
-      { title: 'Verknüpfungen', url: '/meta/verknuepfungen' },
-      { title: 'Abrechnungen & Zahlungen', url: '/meta/abrechnungen' },
-    ],
-  },
-  {
-    title: 'OnePage Leads', url: '/onepage-leads/kunden', icon: Globe,
-    adminOnly: true,
-    children: [
-      { title: 'Kunden', url: '/onepage-leads/kunden' },
-    ],
-  },
-  {
-    title: 'Drive', url: '/drive', icon: FolderOpen, permissionKey: 'drive.view',
-    children: [
-      { title: 'Übersicht', url: '/drive' },
-      { title: 'Meine Dateien', url: '/drive/meine-dateien' },
-      { title: 'Geteilt mit mir', url: '/drive/geteilt' },
-      { title: 'Papierkorb', url: '/drive/papierkorb' },
-    ],
-  },
-  {
-    title: 'Email Automatisierung', url: '/email-automatisierung', icon: Workflow,
-    adminOnly: true,
-    children: [
-      { title: 'Posteingang', url: '/email-automatisierung' },
-      { title: 'Ungelesen', url: '/email-automatisierung/ungelesen' },
-      { title: 'Gesendet', url: '/email-automatisierung/gesendet' },
-      { title: 'Wichtig', url: '/email-automatisierung/wichtig' },
-      { title: 'Entwürfe', url: '/email-automatisierung/entwuerfe' },
-      { title: 'Papierkorb', url: '/email-automatisierung/papierkorb' },
-    ],
-  },
-  { title: 'n8n Workflows', url: '/automationen/n8n', icon: Workflow },
-  {
-    title: 'A-Ad Creative Studio', url: '/tools/ad-creative-studio', icon: Wand2, adminOnly: true,
-  },
+  { title: 'Close', url: '/close/verknuepfungen', icon: Briefcase, permissionKey: 'sales.close.view' },
+  { title: 'Meta Ads', url: '/meta/verknuepfungen', icon: Facebook, permissionKey: 'sales.meta.view' },
+  { title: 'Onepage', url: '/onepage-leads/kunden', icon: Globe, adminOnly: true },
+  { title: 'Google Drive', url: '/drive', icon: FolderOpen, permissionKey: 'drive.view' },
+  { title: 'E-Mail', url: '/email-automatisierung', icon: Mail, adminOnly: true },
+  { title: 'n8n', url: '/automationen/n8n', icon: Workflow },
+  { title: 'FulfillmentOS KI', url: '/automationen/aria', icon: Sparkles },
 ];
+
 function loadSidebarState(): Record<string, boolean> {
   try { return JSON.parse(localStorage.getItem('sidebar-state') || '{}'); } catch { return {}; }
 }
