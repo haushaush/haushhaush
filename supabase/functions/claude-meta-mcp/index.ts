@@ -57,10 +57,18 @@ async function verifyBearer(token: string): Promise<boolean> {
   try {
     const sb = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY")!,
     );
     const { data, error } = await sb.auth.getUser(token);
-    return !error && !!data?.user;
+    if (error || !data?.user) return false;
+    // Restrict OAuth access to admins only.
+    const { data: roles } = await sb
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", data.user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+    return !!roles;
   } catch {
     return false;
   }
