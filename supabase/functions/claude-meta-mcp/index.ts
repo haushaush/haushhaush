@@ -20,7 +20,9 @@ function checkAuth(req: Request): Response | null {
   const fromQuery = new URL(req.url).searchParams.get("key");
   const provided = fromHeader || fromQuery;
   if (!configured || !provided || provided !== configured) {
-    return jsonResponse({ success: false, error: "unauthorized" }, 401);
+    // Use 403 (not 401) so MCP clients like Claude do NOT trigger OAuth
+    // discovery/registration when the key is missing or wrong.
+    return jsonResponse({ success: false, error: "forbidden" }, 403);
   }
   return null;
 }
