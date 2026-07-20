@@ -146,6 +146,7 @@ const App = () => (
               <OnboardingGuardRunner />
               <Routes>
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                 <Route path="/registrierung" element={<Registrierung />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/onboarding" element={<Onboarding />} />
