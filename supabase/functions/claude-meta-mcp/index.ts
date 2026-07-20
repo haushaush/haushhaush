@@ -1,7 +1,12 @@
 // Claude Meta Connector — MCP Server (Streamable HTTP, JSON-RPC 2.0).
-// Auth: x-api-key header OR ?key= query param vs CLAUDE_CONNECTOR_SECRET.
-// Reuses shared handlers so behavior stays identical to the 4 sibling functions.
+// Auth options (any one succeeds):
+//   1) OAuth 2.1 Bearer token from Supabase Auth (Authorization: Bearer <jwt>)
+//      -> preferred for Claude / Cowork remote MCP clients.
+//   2) x-api-key header vs CLAUDE_CONNECTOR_SECRET (legacy / server-to-server).
+//   3) ?key= query param vs CLAUDE_CONNECTOR_SECRET (legacy).
+// The key/URL is never logged.
 
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   billingDiagnose,
   corsHeaders,
@@ -12,19 +17,75 @@ import {
   searchPayments,
 } from "../_shared/claude-connector.ts";
 
-/** Check x-api-key header OR ?key= query param against CLAUDE_CONNECTOR_SECRET.
- *  Never logs the provided key or the request URL. */
-function checkAuth(req: Request): Response | null {
+const PROJECT_REF = "fqcueblsinjiclolubwv";
+const ISSUER = `https://${PROJECT_REF}.supabase.co/auth/v1`;
+
+function resourceUrl(req: Request): string {
+  const u = new URL(req.url);
+  return `${u.origin}/functions/v1/claude-meta-mcp`;
+}
+
+function protectedResourceMetadata(req: Request) {
+  return {
+    resource: resourceUrl(req),
+    authorization_servers: [ISSUER],
+    bearer_methods_supported: ["header"],
+    scopes_supported: ["openid", "email", "profile"],
+    resource_documentation:
+      "https://fqcueblsinjiclolubwv.supabase.co/functions/v1/claude-meta-mcp",
+  };
+}
+
+function unauthorized(req: Request): Response {
+  const metaUrl = `${resourceUrl(req)}/.well-known/oauth-protected-resource`;
+  return new Response(
+    JSON.stringify({ success: false, error: "unauthorized" }),
+    {
+      status: 401,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        "WWW-Authenticate":
+          `Bearer realm="claude-meta-mcp", resource_metadata="${metaUrl}"`,
+      },
+    },
+  );
+}
+
+async function verifyBearer(token: string): Promise<boolean> {
+  try {
+    const sb = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+    );
+    const { data, error } = await sb.auth.getUser(token);
+    return !error && !!data?.user;
+  } catch {
+    return false;
+  }
+}
+
+/** Returns null if authenticated, otherwise a Response to send. */
+async function checkAuth(req: Request): Promise<Response | null> {
   const configured = Deno.env.get("CLAUDE_CONNECTOR_SECRET");
+
+  // 1) OAuth Bearer token
+  const authHeader = req.headers.get("authorization") ?? req.headers.get("Authorization");
+  if (authHeader?.toLowerCase().startsWith("bearer ")) {
+    const token = authHeader.slice(7).trim();
+    // Legacy: allow raw shared-secret in Bearer for backwards-compat.
+    if (configured && token === configured) return null;
+    if (token && await verifyBearer(token)) return null;
+    return unauthorized(req);
+  }
+
+  // 2/3) Shared secret via header or query
   const fromHeader = req.headers.get("x-api-key");
   const fromQuery = new URL(req.url).searchParams.get("key");
   const provided = fromHeader || fromQuery;
-  if (!configured || !provided || provided !== configured) {
-    // Use 403 (not 401) so MCP clients like Claude do NOT trigger OAuth
-    // discovery/registration when the key is missing or wrong.
-    return jsonResponse({ success: false, error: "forbidden" }, 403);
-  }
-  return null;
+  if (configured && provided && provided === configured) return null;
+
+  return unauthorized(req);
 }
 
 const DEFAULT_PROTOCOL_VERSION = "2025-06-18";
@@ -134,7 +195,14 @@ async function handleRpc(msg: any): Promise<any | null> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const unauth = checkAuth(req);
+  const url = new URL(req.url);
+
+  // Public discovery endpoints — no auth.
+  if (url.pathname.endsWith("/.well-known/oauth-protected-resource")) {
+    return jsonResponse(protectedResourceMetadata(req));
+  }
+
+  const unauth = await checkAuth(req);
   if (unauth) return unauth;
 
   if (req.method === "GET") {
@@ -142,7 +210,7 @@ Deno.serve(async (req) => {
       ok: true,
       server: "claude-meta-connector",
       transport: "streamable-http",
-      hint: "POST JSON-RPC 2.0 messages here. Send x-api-key header.",
+      auth: "OAuth 2.1 Bearer (Supabase) — legacy x-api-key/?key= also accepted.",
     });
   }
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
