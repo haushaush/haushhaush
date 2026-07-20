@@ -15,6 +15,10 @@ const TEST_PASSWORD = 'Test1234!';
 export default function Auth() {
   const { user, loading, activateTestMode } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rawNext = searchParams.get('next') ?? '';
+  // Only accept same-origin relative paths.
+  const nextPath = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +28,7 @@ export default function Auth() {
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="text-primary animate-pulse text-2xl font-semibold">Laden...</div></div>;
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={nextPath} replace />;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
