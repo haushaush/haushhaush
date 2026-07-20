@@ -1,5 +1,5 @@
 // Claude Meta Connector — MCP Server (Streamable HTTP, JSON-RPC 2.0).
-// Auth: x-api-key header vs CLAUDE_CONNECTOR_SECRET.
+// Auth: x-api-key header OR ?key= query param vs CLAUDE_CONNECTOR_SECRET.
 // Reuses shared handlers so behavior stays identical to the 4 sibling functions.
 
 import {
