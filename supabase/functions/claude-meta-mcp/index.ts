@@ -4,7 +4,6 @@
 
 import {
   billingDiagnose,
-  checkAuth,
   corsHeaders,
   ConnectorResult,
   fetchAccounts,
@@ -12,6 +11,19 @@ import {
   jsonResponse,
   searchPayments,
 } from "../_shared/claude-connector.ts";
+
+/** Check x-api-key header OR ?key= query param against CLAUDE_CONNECTOR_SECRET.
+ *  Never logs the provided key or the request URL. */
+function checkAuth(req: Request): Response | null {
+  const configured = Deno.env.get("CLAUDE_CONNECTOR_SECRET");
+  const fromHeader = req.headers.get("x-api-key");
+  const fromQuery = new URL(req.url).searchParams.get("key");
+  const provided = fromHeader || fromQuery;
+  if (!configured || !provided || provided !== configured) {
+    return jsonResponse({ success: false, error: "unauthorized" }, 401);
+  }
+  return null;
+}
 
 const DEFAULT_PROTOCOL_VERSION = "2025-06-18";
 
