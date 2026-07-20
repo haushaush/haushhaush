@@ -22,7 +22,8 @@ const ISSUER = `https://${PROJECT_REF}.supabase.co/auth/v1`;
 
 function resourceUrl(req: Request): string {
   const u = new URL(req.url);
-  return `${u.origin}/functions/v1/claude-meta-mcp`;
+  // Edge runtime sees `http://` internally; the public URL is always https.
+  return `https://${u.host}/functions/v1/claude-meta-mcp`;
 }
 
 function protectedResourceMetadata(req: Request) {
