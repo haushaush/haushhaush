@@ -17,3 +17,18 @@ verify_jwt = true
 
 [functions.meta-mcp]
 verify_jwt = false
+
+[functions.claude-meta-accounts]
+verify_jwt = false
+
+[functions.claude-meta-kpi-report]
+verify_jwt = false
+
+[functions.claude-meta-payments-search]
+verify_jwt = false
+
+[functions.claude-meta-billing-diagnose]
+verify_jwt = false
+
+[functions.claude-meta-mcp]
+verify_jwt = false
