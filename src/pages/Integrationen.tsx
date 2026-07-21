@@ -372,7 +372,8 @@ export default function Integrationen() {
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category.toLowerCase().includes(searchQuery.toLowerCase());
       const setting = getSettingForProvider(p.id);
-      const isConnected = setting?.connected || p.id === 'slack' || (p.id === 'google_drive' && (driveConnected || !!googleDriveConn));
+      const settingConnected = p.id === 'google_drive' ? false : !!setting?.connected;
+      const isConnected = settingConnected || p.id === 'slack' || (p.id === 'google_drive' && (driveConnected || !!googleDriveConn));
 
       let matchesCategory = true;
       if (activeCategory === 'Verbunden') matchesCategory = isConnected;
@@ -388,7 +389,7 @@ export default function Integrationen() {
     const s = getSettingForProvider(p.id);
     return {
       provider: p.id,
-      connected: !!s?.connected || p.id === 'slack' || (p.id === 'google_drive' && (driveConnected || !!googleDriveConn)),
+      connected: (p.id !== 'google_drive' && !!s?.connected) || p.id === 'slack' || (p.id === 'google_drive' && (driveConnected || !!googleDriveConn)),
       category: p.category,
       healthScore: s?.config?.health_score ?? null,
       hasError: s?.last_sync_status === 'error',
@@ -471,7 +472,7 @@ export default function Integrationen() {
             <IntegrationCard
               key={provider.id}
               provider={provider}
-              connected={setting?.connected || isSlackConnected || isDriveConnected || isPipedriveConnected}
+              connected={(provider.id !== 'google_drive' && setting?.connected) || isSlackConnected || isDriveConnected || isPipedriveConnected}
               expanded={expandedCard === provider.id}
               onToggle={() => setExpandedCard(prev => prev === provider.id ? null : provider.id)}
               lastSyncAt={setting?.last_sync_at || pipedriveLatest?.last_sync_at}
