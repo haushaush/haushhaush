@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => null);
     const targetId = body?.user_id;
     const confirmName = String(body?.confirm_name || '').trim();
+    const confirmEmail = String(body?.confirm_email || '').trim().toLowerCase();
 
     if (!targetId || typeof targetId !== 'string') {
       return jsonResponse({ error: 'user_id fehlt' }, 400);
@@ -61,32 +62,72 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Du kannst dein eigenes Konto nicht löschen' }, 403);
     }
 
-    // Load target
-    const { data: target } = await admin
+    // Load target — targetId may be either a team.id OR an auth user_id.
+    // Try team.id first, then fall back to matching by email through auth.
+    let { data: target } = await admin
       .from('team')
       .select('id, name, email')
       .eq('id', targetId)
       .maybeSingle();
 
     if (!target) {
+      // targetId is likely an auth user id — resolve to team row via email
+      const { data: authUser } = await admin.auth.admin.getUserById(targetId);
+      const email = authUser?.user?.email;
+      if (email) {
+        const { data: byEmail } = await admin
+          .from('team')
+          .select('id, name, email')
+          .ilike('email', email)
+          .maybeSingle();
+        target = byEmail || null;
+      }
+    }
+
+    if (!target) {
       return jsonResponse({ error: 'Mitarbeiter nicht gefunden' }, 404);
     }
 
-    // Confirm name match
-    if (confirmName.toLowerCase() !== String(target.name || '').trim().toLowerCase()) {
-      return jsonResponse({ error: 'Name stimmt nicht überein' }, 400);
+    // Confirm — accept either email OR name match
+    const nameOk = confirmName && confirmName.toLowerCase() === String(target.name || '').trim().toLowerCase();
+    const emailOk = confirmEmail && confirmEmail === String(target.email || '').trim().toLowerCase();
+    if (!nameOk && !emailOk) {
+      return jsonResponse({ error: 'Bestätigung stimmt nicht überein' }, 400);
+    }
+
+    // Resolve the auth user id (for auth-scoped deletions & auth.admin.deleteUser)
+    let authUserId: string | null = null;
+    if (target.email) {
+      const { data: pageOne } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const match = pageOne?.users?.find((u: any) => (u.email || '').toLowerCase() === String(target.email).toLowerCase());
+      authUserId = match?.id ?? null;
+    }
+
+    if (authUserId && authUserId === callerId) {
+      return jsonResponse({ error: 'Du kannst dein eigenes Konto nicht löschen' }, 403);
+    }
     }
 
     // Block deleting other admins
-    const { data: targetIsAdmin } = await admin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', targetId)
-      .eq('role', 'admin')
-      .maybeSingle();
+    if (authUserId) {
+      const { data: targetIsAdmin } = await admin
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', authUserId)
+        .eq('role', 'admin')
+        .maybeSingle();
 
-    if (targetIsAdmin) {
-      return jsonResponse({ error: 'Andere Admin-Konten können nicht gelöscht werden' }, 403);
+      if (targetIsAdmin) {
+        // Extra safety: also block if this would remove the last admin
+        const { count: adminCount } = await admin
+          .from('user_roles')
+          .select('user_id', { count: 'exact', head: true })
+          .eq('role', 'admin');
+        if ((adminCount ?? 0) <= 1) {
+          return jsonResponse({ error: 'Der letzte Admin kann nicht gelöscht werden' }, 403);
+        }
+        return jsonResponse({ error: 'Andere Admin-Konten können nicht gelöscht werden' }, 403);
+      }
     }
 
     // === Cleanup dependent rows BEFORE deleting auth user ===
@@ -113,11 +154,12 @@ Deno.serve(async (req) => {
       'support_tickets',
       'time_entries',
     ];
+    const scopeId = authUserId ?? targetId;
     for (const table of userIdTables) {
       const { error, count } = await admin
         .from(table)
         .delete({ count: 'exact' })
-        .eq('user_id', targetId);
+        .eq('user_id', scopeId);
       if (error) {
         if (!error.message?.includes('does not exist') && error.code !== '42P01') {
           console.warn(`[delete-team-member] cleanup ${table}: ${error.message}`);
@@ -147,30 +189,32 @@ Deno.serve(async (req) => {
       const { error } = await admin
         .from(table)
         .update({ [column]: null })
-        .eq(column, targetId);
+        .eq(column, scopeId);
       if (error && !error.message?.includes('does not exist') && error.code !== '42P01') {
         console.warn(`[delete-team-member] nullify ${table}.${column}: ${error.message}`);
       }
     }
 
-    // Finally remove the team profile row
-    const { error: teamErr } = await admin.from('team').delete().eq('id', targetId);
+    // Finally remove the team profile row (target.id is guaranteed to be team.id)
+    const { error: teamErr } = await admin.from('team').delete().eq('id', target.id);
     if (teamErr) {
       console.warn(`[delete-team-member] team delete: ${teamErr.message}`);
     }
 
-    // Delete auth user
-    const { error: delErr } = await admin.auth.admin.deleteUser(targetId);
-    if (delErr) {
-      console.error('[delete-team-member] auth.deleteUser failed:', delErr);
-      return jsonResponse(
-        {
-          error: `Auth-Löschung fehlgeschlagen: ${delErr.message}`,
-          hint: 'Möglicherweise gibt es noch verknüpfte Daten. Prüfe die Edge-Function-Logs.',
-          cleaned: cleanedTables,
-        },
-        500,
-      );
+    // Delete auth user (only if one exists)
+    if (authUserId) {
+      const { error: delErr } = await admin.auth.admin.deleteUser(authUserId);
+      if (delErr) {
+        console.error('[delete-team-member] auth.deleteUser failed:', delErr);
+        return jsonResponse(
+          {
+            error: `Auth-Löschung fehlgeschlagen: ${delErr.message}`,
+            hint: 'Möglicherweise gibt es noch verknüpfte Daten. Prüfe die Edge-Function-Logs.',
+            cleaned: cleanedTables,
+          },
+          500,
+        );
+      }
     }
 
     console.log(`[delete-team-member] ✓ deleted ${targetId} (${target.name})`);
