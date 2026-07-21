@@ -48,6 +48,7 @@ export function MetaMatchingCard() {
   const [loadingActive, setLoadingActive] = useState(true);
   const [running, setRunning] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoadingActive(true);
