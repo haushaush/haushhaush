@@ -129,11 +129,6 @@ const toolsNavItems: NavItem[] = [
       { title: 'Regeln', url: '/email-automatisierung/regeln', adminOnly: true },
     ],
   },
-    children: [
-      { title: 'Posteingang', url: '/email-automatisierung', adminOnly: true },
-      { title: 'Regeln', url: '/email-automatisierung/regeln', adminOnly: true },
-    ],
-  },
   { title: 'n8n', url: '/automationen/n8n', icon: Workflow },
   { title: 'FulfillmentOS KI', url: '/automationen/aria', icon: Sparkles },
 ];
