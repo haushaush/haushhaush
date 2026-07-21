@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!callerRole) {
-      return jsonResponse({ error: 'Keine Berechtigung – nur Admins können Mitarbeiter löschen' }, 403);
+      return jsonResponse({ error: 'Nur Admins dürfen Mitarbeiter löschen' }, 403);
     }
 
     const body = await req.json().catch(() => null);
