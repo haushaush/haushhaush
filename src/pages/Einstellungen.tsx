@@ -351,7 +351,7 @@ export default function Einstellungen() {
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="benachrichtigungen">Benachrichtigungen</TabsTrigger>
-          <TabsTrigger value="sicherheit">Sicherheit</TabsTrigger>
+          {isAdmin && <TabsTrigger value="sicherheit">Sicherheit</TabsTrigger>}
         </TabsList>
 
 
