@@ -184,10 +184,10 @@ export default function Einstellungen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const defaultTab = 'branding';
-  const adminOnlyTabs: string[] = [];
+  const adminOnlyTabs: string[] = ['sicherheit'];
   const allowedTabs = isAdmin
     ? ['branding', 'benachrichtigungen', 'sicherheit']
-    : ['branding', 'benachrichtigungen', 'sicherheit'];
+    : ['branding', 'benachrichtigungen'];
   const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
 
   // Redirect non-admins away from admin-only tabs
@@ -200,6 +200,7 @@ export default function Einstellungen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, requestedTab]);
+
 
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -350,7 +351,7 @@ export default function Einstellungen() {
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="benachrichtigungen">Benachrichtigungen</TabsTrigger>
-          <TabsTrigger value="sicherheit">Sicherheit</TabsTrigger>
+          {isAdmin && <TabsTrigger value="sicherheit">Sicherheit</TabsTrigger>}
         </TabsList>
 
 
@@ -418,10 +419,13 @@ export default function Einstellungen() {
           </Card>
         </TabsContent>
 
-        {/* ═══════ SICHERHEIT TAB ═══════ */}
-        <TabsContent value="sicherheit" className="mt-4 space-y-6">
-          <SecuritySettingsTab />
-        </TabsContent>
+        {/* ═══════ SICHERHEIT TAB (Admin only) ═══════ */}
+        {isAdmin && (
+          <TabsContent value="sicherheit" className="mt-4 space-y-6">
+            <SecuritySettingsTab />
+          </TabsContent>
+        )}
+
 
 
       </Tabs>
