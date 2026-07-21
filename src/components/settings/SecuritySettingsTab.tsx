@@ -126,18 +126,19 @@ export function SecuritySettingsTab() {
             </div>
             <div className="flex items-center gap-2">
               {hasFactor ? (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => setEnrollOpen(true)}>
-                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Neu einrichten
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={disableMfa} disabled={busy} className="text-destructive hover:text-destructive">
-                    Deaktivieren
-                  </Button>
-                </>
+                <Button variant="outline" size="sm" onClick={() => setEnrollOpen(true)}>
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Neu einrichten
+                </Button>
               ) : (
                 <Button size="sm" onClick={() => setEnrollOpen(true)}>2FA einrichten</Button>
               )}
             </div>
+          </div>
+
+          <div className="rounded-md border border-border bg-muted/40 p-3">
+            <p className="text-xs text-muted-foreground">
+              2FA ist für dein Konto verpflichtend und kann nur von einem Admin verwaltet werden.
+            </p>
           </div>
 
           {hasFactor && (

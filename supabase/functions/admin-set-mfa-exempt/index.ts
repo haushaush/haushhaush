@@ -35,6 +35,9 @@ Deno.serve(async (req) => {
     const targetUserId: string = body.target_user_id;
     const exempt: boolean = !!body.exempt;
     if (!targetUserId) return json({ error: 'target_user_id required' }, 400);
+    if (targetUserId === userData.user.id) {
+      return json({ error: '2FA für das eigene Konto kann nicht hier geändert werden' }, 403);
+    }
 
     if (exempt) {
       // Remove all TOTP factors
