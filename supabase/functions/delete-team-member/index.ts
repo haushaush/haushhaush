@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => null);
     const targetId = body?.user_id;
     const confirmName = String(body?.confirm_name || '').trim();
+    const confirmEmail = String(body?.confirm_email || '').trim().toLowerCase();
 
     if (!targetId || typeof targetId !== 'string') {
       return jsonResponse({ error: 'user_id fehlt' }, 400);
@@ -61,12 +62,27 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Du kannst dein eigenes Konto nicht löschen' }, 403);
     }
 
-    // Load target
-    const { data: target } = await admin
+    // Load target — targetId may be either a team.id OR an auth user_id.
+    // Try team.id first, then fall back to matching by email through auth.
+    let { data: target } = await admin
       .from('team')
       .select('id, name, email')
       .eq('id', targetId)
       .maybeSingle();
+
+    if (!target) {
+      // targetId is likely an auth user id — resolve to team row via email
+      const { data: authUser } = await admin.auth.admin.getUserById(targetId);
+      const email = authUser?.user?.email;
+      if (email) {
+        const { data: byEmail } = await admin
+          .from('team')
+          .select('id, name, email')
+          .ilike('email', email)
+          .maybeSingle();
+        target = byEmail || null;
+      }
+    }
 
     if (!target) {
       return jsonResponse({ error: 'Mitarbeiter nicht gefunden' }, 404);
