@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     }
 
 
-    // Block deleting other admins
+    // Only block if the target is the LAST remaining admin
     if (authUserId) {
       const { data: targetIsAdmin } = await admin
         .from('user_roles')
@@ -118,7 +118,6 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (targetIsAdmin) {
-        // Extra safety: also block if this would remove the last admin
         const { count: adminCount } = await admin
           .from('user_roles')
           .select('user_id', { count: 'exact', head: true })
@@ -126,9 +125,9 @@ Deno.serve(async (req) => {
         if ((adminCount ?? 0) <= 1) {
           return jsonResponse({ error: 'Der letzte Admin kann nicht gelöscht werden' }, 403);
         }
-        return jsonResponse({ error: 'Andere Admin-Konten können nicht gelöscht werden' }, 403);
       }
     }
+
 
     // === Cleanup dependent rows BEFORE deleting auth user ===
     // CASCADE FKs now exist for most of these, but we still clean explicitly
