@@ -73,7 +73,7 @@ const navItems: NavItem[] = [
       { title: 'KPI', url: '/finanzen/kpi', permissionKey: 'finanzen.view' },
       { title: 'Rechnungen', url: '/finanzen/rechnungen', permissionKey: 'finanzen.view' },
       { title: 'Werbebudgets', url: '/finanzen/werbebudgets', permissionKey: 'finanzen.view' },
-      { title: 'Meta - Abrechnungen & Zahlungen', url: '/finanzen/abrechnungen', permissionKey: 'meta.billing.view' },
+      { title: 'Meta Belege', url: '/finanzen/abrechnungen', permissionKey: 'meta.billing.view' },
     ],
   },
   {
