@@ -389,7 +389,7 @@ export default function Integrationen() {
     const s = getSettingForProvider(p.id);
     return {
       provider: p.id,
-      connected: !!s?.connected || p.id === 'slack' || (p.id === 'google_drive' && (driveConnected || !!googleDriveConn)),
+      connected: (p.id !== 'google_drive' && !!s?.connected) || p.id === 'slack' || (p.id === 'google_drive' && (driveConnected || !!googleDriveConn)),
       category: p.category,
       healthScore: s?.config?.health_score ?? null,
       hasError: s?.last_sync_status === 'error',
