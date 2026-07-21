@@ -1,6 +1,13 @@
 // get-meta-notification-contacts
 // Server-side endpoint for n8n: maps a batch of Meta ad accounts to
 // customer notification contacts. Auth via shared secret header only.
+//
+// Matching strategy per account:
+//   1) primary  -> match by Meta Account ID (both `act_<n>` and numeric variants)
+//                  against clients.meta_account_id / clients.meta_account_ids
+//                  and kunde_meta_accounts.meta_account_id
+//   2) fallback -> only if NO id-match found: normalized name match against
+//                  clients.name and kunde_meta_accounts.meta_account_name
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
 const corsHeaders = {
@@ -28,13 +35,18 @@ function normalizeName(v: unknown): string {
     .trim();
 }
 
-function normalizeAccountId(v: unknown): string {
-  const s = String(v ?? '').trim();
-  if (!s) return '';
-  return s.startsWith('act_') ? s : `act_${s}`;
+/** Return both variants of a Meta Account ID: `act_<n>` and plain numeric. */
+function accountIdVariants(raw: unknown): { prefixed: string; numeric: string } {
+  const s = String(raw ?? '').trim();
+  if (!s) return { prefixed: '', numeric: '' };
+  const numeric = s.startsWith('act_') ? s.slice(4) : s;
+  const prefixed = s.startsWith('act_') ? s : `act_${s}`;
+  return { prefixed, numeric };
 }
 
 type InAccount = { meta_account_id?: string; meta_account_name?: string };
+type ClientRow = { id: string; name: string | null; email: string | null };
+type ClientHit = ClientRow & { matched_meta_account_id: string };
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -43,7 +55,6 @@ Deno.serve(async (req) => {
   if (!N8N_SECRET) {
     return json({ error: 'not_configured', message: 'N8N_META_CONTACTS_SECRET missing' }, 500);
   }
-
   const provided = req.headers.get('x-n8n-secret');
   if (!provided || provided !== N8N_SECRET) {
     return json({ error: 'unauthorized' }, 401);
@@ -68,113 +79,231 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const idList = Array.from(
-    new Set(
-      accounts
-        .map((a) => normalizeAccountId(a.meta_account_id))
-        .filter((s) => s.length > 0),
-    ),
-  );
+  // Build the full variant pool once so we can query the DB in a single pass.
+  const allVariants = new Set<string>();
+  for (const a of accounts) {
+    const v = accountIdVariants(a.meta_account_id);
+    if (v.prefixed) allVariants.add(v.prefixed);
+    if (v.numeric) allVariants.add(v.numeric);
+  }
+  const variantList = [...allVariants];
 
-  // 1) Direct match via clients.meta_account_id / meta_account_ids
-  const clientById = new Map<string, { id: string; name: string | null; email: string | null }>();
-  if (idList.length > 0) {
-    const { data: byPrimary, error: e1 } = await admin
+  // Index: any known meta account id variant -> best client hit
+  // (best = has email preferred; then first seen)
+  const clientByVariant = new Map<string, ClientHit[]>();
+  const pushHit = (variant: string, hit: ClientHit) => {
+    const arr = clientByVariant.get(variant) ?? [];
+    arr.push(hit);
+    clientByVariant.set(variant, arr);
+  };
+
+  // --- 1) clients.meta_account_id / clients.meta_account_ids ---
+  if (variantList.length > 0) {
+    const orExpr = [
+      `meta_account_id.in.(${variantList.map((v) => `"${v}"`).join(',')})`,
+      `meta_account_ids.ov.{${variantList.map((v) => `"${v}"`).join(',')}}`,
+    ].join(',');
+    const { data, error } = await admin
       .from('clients')
       .select('id, name, email, meta_account_id, meta_account_ids')
-      .or(
-        `meta_account_id.in.(${idList.map((v) => `"${v}"`).join(',')}),meta_account_ids.ov.{${idList.map((v) => `"${v}"`).join(',')}}`,
-      );
-    if (e1) return json({ error: 'db_error', message: e1.message }, 500);
-    for (const c of byPrimary ?? []) {
+      .or(orExpr);
+    if (error) return json({ error: 'db_error', source: 'clients', message: error.message }, 500);
+
+    for (const c of data ?? []) {
       const ids: string[] = [
-        ...(c.meta_account_id ? [c.meta_account_id] : []),
-        ...((c.meta_account_ids as string[] | null) ?? []),
+        ...(c.meta_account_id ? [c.meta_account_id as string] : []),
+        ...(((c.meta_account_ids as string[] | null) ?? []) as string[]),
       ];
       for (const id of ids) {
-        if (idList.includes(id) && !clientById.has(id)) {
-          clientById.set(id, { id: c.id, name: c.name, email: c.email });
+        const v = accountIdVariants(id);
+        for (const variant of [v.prefixed, v.numeric]) {
+          if (variant && allVariants.has(variant)) {
+            pushHit(variant, {
+              id: c.id,
+              name: c.name,
+              email: c.email,
+              matched_meta_account_id: id,
+            });
+          }
         }
       }
     }
   }
 
-  // 2) Fallback via kunde_meta_accounts -> clients
-  const missingIds = idList.filter((id) => !clientById.has(id));
-  if (missingIds.length > 0) {
-    const { data: kma, error: e2 } = await admin
+  // --- 2) kunde_meta_accounts -> clients (only for variants not resolved yet) ---
+  const unresolved = variantList.filter((v) => !clientByVariant.has(v));
+  if (unresolved.length > 0) {
+    const { data, error } = await admin
       .from('kunde_meta_accounts')
-      .select('meta_account_id, client_id, clients:client_id(id, name, email)')
-      .in('meta_account_id', missingIds);
-    if (e2) return json({ error: 'db_error', message: e2.message }, 500);
-    for (const row of (kma ?? []) as any[]) {
-      const c = row.clients;
-      if (c && !clientById.has(row.meta_account_id)) {
-        clientById.set(row.meta_account_id, { id: c.id, name: c.name, email: c.email });
+      .select('meta_account_id, clients:client_id(id, name, email)')
+      .in('meta_account_id', unresolved);
+    if (error)
+      return json({ error: 'db_error', source: 'kunde_meta_accounts', message: error.message }, 500);
+    for (const row of (data ?? []) as any[]) {
+      const c = row.clients as ClientRow | null;
+      if (!c) continue;
+      const v = accountIdVariants(row.meta_account_id);
+      for (const variant of [v.prefixed, v.numeric]) {
+        if (variant && allVariants.has(variant)) {
+          pushHit(variant, {
+            id: c.id,
+            name: c.name,
+            email: c.email,
+            matched_meta_account_id: row.meta_account_id,
+          });
+        }
       }
     }
   }
 
-  // 3) Name fallback pool
+  // --- 3) name fallback index (only built if needed) ---
+  let nameIndex: Map<string, ClientHit> | null = null;
   const nameNeeded = accounts.some((a) => {
-    const id = normalizeAccountId(a.meta_account_id);
-    return !clientById.has(id) && normalizeName(a.meta_account_name).length > 0;
+    const v = accountIdVariants(a.meta_account_id);
+    const hasIdHit =
+      (v.prefixed && clientByVariant.has(v.prefixed)) ||
+      (v.numeric && clientByVariant.has(v.numeric));
+    return !hasIdHit && normalizeName(a.meta_account_name).length > 0;
   });
-
-  const nameIndex = new Map<string, { id: string; name: string | null; email: string | null }>();
   if (nameNeeded) {
+    nameIndex = new Map();
     const { data: allClients, error: e3 } = await admin
       .from('clients')
       .select('id, name, email')
       .not('name', 'is', null);
-    if (e3) return json({ error: 'db_error', message: e3.message }, 500);
+    if (e3) return json({ error: 'db_error', source: 'clients_name', message: e3.message }, 500);
     for (const c of allClients ?? []) {
       const key = normalizeName(c.name);
-      if (key && !nameIndex.has(key)) {
-        nameIndex.set(key, { id: c.id, name: c.name, email: c.email });
+      if (!key) continue;
+      const existing = nameIndex.get(key);
+      // Prefer entries that actually have an email.
+      if (!existing || (!existing.email && c.email)) {
+        nameIndex.set(key, {
+          id: c.id,
+          name: c.name,
+          email: c.email,
+          matched_meta_account_id: '',
+        });
       }
     }
-    // Also index kunde_meta_accounts.meta_account_name -> client
     const { data: kmaAll, error: e4 } = await admin
       .from('kunde_meta_accounts')
       .select('meta_account_name, clients:client_id(id, name, email)')
       .not('meta_account_name', 'is', null);
-    if (e4) return json({ error: 'db_error', message: e4.message }, 500);
+    if (e4)
+      return json({ error: 'db_error', source: 'kma_name', message: e4.message }, 500);
     for (const row of (kmaAll ?? []) as any[]) {
       const key = normalizeName(row.meta_account_name);
-      const c = row.clients;
-      if (key && c && !nameIndex.has(key)) {
-        nameIndex.set(key, { id: c.id, name: c.name, email: c.email });
+      const c = row.clients as ClientRow | null;
+      if (!key || !c) continue;
+      const existing = nameIndex.get(key);
+      if (!existing || (!existing.email && c.email)) {
+        nameIndex.set(key, {
+          id: c.id,
+          name: c.name,
+          email: c.email,
+          matched_meta_account_id: '',
+        });
       }
     }
   }
 
+  const pickBestHit = (hits: ClientHit[], accountName: string | null): ClientHit => {
+    if (hits.length === 1) return hits[0];
+    const nameKey = normalizeName(accountName);
+    // 1. prefer hit whose client name is contained in the account name (or vice versa) AND has email
+    const scored = hits.map((h) => {
+      const n = normalizeName(h.name);
+      let score = 0;
+      if (h.email) score += 2;
+      if (nameKey && n) {
+        if (nameKey === n) score += 4;
+        else if (nameKey.includes(n) || n.includes(nameKey)) score += 3;
+      }
+      return { h, score };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0].h;
+  };
+
   const contacts = accounts.map((a) => {
-    const id = normalizeAccountId(a.meta_account_id);
-    const name = a.meta_account_name ?? null;
+    const v = accountIdVariants(a.meta_account_id);
+    const inputId = a.meta_account_id ?? null;
+    const accountName = a.meta_account_name ?? null;
 
-    let hit = id ? clientById.get(id) : undefined;
-    let matchType: 'meta_account_id' | 'account_name' | null = hit ? 'meta_account_id' : null;
+    const idHits =
+      (v.prefixed && clientByVariant.get(v.prefixed)) ||
+      (v.numeric && clientByVariant.get(v.numeric)) ||
+      null;
 
-    if (!hit) {
-      const key = normalizeName(name);
-      if (key) {
-        const found = nameIndex.get(key);
-        if (found) {
-          hit = found;
-          matchType = 'account_name';
+    if (idHits && idHits.length > 0) {
+      const hit = pickBestHit(idHits, accountName);
+      const hasEmail = !!hit.email;
+      return {
+        meta_account_id: v.prefixed || inputId,
+        meta_account_name: accountName,
+        client_id: hit.id,
+        client_name: hit.name,
+        email: hit.email,
+        match_type: 'meta_account_id',
+        missing_contact: !hasEmail,
+        debug_input_meta_account_id: inputId,
+        debug_input_meta_account_id_numeric: v.numeric || null,
+        debug_found_client_meta_account_id: hit.matched_meta_account_id || null,
+        debug_email_source: hasEmail ? 'clients.email' : null,
+        debug_reason: hasEmail
+          ? 'matched customer by meta account id'
+          : 'matched customer by meta account id but client has no email',
+      };
+    }
+
+    // Name fallback
+    const nameKey = normalizeName(accountName);
+    if (nameIndex && nameKey) {
+      let nameHit = nameIndex.get(nameKey) ?? null;
+      if (!nameHit) {
+        // loose contains match: account name contains client name
+        for (const [key, val] of nameIndex) {
+          if (key && (nameKey.includes(key) || key.includes(nameKey))) {
+            if (!nameHit || (!nameHit.email && val.email)) nameHit = val;
+          }
         }
+      }
+      if (nameHit) {
+        const hasEmail = !!nameHit.email;
+        return {
+          meta_account_id: v.prefixed || inputId,
+          meta_account_name: accountName,
+          client_id: nameHit.id,
+          client_name: nameHit.name,
+          email: nameHit.email,
+          match_type: 'account_name',
+          missing_contact: !hasEmail,
+          debug_input_meta_account_id: inputId,
+          debug_input_meta_account_id_numeric: v.numeric || null,
+          debug_found_client_meta_account_id: null,
+          debug_email_source: hasEmail ? 'clients.email' : null,
+          debug_reason: hasEmail
+            ? 'no meta account id match; matched customer by normalized account name'
+            : 'name fallback matched a client but no email on record',
+        };
       }
     }
 
     return {
-      meta_account_id: id || a.meta_account_id || null,
-      meta_account_name: name,
-      client_id: hit?.id ?? null,
-      client_name: hit?.name ?? null,
-      email: hit?.email ?? null,
-      match_type: hit && hit.email ? matchType : null,
-      missing_contact: !hit || !hit.email,
+      meta_account_id: v.prefixed || inputId,
+      meta_account_name: accountName,
+      client_id: null,
+      client_name: null,
+      email: null,
+      match_type: null,
+      missing_contact: true,
+      debug_input_meta_account_id: inputId,
+      debug_input_meta_account_id_numeric: v.numeric || null,
+      debug_found_client_meta_account_id: null,
+      debug_email_source: null,
+      debug_reason:
+        'no client found for this meta account id (checked clients.meta_account_id, clients.meta_account_ids, kunde_meta_accounts.meta_account_id) and no name fallback match',
     };
   });
 
