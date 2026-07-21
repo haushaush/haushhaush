@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.drive-proxy]
 verify_jwt = false
+
+[functions.get-meta-notification-contacts]
+verify_jwt = false
