@@ -72,17 +72,19 @@ export function MfaExemptCard({ targetUserId, memberEmail }: Props) {
               <Badge className={exempt
                 ? 'bg-warning/20 text-warning border-warning/30'
                 : 'bg-success/20 text-success border-success/30'}>
-                {exempt ? 'Vom 2FA-Zwang ausgenommen' : (enrolledAt ? '2FA aktiv' : '2FA-Zwang aktiv')}
+                {exempt ? '2FA für diesen Account deaktiviert' : (enrolledAt ? '2FA aktiv' : '2FA-Zwang aktiv')}
               </Badge>
               <p className="text-xs text-muted-foreground mt-1">
                 {exempt
-                  ? 'Dieser Account kann sich ohne 2FA anmelden.'
+                  ? 'Ein Admin hat 2FA für diesen Account deaktiviert.'
                   : 'Standard: Globaler 2FA-Zwang erzwingt Setup beim Login.'}
               </p>
             </div>
-            {exempt ? (
+            {isSelf ? (
+              <p className="text-xs text-muted-foreground">Eigenes Konto – 2FA hier nicht änderbar.</p>
+            ) : exempt ? (
               <Button size="sm" disabled={saving} onClick={() => toggle(false)}>
-                2FA-Zwang wieder aktivieren
+                2FA für Account einschalten
               </Button>
             ) : (
               <Button variant="destructive" size="sm" disabled={saving} onClick={() => toggle(true)}>
