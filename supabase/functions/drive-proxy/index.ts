@@ -1,7 +1,7 @@
 // drive-proxy
 // Proxies Google Drive API v3 calls using the central (is_primary) Google Drive connection.
 // Enforces per-user / per-role visibility for non-admins via drive_permissions.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
