@@ -543,6 +543,14 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
               loading={loadingAccounts}
               selectedAccount={accountId}
               onChange={setAccountId}
+              importedAdIds={importedAdIds}
+              isBlacklisted={isBlacklisted}
+              onJumpToSelect={(accId, adList, preselect) => {
+                setAccountId(accId);
+                setAds(adList);
+                setSelected(new Set(preselect));
+                setStep("select");
+              }}
             />
           )}
           {step === "filter" && <FilterStep filters={filters} onChange={setFilters} />}
@@ -663,11 +671,17 @@ function SourceStep({
   loading,
   selectedAccount,
   onChange,
+  importedAdIds,
+  isBlacklisted,
+  onJumpToSelect,
 }: {
   accounts: any[];
   loading: boolean;
   selectedAccount: string;
   onChange: (id: string) => void;
+  importedAdIds: Set<string>;
+  isBlacklisted: (ad: ImportableAd) => string | null;
+  onJumpToSelect: (accId: string, adList: ImportableAd[], preselect: string[]) => void;
 }) {
   if (loading) {
     return (
@@ -690,37 +704,339 @@ function SourceStep({
     );
   }
   return (
-    <div className="space-y-3 max-w-2xl mx-auto">
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        Aus welchem Werbekonto sollen Anzeigen importiert werden?
-      </p>
-      {accounts.map((acc) => (
-        <button
-          key={acc.id}
-          onClick={() => onChange(acc.id)}
-          className={cn(
-            "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
-            selectedAccount === acc.id
-              ? "border-gray-900 dark:border-white bg-gray-50 dark:bg-gray-800 ring-2 ring-gray-900/10 dark:ring-white/10"
-              : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900",
-          )}
-        >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shrink-0">
-            <Facebook className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-gray-900 dark:text-white truncate">{acc.name}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-              {acc.account_id ?? acc.id}
-              {acc.currency ? ` · ${acc.currency}` : ""}
+    <div className="space-y-8 max-w-3xl mx-auto">
+      <MissingCreativesSection
+        accounts={accounts}
+        importedAdIds={importedAdIds}
+        isBlacklisted={isBlacklisted}
+        onJumpToSelect={onJumpToSelect}
+      />
+
+      <div className="space-y-3">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Aus welchem Werbekonto sollen Anzeigen importiert werden?
+        </p>
+        {accounts.map((acc) => (
+          <button
+            key={acc.id}
+            onClick={() => onChange(acc.id)}
+            className={cn(
+              "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
+              selectedAccount === acc.id
+                ? "border-gray-900 dark:border-white bg-gray-50 dark:bg-gray-800 ring-2 ring-gray-900/10 dark:ring-white/10"
+                : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900",
+            )}
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shrink-0">
+              <Facebook className="w-5 h-5 text-white" />
             </div>
-          </div>
-          {selectedAccount === acc.id && <Check className="w-5 h-5 text-gray-900 dark:text-white shrink-0" />}
-        </button>
-      ))}
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-gray-900 dark:text-white truncate">{acc.name}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                {acc.account_id ?? acc.id}
+                {acc.currency ? ` · ${acc.currency}` : ""}
+              </div>
+            </div>
+            {selectedAccount === acc.id && <Check className="w-5 h-5 text-gray-900 dark:text-white shrink-0" />}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
+
+// ───────────────────────────────────────────────────────────────────
+// Missing Creatives (grouped by account, above the picker)
+// ───────────────────────────────────────────────────────────────────
+interface MissingScanState {
+  status: "idle" | "loading" | "done" | "error";
+  error?: string;
+  byAccount: Record<string, { account: any; ads: ImportableAd[] }>;
+}
+
+function MissingCreativesSection({
+  accounts,
+  importedAdIds,
+  isBlacklisted,
+  onJumpToSelect,
+}: {
+  accounts: any[];
+  importedAdIds: Set<string>;
+  isBlacklisted: (ad: ImportableAd) => string | null;
+  onJumpToSelect: (accId: string, adList: ImportableAd[], preselect: string[]) => void;
+}) {
+  const { toast } = useToast();
+  const [scan, setScan] = useState<MissingScanState>({ status: "idle", byAccount: {} });
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [picked, setPicked] = useState<Record<string, Set<string>>>({});
+
+  const runScan = async () => {
+    setScan({ status: "loading", byAccount: {} });
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) throw new Error("Nicht eingeloggt.");
+
+      const byAccount: Record<string, { account: any; ads: ImportableAd[] }> = {};
+
+      // Sequential to avoid Meta API pressure; ~3 pages/account × 25 = 75 ads
+      for (const acc of accounts) {
+        const collected: ImportableAd[] = [];
+        let after: string | undefined;
+        for (let i = 0; i < 3; i++) {
+          const { data, error } = await supabase.functions.invoke("meta-ads-list-importable", {
+            body: {
+              accountId: acc.id,
+              status: "ALL",
+              limit: 25,
+              after,
+              datePreset: "last_90d",
+            },
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (error) break;
+          const page = (data as any)?.ads as ImportableAd[] | undefined;
+          if (!page || page.length === 0) break;
+          collected.push(...page);
+          after = (data as any)?.paging?.cursors?.after;
+          if (!after) break;
+        }
+        const missing = collected.filter(
+          (a) =>
+            !a.already_imported &&
+            !importedAdIds.has(String(a.meta_ad_id)) &&
+            !isBlacklisted(a),
+        );
+        if (missing.length > 0) {
+          missing.sort((x, y) => (y.metrics?.spend ?? 0) - (x.metrics?.spend ?? 0));
+          byAccount[acc.id] = { account: acc, ads: missing };
+        }
+      }
+      setScan({ status: "done", byAccount });
+    } catch (e) {
+      setScan({ status: "error", byAccount: {}, error: (e as Error).message });
+    }
+  };
+
+  useEffect(() => {
+    if (accounts.length > 0 && scan.status === "idle") runScan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts.length]);
+
+  const groups = useMemo(
+    () =>
+      Object.values(scan.byAccount).sort((a, b) => b.ads.length - a.ads.length),
+    [scan.byAccount],
+  );
+  const totalMissing = groups.reduce((s, g) => s + g.ads.length, 0);
+
+  const togglePick = (accId: string, adId: string) => {
+    setPicked((prev) => {
+      const cur = new Set(prev[accId] ?? []);
+      if (cur.has(adId)) cur.delete(adId);
+      else cur.add(adId);
+      return { ...prev, [accId]: cur };
+    });
+  };
+
+  return (
+    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+      <div className="flex items-start justify-between gap-4 mb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-teal-500" />
+            <h4 className="text-sm font-bold text-gray-900 dark:text-white">Fehlende Creatives</h4>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Importiere alle noch nicht vorhandenen Creatives gruppiert nach Werbekonto.
+          </p>
+        </div>
+        {scan.status === "done" && (
+          <button
+            onClick={runScan}
+            className="text-[11px] font-semibold text-gray-500 hover:text-gray-900 dark:hover:text-white shrink-0"
+          >
+            Neu scannen
+          </button>
+        )}
+      </div>
+
+      {scan.status === "loading" && (
+        <div className="py-8 flex items-center justify-center gap-2 text-sm text-gray-500">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Fehlende Creatives werden gesucht …
+        </div>
+      )}
+
+      {scan.status === "error" && (
+        <div className="py-8 text-center space-y-3">
+          <p className="text-sm text-gray-500">Fehlende Creatives konnten nicht geladen werden.</p>
+          {scan.error && <p className="text-[11px] text-gray-400">{scan.error}</p>}
+          <Button size="sm" variant="outline" onClick={runScan}>
+            Erneut versuchen
+          </Button>
+        </div>
+      )}
+
+      {scan.status === "done" && totalMissing === 0 && (
+        <div className="py-6 text-center text-sm text-gray-500">
+          Keine fehlenden Creatives gefunden. Alle verfügbaren Meta-Creatives sind bereits importiert.
+        </div>
+      )}
+
+      {scan.status === "done" && totalMissing > 0 && (
+        <>
+          <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3 tabular-nums">
+            {totalMissing} fehlende Creatives in {groups.length} Werbekont
+            {groups.length === 1 ? "o" : "en"}
+          </div>
+          <div className="space-y-2">
+            {groups.map(({ account, ads: missingAds }) => {
+              const accId = account.id;
+              const isOpen = expanded.has(accId);
+              const pickSet = picked[accId] ?? new Set<string>();
+              return (
+                <div
+                  key={accId}
+                  className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden"
+                >
+                  <div className="flex items-center gap-3 p-3 bg-gray-50/50 dark:bg-gray-900/50">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shrink-0">
+                      <Facebook className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                        {account.name}
+                      </div>
+                      <div className="text-[11px] text-gray-500 truncate">
+                        <span className="tabular-nums">{missingAds.length}</span> fehlende Creatives · Meta Account:{" "}
+                        {account.account_id ?? account.id}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="accent"
+                      onClick={() =>
+                        onJumpToSelect(
+                          accId,
+                          missingAds,
+                          missingAds.map((a) => a.meta_ad_id),
+                        )
+                      }
+                    >
+                      Alle auswählen
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setExpanded((prev) => {
+                          const n = new Set(prev);
+                          if (n.has(accId)) n.delete(accId);
+                          else n.add(accId);
+                          return n;
+                        });
+                      }}
+                    >
+                      {isOpen ? "Zuklappen" : "Aufklappen"}
+                    </Button>
+                  </div>
+
+                  {isOpen && (
+                    <div className="p-3 space-y-2 border-t border-gray-200 dark:border-gray-800">
+                      <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={pickSet.size === missingAds.length && missingAds.length > 0}
+                          onChange={(e) => {
+                            setPicked((prev) => ({
+                              ...prev,
+                              [accId]: e.target.checked
+                                ? new Set(missingAds.map((a) => a.meta_ad_id))
+                                : new Set(),
+                            }));
+                          }}
+                          className="rounded"
+                        />
+                        Alle in diesem Werbekonto auswählen
+                      </label>
+                      <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1">
+                        {missingAds.map((ad) => {
+                          const sel = pickSet.has(ad.meta_ad_id);
+                          const m = ad.metrics ?? {};
+                          return (
+                            <label
+                              key={ad.meta_ad_id}
+                              className={cn(
+                                "flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors",
+                                sel
+                                  ? "border-gray-900 dark:border-white bg-gray-50 dark:bg-gray-800"
+                                  : "border-gray-200 dark:border-gray-800 hover:border-gray-300",
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={sel}
+                                onChange={() => togglePick(accId, ad.meta_ad_id)}
+                                className="rounded shrink-0"
+                              />
+                              <div className="w-10 h-10 rounded bg-gray-100 dark:bg-gray-800 overflow-hidden shrink-0">
+                                {ad.thumbnail_url && (
+                                  <img
+                                    src={ad.thumbnail_url}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                  />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                                  {ad.meta_ad_name}
+                                </div>
+                                <div className="text-[10px] text-gray-500 truncate">
+                                  {ad.meta_campaign_name ?? "—"}
+                                  {ad.ad_format ? ` · ${ad.ad_format}` : ""}
+                                </div>
+                              </div>
+                              <div className="text-[10px] tabular-nums text-gray-500 shrink-0 hidden sm:block">
+                                {m.spend != null && <span className="mr-2">€{Math.round(m.spend)}</span>}
+                                {m.leads != null && m.leads > 0 && <span>{m.leads} Leads</span>}
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <div className="flex justify-end pt-1">
+                        <Button
+                          size="sm"
+                          variant="accent"
+                          disabled={pickSet.size === 0}
+                          onClick={() => {
+                            const list = missingAds.filter((a) => pickSet.has(a.meta_ad_id));
+                            if (list.length === 0) return;
+                            onJumpToSelect(
+                              accId,
+                              missingAds,
+                              list.map((a) => a.meta_ad_id),
+                            );
+                          }}
+                        >
+                          {pickSet.size} ausgewählte importieren →
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 
 // ───────────────────────────────────────────────────────────────────
 // Step: Filter
