@@ -88,21 +88,41 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Mitarbeiter nicht gefunden' }, 404);
     }
 
-    // Confirm name match
-    if (confirmName.toLowerCase() !== String(target.name || '').trim().toLowerCase()) {
-      return jsonResponse({ error: 'Name stimmt nicht überein' }, 400);
+    // Confirm — accept either email OR name match
+    const nameOk = confirmName && confirmName.toLowerCase() === String(target.name || '').trim().toLowerCase();
+    const emailOk = confirmEmail && confirmEmail === String(target.email || '').trim().toLowerCase();
+    if (!nameOk && !emailOk) {
+      return jsonResponse({ error: 'Bestätigung stimmt nicht überein' }, 400);
+    }
+
+    // Resolve the auth user id (for auth-scoped deletions & auth.admin.deleteUser)
+    let authUserId: string | null = null;
+    if (target.email) {
+      const { data: pageOne } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const match = pageOne?.users?.find((u: any) => (u.email || '').toLowerCase() === String(target.email).toLowerCase());
+      authUserId = match?.id ?? null;
     }
 
     // Block deleting other admins
-    const { data: targetIsAdmin } = await admin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', targetId)
-      .eq('role', 'admin')
-      .maybeSingle();
+    if (authUserId) {
+      const { data: targetIsAdmin } = await admin
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', authUserId)
+        .eq('role', 'admin')
+        .maybeSingle();
 
-    if (targetIsAdmin) {
-      return jsonResponse({ error: 'Andere Admin-Konten können nicht gelöscht werden' }, 403);
+      if (targetIsAdmin) {
+        // Extra safety: also block if this would remove the last admin
+        const { count: adminCount } = await admin
+          .from('user_roles')
+          .select('user_id', { count: 'exact', head: true })
+          .eq('role', 'admin');
+        if ((adminCount ?? 0) <= 1) {
+          return jsonResponse({ error: 'Der letzte Admin kann nicht gelöscht werden' }, 403);
+        }
+        return jsonResponse({ error: 'Andere Admin-Konten können nicht gelöscht werden' }, 403);
+      }
     }
 
     // === Cleanup dependent rows BEFORE deleting auth user ===
