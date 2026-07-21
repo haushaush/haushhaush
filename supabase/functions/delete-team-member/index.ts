@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
     if (authUserId && authUserId === callerId) {
       return jsonResponse({ error: 'Du kannst dein eigenes Konto nicht löschen' }, 403);
     }
-    }
+
 
     // Block deleting other admins
     if (authUserId) {
