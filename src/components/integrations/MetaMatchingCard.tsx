@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Play, Check, X as XIcon, Link2 } from "lucide-react";
+import { Loader2, Play, Check, X as XIcon, Link2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { MetaActiveMatchesTable, type ActiveMatch } from "./MetaActiveMatchesTable";
+import { ManualMetaLinkModal } from "./ManualMetaLinkModal";
 import { getKundeDisplayName } from "@/lib/kunde-display-name";
 import {
   AlertDialog,
