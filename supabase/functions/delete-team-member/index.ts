@@ -149,11 +149,12 @@ Deno.serve(async (req) => {
       'support_tickets',
       'time_entries',
     ];
+    const scopeId = authUserId ?? targetId;
     for (const table of userIdTables) {
       const { error, count } = await admin
         .from(table)
         .delete({ count: 'exact' })
-        .eq('user_id', targetId);
+        .eq('user_id', scopeId);
       if (error) {
         if (!error.message?.includes('does not exist') && error.code !== '42P01') {
           console.warn(`[delete-team-member] cleanup ${table}: ${error.message}`);
@@ -183,30 +184,32 @@ Deno.serve(async (req) => {
       const { error } = await admin
         .from(table)
         .update({ [column]: null })
-        .eq(column, targetId);
+        .eq(column, scopeId);
       if (error && !error.message?.includes('does not exist') && error.code !== '42P01') {
         console.warn(`[delete-team-member] nullify ${table}.${column}: ${error.message}`);
       }
     }
 
-    // Finally remove the team profile row
-    const { error: teamErr } = await admin.from('team').delete().eq('id', targetId);
+    // Finally remove the team profile row (target.id is guaranteed to be team.id)
+    const { error: teamErr } = await admin.from('team').delete().eq('id', target.id);
     if (teamErr) {
       console.warn(`[delete-team-member] team delete: ${teamErr.message}`);
     }
 
-    // Delete auth user
-    const { error: delErr } = await admin.auth.admin.deleteUser(targetId);
-    if (delErr) {
-      console.error('[delete-team-member] auth.deleteUser failed:', delErr);
-      return jsonResponse(
-        {
-          error: `Auth-Löschung fehlgeschlagen: ${delErr.message}`,
-          hint: 'Möglicherweise gibt es noch verknüpfte Daten. Prüfe die Edge-Function-Logs.',
-          cleaned: cleanedTables,
-        },
-        500,
-      );
+    // Delete auth user (only if one exists)
+    if (authUserId) {
+      const { error: delErr } = await admin.auth.admin.deleteUser(authUserId);
+      if (delErr) {
+        console.error('[delete-team-member] auth.deleteUser failed:', delErr);
+        return jsonResponse(
+          {
+            error: `Auth-Löschung fehlgeschlagen: ${delErr.message}`,
+            hint: 'Möglicherweise gibt es noch verknüpfte Daten. Prüfe die Edge-Function-Logs.',
+            cleaned: cleanedTables,
+          },
+          500,
+        );
+      }
     }
 
     console.log(`[delete-team-member] ✓ deleted ${targetId} (${target.name})`);
