@@ -342,6 +342,7 @@ export function MetaMatchingCard() {
 
         <MetaActiveMatchesTable matches={active} loading={loadingActive} onChanged={load} />
       </CardContent>
+      <ManualMetaLinkModal open={manualOpen} onOpenChange={setManualOpen} onSaved={load} />
     </Card>
   );
 }
