@@ -73,7 +73,7 @@ const navItems: NavItem[] = [
       { title: 'KPI', url: '/finanzen/kpi', permissionKey: 'finanzen.view' },
       { title: 'Rechnungen', url: '/finanzen/rechnungen', permissionKey: 'finanzen.view' },
       { title: 'Werbebudgets', url: '/finanzen/werbebudgets', permissionKey: 'finanzen.view' },
-      { title: 'Meta - Abrechnungen & Zahlungen', url: '/finanzen/abrechnungen', permissionKey: 'meta.billing.view' },
+      { title: 'Meta Belege', url: '/finanzen/abrechnungen', permissionKey: 'meta.billing.view' },
     ],
   },
   {
@@ -90,11 +90,46 @@ const navItems: NavItem[] = [
 const toolsNavItems: NavItem[] = [
   { title: 'Übersicht', url: '/integrationen', icon: Plug, adminOnly: true, permissionKey: 'integrationen.view' },
   { title: 'Slack', url: '/slack', icon: Hash, adminOnly: true, permissionKey: 'slack.view' },
-  { title: 'Close', url: '/close/verknuepfungen', icon: Briefcase, permissionKey: 'sales.close.view' },
-  { title: 'Meta Ads', url: '/meta/verknuepfungen', icon: Facebook, permissionKey: 'sales.meta.view' },
-  { title: 'Onepage', url: '/onepage-leads/kunden', icon: Globe, adminOnly: true },
-  { title: 'Google Drive', url: '/drive', icon: FolderOpen, permissionKey: 'drive.view' },
-  { title: 'E-Mail', url: '/email-automatisierung', icon: Mail, adminOnly: true },
+  {
+    title: 'Close', url: '/close/verknuepfungen', icon: Briefcase, permissionKey: 'sales.close.view',
+    children: [
+      { title: 'Verknüpfungen', url: '/close/verknuepfungen', permissionKey: 'sales.close.view' },
+      { title: 'Leads', url: '/close/leads', permissionKey: 'sales.close.view' },
+      { title: 'Deals', url: '/close/deals', permissionKey: 'sales.close.view' },
+    ],
+  },
+  {
+    title: 'Meta Ads', url: '/meta/verknuepfungen', icon: Facebook, permissionKey: 'sales.meta.view',
+    children: [
+      { title: 'Verknüpfungen', url: '/meta/verknuepfungen', permissionKey: 'sales.meta.view' },
+      { title: 'Übersicht', url: '/meta/uebersicht', permissionKey: 'sales.meta.view' },
+      { title: 'Kampagnen', url: '/meta/kampagnen', permissionKey: 'sales.meta.view' },
+      { title: 'Anzeigengruppen', url: '/meta/anzeigengruppen', permissionKey: 'sales.meta.view' },
+      { title: 'Anzeigen', url: '/meta/anzeigen', permissionKey: 'sales.meta.view' },
+    ],
+  },
+  {
+    title: 'Onepage', url: '/onepage-leads/kunden', icon: Globe, adminOnly: true,
+    children: [
+      { title: 'Kunden', url: '/onepage-leads/kunden', adminOnly: true },
+    ],
+  },
+  {
+    title: 'Google Drive', url: '/drive', icon: FolderOpen, permissionKey: 'drive.view',
+    children: [
+      { title: 'Übersicht', url: '/drive', permissionKey: 'drive.view' },
+      { title: 'Meine Dateien', url: '/drive/meine-dateien', permissionKey: 'drive.view' },
+      { title: 'Geteilt mit mir', url: '/drive/geteilt', permissionKey: 'drive.view' },
+      { title: 'Papierkorb', url: '/drive/papierkorb', permissionKey: 'drive.view' },
+    ],
+  },
+  {
+    title: 'E-Mail Automatisierung', url: '/email-automatisierung', icon: Mail, adminOnly: true,
+    children: [
+      { title: 'Posteingang', url: '/email-automatisierung', adminOnly: true },
+      { title: 'Regeln', url: '/email-automatisierung/regeln', adminOnly: true },
+    ],
+  },
   { title: 'n8n', url: '/automationen/n8n', icon: Workflow },
   { title: 'FulfillmentOS KI', url: '/automationen/aria', icon: Sparkles },
 ];
