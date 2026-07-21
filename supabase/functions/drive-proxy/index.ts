@@ -106,11 +106,13 @@ Deno.serve(async (req) => {
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: userData, error: userError } = await userClient.auth.getUser();
-    if (userError || !userData?.user) {
-      return json({ error: 'Unauthorized' }, 401);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: userError } = await userClient.auth.getClaims(token);
+    if (userError || !claimsData?.claims?.sub) {
+      console.error('drive-proxy auth failed:', userError);
+      return json({ error: 'Unauthorized', details: userError?.message }, 401);
     }
-    const userId = userData.user.id;
+    const userId = claimsData.claims.sub as string;
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
