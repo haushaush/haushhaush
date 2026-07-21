@@ -472,7 +472,7 @@ export default function Integrationen() {
             <IntegrationCard
               key={provider.id}
               provider={provider}
-              connected={setting?.connected || isSlackConnected || isDriveConnected || isPipedriveConnected}
+              connected={(provider.id !== 'google_drive' && setting?.connected) || isSlackConnected || isDriveConnected || isPipedriveConnected}
               expanded={expandedCard === provider.id}
               onToggle={() => setExpandedCard(prev => prev === provider.id ? null : provider.id)}
               lastSyncAt={setting?.last_sync_at || pipedriveLatest?.last_sync_at}
