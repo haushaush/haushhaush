@@ -543,14 +543,6 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
               loading={loadingAccounts}
               selectedAccount={accountId}
               onChange={setAccountId}
-              importedAdIds={importedAdIds}
-              isBlacklisted={isBlacklisted}
-              onJumpToSelect={(accId, adList, preselect) => {
-                setAccountId(accId);
-                setAds(adList);
-                setSelected(new Set(preselect));
-                setStep("select");
-              }}
             />
           )}
           {step === "filter" && <FilterStep filters={filters} onChange={setFilters} />}
