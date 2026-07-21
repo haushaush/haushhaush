@@ -14,6 +14,9 @@ interface Props {
 }
 
 export function MfaExemptCard({ targetUserId, memberEmail }: Props) {
+  const { user, hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
+  const isSelf = !!user && !!targetUserId && user.id === targetUserId;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exempt, setExempt] = useState(false);
@@ -34,6 +37,7 @@ export function MfaExemptCard({ targetUserId, memberEmail }: Props) {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [targetUserId]);
 
   if (!targetUserId) return null;
+  if (!isAdmin) return null;
 
   const toggle = async (nextExempt: boolean) => {
     if (nextExempt && !confirm(`2FA für ${memberEmail || 'diesen Account'} ausschalten? Bestehende 2FA-Faktoren werden entfernt und der globale 2FA-Zwang gilt für diesen Account nicht mehr.`)) return;
