@@ -372,7 +372,8 @@ export default function Integrationen() {
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category.toLowerCase().includes(searchQuery.toLowerCase());
       const setting = getSettingForProvider(p.id);
-      const isConnected = setting?.connected || p.id === 'slack' || (p.id === 'google_drive' && (driveConnected || !!googleDriveConn));
+      const settingConnected = p.id === 'google_drive' ? false : !!setting?.connected;
+      const isConnected = settingConnected || p.id === 'slack' || (p.id === 'google_drive' && (driveConnected || !!googleDriveConn));
 
       let matchesCategory = true;
       if (activeCategory === 'Verbunden') matchesCategory = isConnected;
