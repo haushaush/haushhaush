@@ -213,6 +213,10 @@ export function MetaMatchingCard() {
             {running ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
             Jetzt ausführen
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setManualOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            Manuell verknüpfen
+          </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
