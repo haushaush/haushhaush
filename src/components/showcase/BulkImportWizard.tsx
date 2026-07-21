@@ -16,6 +16,7 @@ import {
   Loader2,
   Download,
   Search as SearchIcon,
+  Sparkles,
   Zap,
   Wand2,
   HelpCircle,
