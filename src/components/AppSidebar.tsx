@@ -77,6 +77,14 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    title: 'Dokumente', url: '/drive/meine-dateien', icon: FolderOpen, permissionKey: 'drive.view',
+    children: [
+      { title: 'Meine Dateien', url: '/drive/meine-dateien', permissionKey: 'drive.view' },
+      { title: 'Geteilt mit mir', url: '/drive/geteilt', permissionKey: 'drive.view' },
+      { title: 'Papierkorb', url: '/drive/papierkorb', permissionKey: 'drive.view' },
+    ],
+  },
+  {
     title: 'Team & HR', url: '/hr', icon: UserCircle, permissionKey: 'team.view',
     children: [
       { title: 'Mitarbeiter', url: '/hr/mitarbeiter', permissionKey: 'team.view' },
