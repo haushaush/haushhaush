@@ -184,10 +184,10 @@ export default function Einstellungen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const defaultTab = 'branding';
-  const adminOnlyTabs: string[] = [];
+  const adminOnlyTabs: string[] = ['sicherheit'];
   const allowedTabs = isAdmin
     ? ['branding', 'benachrichtigungen', 'sicherheit']
-    : ['branding', 'benachrichtigungen', 'sicherheit'];
+    : ['branding', 'benachrichtigungen'];
   const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
 
   // Redirect non-admins away from admin-only tabs
@@ -200,6 +200,7 @@ export default function Einstellungen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, requestedTab]);
+
 
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams);
