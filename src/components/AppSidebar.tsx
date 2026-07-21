@@ -123,16 +123,12 @@ const toolsNavItems: NavItem[] = [
     ],
   },
   {
-    title: 'Google Drive', url: '/drive', icon: FolderOpen, permissionKey: 'drive.view',
+    title: 'E-Mail Automatisierung', url: '/email-automatisierung', icon: Mail, adminOnly: true,
     children: [
-      { title: 'Übersicht', url: '/drive', permissionKey: 'drive.view' },
-      { title: 'Meine Dateien', url: '/drive/meine-dateien', permissionKey: 'drive.view' },
-      { title: 'Geteilt mit mir', url: '/drive/geteilt', permissionKey: 'drive.view' },
-      { title: 'Papierkorb', url: '/drive/papierkorb', permissionKey: 'drive.view' },
+      { title: 'Posteingang', url: '/email-automatisierung', adminOnly: true },
+      { title: 'Regeln', url: '/email-automatisierung/regeln', adminOnly: true },
     ],
   },
-  {
-    title: 'E-Mail Automatisierung', url: '/email-automatisierung', icon: Mail, adminOnly: true,
     children: [
       { title: 'Posteingang', url: '/email-automatisierung', adminOnly: true },
       { title: 'Regeln', url: '/email-automatisierung/regeln', adminOnly: true },
