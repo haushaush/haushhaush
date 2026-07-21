@@ -419,10 +419,13 @@ export default function Einstellungen() {
           </Card>
         </TabsContent>
 
-        {/* ═══════ SICHERHEIT TAB ═══════ */}
-        <TabsContent value="sicherheit" className="mt-4 space-y-6">
-          <SecuritySettingsTab />
-        </TabsContent>
+        {/* ═══════ SICHERHEIT TAB (Admin only) ═══════ */}
+        {isAdmin && (
+          <TabsContent value="sicherheit" className="mt-4 space-y-6">
+            <SecuritySettingsTab />
+          </TabsContent>
+        )}
+
 
 
       </Tabs>
