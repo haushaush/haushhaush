@@ -37,8 +37,15 @@ interface Result {
   meta_account_name: string;
   period: { from: string | null; to: string | null; preset: Preset };
   leads: Lead[];
-  truncated?: boolean;
+  has_more?: boolean;
+  partial?: boolean;
   warning?: string;
+}
+
+interface LoadError {
+  message: string;
+  detail?: string;
+  isRateLimit?: boolean;
 }
 
 function csvEscape(v: unknown): string {
@@ -85,7 +92,7 @@ export default function MetaLeads() {
   const [dateTo, setDateTo] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<LoadError | null>(null);
 
   const selected = accounts.find((a) => a.id === selectedAccountId);
 
@@ -126,28 +133,40 @@ export default function MetaLeads() {
       if (err) {
         const ctx: any = (err as any).context;
         try {
-          const bodyText = ctx && typeof ctx.text === 'function' ? await ctx.text() : null;
-          if (bodyText) payload = JSON.parse(bodyText);
+          if (ctx && typeof ctx.clone === 'function') {
+            payload = await ctx.clone().json();
+          } else if (ctx && typeof ctx.json === 'function') {
+            payload = await ctx.json();
+          }
         } catch { /* ignore */ }
-        if (!payload) throw new Error(err.message);
+        if (!payload) payload = { message: err.message };
       }
 
       if (payload?.error === 'meta_rate_limit') {
-        setError('Meta API Limit erreicht. Bitte warte ein paar Minuten und versuche es erneut.');
+        setError({
+          message: 'Meta API Limit erreicht. Bitte warte ein paar Minuten und versuche es erneut.',
+          detail: payload?.detail,
+          isRateLimit: true,
+        });
         toast.error('Meta API Limit erreicht');
         return; // keep previously loaded result
       }
       if (payload?.success === false && payload?.error && payload.error !== 'confirm_required') {
-        throw new Error(payload.message || payload.error);
+        setError({ message: payload.message || payload.error, detail: payload.detail });
+        toast.error(payload.message || 'Leads konnten nicht geladen werden');
+        return;
       }
-      if (payload?.error && !payload?.success) throw new Error(payload.error);
+      if (payload?.error && !payload?.success) {
+        setError({ message: payload.message || payload.error, detail: payload.detail });
+        return;
+      }
 
       setResult(payload as Result);
       if (payload?.warning) toast.info(payload.warning);
       else toast.success(`${payload.count} Leads geladen`);
     } catch (e) {
       const msg = (e as Error).message || 'Unbekannter Fehler';
-      setError(msg);
+      setError({ message: msg });
       toast.error('Leads konnten nicht geladen werden');
     } finally {
       setLoading(false);
@@ -245,28 +264,31 @@ export default function MetaLeads() {
 
       {!loading && error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 mb-6">
-          <p className="text-sm font-medium text-destructive">{error}</p>
+          <p className="text-sm font-medium text-destructive">{error.message}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Meta hat die Anfrage möglicherweise wegen zu vieler API-Aufrufe gedrosselt.
+            {error.isRateLimit
+              ? 'Meta hat die Anfrage vorübergehend gedrosselt. Bereits geladene Daten bleiben erhalten.'
+              : 'Die Anfrage wurde kontrolliert beendet. Die Seite kann weiter verwendet werden.'}
           </p>
+          {error.detail && <p className="text-xs text-muted-foreground mt-1 break-words">{error.detail}</p>}
           <Button size="sm" variant="outline" className="mt-3" onClick={loadLeads} disabled={loading}>
             Erneut versuchen
           </Button>
         </div>
       )}
 
-      {!loading && !error && result && result.leads.length === 0 && (
+      {!loading && result && result.leads.length === 0 && (
         <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground text-sm">
           {result.warning || 'Keine Leads für diesen Zeitraum gefunden.'}
         </div>
       )}
 
-      {!loading && !error && result && result.leads.length > 0 && (
+      {!loading && result && result.leads.length > 0 && (
         <div className="rounded-lg border border-border bg-card overflow-hidden">
           <div className="px-4 py-2.5 border-b border-border flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
               <span className="text-foreground font-medium">{result.leads.length}</span> Leads
-              {result.truncated && <span className="text-amber-600 ml-2">· Ergebnis gekürzt</span>}
+              {result.partial && <span className="text-amber-600 ml-2">· Ergebnis gekürzt</span>}
             </span>
             <span className="text-xs text-muted-foreground">
               {result.period.from || '—'} bis {result.period.to || '—'}

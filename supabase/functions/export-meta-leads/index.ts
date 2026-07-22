@@ -36,6 +36,16 @@ class RateLimitError extends Error {
   }
 }
 
+class MetaApiError extends Error {
+  code?: number;
+  subcode?: number;
+  constructor(message: string, code?: number, subcode?: number) {
+    super(message);
+    this.code = code;
+    this.subcode = subcode;
+  }
+}
+
 function isRateLimit(err: any): boolean {
   const code = err?.code;
   const sub = err?.error_subcode;
@@ -87,9 +97,9 @@ async function metaFetch(path: string, params: Record<string, string>, attempt =
       }
       throw new RateLimitError(errObj?.message || 'User request limit reached');
     }
-    const code = errObj?.code;
-    const sub = errObj?.error_subcode;
-    throw new Error(`${errObj?.message || 'Meta API error'}${code ? ` [code=${code}${sub ? `/${sub}` : ''}]` : ''}`);
+    const code = typeof errObj?.code === 'number' ? errObj.code : undefined;
+    const sub = typeof errObj?.error_subcode === 'number' ? errObj.error_subcode : undefined;
+    throw new MetaApiError(errObj?.message || 'Meta API error', code, sub);
   }
   return data;
 }
@@ -109,7 +119,12 @@ async function fetchAllPaged(path: string, params: Record<string, string>, cap: 
       data = await res.json().catch(() => ({}));
       if (!res.ok || data?.error) {
         if (isRateLimit(data?.error)) throw new RateLimitError(data?.error?.message || 'User request limit reached');
-        throw new Error(data?.error?.message || `Meta API error (${res.status})`);
+        const apiError = data?.error;
+        throw new MetaApiError(
+          apiError?.message || `Meta API error (${res.status})`,
+          typeof apiError?.code === 'number' ? apiError.code : undefined,
+          typeof apiError?.error_subcode === 'number' ? apiError.error_subcode : undefined,
+        );
       }
     }
     if (Array.isArray(data?.data)) all.push(...data.data);
@@ -156,6 +171,24 @@ function rateLimitResponse(detail: string, step: string) {
     retry_after_seconds: 300,
     step,
   }, 429);
+}
+
+function metaErrorDetail(error: unknown): string {
+  if (!(error instanceof MetaApiError)) return (error as Error)?.message || 'Unbekannter Meta API Fehler';
+  const suffix = error.code
+    ? ` [code=${error.code}${error.subcode ? `/${error.subcode}` : ''}]`
+    : '';
+  return `${error.message}${suffix}`;
+}
+
+function logMetaError(prefix: string, context: Record<string, unknown>, error: unknown) {
+  const apiError = error instanceof MetaApiError ? error : null;
+  console.error(prefix, {
+    ...context,
+    meta_error_code: apiError?.code ?? null,
+    meta_error_subcode: apiError?.subcode ?? null,
+    message: apiError?.message || (error as Error)?.message || 'Unknown error',
+  });
 }
 
 Deno.serve(async (req) => {
@@ -211,20 +244,43 @@ Deno.serve(async (req) => {
 
     Object.assign(logCtx, { meta_account_id: acctPath, date_from: period.from, date_to: period.to, preset: date_preset });
 
-    // Step 1: Lead forms for this account (single edge, cheap)
-    logCtx.step = 'forms';
-    let forms: any[] = [];
+    // leadgen_forms belongs to Page nodes, not AdAccount nodes. Fetch lead ads
+    // once and query their supported /leads edge.
+    logCtx.step = 'ads';
+    let ads: any[] = [];
+    let adsTruncated = false;
     try {
-      const r = await fetchAllPaged(`/${acctPath}/leadgen_forms`, { fields: 'id,name,status' }, 500, deadline);
-      forms = r.items;
+      const r = await fetchAllPaged(
+        `/${acctPath}/ads`,
+        { fields: 'id,name,campaign{id,name,objective}' },
+        2000,
+        deadline,
+      );
+      ads = r.items.filter((ad) => {
+        const objective = String(ad?.campaign?.objective || '').toUpperCase();
+        return objective === 'LEAD_GENERATION' || objective === 'OUTCOME_LEADS';
+      });
+      adsTruncated = r.hasMore;
     } catch (e) {
-      if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'forms');
-      const msg = (e as Error).message;
-      console.error('[export-meta-leads] forms error', logCtx, msg);
-      if (/permission|scope|lead|\(#10\)|\(#200\)|\(#278\)/i.test(msg)) {
-        return json({ error: 'Meta Leads können nicht abgerufen werden. Bitte Lead-Zugriff/Rechte prüfen.', detail: msg }, 403);
+      if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'ads');
+      const detail = metaErrorDetail(e);
+      logMetaError('[export-meta-leads] ads error', logCtx, e);
+      if (/permission|scope|access|lead/i.test(detail) || (e instanceof MetaApiError && [10, 200, 278].includes(e.code || 0))) {
+        return json({
+          success: false,
+          error: 'meta_permissions',
+          message: 'Meta Leads können nicht abgerufen werden. Bitte Lead-Zugriff/Rechte prüfen.',
+          detail,
+          step: 'ads',
+        });
       }
-      return json({ error: 'Lead-Formulare konnten nicht geladen werden.', detail: msg }, 502);
+      return json({
+        success: false,
+        error: 'meta_api_error',
+        message: 'Anzeigen konnten nicht geladen werden.',
+        detail,
+        step: 'ads',
+      });
     }
 
     let accountName = '';
@@ -236,7 +292,7 @@ Deno.serve(async (req) => {
       // non-fatal
     }
 
-    if (forms.length === 0) {
+    if (ads.length === 0) {
       return json({
         success: true,
         meta_account_id: acctPath,
@@ -244,11 +300,11 @@ Deno.serve(async (req) => {
         period: { from: period.from, to: period.to, preset: date_preset },
         count: 0,
         leads: [],
-        warning: 'Für dieses Werbekonto wurden keine Lead-Formulare gefunden.',
+        warning: 'Für dieses Werbekonto wurden keine Lead-Anzeigen gefunden.',
       });
     }
 
-    // Step 2: leads per form with time filter
+    // Step 2: leads per lead ad with time filter. Deduplicate by lead ID.
     logCtx.step = 'leads';
     const filters: any[] = [];
     if (period.from) {
@@ -264,25 +320,28 @@ Deno.serve(async (req) => {
     if (filters.length) commonParams.filtering = JSON.stringify(filters);
 
     const allLeads: any[] = [];
-    let hasMore = false;
+    const seenLeadIds = new Set<string>();
+    let hasMore = adsTruncated;
     let firstError: string | null = null;
 
-    for (const form of forms) {
+    for (const ad of ads) {
       if (Date.now() > deadline) { hasMore = true; break; }
       if (allLeads.length >= cap) { hasMore = true; break; }
       const remaining = cap - allLeads.length;
       try {
-        const r = await fetchAllPaged(`/${form.id}/leads`, commonParams, remaining, deadline);
+        const r = await fetchAllPaged(`/${ad.id}/leads`, commonParams, remaining, deadline);
         if (r.hasMore) hasMore = true;
         for (const l of r.items) {
+          if (!l?.id || seenLeadIds.has(l.id)) continue;
+          seenLeadIds.add(l.id);
           const fields = extractFields(l.field_data || []);
           allLeads.push({
             lead_id: l.id,
             created_time: l.created_time,
-            form_id: l.form_id || form.id,
-            form_name: form.name || '',
-            campaign_name: l.campaign_name || '',
-            ad_name: l.ad_name || '',
+            form_id: l.form_id || '',
+            form_name: '',
+            campaign_name: l.campaign_name || ad?.campaign?.name || '',
+            ad_name: l.ad_name || ad?.name || '',
             meta_account_id: acctPath,
             meta_account_name: accountName,
             fields,
@@ -297,8 +356,9 @@ Deno.serve(async (req) => {
           firstError = 'Meta API Limit erreicht – Ergebnis ist unvollständig.';
           break;
         }
-        const msg = (e as Error).message;
-        if (!firstError) firstError = `Form ${form.name || form.id}: ${msg}`;
+        const detail = metaErrorDetail(e);
+        logMetaError('[export-meta-leads] leads error', { ...logCtx, ad_id: ad.id }, e);
+        if (!firstError) firstError = `Anzeige ${ad.name || ad.id}: ${detail}`;
       }
     }
 
@@ -311,7 +371,7 @@ Deno.serve(async (req) => {
       leads: allLeads,
       has_more: hasMore,
       partial: hasMore,
-      forms_count: forms.length,
+      ads_count: ads.length,
       warning: allLeads.length === 0
         ? 'Keine Leads für diesen Zeitraum gefunden.'
         : (hasMore ? `Nur die ersten ${allLeads.length} Leads wurden geladen. Bitte Zeitraum einschränken.` : undefined),
