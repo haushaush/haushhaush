@@ -35,7 +35,7 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    title: 'Sales', url: '/sales', icon: TrendingUp, permissionKey: 'sales.view',
+    title: 'Sales', url: '/sales', icon: TrendingUp,
     children: [
       { title: 'Übersicht', url: '/sales/uebersicht', permissionKey: 'sales.view' },
       { title: 'KPI', url: '/sales/kpi', permissionKey: 'sales.view' },
