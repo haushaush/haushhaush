@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useIsPublicView } from "@/hooks/useIsPublicView";
 import { Link } from "react-router-dom";
 import { Plus, Upload, Loader2, ArrowUpDown, Tag, User, Building2, Wallet, Image as ImageIcon, Wand2, ShieldOff, RefreshCw, Link2 } from "lucide-react";
