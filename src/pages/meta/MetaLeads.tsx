@@ -308,6 +308,78 @@ export default function MetaLeads() {
         </div>
       )}
 
+      {!loading && result && (
+        <div className="rounded-lg border border-border bg-card p-4 mb-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <div className="text-xs text-muted-foreground">Exportierte Formular-Leads</div>
+              <div className="text-lg font-semibold text-foreground tabular-nums">{result.leads.length}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Formular-Leads laut Insights</div>
+              <div className="text-lg font-semibold text-foreground tabular-nums">
+                {result.insights_form_leads ?? '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Differenz</div>
+              <div className={`text-lg font-semibold tabular-nums ${
+                typeof result.insights_form_leads === 'number' && result.insights_form_leads - result.leads.length > 5
+                  ? 'text-amber-600' : 'text-foreground'
+              }`}>
+                {typeof result.insights_form_leads === 'number' ? result.insights_form_leads - result.leads.length : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Pages · Formulare · mit Leads</div>
+              <div className="text-lg font-semibold text-foreground tabular-nums">
+                {result.debug?.pages_checked ?? 0} · {result.debug?.forms_found ?? 0} · {result.debug?.forms_with_leads ?? 0}
+              </div>
+            </div>
+          </div>
+          {typeof result.insights_form_leads === 'number' && result.insights_form_leads - result.leads.length > 5 && (
+            <p className="text-xs text-amber-600 mt-3">
+              Es wurden weniger Lead-Datensätze geladen als Formular-Leads in den Insights gezählt. Bitte Formulare/Page-Zugriffe prüfen.
+            </p>
+          )}
+          {result.form_debug && result.form_debug.length > 0 && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                Debug: geprüfte Formulare ({result.form_debug.length})
+              </summary>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full text-xs tabular-nums">
+                  <thead className="bg-muted/40 text-muted-foreground">
+                    <tr>
+                      <th className="text-left px-2 py-1 font-medium">Form ID</th>
+                      <th className="text-left px-2 py-1 font-medium">Name</th>
+                      <th className="text-left px-2 py-1 font-medium">Page ID</th>
+                      <th className="text-left px-2 py-1 font-medium">Quelle</th>
+                      <th className="text-right px-2 py-1 font-medium">Raw</th>
+                      <th className="text-right px-2 py-1 font-medium">Nach Filter</th>
+                      <th className="text-left px-2 py-1 font-medium">Fehler</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.form_debug.map((f) => (
+                      <tr key={f.form_id} className="border-t border-border">
+                        <td className="px-2 py-1 font-mono">{f.form_id}</td>
+                        <td className="px-2 py-1">{f.form_name || '—'}</td>
+                        <td className="px-2 py-1 font-mono">{f.page_id || '—'}</td>
+                        <td className="px-2 py-1 text-muted-foreground">{f.source}</td>
+                        <td className="px-2 py-1 text-right">{f.raw_leads}</td>
+                        <td className="px-2 py-1 text-right">{f.leads_after_date_filter}</td>
+                        <td className="px-2 py-1 text-destructive">{f.error || ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          )}
+        </div>
+      )}
+
       {!loading && result && result.leads.length === 0 && (
         <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground text-sm">
           {result.warning || 'Keine Leads für diesen Zeitraum gefunden.'}
