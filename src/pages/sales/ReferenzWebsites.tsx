@@ -48,8 +48,9 @@ function QuickToggle({
 
 export default function ReferenzWebsitesPage() {
   const { hasRole } = useAuth();
+  const { hasPermission } = usePermissions();
   const isPublic = useIsPublicView();
-  const isAdmin = hasRole('admin') && !isPublic;
+  const isAdmin = (hasRole('admin') || hasPermission('sales.referenzen.manage')) && !isPublic;
   const [rows, setRows] = useState<ShowcaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
