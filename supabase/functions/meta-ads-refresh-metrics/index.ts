@@ -405,7 +405,16 @@ Deno.serve(async (req) => {
       const { data: { user }, error: authErr } = await supabase.auth.getUser();
       if (authErr || !user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", user.id);
-      if (!(roles ?? []).some((r: any) => r.role === "admin")) {
+      const isAdmin = (roles ?? []).some((r: any) => r.role === "admin");
+      let canManage = isAdmin;
+      if (!canManage) {
+        const { data: allowed } = await svc.rpc("user_has_permission", {
+          target_user_id: user.id,
+          requested_permission_key: "sales.referenzen.manage",
+        });
+        canManage = allowed === true;
+      }
+      if (!canManage) {
         return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
