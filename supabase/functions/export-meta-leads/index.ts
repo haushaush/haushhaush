@@ -82,9 +82,14 @@ function resolvePeriod(preset: DatePreset, from?: string, to?: string): { from: 
   }
 }
 
-async function metaFetch(path: string, params: Record<string, string>, attempt = 0): Promise<any> {
+async function metaFetch(
+  path: string,
+  params: Record<string, string>,
+  attempt = 0,
+  accessToken = ACCESS_TOKEN!,
+): Promise<any> {
   const url = new URL(`${BASE}${path.startsWith('/') ? path : '/' + path}`);
-  url.searchParams.set('access_token', ACCESS_TOKEN!);
+  url.searchParams.set('access_token', accessToken);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   const res = await fetch(url.toString());
   const data = await res.json().catch(() => ({}));
@@ -93,7 +98,7 @@ async function metaFetch(path: string, params: Record<string, string>, attempt =
     if (isRateLimit(errObj)) {
       if (attempt === 0) {
         await new Promise((r) => setTimeout(r, 1500));
-        return metaFetch(path, params, attempt + 1);
+        return metaFetch(path, params, attempt + 1, accessToken);
       }
       throw new RateLimitError(errObj?.message || 'User request limit reached');
     }
@@ -125,7 +130,13 @@ async function fetchPagingUrl(url: string, attempt = 0): Promise<any> {
   return data;
 }
 
-async function fetchAllPaged(path: string, params: Record<string, string>, cap: number, deadline: number) {
+async function fetchAllPaged(
+  path: string,
+  params: Record<string, string>,
+  cap: number,
+  deadline: number,
+  accessToken = ACCESS_TOKEN!,
+) {
   const all: any[] = [];
   let nextUrl: string | null = null;
   let first = true;
@@ -133,7 +144,7 @@ async function fetchAllPaged(path: string, params: Record<string, string>, cap: 
     if (Date.now() > deadline) break;
     let data: any;
     if (first) {
-      data = await metaFetch(path, { ...params, limit: String(Math.min(PAGE_SIZE, cap)) });
+      data = await metaFetch(path, { ...params, limit: String(Math.min(PAGE_SIZE, cap)) }, 0, accessToken);
       first = false;
     } else {
       await new Promise((r) => setTimeout(r, 200));
@@ -294,11 +305,22 @@ Deno.serve(async (req) => {
         break;
       }
       try {
+        // Meta requires a Page token for this edge. When META_ACCESS_TOKEN is a
+        // Page-admin user token, the Page node exposes its scoped token here.
+        // Keep it server-side only and never include it in logs or responses.
+        const pageTokenResult = await metaFetch(`/${page.id}`, { fields: 'access_token' });
+        const pageAccessToken = typeof pageTokenResult?.access_token === 'string'
+          ? pageTokenResult.access_token
+          : null;
+        if (!pageAccessToken) {
+          throw new MetaApiError('Für diese Seite konnte kein Page Access Token abgerufen werden', 190);
+        }
         const r = await fetchAllPaged(
           `/${page.id}/leadgen_forms`,
           { fields: 'id,name,status' },
           500,
           deadline,
+          pageAccessToken,
         );
         for (const form of r.items) {
           if (!form?.id || formsById.has(String(form.id))) continue;
