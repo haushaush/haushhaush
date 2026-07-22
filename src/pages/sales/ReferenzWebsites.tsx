@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useIsPublicView } from '@/hooks/useIsPublicView';
 import { Plus, Star, Clock, Sparkles } from 'lucide-react';
 import { AddWebsiteModal } from '@/components/sales/AddWebsiteModal';
