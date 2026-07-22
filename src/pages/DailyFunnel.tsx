@@ -152,6 +152,7 @@ export default function DailyFunnel() {
     const { error } = await supabase.from('daily_checkins').upsert(payload, { onConflict: 'user_id,date,type' });
     setSaving(false);
     if (error) { toast.error('Speichern fehlgeschlagen: ' + error.message); return; }
+    await queryClient.invalidateQueries({ queryKey: ['daily-checkin-self'] });
     toast.success('Tag gestartet 🚀');
     navigate('/');
   };
