@@ -223,7 +223,7 @@ export default function DailyFunnel() {
             </div>
           )}
           <div className="flex gap-3 mt-8">
-            <Button variant="outline" onClick={() => navigate('/')} className="flex-1">Zum Dashboard</Button>
+            <Button variant="outline" onClick={async () => { await queryClient.invalidateQueries({ queryKey: ['daily-checkin-self'] }); navigate('/'); }} className="flex-1">Zum Dashboard</Button>
             <Button onClick={() => { setSummaryMode(false); setStep(0); }} className="flex-1">Bearbeiten</Button>
             {type === 'checkin' && new Date().getHours() >= 11 && (
               <Button variant="secondary" onClick={() => { setType('checkout'); setSummaryMode(false); setStep(0); }} className="flex-1">Check-out starten</Button>
