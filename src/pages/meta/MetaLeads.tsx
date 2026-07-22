@@ -32,6 +32,34 @@ interface Lead {
   raw: any;
 }
 
+interface FormDebug {
+  form_id: string;
+  form_name: string;
+  page_id: string;
+  source: string;
+  raw_leads: number;
+  leads_after_date_filter: number;
+  error: string | null;
+}
+
+interface DebugSummary {
+  pages_checked: number;
+  forms_found: number;
+  forms_with_leads: number;
+  forms_without_leads: number;
+  lead_pages_requested: number;
+  raw_leads_before_filter: number;
+  leads_after_date_filter: number;
+  leads_after_dedupe: number;
+  deduped_removed: number;
+  ads_checked_for_form_ids: number;
+  form_ids_from_pages: number;
+  form_ids_from_ads: number;
+  unique_form_ids_total: number;
+  earliest_lead_created_time: string | null;
+  latest_lead_created_time: string | null;
+}
+
 interface Result {
   meta_account_id: string;
   meta_account_name: string;
@@ -40,6 +68,9 @@ interface Result {
   has_more?: boolean;
   partial?: boolean;
   warning?: string;
+  insights_form_leads?: number | null;
+  debug?: DebugSummary;
+  form_debug?: FormDebug[];
 }
 
 interface LoadError {
