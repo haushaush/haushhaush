@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -12,7 +13,6 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ArrowRight, Plus, X, Check, Star, Sparkles, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { getFunnelType } from '@/hooks/useFunnelGuard';
 
 type Priority = 'muss' | 'soll' | 'kann';
 type Ziel = { text: string; prioritaet: Priority; done?: boolean; status?: 'done' | 'half' | 'open'; carried_over?: boolean };
