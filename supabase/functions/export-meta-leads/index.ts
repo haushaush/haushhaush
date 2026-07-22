@@ -297,7 +297,13 @@ Deno.serve(async (req) => {
     // Step 2: retrieve forms from each Page and deduplicate them. This is one
     // paginated request stream per Page, never one request per lead.
     logCtx.step = 'forms';
-    const formsById = new Map<string, { id: string; name: string; page_id: string; page_name: string }>();
+    const formsById = new Map<string, {
+      id: string;
+      name: string;
+      page_id: string;
+      page_name: string;
+      page_access_token: string;
+    }>();
     let formsWarning: string | null = null;
     for (const page of pages) {
       if (Date.now() > deadline) {
@@ -329,6 +335,7 @@ Deno.serve(async (req) => {
             name: String(form.name || ''),
             page_id: page.id,
             page_name: page.name,
+            page_access_token: pageAccessToken,
           });
         }
         await new Promise((r) => setTimeout(r, 200));
@@ -388,7 +395,13 @@ Deno.serve(async (req) => {
       if (allLeads.length >= cap) { hasMore = true; break; }
       const remaining = cap - allLeads.length;
       try {
-        const r = await fetchAllPaged(`/${form.id}/leads`, commonParams, remaining, deadline);
+        const r = await fetchAllPaged(
+          `/${form.id}/leads`,
+          commonParams,
+          remaining,
+          deadline,
+          form.page_access_token,
+        );
         if (r.hasMore) hasMore = true;
         for (const l of r.items) {
           if (!l?.id || seenLeadIds.has(l.id)) continue;
