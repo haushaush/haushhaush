@@ -168,19 +168,32 @@ Deno.serve(async (req) => {
       return json({ error: `Werbekonto konnte nicht validiert werden: ${(e as Error).message}` }, 400);
     }
 
-    // Fetch lead forms for this account
-    let forms: any[] = [];
+    // Fetch ads for this account. Leads come from ads (not the account edge).
+    // We include campaign objective so we can skip non-lead ads.
+    let ads: any[] = [];
     try {
-      forms = await fetchAllPaged(`/${acctPath}/leadgen_forms`, { fields: 'id,name,status' }, MAX_FORMS, deadline);
+      ads = await fetchAllPaged(
+        `/${acctPath}/ads`,
+        { fields: 'id,name,campaign{id,name,objective},adset{id,name},status,effective_status' },
+        2000,
+        deadline,
+      );
     } catch (e) {
       const msg = (e as Error).message;
-      if (/permission|scope|lead|leads_retrieval/i.test(msg)) {
+      if (/permission|scope|lead|leads_retrieval|\(#10\)|\(#200\)/i.test(msg)) {
         return json({ error: 'Meta Leads können nicht abgerufen werden. Bitte Lead-Zugriff/Rechte der Meta-Verknüpfung prüfen.', detail: msg }, 403);
       }
-      return json({ error: 'Lead-Formulare konnten nicht geladen werden.', detail: msg }, 502);
+      return json({ error: 'Anzeigen konnten nicht geladen werden.', detail: msg }, 502);
     }
 
-    if (forms.length === 0) {
+    // Keep only lead-gen ads (older + newer objective values)
+    const LEAD_OBJECTIVES = new Set(['LEAD_GENERATION', 'OUTCOME_LEADS']);
+    const leadAds = ads.filter((a) => {
+      const obj = a?.campaign?.objective;
+      return !obj || LEAD_OBJECTIVES.has(obj); // if unknown, still try
+    });
+
+    if (leadAds.length === 0) {
       return json({
         success: true,
         meta_account_id: acctPath,
@@ -188,11 +201,11 @@ Deno.serve(async (req) => {
         period: { from: period.from, to: period.to, preset: date_preset },
         count: 0,
         leads: [],
-        warning: 'Für dieses Werbekonto wurden keine Lead-Formulare gefunden.',
+        warning: 'Für dieses Werbekonto wurden keine Lead-Anzeigen gefunden.',
       });
     }
 
-    // Time filter for /{form_id}/leads: filtering=[{field:"time_created",operator:"GREATER_THAN",value:<unix>}]
+    // Time filter for /{ad_id}/leads
     const filters: any[] = [];
     if (period.from) {
       const ts = Math.floor(new Date(period.from + 'T00:00:00Z').getTime() / 1000);
@@ -209,22 +222,23 @@ Deno.serve(async (req) => {
     const allLeads: any[] = [];
     let truncated = false;
     let firstError: string | null = null;
+    let permissionBlocked = false;
 
-    for (const form of forms) {
+    for (const ad of leadAds) {
       if (Date.now() > deadline) { truncated = true; break; }
       if (allLeads.length >= MAX_LEADS) { truncated = true; break; }
       const remaining = MAX_LEADS - allLeads.length;
       try {
-        const leads = await fetchAllPaged(`/${form.id}/leads`, commonParams, remaining, deadline);
+        const leads = await fetchAllPaged(`/${ad.id}/leads`, commonParams, remaining, deadline);
         for (const l of leads) {
           const fields = extractFields(l.field_data || []);
           allLeads.push({
             lead_id: l.id,
             created_time: l.created_time,
-            form_id: form.id,
-            form_name: form.name || '',
-            campaign_name: l.campaign_name || '',
-            ad_name: l.ad_name || '',
+            form_id: l.form_id || '',
+            form_name: '',
+            campaign_name: l.campaign_name || ad?.campaign?.name || '',
+            ad_name: l.ad_name || ad?.name || '',
             meta_account_id: acctPath,
             meta_account_name: accountName,
             fields,
@@ -233,10 +247,17 @@ Deno.serve(async (req) => {
         }
       } catch (e) {
         const msg = (e as Error).message;
-        if (!firstError) firstError = `Form ${form.name || form.id}: ${msg}`;
-        // Continue with other forms
+        if (/permission|scope|lead|leads_retrieval|\(#10\)|\(#200\)|\(#278\)/i.test(msg)) {
+          permissionBlocked = true;
+        }
+        if (!firstError) firstError = `Ad ${ad.name || ad.id}: ${msg}`;
       }
     }
+
+    if (allLeads.length === 0 && permissionBlocked) {
+      return json({ error: 'Meta Leads können nicht abgerufen werden. Bitte Lead-Zugriff/Rechte der Meta-Verknüpfung prüfen.', detail: firstError }, 403);
+    }
+
 
     return json({
       success: true,
@@ -246,7 +267,7 @@ Deno.serve(async (req) => {
       count: allLeads.length,
       leads: allLeads,
       truncated,
-      forms_count: forms.length,
+      ads_count: leadAds.length,
       warning: allLeads.length === 0 ? 'Keine Leads für diesen Zeitraum gefunden.' : (truncated ? `Nur die ersten ${allLeads.length} Leads wurden geladen. Bitte Zeitraum einschränken.` : undefined),
       error_hint: firstError,
     });
