@@ -77,7 +77,15 @@ Deno.serve(async (req) => {
     const userId = user.id;
     const svc = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", userId);
-    if (!(roles ?? []).some((r: any) => r.role === "admin")) {
+    let canManage = (roles ?? []).some((r: any) => r.role === "admin");
+    if (!canManage) {
+      const { data: allowed } = await svc.rpc("user_has_permission", {
+        target_user_id: userId,
+        requested_permission_key: "sales.referenzen.manage",
+      });
+      canManage = allowed === true;
+    }
+    if (!canManage) {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 

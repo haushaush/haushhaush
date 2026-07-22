@@ -73,9 +73,16 @@ Deno.serve(async (req) => {
     const userId = user.id;
     const svc = svcClient();
     const { data: roles } = await svc.from("user_roles").select("role").eq("user_id", userId);
-    const isAdmin = (roles ?? []).some((r: any) => r.role === "admin");
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden – admin only" }), {
+    let canManage = (roles ?? []).some((r: any) => r.role === "admin");
+    if (!canManage) {
+      const { data: allowed } = await svc.rpc("user_has_permission", {
+        target_user_id: userId,
+        requested_permission_key: "sales.referenzen.manage",
+      });
+      canManage = allowed === true;
+    }
+    if (!canManage) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
