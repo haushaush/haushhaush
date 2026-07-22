@@ -101,11 +101,15 @@ export default function MetaLeads() {
   }, [result]);
 
   const loadLeads = async () => {
+    if (loading) return;
     if (!selectedAccountId) { toast.error('Bitte Werbekonto wählen'); return; }
     if (preset === 'custom' && (!dateFrom || !dateTo)) { toast.error('Bitte Zeitraum wählen'); return; }
+    if (preset === 'all_time') {
+      const ok = window.confirm('Dieser Export kann viele Meta API Calls verursachen. Fortfahren?');
+      if (!ok) return;
+    }
     setLoading(true);
     setError(null);
-    setResult(null);
     try {
       const { data, error: err } = await supabase.functions.invoke('export-meta-leads', {
         body: {
@@ -113,13 +117,34 @@ export default function MetaLeads() {
           date_preset: preset,
           date_from: preset === 'custom' ? dateFrom : undefined,
           date_to: preset === 'custom' ? dateTo : undefined,
+          confirm_all_time: preset === 'all_time',
         },
       });
-      if (err) throw new Error(err.message);
-      if (data?.error) throw new Error(data.error);
-      setResult(data as Result);
-      if (data?.warning) toast.info(data.warning);
-      else toast.success(`${data.count} Leads geladen`);
+
+      // Rate limit comes back as JSON body even on non-2xx via FunctionsHttpError
+      let payload: any = data;
+      if (err) {
+        const ctx: any = (err as any).context;
+        try {
+          const bodyText = ctx && typeof ctx.text === 'function' ? await ctx.text() : null;
+          if (bodyText) payload = JSON.parse(bodyText);
+        } catch { /* ignore */ }
+        if (!payload) throw new Error(err.message);
+      }
+
+      if (payload?.error === 'meta_rate_limit') {
+        setError('Meta API Limit erreicht. Bitte warte ein paar Minuten und versuche es erneut.');
+        toast.error('Meta API Limit erreicht');
+        return; // keep previously loaded result
+      }
+      if (payload?.success === false && payload?.error && payload.error !== 'confirm_required') {
+        throw new Error(payload.message || payload.error);
+      }
+      if (payload?.error && !payload?.success) throw new Error(payload.error);
+
+      setResult(payload as Result);
+      if (payload?.warning) toast.info(payload.warning);
+      else toast.success(`${payload.count} Leads geladen`);
     } catch (e) {
       const msg = (e as Error).message || 'Unbekannter Fehler';
       setError(msg);
@@ -219,9 +244,14 @@ export default function MetaLeads() {
       )}
 
       {!loading && error && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4">
-          <p className="text-sm font-medium text-destructive">Leads konnten nicht geladen werden.</p>
-          <p className="text-xs text-muted-foreground mt-1 font-mono">{error}</p>
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 mb-6">
+          <p className="text-sm font-medium text-destructive">{error}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Meta hat die Anfrage möglicherweise wegen zu vieler API-Aufrufe gedrosselt.
+          </p>
+          <Button size="sm" variant="outline" className="mt-3" onClick={loadLeads} disabled={loading}>
+            Erneut versuchen
+          </Button>
         </div>
       )}
 
