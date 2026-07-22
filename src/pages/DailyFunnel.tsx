@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
@@ -38,6 +39,7 @@ export default function DailyFunnel() {
   const { user, isTestMode } = useAuth();
   const { profile } = useProfile();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const firstName = profile?.name?.split(' ')[0] || profile?.name || '';
 
   const initialType = getFunnelType();
@@ -150,6 +152,7 @@ export default function DailyFunnel() {
     const { error } = await supabase.from('daily_checkins').upsert(payload, { onConflict: 'user_id,date,type' });
     setSaving(false);
     if (error) { toast.error('Speichern fehlgeschlagen: ' + error.message); return; }
+    await queryClient.invalidateQueries({ queryKey: ['daily-checkin-self'] });
     toast.success('Tag gestartet 🚀');
     navigate('/');
   };
@@ -175,6 +178,7 @@ export default function DailyFunnel() {
     const { error } = await supabase.from('daily_checkins').upsert(payload, { onConflict: 'user_id,date,type' });
     setSaving(false);
     if (error) { toast.error('Speichern fehlgeschlagen: ' + error.message); return; }
+    await queryClient.invalidateQueries({ queryKey: ['daily-checkin-self'] });
     toast.success('Tag abgeschlossen ✓');
     navigate('/');
   };
@@ -219,7 +223,7 @@ export default function DailyFunnel() {
             </div>
           )}
           <div className="flex gap-3 mt-8">
-            <Button variant="outline" onClick={() => navigate('/')} className="flex-1">Zum Dashboard</Button>
+            <Button variant="outline" onClick={async () => { await queryClient.invalidateQueries({ queryKey: ['daily-checkin-self'] }); navigate('/'); }} className="flex-1">Zum Dashboard</Button>
             <Button onClick={() => { setSummaryMode(false); setStep(0); }} className="flex-1">Bearbeiten</Button>
             {type === 'checkin' && new Date().getHours() >= 11 && (
               <Button variant="secondary" onClick={() => { setType('checkout'); setSummaryMode(false); setStep(0); }} className="flex-1">Check-out starten</Button>
