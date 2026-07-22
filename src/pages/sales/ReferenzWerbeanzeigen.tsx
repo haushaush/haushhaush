@@ -559,38 +559,7 @@ export default function ReferenzWerbeanzeigenPage() {
             >
               <ShieldOff className="w-4 h-4" /> Blacklist
             </Link>
-            <SecondaryActionButton
-              disabled={reenriching}
-              onClick={async () => {
-                if (!confirm('Alle nicht-zugeordneten Anzeigen automatisch über Werbekonten und Ad-Namen zu Kunden zuordnen?')) return;
-                setReenriching(true);
-                const { data, error } = await supabase.functions.invoke('rematch-all-ads', {
-                  body: { only_unmatched: true, override_manual: false },
-                });
-                setReenriching(false);
-                if (error) {
-                  toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
-                } else {
-                  const s = (data as any)?.stats ?? {};
-                  toast({
-                    title: 'Auto-Zuordnung fertig',
-                    description: `${s.matched_by_account ?? 0} über Werbekonto · ${s.matched_by_keyword ?? 0} aus Ad-Name · ${s.no_match ?? 0} ohne Treffer`,
-                  });
-                  load();
-                }
-              }}
-            >
-              {reenriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-              Auto-Zuordnen
-            </SecondaryActionButton>
-            <SecondaryActionButton onClick={() => setAssignOpen(true)}>
-              <Link2 className="w-4 h-4" /> Zuordnen
-              {incompleteAccountsCount > 0 && (
-                <span className="ml-1 inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 tabular-nums">
-                  {incompleteAccountsCount} offen
-                </span>
-              )}
-            </SecondaryActionButton>
+            {/* Auto-Zuordnen und Zuordnen ausgeblendet auf Wunsch */}
             <SecondaryActionButton onClick={() => setKampagnenOpen(true)}>
               <Layers className="w-4 h-4" /> Kampagnen-Zuordnung
               {campaignsWithoutBranche > 0 && (
