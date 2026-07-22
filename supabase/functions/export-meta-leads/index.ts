@@ -244,15 +244,15 @@ Deno.serve(async (req) => {
 
     Object.assign(logCtx, { meta_account_id: acctPath, date_from: period.from, date_to: period.to, preset: date_preset });
 
-    // leadgen_forms belongs to Page nodes, not AdAccount nodes. Fetch ads once,
-    // then query only ads that belong to lead-generation campaigns.
+    // leadgen_forms belongs to Page nodes, not AdAccount nodes. Discover the
+    // unique form IDs through ad creatives, then fetch each form only once.
     logCtx.step = 'ads';
     let ads: any[] = [];
     let adsTruncated = false;
     try {
       const r = await fetchAllPaged(
         `/${acctPath}/ads`,
-        { fields: 'id,name,campaign{id,name,objective}' },
+        { fields: 'id,name,campaign{id,name,objective},creative{id,name,lead_gen_form_id,object_story_spec}' },
         2000,
         deadline,
       );
@@ -292,7 +292,19 @@ Deno.serve(async (req) => {
       // non-fatal
     }
 
-    if (ads.length === 0) {
+    const formsById = new Map<string, { id: string; name: string }>();
+    for (const ad of ads) {
+      const creative = ad?.creative || {};
+      const formId = creative?.lead_gen_form_id
+        || creative?.object_story_spec?.link_data?.call_to_action?.value?.lead_gen_form_id
+        || creative?.object_story_spec?.video_data?.call_to_action?.value?.lead_gen_form_id;
+      if (formId && !formsById.has(String(formId))) {
+        formsById.set(String(formId), { id: String(formId), name: creative?.name || '' });
+      }
+    }
+    const forms = Array.from(formsById.values());
+
+    if (forms.length === 0) {
       return json({
         success: true,
         meta_account_id: acctPath,
@@ -300,12 +312,13 @@ Deno.serve(async (req) => {
         period: { from: period.from, to: period.to, preset: date_preset },
         count: 0,
         leads: [],
-        warning: 'Für dieses Werbekonto wurden keine Lead-Anzeigen gefunden.',
+        warning: ads.length === 0
+          ? 'Für dieses Werbekonto wurden keine Lead-Anzeigen gefunden.'
+          : 'In den Lead-Anzeigen wurden keine abrufbaren Formular-IDs gefunden.',
       });
     }
 
-    // Step 2: leads per lead ad with time filter. Lead IDs are deduplicated because
-    // Meta can expose the same lead through more than one related object.
+    // Step 2: leads per unique form with time filter.
     logCtx.step = 'leads';
     const filters: any[] = [];
     if (period.from) {
@@ -325,12 +338,12 @@ Deno.serve(async (req) => {
     let hasMore = adsTruncated;
     let firstError: string | null = null;
 
-    for (const ad of ads) {
+    for (const form of forms) {
       if (Date.now() > deadline) { hasMore = true; break; }
       if (allLeads.length >= cap) { hasMore = true; break; }
       const remaining = cap - allLeads.length;
       try {
-        const r = await fetchAllPaged(`/${ad.id}/leads`, commonParams, remaining, deadline);
+        const r = await fetchAllPaged(`/${form.id}/leads`, commonParams, remaining, deadline);
         if (r.hasMore) hasMore = true;
         for (const l of r.items) {
           if (!l?.id || seenLeadIds.has(l.id)) continue;
@@ -339,10 +352,10 @@ Deno.serve(async (req) => {
           allLeads.push({
             lead_id: l.id,
             created_time: l.created_time,
-            form_id: l.form_id || '',
-            form_name: '',
-            campaign_name: l.campaign_name || ad?.campaign?.name || '',
-            ad_name: l.ad_name || ad?.name || '',
+            form_id: l.form_id || form.id,
+            form_name: form.name,
+            campaign_name: l.campaign_name || '',
+            ad_name: l.ad_name || '',
             meta_account_id: acctPath,
             meta_account_name: accountName,
             fields,
@@ -358,8 +371,8 @@ Deno.serve(async (req) => {
           break;
         }
         const detail = metaErrorDetail(e);
-        logMetaError('[export-meta-leads] leads error', { ...logCtx, ad_id: ad.id }, e);
-        if (!firstError) firstError = `Anzeige ${ad.name || ad.id}: ${detail}`;
+        logMetaError('[export-meta-leads] leads error', { ...logCtx, form_id: form.id }, e);
+        if (!firstError) firstError = `Formular ${form.name || form.id}: ${detail}`;
       }
     }
 
@@ -373,6 +386,7 @@ Deno.serve(async (req) => {
       has_more: hasMore,
       partial: hasMore,
       ads_count: ads.length,
+      forms_count: forms.length,
       warning: allLeads.length === 0
         ? 'Keine Leads für diesen Zeitraum gefunden.'
         : (hasMore ? `Nur die ersten ${allLeads.length} Leads wurden geladen. Bitte Zeitraum einschränken.` : undefined),
