@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ArrowRight, Plus, X, Check, Star, Sparkles, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { getFunnelType } from '@/hooks/useFunnelGuard';
 
 type Priority = 'muss' | 'soll' | 'kann';
 type Ziel = { text: string; prioritaet: Priority; done?: boolean; status?: 'done' | 'half' | 'open'; carried_over?: boolean };
