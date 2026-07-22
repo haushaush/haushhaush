@@ -65,8 +65,9 @@ type SortKey = "performance" | "created" | "cpl" | "roas" | "leads" | "spend" | 
 
 export default function ReferenzWerbeanzeigenPage() {
   const { hasRole } = useAuth();
+  const { hasPermission } = usePermissions();
   const isPublic = useIsPublicView();
-  const isAdmin = hasRole("admin") && !isPublic;
+  const isAdmin = (hasRole("admin") || hasPermission("sales.referenzen.manage")) && !isPublic;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [reenriching, setReenriching] = useState(false);
