@@ -32,6 +32,34 @@ interface Lead {
   raw: any;
 }
 
+interface FormDebug {
+  form_id: string;
+  form_name: string;
+  page_id: string;
+  source: string;
+  raw_leads: number;
+  leads_after_date_filter: number;
+  error: string | null;
+}
+
+interface DebugSummary {
+  pages_checked: number;
+  forms_found: number;
+  forms_with_leads: number;
+  forms_without_leads: number;
+  lead_pages_requested: number;
+  raw_leads_before_filter: number;
+  leads_after_date_filter: number;
+  leads_after_dedupe: number;
+  deduped_removed: number;
+  ads_checked_for_form_ids: number;
+  form_ids_from_pages: number;
+  form_ids_from_ads: number;
+  unique_form_ids_total: number;
+  earliest_lead_created_time: string | null;
+  latest_lead_created_time: string | null;
+}
+
 interface Result {
   meta_account_id: string;
   meta_account_name: string;
@@ -40,6 +68,9 @@ interface Result {
   has_more?: boolean;
   partial?: boolean;
   warning?: string;
+  insights_form_leads?: number | null;
+  debug?: DebugSummary;
+  form_debug?: FormDebug[];
 }
 
 interface LoadError {
@@ -274,6 +305,78 @@ export default function MetaLeads() {
           <Button size="sm" variant="outline" className="mt-3" onClick={loadLeads} disabled={loading}>
             Erneut versuchen
           </Button>
+        </div>
+      )}
+
+      {!loading && result && (
+        <div className="rounded-lg border border-border bg-card p-4 mb-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <div className="text-xs text-muted-foreground">Exportierte Formular-Leads</div>
+              <div className="text-lg font-semibold text-foreground tabular-nums">{result.leads.length}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Formular-Leads laut Insights</div>
+              <div className="text-lg font-semibold text-foreground tabular-nums">
+                {result.insights_form_leads ?? '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Differenz</div>
+              <div className={`text-lg font-semibold tabular-nums ${
+                typeof result.insights_form_leads === 'number' && result.insights_form_leads - result.leads.length > 5
+                  ? 'text-amber-600' : 'text-foreground'
+              }`}>
+                {typeof result.insights_form_leads === 'number' ? result.insights_form_leads - result.leads.length : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Pages · Formulare · mit Leads</div>
+              <div className="text-lg font-semibold text-foreground tabular-nums">
+                {result.debug?.pages_checked ?? 0} · {result.debug?.forms_found ?? 0} · {result.debug?.forms_with_leads ?? 0}
+              </div>
+            </div>
+          </div>
+          {typeof result.insights_form_leads === 'number' && result.insights_form_leads - result.leads.length > 5 && (
+            <p className="text-xs text-amber-600 mt-3">
+              Es wurden weniger Lead-Datensätze geladen als Formular-Leads in den Insights gezählt. Bitte Formulare/Page-Zugriffe prüfen.
+            </p>
+          )}
+          {result.form_debug && result.form_debug.length > 0 && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                Debug: geprüfte Formulare ({result.form_debug.length})
+              </summary>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full text-xs tabular-nums">
+                  <thead className="bg-muted/40 text-muted-foreground">
+                    <tr>
+                      <th className="text-left px-2 py-1 font-medium">Form ID</th>
+                      <th className="text-left px-2 py-1 font-medium">Name</th>
+                      <th className="text-left px-2 py-1 font-medium">Page ID</th>
+                      <th className="text-left px-2 py-1 font-medium">Quelle</th>
+                      <th className="text-right px-2 py-1 font-medium">Raw</th>
+                      <th className="text-right px-2 py-1 font-medium">Nach Filter</th>
+                      <th className="text-left px-2 py-1 font-medium">Fehler</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.form_debug.map((f) => (
+                      <tr key={f.form_id} className="border-t border-border">
+                        <td className="px-2 py-1 font-mono">{f.form_id}</td>
+                        <td className="px-2 py-1">{f.form_name || '—'}</td>
+                        <td className="px-2 py-1 font-mono">{f.page_id || '—'}</td>
+                        <td className="px-2 py-1 text-muted-foreground">{f.source}</td>
+                        <td className="px-2 py-1 text-right">{f.raw_leads}</td>
+                        <td className="px-2 py-1 text-right">{f.leads_after_date_filter}</td>
+                        <td className="px-2 py-1 text-destructive">{f.error || ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          )}
         </div>
       )}
 

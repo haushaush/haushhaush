@@ -14,10 +14,10 @@ const ACCESS_TOKEN = Deno.env.get('META_ACCESS_TOKEN');
 const API_VERSION = 'v19.0';
 const BASE = `https://graph.facebook.com/${API_VERSION}`;
 
-const MAX_LEADS_DEFAULT = 1000;
-const MAX_LEADS_ALLTIME = 5000;
+const MAX_LEADS_DEFAULT = 10_000;
+const MAX_LEADS_ALLTIME = 10_000;
 const PAGE_SIZE = 100;
-const HARD_TIMEOUT_MS = 50_000;
+const HARD_TIMEOUT_MS = 55_000;
 
 type DatePreset = 'last_7_days' | 'last_30_days' | 'this_month' | 'last_month' | 'all_time' | 'custom';
 
@@ -30,19 +30,12 @@ function json(body: unknown, status = 200) {
 
 class RateLimitError extends Error {
   detail: string;
-  constructor(detail: string) {
-    super('meta_rate_limit');
-    this.detail = detail;
-  }
+  constructor(detail: string) { super('meta_rate_limit'); this.detail = detail; }
 }
-
 class MetaApiError extends Error {
-  code?: number;
-  subcode?: number;
+  code?: number; subcode?: number;
   constructor(message: string, code?: number, subcode?: number) {
-    super(message);
-    this.code = code;
-    this.subcode = subcode;
+    super(message); this.code = code; this.subcode = subcode;
   }
 }
 
@@ -59,11 +52,7 @@ function isRateLimit(err: any): boolean {
 function resolvePeriod(preset: DatePreset, from?: string, to?: string): { from: string | null; to: string | null } {
   const today = new Date();
   const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const d = (offset: number) => {
-    const x = new Date(today);
-    x.setUTCDate(x.getUTCDate() + offset);
-    return x;
-  };
+  const d = (offset: number) => { const x = new Date(today); x.setUTCDate(x.getUTCDate() + offset); return x; };
   switch (preset) {
     case 'last_7_days': return { from: iso(d(-7)), to: iso(today) };
     case 'last_30_days': return { from: iso(d(-30)), to: iso(today) };
@@ -82,12 +71,7 @@ function resolvePeriod(preset: DatePreset, from?: string, to?: string): { from: 
   }
 }
 
-async function metaFetch(
-  path: string,
-  params: Record<string, string>,
-  attempt = 0,
-  accessToken = ACCESS_TOKEN!,
-): Promise<any> {
+async function metaFetch(path: string, params: Record<string, string>, attempt = 0, accessToken = ACCESS_TOKEN!): Promise<any> {
   const url = new URL(`${BASE}${path.startsWith('/') ? path : '/' + path}`);
   url.searchParams.set('access_token', accessToken);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
@@ -96,15 +80,14 @@ async function metaFetch(
   if (!res.ok || data?.error) {
     const errObj = data?.error || { message: `Meta API error (${res.status})` };
     if (isRateLimit(errObj)) {
-      if (attempt === 0) {
-        await new Promise((r) => setTimeout(r, 1500));
-        return metaFetch(path, params, attempt + 1, accessToken);
-      }
+      if (attempt === 0) { await new Promise((r) => setTimeout(r, 1500)); return metaFetch(path, params, attempt + 1, accessToken); }
       throw new RateLimitError(errObj?.message || 'User request limit reached');
     }
-    const code = typeof errObj?.code === 'number' ? errObj.code : undefined;
-    const sub = typeof errObj?.error_subcode === 'number' ? errObj.error_subcode : undefined;
-    throw new MetaApiError(errObj?.message || 'Meta API error', code, sub);
+    throw new MetaApiError(
+      errObj?.message || 'Meta API error',
+      typeof errObj?.code === 'number' ? errObj.code : undefined,
+      typeof errObj?.error_subcode === 'number' ? errObj.error_subcode : undefined,
+    );
   }
   return data;
 }
@@ -115,10 +98,7 @@ async function fetchPagingUrl(url: string, attempt = 0): Promise<any> {
   if (!res.ok || data?.error) {
     const errObj = data?.error || { message: `Meta API error (${res.status})` };
     if (isRateLimit(errObj)) {
-      if (attempt === 0) {
-        await new Promise((r) => setTimeout(r, 1500));
-        return fetchPagingUrl(url, attempt + 1);
-      }
+      if (attempt === 0) { await new Promise((r) => setTimeout(r, 1500)); return fetchPagingUrl(url, attempt + 1); }
       throw new RateLimitError(errObj?.message || 'User request limit reached');
     }
     throw new MetaApiError(
@@ -130,16 +110,11 @@ async function fetchPagingUrl(url: string, attempt = 0): Promise<any> {
   return data;
 }
 
-async function fetchAllPaged(
-  path: string,
-  params: Record<string, string>,
-  cap: number,
-  deadline: number,
-  accessToken = ACCESS_TOKEN!,
-) {
+async function fetchAllPaged(path: string, params: Record<string, string>, cap: number, deadline: number, accessToken = ACCESS_TOKEN!) {
   const all: any[] = [];
   let nextUrl: string | null = null;
   let first = true;
+  let pageCount = 0;
   while (all.length < cap) {
     if (Date.now() > deadline) break;
     let data: any;
@@ -150,11 +125,12 @@ async function fetchAllPaged(
       await new Promise((r) => setTimeout(r, 200));
       data = await fetchPagingUrl(nextUrl!);
     }
+    pageCount++;
     if (Array.isArray(data?.data)) all.push(...data.data);
     nextUrl = data?.paging?.next || null;
     if (!nextUrl) break;
   }
-  return { items: all.slice(0, cap), hasMore: all.length > cap || !!nextUrl };
+  return { items: all.slice(0, cap), hasMore: all.length > cap || !!nextUrl, pageCount };
 }
 
 function normalizeFieldName(name: string): string {
@@ -172,9 +148,7 @@ function extractFields(fieldData: any[]): Record<string, string> {
   }
   const alias = (target: string, sources: string[]) => {
     if (out[target]) return;
-    for (const s of sources) {
-      if (out[s]) { out[target] = out[s]; return; }
-    }
+    for (const s of sources) if (out[s]) { out[target] = out[s]; return; }
   };
   alias('full_name', ['full_name', 'name', 'first_name_last_name', 'vollständiger_name', 'vollstandiger_name']);
   alias('email', ['email', 'e_mail', 'email_address']);
@@ -185,22 +159,16 @@ function extractFields(fieldData: any[]): Record<string, string> {
 }
 
 function rateLimitResponse(detail: string, step: string) {
-  console.warn(`[export-meta-leads] rate_limited step=${step} detail=${detail}`);
   return json({
-    success: false,
-    error: 'meta_rate_limit',
+    success: false, error: 'meta_rate_limit',
     message: 'Meta API Limit erreicht. Bitte warte ein paar Minuten und versuche es erneut.',
-    detail,
-    retry_after_seconds: 300,
-    step,
+    detail, retry_after_seconds: 300, step,
   }, 429);
 }
 
 function metaErrorDetail(error: unknown): string {
   if (!(error instanceof MetaApiError)) return (error as Error)?.message || 'Unbekannter Meta API Fehler';
-  const suffix = error.code
-    ? ` [code=${error.code}${error.subcode ? `/${error.subcode}` : ''}]`
-    : '';
+  const suffix = error.code ? ` [code=${error.code}${error.subcode ? `/${error.subcode}` : ''}]` : '';
   return `${error.message}${suffix}`;
 }
 
@@ -212,6 +180,19 @@ function logMetaError(prefix: string, context: Record<string, unknown>, error: u
     meta_error_subcode: apiError?.subcode ?? null,
     message: apiError?.message || (error as Error)?.message || 'Unknown error',
   });
+}
+
+// Extract lead_gen_form_id defensively from creative.object_story_spec
+function extractFormIdsFromCreative(creative: any): string[] {
+  const ids: string[] = [];
+  const oss = creative?.object_story_spec;
+  if (!oss) return ids;
+  const buckets = [oss.link_data, oss.video_data, oss.template_data];
+  for (const b of buckets) {
+    const v = b?.call_to_action?.value?.lead_gen_form_id;
+    if (v) ids.push(String(v));
+  }
+  return ids;
 }
 
 Deno.serve(async (req) => {
@@ -239,9 +220,7 @@ Deno.serve(async (req) => {
       supabase.rpc('has_role', { _user_id: userId, _role: 'admin' }),
       supabase.rpc('user_has_permission', { target_user_id: userId, requested_permission_key: 'sales.meta.view' }),
     ]);
-    if (!isAdmin && !hasPerm) {
-      return json({ error: 'Du hast keine Berechtigung, Meta Leads zu exportieren.' }, 403);
-    }
+    if (!isAdmin && !hasPerm) return json({ error: 'Du hast keine Berechtigung, Meta Leads zu exportieren.' }, 403);
 
     const body = await req.json().catch(() => ({}));
     const meta_account_id: string = (body?.meta_account_id || '').trim();
@@ -254,11 +233,7 @@ Deno.serve(async (req) => {
     const acctPath = meta_account_id.startsWith('act_') ? meta_account_id : `act_${meta_account_id}`;
 
     if (date_preset === 'all_time' && !confirm_all_time) {
-      return json({
-        success: false,
-        error: 'confirm_required',
-        message: 'Dieser Export kann viele Meta API Calls verursachen. Fortfahren?',
-      }, 200);
+      return json({ success: false, error: 'confirm_required', message: 'Dieser Export kann viele Meta API Calls verursachen. Fortfahren?' }, 200);
     }
 
     const deadline = Date.now() + HARD_TIMEOUT_MS;
@@ -267,87 +242,7 @@ Deno.serve(async (req) => {
 
     Object.assign(logCtx, { meta_account_id: acctPath, date_from: period.from, date_to: period.to, preset: date_preset });
 
-    // Step 1: discover the Pages promoted by this ad account. Lead forms belong
-    // to Pages in Meta's Graph API; `/act_<id>/leadgen_forms` is not a valid edge.
-    logCtx.step = 'pages';
-    let pages: Array<{ id: string; name: string }> = [];
-    try {
-      const r = await fetchAllPaged(
-        `/${acctPath}/promote_pages`,
-        { fields: 'id,name' },
-        500,
-        deadline,
-      );
-      pages = r.items
-        .filter((page: any) => page?.id)
-        .map((page: any) => ({ id: String(page.id), name: String(page.name || '') }));
-    } catch (e) {
-      if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'pages');
-      const detail = metaErrorDetail(e);
-      logMetaError('[export-meta-leads] pages error', logCtx, e);
-      return json({
-        success: false,
-        error: 'meta_permissions',
-        message: 'Die mit dem Werbekonto verbundenen Seiten konnten nicht geladen werden. Bitte Seiten-Zugriff/Rechte prüfen.',
-        detail,
-        step: 'pages',
-      });
-    }
-
-    // Step 2: retrieve forms from each Page and deduplicate them. This is one
-    // paginated request stream per Page, never one request per lead.
-    logCtx.step = 'forms';
-    const formsById = new Map<string, {
-      id: string;
-      name: string;
-      page_id: string;
-      page_name: string;
-      page_access_token: string;
-    }>();
-    let formsWarning: string | null = null;
-    for (const page of pages) {
-      if (Date.now() > deadline) {
-        formsWarning = 'Zeitlimit beim Laden der Lead-Formulare erreicht.';
-        break;
-      }
-      try {
-        // Meta requires a Page token for this edge. When META_ACCESS_TOKEN is a
-        // Page-admin user token, the Page node exposes its scoped token here.
-        // Keep it server-side only and never include it in logs or responses.
-        const pageTokenResult = await metaFetch(`/${page.id}`, { fields: 'access_token' });
-        const pageAccessToken = typeof pageTokenResult?.access_token === 'string'
-          ? pageTokenResult.access_token
-          : null;
-        if (!pageAccessToken) {
-          throw new MetaApiError('Für diese Seite konnte kein Page Access Token abgerufen werden', 190);
-        }
-        const r = await fetchAllPaged(
-          `/${page.id}/leadgen_forms`,
-          { fields: 'id,name,status' },
-          500,
-          deadline,
-          pageAccessToken,
-        );
-        for (const form of r.items) {
-          if (!form?.id || formsById.has(String(form.id))) continue;
-          formsById.set(String(form.id), {
-            id: String(form.id),
-            name: String(form.name || ''),
-            page_id: page.id,
-            page_name: page.name,
-            page_access_token: pageAccessToken,
-          });
-        }
-        await new Promise((r) => setTimeout(r, 200));
-      } catch (e) {
-        if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'forms');
-        const detail = metaErrorDetail(e);
-        logMetaError('[export-meta-leads] forms error', { ...logCtx, page_id: page.id }, e);
-        if (!formsWarning) formsWarning = `Seite ${page.name || page.id}: ${detail}`;
-      }
-    }
-    const forms = Array.from(formsById.values());
-
+    // account name
     let accountName = '';
     try {
       const acct = await metaFetch(`/${acctPath}`, { fields: 'name' });
@@ -356,21 +251,111 @@ Deno.serve(async (req) => {
       if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'account');
     }
 
-    if (pages.length === 0 || forms.length === 0) {
-      return json({
-        success: true,
-        meta_account_id: acctPath,
-        meta_account_name: accountName,
-        period: { from: period.from, to: period.to, preset: date_preset },
-        count: 0,
-        leads: [],
-        warning: pages.length === 0
-          ? 'Für dieses Werbekonto wurden keine verbundenen Facebook-Seiten gefunden.'
-          : (formsWarning || 'Für die verbundenen Seiten wurden keine Lead-Formulare gefunden.'),
-      });
+    // --- Source A: Pages -> leadgen_forms
+    logCtx.step = 'pages';
+    let pages: Array<{ id: string; name: string }> = [];
+    try {
+      const r = await fetchAllPaged(`/${acctPath}/promote_pages`, { fields: 'id,name' }, 500, deadline);
+      pages = r.items.filter((p: any) => p?.id).map((p: any) => ({ id: String(p.id), name: String(p.name || '') }));
+    } catch (e) {
+      if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'pages');
+      logMetaError('[export-meta-leads] pages error', logCtx, e);
     }
 
-    // Step 3: paginated leads per form (NOT per lead). ~4 requests per 400 leads.
+    type FormMeta = { id: string; name: string; page_id: string; page_name: string; page_access_token: string | null; sources: Set<string> };
+    const formsById = new Map<string, FormMeta>();
+    let formsWarning: string | null = null;
+
+    // page tokens map for later leads fetching
+    const pageTokens = new Map<string, string>();
+
+    logCtx.step = 'forms_from_pages';
+    for (const page of pages) {
+      if (Date.now() > deadline) { formsWarning = 'Zeitlimit beim Laden der Lead-Formulare erreicht.'; break; }
+      try {
+        const pageTokenResult = await metaFetch(`/${page.id}`, { fields: 'access_token' });
+        const pageAccessToken = typeof pageTokenResult?.access_token === 'string' ? pageTokenResult.access_token : null;
+        if (pageAccessToken) pageTokens.set(page.id, pageAccessToken);
+        if (!pageAccessToken) throw new MetaApiError('Kein Page Access Token', 190);
+        const r = await fetchAllPaged(`/${page.id}/leadgen_forms`, { fields: 'id,name,status' }, 1000, deadline, pageAccessToken);
+        for (const form of r.items) {
+          if (!form?.id) continue;
+          const key = String(form.id);
+          const existing = formsById.get(key);
+          if (existing) { existing.sources.add('page_leadgen_forms'); continue; }
+          formsById.set(key, {
+            id: key, name: String(form.name || ''),
+            page_id: page.id, page_name: page.name, page_access_token: pageAccessToken,
+            sources: new Set(['page_leadgen_forms']),
+          });
+        }
+        await new Promise((r) => setTimeout(r, 150));
+      } catch (e) {
+        if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'forms');
+        const detail = metaErrorDetail(e);
+        logMetaError('[export-meta-leads] page forms error', { ...logCtx, page_id: page.id }, e);
+        if (!formsWarning) formsWarning = `Seite ${page.name || page.id}: ${detail}`;
+      }
+    }
+    const formIdsFromPages = formsById.size;
+
+    // --- Source B: Ads/Creatives -> object_story_spec.*.call_to_action.value.lead_gen_form_id
+    logCtx.step = 'ads_scan';
+    let adsChecked = 0;
+    let formIdsFromAdsOnly = 0;
+    try {
+      const adFields = 'id,name,campaign{id,name},creative{id,name,object_story_spec}';
+      const adsRes = await fetchAllPaged(`/${acctPath}/ads`, { fields: adFields }, 2000, deadline);
+      adsChecked = adsRes.items.length;
+      for (const ad of adsRes.items) {
+        const ids = extractFormIdsFromCreative(ad?.creative);
+        for (const fid of ids) {
+          const existing = formsById.get(fid);
+          if (existing) { existing.sources.add('ad_creative'); continue; }
+          formIdsFromAdsOnly++;
+          formsById.set(fid, {
+            id: fid, name: '', page_id: '', page_name: '',
+            page_access_token: null, sources: new Set(['ad_creative']),
+          });
+        }
+      }
+    } catch (e) {
+      if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'ads_scan');
+      logMetaError('[export-meta-leads] ads scan error', logCtx, e);
+    }
+
+    // For forms discovered only via ads, try to enrich with page + token
+    logCtx.step = 'forms_enrich';
+    for (const form of formsById.values()) {
+      if (form.page_access_token) continue;
+      if (Date.now() > deadline) break;
+      try {
+        const info = await metaFetch(`/${form.id}`, { fields: 'id,name,page{id,name}' });
+        form.name = form.name || String(info?.name || '');
+        const pageId = info?.page?.id ? String(info.page.id) : '';
+        const pageName = info?.page?.name ? String(info.page.name) : '';
+        if (pageId) {
+          form.page_id = pageId;
+          form.page_name = pageName;
+          let tok = pageTokens.get(pageId) || null;
+          if (!tok) {
+            try {
+              const tokRes = await metaFetch(`/${pageId}`, { fields: 'access_token' });
+              tok = typeof tokRes?.access_token === 'string' ? tokRes.access_token : null;
+              if (tok) pageTokens.set(pageId, tok);
+            } catch { /* ignore */ }
+          }
+          form.page_access_token = tok;
+        }
+      } catch (e) {
+        if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'forms_enrich');
+        // form probably not accessible; keep it, we'll error per form
+      }
+    }
+
+    const forms = Array.from(formsById.values());
+
+    // --- Step: paginated leads per form
     logCtx.step = 'leads';
     const filters: any[] = [];
     if (period.from) {
@@ -389,54 +374,131 @@ Deno.serve(async (req) => {
     const seenLeadIds = new Set<string>();
     let hasMore = false;
     let firstError: string | null = null;
+    let lead_pages_requested = 0;
+    let raw_leads_before_filter = 0;
+    let dedupe_removed = 0;
+    let forms_with_leads = 0;
+    let earliest: string | null = null;
+    let latest: string | null = null;
+
+    const formDebug: Array<{ form_id: string; form_name: string; page_id: string; source: string; raw_leads: number; leads_after_date_filter: number; error: string | null }> = [];
 
     for (const form of forms) {
-      if (Date.now() > deadline) { hasMore = true; break; }
-      if (allLeads.length >= cap) { hasMore = true; break; }
+      const debugRow = {
+        form_id: form.id, form_name: form.name, page_id: form.page_id,
+        source: Array.from(form.sources).join(','),
+        raw_leads: 0, leads_after_date_filter: 0, error: null as string | null,
+      };
+      if (Date.now() > deadline) { hasMore = true; debugRow.error = 'timeout'; formDebug.push(debugRow); break; }
+      if (allLeads.length >= cap) { hasMore = true; debugRow.error = 'cap_reached'; formDebug.push(debugRow); break; }
+      if (!form.page_access_token) { debugRow.error = 'no_page_access_token'; formDebug.push(debugRow); continue; }
       const remaining = cap - allLeads.length;
       try {
-        const r = await fetchAllPaged(
-          `/${form.id}/leads`,
-          commonParams,
-          remaining,
-          deadline,
-          form.page_access_token,
-        );
-        if (r.hasMore) hasMore = true;
+        const r = await fetchAllPaged(`/${form.id}/leads`, commonParams, remaining, deadline, form.page_access_token);
+        lead_pages_requested += r.pageCount;
+        debugRow.raw_leads = r.items.length;
+        raw_leads_before_filter += r.items.length;
+        let added = 0;
         for (const l of r.items) {
-          if (!l?.id || seenLeadIds.has(l.id)) continue;
+          if (!l?.id) continue;
+          if (seenLeadIds.has(l.id)) { dedupe_removed++; continue; }
           seenLeadIds.add(l.id);
           const fields = extractFields(l.field_data || []);
           allLeads.push({
-            lead_id: l.id,
-            created_time: l.created_time,
-            form_id: l.form_id || form.id,
-            form_name: form.name,
-            page_id: form.page_id,
-            page_name: form.page_name,
-            campaign_name: l.campaign_name || '',
-            ad_id: l.ad_id || '',
-            ad_name: l.ad_name || '',
-            meta_account_id: acctPath,
-            meta_account_name: accountName,
-            fields,
-            raw: l,
+            lead_id: l.id, created_time: l.created_time,
+            form_id: l.form_id || form.id, form_name: form.name,
+            page_id: form.page_id, page_name: form.page_name,
+            campaign_name: l.campaign_name || '', ad_id: l.ad_id || '', ad_name: l.ad_name || '',
+            meta_account_id: acctPath, meta_account_name: accountName,
+            fields, raw: l,
           });
+          added++;
+          if (l.created_time) {
+            if (!earliest || l.created_time < earliest) earliest = l.created_time;
+            if (!latest || l.created_time > latest) latest = l.created_time;
+          }
         }
-        // small pause between forms to be nice to Meta rate limits
-        await new Promise((r) => setTimeout(r, 200));
+        debugRow.leads_after_date_filter = added;
+        if (added > 0) forms_with_leads++;
+        if (r.hasMore) hasMore = true;
+        await new Promise((r) => setTimeout(r, 150));
       } catch (e) {
         if (e instanceof RateLimitError) {
+          debugRow.error = 'rate_limit';
+          formDebug.push(debugRow);
           if (allLeads.length === 0) return rateLimitResponse(e.detail, 'leads');
           hasMore = true;
           firstError = 'Meta API Limit erreicht – Ergebnis ist unvollständig.';
           break;
         }
         const detail = metaErrorDetail(e);
+        debugRow.error = detail;
         logMetaError('[export-meta-leads] leads error', { ...logCtx, form_id: form.id }, e);
         if (!firstError) firstError = `Formular ${form.name || form.id}: ${detail}`;
       }
+      formDebug.push(debugRow);
     }
+
+    // --- Insights: count of form-only leads (excluding website/pixel leads)
+    logCtx.step = 'insights';
+    let insights_form_leads: number | null = null;
+    try {
+      const insightsParams: Record<string, string> = {
+        level: 'ad',
+        fields: 'ad_id,actions',
+        limit: '500',
+      };
+      if (period.from && period.to) {
+        insightsParams.time_range = JSON.stringify({ since: period.from, until: period.to });
+      } else if (date_preset !== 'custom' && date_preset !== 'all_time') {
+        const presetMap: Record<string, string> = {
+          last_7_days: 'last_7d', last_30_days: 'last_30d',
+          this_month: 'this_month', last_month: 'last_month',
+        };
+        insightsParams.date_preset = presetMap[date_preset] || 'last_7d';
+      } else if (date_preset === 'all_time') {
+        insightsParams.date_preset = 'maximum';
+      }
+      const insRes = await fetchAllPaged(`/${acctPath}/insights`, insightsParams, 5000, deadline);
+      let total = 0;
+      for (const row of insRes.items) {
+        const actions = Array.isArray(row?.actions) ? row.actions : [];
+        const map: Record<string, number> = {};
+        for (const a of actions) map[a.action_type] = Number(a.value || 0);
+        // Priority: lead > onsite_conversion.lead_grouped > onsite_conversion.lead
+        const v = map['lead'] ?? map['onsite_conversion.lead_grouped'] ?? map['onsite_conversion.lead'] ?? 0;
+        total += v;
+      }
+      insights_form_leads = total;
+    } catch (e) {
+      if (e instanceof RateLimitError) {
+        // Skip insights if rate limited but keep leads result
+      } else {
+        logMetaError('[export-meta-leads] insights error', logCtx, e);
+      }
+    }
+
+    const debug = {
+      meta_account_id: acctPath,
+      meta_account_name: accountName,
+      date_from: period.from,
+      date_to: period.to,
+      pages_checked: pages.length,
+      forms_found: forms.length,
+      forms_with_leads,
+      forms_without_leads: forms.length - forms_with_leads,
+      lead_pages_requested,
+      raw_leads_before_filter,
+      leads_after_date_filter: allLeads.length,
+      leads_after_dedupe: allLeads.length,
+      deduped_removed: dedupe_removed,
+      ads_checked_for_form_ids: adsChecked,
+      form_ids_from_pages: formIdsFromPages,
+      form_ids_from_ads: formIdsFromAdsOnly,
+      unique_form_ids_total: forms.length,
+      earliest_lead_created_time: earliest,
+      latest_lead_created_time: latest,
+    };
 
     return json({
       success: true,
@@ -449,6 +511,9 @@ Deno.serve(async (req) => {
       partial: hasMore,
       pages_count: pages.length,
       forms_count: forms.length,
+      insights_form_leads,
+      debug,
+      form_debug: formDebug,
       warning: allLeads.length === 0
         ? 'Keine Leads für diesen Zeitraum gefunden.'
         : (hasMore ? `Nur die ersten ${allLeads.length} Leads wurden geladen. Bitte Zeitraum einschränken.` : undefined),
