@@ -26,31 +26,31 @@ interface NavItem {
 const navItems: NavItem[] = [
   { title: 'Übersicht', url: '/', icon: Home, permissionKey: 'dashboard.view' },
   {
-    title: 'Kunden', url: '/kunden', icon: Users, permissionKey: 'clients.view',
+    title: 'Kunden', url: '/kunden', icon: Users,
     children: [
       { title: 'Übersicht', url: '/kunden', permissionKey: 'clients.view' },
-      { title: 'Kunden', url: '/kunden/liste', permissionKey: 'clients.view' },
-      { title: 'Abschlüsse', url: '/kunden/abschluesse', permissionKey: 'clients.view' },
+      { title: 'Kunden', url: '/kunden/liste', permissionKey: 'clients.list.view' },
+      { title: 'Abschlüsse', url: '/kunden/abschluesse', permissionKey: 'clients.abschluesse.view' },
       { title: 'Laufzeiten', url: '/kunden/laufzeiten', permissionKey: 'clients.laufzeiten.view' },
     ],
   },
   {
     title: 'Sales', url: '/sales', icon: TrendingUp,
     children: [
-      { title: 'Übersicht', url: '/sales/uebersicht', permissionKey: 'sales.view' },
-      { title: 'KPI', url: '/sales/kpi', permissionKey: 'sales.view' },
+      { title: 'Übersicht', url: '/sales/uebersicht', permissionKey: 'sales.uebersicht.view' },
+      { title: 'KPI', url: '/sales/kpi', permissionKey: 'sales.kpis.view' },
       { title: 'Referenzen', url: '/sales/referenz-showcase', permissionKey: 'sales.referenzen.view' },
-      { title: 'Lead Quality Audit', url: '/tools/lead-quality-audit' },
+      { title: 'Lead Quality Audit', url: '/tools/lead-quality-audit', permissionKey: 'sales.leadquality.view' },
     ],
   },
   {
     title: 'Paid Ads', url: '/paid-ads', icon: Megaphone,
     children: [
-      { title: 'Übersicht', url: '/paid-ads' },
-      { title: 'Kunden', url: '/paid-ads/kunden' },
-      { title: 'Untermarken', url: '/paid-ads/untermarken' },
-      { title: 'Leadsharks', url: '/paid-ads/leadsharks' },
-      { title: 'AttentionX', url: '/paid-ads/attentionx' },
+      { title: 'Übersicht', url: '/paid-ads', permissionKey: 'paid_ads.view' },
+      { title: 'Kunden', url: '/paid-ads/kunden', permissionKey: 'paid_ads.kunden.view' },
+      { title: 'Untermarken', url: '/paid-ads/untermarken', permissionKey: 'paid_ads.untermarken.view' },
+      { title: 'Leadsharks', url: '/paid-ads/leadsharks', permissionKey: 'paid_ads.leadsharks.view' },
+      { title: 'AttentionX', url: '/paid-ads/attentionx', permissionKey: 'paid_ads.attentionx.view' },
     ],
   },
   {
@@ -60,46 +60,46 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    title: 'Fulfillment', url: '/projekte', icon: ClipboardList, permissionKey: 'projects.view',
+    title: 'Fulfillment', url: '/projekte', icon: ClipboardList,
     children: [
       { title: 'Projekte', url: '/projekte', permissionKey: 'projects.view' },
       { title: 'Aufgaben', url: '/projekte/aufgaben', permissionKey: 'tasks.view' },
     ],
   },
   {
-    title: 'Finanzen', url: '/finanzen', icon: Euro, permissionKey: 'finanzen.view',
+    title: 'Finanzen', url: '/finanzen', icon: Euro,
     children: [
       { title: 'Übersicht', url: '/finanzen', permissionKey: 'finanzen.view' },
-      { title: 'KPI', url: '/finanzen/kpi', permissionKey: 'finanzen.view' },
-      { title: 'Rechnungen', url: '/finanzen/rechnungen', permissionKey: 'finanzen.view' },
-      { title: 'Werbebudgets', url: '/finanzen/werbebudgets', permissionKey: 'finanzen.view' },
+      { title: 'KPI', url: '/finanzen/kpi', permissionKey: 'finanzen.kpi.view' },
+      { title: 'Rechnungen', url: '/finanzen/rechnungen', permissionKey: 'finanzen.rechnungen.view' },
+      { title: 'Werbebudgets', url: '/finanzen/werbebudgets', permissionKey: 'finanzen.werbebudgets.view' },
       { title: 'Meta Belege', url: '/finanzen/abrechnungen', permissionKey: 'meta.billing.view' },
     ],
   },
   {
-    title: 'Dokumente', url: '/drive/meine-dateien', icon: FolderOpen, permissionKey: 'drive.view',
+    title: 'Dokumente', url: '/drive/meine-dateien', icon: FolderOpen,
     children: [
       { title: 'Meine Dateien', url: '/drive/meine-dateien', permissionKey: 'drive.view' },
-      { title: 'Geteilt mit mir', url: '/drive/geteilt', permissionKey: 'drive.view' },
-      { title: 'Papierkorb', url: '/drive/papierkorb', permissionKey: 'drive.view' },
+      { title: 'Geteilt mit mir', url: '/drive/geteilt', permissionKey: 'drive.geteilt.view' },
+      { title: 'Papierkorb', url: '/drive/papierkorb', permissionKey: 'drive.papierkorb.view' },
     ],
   },
   {
-    title: 'Team & HR', url: '/hr', icon: UserCircle, permissionKey: 'team.view',
+    title: 'Team & HR', url: '/hr', icon: UserCircle,
     children: [
       { title: 'Mitarbeiter', url: '/hr/mitarbeiter', permissionKey: 'team.view' },
-      { title: 'Check-in & Check-out', url: '/hr/checkins' },
-      { title: 'Time Tracking', url: '/hr/time-tracking', adminOnly: true, permissionKey: 'time_tracking.admin.view' },
+      { title: 'Check-in & Check-out', url: '/hr/checkins', permissionKey: 'hr.checkins.view' },
+      { title: 'Time Tracking', url: '/hr/time-tracking', permissionKey: 'time_tracking.admin.view' },
     ],
   },
 ];
 
 // Items that go under the "Integrationen" expandable category
 const toolsNavItems: NavItem[] = [
-  { title: 'Übersicht', url: '/integrationen', icon: Plug, adminOnly: true, permissionKey: 'integrationen.view' },
-  { title: 'Slack', url: '/slack', icon: Hash, adminOnly: true, permissionKey: 'slack.view' },
+  { title: 'Übersicht', url: '/integrationen', icon: Plug, permissionKey: 'integrationen.view' },
+  { title: 'Slack', url: '/slack', icon: Hash, permissionKey: 'slack.view' },
   {
-    title: 'Close', url: '/close/verknuepfungen', icon: Briefcase, permissionKey: 'sales.close.view',
+    title: 'Close', url: '/close/verknuepfungen', icon: Briefcase,
     children: [
       { title: 'Verknüpfungen', url: '/close/verknuepfungen', permissionKey: 'sales.close.view' },
       { title: 'Leads', url: '/close/leads', permissionKey: 'sales.close.view' },
@@ -107,7 +107,7 @@ const toolsNavItems: NavItem[] = [
     ],
   },
   {
-    title: 'Meta Ads', url: '/meta/verknuepfungen', icon: Facebook, permissionKey: 'sales.meta.view',
+    title: 'Meta Ads', url: '/meta/verknuepfungen', icon: Facebook,
     children: [
       { title: 'Verknüpfungen', url: '/meta/verknuepfungen', permissionKey: 'sales.meta.view' },
       { title: 'Übersicht', url: '/meta/uebersicht', permissionKey: 'sales.meta.view' },
@@ -117,20 +117,20 @@ const toolsNavItems: NavItem[] = [
     ],
   },
   {
-    title: 'Onepage', url: '/onepage-leads/kunden', icon: Globe, adminOnly: true,
+    title: 'Onepage', url: '/onepage-leads/kunden', icon: Globe,
     children: [
-      { title: 'Kunden', url: '/onepage-leads/kunden', adminOnly: true },
+      { title: 'Kunden', url: '/onepage-leads/kunden', permissionKey: 'onepage.leads.view' },
     ],
   },
   {
-    title: 'E-Mail Automatisierung', url: '/email-automatisierung', icon: Mail, adminOnly: true,
+    title: 'E-Mail Automatisierung', url: '/email-automatisierung', icon: Mail,
     children: [
-      { title: 'Posteingang', url: '/email-automatisierung', adminOnly: true },
-      { title: 'Regeln', url: '/email-automatisierung/regeln', adminOnly: true },
+      { title: 'Posteingang', url: '/email-automatisierung', permissionKey: 'email.automatisierung.view' },
+      { title: 'Regeln', url: '/email-automatisierung/regeln', permissionKey: 'email.automatisierung.view' },
     ],
   },
-  { title: 'n8n', url: '/automationen/n8n', icon: Workflow },
-  { title: 'FulfillmentOS KI', url: '/automationen/aria', icon: Sparkles },
+  { title: 'n8n', url: '/automationen/n8n', icon: Workflow, permissionKey: 'automationen.n8n.view' },
+  { title: 'FulfillmentOS KI', url: '/automationen/aria', icon: Sparkles, permissionKey: 'automationen.aria.view' },
 ];
 
 function loadSidebarState(): Record<string, boolean> {
@@ -151,15 +151,18 @@ export function AppSidebar() {
   const filterByPermission = (item: NavItem) => {
     if (item.adminOnly && !isAdmin) return false;
     if (item.url.startsWith('/onepage-leads') && !isAdmin) return false;
-    if (item.permissionKey && !hasPermission(item.permissionKey)) return false;
-    if (item.children && item.children.length > 0) {
-      const anyChildVisible = item.children.some(c => {
+    const hasChildren = !!(item.children && item.children.length > 0);
+    if (hasChildren) {
+      // Parent group is visible whenever ANY child is visible —
+      // no need to also grant the parent's own permissionKey.
+      const anyChildVisible = item.children!.some(c => {
         if (c.adminOnly && !isAdmin) return false;
         if (c.permissionKey && !hasPermission(c.permissionKey)) return false;
         return true;
       });
-      if (!anyChildVisible) return false;
+      return anyChildVisible;
     }
+    if (item.permissionKey && !hasPermission(item.permissionKey)) return false;
     return true;
   };
   const childVisible = (c: { adminOnly?: boolean; permissionKey?: string }) => {
