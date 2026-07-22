@@ -35,7 +35,7 @@ export function useKundenMapping() {
     staleTime: 60_000,
   });
 
-  const accountToKunde = useMemo(() => {
+  const { accountToKunde, nameToKunde } = useMemo(() => {
     const dealsById = new Map<string, any>();
     const dealsByAccount = new Map<string, any>();
     for (const d of deals) {
@@ -74,13 +74,46 @@ export function useKundenMapping() {
         source: 'close_deals',
       });
     }
-    return map;
+
+    // Name-based fallback (matches by normalized client_name)
+    const nameMap = new Map<string, KundeMatch>();
+    const normalizeName = (s: string) =>
+      s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    for (const d of deals) {
+      if (!d.client_name) continue;
+      const key = normalizeName(String(d.client_name));
+      if (!key || nameMap.has(key)) continue;
+      nameMap.set(key, {
+        kunde_id: d.id,
+        kundenname: d.client_name,
+        branche: d.branche || '',
+        unternehmen: d.unternehmen || '',
+        source: 'close_deals',
+      });
+    }
+    return { accountToKunde: map, nameToKunde: nameMap };
   }, [deals, links]);
 
-  const matchKunde = (ad: { meta_account_id?: string }): KundeMatch | null => {
-    if (!ad.meta_account_id) return null;
-    const norm = String(ad.meta_account_id).replace(/^act_/, '');
-    return accountToKunde.get(norm) || accountToKunde.get(`act_${norm}`) || null;
+  const normalizeName = (s: string) =>
+    s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+
+  const matchKunde = (ad: { meta_account_id?: string; meta_account_name?: string; meta_campaign_name?: string; meta_ad_name?: string }): KundeMatch | null => {
+    if (ad.meta_account_id) {
+      const norm = String(ad.meta_account_id).replace(/^act_/, '');
+      const byAcc = accountToKunde.get(norm) || accountToKunde.get(`act_${norm}`);
+      if (byAcc) return byAcc;
+    }
+    // Fallback: match kunde by name appearing in account/campaign/ad name
+    const haystackParts = [ad.meta_account_name, ad.meta_campaign_name, ad.meta_ad_name].filter(Boolean) as string[];
+    if (!haystackParts.length) return null;
+    const haystack = ' ' + normalizeName(haystackParts.join(' ')) + ' ';
+    // Prefer longest name matches first to avoid partial collisions
+    const candidates = Array.from(nameToKunde.entries()).sort((a, b) => b[0].length - a[0].length);
+    for (const [key, match] of candidates) {
+      if (key.length < 5) continue; // avoid short/ambiguous names
+      if (haystack.includes(' ' + key + ' ')) return match;
+    }
+    return null;
   };
 
   return { matchKunde, accountToKunde };
