@@ -53,6 +53,7 @@ import MetaUebersicht from "./pages/meta/MetaUebersicht.tsx";
 import MetaKampagnen from "./pages/meta/MetaKampagnen.tsx";
 import MetaAnzeigengruppen from "./pages/meta/MetaAnzeigengruppen.tsx";
 import MetaAnzeigen from "./pages/meta/MetaAnzeigen.tsx";
+import MetaLeads from "./pages/meta/MetaLeads.tsx";
 import MetaAbrechnungen from "./pages/meta/MetaAbrechnungen.tsx";
 import { MetaAdsProvider } from "./contexts/MetaAdsContext";
 import DriveUebersicht from "./pages/drive/DriveUebersicht.tsx";
