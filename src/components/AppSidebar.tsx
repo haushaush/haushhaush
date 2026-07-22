@@ -151,15 +151,18 @@ export function AppSidebar() {
   const filterByPermission = (item: NavItem) => {
     if (item.adminOnly && !isAdmin) return false;
     if (item.url.startsWith('/onepage-leads') && !isAdmin) return false;
-    if (item.permissionKey && !hasPermission(item.permissionKey)) return false;
-    if (item.children && item.children.length > 0) {
-      const anyChildVisible = item.children.some(c => {
+    const hasChildren = !!(item.children && item.children.length > 0);
+    if (hasChildren) {
+      // Parent group is visible whenever ANY child is visible —
+      // no need to also grant the parent's own permissionKey.
+      const anyChildVisible = item.children!.some(c => {
         if (c.adminOnly && !isAdmin) return false;
         if (c.permissionKey && !hasPermission(c.permissionKey)) return false;
         return true;
       });
-      if (!anyChildVisible) return false;
+      return anyChildVisible;
     }
+    if (item.permissionKey && !hasPermission(item.permissionKey)) return false;
     return true;
   };
   const childVisible = (c: { adminOnly?: boolean; permissionKey?: string }) => {
