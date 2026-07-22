@@ -277,13 +277,13 @@ export default function MetaLeads() {
         </div>
       )}
 
-      {!loading && !error && result && result.leads.length === 0 && (
+      {!loading && result && result.leads.length === 0 && (
         <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground text-sm">
           {result.warning || 'Keine Leads für diesen Zeitraum gefunden.'}
         </div>
       )}
 
-      {!loading && !error && result && result.leads.length > 0 && (
+      {!loading && result && result.leads.length > 0 && (
         <div className="rounded-lg border border-border bg-card overflow-hidden">
           <div className="px-4 py-2.5 border-b border-border flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
