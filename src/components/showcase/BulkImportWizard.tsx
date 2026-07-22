@@ -755,7 +755,9 @@ function SourceStep({
           </button>
         ))}
       </div>
+    )}
     </div>
+  </div>
   );
 }
 
