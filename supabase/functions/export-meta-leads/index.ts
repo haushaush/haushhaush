@@ -267,7 +267,7 @@ Deno.serve(async (req) => {
       count: allLeads.length,
       leads: allLeads,
       truncated,
-      forms_count: forms.length,
+      ads_count: leadAds.length,
       warning: allLeads.length === 0 ? 'Keine Leads für diesen Zeitraum gefunden.' : (truncated ? `Nur die ersten ${allLeads.length} Leads wurden geladen. Bitte Zeitraum einschränken.` : undefined),
       error_hint: firstError,
     });
