@@ -39,6 +39,7 @@ export default function DailyFunnel() {
   const { user, isTestMode } = useAuth();
   const { profile } = useProfile();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const firstName = profile?.name?.split(' ')[0] || profile?.name || '';
 
   const initialType = getFunnelType();
