@@ -82,9 +82,14 @@ function resolvePeriod(preset: DatePreset, from?: string, to?: string): { from: 
   }
 }
 
-async function metaFetch(path: string, params: Record<string, string>, attempt = 0): Promise<any> {
+async function metaFetch(
+  path: string,
+  params: Record<string, string>,
+  attempt = 0,
+  accessToken = ACCESS_TOKEN!,
+): Promise<any> {
   const url = new URL(`${BASE}${path.startsWith('/') ? path : '/' + path}`);
-  url.searchParams.set('access_token', ACCESS_TOKEN!);
+  url.searchParams.set('access_token', accessToken);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   const res = await fetch(url.toString());
   const data = await res.json().catch(() => ({}));
@@ -93,7 +98,7 @@ async function metaFetch(path: string, params: Record<string, string>, attempt =
     if (isRateLimit(errObj)) {
       if (attempt === 0) {
         await new Promise((r) => setTimeout(r, 1500));
-        return metaFetch(path, params, attempt + 1);
+        return metaFetch(path, params, attempt + 1, accessToken);
       }
       throw new RateLimitError(errObj?.message || 'User request limit reached');
     }
@@ -104,7 +109,34 @@ async function metaFetch(path: string, params: Record<string, string>, attempt =
   return data;
 }
 
-async function fetchAllPaged(path: string, params: Record<string, string>, cap: number, deadline: number) {
+async function fetchPagingUrl(url: string, attempt = 0): Promise<any> {
+  const res = await fetch(url);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data?.error) {
+    const errObj = data?.error || { message: `Meta API error (${res.status})` };
+    if (isRateLimit(errObj)) {
+      if (attempt === 0) {
+        await new Promise((r) => setTimeout(r, 1500));
+        return fetchPagingUrl(url, attempt + 1);
+      }
+      throw new RateLimitError(errObj?.message || 'User request limit reached');
+    }
+    throw new MetaApiError(
+      errObj?.message || `Meta API error (${res.status})`,
+      typeof errObj?.code === 'number' ? errObj.code : undefined,
+      typeof errObj?.error_subcode === 'number' ? errObj.error_subcode : undefined,
+    );
+  }
+  return data;
+}
+
+async function fetchAllPaged(
+  path: string,
+  params: Record<string, string>,
+  cap: number,
+  deadline: number,
+  accessToken = ACCESS_TOKEN!,
+) {
   const all: any[] = [];
   let nextUrl: string | null = null;
   let first = true;
@@ -112,20 +144,11 @@ async function fetchAllPaged(path: string, params: Record<string, string>, cap: 
     if (Date.now() > deadline) break;
     let data: any;
     if (first) {
-      data = await metaFetch(path, { ...params, limit: String(Math.min(PAGE_SIZE, cap)) });
+      data = await metaFetch(path, { ...params, limit: String(Math.min(PAGE_SIZE, cap)) }, 0, accessToken);
       first = false;
     } else {
-      const res = await fetch(nextUrl!);
-      data = await res.json().catch(() => ({}));
-      if (!res.ok || data?.error) {
-        if (isRateLimit(data?.error)) throw new RateLimitError(data?.error?.message || 'User request limit reached');
-        const apiError = data?.error;
-        throw new MetaApiError(
-          apiError?.message || `Meta API error (${res.status})`,
-          typeof apiError?.code === 'number' ? apiError.code : undefined,
-          typeof apiError?.error_subcode === 'number' ? apiError.error_subcode : undefined,
-        );
-      }
+      await new Promise((r) => setTimeout(r, 200));
+      data = await fetchPagingUrl(nextUrl!);
     }
     if (Array.isArray(data?.data)) all.push(...data.data);
     nextUrl = data?.paging?.next || null;
@@ -244,33 +267,86 @@ Deno.serve(async (req) => {
 
     Object.assign(logCtx, { meta_account_id: acctPath, date_from: period.from, date_to: period.to, preset: date_preset });
 
-    // Step 1: discover lead forms for this ad account.
-    // The AdAccount `/leadgen_forms` edge returns all forms the account has access to
-    // (through its associated pages). This avoids scanning all ads.
-    logCtx.step = 'forms';
-    let forms: Array<{ id: string; name: string }> = [];
+    // Step 1: discover the Pages promoted by this ad account. Lead forms belong
+    // to Pages in Meta's Graph API; `/act_<id>/leadgen_forms` is not a valid edge.
+    logCtx.step = 'pages';
+    let pages: Array<{ id: string; name: string }> = [];
     try {
       const r = await fetchAllPaged(
-        `/${acctPath}/leadgen_forms`,
+        `/${acctPath}/promote_pages`,
         { fields: 'id,name' },
         500,
         deadline,
       );
-      forms = r.items
-        .filter((f: any) => f?.id)
-        .map((f: any) => ({ id: String(f.id), name: String(f.name || '') }));
+      pages = r.items
+        .filter((page: any) => page?.id)
+        .map((page: any) => ({ id: String(page.id), name: String(page.name || '') }));
     } catch (e) {
-      if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'forms');
+      if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'pages');
       const detail = metaErrorDetail(e);
-      logMetaError('[export-meta-leads] forms error', logCtx, e);
+      logMetaError('[export-meta-leads] pages error', logCtx, e);
       return json({
         success: false,
         error: 'meta_permissions',
-        message: 'Lead-Formulare konnten nicht geladen werden. Bitte Lead-Zugriff/Rechte prüfen.',
+        message: 'Die mit dem Werbekonto verbundenen Seiten konnten nicht geladen werden. Bitte Seiten-Zugriff/Rechte prüfen.',
         detail,
-        step: 'forms',
+        step: 'pages',
       });
     }
+
+    // Step 2: retrieve forms from each Page and deduplicate them. This is one
+    // paginated request stream per Page, never one request per lead.
+    logCtx.step = 'forms';
+    const formsById = new Map<string, {
+      id: string;
+      name: string;
+      page_id: string;
+      page_name: string;
+      page_access_token: string;
+    }>();
+    let formsWarning: string | null = null;
+    for (const page of pages) {
+      if (Date.now() > deadline) {
+        formsWarning = 'Zeitlimit beim Laden der Lead-Formulare erreicht.';
+        break;
+      }
+      try {
+        // Meta requires a Page token for this edge. When META_ACCESS_TOKEN is a
+        // Page-admin user token, the Page node exposes its scoped token here.
+        // Keep it server-side only and never include it in logs or responses.
+        const pageTokenResult = await metaFetch(`/${page.id}`, { fields: 'access_token' });
+        const pageAccessToken = typeof pageTokenResult?.access_token === 'string'
+          ? pageTokenResult.access_token
+          : null;
+        if (!pageAccessToken) {
+          throw new MetaApiError('Für diese Seite konnte kein Page Access Token abgerufen werden', 190);
+        }
+        const r = await fetchAllPaged(
+          `/${page.id}/leadgen_forms`,
+          { fields: 'id,name,status' },
+          500,
+          deadline,
+          pageAccessToken,
+        );
+        for (const form of r.items) {
+          if (!form?.id || formsById.has(String(form.id))) continue;
+          formsById.set(String(form.id), {
+            id: String(form.id),
+            name: String(form.name || ''),
+            page_id: page.id,
+            page_name: page.name,
+            page_access_token: pageAccessToken,
+          });
+        }
+        await new Promise((r) => setTimeout(r, 200));
+      } catch (e) {
+        if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'forms');
+        const detail = metaErrorDetail(e);
+        logMetaError('[export-meta-leads] forms error', { ...logCtx, page_id: page.id }, e);
+        if (!formsWarning) formsWarning = `Seite ${page.name || page.id}: ${detail}`;
+      }
+    }
+    const forms = Array.from(formsById.values());
 
     let accountName = '';
     try {
@@ -280,7 +356,7 @@ Deno.serve(async (req) => {
       if (e instanceof RateLimitError) return rateLimitResponse(e.detail, 'account');
     }
 
-    if (forms.length === 0) {
+    if (pages.length === 0 || forms.length === 0) {
       return json({
         success: true,
         meta_account_id: acctPath,
@@ -288,11 +364,13 @@ Deno.serve(async (req) => {
         period: { from: period.from, to: period.to, preset: date_preset },
         count: 0,
         leads: [],
-        warning: 'Für dieses Werbekonto wurden keine Lead-Formulare gefunden.',
+        warning: pages.length === 0
+          ? 'Für dieses Werbekonto wurden keine verbundenen Facebook-Seiten gefunden.'
+          : (formsWarning || 'Für die verbundenen Seiten wurden keine Lead-Formulare gefunden.'),
       });
     }
 
-    // Step 2: paginated leads per form (NOT per lead). ~4 requests per 400 leads.
+    // Step 3: paginated leads per form (NOT per lead). ~4 requests per 400 leads.
     logCtx.step = 'leads';
     const filters: any[] = [];
     if (period.from) {
@@ -317,7 +395,13 @@ Deno.serve(async (req) => {
       if (allLeads.length >= cap) { hasMore = true; break; }
       const remaining = cap - allLeads.length;
       try {
-        const r = await fetchAllPaged(`/${form.id}/leads`, commonParams, remaining, deadline);
+        const r = await fetchAllPaged(
+          `/${form.id}/leads`,
+          commonParams,
+          remaining,
+          deadline,
+          form.page_access_token,
+        );
         if (r.hasMore) hasMore = true;
         for (const l of r.items) {
           if (!l?.id || seenLeadIds.has(l.id)) continue;
@@ -328,6 +412,8 @@ Deno.serve(async (req) => {
             created_time: l.created_time,
             form_id: l.form_id || form.id,
             form_name: form.name,
+            page_id: form.page_id,
+            page_name: form.page_name,
             campaign_name: l.campaign_name || '',
             ad_id: l.ad_id || '',
             ad_name: l.ad_name || '',
@@ -361,11 +447,12 @@ Deno.serve(async (req) => {
       leads: allLeads,
       has_more: hasMore,
       partial: hasMore,
+      pages_count: pages.length,
       forms_count: forms.length,
       warning: allLeads.length === 0
         ? 'Keine Leads für diesen Zeitraum gefunden.'
         : (hasMore ? `Nur die ersten ${allLeads.length} Leads wurden geladen. Bitte Zeitraum einschränken.` : undefined),
-      error_hint: firstError,
+      error_hint: firstError || formsWarning,
     });
   } catch (err) {
     console.error('[export-meta-leads] unhandled', logCtx, err);
