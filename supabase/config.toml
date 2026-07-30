@@ -41,3 +41,7 @@ verify_jwt = false
 
 [functions.get-meta-reporting-settings]
 verify_jwt = false
+
+[functions.claude-crm-mcp]
+verify_jwt = false
+
