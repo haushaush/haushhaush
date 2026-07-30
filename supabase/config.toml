@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.get-meta-notification-contacts]
 verify_jwt = false
+
+[functions.get-meta-reporting-settings]
+verify_jwt = false
