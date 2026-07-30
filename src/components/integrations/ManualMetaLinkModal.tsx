@@ -124,20 +124,31 @@ export function ManualMetaLinkModal({ open, onOpenChange, onSaved }: Props) {
     try {
       const { data: u } = await supabase.auth.getUser();
       const acc = accounts.find((a) => a.meta_account_id === selectedAccount);
-      const { error } = await supabase
+
+      // Bestehende Verknüpfung für dieses Konto entfernen (Überschreiben)
+      const { error: delErr } = await supabase
         .from("kunde_meta_accounts")
-        .upsert(
-          {
-            kunde_id: selectedKunde,
-            meta_account_id: selectedAccount,
-            meta_account_name: acc?.name || null,
-            match_type: "manual",
-            match_confidence: null,
-            matched_by: u?.user?.id || null,
-          },
-          { onConflict: "meta_account_id" },
-        );
+        .delete()
+        .eq("meta_account_id", selectedAccount);
+      if (delErr) throw delErr;
+
+      const { data: inserted, error } = await supabase
+        .from("kunde_meta_accounts")
+        .insert({
+          kunde_id: selectedKunde,
+          meta_account_id: selectedAccount,
+          meta_account_name: acc?.name || null,
+          match_type: "manual",
+          match_confidence: null,
+          matched_by: u?.user?.id || null,
+        })
+        .select("id, kunde_id")
+        .maybeSingle();
       if (error) throw error;
+      if (!inserted || inserted.kunde_id !== selectedKunde) {
+        throw new Error("Verknüpfung konnte nicht gespeichert werden (keine Berechtigung?)");
+      }
+
       // Remove any pending suggestion for that account
       await supabase.from("pending_meta_matches").delete().eq("meta_account_id", selectedAccount);
       toast.success("Manuell verknüpft");
@@ -149,6 +160,7 @@ export function ManualMetaLinkModal({ open, onOpenChange, onSaved }: Props) {
       setSaving(false);
     }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
