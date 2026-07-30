@@ -3116,6 +3116,72 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_reporting_settings: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          created_at: string
+          customer_email_source: string | null
+          email_enabled: boolean
+          id: string
+          is_active: boolean
+          last_email_sent_at: string | null
+          last_report_sent_at: string | null
+          last_slack_sent_at: string | null
+          last_synced_at: string | null
+          meta_account_id: string
+          meta_account_name: string | null
+          reporting_email: string | null
+          reporting_email_overridden: boolean
+          reporting_enabled: boolean
+          slack_enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          customer_email_source?: string | null
+          email_enabled?: boolean
+          id?: string
+          is_active?: boolean
+          last_email_sent_at?: string | null
+          last_report_sent_at?: string | null
+          last_slack_sent_at?: string | null
+          last_synced_at?: string | null
+          meta_account_id: string
+          meta_account_name?: string | null
+          reporting_email?: string | null
+          reporting_email_overridden?: boolean
+          reporting_enabled?: boolean
+          slack_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string
+          customer_email_source?: string | null
+          email_enabled?: boolean
+          id?: string
+          is_active?: boolean
+          last_email_sent_at?: string | null
+          last_report_sent_at?: string | null
+          last_slack_sent_at?: string | null
+          last_synced_at?: string | null
+          meta_account_id?: string
+          meta_account_name?: string | null
+          reporting_email?: string | null
+          reporting_email_overridden?: boolean
+          reporting_enabled?: boolean
+          slack_enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       mfa_recovery_codes: {
         Row: {
           code_hash: string
