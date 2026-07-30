@@ -86,69 +86,46 @@ export default function MetaReportings() {
         });
       }
 
-      const [{ data: accounts, error: accErr }, { data: existing }] = await Promise.all([
-        supabase.from('meta_accounts_cache').select('meta_account_id, name, status'),
-        supabase.from('meta_reporting_settings' as any).select('meta_account_id'),
-      ]);
+      const [{ data: accounts, error: accErr }, { data: existing }, { data: allClients }, { data: kmaRows }] =
+        await Promise.all([
+          supabase.from('meta_accounts_cache').select('meta_account_id, name, status'),
+          supabase.from('meta_reporting_settings' as any).select('id, meta_account_id, client_id, reporting_email, reporting_email_overridden'),
+          supabase.from('clients').select('id, name, email, meta_account_id, meta_account_ids').limit(5000),
+          supabase.from('kunde_meta_accounts').select('meta_account_id, client_id, matched_at'),
+        ]);
       if (accErr) throw accErr;
 
-      const known = new Set(((existing as any[]) ?? []).map((r) => r.meta_account_id));
-      const missing = (accounts ?? []).filter((a) => !known.has(normalizeId(a.meta_account_id).prefixed));
+      type Hit = { id: string; name: string | null; email: string | null };
+      const clientById = new Map<string, Hit>(
+        (allClients ?? []).map((c) => [c.id, { id: c.id, name: c.name, email: c.email }]),
+      );
 
-
-      if (missing.length === 0) {
-        toast.success('Alle Werbekonten sind bereits synchronisiert');
-        await load();
-        return;
+      // Priorität 1: manuelle Verknüpfungen aus kunde_meta_accounts (neueste gewinnt)
+      const manual = new Map<string, Hit>();
+      const manualAt = new Map<string, string>();
+      for (const r of (kmaRows as any[]) ?? []) {
+        const c = r.client_id ? clientById.get(r.client_id) : null;
+        if (!c) continue;
+        const v = normalizeId(r.meta_account_id);
+        const at = String(r.matched_at ?? '');
+        for (const variant of [v.prefixed, v.numeric]) {
+          if (!variant) continue;
+          if (!manual.has(variant) || at > (manualAt.get(variant) ?? '')) {
+            manual.set(variant, c);
+            manualAt.set(variant, at);
+          }
+        }
       }
 
-      const variants = new Set<string>();
-      for (const a of missing) {
-        const v = normalizeId(a.meta_account_id);
-        variants.add(v.prefixed);
-        variants.add(v.numeric);
-      }
-      const variantList = [...variants].filter(Boolean);
-      const quoted = variantList.map((v) => `"${v}"`).join(',');
-
-      const [{ data: clientRows }, { data: kmaRows }] = await Promise.all([
-        supabase
-          .from('clients')
-          .select('id, name, email, meta_account_id, meta_account_ids')
-          .or(`meta_account_id.in.(${quoted}),meta_account_ids.ov.{${quoted}}`),
-        supabase
-          .from('kunde_meta_accounts')
-          .select('meta_account_id, meta_account_name, client_id')
-          .in('meta_account_id', variantList),
-      ]);
-
-      const byVariant = new Map<string, { id: string; name: string | null; email: string | null }>();
-      for (const c of clientRows ?? []) {
+      // Priorität 2: ID-Zuordnung über clients
+      const byVariant = new Map<string, Hit>();
+      for (const c of allClients ?? []) {
         const ids = [
           ...(c.meta_account_id ? [c.meta_account_id] : []),
           ...(((c.meta_account_ids as string[] | null) ?? []) as string[]),
         ];
         for (const id of ids) {
           const v = normalizeId(id);
-          for (const variant of [v.prefixed, v.numeric]) {
-            if (variant && variants.has(variant) && !byVariant.has(variant)) {
-              byVariant.set(variant, { id: c.id, name: c.name, email: c.email });
-            }
-          }
-        }
-      }
-
-      const kmaClientIds = [...new Set(((kmaRows as any[]) ?? []).map((r) => r.client_id).filter(Boolean))];
-      if (kmaClientIds.length > 0) {
-        const { data: kmaClients } = await supabase
-          .from('clients')
-          .select('id, name, email')
-          .in('id', kmaClientIds as string[]);
-        const map = new Map((kmaClients ?? []).map((c) => [c.id, c]));
-        for (const r of (kmaRows as any[]) ?? []) {
-          const c = r.client_id ? map.get(r.client_id) : null;
-          if (!c) continue;
-          const v = normalizeId(r.meta_account_id);
           for (const variant of [v.prefixed, v.numeric]) {
             if (variant && !byVariant.has(variant)) {
               byVariant.set(variant, { id: c.id, name: c.name, email: c.email });
@@ -157,38 +134,90 @@ export default function MetaReportings() {
         }
       }
 
-      // Name fallback only when no ID match exists.
-      const { data: allClients } = await supabase.from('clients').select('id, name, email').limit(5000);
-      const byName = new Map<string, { id: string; name: string | null; email: string | null }>();
+      // Priorität 3: Namens-Fallback
+      const byName = new Map<string, Hit>();
       for (const c of allClients ?? []) {
         const n = normName(c.name);
         if (n && !byName.has(n)) byName.set(n, { id: c.id, name: c.name, email: c.email });
       }
 
-      const inserts = missing.map((a) => {
+      const resolve = (accountId: string, accountName: string | null) => {
+        const v = normalizeId(accountId);
+        return (
+          manual.get(v.prefixed) ||
+          manual.get(v.numeric) ||
+          byVariant.get(v.prefixed) ||
+          byVariant.get(v.numeric) ||
+          byName.get(normName(accountName)) ||
+          null
+        );
+      };
+
+      const existingByAccount = new Map(
+        ((existing as any[]) ?? []).map((r) => [normalizeId(r.meta_account_id).prefixed, r]),
+      );
+      const now = new Date().toISOString();
+
+      const inserts: any[] = [];
+      const updates: any[] = [];
+
+      for (const a of accounts ?? []) {
         const v = normalizeId(a.meta_account_id);
-        const hit = byVariant.get(v.prefixed) || byVariant.get(v.numeric) || byName.get(normName(a.name)) || null;
-        const email = hit?.email ?? null;
-        return {
-          meta_account_id: v.prefixed,
-          meta_account_name: a.name ?? null,
-          client_id: hit?.id ?? null,
-          client_name: hit?.name ?? null,
-          customer_email_source: email,
-          reporting_email: email,
-          reporting_email_overridden: false,
-          is_active: (a.status ?? 'active') === 'active',
-          last_synced_at: new Date().toISOString(),
-          updated_by: user?.id ?? null,
-        };
-      });
+        const hit = resolve(a.meta_account_id, a.name ?? null);
+        const row = existingByAccount.get(v.prefixed);
+        if (!row) {
+          inserts.push({
+            meta_account_id: v.prefixed,
+            meta_account_name: a.name ?? null,
+            client_id: hit?.id ?? null,
+            client_name: hit?.name ?? null,
+            customer_email_source: hit?.email ?? null,
+            reporting_email: hit?.email ?? null,
+            reporting_email_overridden: false,
+            is_active: (a.status ?? 'active') === 'active',
+            last_synced_at: now,
+            updated_by: user?.id ?? null,
+          });
+        } else if ((row.client_id ?? null) !== (hit?.id ?? null)) {
+          updates.push({
+            id: row.id,
+            client_id: hit?.id ?? null,
+            client_name: hit?.name ?? null,
+            customer_email_source: hit?.email ?? null,
+            // manuell gesetzte Reporting-Mail bleibt erhalten
+            reporting_email: row.reporting_email_overridden ? row.reporting_email : hit?.email ?? null,
+          });
+        }
+      }
 
-      const { error: insErr } = await supabase
-        .from('meta_reporting_settings' as any)
-        .upsert(inserts as any, { onConflict: 'meta_account_id', ignoreDuplicates: true });
-      if (insErr) throw insErr;
+      if (inserts.length > 0) {
+        const { error: insErr } = await supabase
+          .from('meta_reporting_settings' as any)
+          .upsert(inserts as any, { onConflict: 'meta_account_id', ignoreDuplicates: true });
+        if (insErr) throw insErr;
+      }
 
-      toast.success(`${inserts.length} Werbekonto${inserts.length === 1 ? '' : 'en'} hinzugefügt`);
+      for (const u of updates) {
+        const { id, ...values } = u;
+        const { error: updErr } = await supabase
+          .from('meta_reporting_settings' as any)
+          .update({ ...values, last_synced_at: now, updated_by: user?.id ?? null } as any)
+          .eq('id', id);
+        if (updErr) throw updErr;
+      }
+
+      if (inserts.length === 0 && updates.length === 0) {
+        toast.success('Alle Werbekonten sind bereits synchronisiert');
+      } else {
+        toast.success(
+          [
+            inserts.length > 0 ? `${inserts.length} Konto${inserts.length === 1 ? '' : 'en'} hinzugefügt` : null,
+            updates.length > 0 ? `${updates.length} Zuordnung${updates.length === 1 ? '' : 'en'} aktualisiert` : null,
+          ]
+            .filter(Boolean)
+            .join(' · '),
+        );
+      }
       await load();
     } catch (e: any) {
       toast.error('Synchronisierung fehlgeschlagen', { description: e?.message });
@@ -196,6 +225,7 @@ export default function MetaReportings() {
       setSyncing(false);
     }
   };
+
 
   const patch = async (row: ReportingSetting, values: Partial<ReportingSetting>) => {
     setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, ...values } : r)));
