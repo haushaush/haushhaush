@@ -115,6 +115,7 @@ const toolsNavItems: NavItem[] = [
       { title: 'Anzeigengruppen', url: '/meta/anzeigengruppen', permissionKey: 'sales.meta.view' },
       { title: 'Anzeigen', url: '/meta/anzeigen', permissionKey: 'sales.meta.view' },
       { title: 'Leads', url: '/meta/leads', permissionKey: 'sales.meta.view' },
+      { title: 'Reportings', url: '/meta/reportings', adminOnly: true },
     ],
   },
   {
