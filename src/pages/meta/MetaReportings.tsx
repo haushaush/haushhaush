@@ -78,6 +78,14 @@ export default function MetaReportings() {
   const syncAccounts = async () => {
     setSyncing(true);
     try {
+      // 1) Werbekonten live von Meta holen (aktualisiert meta_accounts_cache)
+      const { error: liveErr } = await supabase.functions.invoke('list-meta-accounts', { body: {} });
+      if (liveErr) {
+        toast.warning('Live-Abruf der Werbekonten fehlgeschlagen – nutze zwischengespeicherte Liste', {
+          description: liveErr.message,
+        });
+      }
+
       const [{ data: accounts, error: accErr }, { data: existing }] = await Promise.all([
         supabase.from('meta_accounts_cache').select('meta_account_id, name, status'),
         supabase.from('meta_reporting_settings' as any).select('meta_account_id'),
@@ -86,6 +94,7 @@ export default function MetaReportings() {
 
       const known = new Set(((existing as any[]) ?? []).map((r) => r.meta_account_id));
       const missing = (accounts ?? []).filter((a) => !known.has(normalizeId(a.meta_account_id).prefixed));
+
 
       if (missing.length === 0) {
         toast.success('Alle Werbekonten sind bereits synchronisiert');
