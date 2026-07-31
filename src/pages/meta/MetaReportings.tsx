@@ -316,6 +316,30 @@ export default function MetaReportings() {
     }
   };
 
+  const triggerReport = async (row: ReportingSetting) => {
+    setTriggering((p) => ({ ...p, [row.id]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke('trigger-meta-manual-reporting', {
+        body: {
+          meta_account_id: row.meta_account_id,
+          meta_account_name: row.meta_account_name,
+        },
+      });
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.message || 'unknown');
+      toast.success('Reporting wurde gestartet');
+      const now = new Date().toISOString();
+      setRows((prev) =>
+        prev.map((r) => (r.id === row.id ? { ...r, last_report_attempted_at: now } : r)),
+      );
+      setPending((p) => ({ ...p, [row.id]: true }));
+      setTimeout(() => setPending((p) => ({ ...p, [row.id]: false })), 20000);
+    } catch (e: any) {
+      toast.error('Reporting konnte nicht gestartet werden', { description: e?.message });
+    } finally {
+      setTriggering((p) => ({ ...p, [row.id]: false }));
+    }
+  };
+
 
   const patch = async (row: ReportingSetting, values: Partial<ReportingSetting>) => {
     setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, ...values } : r)));
