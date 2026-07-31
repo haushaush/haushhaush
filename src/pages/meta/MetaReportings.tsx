@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, RotateCcw, Search, AlertTriangle } from 'lucide-react';
+import { Loader2, RefreshCw, RotateCcw, Search, AlertTriangle, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ReportingSetting {
@@ -21,7 +21,21 @@ interface ReportingSetting {
   slack_enabled: boolean;
   email_enabled: boolean;
   is_active: boolean;
+  last_report_status: string | null;
+  last_report_trigger_source: string | null;
+  last_report_period_label: string | null;
+  last_report_attempted_at: string | null;
+  last_report_success_at: string | null;
+  last_report_error: string | null;
+  last_slack_status: string | null;
+  last_slack_sent_at: string | null;
+  last_slack_error: string | null;
+  last_email_status: string | null;
+  last_email_sent_at: string | null;
+  last_email_to: string | null;
+  last_email_error: string | null;
 }
+
 
 type FilterKey = 'all' | 'reporting' | 'slack' | 'mail' | 'no_mail' | 'overridden';
 
