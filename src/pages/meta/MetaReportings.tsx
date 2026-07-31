@@ -60,6 +60,79 @@ function normName(v: unknown) {
   return String(v ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+function fmtDate(v: string | null | undefined) {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function ReportStatusPanel({ row, pending }: { row: ReportingSetting; pending: boolean }) {
+  const status = row.last_report_status;
+
+  let badge = <Badge variant="outline" className="text-xs">Noch kein Report</Badge>;
+  let line = 'Noch nicht gesendet';
+
+  if (pending) {
+    badge = <Badge variant="secondary" className="text-xs">Wird verarbeitet</Badge>;
+    line = 'Report wurde soeben gestartet';
+  } else if (status === 'success') {
+    badge = <Badge className="text-xs bg-emerald-600 hover:bg-emerald-600 text-white">Erfolgreich</Badge>;
+    line = `Zuletzt gesendet: ${fmtDate(row.last_report_success_at ?? row.last_report_attempted_at)}`;
+  } else if (status === 'partial') {
+    badge = <Badge className="text-xs bg-amber-500 hover:bg-amber-500 text-white">Teilweise</Badge>;
+    line = row.last_report_error || `Zuletzt gesendet: ${fmtDate(row.last_report_success_at ?? row.last_report_attempted_at)}`;
+  } else if (status === 'failed') {
+    badge = <Badge variant="destructive" className="text-xs">Fehler</Badge>;
+    line = row.last_report_error || `Fehlgeschlagen am ${fmtDate(row.last_report_attempted_at)}`;
+  } else if (status === 'skipped') {
+    badge = <Badge variant="outline" className="text-xs">Übersprungen</Badge>;
+    line = row.last_report_error || `Zuletzt versucht: ${fmtDate(row.last_report_attempted_at)}`;
+  } else if (row.last_report_attempted_at) {
+    badge = <Badge variant="secondary" className="text-xs">Wird verarbeitet</Badge>;
+    line = `Gestartet: ${fmtDate(row.last_report_attempted_at)}`;
+  }
+
+  const slackLine =
+    row.last_slack_status === 'sent'
+      ? `Slack gesendet${row.last_slack_sent_at ? ` (${fmtDate(row.last_slack_sent_at)})` : ''}`
+      : row.last_slack_status === 'disabled'
+        ? 'Slack deaktiviert'
+        : row.last_slack_status === 'failed'
+          ? `Slack Fehler: ${row.last_slack_error || 'unbekannt'}`
+          : row.last_slack_status === 'skipped'
+            ? 'Slack übersprungen'
+            : null;
+
+  const mailLine =
+    row.last_email_status === 'sent'
+      ? `Mail gesendet an ${row.last_email_to || '—'}`
+      : row.last_email_status === 'disabled'
+        ? 'Mail deaktiviert'
+        : row.last_email_status === 'missing_email'
+          ? 'Keine Reporting-Mail hinterlegt'
+          : row.last_email_status === 'failed'
+            ? `Mail Fehler: ${row.last_email_error || 'unbekannt'}`
+            : row.last_email_status === 'skipped'
+              ? 'Mail übersprungen'
+              : null;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-muted-foreground">Letzter Report</span>
+        {badge}
+      </div>
+      <div className="text-xs text-muted-foreground break-words">{line}</div>
+      {row.last_report_period_label && (
+        <div className="text-xs text-muted-foreground">Zeitraum: {row.last_report_period_label}</div>
+      )}
+      {slackLine && <div className="text-xs text-muted-foreground break-words">{slackLine}</div>}
+      {mailLine && <div className="text-xs text-muted-foreground break-words">{mailLine}</div>}
+    </div>
+  );
+}
+
 export default function MetaReportings() {
   const { user, hasRole } = useAuth();
   const isAdmin = hasRole?.('admin') ?? false;
@@ -69,6 +142,9 @@ export default function MetaReportings() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
   const [emailDrafts, setEmailDrafts] = useState<Record<string, string>>({});
+  const [triggering, setTriggering] = useState<Record<string, boolean>>({});
+  const [pending, setPending] = useState<Record<string, boolean>>({});
+
 
   const load = useCallback(async () => {
     setLoading(true);
