@@ -481,7 +481,7 @@ export default function MetaReportings() {
             const mailWarning = row.email_enabled && !row.reporting_email;
             return (
               <div key={row.id} className="rounded-lg border bg-card p-4">
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1fr)] lg:items-start">
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_auto_minmax(0,1fr)_minmax(0,0.9fr)] lg:items-start">
                   {/* Account */}
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
