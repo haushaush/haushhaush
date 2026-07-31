@@ -3125,9 +3125,20 @@ export type Database = {
           email_enabled: boolean
           id: string
           is_active: boolean
+          last_email_error: string | null
           last_email_sent_at: string | null
+          last_email_status: string | null
+          last_email_to: string | null
+          last_report_attempted_at: string | null
+          last_report_error: string | null
+          last_report_period_label: string | null
           last_report_sent_at: string | null
+          last_report_status: string | null
+          last_report_success_at: string | null
+          last_report_trigger_source: string | null
+          last_slack_error: string | null
           last_slack_sent_at: string | null
+          last_slack_status: string | null
           last_synced_at: string | null
           meta_account_id: string
           meta_account_name: string | null
@@ -3146,9 +3157,20 @@ export type Database = {
           email_enabled?: boolean
           id?: string
           is_active?: boolean
+          last_email_error?: string | null
           last_email_sent_at?: string | null
+          last_email_status?: string | null
+          last_email_to?: string | null
+          last_report_attempted_at?: string | null
+          last_report_error?: string | null
+          last_report_period_label?: string | null
           last_report_sent_at?: string | null
+          last_report_status?: string | null
+          last_report_success_at?: string | null
+          last_report_trigger_source?: string | null
+          last_slack_error?: string | null
           last_slack_sent_at?: string | null
+          last_slack_status?: string | null
           last_synced_at?: string | null
           meta_account_id: string
           meta_account_name?: string | null
@@ -3167,9 +3189,20 @@ export type Database = {
           email_enabled?: boolean
           id?: string
           is_active?: boolean
+          last_email_error?: string | null
           last_email_sent_at?: string | null
+          last_email_status?: string | null
+          last_email_to?: string | null
+          last_report_attempted_at?: string | null
+          last_report_error?: string | null
+          last_report_period_label?: string | null
           last_report_sent_at?: string | null
+          last_report_status?: string | null
+          last_report_success_at?: string | null
+          last_report_trigger_source?: string | null
+          last_slack_error?: string | null
           last_slack_sent_at?: string | null
+          last_slack_status?: string | null
           last_synced_at?: string | null
           meta_account_id?: string
           meta_account_name?: string | null
