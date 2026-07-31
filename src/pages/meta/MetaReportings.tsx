@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, RotateCcw, Search, AlertTriangle } from 'lucide-react';
+import { Loader2, RefreshCw, RotateCcw, Search, AlertTriangle, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ReportingSetting {
@@ -21,7 +21,21 @@ interface ReportingSetting {
   slack_enabled: boolean;
   email_enabled: boolean;
   is_active: boolean;
+  last_report_status: string | null;
+  last_report_trigger_source: string | null;
+  last_report_period_label: string | null;
+  last_report_attempted_at: string | null;
+  last_report_success_at: string | null;
+  last_report_error: string | null;
+  last_slack_status: string | null;
+  last_slack_sent_at: string | null;
+  last_slack_error: string | null;
+  last_email_status: string | null;
+  last_email_sent_at: string | null;
+  last_email_to: string | null;
+  last_email_error: string | null;
 }
+
 
 type FilterKey = 'all' | 'reporting' | 'slack' | 'mail' | 'no_mail' | 'overridden';
 
@@ -46,6 +60,79 @@ function normName(v: unknown) {
   return String(v ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+function fmtDate(v: string | null | undefined) {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function ReportStatusPanel({ row, pending }: { row: ReportingSetting; pending: boolean }) {
+  const status = row.last_report_status;
+
+  let badge = <Badge variant="outline" className="text-xs">Noch kein Report</Badge>;
+  let line = 'Noch nicht gesendet';
+
+  if (pending) {
+    badge = <Badge variant="secondary" className="text-xs">Wird verarbeitet</Badge>;
+    line = 'Report wurde soeben gestartet';
+  } else if (status === 'success') {
+    badge = <Badge className="text-xs bg-emerald-600 hover:bg-emerald-600 text-white">Erfolgreich</Badge>;
+    line = `Zuletzt gesendet: ${fmtDate(row.last_report_success_at ?? row.last_report_attempted_at)}`;
+  } else if (status === 'partial') {
+    badge = <Badge className="text-xs bg-amber-500 hover:bg-amber-500 text-white">Teilweise</Badge>;
+    line = row.last_report_error || `Zuletzt gesendet: ${fmtDate(row.last_report_success_at ?? row.last_report_attempted_at)}`;
+  } else if (status === 'failed') {
+    badge = <Badge variant="destructive" className="text-xs">Fehler</Badge>;
+    line = row.last_report_error || `Fehlgeschlagen am ${fmtDate(row.last_report_attempted_at)}`;
+  } else if (status === 'skipped') {
+    badge = <Badge variant="outline" className="text-xs">Übersprungen</Badge>;
+    line = row.last_report_error || `Zuletzt versucht: ${fmtDate(row.last_report_attempted_at)}`;
+  } else if (row.last_report_attempted_at) {
+    badge = <Badge variant="secondary" className="text-xs">Wird verarbeitet</Badge>;
+    line = `Gestartet: ${fmtDate(row.last_report_attempted_at)}`;
+  }
+
+  const slackLine =
+    row.last_slack_status === 'sent'
+      ? `Slack gesendet${row.last_slack_sent_at ? ` (${fmtDate(row.last_slack_sent_at)})` : ''}`
+      : row.last_slack_status === 'disabled'
+        ? 'Slack deaktiviert'
+        : row.last_slack_status === 'failed'
+          ? `Slack Fehler: ${row.last_slack_error || 'unbekannt'}`
+          : row.last_slack_status === 'skipped'
+            ? 'Slack übersprungen'
+            : null;
+
+  const mailLine =
+    row.last_email_status === 'sent'
+      ? `Mail gesendet an ${row.last_email_to || '—'}`
+      : row.last_email_status === 'disabled'
+        ? 'Mail deaktiviert'
+        : row.last_email_status === 'missing_email'
+          ? 'Keine Reporting-Mail hinterlegt'
+          : row.last_email_status === 'failed'
+            ? `Mail Fehler: ${row.last_email_error || 'unbekannt'}`
+            : row.last_email_status === 'skipped'
+              ? 'Mail übersprungen'
+              : null;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-muted-foreground">Letzter Report</span>
+        {badge}
+      </div>
+      <div className="text-xs text-muted-foreground break-words">{line}</div>
+      {row.last_report_period_label && (
+        <div className="text-xs text-muted-foreground">Zeitraum: {row.last_report_period_label}</div>
+      )}
+      {slackLine && <div className="text-xs text-muted-foreground break-words">{slackLine}</div>}
+      {mailLine && <div className="text-xs text-muted-foreground break-words">{mailLine}</div>}
+    </div>
+  );
+}
+
 export default function MetaReportings() {
   const { user, hasRole } = useAuth();
   const isAdmin = hasRole?.('admin') ?? false;
@@ -55,6 +142,9 @@ export default function MetaReportings() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
   const [emailDrafts, setEmailDrafts] = useState<Record<string, string>>({});
+  const [triggering, setTriggering] = useState<Record<string, boolean>>({});
+  const [pending, setPending] = useState<Record<string, boolean>>({});
+
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -226,6 +316,30 @@ export default function MetaReportings() {
     }
   };
 
+  const triggerReport = async (row: ReportingSetting) => {
+    setTriggering((p) => ({ ...p, [row.id]: true }));
+    try {
+      const { data, error } = await supabase.functions.invoke('trigger-meta-manual-reporting', {
+        body: {
+          meta_account_id: row.meta_account_id,
+          meta_account_name: row.meta_account_name,
+        },
+      });
+      if (error || (data as any)?.error) throw new Error(error?.message || (data as any)?.message || 'unknown');
+      toast.success('Reporting wurde gestartet');
+      const now = new Date().toISOString();
+      setRows((prev) =>
+        prev.map((r) => (r.id === row.id ? { ...r, last_report_attempted_at: now } : r)),
+      );
+      setPending((p) => ({ ...p, [row.id]: true }));
+      setTimeout(() => setPending((p) => ({ ...p, [row.id]: false })), 20000);
+    } catch (e: any) {
+      toast.error('Reporting konnte nicht gestartet werden', { description: e?.message });
+    } finally {
+      setTriggering((p) => ({ ...p, [row.id]: false }));
+    }
+  };
+
 
   const patch = async (row: ReportingSetting, values: Partial<ReportingSetting>) => {
     setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, ...values } : r)));
@@ -367,7 +481,7 @@ export default function MetaReportings() {
             const mailWarning = row.email_enabled && !row.reporting_email;
             return (
               <div key={row.id} className="rounded-lg border bg-card p-4">
-                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1fr)] lg:items-start">
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_auto_minmax(0,1fr)_minmax(0,0.9fr)] lg:items-start">
                   {/* Account */}
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -451,7 +565,32 @@ export default function MetaReportings() {
                       )}
                     </div>
                   </div>
+
+                  {/* Status + manueller Trigger */}
+                  <div className="min-w-0 space-y-3 lg:border-l lg:pl-4">
+                    <ReportStatusPanel row={row} pending={!!pending[row.id]} />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      disabled={!!triggering[row.id]}
+                      onClick={() => triggerReport(row)}
+                    >
+                      {triggering[row.id] ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Wird gestartet...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          Jetzt letzte 7 Tage senden
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
+
               </div>
             );
           })}
