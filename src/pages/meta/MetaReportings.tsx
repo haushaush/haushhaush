@@ -565,7 +565,32 @@ export default function MetaReportings() {
                       )}
                     </div>
                   </div>
+
+                  {/* Status + manueller Trigger */}
+                  <div className="min-w-0 space-y-3 lg:border-l lg:pl-4">
+                    <ReportStatusPanel row={row} pending={!!pending[row.id]} />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      disabled={!!triggering[row.id]}
+                      onClick={() => triggerReport(row)}
+                    >
+                      {triggering[row.id] ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Wird gestartet...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          Jetzt letzte 7 Tage senden
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
+
               </div>
             );
           })}
