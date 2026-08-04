@@ -634,6 +634,603 @@ export type Database = {
           },
         ]
       }
+      bonus_abwesenheit: {
+        Row: {
+          arbeitstage_monat: number
+          created_at: string
+          fehltage_zusammenhaengend: number
+          grund: string | null
+          id: string
+          mitarbeiter_id: string
+          monat: string
+          updated_at: string
+        }
+        Insert: {
+          arbeitstage_monat?: number
+          created_at?: string
+          fehltage_zusammenhaengend?: number
+          grund?: string | null
+          id?: string
+          mitarbeiter_id: string
+          monat: string
+          updated_at?: string
+        }
+        Update: {
+          arbeitstage_monat?: number
+          created_at?: string
+          fehltage_zusammenhaengend?: number
+          grund?: string | null
+          id?: string
+          mitarbeiter_id?: string
+          monat?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_abwesenheit_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_cash_collect: {
+        Row: {
+          betrag: number
+          client_id: string | null
+          created_at: string
+          eingang_am: string | null
+          id: string
+          mitarbeiter_id: string | null
+          monat: string
+          qonto_transaction_id: string | null
+          quelle: Database["public"]["Enums"]["bonus_cash_quelle"]
+          updated_at: string
+          zugeordnet: boolean
+          zuordnung_am: string | null
+          zuordnung_durch: string | null
+        }
+        Insert: {
+          betrag?: number
+          client_id?: string | null
+          created_at?: string
+          eingang_am?: string | null
+          id?: string
+          mitarbeiter_id?: string | null
+          monat: string
+          qonto_transaction_id?: string | null
+          quelle?: Database["public"]["Enums"]["bonus_cash_quelle"]
+          updated_at?: string
+          zugeordnet?: boolean
+          zuordnung_am?: string | null
+          zuordnung_durch?: string | null
+        }
+        Update: {
+          betrag?: number
+          client_id?: string | null
+          created_at?: string
+          eingang_am?: string | null
+          id?: string
+          mitarbeiter_id?: string | null
+          monat?: string
+          qonto_transaction_id?: string | null
+          quelle?: Database["public"]["Enums"]["bonus_cash_quelle"]
+          updated_at?: string
+          zugeordnet?: boolean
+          zuordnung_am?: string | null
+          zuordnung_durch?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_cash_collect_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_cash_collect_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_checkins: {
+        Row: {
+          client_id: string
+          close_activity_id: string | null
+          created_at: string
+          datum: string
+          id: string
+          mitarbeiter_id: string
+          monat: string
+          quelle: Database["public"]["Enums"]["bonus_checkin_quelle"]
+          stimmung: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          close_activity_id?: string | null
+          created_at?: string
+          datum: string
+          id?: string
+          mitarbeiter_id: string
+          monat: string
+          quelle?: Database["public"]["Enums"]["bonus_checkin_quelle"]
+          stimmung?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          close_activity_id?: string | null
+          created_at?: string
+          datum?: string
+          id?: string
+          mitarbeiter_id?: string
+          monat?: string
+          quelle?: Database["public"]["Enums"]["bonus_checkin_quelle"]
+          stimmung?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_checkins_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_checkins_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_churn_events: {
+        Row: {
+          bemerkung: string | null
+          client_id: string
+          created_at: string
+          festgestellt_am: string
+          festgestellt_durch: string | null
+          id: string
+          mitarbeiter_id: string
+          monat: string
+          typ: Database["public"]["Enums"]["bonus_churn_typ"]
+          updated_at: string
+          zaehlt_als_churn: boolean
+        }
+        Insert: {
+          bemerkung?: string | null
+          client_id: string
+          created_at?: string
+          festgestellt_am?: string
+          festgestellt_durch?: string | null
+          id?: string
+          mitarbeiter_id: string
+          monat: string
+          typ: Database["public"]["Enums"]["bonus_churn_typ"]
+          updated_at?: string
+          zaehlt_als_churn?: boolean
+        }
+        Update: {
+          bemerkung?: string | null
+          client_id?: string
+          created_at?: string
+          festgestellt_am?: string
+          festgestellt_durch?: string | null
+          id?: string
+          mitarbeiter_id?: string
+          monat?: string
+          typ?: Database["public"]["Enums"]["bonus_churn_typ"]
+          updated_at?: string
+          zaehlt_als_churn?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_churn_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_churn_events_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_config: {
+        Row: {
+          config: Json
+          erstellt_am: string
+          erstellt_von: string | null
+          gueltig_ab: string
+          id: string
+          mitarbeiter_id: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          erstellt_am?: string
+          erstellt_von?: string | null
+          gueltig_ab: string
+          id?: string
+          mitarbeiter_id: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          erstellt_am?: string
+          erstellt_von?: string | null
+          gueltig_ab?: string
+          id?: string
+          mitarbeiter_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_config_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_kunden_snapshot: {
+        Row: {
+          client_id: string
+          erstellt_am: string
+          id: string
+          mitarbeiter_id: string
+          monat: string
+        }
+        Insert: {
+          client_id: string
+          erstellt_am?: string
+          id?: string
+          mitarbeiter_id: string
+          monat: string
+        }
+        Update: {
+          client_id?: string
+          erstellt_am?: string
+          id?: string
+          mitarbeiter_id?: string
+          monat?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_kunden_snapshot_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_kunden_snapshot_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_mitarbeiter: {
+        Row: {
+          aktiv: boolean
+          created_at: string
+          id: string
+          modell_ende: string | null
+          modell_start: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          aktiv?: boolean
+          created_at?: string
+          id?: string
+          modell_ende?: string | null
+          modell_start: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          aktiv?: boolean
+          created_at?: string
+          id?: string
+          modell_ende?: string | null
+          modell_start?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_mitarbeiter_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "team"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_monate: {
+        Row: {
+          berechnungsdetails: Json
+          bonus_eur: number
+          created_at: string
+          freigegeben_am: string | null
+          freigegeben_von: string | null
+          funnel_ausfall: boolean
+          mitarbeiter_id: string
+          monat: string
+          p1_zufriedenheit: number
+          p2_cash_niveau: number
+          p3_cash_entwicklung: number
+          p4_churn: number
+          p5_calls: number
+          punkte_gesamt: number
+          status: Database["public"]["Enums"]["bonus_monat_status"]
+          updated_at: string
+          upsell_beteiligung_eur: number
+        }
+        Insert: {
+          berechnungsdetails?: Json
+          bonus_eur?: number
+          created_at?: string
+          freigegeben_am?: string | null
+          freigegeben_von?: string | null
+          funnel_ausfall?: boolean
+          mitarbeiter_id: string
+          monat: string
+          p1_zufriedenheit?: number
+          p2_cash_niveau?: number
+          p3_cash_entwicklung?: number
+          p4_churn?: number
+          p5_calls?: number
+          punkte_gesamt?: number
+          status?: Database["public"]["Enums"]["bonus_monat_status"]
+          updated_at?: string
+          upsell_beteiligung_eur?: number
+        }
+        Update: {
+          berechnungsdetails?: Json
+          bonus_eur?: number
+          created_at?: string
+          freigegeben_am?: string | null
+          freigegeben_von?: string | null
+          funnel_ausfall?: boolean
+          mitarbeiter_id?: string
+          monat?: string
+          p1_zufriedenheit?: number
+          p2_cash_niveau?: number
+          p3_cash_entwicklung?: number
+          p4_churn?: number
+          p5_calls?: number
+          punkte_gesamt?: number
+          status?: Database["public"]["Enums"]["bonus_monat_status"]
+          updated_at?: string
+          upsell_beteiligung_eur?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_monate_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_survey_antworten: {
+        Row: {
+          created_at: string
+          f1_reaktionszeit: number
+          f2_freundlichkeit: number
+          f3_loesungsqualitaet: number
+          f4_gesamt: number
+          freitext: string | null
+          id: string
+          score: number | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          f1_reaktionszeit: number
+          f2_freundlichkeit: number
+          f3_loesungsqualitaet: number
+          f4_gesamt: number
+          freitext?: string | null
+          id?: string
+          score?: number | null
+          token: string
+        }
+        Update: {
+          created_at?: string
+          f1_reaktionszeit?: number
+          f2_freundlichkeit?: number
+          f3_loesungsqualitaet?: number
+          f4_gesamt?: number
+          freitext?: string | null
+          id?: string
+          score?: number | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_survey_antworten_token_fkey"
+            columns: ["token"]
+            isOneToOne: true
+            referencedRelation: "bonus_survey_tokens"
+            referencedColumns: ["token"]
+          },
+        ]
+      }
+      bonus_survey_tokens: {
+        Row: {
+          ausgefuellt_am: string | null
+          client_id: string
+          created_at: string
+          geoeffnet_am: string | null
+          kanal: Database["public"]["Enums"]["bonus_kanal"]
+          mitarbeiter_id: string
+          monat: string
+          token: string
+          updated_at: string
+          versendet_am: string | null
+        }
+        Insert: {
+          ausgefuellt_am?: string | null
+          client_id: string
+          created_at?: string
+          geoeffnet_am?: string | null
+          kanal?: Database["public"]["Enums"]["bonus_kanal"]
+          mitarbeiter_id: string
+          monat: string
+          token: string
+          updated_at?: string
+          versendet_am?: string | null
+        }
+        Update: {
+          ausgefuellt_am?: string | null
+          client_id?: string
+          created_at?: string
+          geoeffnet_am?: string | null
+          kanal?: Database["public"]["Enums"]["bonus_kanal"]
+          mitarbeiter_id?: string
+          monat?: string
+          token?: string
+          updated_at?: string
+          versendet_am?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_survey_tokens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_survey_tokens_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_upsell_zahlungen: {
+        Row: {
+          beteiligung: number
+          betrag_eingegangen: number
+          created_at: string
+          id: string
+          monat: string
+          storniert: boolean
+          updated_at: string
+          upsell_id: string
+        }
+        Insert: {
+          beteiligung?: number
+          betrag_eingegangen?: number
+          created_at?: string
+          id?: string
+          monat: string
+          storniert?: boolean
+          updated_at?: string
+          upsell_id: string
+        }
+        Update: {
+          beteiligung?: number
+          betrag_eingegangen?: number
+          created_at?: string
+          id?: string
+          monat?: string
+          storniert?: boolean
+          updated_at?: string
+          upsell_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_upsell_zahlungen_upsell_id_fkey"
+            columns: ["upsell_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_upsells"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_upsells: {
+        Row: {
+          client_id: string
+          close_opportunity_id: string | null
+          created_at: string
+          eingereicht_am: string
+          erstlaufzeit_ende: string | null
+          gebucht: boolean
+          id: string
+          laufzeit_monate: number | null
+          mitarbeiter_id: string
+          slack_message_url: string | null
+          updated_at: string
+          volumen_monatlich: number
+        }
+        Insert: {
+          client_id: string
+          close_opportunity_id?: string | null
+          created_at?: string
+          eingereicht_am?: string
+          erstlaufzeit_ende?: string | null
+          gebucht?: boolean
+          id?: string
+          laufzeit_monate?: number | null
+          mitarbeiter_id: string
+          slack_message_url?: string | null
+          updated_at?: string
+          volumen_monatlich?: number
+        }
+        Update: {
+          client_id?: string
+          close_opportunity_id?: string | null
+          created_at?: string
+          eingereicht_am?: string
+          erstlaufzeit_ende?: string | null
+          gebucht?: boolean
+          id?: string
+          laufzeit_monate?: number | null
+          mitarbeiter_id?: string
+          slack_message_url?: string | null
+          updated_at?: string
+          volumen_monatlich?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_upsells_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_upsells_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branchen: {
         Row: {
           canonical_name: string
@@ -6437,6 +7034,9 @@ export type Database = {
     }
     Functions: {
       _finanzen_can_read: { Args: never; Returns: boolean }
+      bonus_can_manage: { Args: never; Returns: boolean }
+      bonus_is_own: { Args: { _mitarbeiter_id: string }; Returns: boolean }
+      bonus_my_team_id: { Args: never; Returns: string }
       create_or_get_unternehmen: { Args: { p_name: string }; Returns: string }
       current_user_team_rolle: {
         Args: never
@@ -6653,6 +7253,17 @@ export type Database = {
     Enums: {
       ampelstatus: "Grün" | "Gelb" | "Rot" | "CC"
       app_role: "admin" | "account-manager" | "setter"
+      bonus_cash_quelle: "qonto" | "manuell"
+      bonus_checkin_quelle: "close" | "dashboard" | "manuell"
+      bonus_churn_typ:
+        | "kuendigung_kunde"
+        | "abbruch"
+        | "planmaessiges_ende"
+        | "kuendigung_arbeitgeber"
+        | "insolvenz"
+        | "ausserhalb_verantwortung"
+      bonus_kanal: "email_auto" | "email_manuell" | "whatsapp_manuell"
+      bonus_monat_status: "offen" | "freigegeben"
       creative_approval_type: "Intern" | "Kunde"
       creative_asset_status:
         | "Draft"
@@ -6830,6 +7441,18 @@ export const Constants = {
     Enums: {
       ampelstatus: ["Grün", "Gelb", "Rot", "CC"],
       app_role: ["admin", "account-manager", "setter"],
+      bonus_cash_quelle: ["qonto", "manuell"],
+      bonus_checkin_quelle: ["close", "dashboard", "manuell"],
+      bonus_churn_typ: [
+        "kuendigung_kunde",
+        "abbruch",
+        "planmaessiges_ende",
+        "kuendigung_arbeitgeber",
+        "insolvenz",
+        "ausserhalb_verantwortung",
+      ],
+      bonus_kanal: ["email_auto", "email_manuell", "whatsapp_manuell"],
+      bonus_monat_status: ["offen", "freigegeben"],
       creative_approval_type: ["Intern", "Kunde"],
       creative_asset_status: [
         "Draft",
