@@ -1,64 +1,55 @@
-## Ziel
-Zentrale `branchen`-Tabelle in Supabase als Single Source of Truth für alle Branche-Dropdowns.
+# Bonus-Cockpit — Stufe 1: Datenmodell, Rechte, Seitengerüst
 
-## Wichtige Befunde aus Codebase-Check
+Ziel dieser Stufe: Tabellen, Berechtigungen und ein leeres, geschütztes Seitengerüst unter `/hr/bonus`. Keine Berechnungslogik, keine Syncs, keine Umfrageseite.
 
-1. **Tabelle `branchen` existiert bereits** (Spalten: `id, name, display_name, display_order, usage_count`) mit ~Kurzformen wie `PKV`, `BU`, `KFZ`. Sie muss erweitert werden, nicht neu erstellt.
-2. **Spalte heißt `clients.branche`** (TEXT), nicht `clients.sparte`. Ich nehme `branche`.
-3. **`BranchePicker` (Kunden-Bearbeiten)** liest aktuell aus der statischen Liste `BRANCHEN` in `src/lib/branchen.ts` und speichert in `clients.branche_id` (ein String-Key wie `"pkv"`). Das ist ein **anderes System** als die neue `branchen`-Tabelle mit Canonical-Texten.
+## Antworten auf die vier Fragen
 
-## Frage zur Entscheidung (Task 5D — Kunde-Bearbeiten)
+**1. Überschneidungen mit bestehenden Tabellen?**
+Keine echten Kollisionen, aber drei Punkte:
+- `salary_payments` (member_id, monat, betrag_brutto/netto, status, ueberwiesen_am) ist die Auszahlungsebene. `bonus_monate` ist die Berechnungsebene. Sinnvoll: `bonus_monate` bleibt eigenständig, später optional eine Referenz auf die Auszahlung — nicht in Stufe 1.
+- `team_hr_data` enthält Stammdaten (Steuer, Bank), keine Leistungsdaten — keine Überschneidung.
+- `time_off_requests` und `daily_checkins` überschneiden sich thematisch mit `bonus_abwesenheit`. Empfehlung: `bonus_abwesenheit` trotzdem als eigene Tabelle führen (bonusrelevante, manuell festgestellte zusammenhängende Fehltage), aber ohne Anspruch, Abwesenheiten allgemein abzubilden. Später kann eine Vorbefüllung aus `time_off_requests` ergänzt werden.
+- Wichtig: `team` hat **keine** Spalte mit der Auth-User-ID. Die Verknüpfung läuft heute über die E-Mail (`team_with_auth_ids()` joint `auth.users.email = team.email`). Das ist für RLS relevant (siehe unten).
 
-Im Kunde-Bearbeiten-Modal wird aktuell `branche_id` (Key wie `"pkv"`) gespeichert, nicht `branche` (Text). Soll ich:
-- **(A)** Das Bearbeiten-Feld auf die neue `branchen`-Tabelle umstellen → schreibt dann in `clients.branche` (TEXT) statt `branche_id`. Konsistent mit anderen Dropdowns, aber bricht den `branche_id`-basierten Display-Path in KundenDetail.
-- **(B)** `BranchePicker` für Kunden unverändert lassen (er ist ein anderes System), nur Filter / Werbeanzeigen-Detail / Zuordnen-Modal umstellen.
+**2. Stabile Kundenreferenz für Snapshots**
+`clients.id` (uuid). `close_leads.client_id` zeigt auf `clients.id`, ebenso `close_activities.client_id` und `qonto_client_invoices.client_id`. Die Close-Lead-ID (`close_leads.id`, text) ist die externe Referenz, aber nicht überall gesetzt. Deshalb: alle `bonus_*`-Tabellen referenzieren `clients.id`; Close-IDs werden nur als zusätzliche Textspalten für Idempotenz mitgeführt (`close_activity_id`, `close_opportunity_id`).
 
-Bitte (A) oder (B) bestätigen — ich gehe sonst mit **(B)** weiter (minimal-invasiv, sicherer).
+**3. Qonto-Zuordnung wiederverwendbar?**
+Ja, teilweise. `qonto_client_links` (115 verknüpfte Einträge) mappt Qonto-Kundennamen auf `clients.id`, und `qonto_client_invoices` hat bereits `client_id`. Es gibt dafür auch fertige Funktionen (`get_client_qonto_open_invoices`, `get_client_qonto_finance_summary`, `qonto_auto_link_clients`).
+Aber: Zahlungs*eingänge* liegen in `qonto_transactions_new` (transaction_id, amount, side, settled_at, label) — dort gibt es **keine** Kundenzuordnung. Für „Cash Collect tatsächlich eingegangen" ist also weiterhin eine Zuordnungsebene nötig. Deshalb bleibt `bonus_cash_collect` wie geplant bestehen, nutzt aber `qonto_transaction_id` als Idempotenzschlüssel und wird später über `qonto_client_invoices.paid_at` + `qonto_client_links` vorbefüllt statt neu gematcht.
 
-## Migrationen
+**4. Cron**
+`pg_cron` und `pg_net` sind aktiv, aktuell laufen 10 Jobs (z. B. `qonto-sync-daily-6am` `0 6 * * *`, `meta-status-check-hourly`). Neue Zeitsteuerung erfolgt genauso: `cron.schedule` + `net.http_post` auf die Edge Function. In Stufe 1 wird noch kein Job angelegt.
 
-```sql
-ALTER TABLE public.branchen
-  ADD COLUMN IF NOT EXISTS canonical_name TEXT,
-  ADD COLUMN IF NOT EXISTS short_name TEXT,
-  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id);
+## Warum die Umfrage nicht über anon-RLS läuft
 
--- Backfill canonical_name aus display_name
-UPDATE public.branchen SET canonical_name = display_name WHERE canonical_name IS NULL;
-ALTER TABLE public.branchen ALTER COLUMN canonical_name SET NOT NULL;
+Ein anon-INSERT-Recht auf `bonus_survey_antworten` würde bedeuten, dass die Rolle `anon` Schreibzugriff auf eine gehaltsrelevante Tabelle hat und über `bonus_survey_tokens` Token erraten oder auflisten könnte. Stattdessen: keinerlei `anon`-GRANT auf `bonus_*`. Die öffentliche Umfrageseite spricht ausschließlich eine Edge Function an, die mit Service-Role läuft und selbst prüft: Token existiert, gehört zum Monat, ist noch nicht ausgefüllt, Werte 1–5. Damit ist die Schreibregel serverseitig erzwungen und nicht durch eine Policy-Formulierung umgehbar. Die Edge Function selbst wird erst in Stufe 2 gebaut — Stufe 1 legt nur die Tabellen ohne anon-Zugriff an.
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_branchen_canonical_unique
-  ON public.branchen (lower(canonical_name)) WHERE deleted_at IS NULL;
+## Umsetzung Stufe 1
 
--- Policies: UPDATE + soft-DELETE für authenticated
-CREATE POLICY "Authenticated update branchen" ON public.branchen
-  FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+### Migration (eine, in dieser Reihenfolge je Tabelle: CREATE TABLE → GRANT → ENABLE RLS → CREATE POLICY)
 
--- Seed: alle Canonicals aus BRANCHE_ALIASES
-INSERT INTO public.branchen (name, display_name, canonical_name, short_name)
-VALUES ('Private Krankenversicherung','Private Krankenversicherung','Private Krankenversicherung','PKV'),
-       ... (alle 13)
-ON CONFLICT DO NOTHING;
+Enums: `bonus_kanal`, `bonus_cash_quelle`, `bonus_churn_typ`, `bonus_monat_status`.
 
--- Distinct aus clients.branche, die noch nicht da sind
-INSERT INTO public.branchen (name, display_name, canonical_name)
-SELECT DISTINCT trim(branche), trim(branche), trim(branche) FROM public.clients
-WHERE branche IS NOT NULL AND trim(branche) <> ''
-  AND lower(trim(branche)) NOT IN (SELECT lower(canonical_name) FROM public.branchen WHERE deleted_at IS NULL)
-ON CONFLICT DO NOTHING;
-```
+Tabellen wie spezifiziert: `bonus_mitarbeiter`, `bonus_config`, `bonus_kunden_snapshot`, `bonus_survey_tokens`, `bonus_survey_antworten`, `bonus_cash_collect`, `bonus_checkins`, `bonus_churn_events`, `bonus_upsells`, `bonus_upsell_zahlungen`, `bonus_abwesenheit`, `bonus_monate` — inklusive der genannten Unique-Constraints (u. a. partieller Unique-Index auf `qonto_transaction_id` where not null) und `updated_at`-Trigger über die vorhandene `update_updated_at_column()`.
 
-## Neue / geänderte Dateien
+Zwei Helper-Funktionen (SECURITY DEFINER, `set search_path = public`), da `team` keine Auth-ID-Spalte hat:
+- `bonus_my_team_id()` → `team.id` des eingeloggten Nutzers, ermittelt über `lower(auth.users.email) = lower(team.email)`
+- `bonus_can_manage()` → `is_admin() OR user_has_permission(auth.uid(), 'hr.bonus.manage')`
 
-- **NEU** `src/hooks/useBranchen.ts` — React Query Hook, lädt `id, canonical_name, short_name`.
-- **EDIT** `src/components/sales/AddBrancheDialog.tsx` — schreibt in `branchen`-Tabelle, neues Feld `short_name`, Kunden-Zuweisung optional.
-- **EDIT** `src/components/sales/ZuordnenAccountsModal.tsx` — `brancheOptions` mergen mit `useBranchen()`-Daten.
-- **EDIT** `src/pages/sales/ReferenzWerbeanzeigen.tsx` — Filter-Optionen mit `useBranchen()` mergen (0-Counts bleiben sichtbar).
-- **EDIT** `src/pages/sales/ReferenzWerbeanzeigeDetail.tsx` — Branche-Inline-Combobox aus `useBranchen()` füllen.
-- **(B-Pfad)** Kunden-Bearbeiten bleibt unverändert.
+Grants: `GRANT SELECT, INSERT, UPDATE, DELETE ... TO authenticated;` `GRANT ALL ... TO service_role;` **kein** `anon`.
 
-## Nicht enthalten
-- Keine FK auf `clients.branche` / `referenz_meta_ads.branche`.
-- `branche-aliases.ts` bleibt für Alias-Folding.
-- Task 8 (Branchen-Verwalten-UI) wird ausgelassen (separater Sprint).
+Policies je Tabelle:
+- Lesen: `bonus_can_manage()` OR `mitarbeiter_id = bonus_my_team_id()` (bei Tabellen ohne `mitarbeiter_id` — `bonus_config`, `bonus_upsell_zahlungen`, `bonus_survey_antworten` — über den Join auf die übergeordnete Zeile).
+- Schreiben/Ändern/Löschen: ausschließlich `bonus_can_manage()`.
+
+### Permissions
+Zwei Zeilen in `app_permissions` (Kategorie „HR"): `hr.bonus.view`, `hr.bonus.manage`; per Daten-Insert nach der Migration, plus Zuweisung von `hr.bonus.manage` an die Admin-Rolle in `role_permissions`.
+
+### Frontend
+- `src/pages/hr/BonusCockpit.tsx`: `PageShell` + `PageHeader` („Bonus-Cockpit", Untertitel), darunter ein Platzhalterbereich mit Hinweis, dass die Auswertung in der nächsten Stufe folgt. Keine Datenabfragen.
+- Route in `src/App.tsx`: `/hr/bonus` in `<DL>` innerhalb `<PermissionRoute permissionKey="hr.bonus.view">`.
+- Sidebar-Eintrag unter der HR-Gruppe, sichtbar über denselben Permission-Key.
+
+### Nicht in dieser Stufe
+Survey-Edge-Function und öffentliche Umfrageseite, Qonto-/Close-Vorbefüllung, Punkteberechnung, Freigabe-Workflow, Cron-Jobs, Konfigurations-UI.
