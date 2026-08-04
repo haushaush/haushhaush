@@ -88,6 +88,7 @@ import { useFunnelGuard } from "./hooks/useFunnelGuard";
 import DailyFunnel from "./pages/DailyFunnel.tsx";
 import CheckinOverview from "./pages/hr/CheckinOverview.tsx";
 import TimeTracking from "./pages/hr/TimeTracking.tsx";
+import BonusCockpit from "./pages/hr/BonusCockpit.tsx";
 import SlackPage from "./pages/SlackPage.tsx";
 import Placeholder from "./pages/Placeholder.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
