@@ -154,6 +154,34 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Close event rows carry no pipeline info — backfill it from the synced
+    // opportunities so the funnel views (pipeline_name = 'Sales') match.
+    const { data: missing } = await supabase
+      .from("sales_status_changes")
+      .select("id, opportunity_id")
+      .is("pipeline_name", null)
+      .limit(5000);
+    if (missing && missing.length > 0) {
+      const ids = [...new Set(missing.map((r: any) => r.opportunity_id).filter(Boolean))];
+      const { data: opps } = await supabase
+        .from("sales_opportunities")
+        .select("id, pipeline_id, pipeline_name")
+        .in("id", ids);
+      const byId = new Map((opps || []).map((o: any) => [o.id, o]));
+      const patched = missing
+        .map((r: any) => {
+          const o = byId.get(r.opportunity_id);
+          return o ? { id: r.id, pipeline_id: o.pipeline_id, pipeline_name: o.pipeline_name } : null;
+        })
+        .filter(Boolean);
+      if (patched.length > 0) {
+        await supabase.from("sales_status_changes").upsert(patched, { onConflict: "id" });
+        console.log(`[backfill] pipeline_name set on ${patched.length} rows`);
+      }
+    }
+
+
+
     const summary = {
       scanned: res.scanned,
       done: res.done,
