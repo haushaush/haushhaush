@@ -49,3 +49,17 @@ verify_jwt = false
 verify_jwt = false
 
 
+[functions.sync-sales-custom-fields]
+verify_jwt = false
+
+[functions.sync-sales-leads]
+verify_jwt = false
+
+[functions.sync-sales-opportunities]
+verify_jwt = false
+
+[functions.sync-sales-calls]
+verify_jwt = false
+
+[functions.sync-sales-orchestrator]
+verify_jwt = false

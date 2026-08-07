@@ -5724,6 +5724,69 @@ export type Database = {
           },
         ]
       }
+      sales_calls: {
+        Row: {
+          date_created: string | null
+          direction: string | null
+          duration: number | null
+          id: string
+          lead_id: string | null
+          outcome_id: string | null
+          outcome_label: string | null
+          synced_at: string
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          date_created?: string | null
+          direction?: string | null
+          duration?: number | null
+          id: string
+          lead_id?: string | null
+          outcome_id?: string | null
+          outcome_label?: string | null
+          synced_at?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          date_created?: string | null
+          direction?: string | null
+          duration?: number | null
+          id?: string
+          lead_id?: string | null
+          outcome_id?: string | null
+          outcome_label?: string | null
+          synced_at?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
+      sales_custom_field_map: {
+        Row: {
+          cf_id: string
+          field_type: string | null
+          name: string | null
+          object_type: string | null
+          synced_at: string
+        }
+        Insert: {
+          cf_id: string
+          field_type?: string | null
+          name?: string | null
+          object_type?: string | null
+          synced_at?: string
+        }
+        Update: {
+          cf_id?: string
+          field_type?: string | null
+          name?: string | null
+          object_type?: string | null
+          synced_at?: string
+        }
+        Relationships: []
+      }
       sales_lead_status_changes: {
         Row: {
           date_changed: string
@@ -5763,6 +5826,174 @@ export type Database = {
           synced_at?: string
           user_id?: string | null
           user_name?: string | null
+        }
+        Relationships: []
+      }
+      sales_leads: {
+        Row: {
+          adset_name: string | null
+          angle_ad_name: string | null
+          branche: string | null
+          campaign_name: string | null
+          date_created: string | null
+          date_updated: string | null
+          disqualifikations_grund: string | null
+          id: string
+          kanal: string | null
+          marke: string | null
+          name: string | null
+          owner_id: string | null
+          owner_name: string | null
+          platform: string | null
+          status_id: string | null
+          status_label: string | null
+          sub_niche: string | null
+          synced_at: string
+          website_vorhanden: string | null
+        }
+        Insert: {
+          adset_name?: string | null
+          angle_ad_name?: string | null
+          branche?: string | null
+          campaign_name?: string | null
+          date_created?: string | null
+          date_updated?: string | null
+          disqualifikations_grund?: string | null
+          id: string
+          kanal?: string | null
+          marke?: string | null
+          name?: string | null
+          owner_id?: string | null
+          owner_name?: string | null
+          platform?: string | null
+          status_id?: string | null
+          status_label?: string | null
+          sub_niche?: string | null
+          synced_at?: string
+          website_vorhanden?: string | null
+        }
+        Update: {
+          adset_name?: string | null
+          angle_ad_name?: string | null
+          branche?: string | null
+          campaign_name?: string | null
+          date_created?: string | null
+          date_updated?: string | null
+          disqualifikations_grund?: string | null
+          id?: string
+          kanal?: string | null
+          marke?: string | null
+          name?: string | null
+          owner_id?: string | null
+          owner_name?: string | null
+          platform?: string | null
+          status_id?: string | null
+          status_label?: string | null
+          sub_niche?: string | null
+          synced_at?: string
+          website_vorhanden?: string | null
+        }
+        Relationships: []
+      }
+      sales_opportunities: {
+        Row: {
+          churn_datum: string | null
+          churn_grund: string | null
+          close_typ: string | null
+          closer_id: string | null
+          cold_caller_id: string | null
+          date_created: string | null
+          date_lost: string | null
+          date_updated: string | null
+          date_won: string | null
+          deal_typ: string | null
+          id: string
+          laufzeit: number | null
+          lead_id: string | null
+          lead_name: string | null
+          leistungen: string[] | null
+          live_datum: string | null
+          note: string | null
+          pipeline_id: string | null
+          pipeline_name: string | null
+          rechnungs_id: string | null
+          retainer_monat: number | null
+          setter_id: string | null
+          setup_fee: number | null
+          status_id: string | null
+          status_label: string | null
+          status_type: string | null
+          synced_at: string
+          user_id: string | null
+          user_name: string | null
+          value_cents: number | null
+          value_currency: string | null
+        }
+        Insert: {
+          churn_datum?: string | null
+          churn_grund?: string | null
+          close_typ?: string | null
+          closer_id?: string | null
+          cold_caller_id?: string | null
+          date_created?: string | null
+          date_lost?: string | null
+          date_updated?: string | null
+          date_won?: string | null
+          deal_typ?: string | null
+          id: string
+          laufzeit?: number | null
+          lead_id?: string | null
+          lead_name?: string | null
+          leistungen?: string[] | null
+          live_datum?: string | null
+          note?: string | null
+          pipeline_id?: string | null
+          pipeline_name?: string | null
+          rechnungs_id?: string | null
+          retainer_monat?: number | null
+          setter_id?: string | null
+          setup_fee?: number | null
+          status_id?: string | null
+          status_label?: string | null
+          status_type?: string | null
+          synced_at?: string
+          user_id?: string | null
+          user_name?: string | null
+          value_cents?: number | null
+          value_currency?: string | null
+        }
+        Update: {
+          churn_datum?: string | null
+          churn_grund?: string | null
+          close_typ?: string | null
+          closer_id?: string | null
+          cold_caller_id?: string | null
+          date_created?: string | null
+          date_lost?: string | null
+          date_updated?: string | null
+          date_won?: string | null
+          deal_typ?: string | null
+          id?: string
+          laufzeit?: number | null
+          lead_id?: string | null
+          lead_name?: string | null
+          leistungen?: string[] | null
+          live_datum?: string | null
+          note?: string | null
+          pipeline_id?: string | null
+          pipeline_name?: string | null
+          rechnungs_id?: string | null
+          retainer_monat?: number | null
+          setter_id?: string | null
+          setup_fee?: number | null
+          status_id?: string | null
+          status_label?: string | null
+          status_type?: string | null
+          synced_at?: string
+          user_id?: string | null
+          user_name?: string | null
+          value_cents?: number | null
+          value_currency?: string | null
         }
         Relationships: []
       }
@@ -5864,6 +6095,33 @@ export type Database = {
           synced_at?: string
           user_id?: string | null
           user_name?: string | null
+        }
+        Relationships: []
+      }
+      sales_sync_log: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          errors: number | null
+          id: string
+          step: string
+          upserted: number | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          errors?: number | null
+          id?: string
+          step: string
+          upserted?: number | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          errors?: number | null
+          id?: string
+          step?: string
+          upserted?: number | null
         }
         Relationships: []
       }
@@ -7121,6 +7379,96 @@ export type Database = {
           status: string | null
           updated_at: string | null
           webhook_secret: string | null
+        }
+        Relationships: []
+      }
+      v_sales_deals: {
+        Row: {
+          churn_datum: string | null
+          churn_grund: string | null
+          closer_id: string | null
+          deal_typ: string | null
+          id: string | null
+          kanal: string | null
+          laufzeit: number | null
+          lead_id: string | null
+          lead_name: string | null
+          leistungen: string[] | null
+          live_datum: string | null
+          monat: string | null
+          setter_id: string | null
+          volumen: number | null
+        }
+        Relationships: []
+      }
+      v_sales_dials_daily: {
+        Row: {
+          anzahl: number | null
+          erreicht: boolean | null
+          outcome_label: string | null
+          tag: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Relationships: []
+      }
+      v_sales_economics: {
+        Row: {
+          cac: number | null
+          cpl: number | null
+          cpsc: number | null
+          cpscs: number | null
+          eg: number | null
+          eg_gefuehrt: number | null
+          kanal: string | null
+          leads: number | null
+          roas: number | null
+          spend: number | null
+          umsatz: number | null
+          woche: string | null
+          won: number | null
+        }
+        Relationships: []
+      }
+      v_sales_funnel_kanal: {
+        Row: {
+          deal_typ: string | null
+          eintritte: number | null
+          kanal: string | null
+          new_status_label: string | null
+          user_id: string | null
+          woche: string | null
+        }
+        Relationships: []
+      }
+      v_sales_funnel_weekly: {
+        Row: {
+          eintritte: number | null
+          new_status_label: string | null
+          user_id: string | null
+          user_name: string | null
+          woche: string | null
+        }
+        Relationships: []
+      }
+      v_sales_quoten: {
+        Row: {
+          brutto_anwahlen: number | null
+          deal_typ: string | null
+          eg_gefuehrt: number | null
+          eg_no_show_rate: number | null
+          eg_vereinbart: number | null
+          eg_zu_zg: number | null
+          erreichbarkeit_pct: number | null
+          erreicht: number | null
+          gefuehrt_zu_abschluss: number | null
+          kanal: string | null
+          unqualifiziert: number | null
+          user_id: string | null
+          woche: string | null
+          won: number | null
+          zg_gefuehrt: number | null
+          zg_no_show_rate: number | null
         }
         Relationships: []
       }
