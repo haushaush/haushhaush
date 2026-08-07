@@ -78,24 +78,20 @@ function hasStatusChange(ev: any): boolean {
   return d.status_id != null;
 }
 
-async function syncKind(
-  supabase: any,
-  kind: "opportunity" | "lead",
-  table: string,
-  since: string | null,
-) {
-  let upserted = 0;
+// Close does not allow filtering /event/ by object_type alone, so we scan the
+// event log once and route rows to the right table client-side.
+async function syncEvents(supabase: any, since: string | null) {
+  const stats = {
+    opportunity: { upserted: 0, errors: [] as string[] },
+    lead: { upserted: 0, errors: [] as string[] },
+  };
   let scanned = 0;
-  const errors: string[] = [];
   let cursor: string | null = null;
   let hasMore = true;
 
   while (hasMore && scanned < MAX_ITEMS) {
     await sleep(120);
-    const params = new URLSearchParams({
-      object_type: kind,
-      _limit: String(PAGE),
-    });
+    const params = new URLSearchParams({ _limit: String(PAGE) });
     if (since) params.set("date_updated__gt", since);
     if (cursor) params.set("_cursor", cursor);
 
@@ -103,25 +99,31 @@ async function syncKind(
     const items: any[] = data.data || [];
     scanned += items.length;
 
-    const rows = items
+    const relevant = items
       .filter((ev) => ev.action === "updated" || ev.action === "created")
-      .filter(hasStatusChange)
-      .map((ev) => (kind === "opportunity" ? mapOpportunityEvent(ev) : mapLeadEvent(ev)))
-      .filter((r) => r.id && r.date_changed);
+      .filter((ev) => ev.object_type === "opportunity" || ev.object_type === "lead")
+      .filter(hasStatusChange);
 
-    if (rows.length > 0) {
+    for (const kind of ["opportunity", "lead"] as const) {
+      const table = kind === "opportunity" ? "sales_status_changes" : "sales_lead_status_changes";
+      const rows = relevant
+        .filter((ev) => ev.object_type === kind)
+        .map((ev) => (kind === "opportunity" ? mapOpportunityEvent(ev) : mapLeadEvent(ev)))
+        .filter((r) => r.id && r.date_changed);
+      if (rows.length === 0) continue;
       const { error } = await supabase.from(table).upsert(rows, { onConflict: "id" });
-      if (error) errors.push(`${table}: ${error.message}`);
-      else upserted += rows.length;
+      if (error) stats[kind].errors.push(`${table}: ${error.message}`);
+      else stats[kind].upserted += rows.length;
     }
 
     cursor = data.cursor_next || null;
     hasMore = Boolean(data.has_more && cursor);
-    console.log(`[step:${kind}] scanned=${scanned}, upserted=${upserted}, mem ${mem()}MB`);
+    console.log(`[step:events] scanned=${scanned}, opps=${stats.opportunity.upserted}, leads=${stats.lead.upserted}, mem ${mem()}MB`);
   }
 
-  return { upserted, scanned, errors };
+  return { scanned, ...stats };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
