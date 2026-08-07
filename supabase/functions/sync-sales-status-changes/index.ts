@@ -198,13 +198,16 @@ Deno.serve(async (req) => {
     try { body = await req.json(); } catch { /* no body */ }
 
     let startCursor: string | null = null;
+    let since: string | null = null;
     if (!body?.reset) {
       const { data } = await supabase.from("app_settings").select("value").eq("key", CURSOR_KEY).maybeSingle();
       startCursor = (data?.value as any)?.cursor ?? null;
+      since = (data?.value as any)?.since ?? null;
     }
-    console.log(`[sync-sales-status-changes] resume cursor=${startCursor ? "yes" : "no"}`);
+    if (body?.since) since = String(body.since);
+    console.log(`[sync-sales-status-changes] resume cursor=${startCursor ? "yes" : "no"} since=${since ?? "none"}`);
 
-    const res = await syncEvents(supabase, startCursor, t0);
+    const res = await syncEvents(supabase, startCursor, since, t0);
 
     if (res.cursor) {
       await supabase.from("app_settings").upsert(
