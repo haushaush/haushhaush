@@ -245,8 +245,12 @@ Deno.serve(async (req) => {
 
 
 
+    const allErrors = [...res.opportunity.errors, ...res.lead.errors];
     const summary = {
       scanned: res.scanned,
+      pages: res.pages,
+      stop_reason: res.stopReason,
+      date_filter_used: res.date_filter_used,
       done: res.done,
       opportunities: { upserted: res.opportunity.upserted, errors: res.opportunity.errors.length },
       leads: { upserted: res.lead.upserted, errors: res.lead.errors.length },
@@ -255,15 +259,29 @@ Deno.serve(async (req) => {
     };
     console.log("[sync-sales-status-changes]", summary);
 
+    await logStep(
+      supabase,
+      "status_changes",
+      res.opportunity.upserted + res.lead.upserted,
+      allErrors.length,
+      Date.now() - t0,
+      allErrors[0] ?? null,
+    );
+
     return new Response(
-      JSON.stringify({ success: true, ...summary, error_samples: [...res.opportunity.errors, ...res.lead.errors].slice(0, 3) }),
+      JSON.stringify({ success: true, ...summary, error_samples: allErrors.slice(0, 3) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
 
 
   } catch (err: any) {
-    console.error("[sync-sales-status-changes] fatal:", err.message);
-    return new Response(JSON.stringify({ error: err.message }), {
+    const msg = String(err?.message ?? err).slice(0, 500);
+    console.error("[sync-sales-status-changes] fatal:", msg);
+    try {
+      const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await logStep(supabase, "status_changes", 0, 1, Date.now() - t0, msg);
+    } catch { /* logging must never mask the original error */ }
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
