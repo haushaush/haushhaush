@@ -12,6 +12,12 @@ const PAGE = 50;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const mem = () => Math.round((Deno.memoryUsage?.().heapUsed ?? 0) / 1024 / 1024);
 
+class CloseHttpError extends Error {
+  constructor(public status: number, public body: string) {
+    super(`Close ${status}: ${body.slice(0, 500)}`);
+  }
+}
+
 async function closeFetch(path: string, attempt = 1): Promise<any> {
   if (!CLOSE_API_KEY) throw new Error("CLOSE_API_KEY_SALES missing");
   const auth = btoa(`${CLOSE_API_KEY}:`);
@@ -22,7 +28,10 @@ async function closeFetch(path: string, attempt = 1): Promise<any> {
     await sleep(1000 * attempt);
     return closeFetch(path, attempt + 1);
   }
-  if (!res.ok) throw new Error(`Close ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new CloseHttpError(res.status, body);
+  }
   return res.json();
 }
 
