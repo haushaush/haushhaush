@@ -145,23 +145,28 @@ Deno.serve(async (req) => {
       latest("sales_status_changes"),
       latest("sales_lead_status_changes"),
     ]);
-    console.log(`[sync-sales-status-changes] since opps=${sinceOpps} leads=${sinceLeads}`);
+    // one shared cursor: take the older of both so nothing is missed
+    const since = !sinceOpps || !sinceLeads
+      ? null
+      : (sinceOpps < sinceLeads ? sinceOpps : sinceLeads);
+    console.log(`[sync-sales-status-changes] since=${since}`);
 
-    const opps = await syncKind(supabase, "opportunity", "sales_status_changes", sinceOpps);
-    const leads = await syncKind(supabase, "lead", "sales_lead_status_changes", sinceLeads);
+    const res = await syncEvents(supabase, since);
 
     const summary = {
-      opportunities: { upserted: opps.upserted, scanned: opps.scanned, errors: opps.errors.length },
-      leads: { upserted: leads.upserted, scanned: leads.scanned, errors: leads.errors.length },
+      scanned: res.scanned,
+      opportunities: { upserted: res.opportunity.upserted, errors: res.opportunity.errors.length },
+      leads: { upserted: res.lead.upserted, errors: res.lead.errors.length },
       duration_ms: Date.now() - t0,
       mem_mb: mem(),
     };
     console.log("[sync-sales-status-changes]", summary);
 
     return new Response(
-      JSON.stringify({ success: true, ...summary, error_samples: [...opps.errors, ...leads.errors].slice(0, 3) }),
+      JSON.stringify({ success: true, ...summary, error_samples: [...res.opportunity.errors, ...res.lead.errors].slice(0, 3) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+
   } catch (err: any) {
     console.error("[sync-sales-status-changes] fatal:", err.message);
     return new Response(JSON.stringify({ error: err.message }), {
