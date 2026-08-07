@@ -89,27 +89,70 @@ function hasStatusChange(ev: any): boolean {
 
 const CURSOR_KEY = "sales_status_events_cursor";
 const TIME_BUDGET_MS = 110_000;
+const MAX_PAGES = 200;
+
+/** Postgres gives "2026-08-04 07:36:51.234+00" — Close needs strict ISO 8601. */
+function toIso(v: string | null): string | null {
+  if (!v) return null;
+  const d = new Date(v.includes("T") ? v : v.replace(" ", "T"));
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
 
 // Close does not allow filtering /event/ by object_type alone, so we scan the
 // event log once and route rows to the right table client-side. Pagination is
 // cursor based; the cursor is persisted so each run resumes where it stopped.
-async function syncEvents(supabase: any, startCursor: string | null, t0: number) {
+async function syncEvents(supabase: any, startCursor: string | null, since: string | null, t0: number) {
   const stats = {
     opportunity: { upserted: 0, errors: [] as string[] },
     lead: { upserted: 0, errors: [] as string[] },
   };
   let scanned = 0;
+  let pages = 0;
   let cursor: string | null = startCursor;
   let hasMore = true;
+  let stopReason = "exhausted";
 
-  while (hasMore && scanned < MAX_ITEMS && Date.now() - t0 < TIME_BUDGET_MS) {
+  const sinceIso = toIso(since);
+  let useDateFilter = Boolean(sinceIso);
+  const sinceMs = sinceIso ? new Date(sinceIso).getTime() : null;
+
+  while (hasMore && scanned < MAX_ITEMS && pages < MAX_PAGES && Date.now() - t0 < TIME_BUDGET_MS) {
     await sleep(120);
-    const params = new URLSearchParams({ _limit: String(PAGE) });
-    if (cursor) params.set("_cursor", cursor);
+    const buildParams = (withDate: boolean) => {
+      const p = new URLSearchParams({ _limit: String(PAGE) });
+      if (cursor) p.set("_cursor", cursor);
+      if (withDate && sinceIso) p.set("date_updated__gt", sinceIso);
+      return p;
+    };
 
-    const data = await closeFetch(`/event/?${params.toString()}`);
-    const items: any[] = data.data || [];
+    let data: any;
+    try {
+      data = await closeFetch(`/event/?${buildParams(useDateFilter).toString()}`);
+    } catch (e: any) {
+      if (useDateFilter && e instanceof CloseHttpError && e.status === 400) {
+        console.warn("[events] date filter rejected by Close, falling back to client-side filtering:", e.message);
+        useDateFilter = false;
+        data = await closeFetch(`/event/?${buildParams(false).toString()}`);
+      } else {
+        throw e;
+      }
+    }
+
+    pages++;
+    let items: any[] = Array.isArray(data?.data) ? data.data : [];
+    if (items.length === 0) {
+      stopReason = "empty_page";
+      break;
+    }
     scanned += items.length;
+
+    // When the server-side filter is unavailable, drop old events locally.
+    if (!useDateFilter && sinceMs != null) {
+      items = items.filter((ev) => {
+        const ts = new Date(ev.date_updated || ev.date_created || 0).getTime();
+        return isFinite(ts) && ts > sinceMs;
+      });
+    }
 
     const relevant = items
       .filter((ev) => ev.action === "updated" || ev.action === "created")
@@ -128,13 +171,20 @@ async function syncEvents(supabase: any, startCursor: string | null, t0: number)
       else stats[kind].upserted += rows.length;
     }
 
-    const next = data.cursor_next || null;
-    hasMore = Boolean(next) && items.length > 0;
+    const next: string | null = data?.cursor_next ?? data?.next_cursor ?? data?.cursor ?? null;
+    hasMore = Boolean(next);
     if (next) cursor = next;
-    console.log(`[step:events] scanned=${scanned}, opps=${stats.opportunity.upserted}, leads=${stats.lead.upserted}, mem ${mem()}MB`);
+    console.log(`[step:events] page=${pages} scanned=${scanned}, opps=${stats.opportunity.upserted}, leads=${stats.lead.upserted}, mem ${mem()}MB`);
   }
 
-  return { scanned, cursor, done: !hasMore, ...stats };
+  if (pages >= MAX_PAGES) {
+    stopReason = "page_limit";
+    console.warn(`[events] hard page limit of ${MAX_PAGES} reached — aborting run, cursor persisted`);
+  } else if (hasMore) {
+    stopReason = "budget";
+  }
+
+  return { scanned, pages, cursor, stopReason, done: !hasMore, date_filter_used: useDateFilter, ...stats };
 }
 
 
