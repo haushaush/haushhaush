@@ -38,7 +38,7 @@ const navItems: NavItem[] = [
     title: 'Sales', url: '/sales', icon: TrendingUp,
     children: [
       { title: 'Übersicht', url: '/sales/uebersicht', permissionKey: 'sales.uebersicht.view' },
-      { title: 'KPI', url: '/sales/kpi', permissionKey: 'sales.kpis.view' },
+      { title: 'KPI', url: '/sales/kpi', permissionKey: 'sales.kpi.view' },
       { title: 'Referenzen', url: '/sales/referenz-showcase', permissionKey: 'sales.referenzen.view' },
       { title: 'Lead Quality Audit', url: '/tools/lead-quality-audit', permissionKey: 'sales.leadquality.view' },
     ],
