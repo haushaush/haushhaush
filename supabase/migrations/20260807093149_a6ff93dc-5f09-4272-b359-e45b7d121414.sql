@@ -1,0 +1,1 @@
+ALTER TABLE public.sales_sync_log ADD COLUMN IF NOT EXISTS error_text text;
