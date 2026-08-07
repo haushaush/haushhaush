@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { IntegrationCard, type HealthResult } from '@/components/integrations/IntegrationCard';
+import { SalesSyncCard } from '@/components/integrations/SalesSyncCard';
 import { IntegrationStatusBar } from '@/components/integrations/IntegrationStatusBar';
 import { PROVIDERS, CATEGORIES } from '@/components/integrations/IntegrationProviders';
 import { ApiPlatform } from '@/components/integrations/ApiPlatform';
