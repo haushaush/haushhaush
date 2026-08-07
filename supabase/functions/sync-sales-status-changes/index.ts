@@ -78,26 +78,28 @@ function hasStatusChange(ev: any): boolean {
   return d.status_id != null;
 }
 
+const CURSOR_KEY = "sales_status_events_cursor";
+const TIME_BUDGET_MS = 110_000;
+
 // Close does not allow filtering /event/ by object_type alone, so we scan the
-// event log once and route rows to the right table client-side.
-async function syncEvents(supabase: any, since: string | null) {
+// event log once and route rows to the right table client-side. Pagination is
+// cursor based; the cursor is persisted so each run resumes where it stopped.
+async function syncEvents(supabase: any, startCursor: string | null, t0: number) {
   const stats = {
     opportunity: { upserted: 0, errors: [] as string[] },
     lead: { upserted: 0, errors: [] as string[] },
   };
   let scanned = 0;
-  let cursor: string | null = null;
+  let cursor: string | null = startCursor;
   let hasMore = true;
 
-  while (hasMore && scanned < MAX_ITEMS) {
+  while (hasMore && scanned < MAX_ITEMS && Date.now() - t0 < TIME_BUDGET_MS) {
     await sleep(120);
     const params = new URLSearchParams({ _limit: String(PAGE) });
-    if (since) params.set("date_updated__gt", since);
     if (cursor) params.set("_cursor", cursor);
 
     const data = await closeFetch(`/event/?${params.toString()}`);
     const items: any[] = data.data || [];
-    if (scanned === 0) console.log("[debug] envelope keys", Object.keys(data), "has_more:", data.has_more, "cursor_next:", data.cursor_next, "sample_obj_types:", items.slice(0,5).map((e:any)=>e.object_type));
     scanned += items.length;
 
     const relevant = items
@@ -117,12 +119,13 @@ async function syncEvents(supabase: any, since: string | null) {
       else stats[kind].upserted += rows.length;
     }
 
-    cursor = data.cursor_next || null;
-    hasMore = Boolean(data.has_more && cursor);
+    const next = data.cursor_next || null;
+    hasMore = Boolean(next) && items.length > 0;
+    if (next) cursor = next;
     console.log(`[step:events] scanned=${scanned}, opps=${stats.opportunity.upserted}, leads=${stats.lead.upserted}, mem ${mem()}MB`);
   }
 
-  return { scanned, ...stats };
+  return { scanned, cursor, done: !hasMore, ...stats };
 }
 
 
@@ -132,30 +135,28 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const latest = async (table: string): Promise<string | null> => {
-      const { data } = await supabase
-        .from(table)
-        .select("date_changed")
-        .order("date_changed", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data?.date_changed ?? null;
-    };
+    let body: any = {};
+    try { body = await req.json(); } catch { /* no body */ }
 
-    const [sinceOpps, sinceLeads] = await Promise.all([
-      latest("sales_status_changes"),
-      latest("sales_lead_status_changes"),
-    ]);
-    // one shared cursor: take the older of both so nothing is missed
-    const since = !sinceOpps || !sinceLeads
-      ? null
-      : (sinceOpps < sinceLeads ? sinceOpps : sinceLeads);
-    console.log(`[sync-sales-status-changes] since=${since}`);
+    let startCursor: string | null = null;
+    if (!body?.reset) {
+      const { data } = await supabase.from("app_settings").select("value").eq("key", CURSOR_KEY).maybeSingle();
+      startCursor = (data?.value as any)?.cursor ?? null;
+    }
+    console.log(`[sync-sales-status-changes] resume cursor=${startCursor ? "yes" : "no"}`);
 
-    const res = await syncEvents(supabase, since);
+    const res = await syncEvents(supabase, startCursor, t0);
+
+    if (res.cursor) {
+      await supabase.from("app_settings").upsert(
+        { key: CURSOR_KEY, value: { cursor: res.cursor, updated_at: new Date().toISOString() } },
+        { onConflict: "key" },
+      );
+    }
 
     const summary = {
       scanned: res.scanned,
+      done: res.done,
       opportunities: { upserted: res.opportunity.upserted, errors: res.opportunity.errors.length },
       leads: { upserted: res.lead.upserted, errors: res.lead.errors.length },
       duration_ms: Date.now() - t0,
@@ -167,6 +168,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ success: true, ...summary, error_samples: [...res.opportunity.errors, ...res.lead.errors].slice(0, 3) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+
 
   } catch (err: any) {
     console.error("[sync-sales-status-changes] fatal:", err.message);
