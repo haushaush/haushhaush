@@ -167,18 +167,19 @@ Deno.serve(async (req) => {
         .from("sales_opportunities")
         .select("id, pipeline_id, pipeline_name")
         .in("id", ids);
-      const byId = new Map((opps || []).map((o: any) => [o.id, o]));
-      const patched = missing
-        .map((r: any) => {
-          const o = byId.get(r.opportunity_id);
-          return o ? { id: r.id, pipeline_id: o.pipeline_id, pipeline_name: o.pipeline_name } : null;
-        })
-        .filter(Boolean);
-      if (patched.length > 0) {
-        await supabase.from("sales_status_changes").upsert(patched, { onConflict: "id" });
-        console.log(`[backfill] pipeline_name set on ${patched.length} rows`);
+      let patched = 0;
+      for (const o of opps || []) {
+        const { error, count } = await supabase
+          .from("sales_status_changes")
+          .update({ pipeline_id: o.pipeline_id, pipeline_name: o.pipeline_name }, { count: "exact" })
+          .eq("opportunity_id", o.id)
+          .is("pipeline_name", null);
+        if (error) console.error("[backfill]", error.message);
+        else patched += count ?? 0;
       }
+      console.log(`[backfill] pipeline_name set on ${patched} rows`);
     }
+
 
 
 
