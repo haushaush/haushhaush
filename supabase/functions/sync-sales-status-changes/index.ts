@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
 
     if (res.cursor) {
       await supabase.from("app_settings").upsert(
-        { key: CURSOR_KEY, value: { cursor: res.cursor, updated_at: new Date().toISOString() } },
+        { key: CURSOR_KEY, value: { cursor: res.cursor, since, updated_at: new Date().toISOString() } },
         { onConflict: "key" },
       );
     }
