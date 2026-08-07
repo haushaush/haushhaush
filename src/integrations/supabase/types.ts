@@ -6102,6 +6102,7 @@ export type Database = {
         Row: {
           created_at: string
           duration_ms: number | null
+          error_text: string | null
           errors: number | null
           id: string
           step: string
@@ -6110,6 +6111,7 @@ export type Database = {
         Insert: {
           created_at?: string
           duration_ms?: number | null
+          error_text?: string | null
           errors?: number | null
           id?: string
           step: string
@@ -6118,6 +6120,7 @@ export type Database = {
         Update: {
           created_at?: string
           duration_ms?: number | null
+          error_text?: string | null
           errors?: number | null
           id?: string
           step?: string

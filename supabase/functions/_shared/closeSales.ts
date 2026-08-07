@@ -92,6 +92,9 @@ export async function logStep(
   upserted: number,
   errors: number,
   duration_ms: number,
+  error_text?: string | null,
 ) {
-  await supabase.from("sales_sync_log").insert({ step, upserted, errors, duration_ms });
+  await supabase
+    .from("sales_sync_log")
+    .insert({ step, upserted, errors, duration_ms, error_text: error_text ? String(error_text).slice(0, 2000) : null });
 }

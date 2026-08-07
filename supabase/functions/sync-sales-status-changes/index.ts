@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logStep } from "../_shared/closeSales.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,12 @@ const PAGE = 50;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const mem = () => Math.round((Deno.memoryUsage?.().heapUsed ?? 0) / 1024 / 1024);
 
+class CloseHttpError extends Error {
+  constructor(public status: number, public body: string) {
+    super(`Close ${status}: ${body.slice(0, 500)}`);
+  }
+}
+
 async function closeFetch(path: string, attempt = 1): Promise<any> {
   if (!CLOSE_API_KEY) throw new Error("CLOSE_API_KEY_SALES missing");
   const auth = btoa(`${CLOSE_API_KEY}:`);
@@ -22,7 +29,10 @@ async function closeFetch(path: string, attempt = 1): Promise<any> {
     await sleep(1000 * attempt);
     return closeFetch(path, attempt + 1);
   }
-  if (!res.ok) throw new Error(`Close ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new CloseHttpError(res.status, body);
+  }
   return res.json();
 }
 
@@ -80,27 +90,70 @@ function hasStatusChange(ev: any): boolean {
 
 const CURSOR_KEY = "sales_status_events_cursor";
 const TIME_BUDGET_MS = 110_000;
+const MAX_PAGES = 200;
+
+/** Postgres gives "2026-08-04 07:36:51.234+00" — Close needs strict ISO 8601. */
+function toIso(v: string | null): string | null {
+  if (!v) return null;
+  const d = new Date(v.includes("T") ? v : v.replace(" ", "T"));
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
 
 // Close does not allow filtering /event/ by object_type alone, so we scan the
 // event log once and route rows to the right table client-side. Pagination is
 // cursor based; the cursor is persisted so each run resumes where it stopped.
-async function syncEvents(supabase: any, startCursor: string | null, t0: number) {
+async function syncEvents(supabase: any, startCursor: string | null, since: string | null, t0: number) {
   const stats = {
     opportunity: { upserted: 0, errors: [] as string[] },
     lead: { upserted: 0, errors: [] as string[] },
   };
   let scanned = 0;
+  let pages = 0;
   let cursor: string | null = startCursor;
   let hasMore = true;
+  let stopReason = "exhausted";
 
-  while (hasMore && scanned < MAX_ITEMS && Date.now() - t0 < TIME_BUDGET_MS) {
+  const sinceIso = toIso(since);
+  let useDateFilter = Boolean(sinceIso);
+  const sinceMs = sinceIso ? new Date(sinceIso).getTime() : null;
+
+  while (hasMore && scanned < MAX_ITEMS && pages < MAX_PAGES && Date.now() - t0 < TIME_BUDGET_MS) {
     await sleep(120);
-    const params = new URLSearchParams({ _limit: String(PAGE) });
-    if (cursor) params.set("_cursor", cursor);
+    const buildParams = (withDate: boolean) => {
+      const p = new URLSearchParams({ _limit: String(PAGE) });
+      if (cursor) p.set("_cursor", cursor);
+      if (withDate && sinceIso) p.set("date_updated__gt", sinceIso);
+      return p;
+    };
 
-    const data = await closeFetch(`/event/?${params.toString()}`);
-    const items: any[] = data.data || [];
+    let data: any;
+    try {
+      data = await closeFetch(`/event/?${buildParams(useDateFilter).toString()}`);
+    } catch (e: any) {
+      if (useDateFilter && e instanceof CloseHttpError && e.status === 400) {
+        console.warn("[events] date filter rejected by Close, falling back to client-side filtering:", e.message);
+        useDateFilter = false;
+        data = await closeFetch(`/event/?${buildParams(false).toString()}`);
+      } else {
+        throw e;
+      }
+    }
+
+    pages++;
+    let items: any[] = Array.isArray(data?.data) ? data.data : [];
+    if (items.length === 0) {
+      stopReason = "empty_page";
+      break;
+    }
     scanned += items.length;
+
+    // When the server-side filter is unavailable, drop old events locally.
+    if (!useDateFilter && sinceMs != null) {
+      items = items.filter((ev) => {
+        const ts = new Date(ev.date_updated || ev.date_created || 0).getTime();
+        return isFinite(ts) && ts > sinceMs;
+      });
+    }
 
     const relevant = items
       .filter((ev) => ev.action === "updated" || ev.action === "created")
@@ -119,13 +172,20 @@ async function syncEvents(supabase: any, startCursor: string | null, t0: number)
       else stats[kind].upserted += rows.length;
     }
 
-    const next = data.cursor_next || null;
-    hasMore = Boolean(next) && items.length > 0;
+    const next: string | null = data?.cursor_next ?? data?.next_cursor ?? data?.cursor ?? null;
+    hasMore = Boolean(next);
     if (next) cursor = next;
-    console.log(`[step:events] scanned=${scanned}, opps=${stats.opportunity.upserted}, leads=${stats.lead.upserted}, mem ${mem()}MB`);
+    console.log(`[step:events] page=${pages} scanned=${scanned}, opps=${stats.opportunity.upserted}, leads=${stats.lead.upserted}, mem ${mem()}MB`);
   }
 
-  return { scanned, cursor, done: !hasMore, ...stats };
+  if (pages >= MAX_PAGES) {
+    stopReason = "page_limit";
+    console.warn(`[events] hard page limit of ${MAX_PAGES} reached — aborting run, cursor persisted`);
+  } else if (hasMore) {
+    stopReason = "budget";
+  }
+
+  return { scanned, pages, cursor, stopReason, done: !hasMore, date_filter_used: useDateFilter, ...stats };
 }
 
 
@@ -139,17 +199,20 @@ Deno.serve(async (req) => {
     try { body = await req.json(); } catch { /* no body */ }
 
     let startCursor: string | null = null;
+    let since: string | null = null;
     if (!body?.reset) {
       const { data } = await supabase.from("app_settings").select("value").eq("key", CURSOR_KEY).maybeSingle();
       startCursor = (data?.value as any)?.cursor ?? null;
+      since = (data?.value as any)?.since ?? null;
     }
-    console.log(`[sync-sales-status-changes] resume cursor=${startCursor ? "yes" : "no"}`);
+    if (body?.since) since = String(body.since);
+    console.log(`[sync-sales-status-changes] resume cursor=${startCursor ? "yes" : "no"} since=${since ?? "none"}`);
 
-    const res = await syncEvents(supabase, startCursor, t0);
+    const res = await syncEvents(supabase, startCursor, since, t0);
 
     if (res.cursor) {
       await supabase.from("app_settings").upsert(
-        { key: CURSOR_KEY, value: { cursor: res.cursor, updated_at: new Date().toISOString() } },
+        { key: CURSOR_KEY, value: { cursor: res.cursor, since, updated_at: new Date().toISOString() } },
         { onConflict: "key" },
       );
     }
@@ -183,8 +246,12 @@ Deno.serve(async (req) => {
 
 
 
+    const allErrors = [...res.opportunity.errors, ...res.lead.errors];
     const summary = {
       scanned: res.scanned,
+      pages: res.pages,
+      stop_reason: res.stopReason,
+      date_filter_used: res.date_filter_used,
       done: res.done,
       opportunities: { upserted: res.opportunity.upserted, errors: res.opportunity.errors.length },
       leads: { upserted: res.lead.upserted, errors: res.lead.errors.length },
@@ -193,15 +260,29 @@ Deno.serve(async (req) => {
     };
     console.log("[sync-sales-status-changes]", summary);
 
+    await logStep(
+      supabase,
+      "status_changes",
+      res.opportunity.upserted + res.lead.upserted,
+      allErrors.length,
+      Date.now() - t0,
+      allErrors[0] ?? null,
+    );
+
     return new Response(
-      JSON.stringify({ success: true, ...summary, error_samples: [...res.opportunity.errors, ...res.lead.errors].slice(0, 3) }),
+      JSON.stringify({ success: true, ...summary, error_samples: allErrors.slice(0, 3) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
 
 
   } catch (err: any) {
-    console.error("[sync-sales-status-changes] fatal:", err.message);
-    return new Response(JSON.stringify({ error: err.message }), {
+    const msg = String(err?.message ?? err).slice(0, 500);
+    console.error("[sync-sales-status-changes] fatal:", msg);
+    try {
+      const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await logStep(supabase, "status_changes", 0, 1, Date.now() - t0, msg);
+    } catch { /* logging must never mask the original error */ }
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
