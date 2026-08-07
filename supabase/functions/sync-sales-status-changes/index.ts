@@ -8,7 +8,7 @@ const corsHeaders = {
 const CLOSE_BASE = "https://api.close.com/api/v1";
 const CLOSE_API_KEY = Deno.env.get("CLOSE_API_KEY_SALES");
 const MAX_ITEMS = 20000;
-const PAGE = 100;
+const PAGE = 50;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const mem = () => Math.round((Deno.memoryUsage?.().heapUsed ?? 0) / 1024 / 1024);
 
@@ -78,50 +78,56 @@ function hasStatusChange(ev: any): boolean {
   return d.status_id != null;
 }
 
-async function syncKind(
-  supabase: any,
-  kind: "opportunity" | "lead",
-  table: string,
-  since: string | null,
-) {
-  let upserted = 0;
+const CURSOR_KEY = "sales_status_events_cursor";
+const TIME_BUDGET_MS = 110_000;
+
+// Close does not allow filtering /event/ by object_type alone, so we scan the
+// event log once and route rows to the right table client-side. Pagination is
+// cursor based; the cursor is persisted so each run resumes where it stopped.
+async function syncEvents(supabase: any, startCursor: string | null, t0: number) {
+  const stats = {
+    opportunity: { upserted: 0, errors: [] as string[] },
+    lead: { upserted: 0, errors: [] as string[] },
+  };
   let scanned = 0;
-  const errors: string[] = [];
-  let cursor: string | null = null;
+  let cursor: string | null = startCursor;
   let hasMore = true;
 
-  while (hasMore && scanned < MAX_ITEMS) {
+  while (hasMore && scanned < MAX_ITEMS && Date.now() - t0 < TIME_BUDGET_MS) {
     await sleep(120);
-    const params = new URLSearchParams({
-      object_type: kind,
-      _limit: String(PAGE),
-    });
-    if (since) params.set("date_updated__gt", since);
+    const params = new URLSearchParams({ _limit: String(PAGE) });
     if (cursor) params.set("_cursor", cursor);
 
     const data = await closeFetch(`/event/?${params.toString()}`);
     const items: any[] = data.data || [];
     scanned += items.length;
 
-    const rows = items
+    const relevant = items
       .filter((ev) => ev.action === "updated" || ev.action === "created")
-      .filter(hasStatusChange)
-      .map((ev) => (kind === "opportunity" ? mapOpportunityEvent(ev) : mapLeadEvent(ev)))
-      .filter((r) => r.id && r.date_changed);
+      .filter((ev) => ev.object_type === "opportunity" || ev.object_type === "lead")
+      .filter(hasStatusChange);
 
-    if (rows.length > 0) {
+    for (const kind of ["opportunity", "lead"] as const) {
+      const table = kind === "opportunity" ? "sales_status_changes" : "sales_lead_status_changes";
+      const rows = relevant
+        .filter((ev) => ev.object_type === kind)
+        .map((ev) => (kind === "opportunity" ? mapOpportunityEvent(ev) : mapLeadEvent(ev)))
+        .filter((r) => r.id && r.date_changed);
+      if (rows.length === 0) continue;
       const { error } = await supabase.from(table).upsert(rows, { onConflict: "id" });
-      if (error) errors.push(`${table}: ${error.message}`);
-      else upserted += rows.length;
+      if (error) stats[kind].errors.push(`${table}: ${error.message}`);
+      else stats[kind].upserted += rows.length;
     }
 
-    cursor = data.cursor_next || null;
-    hasMore = Boolean(data.has_more && cursor);
-    console.log(`[step:${kind}] scanned=${scanned}, upserted=${upserted}, mem ${mem()}MB`);
+    const next = data.cursor_next || null;
+    hasMore = Boolean(next) && items.length > 0;
+    if (next) cursor = next;
+    console.log(`[step:events] scanned=${scanned}, opps=${stats.opportunity.upserted}, leads=${stats.lead.upserted}, mem ${mem()}MB`);
   }
 
-  return { upserted, scanned, errors };
+  return { scanned, cursor, done: !hasMore, ...stats };
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -129,37 +135,70 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const latest = async (table: string): Promise<string | null> => {
-      const { data } = await supabase
-        .from(table)
-        .select("date_changed")
-        .order("date_changed", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data?.date_changed ?? null;
-    };
+    let body: any = {};
+    try { body = await req.json(); } catch { /* no body */ }
 
-    const [sinceOpps, sinceLeads] = await Promise.all([
-      latest("sales_status_changes"),
-      latest("sales_lead_status_changes"),
-    ]);
-    console.log(`[sync-sales-status-changes] since opps=${sinceOpps} leads=${sinceLeads}`);
+    let startCursor: string | null = null;
+    if (!body?.reset) {
+      const { data } = await supabase.from("app_settings").select("value").eq("key", CURSOR_KEY).maybeSingle();
+      startCursor = (data?.value as any)?.cursor ?? null;
+    }
+    console.log(`[sync-sales-status-changes] resume cursor=${startCursor ? "yes" : "no"}`);
 
-    const opps = await syncKind(supabase, "opportunity", "sales_status_changes", sinceOpps);
-    const leads = await syncKind(supabase, "lead", "sales_lead_status_changes", sinceLeads);
+    const res = await syncEvents(supabase, startCursor, t0);
+
+    if (res.cursor) {
+      await supabase.from("app_settings").upsert(
+        { key: CURSOR_KEY, value: { cursor: res.cursor, updated_at: new Date().toISOString() } },
+        { onConflict: "key" },
+      );
+    }
+
+    // Close event rows carry no pipeline info — backfill it from the synced
+    // opportunities so the funnel views (pipeline_name = 'Sales') match.
+    const { data: missing } = await supabase
+      .from("sales_status_changes")
+      .select("id, opportunity_id")
+      .is("pipeline_name", null)
+      .limit(5000);
+    if (missing && missing.length > 0) {
+      const ids = [...new Set(missing.map((r: any) => r.opportunity_id).filter(Boolean))];
+      const { data: opps } = await supabase
+        .from("sales_opportunities")
+        .select("id, pipeline_id, pipeline_name")
+        .in("id", ids);
+      let patched = 0;
+      for (const o of opps || []) {
+        const { error, count } = await supabase
+          .from("sales_status_changes")
+          .update({ pipeline_id: o.pipeline_id, pipeline_name: o.pipeline_name }, { count: "exact" })
+          .eq("opportunity_id", o.id)
+          .is("pipeline_name", null);
+        if (error) console.error("[backfill]", error.message);
+        else patched += count ?? 0;
+      }
+      console.log(`[backfill] pipeline_name set on ${patched} rows`);
+    }
+
+
+
 
     const summary = {
-      opportunities: { upserted: opps.upserted, scanned: opps.scanned, errors: opps.errors.length },
-      leads: { upserted: leads.upserted, scanned: leads.scanned, errors: leads.errors.length },
+      scanned: res.scanned,
+      done: res.done,
+      opportunities: { upserted: res.opportunity.upserted, errors: res.opportunity.errors.length },
+      leads: { upserted: res.lead.upserted, errors: res.lead.errors.length },
       duration_ms: Date.now() - t0,
       mem_mb: mem(),
     };
     console.log("[sync-sales-status-changes]", summary);
 
     return new Response(
-      JSON.stringify({ success: true, ...summary, error_samples: [...opps.errors, ...leads.errors].slice(0, 3) }),
+      JSON.stringify({ success: true, ...summary, error_samples: [...res.opportunity.errors, ...res.lead.errors].slice(0, 3) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+
+
   } catch (err: any) {
     console.error("[sync-sales-status-changes] fatal:", err.message);
     return new Response(JSON.stringify({ error: err.message }), {
