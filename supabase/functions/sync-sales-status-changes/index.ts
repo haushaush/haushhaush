@@ -97,6 +97,7 @@ async function syncEvents(supabase: any, since: string | null) {
 
     const data = await closeFetch(`/event/?${params.toString()}`);
     const items: any[] = data.data || [];
+    if (scanned === 0) console.log("[debug] envelope keys", Object.keys(data), "has_more:", data.has_more, "cursor_next:", data.cursor_next, "sample_obj_types:", items.slice(0,5).map((e:any)=>e.object_type));
     scanned += items.length;
 
     const relevant = items
