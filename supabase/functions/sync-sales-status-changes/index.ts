@@ -8,7 +8,7 @@ const corsHeaders = {
 const CLOSE_BASE = "https://api.close.com/api/v1";
 const CLOSE_API_KEY = Deno.env.get("CLOSE_API_KEY_SALES");
 const MAX_ITEMS = 20000;
-const PAGE = 100;
+const PAGE = 50;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const mem = () => Math.round((Deno.memoryUsage?.().heapUsed ?? 0) / 1024 / 1024);
 
