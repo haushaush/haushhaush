@@ -5724,6 +5724,48 @@ export type Database = {
           },
         ]
       }
+      sales_lead_status_changes: {
+        Row: {
+          date_changed: string
+          id: string
+          lead_id: string | null
+          new_status_id: string | null
+          new_status_label: string | null
+          new_status_type: string | null
+          old_status_id: string | null
+          old_status_label: string | null
+          synced_at: string
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          date_changed: string
+          id: string
+          lead_id?: string | null
+          new_status_id?: string | null
+          new_status_label?: string | null
+          new_status_type?: string | null
+          old_status_id?: string | null
+          old_status_label?: string | null
+          synced_at?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          date_changed?: string
+          id?: string
+          lead_id?: string | null
+          new_status_id?: string | null
+          new_status_label?: string | null
+          new_status_type?: string | null
+          old_status_id?: string | null
+          old_status_label?: string | null
+          synced_at?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       sales_performance: {
         Row: {
           appointments_set: number | null
@@ -5773,6 +5815,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sales_status_changes: {
+        Row: {
+          date_changed: string
+          id: string
+          lead_id: string | null
+          new_status_id: string | null
+          new_status_label: string | null
+          new_status_type: string | null
+          old_status_id: string | null
+          old_status_label: string | null
+          opportunity_id: string | null
+          pipeline_id: string | null
+          pipeline_name: string | null
+          synced_at: string
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          date_changed: string
+          id: string
+          lead_id?: string | null
+          new_status_id?: string | null
+          new_status_label?: string | null
+          new_status_type?: string | null
+          old_status_id?: string | null
+          old_status_label?: string | null
+          opportunity_id?: string | null
+          pipeline_id?: string | null
+          pipeline_name?: string | null
+          synced_at?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          date_changed?: string
+          id?: string
+          lead_id?: string | null
+          new_status_id?: string | null
+          new_status_label?: string | null
+          new_status_type?: string | null
+          old_status_id?: string | null
+          old_status_label?: string | null
+          opportunity_id?: string | null
+          pipeline_id?: string | null
+          pipeline_name?: string | null
+          synced_at?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
       }
       shared_email_accounts: {
         Row: {
