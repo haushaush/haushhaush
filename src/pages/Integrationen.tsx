@@ -426,6 +426,8 @@ export default function Integrationen() {
         </div>
       )}
 
+      <SalesSyncCard />
+
       <IntegrationStatusBar
         integrations={integrationStatusData}
         onTestAll={handleTestAll}
