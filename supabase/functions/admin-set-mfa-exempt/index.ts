@@ -21,12 +21,19 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
-    const { data: userData, error: userErr } = await admin.auth.getUser(token);
-    if (userErr || !userData?.user) {
-      return json({ error: 'unauthorized', detail: userErr?.message }, 401);
+    let callerId: string | null = null;
+    const { data: userData } = await admin.auth.getUser(token);
+    if (userData?.user) {
+      callerId = userData.user.id;
+    } else {
+      // Fallback: verify token signature/claims (session row may be missing)
+      const { data: claimsData } = await admin.auth.getClaims(token);
+      callerId = (claimsData as any)?.claims?.sub ?? null;
     }
+    if (!callerId) return json({ error: 'unauthorized' }, 401);
+
     const { data: isAdminRow } = await admin.rpc('has_role', {
-      _user_id: userData.user.id,
+      _user_id: callerId,
       _role: 'admin',
     });
     if (!isAdminRow) return json({ error: 'forbidden' }, 403);
