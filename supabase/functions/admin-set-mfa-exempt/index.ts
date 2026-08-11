@@ -12,19 +12,19 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return json({ error: 'unauthorized' }, 401);
+    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401);
+    const token = authHeader.replace('Bearer ', '').trim();
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
+    const admin = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) return json({ error: 'unauthorized' }, 401);
-
-    const admin = createClient(supabaseUrl, serviceKey);
+    const { data: userData, error: userErr } = await admin.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return json({ error: 'unauthorized', detail: userErr?.message }, 401);
+    }
     const { data: isAdminRow } = await admin.rpc('has_role', {
       _user_id: userData.user.id,
       _role: 'admin',
