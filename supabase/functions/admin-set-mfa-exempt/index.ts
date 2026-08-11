@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     const targetUserId: string = body.target_user_id;
     const exempt: boolean = !!body.exempt;
     if (!targetUserId) return json({ error: 'target_user_id required' }, 400);
-    if (targetUserId === userData.user.id) {
+    if (targetUserId === callerId) {
       return json({ error: '2FA für das eigene Konto kann nicht hier geändert werden' }, 403);
     }
 
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
       user_id: targetUserId,
       two_factor_exempt: exempt,
       mfa_enrolled_at: exempt ? null : undefined,
-      exempt_set_by: exempt ? userData.user.id : null,
+      exempt_set_by: exempt ? callerId : null,
       exempt_set_at: exempt ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
