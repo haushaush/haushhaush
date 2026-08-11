@@ -12,21 +12,28 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return json({ error: 'unauthorized' }, 401);
+    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'unauthorized' }, 401);
+    const token = authHeader.replace('Bearer ', '').trim();
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
+    const admin = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) return json({ error: 'unauthorized' }, 401);
+    let callerId: string | null = null;
+    const { data: userData } = await admin.auth.getUser(token);
+    if (userData?.user) {
+      callerId = userData.user.id;
+    } else {
+      // Fallback: verify token signature/claims (session row may be missing)
+      const { data: claimsData } = await admin.auth.getClaims(token);
+      callerId = (claimsData as any)?.claims?.sub ?? null;
+    }
+    if (!callerId) return json({ error: 'unauthorized' }, 401);
 
-    const admin = createClient(supabaseUrl, serviceKey);
     const { data: isAdminRow } = await admin.rpc('has_role', {
-      _user_id: userData.user.id,
+      _user_id: callerId,
       _role: 'admin',
     });
     if (!isAdminRow) return json({ error: 'forbidden' }, 403);
@@ -35,7 +42,7 @@ Deno.serve(async (req) => {
     const targetUserId: string = body.target_user_id;
     const exempt: boolean = !!body.exempt;
     if (!targetUserId) return json({ error: 'target_user_id required' }, 400);
-    if (targetUserId === userData.user.id) {
+    if (targetUserId === callerId) {
       return json({ error: '2FA für das eigene Konto kann nicht hier geändert werden' }, 403);
     }
 
@@ -56,7 +63,7 @@ Deno.serve(async (req) => {
       user_id: targetUserId,
       two_factor_exempt: exempt,
       mfa_enrolled_at: exempt ? null : undefined,
-      exempt_set_by: exempt ? userData.user.id : null,
+      exempt_set_by: exempt ? callerId : null,
       exempt_set_at: exempt ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
