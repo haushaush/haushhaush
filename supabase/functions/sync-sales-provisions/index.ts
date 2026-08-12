@@ -275,9 +275,10 @@ Deno.serve(async (req) => {
         is_payable: paid,
         rep_id: repId,
         rep_name: repName,
-        close_lead_id: lead?.leadId ?? null,
+        close_lead_id: matchedLeadId,
         close_activity_id: activityId,
-        source: "qonto",
+        source: keepManual ? "manual" : "qonto",
+
       };
 
       const { error: upErr } = await admin
