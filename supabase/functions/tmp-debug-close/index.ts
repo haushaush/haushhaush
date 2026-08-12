@@ -5,13 +5,14 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  const { lead_id } = await req.json();
-  const key = Deno.env.get("CLOSE_API_KEY_SALES")!;
-  const res = await fetch(`https://api.close.com/api/v1/activity/?lead_id=${lead_id}&_limit=50`, {
+  const { path, account = "sales" } = await req.json();
+  const key = Deno.env.get(account === "sales" ? "CLOSE_API_KEY_SALES" : "CLOSE_API_KEY")!;
+  const res = await fetch(`https://api.close.com/api/v1${path}`, {
     headers: { Authorization: `Basic ${btoa(`${key}:`)}`, Accept: "application/json" },
   });
-  const data = await res.json();
-  return new Response(JSON.stringify(data), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  const text = await res.text();
+  return new Response(text, {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json", "X-Up": String(res.status) },
   });
 });
