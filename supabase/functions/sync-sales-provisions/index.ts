@@ -108,6 +108,8 @@ Deno.serve(async (req) => {
 
     // Close-User-Verzeichnis je Account (user_id -> Name)
     const userNames = new Map<string, string>();
+    // Custom-Activity-Typen je Account: nur "Erstgespräch / Business - Analyse" zaehlt
+    const erstgespraechTypeIds = new Map<string, Set<string>>();
     for (const acc of accounts) {
       try {
         const me = await closeFetch(acc, "/user/");
@@ -117,6 +119,20 @@ Deno.serve(async (req) => {
         }
       } catch (e) {
         result.errors.push(`user list ${acc.label}: ${(e as Error).message}`);
+      }
+      try {
+        const types = await closeFetch(acc, "/custom_activity/");
+        const ids = new Set<string>();
+        for (const t of types?.data ?? []) {
+          const n = norm(t?.name).replace(/[^a-zäöüß]/g, "");
+          // deckt "Erstgespräch / Business - Analyse" und Tippfehler "Erstgesrpäch" ab
+          if ((n.includes("erstgespr") || n.includes("erstgesrp")) && n.includes("business")) {
+            if (t.id) ids.add(t.id);
+          }
+        }
+        erstgespraechTypeIds.set(acc.label, ids);
+      } catch (e) {
+        result.errors.push(`activity types ${acc.label}: ${(e as Error).message}`);
       }
     }
 
@@ -144,6 +160,7 @@ Deno.serve(async (req) => {
     };
 
 
+
     const { data: invoices, error: invErr } = await admin
       .from("qonto_client_invoices")
       .select("id,number,client_name,total_amount,status,issue_date,paid_at,raw")
@@ -152,12 +169,12 @@ Deno.serve(async (req) => {
       .range(offset, offset + limit - 1);
     if (invErr) throw invErr;
 
-    const leadCache = new Map<string, { leadId: string; acc: Account } | null>();
+    const leadCache = new Map<string, { leadId: string; acc: Account }[]>();
 
     // Bestehende Zeilen: manuelle Zuordnungen dürfen nicht überschrieben werden
     const { data: existingRows } = await admin
       .from("sales_provisions")
-      .select("qonto_invoice_id,rep_id,rep_name,rate,status");
+      .select("qonto_invoice_id,rep_id,rep_name,rate,status,source");
     const existing = new Map<string, any>((existingRows ?? []).map((r: any) => [r.qonto_invoice_id, r]));
 
     let processed = 0;
@@ -172,9 +189,11 @@ Deno.serve(async (req) => {
       const clientName: string = inv.client_name ?? (inv as any).raw?.client?.name ?? "";
       if (!clientName) continue;
 
-      let lead = leadCache.get(norm(clientName));
-      if (lead === undefined) {
-        lead = null;
+      let leads = leadCache.get(norm(clientName));
+      if (leads === undefined) {
+        leads = [];
+        // WICHTIG: in ALLEN Close-Accounts suchen (Lead kann in beiden existieren,
+        // das Erstgespraech haengt oft nur an einem davon)
         for (const acc of accounts) {
           try {
             const q = encodeURIComponent(`name:"${clientName.replace(/"/g, "")}"`);
@@ -182,70 +201,65 @@ Deno.serve(async (req) => {
             const hit =
               (res?.data ?? []).find((l: any) => norm(l.display_name ?? l.name) === norm(clientName)) ??
               (res?.data ?? [])[0];
-            if (hit?.id) {
-              lead = { leadId: hit.id, acc };
-              break;
-            }
+            if (hit?.id) leads.push({ leadId: hit.id, acc });
           } catch (e) {
             result.errors.push(`lead "${clientName}" (${acc.label}): ${(e as Error).message}`);
           }
         }
-        leadCache.set(norm(clientName), lead);
+        leadCache.set(norm(clientName), leads);
       }
-      if (lead) result.matched_leads++;
+      if (leads.length) result.matched_leads++;
 
       let rep: any = null;
       let activityId: string | null = null;
+      let matchedLeadId: string | null = leads[0]?.leadId ?? null;
 
-      if (lead) {
+      for (const lead of leads) {
+        if (rep) break;
         try {
           const act = await closeFetch(lead.acc, `/activity/custom/?lead_id=${lead.leadId}&_limit=100`);
           const acts: any[] = act?.data ?? [];
           // Provision haengt AUSSCHLIESSLICH an der Custom Activity "Erstgespräch / Business - Analyse"
-          const targetActivityNames = ["erstgesrpäch / business - analyse", "erstgespräch / business - analyse"];
-          const relevantActs = acts.filter((a: any) => {
-            const activityName = norm(a.activity_type_name ?? a.activity_type ?? a._type ?? "");
-            return targetActivityNames.some((t) => activityName === t || activityName.includes(t.replace(" / ", " ")));
-          });
+          const typeIds = erstgespraechTypeIds.get(lead.acc.label) ?? new Set<string>();
+          const relevantActs = acts.filter((a: any) =>
+            typeIds.has(a.custom_activity_type_id ?? a.activity_type_id ?? ""),
+          );
           // aelteste zuerst -> das erste Erstgespraech zaehlt
-          relevantActs.sort((a: any, b: any) => String(a.date_created ?? "").localeCompare(String(b.date_created ?? "")));
+          relevantActs.sort((a: any, b: any) =>
+            String(a.date_created ?? "").localeCompare(String(b.date_created ?? "")),
+          );
           for (const a of relevantActs) {
-            // 1) Der Nutzer, der die Activity DURCHGEFUEHRT hat (Avatar in Close)
-            const performerId = a.user_id ?? a.assigned_to ?? a.created_by ?? null;
+            // Der Nutzer, der die Activity DURCHGEFUEHRT hat (Avatar in Close)
             const performerName =
-              a.user_name ?? a.assigned_to_name ?? (await resolveUser(lead.acc, performerId)) ?? a.created_by_name;
-            let candidate = matchRep(performerName);
-            // 2) Fallback: Custom-Field-Werte der Activity (z.B. Feld "Vertriebler")
-            if (!candidate) {
-              const cfValues = Object.entries(a)
-                .filter(([k]) => k.startsWith("custom"))
-                .flatMap(([, v]) => (Array.isArray(v) ? v : [v]))
-                .filter((v) => typeof v === "string");
-              candidate = matchRep(...cfValues);
-            }
+              a.user_name ??
+              (await resolveUser(lead.acc, a.user_id)) ??
+              a.created_by_name ??
+              (await resolveUser(lead.acc, a.created_by));
+            const candidate = matchRep(performerName);
             if (candidate) {
               rep = candidate;
               activityId = a.id;
+              matchedLeadId = lead.leadId;
               break;
             }
           }
-
         } catch (e) {
           result.errors.push(`activities ${lead.leadId}: ${(e as Error).message}`);
         }
-        // Kein Fallback auf Lead-Besitzer: ohne Erstgespraech keine Provisionszuordnung
       }
-
 
       if (rep) result.matched_reps++;
       else result.unassigned++;
 
       const prev = existing.get(String(inv.id));
-      const repId = rep?.id ?? prev?.rep_id ?? null;
-      const repName = rep?.name ?? prev?.rep_name ?? null;
+      // Nur manuell gesetzte Zuordnungen bleiben erhalten – sonst Ergebnis des Erstgespraechs (auch leer)
+      const keepManual = prev?.source === "manual";
+      const repId = keepManual ? prev?.rep_id ?? null : rep?.id ?? null;
+      const repName = keepManual ? prev?.rep_name ?? null : rep?.name ?? null;
       const amount = Number(inv.total_amount ?? 0);
-      const rate = Number(rep?.rate ?? prev?.rate ?? 0.15);
+      const rate = Number((keepManual ? prev?.rate : rep?.rate) ?? 0.15);
       const paid = inv.status === "paid";
+
 
       const row = {
         qonto_invoice_id: String(inv.id),
@@ -261,9 +275,10 @@ Deno.serve(async (req) => {
         is_payable: paid,
         rep_id: repId,
         rep_name: repName,
-        close_lead_id: lead?.leadId ?? null,
+        close_lead_id: matchedLeadId,
         close_activity_id: activityId,
-        source: "qonto",
+        source: keepManual ? "manual" : "qonto",
+
       };
 
       const { error: upErr } = await admin
