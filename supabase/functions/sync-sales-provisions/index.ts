@@ -120,6 +120,20 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Nutzername on-demand nachladen, falls nicht im Verzeichnis
+    const resolveUser = async (acc: Account, id?: string | null): Promise<string | null> => {
+      if (!id) return null;
+      if (userNames.has(id)) return userNames.get(id)!;
+      try {
+        const u = await closeFetch(acc, `/user/${id}/`);
+        const name = [u?.first_name, u?.last_name].filter(Boolean).join(" ") || u?.display_name || u?.email || null;
+        if (name) userNames.set(id, name);
+        return name;
+      } catch (_) {
+        return null;
+      }
+    };
+
     const matchRep = (...candidates: unknown[]) => {
       const names = candidates.map(norm).filter(Boolean);
       return (
@@ -128,6 +142,7 @@ Deno.serve(async (req) => {
         ) ?? null
       );
     };
+
 
     const { data: invoices, error: invErr } = await admin
       .from("qonto_client_invoices")
