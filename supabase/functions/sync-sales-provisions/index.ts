@@ -145,7 +145,14 @@ Deno.serve(async (req) => {
       .select("qonto_invoice_id,rep_id,rep_name,rate,status");
     const existing = new Map<string, any>((existingRows ?? []).map((r: any) => [r.qonto_invoice_id, r]));
 
+    let processed = 0;
     for (const inv of invoices ?? []) {
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        result.done = false;
+        result.next_offset = offset + processed;
+        break;
+      }
+      processed++;
       result.invoices++;
       const clientName: string = inv.client_name ?? (inv as any).raw?.client?.name ?? "";
       if (!clientName) continue;
