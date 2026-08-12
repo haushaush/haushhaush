@@ -303,7 +303,7 @@ export default function SalesProvisions() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map(r => (
+                  {paged.map(r => (
                     <TableRow key={r.id}>
                       <TableCell className="whitespace-nowrap tabular-nums">{fmtDate(r.created_date)}</TableCell>
                       <TableCell className="max-w-[220px] truncate">{r.client_name ?? '–'}</TableCell>
