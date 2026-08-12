@@ -186,14 +186,27 @@ Deno.serve(async (req) => {
         try {
           const act = await closeFetch(lead.acc, `/activity/custom/?lead_id=${lead.leadId}&_limit=100`);
           const acts: any[] = act?.data ?? [];
-          // Relevant ist die Custom Activity "Erstgespräch / Business - Analyse"
+          // Provision haengt AUSSCHLIESSLICH an der Custom Activity "Erstgespräch / Business - Analyse"
           const targetActivityNames = ["erstgesrpäch / business - analyse", "erstgespräch / business - analyse"];
           const relevantActs = acts.filter((a: any) => {
             const activityName = norm(a.activity_type_name ?? a.activity_type ?? a._type ?? "");
             return targetActivityNames.some((t) => activityName === t || activityName.includes(t.replace(" / ", " ")));
           });
-          for (const a of relevantActs.length ? relevantActs : acts) {
-            const candidate = matchRep(a.user_name, userNames.get(a.user_id), userNames.get(a.created_by), a.created_by_name);
+          // aelteste zuerst -> das erste Erstgespraech zaehlt
+          relevantActs.sort((a: any, b: any) => String(a.date_created ?? "").localeCompare(String(b.date_created ?? "")));
+          for (const a of relevantActs) {
+            // 1) explizite Nutzerfelder, 2) beliebige Custom-Field-Werte der Activity (z.B. "Vertriebler")
+            const cfValues = Object.entries(a)
+              .filter(([k]) => k.startsWith("custom"))
+              .flatMap(([, v]) => (Array.isArray(v) ? v : [v]))
+              .filter((v) => typeof v === "string");
+            const candidate = matchRep(
+              a.user_name,
+              userNames.get(a.user_id),
+              userNames.get(a.created_by),
+              a.created_by_name,
+              ...cfValues,
+            );
             if (candidate) {
               rep = candidate;
               activityId = a.id;
@@ -203,16 +216,9 @@ Deno.serve(async (req) => {
         } catch (e) {
           result.errors.push(`activities ${lead.leadId}: ${(e as Error).message}`);
         }
-        if (!rep) {
-          // Fallback: Lead-Besitzer
-          try {
-            const l = await closeFetch(lead.acc, `/lead/${lead.leadId}/`);
-            rep = matchRep(userNames.get(l?.created_by), l?.created_by_name);
-          } catch (_) {
-            /* ignore */
-          }
-        }
+        // Kein Fallback auf Lead-Besitzer: ohne Erstgespraech keine Provisionszuordnung
       }
+
 
       if (rep) result.matched_reps++;
       else result.unassigned++;
