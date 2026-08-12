@@ -120,6 +120,20 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Nutzername on-demand nachladen, falls nicht im Verzeichnis
+    const resolveUser = async (acc: Account, id?: string | null): Promise<string | null> => {
+      if (!id) return null;
+      if (userNames.has(id)) return userNames.get(id)!;
+      try {
+        const u = await closeFetch(acc, `/user/${id}/`);
+        const name = [u?.first_name, u?.last_name].filter(Boolean).join(" ") || u?.display_name || u?.email || null;
+        if (name) userNames.set(id, name);
+        return name;
+      } catch (_) {
+        return null;
+      }
+    };
+
     const matchRep = (...candidates: unknown[]) => {
       const names = candidates.map(norm).filter(Boolean);
       return (
@@ -128,6 +142,7 @@ Deno.serve(async (req) => {
         ) ?? null
       );
     };
+
 
     const { data: invoices, error: invErr } = await admin
       .from("qonto_client_invoices")
@@ -195,24 +210,26 @@ Deno.serve(async (req) => {
           // aelteste zuerst -> das erste Erstgespraech zaehlt
           relevantActs.sort((a: any, b: any) => String(a.date_created ?? "").localeCompare(String(b.date_created ?? "")));
           for (const a of relevantActs) {
-            // 1) explizite Nutzerfelder, 2) beliebige Custom-Field-Werte der Activity (z.B. "Vertriebler")
-            const cfValues = Object.entries(a)
-              .filter(([k]) => k.startsWith("custom"))
-              .flatMap(([, v]) => (Array.isArray(v) ? v : [v]))
-              .filter((v) => typeof v === "string");
-            const candidate = matchRep(
-              a.user_name,
-              userNames.get(a.user_id),
-              userNames.get(a.created_by),
-              a.created_by_name,
-              ...cfValues,
-            );
+            // 1) Der Nutzer, der die Activity DURCHGEFUEHRT hat (Avatar in Close)
+            const performerId = a.user_id ?? a.assigned_to ?? a.created_by ?? null;
+            const performerName =
+              a.user_name ?? a.assigned_to_name ?? (await resolveUser(lead.acc, performerId)) ?? a.created_by_name;
+            let candidate = matchRep(performerName);
+            // 2) Fallback: Custom-Field-Werte der Activity (z.B. Feld "Vertriebler")
+            if (!candidate) {
+              const cfValues = Object.entries(a)
+                .filter(([k]) => k.startsWith("custom"))
+                .flatMap(([, v]) => (Array.isArray(v) ? v : [v]))
+                .filter((v) => typeof v === "string");
+              candidate = matchRep(...cfValues);
+            }
             if (candidate) {
               rep = candidate;
               activityId = a.id;
               break;
             }
           }
+
         } catch (e) {
           result.errors.push(`activities ${lead.leadId}: ${(e as Error).message}`);
         }
