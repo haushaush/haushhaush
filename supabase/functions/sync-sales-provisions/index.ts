@@ -93,6 +93,9 @@ Deno.serve(async (req) => {
     upserted: 0,
     unassigned: 0,
     errors: [] as string[],
+    offset,
+    next_offset: null as number | null,
+    done: true,
   };
 
   try {
