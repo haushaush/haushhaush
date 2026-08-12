@@ -364,6 +364,24 @@ export default function SalesProvisions() {
               </Table>
             </div>
           )}
+          {!loading && filtered.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3">
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} von {filtered.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>
+                  Zurück
+                </Button>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  Seite {currentPage} / {pageCount}
+                </span>
+                <Button variant="outline" size="sm" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}>
+                  Weiter
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
