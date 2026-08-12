@@ -169,9 +169,15 @@ Deno.serve(async (req) => {
 
       if (lead) {
         try {
-          const act = await closeFetch(lead.acc, `/activity/custom/?lead_id=${lead.leadId}&_limit=25`);
+          const act = await closeFetch(lead.acc, `/activity/custom/?lead_id=${lead.leadId}&_limit=100`);
           const acts: any[] = act?.data ?? [];
-          for (const a of acts) {
+          // Relevant ist die Custom Activity "Erstgespräch / Business - Analyse"
+          const targetActivityNames = ["erstgesrpäch / business - analyse", "erstgespräch / business - analyse"];
+          const relevantActs = acts.filter((a: any) => {
+            const activityName = norm(a.activity_type_name ?? a.activity_type ?? a._type ?? "");
+            return targetActivityNames.some((t) => activityName === t || activityName.includes(t.replace(" / ", " ")));
+          });
+          for (const a of relevantActs.length ? relevantActs : acts) {
             const candidate = matchRep(a.user_name, userNames.get(a.user_id), userNames.get(a.created_by), a.created_by_name);
             if (candidate) {
               rep = candidate;
