@@ -86,13 +86,23 @@ export default function SalesProvisions() {
   const runSync = async () => {
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-sales-provisions', {
-        body: { days: 365 },
-      });
-      if (error) throw error;
+      let offset = 0;
+      let upserted = 0, matched = 0, unassigned = 0;
+      // Batchweise syncen, damit die Edge Function nicht ins Idle-Timeout (150s) läuft
+      for (let i = 0; i < 40; i++) {
+        const { data, error } = await supabase.functions.invoke('sync-sales-provisions', {
+          body: { days: 365, offset, limit: 60 },
+        });
+        if (error) throw error;
+        upserted += data?.upserted ?? 0;
+        matched += data?.matched_reps ?? 0;
+        unassigned += data?.unassigned ?? 0;
+        if (data?.done !== false || data?.next_offset == null) break;
+        offset = data.next_offset;
+      }
       toast({
         title: 'Sync abgeschlossen',
-        description: `${data?.upserted ?? 0} Rechnungen verarbeitet, ${data?.matched_reps ?? 0} zugeordnet, ${data?.unassigned ?? 0} ohne Vertriebler.`,
+        description: `${upserted} Rechnungen verarbeitet, ${matched} zugeordnet, ${unassigned} ohne Vertriebler.`,
       });
       await load();
     } catch (e: any) {
@@ -101,6 +111,7 @@ export default function SalesProvisions() {
       setSyncing(false);
     }
   };
+
 
   const patchRow = async (id: string, patch: Partial<Provision>) => {
     setRows(prev => prev.map(r => (r.id === id ? { ...r, ...patch } : r)));

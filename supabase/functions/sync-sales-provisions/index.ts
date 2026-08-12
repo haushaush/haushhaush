@@ -74,6 +74,11 @@ Deno.serve(async (req) => {
   }
   const days: number = Number.isFinite(body.days) ? Math.max(1, Math.min(1095, body.days)) : 90;
   const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  const offset: number = Number.isFinite(body.offset) ? Math.max(0, body.offset) : 0;
+  const limit: number = Number.isFinite(body.limit) ? Math.max(1, Math.min(500, body.limit)) : 150;
+  // Idle-Timeout (150s) vermeiden: harte Zeitgrenze pro Lauf
+  const startedAt = Date.now();
+  const TIME_BUDGET_MS = 110_000;
 
   const accounts: Account[] = [];
   const salesKey = Deno.env.get("CLOSE_API_KEY_SALES");
@@ -88,6 +93,9 @@ Deno.serve(async (req) => {
     upserted: 0,
     unassigned: 0,
     errors: [] as string[],
+    offset,
+    next_offset: null as number | null,
+    done: true,
   };
 
   try {
@@ -126,7 +134,7 @@ Deno.serve(async (req) => {
       .select("id,number,client_name,total_amount,status,issue_date,paid_at,raw")
       .gte("issue_date", since)
       .order("issue_date", { ascending: false })
-      .limit(1000);
+      .range(offset, offset + limit - 1);
     if (invErr) throw invErr;
 
     const leadCache = new Map<string, { leadId: string; acc: Account } | null>();
@@ -137,7 +145,14 @@ Deno.serve(async (req) => {
       .select("qonto_invoice_id,rep_id,rep_name,rate,status");
     const existing = new Map<string, any>((existingRows ?? []).map((r: any) => [r.qonto_invoice_id, r]));
 
+    let processed = 0;
     for (const inv of invoices ?? []) {
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        result.done = false;
+        result.next_offset = offset + processed;
+        break;
+      }
+      processed++;
       result.invoices++;
       const clientName: string = inv.client_name ?? (inv as any).raw?.client?.name ?? "";
       if (!clientName) continue;
@@ -233,6 +248,11 @@ Deno.serve(async (req) => {
         .upsert(row, { onConflict: "qonto_invoice_id" });
       if (upErr) result.errors.push(`upsert ${inv.number}: ${upErr.message}`);
       else result.upserted++;
+    }
+
+    if (result.done && (invoices?.length ?? 0) === limit) {
+      result.done = false;
+      result.next_offset = offset + limit;
     }
 
     return json({ ok: true, ...result, errors: result.errors.slice(0, 20) });
