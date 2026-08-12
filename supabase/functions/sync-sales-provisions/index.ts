@@ -46,10 +46,21 @@ Deno.serve(async (req) => {
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
-  // --- Auth: entweder Cron-Secret (n8n) oder eingeloggter Nutzer mit Berechtigung ---
+  // --- Auth: Cron-Secret (n8n / pg_cron) oder eingeloggter Nutzer mit Berechtigung ---
   const cronSecret = Deno.env.get("PROVISION_SYNC_SECRET");
   const providedSecret = req.headers.get("x-provision-secret");
   let authorized = !!cronSecret && providedSecret === cronSecret;
+
+  // Token aus app_settings (wird vom internen pg_cron-Job genutzt)
+  if (!authorized && providedSecret) {
+    const { data: tokenRow } = await admin
+      .from("app_settings")
+      .select("value")
+      .eq("key", "provision_cron_token")
+      .maybeSingle();
+    const dbToken = typeof tokenRow?.value === "string" ? tokenRow.value : (tokenRow?.value as any)?.token;
+    if (dbToken && providedSecret === dbToken) authorized = true;
+  }
 
   if (!authorized) {
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
