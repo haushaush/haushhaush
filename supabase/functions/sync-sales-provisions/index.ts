@@ -250,6 +250,11 @@ Deno.serve(async (req) => {
       else result.upserted++;
     }
 
+    if (result.done && (invoices?.length ?? 0) === limit) {
+      result.done = false;
+      result.next_offset = offset + limit;
+    }
+
     return json({ ok: true, ...result, errors: result.errors.slice(0, 20) });
   } catch (e) {
     console.error("sync-sales-provisions failed", e);
