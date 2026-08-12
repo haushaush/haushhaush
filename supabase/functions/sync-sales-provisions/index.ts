@@ -108,6 +108,8 @@ Deno.serve(async (req) => {
 
     // Close-User-Verzeichnis je Account (user_id -> Name)
     const userNames = new Map<string, string>();
+    // Custom-Activity-Typen je Account: nur "Erstgespräch / Business - Analyse" zaehlt
+    const erstgespraechTypeIds = new Map<string, Set<string>>();
     for (const acc of accounts) {
       try {
         const me = await closeFetch(acc, "/user/");
@@ -117,6 +119,20 @@ Deno.serve(async (req) => {
         }
       } catch (e) {
         result.errors.push(`user list ${acc.label}: ${(e as Error).message}`);
+      }
+      try {
+        const types = await closeFetch(acc, "/custom_activity/");
+        const ids = new Set<string>();
+        for (const t of types?.data ?? []) {
+          const n = norm(t?.name).replace(/[^a-zäöüß]/g, "");
+          // deckt "Erstgespräch / Business - Analyse" und Tippfehler "Erstgesrpäch" ab
+          if ((n.includes("erstgespr") || n.includes("erstgesrp")) && n.includes("business")) {
+            if (t.id) ids.add(t.id);
+          }
+        }
+        erstgespraechTypeIds.set(acc.label, ids);
+      } catch (e) {
+        result.errors.push(`activity types ${acc.label}: ${(e as Error).message}`);
       }
     }
 
@@ -142,6 +158,7 @@ Deno.serve(async (req) => {
         ) ?? null
       );
     };
+
 
 
     const { data: invoices, error: invErr } = await admin
