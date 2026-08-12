@@ -74,6 +74,11 @@ Deno.serve(async (req) => {
   }
   const days: number = Number.isFinite(body.days) ? Math.max(1, Math.min(1095, body.days)) : 90;
   const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  const offset: number = Number.isFinite(body.offset) ? Math.max(0, body.offset) : 0;
+  const limit: number = Number.isFinite(body.limit) ? Math.max(1, Math.min(500, body.limit)) : 150;
+  // Idle-Timeout (150s) vermeiden: harte Zeitgrenze pro Lauf
+  const startedAt = Date.now();
+  const TIME_BUDGET_MS = 110_000;
 
   const accounts: Account[] = [];
   const salesKey = Deno.env.get("CLOSE_API_KEY_SALES");
