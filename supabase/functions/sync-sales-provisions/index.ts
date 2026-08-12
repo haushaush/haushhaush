@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
       .select("id,number,client_name,total_amount,status,issue_date,paid_at,raw")
       .gte("issue_date", since)
       .order("issue_date", { ascending: false })
-      .limit(1000);
+      .range(offset, offset + limit - 1);
     if (invErr) throw invErr;
 
     const leadCache = new Map<string, { leadId: string; acc: Account } | null>();
