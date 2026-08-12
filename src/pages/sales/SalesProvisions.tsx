@@ -168,6 +168,16 @@ export default function SalesProvisions() {
     };
   }, [filtered]);
 
+  const PAGE_SIZE = 100;
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [tab, search]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const paged = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage],
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -293,7 +303,7 @@ export default function SalesProvisions() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map(r => (
+                  {paged.map(r => (
                     <TableRow key={r.id}>
                       <TableCell className="whitespace-nowrap tabular-nums">{fmtDate(r.created_date)}</TableCell>
                       <TableCell className="max-w-[220px] truncate">{r.client_name ?? '–'}</TableCell>
@@ -352,6 +362,24 @@ export default function SalesProvisions() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {!loading && filtered.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3">
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} von {filtered.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>
+                  Zurück
+                </Button>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  Seite {currentPage} / {pageCount}
+                </span>
+                <Button variant="outline" size="sm" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}>
+                  Weiter
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
