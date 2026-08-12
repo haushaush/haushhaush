@@ -30,6 +30,7 @@ import Sales from "./pages/Sales.tsx";
 import SalesUebersicht from "./pages/sales/SalesUebersicht.tsx";
 import CloseKpiTest from "./pages/sales/CloseKpiTest.tsx";
 import SalesKPI from "./pages/sales/SalesKPI.tsx";
+import SalesProvisions from "./pages/sales/SalesProvisions.tsx";
 
 import Finanzen from "./pages/Finanzen.tsx";
 import TeamPage from "./pages/Team.tsx";
@@ -186,6 +187,7 @@ const App = () => (
                 <Route path="/sales" element={<Navigate to="/sales/uebersicht" replace />} />
                 <Route path="/sales/uebersicht" element={<PermissionRoute permissionKey="sales.view"><DL><SalesUebersicht /></DL></PermissionRoute>} />
                 <Route path="/sales/kpi" element={<PermissionRoute permissionKey="sales.kpi.view"><DL><SalesKPI /></DL></PermissionRoute>} />
+                <Route path="/sales/provisions" element={<PermissionRoute permissionKey="sales.provisions.view"><DL><SalesProvisions /></DL></PermissionRoute>} />
 
                 {/* Paid Ads */}
                 <Route path="/paid-ads" element={<DL><Placeholder title="Paid Ads – Übersicht" /></DL>} />
