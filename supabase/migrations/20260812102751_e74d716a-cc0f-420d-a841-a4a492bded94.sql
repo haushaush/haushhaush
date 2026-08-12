@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS sales_provisions_qonto_invoice_id_key ON public.sales_provisions (qonto_invoice_id);
