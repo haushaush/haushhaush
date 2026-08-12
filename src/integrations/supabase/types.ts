@@ -6047,6 +6047,119 @@ export type Database = {
           },
         ]
       }
+      sales_provision_reps: {
+        Row: {
+          close_user_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          rate: number
+          updated_at: string
+        }
+        Insert: {
+          close_user_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          rate?: number
+          updated_at?: string
+        }
+        Update: {
+          close_user_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          rate?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales_provisions: {
+        Row: {
+          amount_net: number
+          client_name: string | null
+          close_activity_id: string | null
+          close_lead_id: string | null
+          commission_amount: number
+          created_at: string
+          created_date: string | null
+          id: string
+          invoice_number: string | null
+          invoice_sent_date: string | null
+          is_paid: boolean
+          is_payable: boolean
+          notes: string | null
+          paid_at: string | null
+          payment_date: string | null
+          qonto_invoice_id: string | null
+          rate: number
+          rep_id: string | null
+          rep_name: string | null
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_net?: number
+          client_name?: string | null
+          close_activity_id?: string | null
+          close_lead_id?: string | null
+          commission_amount?: number
+          created_at?: string
+          created_date?: string | null
+          id?: string
+          invoice_number?: string | null
+          invoice_sent_date?: string | null
+          is_paid?: boolean
+          is_payable?: boolean
+          notes?: string | null
+          paid_at?: string | null
+          payment_date?: string | null
+          qonto_invoice_id?: string | null
+          rate?: number
+          rep_id?: string | null
+          rep_name?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_net?: number
+          client_name?: string | null
+          close_activity_id?: string | null
+          close_lead_id?: string | null
+          commission_amount?: number
+          created_at?: string
+          created_date?: string | null
+          id?: string
+          invoice_number?: string | null
+          invoice_sent_date?: string | null
+          is_paid?: boolean
+          is_payable?: boolean
+          notes?: string | null
+          paid_at?: string | null
+          payment_date?: string | null
+          qonto_invoice_id?: string | null
+          rate?: number
+          rep_id?: string | null
+          rep_name?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_provisions_rep_id_fkey"
+            columns: ["rep_id"]
+            isOneToOne: false
+            referencedRelation: "sales_provision_reps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_status_changes: {
         Row: {
           date_changed: string
