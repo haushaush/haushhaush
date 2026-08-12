@@ -196,24 +196,27 @@ Deno.serve(async (req) => {
       if (rep) result.matched_reps++;
       else result.unassigned++;
 
+      const prev = existing.get(String(inv.id));
+      const repId = rep?.id ?? prev?.rep_id ?? null;
+      const repName = rep?.name ?? prev?.rep_name ?? null;
       const amount = Number(inv.total_amount ?? 0);
-      const rate = Number(rep?.rate ?? 0.15);
+      const rate = Number(rep?.rate ?? prev?.rate ?? 0.15);
       const paid = inv.status === "paid";
 
       const row = {
-        qonto_invoice_id: inv.id,
+        qonto_invoice_id: String(inv.id),
         invoice_number: inv.number,
         client_name: clientName,
         amount_net: amount,
         created_date: inv.issue_date,
         invoice_sent_date: inv.issue_date,
         payment_date: paid ? inv.paid_at : null,
-        status: paid ? "eingegangen" : "rechnung_gesendet",
+        status: paid ? "eingegangen" : prev?.status ?? "rechnung_gesendet",
         rate,
         commission_amount: Math.round(amount * rate * 100) / 100,
         is_payable: paid,
-        rep_id: rep?.id ?? null,
-        rep_name: rep?.name ?? null,
+        rep_id: repId,
+        rep_name: repName,
         close_lead_id: lead?.leadId ?? null,
         close_activity_id: activityId,
         source: "qonto",
