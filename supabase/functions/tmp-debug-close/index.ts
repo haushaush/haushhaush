@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const { lead_id } = await req.json();
   const key = Deno.env.get("CLOSE_API_KEY_SALES")!;
-  const res = await fetch(`https://api.close.com/api/v1/activity/custom/?lead_id=${lead_id}&_limit=100`, {
+  const res = await fetch(`https://api.close.com/api/v1/activity/?lead_id=${lead_id}&_limit=50`, {
     headers: { Authorization: `Basic ${btoa(`${key}:`)}`, Accept: "application/json" },
   });
   const data = await res.json();
