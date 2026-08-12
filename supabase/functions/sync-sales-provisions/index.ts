@@ -131,6 +131,12 @@ Deno.serve(async (req) => {
 
     const leadCache = new Map<string, { leadId: string; acc: Account } | null>();
 
+    // Bestehende Zeilen: manuelle Zuordnungen dürfen nicht überschrieben werden
+    const { data: existingRows } = await admin
+      .from("sales_provisions")
+      .select("qonto_invoice_id,rep_id,rep_name,rate,status");
+    const existing = new Map<string, any>((existingRows ?? []).map((r: any) => [r.qonto_invoice_id, r]));
+
     for (const inv of invoices ?? []) {
       result.invoices++;
       const clientName: string = inv.client_name ?? (inv as any).raw?.client?.name ?? "";
