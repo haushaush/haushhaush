@@ -18,7 +18,7 @@ interface NavItem {
   title: string;
   url: string;
   icon: any;
-  children?: { title: string; url: string; adminOnly?: boolean; permissionKey?: string }[];
+  children?: { title: string; url: string; adminOnly?: boolean; permissionKey?: string; anyKeys?: string[] }[];
   adminOnly?: boolean;
   permissionKey?: string;
 }
@@ -35,9 +35,9 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    title: 'Sales', url: '/sales', icon: TrendingUp, permissionKey: 'sales.view',
+    title: 'Sales', url: '/sales', icon: TrendingUp,
     children: [
-      { title: 'Übersicht', url: '/sales/uebersicht', permissionKey: 'sales.uebersicht.view' },
+      { title: 'Übersicht', url: '/sales/uebersicht', permissionKey: 'sales.uebersicht.view', anyKeys: ['sales.view'] },
       { title: 'KPI', url: '/sales/kpi', permissionKey: 'sales.kpi.view' },
       { title: 'Provisionen', url: '/sales/provisions', permissionKey: 'sales.provisions.view' },
       { title: 'Referenzen', url: '/sales/referenz-showcase', permissionKey: 'sales.referenzen.view' },
@@ -159,15 +159,15 @@ export function AppSidebar() {
     if (hasChildren) {
       // Parent group is visible whenever ANY child is visible, or when the
       // group's own umbrella permission (e.g. sales.view) is granted.
-      const anyChildVisible = item.children!.some(c => childVisible(c, item.permissionKey));
+      const anyChildVisible = item.children!.some(c => childVisible(c));
       return anyChildVisible;
     }
     if (item.permissionKey && !hasPermission(item.permissionKey)) return false;
     return true;
   };
-  const childVisible = (c: { adminOnly?: boolean; permissionKey?: string }, parentKey?: string) => {
+  const childVisible = (c: { adminOnly?: boolean; permissionKey?: string; anyKeys?: string[] }) => {
     if (c.adminOnly && !isAdmin) return false;
-    if (parentKey && hasPermission(parentKey)) return true;
+    if (c.anyKeys?.some(k => hasPermission(k))) return true;
     if (c.permissionKey && !hasPermission(c.permissionKey)) return false;
     return true;
   };
@@ -339,7 +339,7 @@ export function AppSidebar() {
         </button>
         <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', isOpen ? 'max-h-[28rem]' : 'max-h-0')}>
           <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
-            {item.children!.filter(c => childVisible(c, item.permissionKey)).map(child => {
+            {item.children!.filter(childVisible).map(child => {
               const childActive = isActive(child.url);
               return (
                 <NavLink key={child.url} to={child.url} end={child.url === item.url} className={cn(
