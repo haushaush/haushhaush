@@ -185,9 +185,9 @@ const App = () => (
                 <Route path="/projekte/aufgaben" element={<PermissionRoute permissionKey="tasks.view"><DL><ProjekteAufgaben /></DL></PermissionRoute>} />
                 
                 <Route path="/sales" element={<Navigate to="/sales/uebersicht" replace />} />
-                <Route path="/sales/uebersicht" element={<PermissionRoute permissionKey="sales.view"><DL><SalesUebersicht /></DL></PermissionRoute>} />
-                <Route path="/sales/kpi" element={<PermissionRoute permissionKey="sales.kpi.view"><DL><SalesKPI /></DL></PermissionRoute>} />
-                <Route path="/sales/provisions" element={<PermissionRoute permissionKey="sales.provisions.view"><DL><SalesProvisions /></DL></PermissionRoute>} />
+                <Route path="/sales/uebersicht" element={<PermissionRoute permissionKey="sales.view" anyOf={["sales.uebersicht.view"]}><DL><SalesUebersicht /></DL></PermissionRoute>} />
+                <Route path="/sales/kpi" element={<PermissionRoute permissionKey="sales.kpi.view" anyOf={["sales.view"]}><DL><SalesKPI /></DL></PermissionRoute>} />
+                <Route path="/sales/provisions" element={<PermissionRoute permissionKey="sales.provisions.view" anyOf={["sales.view"]}><DL><SalesProvisions /></DL></PermissionRoute>} />
 
                 {/* Paid Ads */}
                 <Route path="/paid-ads" element={<DL><Placeholder title="Paid Ads – Übersicht" /></DL>} />
@@ -220,7 +220,7 @@ const App = () => (
                   <Route path="ad-performance" element={<AdPerformancePage />} />
                   <Route path="ad-performance/:id" element={<AdPerformanceDetail />} />
                 </Route>
-                <Route path="/sales/:tab" element={<PermissionRoute permissionKey="sales.view"><DL><Sales /></DL></PermissionRoute>} />
+                <Route path="/sales/:tab" element={<PermissionRoute permissionKey="sales.view" anyOf={["sales.uebersicht.view","sales.kpi.view"]}><DL><Sales /></DL></PermissionRoute>} />
                 <Route path="/finanzen" element={<PermissionRoute permissionKey="finanzen.view"><DL><Finanzen /></DL></PermissionRoute>} />
                 <Route path="/finanzen/kpi" element={<PermissionRoute permissionKey="finanzen.view"><DL><Placeholder title="Finanzen KPI" /></DL></PermissionRoute>} />
                 <Route path="/finanzen/:tab" element={<PermissionRoute permissionKey="finanzen.view"><DL><Finanzen /></DL></PermissionRoute>} />

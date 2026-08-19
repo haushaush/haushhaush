@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 interface Props {
   children: ReactNode;
   permissionKey?: string;
+  /** Any of these keys grants access (in addition to permissionKey). */
+  anyOf?: string[];
 }
 
-export function PermissionRoute({ children, permissionKey }: Props) {
+export function PermissionRoute({ children, permissionKey, anyOf }: Props) {
   const navigate = useNavigate();
   const { loading: authLoading, user, signOut } = useAuth();
   const { loading: permLoading, hasPermission, isAdmin, isActive } = usePermissions();
@@ -38,7 +40,9 @@ export function PermissionRoute({ children, permissionKey }: Props) {
     );
   }
 
-  if (permissionKey && !hasPermission(permissionKey)) {
+  const granted = (permissionKey ? hasPermission(permissionKey) : true) || (anyOf?.some(k => hasPermission(k)) ?? false);
+
+  if (permissionKey && !granted) {
     const canSeeDashboard = hasPermission('dashboard.view');
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
