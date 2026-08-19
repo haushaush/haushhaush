@@ -35,7 +35,7 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    title: 'Sales', url: '/sales', icon: TrendingUp,
+    title: 'Sales', url: '/sales', icon: TrendingUp, permissionKey: 'sales.view',
     children: [
       { title: 'Übersicht', url: '/sales/uebersicht', permissionKey: 'sales.uebersicht.view' },
       { title: 'KPI', url: '/sales/kpi', permissionKey: 'sales.kpi.view' },
@@ -339,7 +339,7 @@ export function AppSidebar() {
         </button>
         <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', isOpen ? 'max-h-[28rem]' : 'max-h-0')}>
           <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
-            {item.children!.filter(childVisible).map(child => {
+            {item.children!.filter(c => childVisible(c, item.permissionKey)).map(child => {
               const childActive = isActive(child.url);
               return (
                 <NavLink key={child.url} to={child.url} end={child.url === item.url} className={cn(
