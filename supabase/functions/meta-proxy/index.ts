@@ -18,6 +18,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const { accessToken: ACCESS_TOKEN, businessId: BUSINESS_ID } = await getMetaConfig();
     if (!ACCESS_TOKEN) {
       return new Response(
         JSON.stringify({ error: 'META_ACCESS_TOKEN not configured. Bitte in den Einstellungen ergänzen.' }),
