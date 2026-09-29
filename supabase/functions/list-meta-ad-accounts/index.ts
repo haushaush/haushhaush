@@ -28,11 +28,11 @@ function jsonError(msg: string, status: number) {
   });
 }
 
-async function fetchAccounts(path: string, isClient: boolean): Promise<AdAccount[]> {
+async function fetchAccounts(path: string, isClient: boolean, token: string): Promise<AdAccount[]> {
   const url = new URL(`${BASE}${path}`);
   url.searchParams.set('fields', 'id,account_id,name,account_status,currency,timezone_name');
   url.searchParams.set('limit', '500');
-  url.searchParams.set('access_token', ACCESS_TOKEN!);
+  url.searchParams.set('access_token', token);
   const res = await fetch(url.toString());
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error?.message ?? `Meta API error (${res.status})`);
