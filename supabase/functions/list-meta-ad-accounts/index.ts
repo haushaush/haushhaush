@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
         // Client-Liste kann je nach Permissions fehlen — ignorieren
       }
     } else {
-      const me = await fetchAccounts('/me/adaccounts', false);
+      const me = await fetchAccounts('/me/adaccounts', false, ACCESS_TOKEN);
       accounts.push(...me);
     }
 
