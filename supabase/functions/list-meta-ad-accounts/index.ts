@@ -6,8 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
 };
 
-const ACCESS_TOKEN = Deno.env.get('META_ACCESS_TOKEN');
-const BUSINESS_ID = Deno.env.get('META_BUSINESS_ID');
+import { getMetaConfig } from "../_shared/meta-config.ts";
+
 const API_VERSION = 'v19.0';
 const BASE = `https://graph.facebook.com/${API_VERSION}`;
 
