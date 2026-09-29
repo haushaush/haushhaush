@@ -34,39 +34,46 @@ export default function MetaUebersicht() {
     setLoadingSpend(true);
     setLoadingCount(true);
 
+    // Run Meta calls with limited concurrency to avoid Graph API rate limits (80004)
+    const runLimited = <T,>(items: T[], limit: number, fn: (item: T) => Promise<void>) => {
+      let idx = 0;
+      const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+        while (idx < items.length) {
+          const item = items[idx++];
+          await fn(item);
+        }
+      });
+      return Promise.all(workers);
+    };
+
     // Fetch insights (spend) per account for the selected datePreset
-    Promise.all(
-      accounts.map((a) =>
-        callMeta<any>(`/${a.id}/insights`, {
+    const spendMap: Record<string, number> = {};
+    runLimited(accounts, 3, async (a) => {
+      try {
+        const r = await callMeta<any>(`/${a.id}/insights`, {
           fields: INSIGHT_FIELDS,
           date_preset: datePreset,
           level: 'account',
-        })
-          .then((r) => {
-            const row = r?.data?.[0];
-            const spend = row ? parseFloat(row.spend || '0') : 0;
-            return [a.id, spend] as [string, number];
-          })
-          .catch(() => [a.id, 0] as [string, number])
-      )
-    )
-      .then((entries) => {
-        const map: Record<string, number> = {};
-        entries.forEach(([id, spend]) => (map[id] = spend));
-        setSpendByAccount(map);
-      })
+        });
+        const row = r?.data?.[0];
+        spendMap[a.id] = row ? parseFloat(row.spend || '0') : 0;
+      } catch {
+        spendMap[a.id] = 0;
+      }
+      setSpendByAccount({ ...spendMap });
+    })
       .finally(() => setLoadingSpend(false));
 
     // Fetch campaigns counts across owned accounts (cap at first 10 to limit API load)
     const owned = accounts.filter((a) => a.owned).slice(0, 10);
-    Promise.all(
-      owned.map((a) =>
-        callMeta<any>(`/${a.id}/campaigns`, { fields: 'id', limit: 500, date_preset: datePreset })
-          .then((r) => (r?.data || []).length)
-          .catch(() => 0)
-      )
-    )
-      .then((counts) => setCampaignCount(counts.reduce((a, b) => a + b, 0)))
+    let campaignSum = 0;
+    runLimited(owned, 2, async (a) => {
+      try {
+        const r = await callMeta<any>(`/${a.id}/campaigns`, { fields: 'id', limit: 500, date_preset: datePreset });
+        campaignSum += (r?.data || []).length;
+      } catch { /* ignore */ }
+    })
+      .then(() => setCampaignCount(campaignSum))
       .finally(() => setLoadingCount(false));
   }, [accounts, datePreset, callMeta]);
 

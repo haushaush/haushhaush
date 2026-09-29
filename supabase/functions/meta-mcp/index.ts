@@ -11,8 +11,10 @@ const corsHeaders = {
 };
 
 const MCP_ACCESS_KEY = Deno.env.get("MCP_ACCESS_KEY");
-const META_ACCESS_TOKEN = Deno.env.get("META_ACCESS_TOKEN");
-const META_BUSINESS_ID = Deno.env.get("META_BUSINESS_ID");
+import { getMetaConfig } from "../_shared/meta-config.ts";
+const __metaCfg = await getMetaConfig();
+const META_ACCESS_TOKEN = __metaCfg.accessToken;
+const META_BUSINESS_ID = __metaCfg.businessId;
 const API_VERSION = "v19.0";
 const GRAPH = `https://graph.facebook.com/${API_VERSION}`;
 

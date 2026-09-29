@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getMetaToken } from "../_shared/meta-config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,8 +43,8 @@ serve(async (req) => {
   } catch { /* */ }
 
   try {
-    const TOKEN = Deno.env.get("META_ACCESS_TOKEN");
-    if (!TOKEN) throw new Error("META_ACCESS_TOKEN not configured");
+  const TOKEN = await getMetaToken();
+  if (!TOKEN) throw new Error("Meta Access Token not configured (Integrationen → Meta Ads)");
 
     // 1) All accounts
     const accountsRes = await fetch(

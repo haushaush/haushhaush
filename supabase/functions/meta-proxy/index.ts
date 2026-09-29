@@ -7,8 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const ACCESS_TOKEN = Deno.env.get('META_ACCESS_TOKEN');
-const BUSINESS_ID = Deno.env.get('META_BUSINESS_ID');
+import { getMetaConfig } from "../_shared/meta-config.ts";
+
 const API_VERSION = 'v19.0';
 const BASE = `https://graph.facebook.com/${API_VERSION}`;
 
@@ -18,6 +18,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const { accessToken: ACCESS_TOKEN, businessId: BUSINESS_ID } = await getMetaConfig();
     if (!ACCESS_TOKEN) {
       return new Response(
         JSON.stringify({ error: 'META_ACCESS_TOKEN not configured. Bitte in den Einstellungen ergänzen.' }),

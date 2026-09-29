@@ -6,8 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
 };
 
-const ACCESS_TOKEN = Deno.env.get('META_ACCESS_TOKEN');
-const BUSINESS_ID = Deno.env.get('META_BUSINESS_ID');
+import { getMetaConfig } from "../_shared/meta-config.ts";
+
 const API_VERSION = 'v19.0';
 const BASE = `https://graph.facebook.com/${API_VERSION}`;
 
@@ -28,11 +28,11 @@ function jsonError(msg: string, status: number) {
   });
 }
 
-async function fetchAccounts(path: string, isClient: boolean): Promise<AdAccount[]> {
+async function fetchAccounts(path: string, isClient: boolean, token: string): Promise<AdAccount[]> {
   const url = new URL(`${BASE}${path}`);
   url.searchParams.set('fields', 'id,account_id,name,account_status,currency,timezone_name');
   url.searchParams.set('limit', '500');
-  url.searchParams.set('access_token', ACCESS_TOKEN!);
+  url.searchParams.set('access_token', token);
   const res = await fetch(url.toString());
   const data = await res.json();
   if (!res.ok) throw new Error(data?.error?.message ?? `Meta API error (${res.status})`);
@@ -50,15 +50,16 @@ async function fetchAccounts(path: string, isClient: boolean): Promise<AdAccount
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   try {
-    if (!ACCESS_TOKEN) return jsonError('META_ACCESS_TOKEN nicht konfiguriert', 500);
+    const { accessToken: ACCESS_TOKEN, businessId: BUSINESS_ID } = await getMetaConfig();
+    if (!ACCESS_TOKEN) return jsonError('Meta Access Token nicht konfiguriert (Integrationen → Meta Ads)', 500);
 
     const accounts: AdAccount[] = [];
 
     if (BUSINESS_ID) {
-      const owned = await fetchAccounts(`/${BUSINESS_ID}/owned_ad_accounts`, false);
+      const owned = await fetchAccounts(`/${BUSINESS_ID}/owned_ad_accounts`, false, ACCESS_TOKEN);
       accounts.push(...owned);
       try {
-        const client = await fetchAccounts(`/${BUSINESS_ID}/client_ad_accounts`, true);
+        const client = await fetchAccounts(`/${BUSINESS_ID}/client_ad_accounts`, true, ACCESS_TOKEN);
         for (const c of client) {
           if (!accounts.some(a => a.account_id === c.account_id)) accounts.push(c);
         }
@@ -66,7 +67,7 @@ Deno.serve(async (req) => {
         // Client-Liste kann je nach Permissions fehlen — ignorieren
       }
     } else {
-      const me = await fetchAccounts('/me/adaccounts', false);
+      const me = await fetchAccounts('/me/adaccounts', false, ACCESS_TOKEN);
       accounts.push(...me);
     }
 

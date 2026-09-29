@@ -61,15 +61,40 @@ export function MetaAdsProvider({ children }: { children: ReactNode }) {
   };
 
   const callMeta = useCallback(async <T = any,>(endpoint: string, params?: Record<string, any>, method?: string): Promise<T> => {
-    const { data, error: invokeErr } = await supabase.functions.invoke('meta-proxy', {
-      body: { endpoint, params, method },
-    });
-    if (invokeErr) throw new Error(invokeErr.message);
-    if (data?.error) {
-      const msg = typeof data.error === 'string' ? data.error : data.error.message || 'Meta API error';
-      throw new Error(msg);
+    const isRateLimit = (payload: any) => {
+      const err = payload?.error;
+      if (!err) return false;
+      const code = typeof err === 'object' ? err.code : undefined;
+      const msg = (typeof err === 'string' ? err : err?.message || '').toLowerCase();
+      return code === 80004 || code === 17 || code === 32 || code === 4 || msg.includes('too many calls') || msg.includes('rate limit');
+    };
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const { data, error: invokeErr } = await supabase.functions.invoke('meta-proxy', {
+        body: { endpoint, params, method },
+      });
+      if (invokeErr) {
+        // supabase-js wraps non-2xx in invokeErr; the body may still hold the Meta error
+        const body: any = (invokeErr as any)?.context ?? null;
+        if (attempt < MAX_ATTEMPTS && (isRateLimit(body) || /too many calls|rate limit/i.test(invokeErr.message))) {
+          await sleep(4000 * attempt);
+          continue;
+        }
+        throw new Error(invokeErr.message);
+      }
+      if (data?.error) {
+        if (attempt < MAX_ATTEMPTS && isRateLimit(data)) {
+          await sleep(4000 * attempt);
+          continue;
+        }
+        const msg = typeof data.error === 'string' ? data.error : data.error.message || 'Meta API error';
+        throw new Error(msg);
+      }
+      return data as T;
     }
-    return data as T;
+    throw new Error('Meta API: zu viele Anfragen (Rate Limit)');
   }, []);
 
   const refreshAccounts = useCallback(async () => {

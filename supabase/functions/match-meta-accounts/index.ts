@@ -20,8 +20,10 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const META_TOKEN = Deno.env.get("META_ACCESS_TOKEN");
-const META_BUSINESS_ID = Deno.env.get("META_BUSINESS_ID");
+import { getMetaConfig } from "../_shared/meta-config.ts";
+const __metaCfg = await getMetaConfig();
+const META_TOKEN = __metaCfg.accessToken;
+const META_BUSINESS_ID = __metaCfg.businessId;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 const META_API = "https://graph.facebook.com/v19.0";
