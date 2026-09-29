@@ -8,6 +8,7 @@
 // - Read-only: no writes to Meta, no writes to app tables.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getMetaToken, getMetaBusinessId } from "./meta-config.ts";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -133,8 +134,8 @@ async function graphGetAll(
 // ---------- 1) accounts ----------
 
 export async function fetchAccounts(): Promise<ConnectorResult> {
-  const token = Deno.env.get("META_ACCESS_TOKEN");
-  if (!token) return fail("secret_missing", { missing: "META_ACCESS_TOKEN" });
+  const token = await getMetaToken();
+  if (!token) return fail("secret_missing", { missing: "Meta Access Token (Integrationen → Meta Ads)" });
   const supabase = getSupabase();
 
   let rows: any[];
@@ -313,8 +314,8 @@ export async function fetchKpiReport(input: {
   until: string;
   account_id?: string;
 }): Promise<ConnectorResult> {
-  const token = Deno.env.get("META_ACCESS_TOKEN");
-  if (!token) return fail("secret_missing", { missing: "META_ACCESS_TOKEN" });
+  const token = await getMetaToken();
+  if (!token) return fail("secret_missing", { missing: "Meta Access Token (Integrationen → Meta Ads)" });
   const { since, until, account_id } = input ?? ({} as any);
   if (!since || !until) return fail("invalid_fields", { missing: ["since", "until"] });
 
@@ -432,7 +433,7 @@ export async function searchPayments(input: {
 export async function billingDiagnose(): Promise<ConnectorResult> {
   const supabase = getSupabase();
   const hat_billing_token = !!Deno.env.get("META_BILLING_ACCESS_TOKEN");
-  const businessId = Deno.env.get("META_BUSINESS_ID");
+  const businessId = await getMetaBusinessId();
   const token = Deno.env.get("META_BILLING_ACCESS_TOKEN");
 
   let business_invoices_erreichbar: boolean | null = null;
