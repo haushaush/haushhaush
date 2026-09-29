@@ -39,8 +39,8 @@ serve(async (req) => {
       );
     }
 
-    const TOKEN = Deno.env.get('META_ACCESS_TOKEN');
-    if (!TOKEN) throw new Error('META_ACCESS_TOKEN nicht gesetzt');
+    const TOKEN = await getMetaToken();
+    if (!TOKEN) throw new Error('Meta Access Token nicht gesetzt (Integrationen → Meta Ads)');
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
