@@ -153,6 +153,8 @@ Deno.serve(async (req) => {
   };
 
   if (speichern) {
+    const { data: ex } = await admin.from("bonus_monate").select("status").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).maybeSingle();
+    if (ex?.status === "freigegeben") return json({ error: "Monat ist bereits freigegeben und wird nicht überschrieben", ...result }, 409);
     const { error: sErr } = await admin.from("bonus_monate").upsert({
       monat, mitarbeiter_id,
       p1_zufriedenheit: k1.punkte ?? 0, p2_cash_niveau: k2.punkte ?? 0, p3_cash_entwicklung: k3.punkte ?? 0,
