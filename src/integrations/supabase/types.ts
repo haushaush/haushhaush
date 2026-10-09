@@ -1034,36 +1034,69 @@ export type Database = {
       }
       bonus_survey_antworten: {
         Row: {
+          b1_reaktionszeit: number | null
+          b2_umgang: number | null
+          b3_verbindlichkeit: number | null
+          b4_eigeninitiative: number | null
           created_at: string
-          f1_reaktionszeit: number
-          f2_freundlichkeit: number
-          f3_loesungsqualitaet: number
-          f4_gesamt: number
+          f1_reaktionszeit: number | null
+          f2_freundlichkeit: number | null
+          f3_loesungsqualitaet: number | null
+          f4_gesamt: number | null
+          firma: string | null
           freitext: string | null
           id: string
+          kontaktname: string | null
+          l1_anfragemenge: number | null
+          l2_anfragequalitaet: number | null
+          l3_weiterempfehlung: number | null
           score: number | null
+          score_betreuung: number | null
+          score_leistung: number | null
           token: string
         }
         Insert: {
+          b1_reaktionszeit?: number | null
+          b2_umgang?: number | null
+          b3_verbindlichkeit?: number | null
+          b4_eigeninitiative?: number | null
           created_at?: string
-          f1_reaktionszeit: number
-          f2_freundlichkeit: number
-          f3_loesungsqualitaet: number
-          f4_gesamt: number
+          f1_reaktionszeit?: number | null
+          f2_freundlichkeit?: number | null
+          f3_loesungsqualitaet?: number | null
+          f4_gesamt?: number | null
+          firma?: string | null
           freitext?: string | null
           id?: string
+          kontaktname?: string | null
+          l1_anfragemenge?: number | null
+          l2_anfragequalitaet?: number | null
+          l3_weiterempfehlung?: number | null
           score?: number | null
+          score_betreuung?: number | null
+          score_leistung?: number | null
           token: string
         }
         Update: {
+          b1_reaktionszeit?: number | null
+          b2_umgang?: number | null
+          b3_verbindlichkeit?: number | null
+          b4_eigeninitiative?: number | null
           created_at?: string
-          f1_reaktionszeit?: number
-          f2_freundlichkeit?: number
-          f3_loesungsqualitaet?: number
-          f4_gesamt?: number
+          f1_reaktionszeit?: number | null
+          f2_freundlichkeit?: number | null
+          f3_loesungsqualitaet?: number | null
+          f4_gesamt?: number | null
+          firma?: string | null
           freitext?: string | null
           id?: string
+          kontaktname?: string | null
+          l1_anfragemenge?: number | null
+          l2_anfragequalitaet?: number | null
+          l3_weiterempfehlung?: number | null
           score?: number | null
+          score_betreuung?: number | null
+          score_leistung?: number | null
           token?: string
         }
         Relationships: [
