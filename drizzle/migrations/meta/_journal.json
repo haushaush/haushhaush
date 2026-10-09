@@ -22,6 +22,13 @@
       "when": 1791554897643,
       "tag": "0002_bonus_monat_freigaben",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791555446655,
+      "tag": "0003_migration",
+      "breakpoints": true
     }
   ]
 }
