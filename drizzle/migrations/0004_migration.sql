@@ -1,0 +1,2 @@
+ALTER TABLE public.bonus_mitarbeiter ADD COLUMN IF NOT EXISTS close_user_id text;
+UPDATE public.bonus_mitarbeiter SET close_user_id='user_cSZy2D3gJjQdHefmwdPY28D1jrgIXvn2G4Fct4vwdQT' WHERE id='e3a4ddee-d58c-41af-bc5d-8deacf54ee4a';

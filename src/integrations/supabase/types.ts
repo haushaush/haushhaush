@@ -971,6 +971,7 @@ export type Database = {
       bonus_mitarbeiter: {
         Row: {
           aktiv: boolean
+          close_user_id: string | null
           created_at: string
           id: string
           modell_ende: string | null
@@ -980,6 +981,7 @@ export type Database = {
         }
         Insert: {
           aktiv?: boolean
+          close_user_id?: string | null
           created_at?: string
           id?: string
           modell_ende?: string | null
@@ -989,6 +991,7 @@ export type Database = {
         }
         Update: {
           aktiv?: boolean
+          close_user_id?: string | null
           created_at?: string
           id?: string
           modell_ende?: string | null
