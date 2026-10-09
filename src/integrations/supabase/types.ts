@@ -7852,7 +7852,11 @@ export type Database = {
         | "kuendigung_arbeitgeber"
         | "insolvenz"
         | "ausserhalb_verantwortung"
-      bonus_kanal: "email_auto" | "email_manuell" | "whatsapp_manuell"
+      bonus_kanal:
+        | "email_auto"
+        | "email_manuell"
+        | "whatsapp_manuell"
+        | "automatisch"
       bonus_monat_status: "offen" | "freigegeben"
       creative_approval_type: "Intern" | "Kunde"
       creative_asset_status:
@@ -8041,7 +8045,12 @@ export const Constants = {
         "insolvenz",
         "ausserhalb_verantwortung",
       ],
-      bonus_kanal: ["email_auto", "email_manuell", "whatsapp_manuell"],
+      bonus_kanal: [
+        "email_auto",
+        "email_manuell",
+        "whatsapp_manuell",
+        "automatisch",
+      ],
       bonus_monat_status: ["offen", "freigegeben"],
       creative_approval_type: ["Intern", "Kunde"],
       creative_asset_status: [
