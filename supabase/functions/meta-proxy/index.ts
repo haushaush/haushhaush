@@ -52,6 +52,16 @@ Deno.serve(async (req) => {
     const res = await fetch(url.toString(), { method: method || 'GET' });
     const data = await res.json();
 
+    // Missing permission on a single ad account is expected (account not shared
+    // with the connected token) — return empty data instead of a hard error.
+    const code = data?.error?.code;
+    if (!res.ok && (code === 200 || code === 10 || code === 100 && res.status === 403)) {
+      return new Response(JSON.stringify({ data: [], permission_denied: true, meta_error: data.error }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify(data), {
       status: res.status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
