@@ -91,6 +91,7 @@ import DailyFunnel from "./pages/DailyFunnel.tsx";
 import CheckinOverview from "./pages/hr/CheckinOverview.tsx";
 import TimeTracking from "./pages/hr/TimeTracking.tsx";
 import BonusCockpit from "./pages/hr/BonusCockpit.tsx";
+import BonusKunden from "./pages/hr/BonusKunden.tsx";
 import SlackPage from "./pages/SlackPage.tsx";
 import Placeholder from "./pages/Placeholder.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
@@ -228,6 +229,7 @@ const App = () => (
                 <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />
                 <Route path="/hr/checkins" element={<AdminRoute><DL><CheckinOverview /></DL></AdminRoute>} />
                 <Route path="/hr/time-tracking" element={<AdminRoute><DL><TimeTracking /></DL></AdminRoute>} />
+                <Route path="/bonus/kunden" element={<AdminRoute><DL><BonusKunden /></DL></AdminRoute>} />
                 <Route path="/hr/bonus" element={<PermissionRoute permissionKey="hr.bonus.view"><DL><BonusCockpit /></DL></PermissionRoute>} />
                 <Route path="/hr/mitarbeiter/:id" element={<PermissionRoute permissionKey="team.view"><DL><MitarbeiterDetail /></DL></PermissionRoute>} />
                 <Route path="/hr/:tab" element={<PermissionRoute permissionKey="team.view"><DL><TeamPage /></DL></PermissionRoute>} />
