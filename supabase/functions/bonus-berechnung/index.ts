@@ -138,12 +138,13 @@ Deno.serve(async (req) => {
   let k5: Krit;
   if (lastSync && lastSync.ok === false) {
     k5 = { status: "unvollstaendig", punkte: null, max: max.calls, wert: { anzahl_calls: calls, letzter_sync: lastSync.beendet_am, sync_fehler: lastSync.fehler }, hinweis: "Letzter Close-Sync fehlgeschlagen — Call-Zahl nicht belastbar." };
+  } else if (lastSync && nz > 0) {
+    k5 = { status: "unvollstaendig", punkte: null, max: max.calls, wert: { anzahl_calls: calls, letzter_sync: lastSync.beendet_am, nicht_zuordenbare_kunden: nz }, hinweis: `${nz} betreute Kunden sind in Close nicht zuordenbar — ihre Calls können fehlen, daher keine Punkte.` };
   } else if (!lastSync && !calls) {
     k5 = { status: "keine_daten", punkte: null, max: max.calls, wert: {}, hinweis: "Checkup-Calls noch nicht aus Close synchronisiert." };
   } else {
     k5 = { status: "ok", punkte: tierPoints(cfg.calls.staffel, calls), max: max.calls,
-      wert: { anzahl_calls: calls, letzter_sync: lastSync?.beendet_am ?? null, nicht_zuordenbare_kunden: nz },
-      ...(nz ? { hinweis: `${nz} betreute Kunden ohne Close-Zuordnung — deren Calls fehlen ggf.` } : {}) };
+      wert: { anzahl_calls: calls, letzter_sync: lastSync?.beendet_am ?? null, nicht_zuordenbare_kunden: 0 } };
   }
 
   // ---------- Upsell ----------
