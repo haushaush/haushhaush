@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Home, Users, ClipboardList, TrendingUp, Euro, UserCircle, Settings, LogOut, ChevronRight, ChevronLeft, Sun, Moon, Bell, Bug, Sparkles, Briefcase, Facebook, FolderOpen, Workflow, Mail, Globe, Wrench, Plug, Hash, Megaphone, Code2 } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
 import { BugReportModal } from '@/components/BugReportWidget';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,7 +30,6 @@ const navItems: NavItem[] = [
     title: 'Kunden', url: '/kunden', icon: Users,
     children: [
       { title: 'Übersicht', url: '/kunden', permissionKey: 'clients.view' },
-      { title: 'Kunden', url: '/kunden/liste', permissionKey: 'clients.list.view' },
       { title: 'Abschlüsse', url: '/kunden/abschluesse', permissionKey: 'clients.abschluesse.view' },
       { title: 'Laufzeiten', url: '/kunden/laufzeiten', permissionKey: 'clients.laufzeiten.view' },
     ],
@@ -49,40 +49,17 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Übersicht', url: '/paid-ads', permissionKey: 'paid_ads.view' },
       { title: 'Kunden', url: '/paid-ads/kunden', permissionKey: 'paid_ads.kunden.view' },
-      { title: 'Untermarken', url: '/paid-ads/untermarken', permissionKey: 'paid_ads.untermarken.view' },
-      { title: 'Leadsharks', url: '/paid-ads/leadsharks', permissionKey: 'paid_ads.leadsharks.view' },
-      { title: 'AttentionX', url: '/paid-ads/attentionx', permissionKey: 'paid_ads.attentionx.view' },
+      { title: 'Leads', url: '/meta/leads', permissionKey: 'sales.meta.view' },
     ],
   },
-  {
-    title: 'Development', url: '/sales/close-kpi-test', icon: Code2, adminOnly: true,
-    children: [
-      { title: 'Close KPI Test', url: '/sales/close-kpi-test', adminOnly: true },
-    ],
-  },
-  {
-    title: 'Fulfillment', url: '/projekte', icon: ClipboardList,
-    children: [
-      { title: 'Projekte', url: '/projekte', permissionKey: 'projects.view' },
-      { title: 'Aufgaben', url: '/projekte/aufgaben', permissionKey: 'tasks.view' },
-    ],
-  },
+  { title: 'Projekte', url: '/projekte', icon: ClipboardList, permissionKey: 'projects.view' },
   {
     title: 'Finanzen', url: '/finanzen', icon: Euro,
     children: [
       { title: 'Übersicht', url: '/finanzen', permissionKey: 'finanzen.view' },
-      { title: 'KPI', url: '/finanzen/kpi', permissionKey: 'finanzen.kpi.view' },
       { title: 'Rechnungen', url: '/finanzen/rechnungen', permissionKey: 'finanzen.rechnungen.view' },
       { title: 'Werbebudgets', url: '/finanzen/werbebudgets', permissionKey: 'finanzen.werbebudgets.view' },
       { title: 'Meta Belege', url: '/finanzen/abrechnungen', permissionKey: 'meta.billing.view' },
-    ],
-  },
-  {
-    title: 'Dokumente', url: '/drive/meine-dateien', icon: FolderOpen,
-    children: [
-      { title: 'Meine Dateien', url: '/drive/meine-dateien', permissionKey: 'drive.view' },
-      { title: 'Geteilt mit mir', url: '/drive/geteilt', permissionKey: 'drive.geteilt.view' },
-      { title: 'Papierkorb', url: '/drive/papierkorb', permissionKey: 'drive.papierkorb.view' },
     ],
   },
   {
@@ -159,7 +136,7 @@ export function AppSidebar() {
     if (hasChildren) {
       // Parent group is visible whenever ANY child is visible, or when the
       // group's own umbrella permission (e.g. sales.view) is granted.
-      const anyChildVisible = item.children!.some(c => childVisible(c));
+      const anyChildVisible = item.children?.some(c => childVisible(c));
       return anyChildVisible;
     }
     if (item.permissionKey && !hasPermission(item.permissionKey)) return false;
@@ -194,7 +171,8 @@ export function AppSidebar() {
       location.pathname.startsWith(t.url + '/') || location.pathname === t.url ||
       t.children?.some(c => location.pathname === c.url)
     );
-    if (anyToolActive) result['__tools'] = true;
+    if (anyToolActive) { result['__tools'] = true; result['__settings'] = true; }
+    if (location.pathname === '/einstellungen' || location.pathname === '/sales/close-kpi-test') result['__settings'] = true;
     return result;
   });
 
@@ -265,7 +243,8 @@ export function AppSidebar() {
   const ariaActive = location.pathname === '/aria' || location.pathname === '/automationen/aria';
   const n8nActive = location.pathname === '/automationen/n8n';
   const automationenGroupActive = ariaActive;
-  const einstellungenActive = location.pathname === '/einstellungen';
+  const einstellungenActive = location.pathname === '/einstellungen' || location.pathname === '/sales/close-kpi-test';
+  const settingsOpen = openGroups['__settings'] ?? false;
   const automationenOpen = openGroups['__automationen'] ?? automationenGroupActive;
   const toolsOpen = openGroups['__tools'] ?? false;
   const anyToolActive = visibleToolsItems.some(t => isParentActive(t));
@@ -339,7 +318,7 @@ export function AppSidebar() {
         </button>
         <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', isOpen ? 'max-h-[28rem]' : 'max-h-0')}>
           <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
-            {item.children!.filter(childVisible).map(child => {
+            {item.children?.filter(childVisible).map(child => {
               const childActive = isActive(child.url);
               return (
                 <NavLink key={child.url} to={child.url} end={child.url === item.url} className={cn(
@@ -480,6 +459,40 @@ export function AppSidebar() {
         <nav className="flex-1 px-2 py-2 space-y-0.5" aria-label="Hauptnavigation">
           {navItemsBefore.map(renderNavItem)}
 
+          {navItemsAfter.map(renderNavItem)}
+        </nav>
+
+        {/* ─── Thin divider ─── */}
+        <div className="px-4 my-1">
+          <div className="border-t border-border/50" style={{ borderTopWidth: '0.5px' }} />
+        </div>
+
+        {/* ─── LEVEL 3: Utility ─── */}
+        <div className="px-2 space-y-[2px]">
+          {renderLevel3(
+            <>
+              <Bug className={cn('shrink-0', collapsed ? 'h-[15px] w-[15px] opacity-60' : 'h-[15px] w-[15px]')} aria-hidden="true" />
+              {!collapsed && <span className="truncate">Fehler melden</span>}
+            </>,
+            () => setBugModalOpen(true)
+          )}
+          {collapsed ? renderLevel3(
+            <Settings className="h-[15px] w-[15px] opacity-60 shrink-0" aria-hidden="true" />,
+            undefined, '/einstellungen', einstellungenActive || anyToolActive, pendingCount
+          ) : (
+            <div>
+              <Button variant="ghost" onClick={() => toggleGroup('__settings')} aria-expanded={settingsOpen}
+                className={cn('w-full justify-start gap-2.5 px-3 min-h-[32px] h-auto py-[6px] text-[12px] font-normal',
+                  einstellungenActive || anyToolActive ? 'text-primary' : 'text-muted-foreground')}>
+                <Settings className="h-[15px] w-[15px] shrink-0" aria-hidden="true" />
+                <span className="flex-1 text-left">Einstellungen</span>
+                {pendingCount > 0 && <span className="rounded-full bg-destructive text-destructive-foreground px-1 text-[9px]">{pendingCount}</span>}
+                <ChevronRight className={cn('h-3 w-3 transition-transform', settingsOpen && 'rotate-90')} aria-hidden="true" />
+              </Button>
+              {settingsOpen && <div className="ml-4 border-l border-border pl-1 py-1 space-y-0.5">
+                {renderLevel3('Übersicht', undefined, '/einstellungen', location.pathname === '/einstellungen')}
+                {isAdmin && renderNavItem({ title: 'Development', url: '/sales/close-kpi-test', icon: Code2,
+                  children: [{ title: 'Close KPI Test', url: '/sales/close-kpi-test', adminOnly: true }] })}
           {/* ─── Tools Category ─── */}
           {visibleToolsItems.length > 0 && (
             collapsed ? (
@@ -548,7 +561,7 @@ export function AppSidebar() {
                           </button>
                           <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', toolOpen ? 'max-h-[28rem]' : 'max-h-0')}>
                             <div className="ml-6 border-l border-border pl-2 py-0.5 space-y-0.5">
-                              {toolItem.children!.map(child => {
+                              {toolItem.children?.filter(childVisible).map(child => {
                                 const childActive = isActive(child.url);
                                 return (
                                   <NavLink key={child.url} to={child.url} end={child.url === toolItem.url} className={cn(
@@ -570,43 +583,9 @@ export function AppSidebar() {
             )
           )}
 
-          {navItemsAfter.map(renderNavItem)}
-        </nav>
 
-        {/* ─── LEVEL 2: Secondary Navigation ─── */}
-        <div className="px-2 mt-2 space-y-0.5">
-          {renderLevel2('/nachrichten', <Bell className="h-4 w-4" aria-hidden="true" />, 'Nachrichten', nachrichtenActive, unreadNotifs)}
-
-        </div>
-
-        {/* ─── Thin divider ─── */}
-        <div className="px-4 my-1">
-          <div className="border-t border-border/50" style={{ borderTopWidth: '0.5px' }} />
-        </div>
-
-        {/* ─── LEVEL 3: Utility ─── */}
-        <div className="px-2 space-y-[2px]">
-          {renderLevel3(
-            <>
-              <Bug className={cn('shrink-0', collapsed ? 'h-[15px] w-[15px] opacity-60' : 'h-[15px] w-[15px]')} aria-hidden="true" />
-              {!collapsed && <span className="truncate">Fehler melden</span>}
-            </>,
-            () => setBugModalOpen(true)
-          )}
-          {renderLevel3(
-            <>
-              <Settings className={cn('shrink-0', collapsed ? 'h-[15px] w-[15px] opacity-60' : 'h-[15px] w-[15px]')} aria-hidden="true" />
-              {!collapsed && (
-                <span className="truncate flex-1">Einstellungen</span>
-              )}
-              {!collapsed && pendingCount > 0 && (
-                <span className="ml-auto inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold px-1 shrink-0">{pendingCount}</span>
-              )}
-            </>,
-            undefined,
-            '/einstellungen',
-            einstellungenActive,
-            pendingCount
+              </div>}
+            </div>
           )}
           {renderLevel3(
             <>
