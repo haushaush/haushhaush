@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
 type KritKey = 'zufriedenheit' | 'cash_niveau' | 'cash_entwicklung' | 'churn' | 'calls';
@@ -146,7 +148,7 @@ export default function BonusCockpit() {
                         </>
                       ) : (
                         <div className="flex-1 flex flex-col gap-2">
-                          <Badge variant="outline" className="w-fit text-muted-foreground">{k.status === 'keine_daten' ? 'Keine Datengrundlage' : 'Unvollständig'}</Badge>
+                          <Badge variant="outline" className="w-fit text-muted-foreground">{key === 'churn' && k.wert?.erfassung_bestaetigt === false ? 'Churn-Erfassung nicht bestätigt' : k.status === 'keine_daten' ? 'Keine Datengrundlage' : 'Unvollständig'}</Badge>
                           <p className="text-xs text-muted-foreground">{k.hinweis}</p>
                         </div>
                       )}
@@ -172,7 +174,7 @@ export default function BonusCockpit() {
 
       <Sheet open={!!detail} onOpenChange={o => !o && setDetail(null)}>
         <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
-          {detail && <Detail kind={detail} monat={monat} maId={maId} res={res} />}
+          {detail && <Detail kind={detail} monat={monat} maId={maId} res={res} canManage={!!canManage} onChanged={() => run(true)} />}
         </SheetContent>
       </Sheet>
     </PageShell>
@@ -193,8 +195,22 @@ function Table({ head, rows, empty }: { head: React.ReactNode[]; rows: React.Rea
   );
 }
 
-function Detail({ kind, monat, maId, res }: { kind: KritKey; monat: string; maId: string; res: Result | null }) {
+function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKey; monat: string; maId: string; res: Result | null; canManage: boolean; onChanged: () => void }) {
   const [data, setData] = useState<any>(null);
+  const [confirm, setConfirm] = useState<boolean | null>(null);
+  const [tick, setTick] = useState(0);
+  const saveFreigabe = async (v: boolean) => {
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await supabase.from('bonus_monat_freigaben').upsert({
+      monat, mitarbeiter_id: maId, churn_erfassung_abgeschlossen: v,
+      churn_bestaetigt_von: v ? u.user?.id ?? null : null, churn_bestaetigt_am: v ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'monat,mitarbeiter_id' });
+    setConfirm(null);
+    if (error) { toast.error('Speichern fehlgeschlagen', { description: error.message }); return; }
+    toast.success(v ? 'Churn-Erfassung bestätigt' : 'Bestätigung zurückgenommen');
+    setTick(t => t + 1); onChanged();
+  };
   useEffect(() => {
     (async () => {
       if (kind === 'zufriedenheit') {
@@ -208,13 +224,14 @@ function Detail({ kind, monat, maId, res }: { kind: KritKey; monat: string; maId
       } else if (kind === 'churn') {
         const { data: c } = await supabase.from('bonus_churn_events').select('typ, zaehlt_als_churn, bemerkung, festgestellt_am, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId);
         const { count } = await supabase.from('bonus_kunden_snapshot').select('id', { count: 'exact', head: true }).eq('monat', monat).eq('mitarbeiter_id', maId);
-        setData({ rows: (c as any[]) || [], snap: count ?? 0 });
+        const { data: frg } = await supabase.from('bonus_monat_freigaben').select('churn_erfassung_abgeschlossen, churn_bestaetigt_am').eq('monat', monat).eq('mitarbeiter_id', maId).maybeSingle();
+        setData({ rows: (c as any[]) || [], snap: count ?? 0, frg });
       } else {
         const { data: c } = await supabase.from('bonus_checkins').select('datum, quelle, stimmung, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId).order('datum');
         setData({ rows: (c as any[]) || [] });
       }
     })();
-  }, [kind, monat, maId]);
+  }, [kind, monat, maId, tick]);
 
   const title = ORDER.find(o => o.key === kind)?.label;
   const k = res?.kriterien[kind];
@@ -273,10 +290,37 @@ function Detail({ kind, monat, maId, res }: { kind: KritKey; monat: string; maId
 
         {data && kind === 'churn' && (
           <>
+            <div className="rounded-lg border border-border p-4 flex items-start justify-between gap-4">
+              <div>
+                <div className="text-sm font-medium">Churn-Erfassung für diesen Monat abgeschlossen</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {data.frg?.churn_erfassung_abgeschlossen
+                    ? `Bestätigt am ${data.frg.churn_bestaetigt_am ? new Date(data.frg.churn_bestaetigt_am).toLocaleString('de-DE') : '–'}`
+                    : 'Nicht bestätigt — Kriterium wird nicht bewertet.'}
+                </div>
+              </div>
+              {canManage && <Switch checked={!!data.frg?.churn_erfassung_abgeschlossen} onCheckedChange={v => setConfirm(v)} />}
+            </div>
             <p className="text-sm tabular-nums">Betreute Kunden am Monatsersten (Nenner): <b>{data.snap}</b></p>
             <Table head={['Kunde', 'Typ', 'Zählt als Churn', 'Festgestellt', 'Bemerkung']}
               rows={data.rows.map((r: any) => [r.clients?.name || '–', r.typ, r.zaehlt_als_churn ? 'Ja' : 'Nein', dt(r.festgestellt_am), r.bemerkung || '–'])}
               empty="Keine Churn-Ereignisse erfasst." />
+            <AlertDialog open={confirm !== null} onOpenChange={o => !o && setConfirm(null)}>
+              <AlertDialogContent className="z-[400]">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{confirm ? 'Churn-Erfassung bestätigen?' : 'Bestätigung zurücknehmen?'}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {confirm
+                      ? `Du bestätigst, dass alle Kündigungen und Abbrüche für ${new Date(monat).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })} erfasst sind und die Liste vollständig ist. Auf dieser Grundlage wird das Kriterium Anti-Churn bewertet — auch wenn die Liste leer ist (dann 0 % Churn, volle Punkte).`
+                      : 'Das Kriterium Anti-Churn wird danach wieder als nicht bewertbar geführt.'}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => saveFreigabe(!!confirm)}>{confirm ? 'Ja, Liste ist vollständig' : 'Zurücknehmen'}</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         )}
 
