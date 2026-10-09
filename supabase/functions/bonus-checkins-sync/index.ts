@@ -40,8 +40,14 @@ const str = (v: unknown) => (v === null || v === undefined || v === "" ? null : 
 type Fields = Record<"anlass" | "stimmung" | "kampagne" | "offen" | "upsell" | "schritt" | "faellig", string | null>;
 
 async function resolveFields(get: (p: string) => Promise<any>): Promise<Fields> {
-  const t = await get(`/custom_activity/${ACTIVITY_TYPE_ID}/`);
-  const fields: any[] = t.fields || [];
+  const list = await get(`/custom_activity/`);
+  const t = (list.data || []).find((x: any) => x.id === ACTIVITY_TYPE_ID);
+  if (!t) throw new CloseError(`Activity-Typ ${ACTIVITY_TYPE_ID} in diesem Close-Account nicht gefunden (vorhanden: ${(list.data || []).map((x: any) => x.name).join(", ")})`);
+  let fields: any[] = t.fields || [];
+  if (!fields.length) {
+    const cf = await get(`/custom_field/activity/?_limit=200`);
+    fields = (cf.data || []).filter((f: any) => f.custom_activity_type_id === ACTIVITY_TYPE_ID);
+  }
   const find = (...needles: string[]) => {
     const f = fields.find((x) => needles.some((n) => String(x.name || "").toLowerCase().includes(n)));
     return f ? `custom.${f.id}` : null;
