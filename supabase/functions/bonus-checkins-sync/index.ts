@@ -144,10 +144,11 @@ async function syncOne(admin: any, get: (p: string) => Promise<any>, fields: Fie
   const ohne_kunde: any[] = [];
   let skip2 = 0;
   while (true) {
-    const page = await get(`/activity/custom/?custom_activity_type_id=${ACTIVITY_TYPE_ID}&user_id=${closeUserId}&date_created__gte=${von}T00:00:00&_limit=100&_skip=${skip2}`);
+    const page = await get(`/activity/?user_id=${closeUserId}&date_created__gte=${von}T00:00:00&_limit=100&_skip=${skip2}`);
     for (const a of page.data || []) {
       const when = a.activity_at || a.date_created;
       const d = when ? berlinDate(when) : null;
+      if (a.custom_activity_type_id !== ACTIVITY_TYPE_ID) continue;
       if (!d || d < von || d >= bis || a.user_id !== closeUserId) continue;
       if (!mapped.has(a.lead_id)) ohne_kunde.push({ activity_id: a.id, lead_id: a.lead_id, datum: d });
     }
