@@ -100,9 +100,12 @@ async function syncOne(admin: any, get: (p: string) => Promise<any>, fields: Fie
       if (lead?.id) add(leadsByClient, s.client_id, lead.id);
     }
     if (!leadsByClient.has(s.client_id) && name) {
-      const res = await get(`/lead/?query=${encodeURIComponent(`name:"${name.replace(/"/g, "")}"`)}&_fields=id,display_name,name&_limit=25`);
+      // exact match on lead name or on a contact name (many customers are named after the person)
+      const res = await get(`/lead/?query=${encodeURIComponent(name.replace(/"/g, ""))}&_fields=id,display_name,name,contacts&_limit=25`);
+      const target = norm(name);
       for (const ld of res.data || []) {
-        if (norm(ld.display_name || ld.name || "") === norm(name)) add(leadsByClient, s.client_id, ld.id);
+        const names = [ld.display_name, ld.name, ...((ld.contacts || []).map((c: any) => c.name))].filter(Boolean).map((x: string) => norm(x));
+        if (names.includes(target)) add(leadsByClient, s.client_id, ld.id);
       }
     }
     if (!leadsByClient.has(s.client_id)) nicht_zuordenbar.push({ client_id: s.client_id, name: name || null, grund: stored.has(s.client_id) ? "Verknüpfter Lead nicht im Close-Account mit Client-Checkins, kein Lead mit exakt gleichem Namen" : "Keine Close-Verknüpfung und kein Lead mit exakt gleichem Namen" });
@@ -139,27 +142,6 @@ async function syncOne(admin: any, get: (p: string) => Promise<any>, fields: Fie
       }
     }
   }
-  // Cross-check: all checkins of this user in the month account-wide, to surface calls on leads we could not map.
-  const mapped = new Set([...leadsByClient.values()].flatMap((x) => [...x]));
-  const ohne_kunde: any[] = [];
-  let skip2 = 0;
-  while (true) {
-    const page = await get(`/activity/?user_id=${closeUserId}&date_created__gte=${von}T00:00:00&_limit=100&_skip=${skip2}`);
-    for (const a of page.data || []) {
-      const when = a.activity_at || a.date_created;
-      const d = when ? berlinDate(when) : null;
-      if (a.custom_activity_type_id !== ACTIVITY_TYPE_ID) continue;
-      if (!d || d < von || d >= bis || a.user_id !== closeUserId) continue;
-      if (!mapped.has(a.lead_id)) ohne_kunde.push({ activity_id: a.id, lead_id: a.lead_id, datum: d });
-    }
-    if (!page.has_more) break;
-    skip2 += 100;
-  }
-  for (const o of ohne_kunde) {
-    const ld = await get(`/lead/${encodeURIComponent(o.lead_id)}/?_fields=id,display_name`);
-    o.lead_name = ld?.display_name ?? null;
-  }
-
   // dedupe (same activity reachable via two lead links)
   const uniq = [...new Map(rows.map((r) => [r.close_activity_id, r])).values()];
 
@@ -177,7 +159,7 @@ async function syncOne(admin: any, get: (p: string) => Promise<any>, fields: Fie
     if (error) throw new Error("Bereinigen fehlgeschlagen: " + error.message);
   }
   const neu = uniq.filter((r) => !before.has(r.close_activity_id)).length;
-  return { gefunden: uniq.length, neu, aktualisiert: uniq.length - neu, entfernt: stale.length, nicht_zuordenbar, ignoriert_andere_nutzer: fremde, ignoriert_entwuerfe: entwuerfe, calls_ohne_snapshot_kunde: ohne_kunde };
+  return { gefunden: uniq.length, neu, aktualisiert: uniq.length - neu, entfernt: stale.length, nicht_zuordenbar, ignoriert_andere_nutzer: fremde, ignoriert_entwuerfe: entwuerfe };
 }
 
 async function runLogged(admin: any, get: any, fields: Fields | null, monat: string, mitarbeiter_id: string, ausloeser: string) {
@@ -185,7 +167,7 @@ async function runLogged(admin: any, get: any, fields: Fields | null, monat: str
   try {
     const f = fields ?? await resolveFields(get);
     const r = await syncOne(admin, get, f, monat, mitarbeiter_id);
-    await admin.from("bonus_sync_log").update({ beendet_am: new Date().toISOString(), ok: true, gefunden: r.gefunden, neu: r.neu, aktualisiert: r.aktualisiert, entfernt: r.entfernt, nicht_zuordenbar: r.nicht_zuordenbar, calls_ohne_snapshot_kunde: r.calls_ohne_snapshot_kunde }).eq("id", log.id);
+    await admin.from("bonus_sync_log").update({ beendet_am: new Date().toISOString(), ok: true, gefunden: r.gefunden, neu: r.neu, aktualisiert: r.aktualisiert, entfernt: r.entfernt, nicht_zuordenbar: r.nicht_zuordenbar }).eq("id", log.id);
     return { ok: true, monat, mitarbeiter_id, ...r };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
