@@ -345,7 +345,7 @@ export default function Dashboard() {
       case 'mitteilungen':
         return <MitteilungenCard />;
       case 'music':
-        return <MusicPlayer />;
+        return null; // music widget hidden
       case 'widgets':
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch">
@@ -602,14 +602,9 @@ export default function Dashboard() {
       <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
       <CheckinBanner />
 
-      {/* Hero + ARIA block — locked at top */}
+      {/* Hero — locked at top (ARIA input hidden) */}
       <div className="mb-8 space-y-0">
         {renderBlock('hero')}
-        {/* ARIA Chat Card + Input Bar */}
-        <div style={{ marginTop: 28 }}>
-          <ARIAPanel embedded onClose={() => { setChatVisible(false); clearMessages(); }} />
-          <ARIAHeroBlock onSend={handleAriaSend} input={ariaInput} setInput={setAriaInput} />
-        </div>
       </div>
 
       <DndContext
