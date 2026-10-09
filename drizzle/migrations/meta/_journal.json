@@ -8,6 +8,13 @@
       "when": 1791552514044,
       "tag": "0000_bonus_survey_antworten_live_funnel",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791552871600,
+      "tag": "0001_bonus_kanal_automatisch",
+      "breakpoints": true
     }
   ]
 }

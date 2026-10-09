@@ -1,0 +1,1 @@
+ALTER TYPE public.bonus_kanal ADD VALUE IF NOT EXISTS 'automatisch';
