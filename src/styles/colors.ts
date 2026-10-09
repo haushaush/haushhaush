@@ -21,8 +21,8 @@ export const colors = {
     quaternary: 'text-gray-400 dark:text-gray-500',
   },
   accent: {
-    primary: 'text-teal-600 dark:text-teal-400',
-    primaryBg: 'bg-teal-600 hover:bg-teal-700 text-white',
-    primarySubtle: 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300',
+    primary: 'text-primary dark:text-accent-foreground',
+    primaryBg: 'bg-primary hover:bg-primary/90 text-primary-foreground',
+    primarySubtle: 'bg-accent text-accent-foreground',
   },
 };
