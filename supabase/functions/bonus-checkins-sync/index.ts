@@ -25,6 +25,7 @@ function closeClient(apiKey: string) {
         continue;
       }
       const text = await r.text();
+      if (r.status === 404 && path.startsWith("/lead/") && !path.startsWith("/lead/?")) return null;
       if (!r.ok) throw new CloseError(`Close API ${r.status} bei ${path.split("?")[0]}: ${text.slice(0, 300)}`);
       return JSON.parse(text);
     }
@@ -81,13 +82,31 @@ async function syncOne(admin: any, get: (p: string) => Promise<any>, fields: Fie
     admin.from("close_leads").select("client_id, id").in("client_id", clientIds),
     admin.from("kunde_close_deals").select("kunde_id, close_lead_id").in("kunde_id", clientIds),
   ]);
-  const leadsByClient = new Map<string, Set<string>>();
-  const add = (c: string, l: string | null) => { if (!l) return; if (!leadsByClient.has(c)) leadsByClient.set(c, new Set()); leadsByClient.get(c)!.add(l); };
-  (l1 || []).forEach((r: any) => add(r.client_id, r.close_lead_id));
-  (l2 || []).forEach((r: any) => add(r.client_id, r.id));
-  (l3 || []).forEach((r: any) => add(r.kunde_id, r.close_lead_id));
+  const stored = new Map<string, Set<string>>();
+  const add = (m: Map<string, Set<string>>, c: string, l: string | null) => { if (!l) return; if (!m.has(c)) m.set(c, new Set()); m.get(c)!.add(l); };
+  (l1 || []).forEach((r: any) => add(stored, r.client_id, r.close_lead_id));
+  (l2 || []).forEach((r: any) => add(stored, r.client_id, r.id));
+  (l3 || []).forEach((r: any) => add(stored, r.kunde_id, r.close_lead_id));
 
-  const nicht_zuordenbar = (snap || []).filter((s: any) => !leadsByClient.has(s.client_id)).map((s: any) => ({ client_id: s.client_id, name: s.clients?.name ?? null }));
+  // The checkin type lives in a specific Close account: verify stored lead ids exist there,
+  // otherwise resolve by exact (normalized) lead name in that account.
+  const norm = (x: string) => x.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const leadsByClient = new Map<string, Set<string>>();
+  const nicht_zuordenbar: any[] = [];
+  for (const s of snap || []) {
+    const name: string = s.clients?.name ?? "";
+    for (const l of stored.get(s.client_id) ?? []) {
+      const lead = await get(`/lead/${encodeURIComponent(l)}/?_fields=id`);
+      if (lead?.id) add(leadsByClient, s.client_id, lead.id);
+    }
+    if (!leadsByClient.has(s.client_id) && name) {
+      const res = await get(`/lead/?query=${encodeURIComponent(`name:"${name.replace(/"/g, "")}"`)}&_fields=id,display_name,name&_limit=25`);
+      for (const ld of res.data || []) {
+        if (norm(ld.display_name || ld.name || "") === norm(name)) add(leadsByClient, s.client_id, ld.id);
+      }
+    }
+    if (!leadsByClient.has(s.client_id)) nicht_zuordenbar.push({ client_id: s.client_id, name: name || null, grund: stored.has(s.client_id) ? "Verknüpfter Lead nicht im Close-Account mit Client-Checkins, kein Lead mit exakt gleichem Namen" : "Keine Close-Verknüpfung und kein Lead mit exakt gleichem Namen" });
+  }
 
   const von = monat, bis = nextMonth(monat);
   const rows: any[] = [];
