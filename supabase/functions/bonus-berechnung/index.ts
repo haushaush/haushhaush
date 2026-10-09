@@ -116,12 +116,16 @@ Deno.serve(async (req) => {
   const { count: snapCount } = await admin.from("bonus_kunden_snapshot").select("id", { count: "exact", head: true }).eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
   const { data: churn, error: chErr } = await admin.from("bonus_churn_events").select("zaehlt_als_churn").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
   if (chErr) return json({ error: chErr.message }, 500);
+  // An empty churn table means "nothing recorded", not "no churn" — only score once someone confirmed the capture is complete.
+  const { data: frg } = await admin.from("bonus_monat_freigaben").select("churn_erfassung_abgeschlossen, churn_bestaetigt_am").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).maybeSingle();
+  const bestaetigt = frg?.churn_erfassung_abgeschlossen === true;
   let k4: Krit;
-  if (!snapCount) k4 = { status: "keine_daten", punkte: null, max: max.churn, wert: {}, hinweis: "Kein Kundensnapshot zum Monatsersten — Nenner fehlt." };
+  if (!snapCount) k4 = { status: "keine_daten", punkte: null, max: max.churn, wert: { erfassung_bestaetigt: bestaetigt }, hinweis: "Kein Kundensnapshot zum Monatsersten — Nenner fehlt." };
+  else if (!bestaetigt) k4 = { status: "keine_daten", punkte: null, max: max.churn, wert: { erfassung_bestaetigt: false, betreute_kunden: snapCount, churn_ereignisse: churn?.length ?? 0 }, hinweis: "Churn-Erfassung für diesen Monat noch nicht bestätigt" };
   else {
     const z = (churn || []).filter((c) => c.zaehlt_als_churn).length;
     const q = (z / snapCount) * 100;
-    k4 = { status: "ok", punkte: tierPoints(cfg.churn.staffel, q), max: max.churn, wert: { betreute_kunden: snapCount, churn_ereignisse: churn?.length ?? 0, zaehlt_als_churn: z, churn_quote: r2(q) } };
+    k4 = { status: "ok", punkte: tierPoints(cfg.churn.staffel, q), max: max.churn, wert: { erfassung_bestaetigt: true, bestaetigt_am: frg?.churn_bestaetigt_am, betreute_kunden: snapCount, churn_ereignisse: churn?.length ?? 0, zaehlt_als_churn: z, churn_quote: r2(q) } };
   }
 
   // ---------- 5) Calls ----------
