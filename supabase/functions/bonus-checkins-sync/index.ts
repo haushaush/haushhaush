@@ -139,6 +139,26 @@ async function syncOne(admin: any, get: (p: string) => Promise<any>, fields: Fie
       }
     }
   }
+  // Cross-check: all checkins of this user in the month account-wide, to surface calls on leads we could not map.
+  const mapped = new Set([...leadsByClient.values()].flatMap((x) => [...x]));
+  const ohne_kunde: any[] = [];
+  let skip2 = 0;
+  while (true) {
+    const page = await get(`/activity/custom/?custom_activity_type_id=${ACTIVITY_TYPE_ID}&user_id=${closeUserId}&date_created__gte=${von}T00:00:00&_limit=100&_skip=${skip2}`);
+    for (const a of page.data || []) {
+      const when = a.activity_at || a.date_created;
+      const d = when ? berlinDate(when) : null;
+      if (!d || d < von || d >= bis || a.user_id !== closeUserId) continue;
+      if (!mapped.has(a.lead_id)) ohne_kunde.push({ activity_id: a.id, lead_id: a.lead_id, datum: d });
+    }
+    if (!page.has_more) break;
+    skip2 += 100;
+  }
+  for (const o of ohne_kunde) {
+    const ld = await get(`/lead/${encodeURIComponent(o.lead_id)}/?_fields=id,display_name`);
+    o.lead_name = ld?.display_name ?? null;
+  }
+
   // dedupe (same activity reachable via two lead links)
   const uniq = [...new Map(rows.map((r) => [r.close_activity_id, r])).values()];
 
@@ -156,7 +176,7 @@ async function syncOne(admin: any, get: (p: string) => Promise<any>, fields: Fie
     if (error) throw new Error("Bereinigen fehlgeschlagen: " + error.message);
   }
   const neu = uniq.filter((r) => !before.has(r.close_activity_id)).length;
-  return { gefunden: uniq.length, neu, aktualisiert: uniq.length - neu, entfernt: stale.length, nicht_zuordenbar, ignoriert_andere_nutzer: fremde, ignoriert_entwuerfe: entwuerfe };
+  return { gefunden: uniq.length, neu, aktualisiert: uniq.length - neu, entfernt: stale.length, nicht_zuordenbar, ignoriert_andere_nutzer: fremde, ignoriert_entwuerfe: entwuerfe, calls_ohne_snapshot_kunde: ohne_kunde };
 }
 
 async function runLogged(admin: any, get: any, fields: Fields | null, monat: string, mitarbeiter_id: string, ausloeser: string) {
@@ -164,7 +184,7 @@ async function runLogged(admin: any, get: any, fields: Fields | null, monat: str
   try {
     const f = fields ?? await resolveFields(get);
     const r = await syncOne(admin, get, f, monat, mitarbeiter_id);
-    await admin.from("bonus_sync_log").update({ beendet_am: new Date().toISOString(), ok: true, gefunden: r.gefunden, neu: r.neu, aktualisiert: r.aktualisiert, entfernt: r.entfernt, nicht_zuordenbar: r.nicht_zuordenbar }).eq("id", log.id);
+    await admin.from("bonus_sync_log").update({ beendet_am: new Date().toISOString(), ok: true, gefunden: r.gefunden, neu: r.neu, aktualisiert: r.aktualisiert, entfernt: r.entfernt, nicht_zuordenbar: r.nicht_zuordenbar, calls_ohne_snapshot_kunde: r.calls_ohne_snapshot_kunde }).eq("id", log.id);
     return { ok: true, monat, mitarbeiter_id, ...r };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
