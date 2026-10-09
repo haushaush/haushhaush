@@ -740,40 +740,64 @@ export type Database = {
       }
       bonus_checkins: {
         Row: {
+          anlass: string | null
           client_id: string
           close_activity_id: string | null
+          close_lead_id: string | null
+          close_user_id: string | null
           created_at: string
           datum: string
           id: string
+          kampagne_nach_erwartung: string | null
           mitarbeiter_id: string
           monat: string
+          naechster_checkin_faellig: string | null
+          naechster_schritt: string | null
+          offene_punkte: string | null
           quelle: Database["public"]["Enums"]["bonus_checkin_quelle"]
           stimmung: string | null
           updated_at: string
+          upsell_potenzial: string | null
         }
         Insert: {
+          anlass?: string | null
           client_id: string
           close_activity_id?: string | null
+          close_lead_id?: string | null
+          close_user_id?: string | null
           created_at?: string
           datum: string
           id?: string
+          kampagne_nach_erwartung?: string | null
           mitarbeiter_id: string
           monat: string
+          naechster_checkin_faellig?: string | null
+          naechster_schritt?: string | null
+          offene_punkte?: string | null
           quelle?: Database["public"]["Enums"]["bonus_checkin_quelle"]
           stimmung?: string | null
           updated_at?: string
+          upsell_potenzial?: string | null
         }
         Update: {
+          anlass?: string | null
           client_id?: string
           close_activity_id?: string | null
+          close_lead_id?: string | null
+          close_user_id?: string | null
           created_at?: string
           datum?: string
           id?: string
+          kampagne_nach_erwartung?: string | null
           mitarbeiter_id?: string
           monat?: string
+          naechster_checkin_faellig?: string | null
+          naechster_schritt?: string | null
+          offene_punkte?: string | null
           quelle?: Database["public"]["Enums"]["bonus_checkin_quelle"]
           stimmung?: string | null
           updated_at?: string
+          upsell_potenzial?: string | null
         }
         Relationships: [
           {
@@ -887,6 +911,24 @@ export type Database = {
           },
         ]
       }
+      bonus_cron_tokens: {
+        Row: {
+          created_at: string
+          name: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          name: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          name?: string
+          token?: string
+        }
+        Relationships: []
+      }
       bonus_kunden_snapshot: {
         Row: {
           client_id: string
@@ -929,6 +971,7 @@ export type Database = {
       bonus_mitarbeiter: {
         Row: {
           aktiv: boolean
+          close_user_id: string | null
           created_at: string
           id: string
           modell_ende: string | null
@@ -938,6 +981,7 @@ export type Database = {
         }
         Insert: {
           aktiv?: boolean
+          close_user_id?: string | null
           created_at?: string
           id?: string
           modell_ende?: string | null
@@ -947,6 +991,7 @@ export type Database = {
         }
         Update: {
           aktiv?: boolean
+          close_user_id?: string | null
           created_at?: string
           id?: string
           modell_ende?: string | null
@@ -1197,6 +1242,68 @@ export type Database = {
           },
           {
             foreignKeyName: "bonus_survey_tokens_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_sync_log: {
+        Row: {
+          aktualisiert: number | null
+          ausloeser: string
+          beendet_am: string | null
+          calls_ohne_snapshot_kunde: Json
+          entfernt: number | null
+          fehler: string | null
+          gefunden: number | null
+          gestartet_am: string
+          id: string
+          mitarbeiter_id: string | null
+          monat: string
+          neu: number | null
+          nicht_zuordenbar: Json
+          ok: boolean | null
+          sync_typ: string
+        }
+        Insert: {
+          aktualisiert?: number | null
+          ausloeser: string
+          beendet_am?: string | null
+          calls_ohne_snapshot_kunde?: Json
+          entfernt?: number | null
+          fehler?: string | null
+          gefunden?: number | null
+          gestartet_am?: string
+          id?: string
+          mitarbeiter_id?: string | null
+          monat: string
+          neu?: number | null
+          nicht_zuordenbar?: Json
+          ok?: boolean | null
+          sync_typ?: string
+        }
+        Update: {
+          aktualisiert?: number | null
+          ausloeser?: string
+          beendet_am?: string | null
+          calls_ohne_snapshot_kunde?: Json
+          entfernt?: number | null
+          fehler?: string | null
+          gefunden?: number | null
+          gestartet_am?: string
+          id?: string
+          mitarbeiter_id?: string | null
+          monat?: string
+          neu?: number | null
+          nicht_zuordenbar?: Json
+          ok?: boolean | null
+          sync_typ?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_sync_log_mitarbeiter_id_fkey"
             columns: ["mitarbeiter_id"]
             isOneToOne: false
             referencedRelation: "bonus_mitarbeiter"

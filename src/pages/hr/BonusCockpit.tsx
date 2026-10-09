@@ -199,6 +199,18 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
   const [data, setData] = useState<any>(null);
   const [confirm, setConfirm] = useState<boolean | null>(null);
   const [tick, setTick] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const sync = async () => {
+    setSyncing(true);
+    const { data: r, error } = await supabase.functions.invoke('bonus-checkins-sync', { body: { monat, mitarbeiter_id: maId } });
+    setSyncing(false);
+    if (error || !r?.ok) {
+      let msg = r?.error || error?.message;
+      try { const b = await (error as any)?.context?.json?.(); if (b?.error) msg = b.error; } catch { /* ignore */ }
+      toast.error('Sync fehlgeschlagen', { description: msg });
+    } else toast.success(`${r.gefunden} Calls gefunden, ${r.neu} neu`);
+    setTick(t => t + 1); onChanged();
+  };
   const saveFreigabe = async (v: boolean) => {
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from('bonus_monat_freigaben').upsert({
@@ -227,8 +239,10 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
         const { data: frg } = await supabase.from('bonus_monat_freigaben').select('churn_erfassung_abgeschlossen, churn_bestaetigt_am').eq('monat', monat).eq('mitarbeiter_id', maId).maybeSingle();
         setData({ rows: (c as any[]) || [], snap: count ?? 0, frg });
       } else {
-        const { data: c } = await supabase.from('bonus_checkins').select('datum, quelle, stimmung, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId).order('datum');
-        setData({ rows: (c as any[]) || [] });
+        const { data: c } = await supabase.from('bonus_checkins').select('client_id, datum, quelle, stimmung, anlass, kampagne_nach_erwartung, upsell_potenzial, naechster_schritt, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId).order('datum');
+        const { data: sn } = await supabase.from('bonus_kunden_snapshot').select('client_id, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId);
+        const { data: lg } = await supabase.from('bonus_sync_log').select('ausloeser, gestartet_am, beendet_am, ok, gefunden, neu, fehler, nicht_zuordenbar').eq('sync_typ', 'checkins').eq('monat', monat).eq('mitarbeiter_id', maId).order('gestartet_am', { ascending: false }).limit(1);
+        setData({ rows: (c as any[]) || [], snap: (sn as any[]) || [], log: (lg as any[])?.[0] ?? null });
       }
     })();
   }, [kind, monat, maId, tick]);
@@ -324,12 +338,80 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
           </>
         )}
 
-        {data && kind === 'calls' && (
-          <Table head={['Kunde', 'Datum', 'Quelle', 'Stimmung']}
-            rows={data.rows.map((r: any) => [r.clients?.name || '–', dt(r.datum), r.quelle, r.stimmung || '–'])}
-            empty="Keine Checkup-Calls erfasst." />
+        {data && kind === 'calls' && <CallsDetail data={data} canManage={canManage} syncing={syncing} onSync={sync} />}
+      </div>
+    </>
+  );
+}
+
+const isRisk = (s: string | null) => !!s && /abwanderung|unzufrieden/i.test(s);
+const isHandover = (s: string | null) => !!s && /übergeben|uebergeben/i.test(s);
+
+function CallsDetail({ data, canManage, syncing, onSync }: { data: any; canManage: boolean; syncing: boolean; onSync: () => void }) {
+  const rows: any[] = data.rows;
+  const anlass = Object.entries(rows.reduce((m: Record<string, number>, r) => { const k = r.anlass || 'Ohne Anlass'; m[k] = (m[k] || 0) + 1; return m; }, {})).sort((a, b) => (b[1] as number) - (a[1] as number));
+  const risk = rows.filter(r => isRisk(r.stimmung));
+  const handover = rows.filter(r => isHandover(r.upsell_potenzial));
+  const withCall = new Set(rows.map(r => r.client_id));
+  const ohne = (data.snap as any[]).filter(s => !withCall.has(s.client_id));
+  const log = data.log;
+  const nz: any[] = Array.isArray(log?.nicht_zuordenbar) ? log.nicht_zuordenbar : [];
+  return (
+    <>
+      <div className="rounded-lg border border-border p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground tabular-nums">
+          {log ? (
+            <>Letzter Sync ({log.ausloeser}): {new Date(log.gestartet_am).toLocaleString('de-DE')} ·{' '}
+              {log.ok === null ? 'läuft …' : log.ok ? <>erfolgreich, {log.gefunden} Calls</> : <span className="text-destructive">fehlgeschlagen: {log.fehler}</span>}</>
+          ) : 'Noch nie synchronisiert.'}
+        </div>
+        {canManage && (
+          <Button size="sm" variant="outline" onClick={onSync} disabled={syncing}>
+            {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Jetzt synchronisieren
+          </Button>
         )}
       </div>
+
+      <div>
+        <h3 className="text-sm font-medium mb-2">Verteilung nach Anlass</h3>
+        <div className="flex flex-wrap gap-2">
+          {anlass.length ? anlass.map(([k, v]) => (
+            <div key={k} className="rounded-md border border-border px-3 py-2 text-sm"><span className="text-muted-foreground">{k}</span> <b className="tabular-nums ml-1">{v as number}</b></div>
+          )) : <span className="text-sm text-muted-foreground">Keine Calls.</span>}
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+          <h3 className="text-sm font-medium mb-1 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" />Frühwarnung Churn ({risk.length})</h3>
+          <p className="text-xs text-muted-foreground mb-2">Stimmung „Abwanderungsgefahr" oder „Unzufrieden" — nicht punkterelevant.</p>
+          {risk.length ? <ul className="text-sm space-y-1">{risk.map((r, i) => <li key={i}>{r.clients?.name || '–'} <span className="text-muted-foreground tabular-nums">· {dt(r.datum)} · {r.stimmung}</span></li>)}</ul> : <p className="text-sm text-muted-foreground">Keine.</p>}
+        </div>
+        <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
+          <h3 className="text-sm font-medium mb-1 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Upsell übergeben ({handover.length})</h3>
+          <p className="text-xs text-muted-foreground mb-2">Kandidaten für die Upsell-Beteiligung nach § 7 — nicht punkterelevant.</p>
+          {handover.length ? <ul className="text-sm space-y-1">{handover.map((r, i) => <li key={i}>{r.clients?.name || '–'} <span className="text-muted-foreground tabular-nums">· {dt(r.datum)}</span></li>)}</ul> : <p className="text-sm text-muted-foreground">Keine.</p>}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-medium mb-2">Alle Calls ({rows.length})</h3>
+        <Table head={['Kunde', 'Datum', 'Anlass', 'Stimmung', 'Kampagne nach Erwartung', 'Upsell-Potenzial', 'Nächster Schritt']}
+          rows={rows.map(r => [r.clients?.name || '–', dt(r.datum), r.anlass || '–', r.stimmung || '–', r.kampagne_nach_erwartung || '–', r.upsell_potenzial || '–', <span className="text-xs">{r.naechster_schritt || '–'}</span>])}
+          empty="Keine Checkup-Calls erfasst." />
+      </div>
+
+      <div>
+        <h3 className="text-sm font-medium mb-2">Betreute Kunden ohne Checkin ({ohne.length})</h3>
+        <Table head={['Kunde']} rows={ohne.map(s => [s.clients?.name || '–'])} empty="Alle betreuten Kunden hatten einen Checkin." />
+      </div>
+
+      {nz.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium mb-2">Nicht in Close zuordenbar ({nz.length})</h3>
+          <Table head={['Kunde', 'Grund']} rows={nz.map(n => [n.name || '–', <span className="text-xs text-muted-foreground">{n.grund || '–'}</span>])} empty="" />
+        </div>
+      )}
     </>
   );
 }
