@@ -60,16 +60,10 @@ async function resolveFields(get: (p: string) => Promise<any>): Promise<Fields> 
 }
 
 async function syncOne(admin: any, get: (p: string) => Promise<any>, fields: Fields, monat: string, mitarbeiter_id: string) {
-  const { data: ma, error: mErr } = await admin.from("bonus_mitarbeiter").select("id, close_user_id:team_id").eq("id", mitarbeiter_id).maybeSingle();
+  const { data: ma, error: mErr } = await admin.from("bonus_mitarbeiter").select("id, close_user_id").eq("id", mitarbeiter_id).maybeSingle();
   if (mErr || !ma) throw new Error("bonus_mitarbeiter nicht gefunden");
-  const { data: cfgUser } = await admin.from("bonus_mitarbeiter").select("*").eq("id", mitarbeiter_id).maybeSingle();
-  // Close user id: column on bonus_mitarbeiter if present, otherwise team.close_user_id
-  let closeUserId: string | null = (cfgUser as any)?.close_user_id ?? null;
-  if (!closeUserId) {
-    const { data: t } = await admin.from("team").select("*").eq("id", (cfgUser as any).team_id).maybeSingle();
-    closeUserId = (t as any)?.close_user_id ?? null;
-  }
-  if (!closeUserId) throw new Error("Keine Close-User-ID für den Mitarbeiter hinterlegt");
+  const closeUserId: string | null = ma.close_user_id ?? null;
+  if (!closeUserId) throw new Error("Keine Close-User-ID für den Mitarbeiter hinterlegt (bonus_mitarbeiter.close_user_id)");
 
   const { data: snap, error: sErr } = await admin.from("bonus_kunden_snapshot").select("client_id, clients:client_id(name)").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
   if (sErr) throw new Error("Snapshot: " + sErr.message);
