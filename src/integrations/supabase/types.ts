@@ -964,6 +964,47 @@ export type Database = {
           },
         ]
       }
+      bonus_monat_freigaben: {
+        Row: {
+          churn_bestaetigt_am: string | null
+          churn_bestaetigt_von: string | null
+          churn_erfassung_abgeschlossen: boolean
+          created_at: string
+          id: string
+          mitarbeiter_id: string
+          monat: string
+          updated_at: string
+        }
+        Insert: {
+          churn_bestaetigt_am?: string | null
+          churn_bestaetigt_von?: string | null
+          churn_erfassung_abgeschlossen?: boolean
+          created_at?: string
+          id?: string
+          mitarbeiter_id: string
+          monat: string
+          updated_at?: string
+        }
+        Update: {
+          churn_bestaetigt_am?: string | null
+          churn_bestaetigt_von?: string | null
+          churn_erfassung_abgeschlossen?: boolean
+          created_at?: string
+          id?: string
+          mitarbeiter_id?: string
+          monat?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_monat_freigaben_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bonus_monate: {
         Row: {
           berechnungsdetails: Json
