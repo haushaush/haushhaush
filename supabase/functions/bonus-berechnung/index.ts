@@ -129,10 +129,22 @@ Deno.serve(async (req) => {
   }
 
   // ---------- 5) Calls ----------
-  const { count: calls } = await admin.from("bonus_checkins").select("id", { count: "exact", head: true }).eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
-  const k5: Krit = !calls
-    ? { status: "keine_daten", punkte: null, max: max.calls, wert: {}, hinweis: "Keine Checkup-Calls für diesen Monat erfasst." }
-    : { status: "ok", punkte: tierPoints(cfg.calls.staffel, calls), max: max.calls, wert: { anzahl_calls: calls } };
+  // 0 calls is only a real statement if the Close sync completed for this month; a failed latest run blocks scoring.
+  const { count: callsRaw } = await admin.from("bonus_checkins").select("id", { count: "exact", head: true }).eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
+  const calls = callsRaw ?? 0;
+  const { data: syncLogs } = await admin.from("bonus_sync_log").select("ok, beendet_am, fehler, nicht_zuordenbar").eq("sync_typ", "checkins").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).not("ok", "is", null).order("gestartet_am", { ascending: false }).limit(1);
+  const lastSync = syncLogs?.[0];
+  const nz = Array.isArray(lastSync?.nicht_zuordenbar) ? lastSync.nicht_zuordenbar.length : 0;
+  let k5: Krit;
+  if (lastSync && lastSync.ok === false) {
+    k5 = { status: "unvollstaendig", punkte: null, max: max.calls, wert: { anzahl_calls: calls, letzter_sync: lastSync.beendet_am, sync_fehler: lastSync.fehler }, hinweis: "Letzter Close-Sync fehlgeschlagen — Call-Zahl nicht belastbar." };
+  } else if (!lastSync && !calls) {
+    k5 = { status: "keine_daten", punkte: null, max: max.calls, wert: {}, hinweis: "Checkup-Calls noch nicht aus Close synchronisiert." };
+  } else {
+    k5 = { status: "ok", punkte: tierPoints(cfg.calls.staffel, calls), max: max.calls,
+      wert: { anzahl_calls: calls, letzter_sync: lastSync?.beendet_am ?? null, nicht_zuordenbare_kunden: nz },
+      ...(nz ? { hinweis: `${nz} betreute Kunden ohne Close-Zuordnung — deren Calls fehlen ggf.` } : {}) };
+  }
 
   // ---------- Upsell ----------
   const { data: ups } = await admin.from("bonus_upsells").select("id").eq("mitarbeiter_id", mitarbeiter_id);
