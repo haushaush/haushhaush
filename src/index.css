@@ -26,7 +26,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 11%;
 
-    --primary: 174 90% 31%;
+    --primary: 229.009901 86.324786% 54.117647%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 240 5% 96%;
@@ -35,8 +35,8 @@
     --muted: 240 5% 96%;
     --muted-foreground: 240 4% 46%;
 
-    --accent: 174 40% 95%;
-    --accent-foreground: 174 90% 31%;
+    --accent: 229 86% 96%;
+    --accent-foreground: var(--primary);
 
     --destructive: 4 90% 58%;
     --destructive-foreground: 0 0% 100%;
@@ -49,18 +49,18 @@
 
     --border: 240 6% 90%;
     --input: 240 6% 90%;
-    --ring: 174 90% 31%;
+    --ring: var(--primary);
 
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 240 4% 46%;
-    --sidebar-primary: 174 90% 31%;
+    --sidebar-primary: var(--primary);
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 174 40% 95%;
-    --sidebar-accent-foreground: 174 90% 31%;
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
     --sidebar-border: 240 6% 90%;
-    --sidebar-ring: 174 90% 31%;
+    --sidebar-ring: var(--ring);
 
     --font-body: 'Inter', sans-serif;
 
@@ -76,8 +76,8 @@
     --space-12: 48px;
 
     /* Semantic colors */
-    --color-teal: 174 90% 31%;
-    --color-teal-hover: 174 100% 24%;
+    --color-teal: var(--primary);
+    --color-teal-hover: 229 86% 46%;
     --color-red: 4 100% 59%;
     --color-red-hover: 4 100% 42%;
     --color-orange: 36 100% 52%;
@@ -97,7 +97,7 @@
     --popover: 0 0% 11%;
     --popover-foreground: 240 5% 97%;
 
-    --primary: 174 90% 31%;
+    --primary: 229.009901 86.324786% 54.117647%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 11%;
@@ -106,8 +106,8 @@
     --muted: 0 0% 17%;
     --muted-foreground: 240 2% 54%;
 
-    --accent: 174 50% 14%;
-    --accent-foreground: 174 90% 31%;
+    --accent: 229 50% 18%;
+    --accent-foreground: 229 95% 76%;
 
     --destructive: 4 90% 58%;
     --destructive-foreground: 0 0% 100%;
@@ -120,20 +120,20 @@
 
     --border: 0 0% 17%;
     --input: 0 0% 23%;
-    --ring: 174 90% 31%;
+    --ring: var(--primary);
 
     --sidebar-background: 0 0% 11%;
     --sidebar-foreground: 240 2% 54%;
-    --sidebar-primary: 174 90% 31%;
+    --sidebar-primary: var(--primary);
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 174 50% 14%;
-    --sidebar-accent-foreground: 174 90% 31%;
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
     --sidebar-border: 0 0% 17%;
-    --sidebar-ring: 174 90% 31%;
+    --sidebar-ring: var(--ring);
 
     /* Semantic colors dark */
-    --color-teal: 174 90% 39%;
-    --color-teal-hover: 174 90% 45%;
+    --color-teal: var(--primary);
+    --color-teal-hover: 229 86% 64%;
     --color-red: 4 100% 62%;
     --color-red-hover: 4 100% 55%;
     --color-orange: 36 100% 52%;
@@ -286,11 +286,11 @@
   }
   .badge-teal {
     background: hsl(var(--primary) / 0.12);
-    color: hsl(174 80% 22%);
+    color: hsl(var(--accent-foreground));
   }
   .dark .badge-teal {
     background: hsl(var(--primary) / 0.18);
-    color: hsl(174 70% 60%);
+    color: hsl(var(--accent-foreground));
   }
   /* Scrollbar hiding utility */
   .scrollbar-none {
