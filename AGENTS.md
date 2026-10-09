@@ -1,3 +1,4 @@
 # Architecture Rules
 
 - Meta access token: all Meta edge functions resolve the token via `supabase/functions/_shared/meta-config.ts` (`getMetaConfig`/`getMetaToken`/`getMetaBusinessId`), which reads the connected `integration_settings` row (provider `meta_ads`) first and falls back to `META_ACCESS_TOKEN`/`META_BUSINESS_ID` env secrets. Why: single source of truth in the Integrations UI. Exception: `sync-meta-billing`/`debug-meta-billing` intentionally use the separate `META_BILLING_ACCESS_TOKEN`.
+- Bonus checkup calls: `bonus-checkins-sync` is the only writer of Close-sourced `bonus_checkins`; it picks whichever Close key contains the "Client Checkin" activity type, verifies/resolves leads in that account, writes nothing on any Close error, and logs every run in `bonus_sync_log`; `bonus-berechnung` scores calls only after a successful sync with all snapshot clients mapped. Why: an incomplete call count must never become a low score.
