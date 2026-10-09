@@ -617,7 +617,7 @@ export default function Dashboard() {
           <div className="space-y-8">
             {orderToUse.map(id => {
               const block = renderBlock(id);
-              if (block === null && id === 'handlungsbedarf') return null;
+              if (block === null && (id === 'handlungsbedarf' || id === 'music')) return null;
               return (
                 <SortableBlock key={id} id={id} disabled={isMobile}>
                   {renderBlock(id)}
