@@ -59,11 +59,17 @@ export default function BonusCockpit() {
   const [approval, setApproval] = useState<Result | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [spiegelOffen, setSpiegelOffen] = useState(0);
 
   useEffect(() => {
     (async () => {
       const { data: cm } = await supabase.rpc('bonus_can_manage');
       setCanManage(!!cm);
+      if (cm) {
+        const { data: sl } = await supabase.from('bonus_sync_log').select('details').eq('sync_typ', 'close_spiegel').eq('ausloeser', 'cron').order('gestartet_am', { ascending: false }).limit(1).maybeSingle();
+        const o = (sl?.details as any)?.offen;
+        if (typeof o === 'number') setSpiegelOffen(o);
+      }
       // RLS: admins see all, employees only their own row
       const { data } = await supabase.from('bonus_mitarbeiter').select('id, team:team_id(name)').eq('aktiv', true);
       const l = ((data as any[]) || []).map(m => ({ id: m.id, name: m.team?.name || '–' }));
@@ -108,6 +114,7 @@ export default function BonusCockpit() {
   return (
     <PageShell>
       <PageHeader title="Bonus-Cockpit" description={canManage ? 'Monatliche Aufstellung je Kriterium (§ 5 Abs. 3 Bonusvereinbarung).' : `Deine monatliche Aufstellung${maName ? ` – ${maName}` : ''}.`} />
+      {canManage && spiegelOffen > 0 && <a href="/bonus/spiegel" className="block mb-4 text-sm text-muted-foreground underline-offset-2 hover:underline"><span className="tabular-nums">{spiegelOffen}</span> Klienten aus Viral Connect warten auf Prüfung zur Übernahme →</a>}
 
       <div className="flex flex-wrap gap-3 mb-6">
         <Select value={monat} onValueChange={setMonat}>

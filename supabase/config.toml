@@ -72,3 +72,6 @@ verify_jwt = false
 
 [functions.bonus-cash-sync]
 verify_jwt = false
+
+[functions.close-spiegel-sync]
+verify_jwt = false
