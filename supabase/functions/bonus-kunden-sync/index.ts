@@ -129,6 +129,95 @@ export async function refreshAktuell(admin: any) {
 }
 const BETREUT_CRM = ["In Betreuung", "Onboarding", "Pausiert"];
 
+// ── Full lead mirror (every status, 1:1). Never deletes. Incremental via status_change activities ──
+const MARKE_CF = "cf_1aHYMjs2T5cmcIWApGI2MVBUDYVsW41UGhFVMboLoQ7";
+const LEAD_FIELDS = `id,display_name,status_id,status_label,date_created,date_updated,custom,custom.${MARKE_CF}`;
+const pickCustom = (c: Record<string, any>, re: RegExp) => {
+  const k = Object.keys(c || {}).find((x) => re.test(x));
+  const v = k ? c[k] : null;
+  return v == null || v === "" ? null : Array.isArray(v) ? v.join(", ") : String(v);
+};
+const leadRow = (l: any, now: string) => ({
+  close_lead_id: l.id, name: l.display_name, status_id: l.status_id, status_label: l.status_label,
+  marke: l[`custom.${MARKE_CF}`] || null,
+  branche: pickCustom(l.custom, /^branche$/i) ?? pickCustom(l.custom, /branche/i),
+  sub_niche: pickCustom(l.custom, /sub.?nisch|sub.?niche/i),
+  kanal: pickCustom(l.custom, /^kanal|kanal/i),
+  custom: l.custom || {}, date_created: l.date_created, date_updated: l.date_updated, synced_at: now,
+});
+
+async function upsertLeads(admin: any, rows: any[]) {
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await admin.from("close_lead_spiegel").upsert(rows.slice(i, i + 500), { onConflict: "close_lead_id" });
+    if (error) throw new Error("Lead-Spiegel schreiben fehlgeschlagen: " + error.message);
+  }
+}
+
+export async function mirrorLeads(admin: any, forceVoll: boolean) {
+  const call = closeClient(haushKey());
+  const startedAt = new Date().toISOString();
+  const { data: st } = await admin.from("close_sync_stand").select("*").eq("name", "close_leads").maybeSingle();
+  const tag = startedAt.slice(0, 10);
+  const voll = forceVoll || !st?.letzter_erfolg || !st?.letzter_voll || String(st.letzter_voll).slice(0, 10) !== tag;
+  const rep: any = { modus: voll ? "voll" : "aenderungen", leads: 0, statuswechsel: 0 };
+  try {
+    if (voll) {
+      const rows: any[] = [];
+      for (let skip = 0; ; skip += 200) {
+        const p = await call(`/lead/?_fields=${LEAD_FIELDS}&_limit=200&_skip=${skip}`);
+        rows.push(...(p.data || []).map((l: any) => leadRow(l, startedAt)));
+        if (!p.has_more) break;
+      }
+      await upsertLeads(admin, rows);
+      rep.leads = rows.length;
+    }
+    // Status changes since last success (on first run: last 400 days as history).
+    const since = st?.letzter_erfolg ? new Date(new Date(st.letzter_erfolg).getTime() - 5 * 60000).toISOString() : new Date(Date.now() - 400 * 86400000).toISOString();
+    const changes: any[] = [];
+    for (let skip = 0; ; skip += 100) {
+      const p = await call(`/activity/status_change/lead/?date_created__gte=${encodeURIComponent(since)}&_limit=100&_skip=${skip}`);
+      changes.push(...(p.data || []));
+      if (!p.has_more) break;
+    }
+    if (changes.length) {
+      const ch = changes.map((a: any) => ({ close_activity_id: a.id, close_lead_id: a.lead_id, von_label: a.old_status_label, nach_label: a.new_status_label, datum: a.date_created, geaendert_von: a.user_name || null }));
+      for (let i = 0; i < ch.length; i += 500) {
+        const { error } = await admin.from("close_lead_statuswechsel").upsert(ch.slice(i, i + 500), { onConflict: "close_activity_id" });
+        if (error) throw new Error("Statuswechsel schreiben fehlgeschlagen: " + error.message);
+      }
+      rep.statuswechsel = ch.length;
+    }
+    if (!voll) {
+      // Leads with a status change or created/updated since the last run: refetch them individually.
+      const ids = new Set<string>(changes.map((a: any) => a.lead_id));
+      const day = since.slice(0, 10);
+      for (const q of [`created >= "${day}"`, `updated >= "${day}"`]) {
+        for (let skip = 0; ; skip += 200) {
+          const p = await call(`/lead/?query=${encodeURIComponent(q)}&_fields=id,date_updated&_limit=200&_skip=${skip}`);
+          for (const l of p.data || []) if (!l.date_updated || l.date_updated >= since) ids.add(l.id);
+          if (!p.has_more) break;
+        }
+      }
+      const rows: any[] = [];
+      for (const id of ids) rows.push(leadRow(await call(`/lead/${encodeURIComponent(id)}/?_fields=${LEAD_FIELDS}`), startedAt));
+      await upsertLeads(admin, rows);
+      rep.leads = rows.length;
+    }
+    // Latest status-change date per lead.
+    const { data: last } = await admin.from("close_lead_statuswechsel").select("close_lead_id, datum").gte("datum", since).order("datum", { ascending: true });
+    const latest = new Map<string, string>(); (last || []).forEach((r: any) => latest.set(r.close_lead_id, r.datum));
+    for (const [id, d] of latest) await admin.from("close_lead_spiegel").update({ status_geaendert_am: d }).eq("close_lead_id", id);
+    const { count } = await admin.from("close_lead_spiegel").select("close_lead_id", { count: "exact", head: true });
+    rep.gesamt_im_spiegel = count;
+    await admin.from("close_sync_stand").upsert({ name: "close_leads", letzter_erfolg: startedAt, letzter_voll: voll ? startedAt : st?.letzter_voll ?? null, letzter_lauf: new Date().toISOString(), ok: true, fehler: null, details: rep });
+    return rep;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await admin.from("close_sync_stand").upsert({ name: "close_leads", letzter_erfolg: st?.letzter_erfolg ?? null, letzter_voll: st?.letzter_voll ?? null, letzter_lauf: new Date().toISOString(), ok: false, fehler: msg, details: rep });
+    throw new Error("Lead-Spiegel: " + msg);
+  }
+}
+
 /** Snapshot only grows: anyone betreut at any point in the month stays. Never deletes rows. */
 export async function reconcileSnapshot(admin: any, monat: string) {
   const { data: mas } = await admin.from("bonus_mitarbeiter").select("id").eq("aktiv", true);
