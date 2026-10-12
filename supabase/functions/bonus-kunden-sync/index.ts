@@ -305,7 +305,11 @@ Deno.serve(async (req) => {
   const monat = /^\d{4}-\d{2}-01$/.test(String(body?.monat || "")) ? body.monat : currentMonthBerlin();
   const { data: log } = await admin.from("bonus_sync_log").insert({ sync_typ: "kunden_aktuell", ausloeser: cron ? "cron" : "manuell", monat }).select("id").single();
   try {
+    let spiegel: any;
+    try { spiegel = await mirrorLeads(admin, !!body?.voll); }
+    catch (e) { spiegel = { ok: false, fehler: e instanceof Error ? e.message : String(e) }; console.error("lead mirror failed", spiegel.fehler); }
     const r: any = await refreshAktuell(admin);
+    r.lead_spiegel = spiegel;
     r.snapshot = await reconcileSnapshot(admin, monat);
     await admin.from("bonus_sync_log").update({ beendet_am: new Date().toISOString(), ok: true, gefunden: r.laufende_liste, neu: r.neu_angelegt.length, details: { status_geaendert: r.status_geaendert, ohne_close_lead: r.ohne_close_lead, nicht_mehr_klient: r.nicht_mehr_klient }, nicht_zuordenbar: r.neu_angelegt.map((n: string) => ({ name: n, grund: "Kein CRM-Kunde gefunden — neu angelegt, bitte prüfen" })) }).eq("id", log.id);
     return json({ ok: true, monat, ...r });
