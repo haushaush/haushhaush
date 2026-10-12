@@ -13,11 +13,28 @@ const ABGANG: Record<string, { typ: string; label: string; churn: boolean; sonde
   stat_L1fkxQFOSGFrXGY9DVdB784etCE38HyLZqMVf94ZF8m: { typ: "ausserhalb_verantwortung", label: "Sonderfall (außerhalb Verantwortung)", churn: true, sonderfall: true },
 };
 const EHEMALIG = "stat_iXYdGcfcx4vdzwxrKHpi65O9mxL77Zby2r45dcIOqc5";
+const CF_KUENDIGUNG = "cf_981vqJkEzowJTeNoRnibMiqCdH5ffbMZtnddLU9tN2f";
+const CF_LETZTER_TAG = "cf_ZEvtumauW5XdcFJpGq52660WUxRFebOSnmWiOFbH2d2";
+const CF_BEGRUENDUNG = "cf_4HaX7c7hvnnwDDXrBSm3ej6bGf70EiqhWPg4LgyHGDK";
+const cfv = (o: any, id: string) => { const v = o[`custom.${id}`] ?? o.custom?.[id] ?? null; return v === "" ? null : v; };
+const dateOf = (v: any) => (v && /^\d{4}-\d{2}-\d{2}/.test(String(v)) ? String(v).slice(0, 10) : null);
+const details = (o: any) => {
+  const b = cfv(o, CF_BEGRUENDUNG);
+  return { kuendigungsdatum: dateOf(cfv(o, CF_KUENDIGUNG)), letzter_vertragstag: dateOf(cfv(o, CF_LETZTER_TAG)), bemerkung: b ? String(b).trim() || null : null };
+};
 
 async function run(admin: any) {
   const { call } = await closeForPipeline();
   const opps: any[] = [];
   for (const sid of Object.keys(ABGANG)) opps.push(...await oppsByStatus(call, sid));
+
+  // Fields are usually filled in after the status change: re-read incomplete events of this and last month.
+  const now = new Date(); const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 10);
+  const { data: offen, error: oErr } = await admin.from("bonus_churn_events").select("id, close_opportunity_id, close_task_id, close_task_erledigt_am, kuendigungsdatum, bemerkung").not("close_opportunity_id", "is", null).gte("monat", prev).or("kuendigungsdatum.is.null,bemerkung.is.null,close_task_erledigt_am.is.null");
+  if (oErr) throw new Error("Lesen fehlgeschlagen: " + oErr.message);
+  const nachpruefen: any[] = [];
+  const statusIds = new Set(opps.map((o) => o.id));
+  for (const e of offen || []) if (!statusIds.has(e.close_opportunity_id)) nachpruefen.push({ ev: e, opp: await call(`/opportunity/${e.close_opportunity_id}/`) });
 
   const { data: mas } = await admin.from("bonus_mitarbeiter").select("id, close_user_id, team:team_id(name)").eq("aktiv", true);
   const leadIds = [...new Set(opps.map((o) => o.lead_id))];
@@ -53,7 +70,7 @@ async function run(admin: any) {
       const { data, error } = await admin.from("bonus_churn_events").insert({
         monat, client_id: clientId, mitarbeiter_id: maId, typ: a.typ, zaehlt_als_churn: a.churn,
         freigabe_status: a.sonderfall ? "offen" : null, close_opportunity_id: o.id, close_lead_id: o.lead_id,
-        close_status_id: o.status_id, abgang_datum: datum, bemerkung: `Close: Abgang: ${a.label}`,
+        close_status_id: o.status_id, abgang_datum: datum, ...details(o),
       }).select("id, close_opportunity_id, close_note_id, close_task_id").single();
       if (error) throw new Error("Schreiben fehlgeschlagen: " + error.message);
       ev = data; neu++;
@@ -69,9 +86,26 @@ async function run(admin: any) {
     }
     await call(`/opportunity/${o.id}/`, "PUT", { status_id: EHEMALIG });
     await admin.from("bonus_churn_events").update({ close_status_umgestellt_am: new Date().toISOString() }).eq("id", ev.id);
+    nachpruefen.push({ ev: { id: ev.id }, opp: o });
     ergebnisse.push({ kunde: o.lead_name, abgangsart: a.label, monat, zaehlt_als_churn: a.churn, sonderfall: !!a.sonderfall });
   }
-  return { gefunden: opps.length, neu, verarbeitet: ergebnisse, nicht_zuordenbar };
+  // Update detail fields; close the Close task once Kündigungsdatum and Begründung are present.
+  let aktualisiert = 0, tasks_geschlossen = 0;
+  const unvollstaendig: any[] = [];
+  for (const { ev, opp } of nachpruefen) {
+    const d = details(opp);
+    const { data: cur, error } = await admin.from("bonus_churn_events").update(d).eq("id", ev.id).select("id, close_task_id, close_task_erledigt_am").single();
+    if (error) throw new Error("Aktualisieren fehlgeschlagen: " + error.message);
+    aktualisiert++;
+    if (d.kuendigungsdatum && d.bemerkung) {
+      if (cur.close_task_id && !cur.close_task_erledigt_am) {
+        await call(`/task/${cur.close_task_id}/`, "PUT", { is_complete: true });
+        await admin.from("bonus_churn_events").update({ close_task_erledigt_am: new Date().toISOString() }).eq("id", ev.id);
+        tasks_geschlossen++;
+      }
+    } else unvollstaendig.push({ kunde: opp.lead_name, fehlt: [!d.kuendigungsdatum && "Kündigungsdatum", !d.bemerkung && "Begründung"].filter(Boolean) });
+  }
+  return { gefunden: opps.length, neu, nachgeprueft: aktualisiert, tasks_geschlossen, angaben_unvollstaendig: unvollstaendig, verarbeitet: ergebnisse, nicht_zuordenbar };
 }
 
 Deno.serve(async (req) => {

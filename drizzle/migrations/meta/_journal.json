@@ -57,6 +57,13 @@
       "when": 1791803056327,
       "tag": "0007_bonus_churn_sync_and_kunden_aktuell",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791803540790,
+      "tag": "0008_bonus_churn_details_guard",
+      "breakpoints": true
     }
   ]
 }
