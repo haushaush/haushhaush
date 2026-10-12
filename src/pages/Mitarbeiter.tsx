@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Plus, Calendar } from 'lucide-react';
+import { Plus, Calendar, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const DEPT_DISPLAY: Record<string, string> = {
@@ -99,6 +100,26 @@ export default function Mitarbeiter() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', rolle: 'Setter' as string, startdatum: '' });
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { data, error } = await supabase.functions.invoke('delete-team-member', {
+      body: { user_id: deleteTarget.id, confirm_email: deleteConfirm.trim() },
+    });
+    setDeleting(false);
+    if (error || data?.error) {
+      toast({ title: 'Löschen fehlgeschlagen', description: data?.error || error?.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Mitarbeiter gelöscht', description: deleteTarget.name });
+    setDeleteTarget(null);
+    setDeleteConfirm('');
+    fetchData();
+  };
 
   const fetchData = async () => {
     setLoading(true);
