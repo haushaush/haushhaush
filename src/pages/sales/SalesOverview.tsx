@@ -100,6 +100,10 @@ function Verlauf({ data, color, id, euro }: { data: { datum: string; v: number }
   );
 }
 
+function Zeile({ l, v }: { l: string; v: string }) {
+  return <div className="flex justify-between gap-3"><span className="text-muted-foreground">{l}</span><span className="text-right">{v}</span></div>;
+}
+
 export default function SalesOverview() {
   const [tage, setTage] = useState<Tag[]>([]);
   const [bestand, setBestand] = useState<Bestand[]>([]);
@@ -195,16 +199,50 @@ export default function SalesOverview() {
           </CardContent></Card>
         ) : <>
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-            <Kachel titel="Dials" wert={fmtN(sum(cur, 'dials'))} delta={<Delta cur={sum(cur, 'dials')} prev={sum(prev, 'dials')} show={r.vergleich} />} />
-            <Kachel titel="Erstgespräche gebucht" wert={fmtN(sum(cur, 'eg_gebucht'))} sub={egGefuehrtDa ? `davon geführt ${fmtN(sum(cur, 'eg_gefuehrt'))}` : 'geführt: Spalte fehlt im Sheet'} delta={<Delta cur={sum(cur, 'eg_gebucht')} prev={sum(prev, 'eg_gebucht')} show={r.vergleich} />} />
-            <Kachel titel="Zweitgespräche gebucht" wert={fmtN(sum(cur, 'zg_gebucht'))} sub={`davon geführt ${fmtN(sum(cur, 'zg_gefuehrt'))}`} delta={<Delta cur={sum(cur, 'zg_gebucht')} prev={sum(prev, 'zg_gebucht')} show={r.vergleich} />} />
-            <Kachel titel="Abschlüsse" wert={fmtN(sum(cur, 'abschluesse'))} sub={cur.some(t => t.umsatz != null) ? `Umsatz geschrieben ${fmtE(sum(cur, 'umsatz'))}` : 'Umsatz: Spalte fehlt im Sheet'} delta={<Delta cur={sum(cur, 'abschluesse')} prev={sum(prev, 'abschluesse')} show={r.vergleich} />} />
+            <Kachel titel="Dials" wert={fmtN(S('Dials'))} delta={<Delta cur={S('Dials')} prev={P('Dials')} show={r.vergleich} />} />
+            <Kachel titel="Erstgespräche gebucht" wert={fmtN(S('EG_gebucht'))} sub={`davon geführt ${fmtN(S('EG_gefuehrt'))}¹`} delta={<Delta cur={S('EG_gebucht')} prev={P('EG_gebucht')} show={r.vergleich} />} />
+            <Kachel titel="Zweitgespräche gebucht" wert={fmtN(S('ZG_gebucht'))} sub={`davon geführt ${fmtN(S('ZG_gefuehrt'))}`} delta={<Delta cur={S('ZG_gebucht')} prev={P('ZG_gebucht')} show={r.vergleich} />} />
+            <Kachel titel="Abschlüsse" wert={fmtN(S('Won'))} sub={`Umsatz geschrieben ${fmtE(umsatz)}²`} delta={<Delta cur={S('Won')} prev={P('Won')} show={r.vergleich} />} quelle="Abschlüsse: Sheet (Won) · ² Umsatz: Close, gewonnene Abschlüsse beider Accounts nach Gewinndatum, ohne Dubletten" />
+          </div>
+
+          <p className="text-xs font-medium text-muted-foreground pt-2">Qualität im Setting</p>
+          <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+            <Kachel titel="EG No-Show-Quote" wert={pct(S('EG_noshow'), S('EG_gebucht'))} sub={`${fmtN(S('EG_noshow'))} von ${fmtN(S('EG_gebucht'))} gebucht`} />
+            <Kachel titel="EG Absage-Quote" wert={pct(S('EG_abgesagt'), S('EG_gebucht'))} sub={`${fmtN(S('EG_abgesagt'))} von ${fmtN(S('EG_gebucht'))} gebucht`} />
+            <Kachel titel="ZG No-Show-Quote" wert={pct(S('ZG_noshow'), S('ZG_gebucht'))} sub={`${fmtN(S('ZG_noshow'))} von ${fmtN(S('ZG_gebucht'))} gebucht`} />
+            <Kachel titel="ZG Absage-Quote" wert={pct(S('ZG_abgesagt'), S('ZG_gebucht'))} sub={`${fmtN(S('ZG_abgesagt'))} von ${fmtN(S('ZG_gebucht'))} gebucht`} />
+          </div>
+
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+            <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Gesprächszeit</CardTitle></CardHeader>
+              <CardContent className="space-y-1 text-sm tabular-nums">
+                <Zeile l="Gesprächszeit gesamt" v={`${fmtN(S('Gespraechszeit_Min'))} Min`} />
+                <Zeile l="Gespräche > 30 Sek." v={`${fmtN(S('Gespraeche_30'))} · ${pct(S('Gespraeche_30'), S('Dials'))} der Dials`} />
+                <Zeile l="Gespräche > 60 Sek." v={`${fmtN(S('Gespraeche_60'))} · ${pct(S('Gespraeche_60'), S('Dials'))} der Dials`} />
+                <Zeile l="Ø Gesprächszeit je Dial" v={S('Dials') ? `${(S('Gespraechszeit_Min') / S('Dials') * 60).toFixed(0)} Sek.` : '–'} />
+              </CardContent></Card>
+            <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Leads & Reaktion</CardTitle></CardHeader>
+              <CardContent className="space-y-1 text-sm tabular-nums">
+                <Zeile l="Neue Leads" v={fmtN(S('Leads_neu'))} />
+                <Zeile l="Am selben Tag erreicht" v={`${fmtN(S('Leads_erreicht_T0'))} · ${pct(S('Leads_erreicht_T0'), S('Leads_neu'))}`} />
+                <Zeile l="StL_Anzahl" v={fmtN(S('StL_Anzahl'))} />
+                <Zeile l="StL_Summe_Min" v={fmtN(S('StL_Summe_Min'))} />
+                <Zeile l="StL_Summe_Min ÷ StL_Anzahl" v={S('StL_Anzahl') ? fmtN(S('StL_Summe_Min') / S('StL_Anzahl')) : '–'} />
+                <p className="text-[11px] text-muted-foreground pt-1">StL-Spalten unter dem Namen aus dem Sheet; Bedeutung noch nicht bestätigt.</p>
+              </CardContent></Card>
+            <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Verluste & Folgetermine</CardTitle></CardHeader>
+              <CardContent className="space-y-1 text-sm tabular-nums">
+                <Zeile l="Lost" v={fmtN(S('Lost'))} />
+                <Zeile l="Unqualifiziert" v={fmtN(S('Unqualifiziert'))} />
+                <Zeile l="FB gebucht" v={fmtN(S('FB_gebucht'))} />
+                <p className="text-[11px] text-muted-foreground pt-1">FB gebucht steht außerhalb des Funnels, bis geklärt ist, ob FB Folgebesprechung bedeutet.</p>
+              </CardContent></Card>
           </div>
 
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-            {([['dials', 'Dials'], ['eg_gebucht', 'Erstgespräche gebucht'], ['zg_gebucht', 'Zweitgespräche gebucht'], ['abschluesse', 'Abschlüsse']] as [Metric, string][]).map(([m, l]) => (
+            {([['Dials', 'Dials'], ['EG_gebucht', 'Erstgespräche gebucht'], ['ZG_gebucht', 'Zweitgespräche gebucht'], ['Won', 'Abschlüsse']] as [Metric, string][]).map(([m, l]) => (
               <Card key={m} className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-0"><CardTitle className="text-sm font-medium">{l}</CardTitle></CardHeader>
-                <CardContent className="pt-2"><Verlauf id={`g-${m}`} data={serie(m)} color="hsl(var(--primary))" euro={m === 'umsatz'} /></CardContent></Card>
+                <CardContent className="pt-2"><Verlauf id={`g-${m}`} data={serie(m)} color="hsl(var(--primary))" /></CardContent></Card>
             ))}
           </div>
 
@@ -217,11 +255,16 @@ export default function SalesOverview() {
                   <div key={k.key} className="grid grid-cols-[1fr] sm:grid-cols-[180px_1fr_auto] items-center gap-x-4 gap-y-1">
                     <span className="text-sm flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: k.color }} />{k.label}{k.key === 'coldcall' && <sup className="text-muted-foreground">*</sup>}</span>
                     <div className="h-2.5 rounded-full bg-background overflow-hidden"><div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${(k.eg / max) * 100}%`, background: k.color }} /></div>
-                    <span className="text-xs tabular-nums text-muted-foreground">{fmtN(k.dials)} Dials · {fmtN(k.eg)} EG · {fmtN(k.zg)} ZG · {fmtN(k.won)} Won · {fmtE(k.umsatz)}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground">{fmtN(k.dials)} Dials · {fmtN(k.eg)} EG · {fmtN(k.zg)} ZG · {fmtN(k.won)} Won · {fmtN(k.abg)} Abgänge</span>
                   </div>
                 );
               })}
-              <p className="text-[11px] text-muted-foreground pt-1">Balken = Erstgespräche gebucht. * Cold Call steht derzeit strukturell bei 0, weil Marcels Anrufe nicht in Close landen. Das ist bekannt und kein Messfehler.</p>
+              <div className="grid grid-cols-[1fr] sm:grid-cols-[180px_1fr_auto] items-center gap-x-4 gap-y-1 text-muted-foreground opacity-70">
+                <span className="text-sm flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full shrink-0 bg-muted-foreground" />Inbound</span>
+                <span className="text-xs">nicht gewertet, wie im Slack-Report</span>
+                <span className="text-xs tabular-nums">{fmtN(sum(inboundTage, 'Dials'))} Dials · {fmtN(sum(inboundTage, 'EG_gebucht'))} EG · {fmtN(inboundAbg)} Abgänge</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground pt-1">Balken = Erstgespräche gebucht. Inbound zählt in keiner Summe. * Cold Call steht derzeit strukturell bei 0, weil Marcels Anrufe nicht in Close landen. Das ist bekannt und kein Messfehler.</p>
             </CardContent>
           </Card>
 
@@ -229,20 +272,20 @@ export default function SalesOverview() {
             <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Funnel</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               {funnel.map((f, i) => (
-                <div key={f.l} className="grid grid-cols-[110px_1fr_auto] items-center gap-3">
+                <div key={f.l} className="grid grid-cols-[120px_1fr_auto] items-center gap-3">
                   <span className="text-sm">{f.l}</span>
                   <div className="h-3 rounded-full bg-background overflow-hidden"><div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${funnel[0].v ? Math.max(1, (f.v / funnel[0].v) * 100) : 0}%` }} /></div>
                   <span className="text-xs tabular-nums w-36 text-right">{fmtN(f.v)}{i > 0 && <span className="text-muted-foreground"> · {pct(f.v, funnel[i - 1].v)}</span>}</span>
                 </div>
               ))}
-              <p className="text-[11px] text-muted-foreground">Quote = Anteil der vorherigen Stufe.{!egGefuehrtDa && ' „EG geführt“ fehlt, weil das Sheet diese Spalte nicht enthält.'}</p>
+              <p className="text-[11px] text-muted-foreground">Quote = Anteil der vorherigen Stufe. ¹ EG geführt ist abgeleitet: EG_gefuehrt_kein_ZG + ZG_gebucht (wer ein ZG gebucht hat, hatte das EG). Wird das ZG an einem anderen Tag gebucht als das EG stattfand, verschiebt sich der Tageswert; über Zeiträume stimmt die Summe, am einzelnen Tag nicht immer.</p>
             </CardContent>
           </Card>
 
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
             <Card className="border-0 shadow-none bg-muted/40">
               <CardHeader className="pb-0"><CardTitle className="text-sm font-medium">Abgänge nach Grund</CardTitle>
-                <p className="text-xs tabular-nums text-muted-foreground">{fmtN(abgCur.length)} Abgänge · Erfassungsquote {pct(mitGrund, abgCur.length)} · <Delta cur={abgCur.length} prev={abgPrev.length} steigtGut={false} show={r.vergleich} /></p></CardHeader>
+                <p className="text-xs tabular-nums text-muted-foreground">{fmtN(abgCur.length)} Abgänge · Erfassungsquote {pct(mitGrund, abgCur.length)} · <Delta cur={abgCur.length} prev={abgPrev.length} steigtGut={false} show={r.vergleich} />{abgAlle.length > abgCur.length && ` · ${fmtN(abgAlle.length - abgCur.length)} Inbound nicht gewertet`}</p></CardHeader>
               <CardContent className="pt-3">
                 {!abg.length ? <p className="text-sm text-muted-foreground py-6 text-center">Noch keine Daten</p> : !gruende.length ? <p className="text-sm text-muted-foreground py-6 text-center">Keine Abgänge im Zeitraum</p> : (
                   <ResponsiveContainer width="100%" height={Math.max(120, gruende.length * 34)}>
