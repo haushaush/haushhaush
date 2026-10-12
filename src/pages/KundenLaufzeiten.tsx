@@ -15,7 +15,7 @@ import { ExternalLink, ChevronDown, Pencil, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Row = {
-  client_id: string; kunde: string | null; close_lead_id: string | null; close_status_label: string | null; close_opportunity_id: string | null;
+  client_id: string; kunde: string | null; close_lead_id: string | null; close_status_label: string | null; close_opportunity_id: string | null; quelle: string | null; vc_opportunity_id: string | null;
   startdatum: string | null; laufzeit_monate: number | null; vertragsende: string | null; fehlt: string[];
 };
 type Log = { id: string; created_at: string; user_email: string | null; kunde: string | null; aktion: string; werte: Record<string, unknown>; fehler: string | null; close_opportunity_id: string | null };
@@ -47,7 +47,7 @@ export default function KundenLaufzeiten() {
 
   const load = useCallback(async () => {
     const [{ data }, { data: l }] = await Promise.all([
-      supabase.from('kunden_laufzeit_stand').select('client_id, kunde, close_lead_id, close_status_label, close_opportunity_id, startdatum, laufzeit_monate, vertragsende, fehlt'),
+      supabase.from('kunden_laufzeit_stand').select('client_id, kunde, close_lead_id, close_status_label, close_opportunity_id, quelle, vc_opportunity_id, startdatum, laufzeit_monate, vertragsende, fehlt'),
       supabase.from('close_abschluss_schreiblog').select('id, created_at, user_email, kunde, aktion, werte, fehler, close_opportunity_id').order('created_at', { ascending: false }).limit(20),
     ]);
     setRows((data as Row[]) || []); setLogs((l as Log[]) || []); setLoading(false);
@@ -129,7 +129,7 @@ export default function KundenLaufzeiten() {
           })()}
           <Button size="sm" className="h-8" disabled={busy} onClick={() => save(r)}>{busy && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}Speichern</Button>
         </div>
-        <p className="text-xs text-muted-foreground tabular-nums">Vertragsende: {end ? dt(end) : 'Startdatum und Laufzeit nötig'}{!r.close_opportunity_id && ' · legt in Close einen gewonnenen Abschluss an'}</p>
+        <p className="text-xs text-muted-foreground tabular-nums">Vertragsende: {end ? dt(end) : 'Startdatum und Laufzeit nötig'}{!r.close_opportunity_id && (r.vc_opportunity_id ? ' · Abschluss existiert nur bei Viral Connect – legt ihn in unserem Close an (Marke „Viral Connect“)' : ' · legt in Close einen gewonnenen Abschluss an')}</p>
         {opts && !opts.cash[r.client_id] && <p className="text-xs text-muted-foreground">Für {r.kunde} existiert keine Cash-Collect-Aktivität — Paket kann nicht gesetzt werden. {r.close_lead_id && <a href={`https://app.close.com/lead/${r.close_lead_id}/`} target="_blank" rel="noreferrer" className="text-primary">In Close öffnen</a>}</p>}
         {optsErr && <p className="text-xs text-destructive">Auswahlwerte aus Close nicht geladen: {optsErr}</p>}
         {errors[r.client_id] && <p className="text-xs text-destructive">{errors[r.client_id]}</p>}
@@ -156,7 +156,7 @@ export default function KundenLaufzeiten() {
                     <TableCell className="align-top"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditing(null)}><X className="h-4 w-4" /></Button></TableCell></TableRow>
                 ) : (
                   <TableRow key={r.client_id}>
-                    <TableCell className="font-medium">{r.kunde}</TableCell>
+                    <TableCell className="font-medium">{r.kunde}{r.quelle === 'Viral Connect' && <Badge variant="outline" className="ml-2 text-[10px]">aus Viral Connect</Badge>}</TableCell>
                     <TableCell className="tabular-nums">{dt(r.startdatum)}</TableCell>
                     <TableCell className="tabular-nums">{r.laufzeit_monate} Mon.</TableCell>
                     <TableCell className="tabular-nums">{dt(r.vertragsende)}</TableCell>
@@ -213,7 +213,7 @@ export default function KundenLaufzeiten() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Abschluss in Close anlegen?</AlertDialogTitle>
-            <AlertDialogDescription>Für {confirm?.kunde} wird in Close ein gewonnener Abschluss angelegt (Pipeline „Sales“, Status „Won“, Deal-Typ „{(confirm && forms[confirm.client_id]?.deal_typ) || 'Neukunde'}“) mit den eingegebenen Werten.</AlertDialogDescription>
+            <AlertDialogDescription>Für {confirm?.kunde} wird in Close ein gewonnener Abschluss angelegt (Pipeline „Sales“, Status „Won“, Deal-Typ „{(confirm && forms[confirm.client_id]?.deal_typ) || 'Neukunde'}“) mit den eingegebenen Werten.{confirm?.vc_opportunity_id && ' Der Abschluss existiert bisher nur in Noahs Close; dort wird nichts geändert. Am Lead wird die Marke „Viral Connect“ gesetzt, falls sie leer ist.'}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
