@@ -134,6 +134,13 @@
       "when": 1791815068819,
       "tag": "0018_close_abschluss_schreiblog",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791815681174,
+      "tag": "0019_vc_feldkatalog_abschluesse_alle",
+      "breakpoints": true
     }
   ]
 }
