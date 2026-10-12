@@ -386,6 +386,24 @@ export default function Kunden() {
         <Input className="pl-9 h-9" placeholder="Name oder Email…" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
+      <div className="flex items-center gap-1 bg-muted/40 rounded-md p-1 w-fit">
+        {([
+          { value: 'aktiv', label: `Aktive (${clients.filter(c => ACTIVE_STATUSES.includes(c.kundenstatus)).length})` },
+          { value: 'ehemalig', label: `Ehemalige (${clients.filter(c => FORMER_STATUSES.includes(c.kundenstatus)).length})` },
+          { value: 'alle', label: `Alle (${clients.length})` },
+        ] as const).map(f => (
+          <Button
+            key={f.value}
+            variant="ghost"
+            size="sm"
+            onClick={() => setQuickFilter(f.value)}
+            className={`h-7 px-3 text-xs ${quickFilter === f.value ? 'bg-background shadow-sm text-foreground' : ''}`}
+          >
+            {f.label}
+          </Button>
+        ))}
+      </div>
+
       <div className="flex items-center gap-2 flex-wrap">
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="h-9 w-[180px] text-sm">
