@@ -127,6 +127,13 @@
       "when": 1791814194390,
       "tag": "0017_close_lead_mirror_abschluesse_laufzeiten",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791815068819,
+      "tag": "0018_close_abschluss_schreiblog",
+      "breakpoints": true
     }
   ]
 }
