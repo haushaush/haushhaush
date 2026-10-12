@@ -818,12 +818,24 @@ export type Database = {
       }
       bonus_churn_events: {
         Row: {
+          abgang_datum: string | null
           bemerkung: string | null
           client_id: string
+          close_lead_id: string | null
+          close_note_id: string | null
+          close_opportunity_id: string | null
+          close_status_id: string | null
+          close_status_umgestellt_am: string | null
+          close_task_id: string | null
           created_at: string
           festgestellt_am: string
           festgestellt_durch: string | null
+          freigabe_status: string | null
+          freigegeben_am: string | null
+          freigegeben_von: string | null
           id: string
+          kuendigungsdatum: string | null
+          letzter_vertragstag: string | null
           mitarbeiter_id: string
           monat: string
           typ: Database["public"]["Enums"]["bonus_churn_typ"]
@@ -831,12 +843,24 @@ export type Database = {
           zaehlt_als_churn: boolean
         }
         Insert: {
+          abgang_datum?: string | null
           bemerkung?: string | null
           client_id: string
+          close_lead_id?: string | null
+          close_note_id?: string | null
+          close_opportunity_id?: string | null
+          close_status_id?: string | null
+          close_status_umgestellt_am?: string | null
+          close_task_id?: string | null
           created_at?: string
           festgestellt_am?: string
           festgestellt_durch?: string | null
+          freigabe_status?: string | null
+          freigegeben_am?: string | null
+          freigegeben_von?: string | null
           id?: string
+          kuendigungsdatum?: string | null
+          letzter_vertragstag?: string | null
           mitarbeiter_id: string
           monat: string
           typ: Database["public"]["Enums"]["bonus_churn_typ"]
@@ -844,12 +868,24 @@ export type Database = {
           zaehlt_als_churn?: boolean
         }
         Update: {
+          abgang_datum?: string | null
           bemerkung?: string | null
           client_id?: string
+          close_lead_id?: string | null
+          close_note_id?: string | null
+          close_opportunity_id?: string | null
+          close_status_id?: string | null
+          close_status_umgestellt_am?: string | null
+          close_task_id?: string | null
           created_at?: string
           festgestellt_am?: string
           festgestellt_durch?: string | null
+          freigabe_status?: string | null
+          freigegeben_am?: string | null
+          freigegeben_von?: string | null
           id?: string
+          kuendigungsdatum?: string | null
+          letzter_vertragstag?: string | null
           mitarbeiter_id?: string
           monat?: string
           typ?: Database["public"]["Enums"]["bonus_churn_typ"]
@@ -928,6 +964,60 @@ export type Database = {
           token?: string
         }
         Relationships: []
+      }
+      bonus_kunden_aktuell: {
+        Row: {
+          aktiv: boolean
+          client_id: string | null
+          close_lead_id: string
+          close_opportunity_id: string
+          created_at: string
+          id: string
+          lead_name: string | null
+          mitarbeiter_id: string
+          seit: string | null
+          zuletzt_gesehen_am: string
+        }
+        Insert: {
+          aktiv?: boolean
+          client_id?: string | null
+          close_lead_id: string
+          close_opportunity_id: string
+          created_at?: string
+          id?: string
+          lead_name?: string | null
+          mitarbeiter_id: string
+          seit?: string | null
+          zuletzt_gesehen_am?: string
+        }
+        Update: {
+          aktiv?: boolean
+          client_id?: string | null
+          close_lead_id?: string
+          close_opportunity_id?: string
+          created_at?: string
+          id?: string
+          lead_name?: string | null
+          mitarbeiter_id?: string
+          seit?: string | null
+          zuletzt_gesehen_am?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_kunden_aktuell_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_kunden_aktuell_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bonus_kunden_snapshot: {
         Row: {
