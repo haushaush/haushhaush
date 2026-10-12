@@ -8011,7 +8011,16 @@ export type Database = {
         Returns: undefined
       }
       bonus_my_team_id: { Args: never; Returns: string }
+      bonus_survey_assign: {
+        Args: {
+          _antwort_id: string
+          _client_id?: string
+          _kein_kunde?: boolean
+        }
+        Returns: Json
+      }
       bonus_survey_rate_allow: { Args: { _ip_hash: string }; Returns: boolean }
+      bonus_survey_save: { Args: { _payload: Json }; Returns: string }
       create_or_get_unternehmen: { Args: { p_name: string }; Returns: string }
       current_user_team_rolle: {
         Args: never

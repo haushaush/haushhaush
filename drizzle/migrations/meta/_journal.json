@@ -78,6 +78,13 @@
       "when": 1791805145644,
       "tag": "0010_bonus_survey_identification",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791805180280,
+      "tag": "0011_bonus_survey_atomic_assignment",
+      "breakpoints": true
     }
   ]
 }
