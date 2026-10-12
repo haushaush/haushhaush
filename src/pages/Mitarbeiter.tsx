@@ -247,6 +247,16 @@ export default function Mitarbeiter() {
                 onClick={() => navigate(`/hr/mitarbeiter/${m.id}`)}
               >
                 <CardContent className="p-4 flex items-start gap-3">
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      aria-label={`${m.name} löschen`}
+                      className="absolute top-2 right-2 p-1.5 rounded-md text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(m); setDeleteConfirm(''); }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                   <Avatar className="h-11 w-11 mt-0.5">
                     {m.avatar_url && <AvatarImage src={m.avatar_url} />}
                     <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
