@@ -826,6 +826,7 @@ export type Database = {
           close_opportunity_id: string | null
           close_status_id: string | null
           close_status_umgestellt_am: string | null
+          close_task_erledigt_am: string | null
           close_task_id: string | null
           created_at: string
           festgestellt_am: string
@@ -851,6 +852,7 @@ export type Database = {
           close_opportunity_id?: string | null
           close_status_id?: string | null
           close_status_umgestellt_am?: string | null
+          close_task_erledigt_am?: string | null
           close_task_id?: string | null
           created_at?: string
           festgestellt_am?: string
@@ -876,6 +878,7 @@ export type Database = {
           close_opportunity_id?: string | null
           close_status_id?: string | null
           close_status_umgestellt_am?: string | null
+          close_task_erledigt_am?: string | null
           close_task_id?: string | null
           created_at?: string
           festgestellt_am?: string
