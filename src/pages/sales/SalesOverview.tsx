@@ -100,8 +100,8 @@ function Verlauf({ data, color, id, euro }: { data: { datum: string; v: number }
   );
 }
 
-function Zeile({ l, v }: { l: string; v: string }) {
-  return <div className="flex justify-between gap-3"><span className="text-muted-foreground">{l}</span><span className="text-right">{v}</span></div>;
+function Zeile({ l, v, title }: { l: string; v: string; title?: string }) {
+  return <div className="flex justify-between gap-3" title={title}><span className={`text-muted-foreground ${title ? 'underline decoration-dotted underline-offset-2 cursor-help' : ''}`}>{l}</span><span className="text-right">{v}</span></div>;
 }
 
 export default function SalesOverview() {
@@ -158,10 +158,20 @@ export default function SalesOverview() {
   });
   const inboundTage = cur.filter(t => NICHT_GEWERTET.test(t.kanal.trim()));
   const inboundAbg = abgAlle.filter(a => a.kanal && NICHT_GEWERTET.test(a.kanal.trim())).length;
-  const funnel = [
-    { l: 'Dials', v: S('Dials') }, { l: 'Leads erreicht', v: S('Leads_erreicht_T0') }, { l: 'EG gebucht', v: S('EG_gebucht') }, { l: 'EG geführt¹', v: S('EG_gefuehrt') },
-    { l: 'ZG gebucht', v: S('ZG_gebucht') }, { l: 'ZG geführt', v: S('ZG_gefuehrt') }, { l: 'Won', v: S('Won') },
+  const tageImZeitraum = Math.round((new Date(r.end).getTime() - new Date(r.start).getTime()) / 86400000) + 1;
+  // Quote chain starts at EG gebucht: each stage is a real subset of the previous one. FB is optional and gets no quote.
+  const funnel: { l: string; v: number; spalte: string; optional?: boolean; keineQuote?: boolean; hinweis?: string }[] = [
+    { l: 'EG gebucht', v: S('EG_gebucht'), spalte: 'EG_gebucht' },
+    { l: 'EG geführt¹', v: S('EG_gefuehrt'), spalte: 'EG_gefuehrt_kein_ZG + ZG_gebucht' },
+    { l: 'ZG gebucht', v: S('ZG_gebucht'), spalte: 'ZG_gebucht' },
+    { l: 'ZG geführt', v: S('ZG_gefuehrt'), spalte: 'ZG_gefuehrt' },
+    { l: 'FB gebucht', v: S('FB_gebucht'), spalte: 'FB_gebucht', optional: true },
+    { l: 'Won²', v: S('Won'), spalte: 'Won', keineQuote: tageImZeitraum < 30, hinweis: tageImZeitraum < 30 ? 'Quote erst ab 30 Tagen' : undefined },
   ];
+  // Speed to Lead: mean over all leads, median over daily averages
+  const stlTage = (() => { const m = new Map<string, [number, number]>(); cur.forEach(t => { const x = m.get(t.datum) || [0, 0]; m.set(t.datum, [x[0] + t.StL_Summe_Min, x[1] + t.StL_Anzahl]); }); return [...m.values()].filter(([, n]) => n > 0).map(([s, n]) => s / n).sort((a, b) => a - b); })();
+  const stlMedian = stlTage.length ? (stlTage.length % 2 ? stlTage[(stlTage.length - 1) / 2] : (stlTage[stlTage.length / 2 - 1] + stlTage[stlTage.length / 2]) / 2) : null;
+  const hm = (min: number) => { const h = Math.floor(min / 60), m = Math.round(min % 60); return h ? `${h} h ${m} min` : `${m} min`; };
   const gruende = useMemo(() => {
     const m = new Map<string, number>(); abgCur.forEach(a => { const g = a.grund?.trim() || 'ohne Grund'; m.set(g, (m.get(g) || 0) + 1); });
     return [...m.entries()].map(([grund, n]) => ({ grund, n })).sort((a, b) => b.n - a.n);
@@ -223,19 +233,18 @@ export default function SalesOverview() {
               </CardContent></Card>
             <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Leads & Reaktion</CardTitle></CardHeader>
               <CardContent className="space-y-1 text-sm tabular-nums">
-                <Zeile l="Neue Leads" v={fmtN(S('Leads_neu'))} />
-                <Zeile l="Am selben Tag erreicht" v={`${fmtN(S('Leads_erreicht_T0'))} · ${pct(S('Leads_erreicht_T0'), S('Leads_neu'))}`} />
-                <Zeile l="StL_Anzahl" v={fmtN(S('StL_Anzahl'))} />
-                <Zeile l="StL_Summe_Min" v={fmtN(S('StL_Summe_Min'))} />
-                <Zeile l="StL_Summe_Min ÷ StL_Anzahl" v={S('StL_Anzahl') ? fmtN(S('StL_Summe_Min') / S('StL_Anzahl')) : '–'} />
-                <p className="text-[11px] text-muted-foreground pt-1">StL-Spalten unter dem Namen aus dem Sheet; Bedeutung noch nicht bestätigt.</p>
+                <Zeile l="Neue Leads" v={fmtN(S('Leads_neu'))} title="Leads_neu" />
+                <Zeile l="Am selben Tag erreicht" title="Leads_erreicht_T0 ÷ Leads_neu" v={`${fmtN(S('Leads_erreicht_T0'))} · ${pct(S('Leads_erreicht_T0'), S('Leads_neu'))}`} />
+                <Zeile l="Speed to Lead Ø" v={S('StL_Anzahl') ? hm(S('StL_Summe_Min') / S('StL_Anzahl')) : '–'} title={`StL_Summe_Min ÷ StL_Anzahl = ${fmtN(S('StL_Summe_Min'))} ÷ ${fmtN(S('StL_Anzahl'))}`} />
+                <Zeile l="Speed to Lead Median" v={stlMedian != null ? hm(stlMedian) : '–'} title={`Median der Tageswerte (StL_Summe_Min ÷ StL_Anzahl je Tag), ${stlTage.length} Tage`} />
+                <p className="text-[11px] text-muted-foreground pt-1">Median über die Tageswerte, da das Sheet keine Einzelwerte je Lead enthält.</p>
+                {S('StL_Anzahl') > 0 && S('StL_Anzahl') === S('Leads_erreicht_T0') && <p className="text-[11px] text-destructive pt-1"><code>StL_Anzahl</code> entspricht <code>Leads_erreicht_T0</code>. Der Mittelwert passt nicht zu einer Erreichbarkeit am selben Tag — Definition im Sheet prüfen.</p>}
               </CardContent></Card>
-            <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Verluste & Folgetermine</CardTitle></CardHeader>
+            <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Verluste</CardTitle></CardHeader>
               <CardContent className="space-y-1 text-sm tabular-nums">
                 <Zeile l="Lost" v={fmtN(S('Lost'))} />
                 <Zeile l="Unqualifiziert" v={fmtN(S('Unqualifiziert'))} />
-                <Zeile l="FB gebucht" v={fmtN(S('FB_gebucht'))} />
-                <p className="text-[11px] text-muted-foreground pt-1">FB gebucht steht außerhalb des Funnels, bis geklärt ist, ob FB Folgebesprechung bedeutet.</p>
+
               </CardContent></Card>
           </div>
 
@@ -271,14 +280,24 @@ export default function SalesOverview() {
           <Card className="border-0 shadow-none bg-muted/40">
             <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Funnel</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-              {funnel.map((f, i) => (
-                <div key={f.l} className="grid grid-cols-[120px_1fr_auto] items-center gap-3">
-                  <span className="text-sm">{f.l}</span>
-                  <div className="h-3 rounded-full bg-background overflow-hidden"><div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${funnel[0].v ? Math.max(1, (f.v / funnel[0].v) * 100) : 0}%` }} /></div>
-                  <span className="text-xs tabular-nums w-36 text-right">{fmtN(f.v)}{i > 0 && <span className="text-muted-foreground"> · {pct(f.v, funnel[i - 1].v)}</span>}</span>
-                </div>
-              ))}
-              <p className="text-[11px] text-muted-foreground">Quote = Anteil der vorherigen Stufe. ¹ EG geführt ist abgeleitet: EG_gefuehrt_kein_ZG + ZG_gebucht (wer ein ZG gebucht hat, hatte das EG). Wird das ZG an einem anderen Tag gebucht als das EG stattfand, verschiebt sich der Tageswert; über Zeiträume stimmt die Summe, am einzelnen Tag nicht immer.</p>
+              <div className="grid grid-cols-3 gap-3 pb-3 mb-1 border-b border-border/60 text-sm tabular-nums">
+                <div title="Dials"><p className="text-xs text-muted-foreground">Dials</p><p className="font-medium">{fmtN(S('Dials'))}</p></div>
+                <div title="Leads_erreicht_T0"><p className="text-xs text-muted-foreground">Leads erreicht</p><p className="font-medium">{fmtN(S('Leads_erreicht_T0'))}</p></div>
+                <div title="Dials ÷ EG_gebucht"><p className="text-xs text-muted-foreground">Dials je gebuchtem EG</p><p className="font-medium">{S('EG_gebucht') ? `${(S('Dials') / S('EG_gebucht')).toFixed(1).replace('.', ',')} : 1` : '–'}</p></div>
+                <p className="col-span-3 text-[11px] text-muted-foreground">Aufwand als Kontext, keine Funnelstufen. Dials je EG ist ein Verhältnis, keine Quote.</p>
+              </div>
+              {funnel.map((f, i) => {
+                const vorher = [...funnel.slice(0, i)].reverse().find(x => !x.optional);
+                const quote = i > 0 && !f.optional && !f.keineQuote && vorher ? pct(f.v, vorher.v) : null;
+                return (
+                  <div key={f.l} title={f.spalte} className={`grid grid-cols-[120px_1fr_auto] items-center gap-3 ${f.optional ? 'pl-3 border-l-2 border-dashed border-border' : ''}`}>
+                    <span className="text-sm">{f.l}{f.optional && <span className="text-[11px] text-muted-foreground"> optional</span>}</span>
+                    <div className={`h-3 rounded-full overflow-hidden ${f.optional ? 'border border-dashed border-border bg-transparent' : 'bg-background'}`}><div className={`h-full rounded-full transition-[width] duration-500 ${f.optional ? 'bg-primary/40' : 'bg-primary'}`} style={{ width: `${funnel[0].v ? Math.min(100, Math.max(f.v ? 1 : 0, (f.v / funnel[0].v) * 100)) : 0}%` }} /></div>
+                    <span className="text-xs tabular-nums w-40 text-right">{fmtN(f.v)}{quote && <span className="text-muted-foreground"> · {quote}</span>}{f.hinweis && <span className="text-muted-foreground"> · {f.hinweis}</span>}</span>
+                  </div>
+                );
+              })}
+              <p className="text-[11px] text-muted-foreground">Quote = Anteil der vorherigen Pflichtstufe. FB gebucht (Folgebesprechung) ist optional und ohne Quote, da viele Abschlüsse direkt im ZG fallen. ² Abschlüsse zählen am Tag des Gewinns, das zugehörige ZG kann Wochen davor liegen. ¹ EG geführt ist abgeleitet: EG_gefuehrt_kein_ZG + ZG_gebucht (wer ein ZG gebucht hat, hatte das EG). Wird das ZG an einem anderen Tag gebucht als das EG stattfand, verschiebt sich der Tageswert; über Zeiträume stimmt die Summe, am einzelnen Tag nicht immer.</p>
             </CardContent>
           </Card>
 
