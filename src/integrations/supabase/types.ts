@@ -2810,6 +2810,30 @@ export type Database = {
         }
         Relationships: []
       }
+      close_vc_feldkatalog: {
+        Row: {
+          aktualisiert_am: string
+          id: string
+          mehrfach: boolean
+          name: string
+          typ: string | null
+        }
+        Insert: {
+          aktualisiert_am?: string
+          id: string
+          mehrfach?: boolean
+          name: string
+          typ?: string | null
+        }
+        Update: {
+          aktualisiert_am?: string
+          id?: string
+          mehrfach?: boolean
+          name?: string
+          typ?: string | null
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           created_at: string
@@ -4095,7 +4119,9 @@ export type Database = {
           laufzeit_monate: number | null
           notion_fehler: string | null
           notion_stand: string | null
+          quelle: string | null
           startdatum: string | null
+          vc_opportunity_id: string | null
           vertragsende: string | null
         }
         Insert: {
@@ -4109,7 +4135,9 @@ export type Database = {
           laufzeit_monate?: number | null
           notion_fehler?: string | null
           notion_stand?: string | null
+          quelle?: string | null
           startdatum?: string | null
+          vc_opportunity_id?: string | null
           vertragsende?: string | null
         }
         Update: {
@@ -4123,7 +4151,9 @@ export type Database = {
           laufzeit_monate?: number | null
           notion_fehler?: string | null
           notion_stand?: string | null
+          quelle?: string | null
           startdatum?: string | null
+          vc_opportunity_id?: string | null
           vertragsende?: string | null
         }
         Relationships: [
@@ -8330,6 +8360,60 @@ export type Database = {
           user_id: string | null
         }
         Relationships: []
+      }
+      close_abschluesse_alle: {
+        Row: {
+          abschlusswert: number | null
+          branche: string | null
+          client_id: string | null
+          close_lead_id: string | null
+          close_opportunity_id: string | null
+          closer: string | null
+          deal_typ: string | null
+          dublette_von: string | null
+          laufzeit_monate: number | null
+          lead_name: string | null
+          leistungen: string | null
+          marke: string | null
+          quelle: string | null
+          retainer_monat: number | null
+          setter: string | null
+          setup_fee: number | null
+          startdatum: string | null
+          status_geaendert_am: string | null
+          status_label: string | null
+          status_typ: string | null
+        }
+        Relationships: []
+      }
+      close_vc_abschluesse: {
+        Row: {
+          abschlusswert: number | null
+          branche: string | null
+          client_id: string | null
+          close_lead_id: string | null
+          close_opportunity_id: string | null
+          closer: string | null
+          deal_typ: string | null
+          laufzeit_monate: number | null
+          lead_name: string | null
+          leistungen: string | null
+          retainer_monat: number | null
+          setup_fee: number | null
+          startdatum: string | null
+          status_geaendert_am: string | null
+          status_label: string | null
+          status_typ: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "close_opportunities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onepage_projects_with_stats: {
         Row: {

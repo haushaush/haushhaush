@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
   if (b.paket) werte.paket = b.paket;
   if (!Object.keys(werte).length) return json({ error: "Kein Wert ausgefüllt." }, 400);
 
-  const { data: stand } = await admin.from("kunden_laufzeit_stand").select("client_id, kunde, close_lead_id").eq("client_id", b.client_id).maybeSingle();
+  const { data: stand } = await admin.from("kunden_laufzeit_stand").select("client_id, kunde, close_lead_id, quelle, vc_opportunity_id").eq("client_id", b.client_id).maybeSingle();
   if (!stand?.close_lead_id) return json({ error: "Kunde ist kein aktiver Close-Klient (oder ohne Close-Lead)." }, 404);
 
   const log = (aktion: string, opp: string | null, fehler: string | null = null) => admin.from("close_abschluss_schreiblog").insert({
@@ -117,6 +117,14 @@ Deno.serve(async (req) => {
       if (!b.anlegen_bestaetigt) return json({ error: `Für ${stand.kunde} würde in Close ein gewonnener Abschluss angelegt – Bestätigung fehlt.` }, 409);
       const created = await call(`/opportunity/`, "POST", create);
       oppId = created.id;
+      // Deal known only from Viral Connect → brand the lead in OUR Close (never touch Noah's account); keep a different existing brand.
+      if (stand.vc_opportunity_id) {
+        const MARKE = "cf_1aHYMjs2T5cmcIWApGI2MVBUDYVsW41UGhFVMboLoQ7";
+        const lead = await call(`/lead/${stand.close_lead_id}/?_fields=custom.${MARKE}`);
+        const cur = lead[`custom.${MARKE}`];
+        if (!cur) { await call(`/lead/${stand.close_lead_id}/`, "PUT", { [`custom.${MARKE}`]: "Viral Connect" }); werte.marke_gesetzt = "Viral Connect"; }
+        else werte.marke_unveraendert = cur;
+      }
     }
     // Package lives on the customer's "LS Cash Collect" activity; update it if one exists, never create one.
     let paket: any = null;

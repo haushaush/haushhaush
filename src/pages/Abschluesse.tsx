@@ -13,7 +13,7 @@ type Abschluss = {
   close_opportunity_id: string; close_lead_id: string | null; lead_name: string | null; status_label: string | null; status_typ: string | null;
   status_geaendert_am: string | null; abschlusswert: number | null; setup_fee: number | null; retainer_monat: number | null;
   laufzeit_monate: number | null; startdatum: string | null; leistungen: string | null; deal_typ: string | null; closer: string | null;
-  setter: string | null; marke: string; branche: string | null;
+  setter: string | null; marke: string; branche: string | null; quelle: string; dublette_von: string | null;
 };
 type Lead = { close_lead_id: string; name: string | null; status_label: string | null; marke: string | null; branche: string | null; kanal: string | null; status_geaendert_am: string | null; date_updated: string | null };
 
@@ -36,7 +36,7 @@ export default function Abschluesse() {
   useEffect(() => {
     (async () => {
       const [a, l, s] = await Promise.all([
-        supabase.from('close_abschluesse').select('close_opportunity_id, close_lead_id, lead_name, status_label, status_typ, status_geaendert_am, abschlusswert, setup_fee, retainer_monat, laufzeit_monate, startdatum, leistungen, deal_typ, closer, setter, marke, branche').order('status_geaendert_am', { ascending: false }).limit(5000),
+        supabase.from('close_abschluesse_alle').select('quelle, dublette_von, close_opportunity_id, close_lead_id, lead_name, status_label, status_typ, status_geaendert_am, abschlusswert, setup_fee, retainer_monat, laufzeit_monate, startdatum, leistungen, deal_typ, closer, setter, marke, branche').order('status_geaendert_am', { ascending: false }).limit(10000),
         supabase.from('close_lead_spiegel').select('close_lead_id, name, status_label, marke, branche, kanal, status_geaendert_am, date_updated').order('date_updated', { ascending: false }).limit(10000),
         supabase.from('close_sync_stand').select('letzter_lauf').eq('name', 'close_abschluesse').maybeSingle(),
       ]);
@@ -51,6 +51,7 @@ export default function Abschluesse() {
   const summen = useMemo(() => {
     const m = new Map<string, { monat: string; marke: string; n: number; aw: number; sf: number; rt: number }>();
     for (const r of filtered) {
+      if (r.dublette_von) continue; // duplicate of one of our deals: shown, not counted
       const monat = (r.status_geaendert_am || '').slice(0, 7) || '–';
       const k = `${monat}|${r.marke}`;
       const e = m.get(k) || { monat, marke: r.marke, n: 0, aw: 0, sf: 0, rt: 0 };
@@ -66,7 +67,7 @@ export default function Abschluesse() {
     <div className="space-y-6 p-4 md:p-6">
       <div>
         <h1 className="text-2xl font-heading font-bold">Abschlüsse</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Gespiegelt aus Close (Pipeline „Sales“){stand ? ` · letzter Abgleich ${new Date(stand).toLocaleString('de-DE')}` : ''}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Haush-Haush-Close (Pipeline „Sales“) und Viral Connect (Noahs Close, nur gelesen). Dublettenverdacht: gleicher Kunde, Monat und Abschlusswert – zählt nicht in die Summen{stand ? ` · letzter Abgleich ${new Date(stand).toLocaleString('de-DE')}` : ''}</p>
       </div>
       <Tabs defaultValue="abschluesse">
         <TabsList>
@@ -97,14 +98,15 @@ export default function Abschluesse() {
           <Card><CardContent className="pt-4 overflow-x-auto">
             {loading ? <Skeleton className="h-40" /> : (
               <Table>
-                <TableHeader><TableRow><TableHead>Datum</TableHead><TableHead>Kunde</TableHead><TableHead>Status</TableHead><TableHead>Marke</TableHead><TableHead className="text-right">Abschlusswert</TableHead><TableHead className="text-right">Setup</TableHead><TableHead className="text-right">Retainer</TableHead><TableHead>Laufzeit</TableHead><TableHead>Start</TableHead><TableHead>Closer</TableHead><TableHead>Setter</TableHead><TableHead /></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Datum</TableHead><TableHead>Kunde</TableHead><TableHead>Status</TableHead><TableHead>Marke</TableHead><TableHead>Quelle</TableHead><TableHead className="text-right">Abschlusswert</TableHead><TableHead className="text-right">Setup</TableHead><TableHead className="text-right">Retainer</TableHead><TableHead>Laufzeit</TableHead><TableHead>Start</TableHead><TableHead>Closer</TableHead><TableHead>Setter</TableHead><TableHead /></TableRow></TableHeader>
                 <TableBody>
                   {filtered.map(r => (
-                    <TableRow key={r.close_opportunity_id}>
+                    <TableRow key={r.close_opportunity_id} className={r.dublette_von ? 'opacity-60' : ''}>
                       <TableCell className="tabular-nums">{dt(r.status_geaendert_am)}</TableCell>
                       <TableCell className="font-medium">{r.lead_name}<div className="text-xs text-muted-foreground">{[r.deal_typ, r.leistungen, r.branche].filter(Boolean).join(' · ')}</div></TableCell>
                       <TableCell><Badge variant="outline">{TYP[r.status_typ || ''] || r.status_typ}</Badge><div className="text-xs text-muted-foreground">{r.status_label}</div></TableCell>
                       <TableCell>{r.marke}</TableCell>
+                      <TableCell className="text-xs">{r.quelle}{r.dublette_von && <Badge variant="secondary" className="ml-1">Dublettenverdacht</Badge>}</TableCell>
                       <TableCell className="text-right tabular-nums">{eur(r.abschlusswert)}</TableCell>
                       <TableCell className="text-right tabular-nums">{eur(r.setup_fee)}</TableCell>
                       <TableCell className="text-right tabular-nums">{eur(r.retainer_monat)}</TableCell>
