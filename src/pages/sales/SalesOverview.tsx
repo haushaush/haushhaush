@@ -11,12 +11,23 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Too
 import SalesKPI from './SalesKPI';
 import { SalesCloseAbschluesse } from './SalesUebersicht';
 
-type Tag = { datum: string; kanal: string; user_name: string; dials: number | null; eg_gebucht: number | null; eg_gefuehrt: number | null; zg_gebucht: number | null; zg_gefuehrt: number | null; abschluesse: number | null; umsatz: number | null };
+// Sheet columns (Tagesdaten), taken exactly as named in the sheet.
+const SPALTEN = ['Dials', 'Leads_neu', 'Leads_erreicht_T0', 'EG_gebucht', 'EG_gefuehrt_kein_ZG', 'EG_noshow', 'EG_abgesagt', 'ZG_gebucht', 'ZG_gefuehrt', 'ZG_noshow', 'ZG_abgesagt', 'FB_gebucht', 'Won', 'Lost', 'Unqualifiziert', 'Gespraeche_30', 'Gespraeche_60', 'Gespraechszeit_Min', 'StL_Anzahl', 'StL_Summe_Min'] as const;
+type Spalte = typeof SPALTEN[number];
+type Tag = { datum: string; kanal: string; user_name: string; werte: Record<string, unknown> | null } & Record<Spalte | 'EG_gefuehrt', number>;
+const zahl = (v: unknown) => { if (v == null) return 0; let x = String(v).trim(); if (!x) return 0; if (x.includes(',')) x = x.replace(/\./g, '').replace(',', '.'); const n = Number(x.replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : 0; };
+const toTag = (r: any): Tag => {
+  const t: any = { datum: r.datum, kanal: r.kanal, user_name: r.user_name, werte: r.werte };
+  SPALTEN.forEach(k => { t[k] = zahl(r.werte?.[k]); });
+  t.EG_gefuehrt = t.EG_gefuehrt_kein_ZG + t.ZG_gebucht; // derived: an EG with a ZG booked afterwards took place
+  return t;
+};
+type Won = { status_geaendert_am: string | null; abschlusswert: number | null; quelle: string };
 type Bestand = { datum: string; kanal: string; bestand: number | null };
 type Lauf = { gestartet_am: string; beendet_am: string | null; status: string; fehler: string | null; verworfen: Record<string, number>; unbekannte_kanaele: string[] };
-type Abgang = { schluessel: string; datum: string | null; grund: string | null };
+type Abgang = { schluessel: string; datum: string | null; grund: string | null; kanal: string | null };
 type Zeitraum = '7' | '30' | 'jahr' | 'gesamt';
-type Metric = 'dials' | 'eg_gebucht' | 'eg_gefuehrt' | 'zg_gebucht' | 'zg_gefuehrt' | 'abschluesse' | 'umsatz';
+type Metric = Spalte | 'EG_gefuehrt';
 
 const ZEITRAUM: { v: Zeitraum; l: string }[] = [{ v: '7', l: '7 Tage' }, { v: '30', l: '30 Tage' }, { v: 'jahr', l: 'Dieses Jahr' }, { v: 'gesamt', l: 'Gesamt' }];
 const KANAELE = [
@@ -44,24 +55,27 @@ function ranges(z: Zeitraum, first: string | null) {
   const pStart = new Date(pEnd); pStart.setUTCDate(pStart.getUTCDate() - len + 1);
   return { start: iso(start), end, pStart: iso(pStart), pEnd: iso(pEnd), vergleich: z !== 'gesamt' };
 }
-const sum = (rows: Tag[], m: Metric) => rows.reduce((a, r) => a + (Number(r[m]) || 0), 0);
+const sum = (rows: Tag[], m: Metric) => rows.reduce((a, r) => a + (r[m] || 0), 0);
+const NICHT_GEWERTET = /^inbound$/i;
 
 function Delta({ cur, prev, steigtGut = true, show }: { cur: number; prev: number; steigtGut?: boolean; show: boolean }) {
   if (!show) return <span className="text-muted-foreground">kein Vorzeitraum</span>;
+  if (prev > 0 && prev < 5) return <span className="text-muted-foreground">zu wenig Daten für einen Vergleich</span>;
   if (!prev) return <span className="text-muted-foreground">{cur ? 'Vorzeitraum ohne Werte – kein Vergleich' : 'unverändert'}</span>;
   const p = ((cur - prev) / prev) * 100; const up = p > 0;
   const gut = p === 0 ? null : up === steigtGut;
   return <span className={gut == null ? 'text-muted-foreground' : gut ? 'text-success' : 'text-destructive'}>{up ? '+' : ''}{p.toFixed(1).replace('.', ',')} % zum Vorzeitraum</span>;
 }
 
-function Kachel({ titel, wert, sub, delta }: { titel: string; wert: string; sub?: string; delta: React.ReactNode }) {
+function Kachel({ titel, wert, sub, delta, quelle }: { titel: string; wert: string; sub?: React.ReactNode; delta?: React.ReactNode; quelle?: string }) {
   return (
     <Card className="border-0 shadow-none bg-muted/40">
       <CardContent className="p-5">
         <p className="text-xs font-medium text-muted-foreground">{titel}</p>
         <p className="text-4xl font-semibold tabular-nums tracking-tight mt-1">{wert}</p>
         {sub && <p className="text-sm tabular-nums text-muted-foreground mt-0.5">{sub}</p>}
-        <p className="text-xs tabular-nums mt-2">{delta}</p>
+        {delta && <p className="text-xs tabular-nums mt-2">{delta}</p>}
+        {quelle && <p className="text-[10px] text-muted-foreground mt-1">{quelle}</p>}
       </CardContent>
     </Card>
   );
@@ -86,10 +100,15 @@ function Verlauf({ data, color, id, euro }: { data: { datum: string; v: number }
   );
 }
 
+function Zeile({ l, v }: { l: string; v: string }) {
+  return <div className="flex justify-between gap-3"><span className="text-muted-foreground">{l}</span><span className="text-right">{v}</span></div>;
+}
+
 export default function SalesOverview() {
   const [tage, setTage] = useState<Tag[]>([]);
   const [bestand, setBestand] = useState<Bestand[]>([]);
   const [abg, setAbg] = useState<Abgang[]>([]);
+  const [won, setWon] = useState<Won[]>([]);
   const [loading, setLoading] = useState(true);
   const [z, setZ] = useState<Zeitraum>('30');
   const [lauf, setLauf] = useState<Lauf | null>(null);
@@ -106,14 +125,15 @@ export default function SalesOverview() {
 
   useEffect(() => {
     (async () => {
-      const [t, b, a, l] = await Promise.all([
-        supabase.from('sales_tagesdaten').select('datum, kanal, user_name, dials, eg_gebucht, eg_gefuehrt, zg_gebucht, zg_gefuehrt, abschluesse, umsatz').order('datum').limit(50000),
+      const [t, b, a, w, l] = await Promise.all([
+        supabase.from('sales_tagesdaten').select('datum, kanal, user_name, werte').order('datum').limit(50000),
         supabase.from('sales_bestand').select('datum, kanal, bestand').order('datum').limit(20000),
-        supabase.from('sales_abgaenge').select('schluessel, datum, grund').limit(20000),
+        supabase.from('sales_abgaenge').select('schluessel, datum, grund, kanal').limit(20000),
+        supabase.from('close_abschluesse_alle').select('status_geaendert_am, abschlusswert, quelle').eq('status_typ', 'won').is('dublette_von', null).limit(10000),
         supabase.from('sales_sheet_sync_laeufe').select('gestartet_am, beendet_am, status, fehler, verworfen, unbekannte_kanaele').order('gestartet_am', { ascending: false }).limit(1).maybeSingle(),
       ]);
       setLauf((l.data as Lauf) ?? null);
-      setTage((t.data as Tag[]) || []); setBestand((b.data as Bestand[]) || []); setAbg((a.data as Abgang[]) || []); setLoading(false);
+      setWon((w.data as Won[]) || []); setTage(((t.data as any[]) || []).map(toTag)); setBestand((b.data as Bestand[]) || []); setAbg((a.data as Abgang[]) || []); setLoading(false);
     })();
   }, [tick]);
 
@@ -121,22 +141,27 @@ export default function SalesOverview() {
   const cur = tage.filter(t => t.datum >= r.start && t.datum <= r.end);
   const prev = tage.filter(t => t.datum >= r.pStart && t.datum <= r.pEnd);
   const hatDaten = tage.length > 0;
-  const egGefuehrtDa = cur.some(t => t.eg_gefuehrt != null);
+  const S = (m: Metric) => sum(cur, m); const P = (m: Metric) => sum(prev, m);
+  const umsatzIn = (a: string, b: string) => won.filter(x => { const d = x.status_geaendert_am?.slice(0, 10); return d && d >= a && d <= b; }).reduce((s, x) => s + (Number(x.abschlusswert) || 0), 0);
+  const umsatz = umsatzIn(r.start, r.end), umsatzPrev = umsatzIn(r.pStart, r.pEnd);
+  const abgAlle = abg.filter(a => a.datum && a.datum >= r.start && a.datum <= r.end);
+  const abgCur = abgAlle.filter(a => !(a.kanal && NICHT_GEWERTET.test(a.kanal.trim())));
+  const abgPrev = abg.filter(a => a.datum && a.datum >= r.pStart && a.datum <= r.pEnd && !(a.kanal && NICHT_GEWERTET.test(a.kanal.trim())));
 
   const serie = (m: Metric) => {
-    const by = new Map<string, number>(); cur.forEach(t => by.set(t.datum, (by.get(t.datum) || 0) + (Number(t[m]) || 0)));
+    const by = new Map<string, number>(); cur.forEach(t => by.set(t.datum, (by.get(t.datum) || 0) + (t[m] || 0)));
     return [...by.entries()].sort().map(([datum, v]) => ({ datum, v }));
   };
   const kanalRows = KANAELE.map(k => {
     const rows = cur.filter(t => kanalOf(t.kanal)?.key === k.key);
-    return { ...k, dials: sum(rows, 'dials'), eg: sum(rows, 'eg_gebucht'), zg: sum(rows, 'zg_gebucht'), won: sum(rows, 'abschluesse'), umsatz: sum(rows, 'umsatz') };
+    return { ...k, dials: sum(rows, 'Dials'), eg: sum(rows, 'EG_gebucht'), zg: sum(rows, 'ZG_gebucht'), won: sum(rows, 'Won'), abg: abgCur.filter(a => a.kanal && kanalOf(a.kanal)?.key === k.key).length };
   });
+  const inboundTage = cur.filter(t => NICHT_GEWERTET.test(t.kanal.trim()));
+  const inboundAbg = abgAlle.filter(a => a.kanal && NICHT_GEWERTET.test(a.kanal.trim())).length;
   const funnel = [
-    { l: 'Dials', v: sum(cur, 'dials') }, { l: 'EG gebucht', v: sum(cur, 'eg_gebucht') }, ...(egGefuehrtDa ? [{ l: 'EG geführt', v: sum(cur, 'eg_gefuehrt') }] : []),
-    { l: 'ZG gebucht', v: sum(cur, 'zg_gebucht') }, { l: 'ZG geführt', v: sum(cur, 'zg_gefuehrt') }, { l: 'Won', v: sum(cur, 'abschluesse') },
+    { l: 'Dials', v: S('Dials') }, { l: 'Leads erreicht', v: S('Leads_erreicht_T0') }, { l: 'EG gebucht', v: S('EG_gebucht') }, { l: 'EG geführt¹', v: S('EG_gefuehrt') },
+    { l: 'ZG gebucht', v: S('ZG_gebucht') }, { l: 'ZG geführt', v: S('ZG_gefuehrt') }, { l: 'Won', v: S('Won') },
   ];
-  const abgCur = abg.filter(a => a.datum && a.datum >= r.start && a.datum <= r.end);
-  const abgPrev = abg.filter(a => a.datum && a.datum >= r.pStart && a.datum <= r.pEnd);
   const gruende = useMemo(() => {
     const m = new Map<string, number>(); abgCur.forEach(a => { const g = a.grund?.trim() || 'ohne Grund'; m.set(g, (m.get(g) || 0) + 1); });
     return [...m.entries()].map(([grund, n]) => ({ grund, n })).sort((a, b) => b.n - a.n);
@@ -165,7 +190,7 @@ export default function SalesOverview() {
 
       {lauf?.status === 'fehler' && <p className="text-xs text-destructive">Letzter Abgleich fehlgeschlagen: {lauf.fehler}</p>}
       {verworfenSumme > 0 && <p className="text-xs text-muted-foreground">Hinweis: {verworfenSumme} Zeile(n) im Sheet ohne lesbares Datum wurden nicht übernommen ({Object.entries(lauf!.verworfen).filter(([, n]) => n).map(([k, n]) => `${k}: ${n}`).join(', ')}).</p>}
-      {!!lauf?.unbekannte_kanaele?.length && <p className="text-xs text-muted-foreground">Hinweis: Kanal {lauf.unbekannte_kanaele.map(k => `„${k}“`).join(', ')} im Sheet passt zu keinem der fünf Kanäle und wird im Kanalvergleich nicht gezählt.</p>}
+      {!!lauf?.unbekannte_kanaele?.filter(k => !NICHT_GEWERTET.test(k)).length && <p className="text-xs text-muted-foreground">Hinweis: Kanal {lauf.unbekannte_kanaele.filter(k => !NICHT_GEWERTET.test(k)).map(k => `„${k}“`).join(', ')} im Sheet passt zu keinem der fünf Kanäle und wird im Kanalvergleich nicht gezählt.</p>}
       {loading ? <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}</div>
         : !hatDaten ? (
           <Card className="border-dashed"><CardContent className="py-12 text-center">
@@ -174,16 +199,50 @@ export default function SalesOverview() {
           </CardContent></Card>
         ) : <>
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-            <Kachel titel="Dials" wert={fmtN(sum(cur, 'dials'))} delta={<Delta cur={sum(cur, 'dials')} prev={sum(prev, 'dials')} show={r.vergleich} />} />
-            <Kachel titel="Erstgespräche gebucht" wert={fmtN(sum(cur, 'eg_gebucht'))} sub={egGefuehrtDa ? `davon geführt ${fmtN(sum(cur, 'eg_gefuehrt'))}` : 'geführt: Spalte fehlt im Sheet'} delta={<Delta cur={sum(cur, 'eg_gebucht')} prev={sum(prev, 'eg_gebucht')} show={r.vergleich} />} />
-            <Kachel titel="Zweitgespräche gebucht" wert={fmtN(sum(cur, 'zg_gebucht'))} sub={`davon geführt ${fmtN(sum(cur, 'zg_gefuehrt'))}`} delta={<Delta cur={sum(cur, 'zg_gebucht')} prev={sum(prev, 'zg_gebucht')} show={r.vergleich} />} />
-            <Kachel titel="Abschlüsse" wert={fmtN(sum(cur, 'abschluesse'))} sub={cur.some(t => t.umsatz != null) ? `Umsatz geschrieben ${fmtE(sum(cur, 'umsatz'))}` : 'Umsatz: Spalte fehlt im Sheet'} delta={<Delta cur={sum(cur, 'abschluesse')} prev={sum(prev, 'abschluesse')} show={r.vergleich} />} />
+            <Kachel titel="Dials" wert={fmtN(S('Dials'))} delta={<Delta cur={S('Dials')} prev={P('Dials')} show={r.vergleich} />} />
+            <Kachel titel="Erstgespräche gebucht" wert={fmtN(S('EG_gebucht'))} sub={`davon geführt ${fmtN(S('EG_gefuehrt'))}¹`} delta={<Delta cur={S('EG_gebucht')} prev={P('EG_gebucht')} show={r.vergleich} />} />
+            <Kachel titel="Zweitgespräche gebucht" wert={fmtN(S('ZG_gebucht'))} sub={`davon geführt ${fmtN(S('ZG_gefuehrt'))}`} delta={<Delta cur={S('ZG_gebucht')} prev={P('ZG_gebucht')} show={r.vergleich} />} />
+            <Kachel titel="Abschlüsse" wert={fmtN(S('Won'))} sub={`Umsatz geschrieben ${fmtE(umsatz)}²`} delta={<Delta cur={S('Won')} prev={P('Won')} show={r.vergleich} />} quelle="Abschlüsse: Sheet (Won) · ² Umsatz: Close, gewonnene Abschlüsse beider Accounts nach Gewinndatum, ohne Dubletten" />
+          </div>
+
+          <p className="text-xs font-medium text-muted-foreground pt-2">Qualität im Setting</p>
+          <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
+            <Kachel titel="EG No-Show-Quote" wert={pct(S('EG_noshow'), S('EG_gebucht'))} sub={`${fmtN(S('EG_noshow'))} von ${fmtN(S('EG_gebucht'))} gebucht`} />
+            <Kachel titel="EG Absage-Quote" wert={pct(S('EG_abgesagt'), S('EG_gebucht'))} sub={`${fmtN(S('EG_abgesagt'))} von ${fmtN(S('EG_gebucht'))} gebucht`} />
+            <Kachel titel="ZG No-Show-Quote" wert={pct(S('ZG_noshow'), S('ZG_gebucht'))} sub={`${fmtN(S('ZG_noshow'))} von ${fmtN(S('ZG_gebucht'))} gebucht`} />
+            <Kachel titel="ZG Absage-Quote" wert={pct(S('ZG_abgesagt'), S('ZG_gebucht'))} sub={`${fmtN(S('ZG_abgesagt'))} von ${fmtN(S('ZG_gebucht'))} gebucht`} />
+          </div>
+
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
+            <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Gesprächszeit</CardTitle></CardHeader>
+              <CardContent className="space-y-1 text-sm tabular-nums">
+                <Zeile l="Gesprächszeit gesamt" v={`${fmtN(S('Gespraechszeit_Min'))} Min`} />
+                <Zeile l="Gespräche > 30 Sek." v={`${fmtN(S('Gespraeche_30'))} · ${pct(S('Gespraeche_30'), S('Dials'))} der Dials`} />
+                <Zeile l="Gespräche > 60 Sek." v={`${fmtN(S('Gespraeche_60'))} · ${pct(S('Gespraeche_60'), S('Dials'))} der Dials`} />
+                <Zeile l="Ø Gesprächszeit je Dial" v={S('Dials') ? `${(S('Gespraechszeit_Min') / S('Dials') * 60).toFixed(0)} Sek.` : '–'} />
+              </CardContent></Card>
+            <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Leads & Reaktion</CardTitle></CardHeader>
+              <CardContent className="space-y-1 text-sm tabular-nums">
+                <Zeile l="Neue Leads" v={fmtN(S('Leads_neu'))} />
+                <Zeile l="Am selben Tag erreicht" v={`${fmtN(S('Leads_erreicht_T0'))} · ${pct(S('Leads_erreicht_T0'), S('Leads_neu'))}`} />
+                <Zeile l="StL_Anzahl" v={fmtN(S('StL_Anzahl'))} />
+                <Zeile l="StL_Summe_Min" v={fmtN(S('StL_Summe_Min'))} />
+                <Zeile l="StL_Summe_Min ÷ StL_Anzahl" v={S('StL_Anzahl') ? fmtN(S('StL_Summe_Min') / S('StL_Anzahl')) : '–'} />
+                <p className="text-[11px] text-muted-foreground pt-1">StL-Spalten unter dem Namen aus dem Sheet; Bedeutung noch nicht bestätigt.</p>
+              </CardContent></Card>
+            <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Verluste & Folgetermine</CardTitle></CardHeader>
+              <CardContent className="space-y-1 text-sm tabular-nums">
+                <Zeile l="Lost" v={fmtN(S('Lost'))} />
+                <Zeile l="Unqualifiziert" v={fmtN(S('Unqualifiziert'))} />
+                <Zeile l="FB gebucht" v={fmtN(S('FB_gebucht'))} />
+                <p className="text-[11px] text-muted-foreground pt-1">FB gebucht steht außerhalb des Funnels, bis geklärt ist, ob FB Folgebesprechung bedeutet.</p>
+              </CardContent></Card>
           </div>
 
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-            {([['dials', 'Dials'], ['eg_gebucht', 'Erstgespräche gebucht'], ['zg_gebucht', 'Zweitgespräche gebucht'], ['abschluesse', 'Abschlüsse']] as [Metric, string][]).map(([m, l]) => (
+            {([['Dials', 'Dials'], ['EG_gebucht', 'Erstgespräche gebucht'], ['ZG_gebucht', 'Zweitgespräche gebucht'], ['Won', 'Abschlüsse']] as [Metric, string][]).map(([m, l]) => (
               <Card key={m} className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-0"><CardTitle className="text-sm font-medium">{l}</CardTitle></CardHeader>
-                <CardContent className="pt-2"><Verlauf id={`g-${m}`} data={serie(m)} color="hsl(var(--primary))" euro={m === 'umsatz'} /></CardContent></Card>
+                <CardContent className="pt-2"><Verlauf id={`g-${m}`} data={serie(m)} color="hsl(var(--primary))" /></CardContent></Card>
             ))}
           </div>
 
@@ -196,11 +255,16 @@ export default function SalesOverview() {
                   <div key={k.key} className="grid grid-cols-[1fr] sm:grid-cols-[180px_1fr_auto] items-center gap-x-4 gap-y-1">
                     <span className="text-sm flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: k.color }} />{k.label}{k.key === 'coldcall' && <sup className="text-muted-foreground">*</sup>}</span>
                     <div className="h-2.5 rounded-full bg-background overflow-hidden"><div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${(k.eg / max) * 100}%`, background: k.color }} /></div>
-                    <span className="text-xs tabular-nums text-muted-foreground">{fmtN(k.dials)} Dials · {fmtN(k.eg)} EG · {fmtN(k.zg)} ZG · {fmtN(k.won)} Won · {fmtE(k.umsatz)}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground">{fmtN(k.dials)} Dials · {fmtN(k.eg)} EG · {fmtN(k.zg)} ZG · {fmtN(k.won)} Won · {fmtN(k.abg)} Abgänge</span>
                   </div>
                 );
               })}
-              <p className="text-[11px] text-muted-foreground pt-1">Balken = Erstgespräche gebucht. * Cold Call steht derzeit strukturell bei 0, weil Marcels Anrufe nicht in Close landen. Das ist bekannt und kein Messfehler.</p>
+              <div className="grid grid-cols-[1fr] sm:grid-cols-[180px_1fr_auto] items-center gap-x-4 gap-y-1 text-muted-foreground opacity-70">
+                <span className="text-sm flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full shrink-0 bg-muted-foreground" />Inbound</span>
+                <span className="text-xs">nicht gewertet, wie im Slack-Report</span>
+                <span className="text-xs tabular-nums">{fmtN(sum(inboundTage, 'Dials'))} Dials · {fmtN(sum(inboundTage, 'EG_gebucht'))} EG · {fmtN(inboundAbg)} Abgänge</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground pt-1">Balken = Erstgespräche gebucht. Inbound zählt in keiner Summe. * Cold Call steht derzeit strukturell bei 0, weil Marcels Anrufe nicht in Close landen. Das ist bekannt und kein Messfehler.</p>
             </CardContent>
           </Card>
 
@@ -208,20 +272,20 @@ export default function SalesOverview() {
             <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Funnel</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               {funnel.map((f, i) => (
-                <div key={f.l} className="grid grid-cols-[110px_1fr_auto] items-center gap-3">
+                <div key={f.l} className="grid grid-cols-[120px_1fr_auto] items-center gap-3">
                   <span className="text-sm">{f.l}</span>
                   <div className="h-3 rounded-full bg-background overflow-hidden"><div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${funnel[0].v ? Math.max(1, (f.v / funnel[0].v) * 100) : 0}%` }} /></div>
                   <span className="text-xs tabular-nums w-36 text-right">{fmtN(f.v)}{i > 0 && <span className="text-muted-foreground"> · {pct(f.v, funnel[i - 1].v)}</span>}</span>
                 </div>
               ))}
-              <p className="text-[11px] text-muted-foreground">Quote = Anteil der vorherigen Stufe.{!egGefuehrtDa && ' „EG geführt“ fehlt, weil das Sheet diese Spalte nicht enthält.'}</p>
+              <p className="text-[11px] text-muted-foreground">Quote = Anteil der vorherigen Stufe. ¹ EG geführt ist abgeleitet: EG_gefuehrt_kein_ZG + ZG_gebucht (wer ein ZG gebucht hat, hatte das EG). Wird das ZG an einem anderen Tag gebucht als das EG stattfand, verschiebt sich der Tageswert; über Zeiträume stimmt die Summe, am einzelnen Tag nicht immer.</p>
             </CardContent>
           </Card>
 
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
             <Card className="border-0 shadow-none bg-muted/40">
               <CardHeader className="pb-0"><CardTitle className="text-sm font-medium">Abgänge nach Grund</CardTitle>
-                <p className="text-xs tabular-nums text-muted-foreground">{fmtN(abgCur.length)} Abgänge · Erfassungsquote {pct(mitGrund, abgCur.length)} · <Delta cur={abgCur.length} prev={abgPrev.length} steigtGut={false} show={r.vergleich} /></p></CardHeader>
+                <p className="text-xs tabular-nums text-muted-foreground">{fmtN(abgCur.length)} Abgänge · Erfassungsquote {pct(mitGrund, abgCur.length)} · <Delta cur={abgCur.length} prev={abgPrev.length} steigtGut={false} show={r.vergleich} />{abgAlle.length > abgCur.length && ` · ${fmtN(abgAlle.length - abgCur.length)} Inbound nicht gewertet`}</p></CardHeader>
               <CardContent className="pt-3">
                 {!abg.length ? <p className="text-sm text-muted-foreground py-6 text-center">Noch keine Daten</p> : !gruende.length ? <p className="text-sm text-muted-foreground py-6 text-center">Keine Abgänge im Zeitraum</p> : (
                   <ResponsiveContainer width="100%" height={Math.max(120, gruende.length * 34)}>
