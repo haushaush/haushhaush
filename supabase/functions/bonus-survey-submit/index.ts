@@ -15,7 +15,9 @@ Deno.serve(async req => {
   if (!url || !key) throw new Error('Runtime configuration missing');
   const sb = createClient(url, key);
   // The edge gateway supplies the connection IP. Never accept an IP from the request body.
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip');
+  // Use the rightmost gateway-appended hop, not the caller-controlled first forwarded entry.
+  const forwarded = req.headers.get('x-forwarded-for')?.split(',').map(value => value.trim()).filter(Boolean);
+  const ip = forwarded?.at(-1) || req.headers.get('x-real-ip');
   if (!ip) return json({ error: 'client_ip_unavailable' }, 503);
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key + ':' + ip));
   const ipHash = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
