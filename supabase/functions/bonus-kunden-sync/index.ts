@@ -171,8 +171,8 @@ export async function mirrorLeads(admin: any, forceVoll: boolean) {
       await upsertLeads(admin, rows);
       rep.leads = rows.length;
     }
-    // Status changes since last success (on first run: last 400 days as history).
-    const since = st?.letzter_erfolg ? new Date(new Date(st.letzter_erfolg).getTime() - 5 * 60000).toISOString() : new Date(Date.now() - 400 * 86400000).toISOString();
+    // Status changes since last success (on first run: last 60 days as history).
+    const since = st?.letzter_erfolg ? new Date(new Date(st.letzter_erfolg).getTime() - 5 * 60000).toISOString() : new Date(Date.now() - 60 * 86400000).toISOString();
     const changes: any[] = [];
     for (let skip = 0; ; skip += 100) {
       const p = await call(`/activity/status_change/lead/?date_created__gte=${encodeURIComponent(since)}&_limit=100&_skip=${skip}`);
