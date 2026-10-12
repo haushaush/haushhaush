@@ -129,7 +129,7 @@ export async function refreshAktuell(admin: any) {
 }
 const BETREUT_CRM = ["In Betreuung", "Onboarding", "Pausiert"];
 
-/** Keeps the month snapshot in step: adds counted, betreute customers; removes only admin-excluded ones. */
+/** Snapshot only grows: anyone betreut at any point in the month stays. Never deletes rows. */
 export async function reconcileSnapshot(admin: any, monat: string) {
   const { data: mas } = await admin.from("bonus_mitarbeiter").select("id").eq("aktiv", true);
   const { data: akt } = await admin.from("bonus_kunden_aktuell").select("client_id, mitarbeiter_id, zaehlt_fuer_betreuung, aktiv").not("client_id", "is", null);
@@ -139,12 +139,10 @@ export async function reconcileSnapshot(admin: any, monat: string) {
     if (bm?.status === "freigegeben") { out.push({ mitarbeiter_id: m.id, uebersprungen: "Monat freigegeben" }); continue; }
     const mine = (akt || []).filter((a: any) => !a.mitarbeiter_id || a.mitarbeiter_id === m.id);
     const add = [...new Set(mine.filter((a: any) => a.aktiv && a.zaehlt_fuer_betreuung).map((a: any) => a.client_id))];
-    const drop = [...new Set(mine.filter((a: any) => !a.zaehlt_fuer_betreuung).map((a: any) => a.client_id))];
     if (add.length) {
       const { error } = await admin.from("bonus_kunden_snapshot").upsert(add.map((client_id) => ({ monat, mitarbeiter_id: m.id, client_id })), { onConflict: "monat,mitarbeiter_id,client_id", ignoreDuplicates: true });
       if (error) throw new Error("Snapshot fehlgeschlagen: " + error.message);
     }
-    if (drop.length) await admin.from("bonus_kunden_snapshot").delete().eq("monat", monat).eq("mitarbeiter_id", m.id).in("client_id", drop);
     const { count } = await admin.from("bonus_kunden_snapshot").select("id", { count: "exact", head: true }).eq("monat", monat).eq("mitarbeiter_id", m.id);
     out.push({ mitarbeiter_id: m.id, im_snapshot: count });
   }
@@ -155,6 +153,11 @@ async function adminAction(admin: any, body: any) {
   if (body.aktion === "zaehlt") {
     const { error } = await admin.from("bonus_kunden_aktuell").update({ zaehlt_fuer_betreuung: !!body.wert, updated_at: new Date().toISOString() }).eq("id", body.id);
     if (error) throw new Error(error.message);
+    // Explicit human exclusion is the only automated-path removal from the running month's snapshot.
+    if (!body.wert) {
+      const { data: r } = await admin.from("bonus_kunden_aktuell").select("client_id").eq("id", body.id).single();
+      if (r?.client_id) await admin.from("bonus_kunden_snapshot").delete().eq("monat", currentMonthBerlin()).eq("client_id", r.client_id);
+    }
     return { snapshot: await reconcileSnapshot(admin, currentMonthBerlin()) };
   }
   if (body.aktion === "zuordnen") {
