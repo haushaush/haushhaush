@@ -182,10 +182,16 @@ Deno.serve(async (req) => {
             currency: inv.currency || "EUR",
             total_amount: inv.total_amount?.value != null ? Number(inv.total_amount.value) : (inv.total_amount_cents != null ? toEur(inv.total_amount_cents) : null),
             total_amount_cents: inv.total_amount_cents ?? (inv.total_amount?.value != null ? Math.round(Number(inv.total_amount.value) * 100) : null),
-            subtotal_amount: inv.subtotal_amount?.value != null ? Number(inv.subtotal_amount.value) : (inv.subtotal_amount_cents != null ? toEur(inv.subtotal_amount_cents) : null),
-            subtotal_amount_cents: inv.subtotal_amount_cents ?? null,
-            vat_amount: inv.vat_amount?.value != null ? Number(inv.vat_amount.value) : (inv.vat_amount_cents != null ? toEur(inv.vat_amount_cents) : null),
-            vat_amount_cents: inv.vat_amount_cents ?? null,
+            // Qonto often omits subtotal: net = gross - VAT
+            ...(() => {
+              const gross = inv.total_amount?.value != null ? Number(inv.total_amount.value) : (inv.total_amount_cents != null ? toEur(inv.total_amount_cents) : null);
+              const vat = inv.vat_amount?.value != null ? Number(inv.vat_amount.value) : (inv.vat_amount_cents != null ? toEur(inv.vat_amount_cents) : null);
+              const sub = inv.subtotal_amount?.value != null ? Number(inv.subtotal_amount.value) : (inv.subtotal_amount_cents != null ? toEur(inv.subtotal_amount_cents) : (gross != null && vat != null ? Math.round((gross - vat) * 100) / 100 : null));
+              return {
+                subtotal_amount: sub, subtotal_amount_cents: inv.subtotal_amount_cents ?? (sub != null ? Math.round(sub * 100) : null),
+                vat_amount: vat, vat_amount_cents: inv.vat_amount_cents ?? (vat != null ? Math.round(vat * 100) : null),
+              };
+            })(),
             issue_date: inv.issue_date || null,
             due_date: inv.due_date || null,
             paid_at: inv.paid_at || inv.payment_date || null,
