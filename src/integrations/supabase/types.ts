@@ -1295,7 +1295,10 @@ export type Database = {
           b2_umgang: number | null
           b3_verbindlichkeit: number | null
           b4_eigeninitiative: number | null
+          client_id: string | null
           created_at: string
+          eingegeben_email: string | null
+          eingegeben_firma: string | null
           f1_reaktionszeit: number | null
           f2_freundlichkeit: number | null
           f3_loesungsqualitaet: number | null
@@ -1307,17 +1310,26 @@ export type Database = {
           l1_anfragemenge: number | null
           l2_anfragequalitaet: number | null
           l3_weiterempfehlung: number | null
+          mitarbeiter_id: string | null
+          monat: string | null
           score: number | null
           score_betreuung: number | null
           score_leistung: number | null
-          token: string
+          token: string | null
+          updated_at: string
+          zugeordnet_am: string | null
+          zugeordnet_von: string | null
+          zuordnung_status: string
         }
         Insert: {
           b1_reaktionszeit?: number | null
           b2_umgang?: number | null
           b3_verbindlichkeit?: number | null
           b4_eigeninitiative?: number | null
+          client_id?: string | null
           created_at?: string
+          eingegeben_email?: string | null
+          eingegeben_firma?: string | null
           f1_reaktionszeit?: number | null
           f2_freundlichkeit?: number | null
           f3_loesungsqualitaet?: number | null
@@ -1329,17 +1341,26 @@ export type Database = {
           l1_anfragemenge?: number | null
           l2_anfragequalitaet?: number | null
           l3_weiterempfehlung?: number | null
+          mitarbeiter_id?: string | null
+          monat?: string | null
           score?: number | null
           score_betreuung?: number | null
           score_leistung?: number | null
-          token: string
+          token?: string | null
+          updated_at?: string
+          zugeordnet_am?: string | null
+          zugeordnet_von?: string | null
+          zuordnung_status?: string
         }
         Update: {
           b1_reaktionszeit?: number | null
           b2_umgang?: number | null
           b3_verbindlichkeit?: number | null
           b4_eigeninitiative?: number | null
+          client_id?: string | null
           created_at?: string
+          eingegeben_email?: string | null
+          eingegeben_firma?: string | null
           f1_reaktionszeit?: number | null
           f2_freundlichkeit?: number | null
           f3_loesungsqualitaet?: number | null
@@ -1351,12 +1372,32 @@ export type Database = {
           l1_anfragemenge?: number | null
           l2_anfragequalitaet?: number | null
           l3_weiterempfehlung?: number | null
+          mitarbeiter_id?: string | null
+          monat?: string | null
           score?: number | null
           score_betreuung?: number | null
           score_leistung?: number | null
-          token?: string
+          token?: string | null
+          updated_at?: string
+          zugeordnet_am?: string | null
+          zugeordnet_von?: string | null
+          zuordnung_status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bonus_survey_antworten_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_survey_antworten_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bonus_survey_antworten_token_fkey"
             columns: ["token"]
@@ -1365,6 +1406,21 @@ export type Database = {
             referencedColumns: ["token"]
           },
         ]
+      }
+      bonus_survey_rate_limits: {
+        Row: {
+          accepted_at: string[]
+          ip_hash: string
+        }
+        Insert: {
+          accepted_at?: string[]
+          ip_hash: string
+        }
+        Update: {
+          accepted_at?: string[]
+          ip_hash?: string
+        }
+        Relationships: []
       }
       bonus_survey_tokens: {
         Row: {
@@ -7955,6 +8011,16 @@ export type Database = {
         Returns: undefined
       }
       bonus_my_team_id: { Args: never; Returns: string }
+      bonus_survey_assign: {
+        Args: {
+          _antwort_id: string
+          _client_id?: string
+          _kein_kunde?: boolean
+        }
+        Returns: Json
+      }
+      bonus_survey_rate_allow: { Args: { _ip_hash: string }; Returns: boolean }
+      bonus_survey_save: { Args: { _payload: Json }; Returns: string }
       create_or_get_unternehmen: { Args: { p_name: string }; Returns: string }
       current_user_team_rolle: {
         Args: never
