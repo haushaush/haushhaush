@@ -813,6 +813,62 @@ export type Database = {
         }
         Relationships: []
       }
+      bonus_checkin_kandidaten: {
+        Row: {
+          bearbeitet_am: string | null
+          bearbeitet_von: string | null
+          close_activity_id: string
+          close_lead_id: string
+          close_status_label: string | null
+          created_at: string
+          datum: string
+          id: string
+          lead_name: string | null
+          mitarbeiter_id: string
+          monat: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bearbeitet_am?: string | null
+          bearbeitet_von?: string | null
+          close_activity_id: string
+          close_lead_id: string
+          close_status_label?: string | null
+          created_at?: string
+          datum: string
+          id?: string
+          lead_name?: string | null
+          mitarbeiter_id: string
+          monat: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bearbeitet_am?: string | null
+          bearbeitet_von?: string | null
+          close_activity_id?: string
+          close_lead_id?: string
+          close_status_label?: string | null
+          created_at?: string
+          datum?: string
+          id?: string
+          lead_name?: string | null
+          mitarbeiter_id?: string
+          monat?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_checkin_kandidaten_mitarbeiter_id_fkey"
+            columns: ["mitarbeiter_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_mitarbeiter"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bonus_checkins: {
         Row: {
           anlass: string | null
@@ -1047,38 +1103,53 @@ export type Database = {
         Row: {
           aktiv: boolean
           client_id: string | null
+          close_account: string
           close_lead_id: string
-          close_opportunity_id: string
+          close_opportunity_id: string | null
+          close_status_label: string | null
           created_at: string
           id: string
           lead_name: string | null
-          mitarbeiter_id: string
+          mitarbeiter_id: string | null
           seit: string | null
+          updated_at: string
+          zaehlt_fuer_betreuung: boolean
           zuletzt_gesehen_am: string
+          zuordnung_quelle: string | null
         }
         Insert: {
           aktiv?: boolean
           client_id?: string | null
+          close_account?: string
           close_lead_id: string
-          close_opportunity_id: string
+          close_opportunity_id?: string | null
+          close_status_label?: string | null
           created_at?: string
           id?: string
           lead_name?: string | null
-          mitarbeiter_id: string
+          mitarbeiter_id?: string | null
           seit?: string | null
+          updated_at?: string
+          zaehlt_fuer_betreuung?: boolean
           zuletzt_gesehen_am?: string
+          zuordnung_quelle?: string | null
         }
         Update: {
           aktiv?: boolean
           client_id?: string | null
+          close_account?: string
           close_lead_id?: string
-          close_opportunity_id?: string
+          close_opportunity_id?: string | null
+          close_status_label?: string | null
           created_at?: string
           id?: string
           lead_name?: string | null
-          mitarbeiter_id?: string
+          mitarbeiter_id?: string | null
           seit?: string | null
+          updated_at?: string
+          zaehlt_fuer_betreuung?: boolean
           zuletzt_gesehen_am?: string
+          zuordnung_quelle?: string | null
         }
         Relationships: [
           {

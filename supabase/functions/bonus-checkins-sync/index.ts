@@ -1,7 +1,8 @@
 // Narrow, independent sync: pulls ONLY "Client Checkin" custom activities from Close
-// for the clients in bonus_kunden_snapshot and writes them to bonus_checkins.
+// on leads of the Close-mirrored customer list (bonus_kunden_aktuell); checkins on non-client leads go to bonus_checkin_kandidaten and writes them to bonus_checkins.
 // Any Close API error aborts the run without touching stored data (a too-low call count costs the employee money).
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { closeClient as sharedClose } from "../_shared/bonusClose.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -66,7 +67,30 @@ async function resolveFields(get: (p: string) => Promise<any>): Promise<Fields> 
   return res;
 }
 
-async function syncOne(admin: any, get: (p: string) => Promise<any>, fields: Fields, monat: string, mitarbeiter_id: string) {
+/** All leads on which this Close user logged a Client Checkin in the window (Advanced Filtering — the only
+ *  Close endpoint that can search activities by user without a lead_id). */
+async function leadsWithCheckins(post: (p: string, b: unknown) => Promise<any>, closeUserId: string, vonIso: string, bisIso: string) {
+  const out: any[] = [];
+  let cursor: string | null = null;
+  do {
+    const page = await post(`/data/search/`, {
+      query: { type: "and", queries: [
+        { type: "object_type", object_type: "lead" },
+        { type: "has_related", this_object_type: "lead", related_object_type: "activity.custom_activity", related_query: { type: "and", queries: [
+          { type: "field_condition", field: { type: "regular_field", object_type: "activity.custom_activity", field_name: "custom_activity_type_id" }, condition: { type: "reference", reference_type: "custom_activity_type", object_ids: [ACTIVITY_TYPE_ID] } },
+          { type: "field_condition", field: { type: "regular_field", object_type: "activity.custom_activity", field_name: "user_id" }, condition: { type: "reference", reference_type: "user_or_group", object_ids: [closeUserId] } },
+          { type: "field_condition", field: { type: "regular_field", object_type: "activity.custom_activity", field_name: "activity_at" }, condition: { type: "moment_range", on_or_after: { type: "fixed_utc", value: vonIso }, before: { type: "fixed_utc", value: bisIso } } },
+        ] } },
+      ] },
+      _fields: { lead: ["id", "display_name", "status_label"] }, _limit: 200, ...(cursor ? { cursor } : {}),
+    });
+    out.push(...(page.data || []));
+    cursor = page.cursor || null;
+  } while (cursor);
+  return out;
+}
+
+async function syncOne(admin: any, get: (p: string) => Promise<any>, post: (p: string, b: unknown) => Promise<any>, fields: Fields, monat: string, mitarbeiter_id: string) {
   const { data: ma, error: mErr } = await admin.from("bonus_mitarbeiter").select("id, close_user_id").eq("id", mitarbeiter_id).maybeSingle();
   if (mErr || !ma) throw new Error("bonus_mitarbeiter nicht gefunden");
   const closeUserId: string | null = ma.close_user_id ?? null;
@@ -74,76 +98,65 @@ async function syncOne(admin: any, get: (p: string) => Promise<any>, fields: Fie
 
   const { data: snap, error: sErr } = await admin.from("bonus_kunden_snapshot").select("client_id, clients:client_id(name)").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
   if (sErr) throw new Error("Snapshot: " + sErr.message);
-  const clientIds = (snap || []).map((s: any) => s.client_id);
-  if (!clientIds.length) throw new Error("Kein Kundensnapshot für diesen Monat — ohne Nenner kein Sync");
+  if (!(snap || []).length) throw new Error("Kein Kundensnapshot für diesen Monat — ohne Nenner kein Sync");
+  const inSnap = new Set((snap || []).map((s: any) => s.client_id));
 
-  const [{ data: l1 }, { data: l2 }, { data: l3 }] = await Promise.all([
-    admin.from("close_link").select("client_id, close_lead_id").in("client_id", clientIds),
-    admin.from("close_leads").select("client_id, id").in("client_id", clientIds),
-    admin.from("kunde_close_deals").select("kunde_id, close_lead_id").in("kunde_id", clientIds),
-  ]);
-  const stored = new Map<string, Set<string>>();
-  const add = (m: Map<string, Set<string>>, c: string, l: string | null) => { if (!l) return; if (!m.has(c)) m.set(c, new Set()); m.get(c)!.add(l); };
-  (l1 || []).forEach((r: any) => add(stored, r.client_id, r.close_lead_id));
-  (l2 || []).forEach((r: any) => add(stored, r.client_id, r.id));
-  (l3 || []).forEach((r: any) => add(stored, r.kunde_id, r.close_lead_id));
-
-  // The checkin type lives in a specific Close account: verify stored lead ids exist there,
-  // otherwise resolve by exact (normalized) lead name in that account.
-  const norm = (x: string) => x.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-  const leadsByClient = new Map<string, Set<string>>();
-  const nicht_zuordenbar: any[] = [];
-  for (const s of snap || []) {
-    const name: string = s.clients?.name ?? "";
-    for (const l of stored.get(s.client_id) ?? []) {
-      const lead = await get(`/lead/${encodeURIComponent(l)}/?_fields=id`);
-      if (lead?.id) add(leadsByClient, s.client_id, lead.id);
-    }
-    if (!leadsByClient.has(s.client_id) && name) {
-      // exact match on lead name or on a contact name (many customers are named after the person)
-      const res = await get(`/lead/?query=${encodeURIComponent(name.replace(/"/g, ""))}&_fields=id,display_name,name,contacts&_limit=25`);
-      const target = norm(name);
-      for (const ld of res.data || []) {
-        const names = [ld.display_name, ld.name, ...((ld.contacts || []).map((c: any) => c.name))].filter(Boolean).map((x: string) => norm(x));
-        if (names.includes(target)) add(leadsByClient, s.client_id, ld.id);
-      }
-    }
-    if (!leadsByClient.has(s.client_id)) nicht_zuordenbar.push({ client_id: s.client_id, name: name || null, grund: stored.has(s.client_id) ? "Verknüpfter Lead nicht im Close-Account mit Client-Checkins, kein Lead mit exakt gleichem Namen" : "Keine Close-Verknüpfung und kein Lead mit exakt gleichem Namen" });
-  }
+  // Only source of lead ids: the Close-mirrored customer list. No name search.
+  const { data: akt, error: aErr } = await admin.from("bonus_kunden_aktuell").select("close_lead_id, client_id, zaehlt_fuer_betreuung, close_status_label").eq("close_account", "CLOSE_API_KEY_SALES");
+  if (aErr) throw new Error("Kundenliste: " + aErr.message);
+  const leadInfo = new Map((akt || []).map((a: any) => [a.close_lead_id, a]));
+  const mapped = new Set((akt || []).filter((a: any) => a.client_id).map((a: any) => a.client_id));
+  const nicht_zuordenbar = (snap || []).filter((s: any) => !mapped.has(s.client_id)).map((s: any) => ({ client_id: s.client_id, name: s.clients?.name ?? null, grund: "Kunde steht im Snapshot, aber auf keinem Close-Lead mit Klienten-Status" }));
 
   const von = monat, bis = nextMonth(monat);
-  const rows: any[] = [];
-  let fremde = 0, entwuerfe = 0;
-  for (const [clientId, leads] of leadsByClient) {
-    for (const leadId of leads) {
-      let skip = 0;
-      while (true) {
-        const page = await get(`/activity/custom/?lead_id=${encodeURIComponent(leadId)}&custom_activity_type_id=${ACTIVITY_TYPE_ID}&_limit=100&_skip=${skip}`);
-        for (const a of page.data || []) {
-          const when = a.activity_at || a.date_created;
-          const d = when ? berlinDate(when) : null;
-          if (!d || d < von || d >= bis) continue;
-          if (a.status && a.status !== "published") { entwuerfe++; continue; }
-          if (a.user_id !== closeUserId) { fremde++; continue; }
-          const fa = fields.faellig ? str(a[fields.faellig]) : null;
-          rows.push({
-            close_activity_id: a.id, monat, client_id: clientId, mitarbeiter_id, quelle: "close", datum: d,
-            stimmung: str(a[fields.stimmung!]), anlass: str(a[fields.anlass!]),
-            kampagne_nach_erwartung: fields.kampagne ? str(a[fields.kampagne]) : null,
-            upsell_potenzial: fields.upsell ? str(a[fields.upsell]) : null,
-            naechster_schritt: fields.schritt ? str(a[fields.schritt]) : null,
-            offene_punkte: fields.offen ? str(a[fields.offen]) : null,
-            naechster_checkin_faellig: fa && /^\d{4}-\d{2}-\d{2}/.test(fa) ? fa.slice(0, 10) : null,
-            close_lead_id: leadId, close_user_id: a.user_id, updated_at: new Date().toISOString(),
-          });
+  // Berlin month boundaries in UTC, padded by a day; exact filtering happens below on the Berlin date.
+  const pad = (d: string, h: number) => new Date(new Date(d + "T00:00:00Z").getTime() + h * 3600e3).toISOString();
+  const leads = await leadsWithCheckins(post, closeUserId, pad(von, -24), pad(bis, 24));
+
+  const rows: any[] = [], kandidaten: any[] = [];
+  let fremde = 0, entwuerfe = 0, ausgeschlossen = 0;
+  for (const lead of leads) {
+    const info: any = leadInfo.get(lead.id);
+    const counts = info?.client_id && info.zaehlt_fuer_betreuung && inSnap.has(info.client_id);
+    if (info && !info.zaehlt_fuer_betreuung) { ausgeschlossen++; continue; }
+    let skip = 0;
+    while (true) {
+      const page = await get(`/activity/custom/?lead_id=${encodeURIComponent(lead.id)}&custom_activity_type_id=${ACTIVITY_TYPE_ID}&_limit=100&_skip=${skip}`);
+      for (const a of page.data || []) {
+        const when = a.activity_at || a.date_created;
+        const d = when ? berlinDate(when) : null;
+        if (!d || d < von || d >= bis) continue;
+        if (a.status && a.status !== "published") { entwuerfe++; continue; }
+        if (a.user_id !== closeUserId) { fremde++; continue; }
+        if (!counts) {
+          kandidaten.push({ close_activity_id: a.id, close_lead_id: lead.id, lead_name: lead.display_name, close_status_label: lead.status_label, datum: d, monat, mitarbeiter_id, updated_at: new Date().toISOString() });
+          continue;
         }
-        if (!page.has_more) break;
-        skip += 100;
+        const fa = fields.faellig ? str(a[fields.faellig]) : null;
+        rows.push({
+          close_activity_id: a.id, monat, client_id: info.client_id, mitarbeiter_id, quelle: "close", datum: d,
+          stimmung: str(a[fields.stimmung!]), anlass: str(a[fields.anlass!]),
+          kampagne_nach_erwartung: fields.kampagne ? str(a[fields.kampagne]) : null,
+          upsell_potenzial: fields.upsell ? str(a[fields.upsell]) : null,
+          naechster_schritt: fields.schritt ? str(a[fields.schritt]) : null,
+          offene_punkte: fields.offen ? str(a[fields.offen]) : null,
+          naechster_checkin_faellig: fa && /^\d{4}-\d{2}-\d{2}/.test(fa) ? fa.slice(0, 10) : null,
+          close_lead_id: lead.id, close_user_id: a.user_id, updated_at: new Date().toISOString(),
+        });
       }
+      if (!page.has_more) break;
+      skip += 100;
     }
   }
-  // dedupe (same activity reachable via two lead links)
   const uniq = [...new Map(rows.map((r) => [r.close_activity_id, r])).values()];
+  if (kandidaten.length) {
+    // keep a human decision (ignoriert/uebernommen); only refresh descriptive fields
+    const { data: known } = await admin.from("bonus_checkin_kandidaten").select("close_activity_id").in("close_activity_id", kandidaten.map((k) => k.close_activity_id));
+    const k = new Set((known || []).map((x: any) => x.close_activity_id));
+    const fresh = kandidaten.filter((x) => !k.has(x.close_activity_id));
+    if (fresh.length) { const { error } = await admin.from("bonus_checkin_kandidaten").insert(fresh); if (error) throw new Error("Kandidaten schreiben: " + error.message); }
+    for (const x of kandidaten.filter((x) => k.has(x.close_activity_id))) await admin.from("bonus_checkin_kandidaten").update({ close_status_label: x.close_status_label, lead_name: x.lead_name, datum: x.datum }).eq("close_activity_id", x.close_activity_id);
+  }
 
   // Everything fetched successfully — only now touch the database.
   const { data: existing } = await admin.from("bonus_checkins").select("close_activity_id").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).eq("quelle", "close");
@@ -159,14 +172,16 @@ async function syncOne(admin: any, get: (p: string) => Promise<any>, fields: Fie
     if (error) throw new Error("Bereinigen fehlgeschlagen: " + error.message);
   }
   const neu = uniq.filter((r) => !before.has(r.close_activity_id)).length;
-  return { gefunden: uniq.length, neu, aktualisiert: uniq.length - neu, entfernt: stale.length, nicht_zuordenbar, ignoriert_andere_nutzer: fremde, ignoriert_entwuerfe: entwuerfe };
+  return { gefunden: uniq.length, neu, aktualisiert: uniq.length - neu, entfernt: stale.length, nicht_zuordenbar, ignoriert_andere_nutzer: fremde, ignoriert_entwuerfe: entwuerfe, ignoriert_ausgeschlossen: ausgeschlossen, leads_mit_checkins: leads.length, ohne_klientenstatus: kandidaten.length };
 }
+
+let POST: ((p: string, b: unknown) => Promise<any>) | null = null;
 
 async function runLogged(admin: any, get: any, fields: Fields | null, monat: string, mitarbeiter_id: string, ausloeser: string) {
   const { data: log } = await admin.from("bonus_sync_log").insert({ sync_typ: "checkins", ausloeser, monat, mitarbeiter_id }).select("id").single();
   try {
     const f = fields ?? await resolveFields(get);
-    const r = await syncOne(admin, get, f, monat, mitarbeiter_id);
+    const r = await syncOne(admin, get, POST!, f, monat, mitarbeiter_id);
     await admin.from("bonus_sync_log").update({ beendet_am: new Date().toISOString(), ok: true, gefunden: r.gefunden, neu: r.neu, aktualisiert: r.aktualisiert, entfernt: r.entfernt, nicht_zuordenbar: r.nicht_zuordenbar }).eq("id", log.id);
     return { ok: true, monat, mitarbeiter_id, ...r };
   } catch (e) {
@@ -181,23 +196,12 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const url = Deno.env.get("SUPABASE_URL")!;
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  // Use whichever configured Close account actually contains the "Client Checkin" activity type.
-  let get: ((p: string) => Promise<any>) | null = null;
-  const probe: string[] = [];
-  for (const name of ["CLOSE_API_KEY", "CLOSE_API_KEY_SALES"]) {
-    const k = Deno.env.get(name);
-    if (!k) { probe.push(`${name}: nicht gesetzt`); continue; }
-    const g = closeClient(k);
-    try {
-      const l = await g(`/custom_activity/`);
-      if ((l.data || []).some((x: any) => x.id === ACTIVITY_TYPE_ID)) { get = g; console.log("using", name); break; }
-      probe.push(`${name}: Typ nicht vorhanden`);
-    } catch (e) { probe.push(`${name}: ${e instanceof Error ? e.message : e}`); }
-  }
-  if (!get) {
-    console.error("no close account with checkin type", probe);
-    return json({ ok: false, error: `Kein Close-Account mit Activity-Typ ${ACTIVITY_TYPE_ID} gefunden — ${probe.join(" | ")}` }, 502);
-  }
+  // Client Checkins and the mirrored customer list both live in the Haush Haush Digital account.
+  const key = Deno.env.get("CLOSE_API_KEY_SALES");
+  if (!key) return json({ ok: false, error: "CLOSE_API_KEY_SALES ist nicht gesetzt" }, 502);
+  const get = closeClient(key);
+  const shared = sharedClose(key);
+  POST = (p: string, b: unknown) => shared(p, "POST", b).catch((e: unknown) => { throw new CloseError(e instanceof Error ? e.message : String(e)); });
 
   let body: any = {};
   try { body = await req.json(); } catch { /* empty body allowed for cron */ }

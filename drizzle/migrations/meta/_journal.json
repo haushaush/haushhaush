@@ -85,6 +85,13 @@
       "when": 1791805180280,
       "tag": "0011_bonus_survey_atomic_assignment",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791807236489,
+      "tag": "0012_bonus_kunden_aus_close",
+      "breakpoints": true
     }
   ]
 }

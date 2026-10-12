@@ -12,6 +12,7 @@ import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { CheckinKandidaten } from '@/components/bonus/CheckinKandidaten';
 
 type KritKey = 'zufriedenheit' | 'cash_niveau' | 'cash_entwicklung' | 'churn' | 'calls';
 type Krit = { status: 'ok' | 'keine_daten' | 'unvollstaendig'; punkte: number; max: number; wert: any; hinweis?: string; basis_hinweis: string | null };
@@ -187,6 +188,8 @@ export default function BonusCockpit() {
           Zuletzt gespeichert: {lastSaved ? new Date(lastSaved).toLocaleString('de-DE') : 'noch nie'}
         </span>
       </div>
+      {maId && <CheckinKandidaten monat={monat} maId={maId} canManage={!!canManage} onChanged={() => canManage && run(true)} />}
+
 
       <Sheet open={!!detail} onOpenChange={o => !o && setDetail(null)}>
         <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
