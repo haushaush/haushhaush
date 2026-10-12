@@ -4,13 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import SalesKPI from './SalesKPI';
 import { SalesCloseAbschluesse } from './SalesUebersicht';
 
 type Tag = { datum: string; kanal: string; user_name: string; dials: number | null; eg_gebucht: number | null; eg_gefuehrt: number | null; zg_gebucht: number | null; zg_gefuehrt: number | null; abschluesse: number | null; umsatz: number | null };
-type Bestand = { datum: string; bestand: number | null };
+type Bestand = { datum: string; kanal: string; bestand: number | null };
+type Lauf = { gestartet_am: string; beendet_am: string | null; status: string; fehler: string | null; verworfen: Record<string, number>; unbekannte_kanaele: string[] };
 type Abgang = { schluessel: string; datum: string | null; grund: string | null };
 type Zeitraum = '7' | '30' | 'jahr' | 'gesamt';
 type Metric = 'dials' | 'eg_gebucht' | 'eg_gefuehrt' | 'zg_gebucht' | 'zg_gefuehrt' | 'abschluesse' | 'umsatz';
@@ -45,7 +48,7 @@ const sum = (rows: Tag[], m: Metric) => rows.reduce((a, r) => a + (Number(r[m]) 
 
 function Delta({ cur, prev, steigtGut = true, show }: { cur: number; prev: number; steigtGut?: boolean; show: boolean }) {
   if (!show) return <span className="text-muted-foreground">kein Vorzeitraum</span>;
-  if (!prev) return <span className="text-muted-foreground">Vorzeitraum ohne Werte</span>;
+  if (!prev) return <span className="text-muted-foreground">{cur ? 'Vorzeitraum ohne Werte – kein Vergleich' : 'unverändert'}</span>;
   const p = ((cur - prev) / prev) * 100; const up = p > 0;
   const gut = p === 0 ? null : up === steigtGut;
   return <span className={gut == null ? 'text-muted-foreground' : gut ? 'text-success' : 'text-destructive'}>{up ? '+' : ''}{p.toFixed(1).replace('.', ',')} % zum Vorzeitraum</span>;
@@ -67,15 +70,17 @@ function Kachel({ titel, wert, sub, delta }: { titel: string; wert: string; sub?
 const tooltip = { contentStyle: { background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 12, fontSize: 12, color: 'hsl(var(--popover-foreground))' }, cursor: { stroke: 'hsl(var(--border))' } };
 
 function Verlauf({ data, color, id, euro }: { data: { datum: string; v: number }[]; color: string; id: string; euro?: boolean }) {
+  if (data.length < 2) return <p className="text-sm text-muted-foreground py-12 text-center">{data.length ? `Erst ein Datenpunkt (${fmtD(data[0].datum)}: ${euro ? fmtE(data[0].v) : fmtN(data[0].v)}) – Verlauf folgt` : 'Keine Werte im Zeitraum'}</p>;
+  const wenig = data.length < 8;
   return (
     <ResponsiveContainer width="100%" height={160}>
       <AreaChart data={data} margin={{ top: 8, right: 4, left: -16, bottom: 0 }}>
         <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity={0.35} /><stop offset="100%" stopColor={color} stopOpacity={0} /></linearGradient></defs>
         <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.6} />
         <XAxis dataKey="datum" tickFormatter={fmtD} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} minTickGap={28} />
-        <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={44} tickFormatter={v => euro ? `${Math.round(v / 1000)}k` : fmtN(v)} />
+        <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={44} allowDecimals={false} tickFormatter={v => euro ? `${Math.round(v / 1000)}k` : fmtN(v)} />
         <Tooltip {...tooltip} labelFormatter={l => new Date(l + 'T00:00:00').toLocaleDateString('de-DE')} formatter={(v: number) => [euro ? fmtE(v) : fmtN(v), '']} separator="" />
-        <Area type="monotone" dataKey="v" stroke={color} strokeWidth={2} strokeLinecap="round" fill={`url(#${id})`} dot={false} activeDot={{ r: 3 }} animationDuration={500} />
+        <Area type={data.length < 21 ? 'linear' : 'monotone'} dataKey="v" stroke={color} strokeWidth={2} strokeLinecap="round" fill={`url(#${id})`} dot={wenig ? { r: 2.5, fill: color, strokeWidth: 0 } : false} activeDot={{ r: 3 }} animationDuration={500} />
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -87,22 +92,36 @@ export default function SalesOverview() {
   const [abg, setAbg] = useState<Abgang[]>([]);
   const [loading, setLoading] = useState(true);
   const [z, setZ] = useState<Zeitraum>('30');
+  const [lauf, setLauf] = useState<Lauf | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [tick, setTick] = useState(0);
+  const jetzt = async () => {
+    setSyncing(true);
+    const { data, error } = await supabase.functions.invoke('sales-sheet-sync', { body: {} });
+    setSyncing(false);
+    if (error) { const d = error instanceof FunctionsHttpError ? await error.context.text() : error.message; let m = d; try { m = JSON.parse(d).error ?? d; } catch { /* plain */ } toast.error(`Abgleich fehlgeschlagen: ${m}`); }
+    else toast.success(`Abgleich fertig · ${data?.zeilen?.tagesdaten ?? 0} Tageszeilen aktualisiert`);
+    setTick(t => t + 1);
+  };
 
   useEffect(() => {
     (async () => {
-      const [t, b, a] = await Promise.all([
+      const [t, b, a, l] = await Promise.all([
         supabase.from('sales_tagesdaten').select('datum, kanal, user_name, dials, eg_gebucht, eg_gefuehrt, zg_gebucht, zg_gefuehrt, abschluesse, umsatz').order('datum').limit(50000),
-        supabase.from('sales_bestand').select('datum, bestand').order('datum').limit(5000),
+        supabase.from('sales_bestand').select('datum, kanal, bestand').order('datum').limit(20000),
         supabase.from('sales_abgaenge').select('schluessel, datum, grund').limit(20000),
+        supabase.from('sales_sheet_sync_laeufe').select('gestartet_am, beendet_am, status, fehler, verworfen, unbekannte_kanaele').order('gestartet_am', { ascending: false }).limit(1).maybeSingle(),
       ]);
+      setLauf((l.data as Lauf) ?? null);
       setTage((t.data as Tag[]) || []); setBestand((b.data as Bestand[]) || []); setAbg((a.data as Abgang[]) || []); setLoading(false);
     })();
-  }, []);
+  }, [tick]);
 
   const r = useMemo(() => ranges(z, tage[0]?.datum ?? null), [z, tage]);
   const cur = tage.filter(t => t.datum >= r.start && t.datum <= r.end);
   const prev = tage.filter(t => t.datum >= r.pStart && t.datum <= r.pEnd);
   const hatDaten = tage.length > 0;
+  const egGefuehrtDa = cur.some(t => t.eg_gefuehrt != null);
 
   const serie = (m: Metric) => {
     const by = new Map<string, number>(); cur.forEach(t => by.set(t.datum, (by.get(t.datum) || 0) + (Number(t[m]) || 0)));
@@ -113,7 +132,7 @@ export default function SalesOverview() {
     return { ...k, dials: sum(rows, 'dials'), eg: sum(rows, 'eg_gebucht'), zg: sum(rows, 'zg_gebucht'), won: sum(rows, 'abschluesse'), umsatz: sum(rows, 'umsatz') };
   });
   const funnel = [
-    { l: 'Dials', v: sum(cur, 'dials') }, { l: 'EG gebucht', v: sum(cur, 'eg_gebucht') }, { l: 'EG geführt', v: sum(cur, 'eg_gefuehrt') },
+    { l: 'Dials', v: sum(cur, 'dials') }, { l: 'EG gebucht', v: sum(cur, 'eg_gebucht') }, ...(egGefuehrtDa ? [{ l: 'EG geführt', v: sum(cur, 'eg_gefuehrt') }] : []),
     { l: 'ZG gebucht', v: sum(cur, 'zg_gebucht') }, { l: 'ZG geführt', v: sum(cur, 'zg_gefuehrt') }, { l: 'Won', v: sum(cur, 'abschluesse') },
   ];
   const abgCur = abg.filter(a => a.datum && a.datum >= r.start && a.datum <= r.end);
@@ -123,7 +142,11 @@ export default function SalesOverview() {
     return [...m.entries()].map(([grund, n]) => ({ grund, n })).sort((a, b) => b.n - a.n);
   }, [abgCur]);
   const mitGrund = abgCur.filter(a => a.grund?.trim()).length;
-  const bestandSerie = bestand.filter(b => b.bestand != null && b.datum >= r.start && b.datum <= r.end).map(b => ({ datum: b.datum, v: Number(b.bestand) }));
+  const bestandSerie = useMemo(() => {
+    const m = new Map<string, number>(); bestand.filter(b => b.bestand != null && b.datum >= r.start && b.datum <= r.end).forEach(b => m.set(b.datum, (m.get(b.datum) || 0) + Number(b.bestand)));
+    return [...m.entries()].sort().map(([datum, v]) => ({ datum, v }));
+  }, [bestand, r]);
+  const verworfenSumme = lauf ? Object.values(lauf.verworfen || {}).reduce((a, b) => a + (Number(b) || 0), 0) : 0;
 
   const pct = (a: number, b: number) => b ? `${((a / b) * 100).toFixed(1).replace('.', ',')} %` : '–';
 
@@ -132,13 +155,17 @@ export default function SalesOverview() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-heading font-bold">Übersicht</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Dieselbe Quelle wie der tägliche Slack-Report in #s-kpi{hatDaten ? ` · Daten ab ${new Date(tage[0].datum).toLocaleDateString('de-DE')}` : ''}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Google Sheet des Slack-Reports #s-kpi{hatDaten ? ` · Daten ab ${new Date(tage[0].datum).toLocaleDateString('de-DE')}` : ''}{lauf ? ` · letzter Abgleich ${new Date(lauf.beendet_am ?? lauf.gestartet_am).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}${lauf.status === 'fehler' ? ' (fehlgeschlagen)' : lauf.status === 'laeuft' ? ' (läuft)' : ''}` : ''}</p>
         </div>
+        <Button size="sm" variant="outline" className="h-7 rounded-full text-xs gap-1.5" onClick={jetzt} disabled={syncing}><RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />Jetzt aktualisieren</Button>
         <div className="inline-flex rounded-full bg-muted p-1">
           {ZEITRAUM.map(o => <Button key={o.v} size="sm" variant={z === o.v ? 'default' : 'ghost'} className="h-7 rounded-full px-3 text-xs" onClick={() => setZ(o.v)}>{o.l}</Button>)}
         </div>
       </div>
 
+      {lauf?.status === 'fehler' && <p className="text-xs text-destructive">Letzter Abgleich fehlgeschlagen: {lauf.fehler}</p>}
+      {verworfenSumme > 0 && <p className="text-xs text-muted-foreground">Hinweis: {verworfenSumme} Zeile(n) im Sheet ohne lesbares Datum wurden nicht übernommen ({Object.entries(lauf!.verworfen).filter(([, n]) => n).map(([k, n]) => `${k}: ${n}`).join(', ')}).</p>}
+      {!!lauf?.unbekannte_kanaele?.length && <p className="text-xs text-muted-foreground">Hinweis: Kanal {lauf.unbekannte_kanaele.map(k => `„${k}“`).join(', ')} im Sheet passt zu keinem der fünf Kanäle und wird im Kanalvergleich nicht gezählt.</p>}
       {loading ? <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}</div>
         : !hatDaten ? (
           <Card className="border-dashed"><CardContent className="py-12 text-center">
@@ -148,13 +175,13 @@ export default function SalesOverview() {
         ) : <>
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
             <Kachel titel="Dials" wert={fmtN(sum(cur, 'dials'))} delta={<Delta cur={sum(cur, 'dials')} prev={sum(prev, 'dials')} show={r.vergleich} />} />
-            <Kachel titel="Erstgespräche gebucht" wert={fmtN(sum(cur, 'eg_gebucht'))} sub={`davon geführt ${fmtN(sum(cur, 'eg_gefuehrt'))}`} delta={<Delta cur={sum(cur, 'eg_gebucht')} prev={sum(prev, 'eg_gebucht')} show={r.vergleich} />} />
+            <Kachel titel="Erstgespräche gebucht" wert={fmtN(sum(cur, 'eg_gebucht'))} sub={egGefuehrtDa ? `davon geführt ${fmtN(sum(cur, 'eg_gefuehrt'))}` : 'geführt: Spalte fehlt im Sheet'} delta={<Delta cur={sum(cur, 'eg_gebucht')} prev={sum(prev, 'eg_gebucht')} show={r.vergleich} />} />
             <Kachel titel="Zweitgespräche gebucht" wert={fmtN(sum(cur, 'zg_gebucht'))} sub={`davon geführt ${fmtN(sum(cur, 'zg_gefuehrt'))}`} delta={<Delta cur={sum(cur, 'zg_gebucht')} prev={sum(prev, 'zg_gebucht')} show={r.vergleich} />} />
-            <Kachel titel="Abschlüsse" wert={fmtN(sum(cur, 'abschluesse'))} sub={`Umsatz geschrieben ${fmtE(sum(cur, 'umsatz'))}`} delta={<Delta cur={sum(cur, 'umsatz')} prev={sum(prev, 'umsatz')} show={r.vergleich} />} />
+            <Kachel titel="Abschlüsse" wert={fmtN(sum(cur, 'abschluesse'))} sub={cur.some(t => t.umsatz != null) ? `Umsatz geschrieben ${fmtE(sum(cur, 'umsatz'))}` : 'Umsatz: Spalte fehlt im Sheet'} delta={<Delta cur={sum(cur, 'abschluesse')} prev={sum(prev, 'abschluesse')} show={r.vergleich} />} />
           </div>
 
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-            {([['dials', 'Dials'], ['eg_gebucht', 'Erstgespräche gebucht'], ['zg_gebucht', 'Zweitgespräche gebucht'], ['umsatz', 'Umsatz geschrieben']] as [Metric, string][]).map(([m, l]) => (
+            {([['dials', 'Dials'], ['eg_gebucht', 'Erstgespräche gebucht'], ['zg_gebucht', 'Zweitgespräche gebucht'], ['abschluesse', 'Abschlüsse']] as [Metric, string][]).map(([m, l]) => (
               <Card key={m} className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-0"><CardTitle className="text-sm font-medium">{l}</CardTitle></CardHeader>
                 <CardContent className="pt-2"><Verlauf id={`g-${m}`} data={serie(m)} color="hsl(var(--primary))" euro={m === 'umsatz'} /></CardContent></Card>
             ))}
@@ -187,7 +214,7 @@ export default function SalesOverview() {
                   <span className="text-xs tabular-nums w-36 text-right">{fmtN(f.v)}{i > 0 && <span className="text-muted-foreground"> · {pct(f.v, funnel[i - 1].v)}</span>}</span>
                 </div>
               ))}
-              <p className="text-[11px] text-muted-foreground">Quote = Anteil der vorherigen Stufe.</p>
+              <p className="text-[11px] text-muted-foreground">Quote = Anteil der vorherigen Stufe.{!egGefuehrtDa && ' „EG geführt“ fehlt, weil das Sheet diese Spalte nicht enthält.'}</p>
             </CardContent>
           </Card>
 
@@ -211,7 +238,7 @@ export default function SalesOverview() {
             </Card>
             <Card className="border-0 shadow-none bg-muted/40">
               <CardHeader className="pb-0"><CardTitle className="text-sm font-medium">Bestand</CardTitle>
-                {bestandSerie.length > 0 && <p className="text-xs tabular-nums text-muted-foreground">aktuell {fmtN(bestandSerie[bestandSerie.length - 1].v)}</p>}</CardHeader>
+                {bestandSerie.length > 0 && <p className="text-xs tabular-nums text-muted-foreground">aktuell {fmtN(bestandSerie[bestandSerie.length - 1].v)} offene Leads (alle Kanäle, ohne Won/Upsell/Lost/Unqualifiziert/Ehemalig)</p>}</CardHeader>
               <CardContent className="pt-2">{bestandSerie.length ? <Verlauf id="g-bestand" data={bestandSerie} color="hsl(var(--kanal-organisch))" /> : <p className="text-sm text-muted-foreground py-6 text-center">Noch keine Daten</p>}</CardContent>
             </Card>
           </div>
