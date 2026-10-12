@@ -675,48 +675,99 @@ export type Database = {
           },
         ]
       }
+      bonus_cash_ausschluesse: {
+        Row: {
+          aktiv: boolean
+          angelegt_von: string | null
+          begriff: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          aktiv?: boolean
+          angelegt_von?: string | null
+          begriff: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          aktiv?: boolean
+          angelegt_von?: string | null
+          begriff?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       bonus_cash_collect: {
         Row: {
+          abzug_positionen: Json
           betrag: number
+          brutto: number | null
           client_id: string | null
           created_at: string
           eingang_am: string | null
+          empfaenger_name: string | null
           id: string
+          klaer_grund: string | null
           mitarbeiter_id: string | null
           monat: string
+          netto_voll: number | null
           qonto_transaction_id: string | null
           quelle: Database["public"]["Enums"]["bonus_cash_quelle"]
+          quelle_id: string | null
+          rechnungsnummer: string | null
           updated_at: string
+          werbebudget_abzug: number
+          zahlung_schluessel: string | null
           zugeordnet: boolean
           zuordnung_am: string | null
           zuordnung_durch: string | null
         }
         Insert: {
+          abzug_positionen?: Json
           betrag?: number
+          brutto?: number | null
           client_id?: string | null
           created_at?: string
           eingang_am?: string | null
+          empfaenger_name?: string | null
           id?: string
+          klaer_grund?: string | null
           mitarbeiter_id?: string | null
           monat: string
+          netto_voll?: number | null
           qonto_transaction_id?: string | null
           quelle?: Database["public"]["Enums"]["bonus_cash_quelle"]
+          quelle_id?: string | null
+          rechnungsnummer?: string | null
           updated_at?: string
+          werbebudget_abzug?: number
+          zahlung_schluessel?: string | null
           zugeordnet?: boolean
           zuordnung_am?: string | null
           zuordnung_durch?: string | null
         }
         Update: {
+          abzug_positionen?: Json
           betrag?: number
+          brutto?: number | null
           client_id?: string | null
           created_at?: string
           eingang_am?: string | null
+          empfaenger_name?: string | null
           id?: string
+          klaer_grund?: string | null
           mitarbeiter_id?: string | null
           monat?: string
+          netto_voll?: number | null
           qonto_transaction_id?: string | null
           quelle?: Database["public"]["Enums"]["bonus_cash_quelle"]
+          quelle_id?: string | null
+          rechnungsnummer?: string | null
           updated_at?: string
+          werbebudget_abzug?: number
+          zahlung_schluessel?: string | null
           zugeordnet?: boolean
           zuordnung_am?: string | null
           zuordnung_durch?: string | null
@@ -737,6 +788,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      bonus_cash_ignorierte_empfaenger: {
+        Row: {
+          angelegt_von: string | null
+          created_at: string
+          grund: string | null
+          id: string
+          qonto_client_name: string
+        }
+        Insert: {
+          angelegt_von?: string | null
+          created_at?: string
+          grund?: string | null
+          id?: string
+          qonto_client_name: string
+        }
+        Update: {
+          angelegt_von?: string | null
+          created_at?: string
+          grund?: string | null
+          id?: string
+          qonto_client_name?: string
+        }
+        Relationships: []
       }
       bonus_checkins: {
         Row: {
@@ -8096,7 +8171,7 @@ export type Database = {
     Enums: {
       ampelstatus: "Grün" | "Gelb" | "Rot" | "CC"
       app_role: "admin" | "account-manager" | "setter"
-      bonus_cash_quelle: "qonto" | "manuell"
+      bonus_cash_quelle: "qonto" | "manuell" | "lexoffice"
       bonus_checkin_quelle: "close" | "dashboard" | "manuell"
       bonus_churn_typ:
         | "kuendigung_kunde"
@@ -8288,7 +8363,7 @@ export const Constants = {
     Enums: {
       ampelstatus: ["Grün", "Gelb", "Rot", "CC"],
       app_role: ["admin", "account-manager", "setter"],
-      bonus_cash_quelle: ["qonto", "manuell"],
+      bonus_cash_quelle: ["qonto", "manuell", "lexoffice"],
       bonus_checkin_quelle: ["close", "dashboard", "manuell"],
       bonus_churn_typ: [
         "kuendigung_kunde",
