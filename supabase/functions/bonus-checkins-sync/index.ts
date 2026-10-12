@@ -193,23 +193,12 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const url = Deno.env.get("SUPABASE_URL")!;
   const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  // Use whichever configured Close account actually contains the "Client Checkin" activity type.
-  let get: ((p: string) => Promise<any>) | null = null;
-  const probe: string[] = [];
-  for (const name of ["CLOSE_API_KEY", "CLOSE_API_KEY_SALES"]) {
-    const k = Deno.env.get(name);
-    if (!k) { probe.push(`${name}: nicht gesetzt`); continue; }
-    const g = closeClient(k);
-    try {
-      const l = await g(`/custom_activity/`);
-      if ((l.data || []).some((x: any) => x.id === ACTIVITY_TYPE_ID)) { get = g; console.log("using", name); break; }
-      probe.push(`${name}: Typ nicht vorhanden`);
-    } catch (e) { probe.push(`${name}: ${e instanceof Error ? e.message : e}`); }
-  }
-  if (!get) {
-    console.error("no close account with checkin type", probe);
-    return json({ ok: false, error: `Kein Close-Account mit Activity-Typ ${ACTIVITY_TYPE_ID} gefunden — ${probe.join(" | ")}` }, 502);
-  }
+  // Client Checkins and the mirrored customer list both live in the Haush Haush Digital account.
+  const key = Deno.env.get("CLOSE_API_KEY_SALES");
+  if (!key) return json({ ok: false, error: "CLOSE_API_KEY_SALES ist nicht gesetzt" }, 502);
+  const get = closeClient(key);
+  const shared = sharedClose(key);
+  const post = (p: string, b: unknown) => shared(p, "POST", b).catch((e: unknown) => { throw new CloseError(e instanceof Error ? e.message : String(e)); });
 
   let body: any = {};
   try { body = await req.json(); } catch { /* empty body allowed for cron */ }
