@@ -251,7 +251,7 @@ export default function Mitarbeiter() {
                     <button
                       type="button"
                       aria-label={`${m.name} löschen`}
-                      className="absolute top-2 right-2 p-1.5 rounded-md text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 p-1.5 rounded-md text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
                       onClick={(e) => { e.stopPropagation(); setDeleteTarget(m); setDeleteConfirm(''); }}
                     >
                       <Trash2 className="h-4 w-4" />
