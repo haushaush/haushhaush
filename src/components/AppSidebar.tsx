@@ -66,7 +66,6 @@ const navItems: NavItem[] = [
     title: 'Team & HR', url: '/hr', icon: UserCircle,
     children: [
       { title: 'Mitarbeiter', url: '/hr/mitarbeiter', permissionKey: 'team.view' },
-      { title: 'Check-in & Check-out', url: '/hr/checkins', permissionKey: 'hr.checkins.view' },
       { title: 'Time Tracking', url: '/hr/time-tracking', permissionKey: 'time_tracking.admin.view' },
       { title: 'Bonus-Cockpit', url: '/hr/bonus', permissionKey: 'hr.bonus.view' },
     ],

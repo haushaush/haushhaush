@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Plus, Calendar } from 'lucide-react';
+import { Plus, Calendar, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const DEPT_DISPLAY: Record<string, string> = {
@@ -99,6 +100,26 @@ export default function Mitarbeiter() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', rolle: 'Setter' as string, startdatum: '' });
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { data, error } = await supabase.functions.invoke('delete-team-member', {
+      body: { user_id: deleteTarget.id, confirm_email: deleteConfirm.trim() },
+    });
+    setDeleting(false);
+    if (error || data?.error) {
+      toast({ title: 'Löschen fehlgeschlagen', description: data?.error || error?.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Mitarbeiter gelöscht', description: deleteTarget.name });
+    setDeleteTarget(null);
+    setDeleteConfirm('');
+    fetchData();
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -222,10 +243,20 @@ export default function Mitarbeiter() {
             {group.members.map((m: any) => (
               <Card
                 key={m.id}
-                className="rounded-[14px] cursor-pointer hover:border-primary/40 transition-colors group"
+                className="relative rounded-[14px] cursor-pointer hover:border-primary/40 transition-colors group"
                 onClick={() => navigate(`/hr/mitarbeiter/${m.id}`)}
               >
                 <CardContent className="p-4 flex items-start gap-3">
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      aria-label={`${m.name} löschen`}
+                      className="absolute top-2 right-2 p-1.5 rounded-md text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(m); setDeleteConfirm(''); }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                   <Avatar className="h-11 w-11 mt-0.5">
                     {m.avatar_url && <AvatarImage src={m.avatar_url} />}
                     <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
@@ -249,6 +280,33 @@ export default function Mitarbeiter() {
           </div>
         </div>
       ))}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteConfirm(''); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mitarbeiter löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.name} wird endgültig gelöscht — inklusive Zugang, Rollen und Berechtigungen. Das kann nicht rückgängig gemacht werden. Gib zur Bestätigung die E-Mail-Adresse ein: <span className="font-medium text-foreground">{deleteTarget?.email}</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={deleteConfirm}
+            onChange={(e) => setDeleteConfirm(e.target.value)}
+            placeholder="E-Mail-Adresse zur Bestätigung"
+            autoFocus
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting || deleteConfirm.trim().toLowerCase() !== (deleteTarget?.email || '').toLowerCase()}
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Lösche …' : 'Endgültig löschen'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
