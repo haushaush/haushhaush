@@ -2446,6 +2446,7 @@ export type Database = {
           id: string
           letzter_abgleich: string | null
           status: string
+          treffer_via: string | null
           uebernommen_am: string | null
           uebernommen_von: string | null
           vc_lead_id: string
@@ -2458,6 +2459,7 @@ export type Database = {
           id?: string
           letzter_abgleich?: string | null
           status: string
+          treffer_via?: string | null
           uebernommen_am?: string | null
           uebernommen_von?: string | null
           vc_lead_id: string
@@ -2470,6 +2472,7 @@ export type Database = {
           id?: string
           letzter_abgleich?: string | null
           status?: string
+          treffer_via?: string | null
           uebernommen_am?: string | null
           uebernommen_von?: string | null
           vc_lead_id?: string
