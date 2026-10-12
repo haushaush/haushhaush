@@ -1,3 +1,9 @@
+# Startseite
+
+- [ ] Neueste Mitteilungen auf interne Nachrichten und Erinnerungen beschränken.
+- [ ] Umsatzentwicklung entfernen; auslaufende Kunden und dringende Projekte anzeigen.
+- [ ] Startseite mit echten Daten prüfen.
+
 # Bonus-Cockpit
 
 - [x] Einheitliche numerische Kacheln und Basiszeilen aus der Berechnung.
