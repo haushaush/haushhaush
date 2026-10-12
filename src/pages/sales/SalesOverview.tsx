@@ -80,7 +80,7 @@ function Verlauf({ data, color, id, euro }: { data: { datum: string; v: number }
         <XAxis dataKey="datum" tickFormatter={fmtD} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} minTickGap={28} />
         <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={44} allowDecimals={false} tickFormatter={v => euro ? `${Math.round(v / 1000)}k` : fmtN(v)} />
         <Tooltip {...tooltip} labelFormatter={l => new Date(l + 'T00:00:00').toLocaleDateString('de-DE')} formatter={(v: number) => [euro ? fmtE(v) : fmtN(v), '']} separator="" />
-        <Area type={wenig ? 'linear' : 'monotone'} dataKey="v" stroke={color} strokeWidth={2} strokeLinecap="round" fill={`url(#${id})`} dot={wenig ? { r: 2.5, fill: color, strokeWidth: 0 } : false} activeDot={{ r: 3 }} animationDuration={500} />
+        <Area type={data.length < 21 ? 'linear' : 'monotone'} dataKey="v" stroke={color} strokeWidth={2} strokeLinecap="round" fill={`url(#${id})`} dot={wenig ? { r: 2.5, fill: color, strokeWidth: 0 } : false} activeDot={{ r: 3 }} animationDuration={500} />
       </AreaChart>
     </ResponsiveContainer>
   );
