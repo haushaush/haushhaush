@@ -109,6 +109,7 @@ Deno.serve(async (req) => {
       if (Object.keys(payload).length) await call(`/opportunity/${oppId}/`, "PUT", payload); // only filled fields → existing values never blanked
     } else {
       aktion = "angelegt";
+      if (!Object.keys(payload).length) throw new Error("Für einen neuen Abschluss bitte mindestens Startdatum, Laufzeit, Wert, Retainer oder Leistungen angeben.");
       const dealTyp = forField(fById.get(CF.deal_typ), werte.deal_typ || "Neukunde", "Deal-Typ");
       const create = { lead_id: stand.close_lead_id, status_id: WON_STATUS, ...payload, [`custom.${CF.deal_typ}`]: dealTyp };
       if (b.pruefen) return json({ ok: true, pruefen: true, aktion, payload: create });
