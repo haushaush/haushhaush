@@ -66,7 +66,7 @@ function formatRelative(date: Date): string {
   return `vor ${diffD} Tagen`;
 }
 
-export default function SalesUebersicht() {
+export function SalesCloseAbschluesse() {
   const [opps, setOpps] = useState<CloseOpportunity[]>([]);
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -199,7 +199,7 @@ export default function SalesUebersicht() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
         <Card className="border border-border bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -238,18 +238,6 @@ export default function SalesUebersicht() {
           </CardContent>
         </Card>
 
-        <Card className="border border-dashed border-border bg-card/50 opacity-60">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Umsatz eingegangen
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold tabular-nums tracking-tight text-muted-foreground">–</div>
-            <p className="text-xs text-muted-foreground mt-1">Bald verfügbar</p>
-          </CardContent>
-        </Card>
       </div>
 
       <Card className="border border-border bg-card">

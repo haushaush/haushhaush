@@ -41,6 +41,11 @@
     --destructive: 4 90% 58%;
     --destructive-foreground: 0 0% 100%;
 
+    --kanal-ads: 228 85% 54%;
+    --kanal-coldcall: 24 90% 52%;
+    --kanal-organisch: 152 60% 40%;
+    --kanal-attentionx: 280 60% 55%;
+    --kanal-direkt: 190 80% 40%;
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
 
@@ -112,6 +117,11 @@
     --destructive: 4 90% 58%;
     --destructive-foreground: 0 0% 100%;
 
+    --kanal-ads: 228 90% 66%;
+    --kanal-coldcall: 24 95% 60%;
+    --kanal-organisch: 152 55% 52%;
+    --kanal-attentionx: 280 65% 68%;
+    --kanal-direkt: 190 75% 55%;
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
 
