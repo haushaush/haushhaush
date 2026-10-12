@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
     userId = (await admin.auth.getUser(jwt)).data.user?.id ?? null;
   }
   const body = await req.json().catch(() => ({}));
-  const mode = cron ? "cron" : (body.mode || "preview");
+  const mode = cron ? "cron" : (body.mode === "preview" ? "preview" : "sync");
   const vcKey = Deno.env.get("CLOSE_API_KEY"), hhKey = Deno.env.get("CLOSE_API_KEY_SALES");
   if (!vcKey || !hhKey) return json({ error: "Close-Zugänge fehlen" }, 500);
   const vc = closeClient(vcKey), hh = closeClient(hhKey);
@@ -121,43 +121,53 @@ Deno.serve(async (req) => {
   try {
     if (mode === "preview") return json(await buildPreview(admin, vc, hh));
 
-    if (mode === "apply") {
-      const items: any[] = Array.isArray(body.items) ? body.items.slice(0, 500) : [];
-      const [hhCfL, vcCfL] = await Promise.all([hh(`/custom_field/lead/?_limit=200`), vc(`/custom_field/lead/?_limit=200`)]);
-      const hhCf = new Map((hhCfL.data || []).map((f: any) => [`${f.name}|${f.type}`, f]));
-      const vcCf = new Map((vcCfL.data || []).map((f: any) => [f.id, f]));
-      let writes = 0, neu = 0; const ergebnis: any[] = [], fehler: any[] = []; let abgebrochen = false;
-      for (const it of items) {
-        if (typeof it?.vc_lead_id !== "string") continue;
-        const { data: ex } = await admin.from("close_spiegel").select("status, hh_lead_id").eq("vc_lead_id", it.vc_lead_id).maybeSingle();
-        if (it.action === "ignorieren" || it.action === "verknuepfen") {
-          if (ex && ex.status !== "ignoriert" && it.action === "ignorieren") { ergebnis.push({ ...it, skip: "bereits verknüpft" }); continue; }
-          if (it.action === "verknuepfen" && typeof it.hh_lead_id !== "string") continue;
-          await admin.from("close_spiegel").upsert({ vc_lead_id: it.vc_lead_id, vc_lead_name: it.name ?? null, status: it.action === "ignorieren" ? "ignoriert" : "dublette_verknuepft",
-            hh_lead_id: it.action === "verknuepfen" ? it.hh_lead_id : null, uebernommen_von: userId, uebernommen_am: new Date().toISOString(), letzter_abgleich: new Date().toISOString() }, { onConflict: "vc_lead_id" });
-          ergebnis.push({ ...it, ok: true }); continue;
+    // Automatic run (cron or "Jetzt abgleichen"): first run records the baseline, afterwards every
+    // newly appearing "Aktueller Klient" is either linked as duplicate or created in Haush Haush.
+    let writes = 0, neu = 0, verknuepft = 0, altbestand = 0; const uebernahmen: any[] = [], fehler: any[] = []; let abgebrochen = false;
+    const { count: baseCount } = await admin.from("close_spiegel").select("id", { count: "exact", head: true });
+    if (!baseCount) {
+      const base = (await allLeads(vc, `lead_status:"${AKTIV}"`, "id,display_name,status_label")).filter((l) => l.status_label === AKTIV);
+      const now = new Date().toISOString();
+      const recs = base.map((l) => ({ vc_lead_id: l.id, vc_lead_name: l.display_name, status: "altbestand", vc_status_label: AKTIV, letzter_abgleich: now }));
+      for (let i = 0; i < recs.length; i += 200) {
+        const { error } = await admin.from("close_spiegel").upsert(recs.slice(i, i + 200), { onConflict: "vc_lead_id", ignoreDuplicates: true });
+        if (error) throw new Error(`Ausgangsbestand konnte nicht gespeichert werden: ${error.message}`);
+      }
+      altbestand = recs.length;
+    } else {
+      const pv = await buildPreview(admin, vc, hh);
+      const todo = pv.rows.filter((r: any) => !r.spiegel);
+      let hhCf: Map<string, any> | null = null, vcCf: Map<string, any> | null = null;
+      for (const r of todo) {
+        const { data: ex } = await admin.from("close_spiegel").select("id").eq("vc_lead_id", r.vc_lead_id).maybeSingle();
+        if (ex) continue;
+        const now = new Date().toISOString();
+        if (r.treffer) {
+          const { error } = await admin.from("close_spiegel").insert({ vc_lead_id: r.vc_lead_id, vc_lead_name: r.name, hh_lead_id: r.treffer.hh_lead_id, status: "dublette_verknuepft",
+            treffer_via: r.treffer.via, vc_status_label: r.status, uebernommen_am: now, letzter_abgleich: now });
+          if (error) fehler.push({ vc_lead_id: r.vc_lead_id, fehler: error.message }); else { verknuepft++; uebernahmen.push({ name: r.name, dublette: r.treffer.name, via: r.treffer.via }); }
+          continue;
         }
-        if (it.action !== "uebernehmen") continue;
-        if (ex && ex.status !== "ignoriert") { ergebnis.push({ ...it, skip: "bereits gespiegelt" }); continue; }
         if (writes + 2 > MAX_WRITES) { abgebrochen = true; break; }
         try {
-          const { created, vcLabel } = await copyLead(vc, hh, it.vc_lead_id, hhCf, vcCf); writes++;
-          const { error } = await admin.from("close_spiegel").upsert({ vc_lead_id: it.vc_lead_id, vc_lead_name: created.display_name, hh_lead_id: created.id, status: "gespiegelt",
-            vc_status_label: vcLabel, uebernommen_am: new Date().toISOString(), uebernommen_von: userId, letzter_abgleich: new Date().toISOString() }, { onConflict: "vc_lead_id" });
+          if (!hhCf) {
+            const [h, v] = await Promise.all([hh(`/custom_field/lead/?_limit=200`), vc(`/custom_field/lead/?_limit=200`)]);
+            hhCf = new Map((h.data || []).map((f: any) => [`${f.name}|${f.type}`, f])); vcCf = new Map((v.data || []).map((f: any) => [f.id, f]));
+          }
+          const { created, vcLabel } = await copyLead(vc, hh, r.vc_lead_id, hhCf, vcCf!); writes++;
+          const { error } = await admin.from("close_spiegel").insert({ vc_lead_id: r.vc_lead_id, vc_lead_name: created.display_name, hh_lead_id: created.id, status: "gespiegelt",
+            vc_status_label: vcLabel, uebernommen_am: now, uebernommen_von: userId, letzter_abgleich: now });
           if (error) throw new Error(`Spiegel-Eintrag fehlgeschlagen (Lead ${created.id} angelegt): ${error.message}`);
-          neu++;
+          neu++; uebernahmen.push({ name: created.display_name, hh_lead_id: created.id });
           const datum = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin" }).format(new Date());
-          await hh(`/activity/note/`, "POST", { lead_id: created.id, note: `Aus Viral Connect übernommen am ${datum}, Quell-Lead ${it.vc_lead_id}.` }); writes++;
-          ergebnis.push({ ...it, ok: true, hh_lead_id: created.id });
-        } catch (e) { fehler.push({ vc_lead_id: it.vc_lead_id, fehler: String((e as Error).message || e) }); }
+          await hh(`/activity/note/`, "POST", { lead_id: created.id, note: `Aus Viral Connect übernommen am ${datum}, Quell-Lead ${r.vc_lead_id}.` }); writes++;
+        } catch (e) { fehler.push({ vc_lead_id: r.vc_lead_id, name: r.name, fehler: String((e as Error).message || e) }); }
       }
-      await log(fehler.length === 0, { modus: "apply", ergebnis, fehler, abgebrochen, schreibvorgaenge: writes, hinweis: abgebrochen ? `Limit von ${MAX_WRITES} Schreibvorgängen erreicht` : null }, fehler.length ? `${fehler.length} Fehler` : null, neu);
-      return json({ ok: true, neu, ergebnis, fehler, abgebrochen });
     }
 
     // cron / "sync": mirror status + append contact data, count pending
-    const [vcStatus, hhStatus, { data: rows }] = await Promise.all([statusMap(vc), statusMap(hh), admin.from("close_spiegel").select("*").neq("status", "ignoriert")]);
-    let writes = 0, aktualisiert = 0; const aenderungen: any[] = [], fehler: any[] = []; let abgebrochen = false;
+    const [hhStatus, { data: rows }] = await Promise.all([statusMap(hh), admin.from("close_spiegel").select("*").eq("status", "gespiegelt")]);
+    let aktualisiert = 0; const aenderungen: any[] = [];
     for (const r of rows || []) {
       if (!r.hh_lead_id) continue;
       if (writes >= MAX_WRITES) { abgebrochen = true; break; }
@@ -185,12 +195,9 @@ Deno.serve(async (req) => {
         aktualisiert++;
       } catch (e) { fehler.push({ vc_lead_id: r.vc_lead_id, fehler: String((e as Error).message || e) }); }
     }
-    const vcAktiv = vcStatus.has(AKTIV) ? await allLeads(vc, `lead_status:"${AKTIV}"`, "id,status_label") : [];
-    const { data: all } = await admin.from("close_spiegel").select("vc_lead_id");
-    const known = new Set((all || []).map((x: any) => x.vc_lead_id));
-    const offen = vcAktiv.filter((l) => l.status_label === AKTIV && !known.has(l.id)).length;
-    await log(fehler.length === 0, { modus: "sync", offen, aenderungen, fehler, abgebrochen, schreibvorgaenge: writes, hinweis: abgebrochen ? `Limit von ${MAX_WRITES} Schreibvorgängen erreicht` : null }, fehler.length ? `${fehler.length} Fehler` : null, 0, aktualisiert);
-    return json({ ok: true, offen, aenderungen, fehler, abgebrochen });
+    const ergebnis = { modus: "sync", altbestand, neu_angelegt: neu, dubletten_verknuepft: verknuepft, uebernahmen, aenderungen, fehler, abgebrochen, schreibvorgaenge: writes, hinweis: abgebrochen ? `Limit von ${MAX_WRITES} Schreibvorgängen erreicht` : null };
+    await log(fehler.length === 0, ergebnis, fehler.length ? `${fehler.length} Fehler` : null, neu, aktualisiert);
+    return json({ ok: true, ...ergebnis });
   } catch (e) {
     const msg = String((e as Error).message || e);
     if (mode !== "preview") await log(false, { modus: mode }, msg);
