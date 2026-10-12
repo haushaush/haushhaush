@@ -128,23 +128,55 @@ Deno.serve(async (req) => {
     k4 = { status: "ok", punkte: tierPoints(cfg.churn.staffel, q), max: max.churn, wert: { erfassung_bestaetigt: true, bestaetigt_am: frg?.churn_bestaetigt_am, betreute_kunden: snapCount, churn_ereignisse: churn?.length ?? 0, zaehlt_als_churn: z, churn_quote: r2(q) } };
   }
 
-  // ---------- 5) Calls ----------
+  // ---------- 5) Calls (gewichtete Betreuungsabdeckung) ----------
   // 0 calls is only a real statement if the Close sync completed for this month; a failed latest run blocks scoring.
-  const { count: callsRaw } = await admin.from("bonus_checkins").select("id", { count: "exact", head: true }).eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
-  const calls = callsRaw ?? 0;
+  const cc = cfg.calls || {};
+  const { data: ciRows, error: ciErr } = await admin.from("bonus_checkins").select("close_activity_id, client_id, datum").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).order("datum").order("close_activity_id");
+  if (ciErr) return json({ error: ciErr.message }, 500);
+  const calls = ciRows?.length ?? 0;
+  const gew: number[] = Array.isArray(cc.gewichtung_je_kunde_woche) && cc.gewichtung_je_kunde_woche.length ? cc.gewichtung_je_kunde_woche.map(Number) : [1];
+  const isoWeek = (s: string) => {
+    const d = new Date(String(s).slice(0, 10) + "T00:00:00Z");
+    const day = d.getUTCDay() || 7; d.setUTCDate(d.getUTCDate() + 4 - day);
+    const y = d.getUTCFullYear(); const w = Math.ceil(((d.getTime() - Date.UTC(y, 0, 1)) / 86400000 + 1) / 7);
+    return `${y}-KW${String(w).padStart(2, "0")}`;
+  };
+  const perKW = new Map<string, number>();
+  const wochenMap = new Map<string, { kunden: Set<string>; summe: number; checkins: number }>();
+  const gewichte: Record<string, { gewicht: number; nr_in_woche: number; woche: string }> = {};
+  let gewSumme = 0, abgewertet = 0;
+  const kundenMit = new Set<string>();
+  for (const r of ciRows || []) {
+    const key = r.client_id ?? `ohne:${r.close_activity_id}`;
+    const woche = isoWeek(r.datum);
+    const n = perKW.get(`${key}|${woche}`) ?? 0;
+    perKW.set(`${key}|${woche}`, n + 1);
+    const g = gew[Math.min(n, gew.length - 1)];
+    if (n > 0 && g < gew[0]) abgewertet++;
+    gewSumme += g; kundenMit.add(key);
+    const wm = wochenMap.get(woche) ?? { kunden: new Set(), summe: 0, checkins: 0 };
+    wm.kunden.add(key); wm.summe += g; wm.checkins++; wochenMap.set(woche, wm);
+    if (r.close_activity_id) gewichte[r.close_activity_id] = { gewicht: g, nr_in_woche: n + 1, woche };
+  }
+  const wochen = [...wochenMap.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([woche, v]) => ({ woche, kunden_erreicht: v.kunden.size, checkins: v.checkins, gewichtete_summe: r2(v.summe) }));
+  const zielwert = snapCount ?? 0;
+  const grad = zielwert > 0 ? (gewSumme / zielwert) * 100 : null;
+  const callWert = { modus: cc.modus ?? null, anzahl_calls: calls, eindeutige_kunden: kundenMit.size, gewichtete_summe: r2(gewSumme), zielwert, erreichungsgrad_prozent: grad === null ? null : r2(grad), abgewertete_checkins: abgewertet, wochen, gewichte };
   const { data: syncLogs } = await admin.from("bonus_sync_log").select("ok, beendet_am, fehler, nicht_zuordenbar").eq("sync_typ", "checkins").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).not("ok", "is", null).order("gestartet_am", { ascending: false }).limit(1);
   const lastSync = syncLogs?.[0];
   const nz = Array.isArray(lastSync?.nicht_zuordenbar) ? lastSync.nicht_zuordenbar.length : 0;
   let k5: Krit;
   if (lastSync && lastSync.ok === false) {
-    k5 = { status: "unvollstaendig", punkte: null, max: max.calls, wert: { anzahl_calls: calls, letzter_sync: lastSync.beendet_am, sync_fehler: lastSync.fehler }, hinweis: "Letzter Close-Sync fehlgeschlagen — Call-Zahl nicht belastbar." };
+    k5 = { status: "unvollstaendig", punkte: null, max: max.calls, wert: { ...callWert, letzter_sync: lastSync.beendet_am, sync_fehler: lastSync.fehler }, hinweis: "Letzter Close-Sync fehlgeschlagen — Call-Zahl nicht belastbar." };
   } else if (lastSync && nz > 0) {
-    k5 = { status: "unvollstaendig", punkte: null, max: max.calls, wert: { anzahl_calls: calls, letzter_sync: lastSync.beendet_am, nicht_zuordenbare_kunden: nz }, hinweis: `${nz} betreute Kunden sind in Close nicht zuordenbar — ihre Calls können fehlen, daher keine Punkte.` };
+    k5 = { status: "unvollstaendig", punkte: null, max: max.calls, wert: { ...callWert, letzter_sync: lastSync.beendet_am, nicht_zuordenbare_kunden: nz }, hinweis: `${nz} betreute Kunden sind in Close nicht zuordenbar — ihre Calls können fehlen, daher keine Punkte.` };
   } else if (!lastSync && !calls) {
-    k5 = { status: "keine_daten", punkte: null, max: max.calls, wert: {}, hinweis: "Checkup-Calls noch nicht aus Close synchronisiert." };
+    k5 = { status: "keine_daten", punkte: null, max: max.calls, wert: callWert, hinweis: "Checkup-Calls noch nicht aus Close synchronisiert." };
+  } else if (grad === null) {
+    k5 = { status: "keine_daten", punkte: null, max: max.calls, wert: callWert, hinweis: "Kein Kundensnapshot — Zielwert fehlt." };
   } else {
-    k5 = { status: "ok", punkte: tierPoints(cfg.calls.staffel, calls), max: max.calls,
-      wert: { anzahl_calls: calls, letzter_sync: lastSync?.beendet_am ?? null, nicht_zuordenbare_kunden: 0 } };
+    k5 = { status: "ok", punkte: Math.min(tierPoints(cc.staffel, grad), max.calls), max: max.calls,
+      wert: { ...callWert, letzter_sync: lastSync?.beendet_am ?? null, nicht_zuordenbare_kunden: 0 } };
   }
 
   // ---------- Upsell ----------

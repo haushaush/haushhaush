@@ -40,7 +40,7 @@ function wertText(key: KritKey, k: Krit) {
     case 'cash_niveau': return w.summe_eur !== undefined ? eur(w.summe_eur) : '–';
     case 'cash_entwicklung': return w.veraenderung_prozent !== undefined ? `${w.veraenderung_prozent > 0 ? '+' : ''}${num(w.veraenderung_prozent)} %` : '–';
     case 'churn': return w.churn_quote !== undefined ? `${num(w.churn_quote)} % Churn` : '–';
-    case 'calls': return w.anzahl_calls !== undefined ? `${w.anzahl_calls} Calls` : '–';
+    case 'calls': return w.erreichungsgrad_prozent != null ? `${num(w.erreichungsgrad_prozent)} % Abdeckung · ${num(w.gewichtete_summe)} von ${w.zielwert} gewichtet · ${w.anzahl_calls} Calls` : w.anzahl_calls !== undefined ? `${w.anzahl_calls} Calls` : '–';
   }
 }
 
