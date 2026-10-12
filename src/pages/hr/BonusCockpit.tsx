@@ -114,7 +114,6 @@ export default function BonusCockpit() {
   return (
     <PageShell>
       <PageHeader title="Bonus-Cockpit" description={canManage ? 'Monatliche Aufstellung je Kriterium (§ 5 Abs. 3 Bonusvereinbarung).' : `Deine monatliche Aufstellung${maName ? ` – ${maName}` : ''}.`} />
-      {canManage && spiegelOffen > 0 && <a href="/bonus/spiegel" className="block mb-4 text-sm text-muted-foreground underline-offset-2 hover:underline"><span className="tabular-nums">{spiegelOffen}</span> Klienten aus Viral Connect warten auf Prüfung zur Übernahme →</a>}
 
       <div className="flex flex-wrap gap-3 mb-6">
         <Select value={monat} onValueChange={setMonat}>
