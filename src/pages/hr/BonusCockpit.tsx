@@ -395,8 +395,8 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </>
-        )}
+          </>;
+        })()}
 
         {data && kind === 'calls' && <>
           {k?.wert && <p className="text-sm tabular-nums">Erreichungsgrad: <b>{k.wert.erreichungsgrad_prozent != null ? `${num(k.wert.erreichungsgrad_prozent)} %` : '–'}</b> · {num(k.wert.gewichtete_summe)} von {k.wert.zielwert} gewichtet · {k.wert.anzahl_calls} Calls bei {k.wert.eindeutige_kunden} Kunden · {k.wert.abgewertete_checkins} abgewertet</p>}
