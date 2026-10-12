@@ -71,6 +71,13 @@
       "when": 1791803976862,
       "tag": "0009_bonus_cash_collect_qonto",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791805145644,
+      "tag": "0010_bonus_survey_identification",
+      "breakpoints": true
     }
   ]
 }
