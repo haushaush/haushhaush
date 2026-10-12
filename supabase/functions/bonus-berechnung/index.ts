@@ -121,7 +121,12 @@ Deno.serve(async (req) => {
   const bestaetigt = frg?.churn_erfassung_abgeschlossen === true;
   let k4: Krit;
   if (!snapCount) k4 = { status: "keine_daten", punkte: null, max: max.churn, wert: { erfassung_bestaetigt: bestaetigt }, hinweis: "Kein Kundensnapshot zum Monatsersten — Nenner fehlt." };
-  else if (!bestaetigt) k4 = { status: "keine_daten", punkte: null, max: max.churn, wert: { erfassung_bestaetigt: false, betreute_kunden: snapCount, churn_ereignisse: churn?.length ?? 0 }, hinweis: "Churn-Erfassung für diesen Monat noch nicht bestätigt" };
+  else if (!bestaetigt) {
+    // Preliminary points are shown but never counted in the total until the capture is confirmed.
+    const zv = (churn || []).filter((c) => c.zaehlt_als_churn).length;
+    const qv = (zv / snapCount) * 100;
+    k4 = { status: "keine_daten", punkte: null, max: max.churn, wert: { erfassung_bestaetigt: false, betreute_kunden: snapCount, churn_ereignisse: churn?.length ?? 0, zaehlt_als_churn: zv, churn_quote_vorlaeufig: r2(qv), vorlaeufige_punkte: tierPoints(cfg.churn.staffel, qv) }, hinweis: "Churn-Erfassung für diesen Monat noch nicht bestätigt" };
+  }
   else {
     const z = (churn || []).filter((c) => c.zaehlt_als_churn).length;
     const q = (z / snapCount) * 100;
@@ -196,7 +201,7 @@ Deno.serve(async (req) => {
     zufriedenheit: 'Basis: noch keine Funnel-Versände erfasst',
     cash_niveau: cur.rows ? 'Basis: Zahlungseingänge noch nicht zugeordnet' : 'Basis: Zahlungsabgleich noch nicht angebunden',
     cash_entwicklung: !cur.rows ? 'Basis: Zahlungsabgleich noch nicht angebunden' : `Basis: Referenzwert für ${refMonth} noch nicht vollständig`,
-    churn: !snapCount ? 'Basis: Kundensnapshot noch nicht erfasst' : 'Basis: Churn-Erfassung für diesen Monat nicht bestätigt',
+    churn: !snapCount ? 'Basis: Kundensnapshot noch nicht erfasst' : 'Basis: Bestätigung ausstehend',
     calls: lastSync?.ok === false ? 'Basis: letzter Close-Abgleich nicht abgeschlossen' : nz > 0 ? `Basis: ${Math.max(0, zielwert - nz)} von ${zielwert} Kunden in Close erreichbar` : !zielwert ? 'Basis: Kundensnapshot noch nicht erfasst' : 'Basis: noch kein vollständiger Close-Abgleich',
   };
   for (const key of Object.keys(kriterien) as (keyof typeof kriterien)[]) {
