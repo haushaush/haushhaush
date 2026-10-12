@@ -2439,6 +2439,45 @@ export type Database = {
           },
         ]
       }
+      close_spiegel: {
+        Row: {
+          created_at: string
+          hh_lead_id: string | null
+          id: string
+          letzter_abgleich: string | null
+          status: string
+          uebernommen_am: string | null
+          uebernommen_von: string | null
+          vc_lead_id: string
+          vc_lead_name: string | null
+          vc_status_label: string | null
+        }
+        Insert: {
+          created_at?: string
+          hh_lead_id?: string | null
+          id?: string
+          letzter_abgleich?: string | null
+          status: string
+          uebernommen_am?: string | null
+          uebernommen_von?: string | null
+          vc_lead_id: string
+          vc_lead_name?: string | null
+          vc_status_label?: string | null
+        }
+        Update: {
+          created_at?: string
+          hh_lead_id?: string | null
+          id?: string
+          letzter_abgleich?: string | null
+          status?: string
+          uebernommen_am?: string | null
+          uebernommen_von?: string | null
+          vc_lead_id?: string
+          vc_lead_name?: string | null
+          vc_status_label?: string | null
+        }
+        Relationships: []
+      }
       close_sync_locks: {
         Row: {
           acquired_at: string
