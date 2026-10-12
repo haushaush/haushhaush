@@ -69,3 +69,6 @@ verify_jwt = false
 
 [functions.bonus-kunden-sync]
 verify_jwt = false
+
+[functions.bonus-cash-sync]
+verify_jwt = false

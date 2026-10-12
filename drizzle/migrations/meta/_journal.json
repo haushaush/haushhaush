@@ -64,6 +64,13 @@
       "when": 1791803540790,
       "tag": "0008_bonus_churn_details_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791803976862,
+      "tag": "0009_bonus_cash_collect_qonto",
+      "breakpoints": true
     }
   ]
 }
