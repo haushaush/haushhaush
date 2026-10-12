@@ -77,20 +77,34 @@ export async function syncLaufzeiten(admin: any) {
   const { data: ab } = await admin.from("close_abschluesse").select("close_opportunity_id, close_lead_id, status_typ, startdatum, laufzeit_monate, status_geaendert_am").in("close_lead_id", leadIds.length ? leadIds : ["-"]);
   const byLead = new Map<string, any[]>();
   (ab || []).forEach((a: any) => byLead.set(a.close_lead_id, [...(byLead.get(a.close_lead_id) || []), a]));
+  // Fallback source: won Viral Connect deals (read-only mirror close_opportunities), matched by CRM client.
+  const clientIds = active.map((r: any) => r.client_id);
+  const { data: vc } = await admin.from("close_vc_abschluesse").select("close_opportunity_id, client_id, status_typ, startdatum, laufzeit_monate, status_geaendert_am")
+    .eq("status_typ", "won").in("client_id", clientIds.length ? clientIds : ["00000000-0000-0000-0000-000000000000"]);
+  const vcBy = new Map<string, any[]>();
+  (vc || []).forEach((a: any) => vcBy.set(a.client_id, [...(vcBy.get(a.client_id) || []), a]));
+  const sortNewest = (l: any[]) => l.sort((a: any, b: any) => String(b.startdatum || b.status_geaendert_am || "").localeCompare(String(a.startdatum || a.status_geaendert_am || "")));
   const rows: any[] = [];
   for (const r of active) {
-    const list = (byLead.get(r.close_lead_id) || []).filter((a: any) => a.status_typ === "won");
-    // Prefer the most recent won deal that carries both values; otherwise report what the most recent one lacks.
-    list.sort((a: any, b: any) => String(b.startdatum || b.status_geaendert_am || "").localeCompare(String(a.startdatum || a.status_geaendert_am || "")));
+    const list = sortNewest((byLead.get(r.close_lead_id) || []).filter((a: any) => a.status_typ === "won"));
+    const vlist = sortNewest(vcBy.get(r.client_id) || []);
+    // Our Close first; Viral Connect only when ours has no complete deal.
     const full = list.find((a: any) => a.startdatum && a.laufzeit_monate);
+    const vfull = full ? null : vlist.find((a: any) => a.startdatum && a.laufzeit_monate);
     const pick = full || list[0];
+    const use = full || vfull || pick || vlist[0];
     const fehlt: string[] = [];
-    if (!pick) fehlt.push("kein gewonnener Abschluss verknüpft");
-    else { if (!pick.startdatum) fehlt.push("kein Startdatum"); if (!pick.laufzeit_monate) fehlt.push("keine Laufzeit"); }
+    if (!use) fehlt.push("kein gewonnener Abschluss verknüpft (weder Haush Haush noch Viral Connect)");
+    else if (!full && !vfull) { if (!use.startdatum) fehlt.push("kein Startdatum"); if (!use.laufzeit_monate) fehlt.push("keine Laufzeit"); }
+    const ok = full || vfull;
     rows.push({
       client_id: r.client_id, close_lead_id: r.close_lead_id, kunde: r.lead_name, close_status_label: r.close_status_label,
-      close_opportunity_id: pick?.close_opportunity_id ?? null, startdatum: pick?.startdatum ?? null, laufzeit_monate: pick?.laufzeit_monate ?? null,
-      vertragsende: full ? addMonths(full.startdatum, Number(full.laufzeit_monate)) : null, fehlt, aktualisiert_am: now,
+      // close_opportunity_id only ever points at OUR Close; VC deals are referenced separately and never written.
+      close_opportunity_id: pick?.close_opportunity_id ?? null,
+      vc_opportunity_id: vfull ? vfull.close_opportunity_id : (!pick && vlist[0] ? vlist[0].close_opportunity_id : null),
+      quelle: full || (pick && !vfull) ? "Haush Haush" : (vfull || vlist[0]) ? "Viral Connect" : null,
+      startdatum: use?.startdatum ?? null, laufzeit_monate: use?.laufzeit_monate ?? null,
+      vertragsende: ok ? addMonths(String(ok.startdatum).slice(0, 10), Number(ok.laufzeit_monate)) : null, fehlt, aktualisiert_am: now,
     });
   }
   if (rows.length) {
