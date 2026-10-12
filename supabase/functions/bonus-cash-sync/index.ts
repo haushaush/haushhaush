@@ -106,9 +106,11 @@ Deno.serve(async (req) => {
   const cron = await checkCron(admin, req, "bonus_cash_sync");
   if (cron === false) return json({ error: "unauthorized" }, 401);
   if (cron) {
+    let cb: any = {}; try { cb = await req.clone().json(); } catch { /* none */ }
+    const cronMonat = /^\d{4}-\d{2}-01$/.test(String(cb?.monat || "")) ? cb.monat : currentMonthBerlin();
     const { data: mas } = await admin.from("bonus_mitarbeiter").select("id").eq("aktiv", true);
     const out = [];
-    for (const m of mas || []) out.push(await runLogged(admin, currentMonthBerlin(), m.id, "cron"));
+    for (const m of mas || []) out.push(await runLogged(admin, cronMonat, m.id, "cron"));
     return json({ ok: out.every((r) => r.ok), results: out });
   }
   const g = await requireManager(req, admin, createClient);
