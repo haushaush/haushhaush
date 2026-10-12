@@ -30,7 +30,7 @@ const navItems: NavItem[] = [
     title: 'Kunden', url: '/kunden', icon: Users,
     children: [
       { title: 'Übersicht', url: '/kunden', permissionKey: 'clients.view' },
-      { title: 'Abschlüsse', url: '/kunden/abschluesse', permissionKey: 'clients.abschluesse.view' },
+      { title: 'Abschlüsse', url: '/abschluesse', permissionKey: 'clients.abschluesse.view' },
       { title: 'Laufzeiten', url: '/kunden/laufzeiten', permissionKey: 'clients.laufzeiten.view' },
     ],
   },

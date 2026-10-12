@@ -120,6 +120,13 @@
       "when": 1791811074736,
       "tag": "0016_deprecate_close_spiegel",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791814194390,
+      "tag": "0017_close_lead_mirror_abschluesse_laufzeiten",
+      "breakpoints": true
     }
   ]
 }

@@ -1981,6 +1981,131 @@ export type Database = {
           },
         ]
       }
+      close_abschluesse: {
+        Row: {
+          abgangs_begruendung: string | null
+          abgangsgrund: string | null
+          abschlusswert: number | null
+          angelegt_am: string | null
+          angelegt_von: string | null
+          branche: string | null
+          client_id: string | null
+          close_lead_id: string | null
+          close_opportunity_id: string
+          close_typ: string | null
+          closer: string | null
+          cold_caller: string | null
+          custom: Json
+          deal_typ: string | null
+          geaendert_am: string | null
+          kanal: string | null
+          kuendigungsdatum: string | null
+          laufzeit_monate: number | null
+          lead_name: string | null
+          leistungen: string | null
+          letzter_vertragstag: string | null
+          marke: string
+          retainer_monat: number | null
+          setter: string | null
+          setup_fee: number | null
+          startdatum: string | null
+          status_geaendert_am: string | null
+          status_id: string | null
+          status_label: string | null
+          status_typ: string | null
+          sub_niche: string | null
+          synced_at: string
+          umsetzungszeitraum: string | null
+          upsell: Json
+          wert: number | null
+          wert_periode: string | null
+        }
+        Insert: {
+          abgangs_begruendung?: string | null
+          abgangsgrund?: string | null
+          abschlusswert?: number | null
+          angelegt_am?: string | null
+          angelegt_von?: string | null
+          branche?: string | null
+          client_id?: string | null
+          close_lead_id?: string | null
+          close_opportunity_id: string
+          close_typ?: string | null
+          closer?: string | null
+          cold_caller?: string | null
+          custom?: Json
+          deal_typ?: string | null
+          geaendert_am?: string | null
+          kanal?: string | null
+          kuendigungsdatum?: string | null
+          laufzeit_monate?: number | null
+          lead_name?: string | null
+          leistungen?: string | null
+          letzter_vertragstag?: string | null
+          marke?: string
+          retainer_monat?: number | null
+          setter?: string | null
+          setup_fee?: number | null
+          startdatum?: string | null
+          status_geaendert_am?: string | null
+          status_id?: string | null
+          status_label?: string | null
+          status_typ?: string | null
+          sub_niche?: string | null
+          synced_at?: string
+          umsetzungszeitraum?: string | null
+          upsell?: Json
+          wert?: number | null
+          wert_periode?: string | null
+        }
+        Update: {
+          abgangs_begruendung?: string | null
+          abgangsgrund?: string | null
+          abschlusswert?: number | null
+          angelegt_am?: string | null
+          angelegt_von?: string | null
+          branche?: string | null
+          client_id?: string | null
+          close_lead_id?: string | null
+          close_opportunity_id?: string
+          close_typ?: string | null
+          closer?: string | null
+          cold_caller?: string | null
+          custom?: Json
+          deal_typ?: string | null
+          geaendert_am?: string | null
+          kanal?: string | null
+          kuendigungsdatum?: string | null
+          laufzeit_monate?: number | null
+          lead_name?: string | null
+          leistungen?: string | null
+          letzter_vertragstag?: string | null
+          marke?: string
+          retainer_monat?: number | null
+          setter?: string | null
+          setup_fee?: number | null
+          startdatum?: string | null
+          status_geaendert_am?: string | null
+          status_id?: string | null
+          status_label?: string | null
+          status_typ?: string | null
+          sub_niche?: string | null
+          synced_at?: string
+          umsetzungszeitraum?: string | null
+          upsell?: Json
+          wert?: number | null
+          wert_periode?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "close_abschluesse_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       close_activities: {
         Row: {
           activity_type: string | null
@@ -2255,6 +2380,84 @@ export type Database = {
           },
         ]
       }
+      close_lead_spiegel: {
+        Row: {
+          branche: string | null
+          close_lead_id: string
+          custom: Json
+          date_created: string | null
+          date_updated: string | null
+          kanal: string | null
+          marke: string | null
+          name: string | null
+          status_geaendert_am: string | null
+          status_id: string | null
+          status_label: string | null
+          sub_niche: string | null
+          synced_at: string
+        }
+        Insert: {
+          branche?: string | null
+          close_lead_id: string
+          custom?: Json
+          date_created?: string | null
+          date_updated?: string | null
+          kanal?: string | null
+          marke?: string | null
+          name?: string | null
+          status_geaendert_am?: string | null
+          status_id?: string | null
+          status_label?: string | null
+          sub_niche?: string | null
+          synced_at?: string
+        }
+        Update: {
+          branche?: string | null
+          close_lead_id?: string
+          custom?: Json
+          date_created?: string | null
+          date_updated?: string | null
+          kanal?: string | null
+          marke?: string | null
+          name?: string | null
+          status_geaendert_am?: string | null
+          status_id?: string | null
+          status_label?: string | null
+          sub_niche?: string | null
+          synced_at?: string
+        }
+        Relationships: []
+      }
+      close_lead_statuswechsel: {
+        Row: {
+          close_activity_id: string
+          close_lead_id: string
+          created_at: string
+          datum: string | null
+          geaendert_von: string | null
+          nach_label: string | null
+          von_label: string | null
+        }
+        Insert: {
+          close_activity_id: string
+          close_lead_id: string
+          created_at?: string
+          datum?: string | null
+          geaendert_von?: string | null
+          nach_label?: string | null
+          von_label?: string | null
+        }
+        Update: {
+          close_activity_id?: string
+          close_lead_id?: string
+          created_at?: string
+          datum?: string | null
+          geaendert_von?: string | null
+          nach_label?: string | null
+          von_label?: string | null
+        }
+        Relationships: []
+      }
       close_leads: {
         Row: {
           addresses: Json | null
@@ -2496,6 +2699,36 @@ export type Database = {
           acquired_at?: string
           acquired_by?: string | null
           lock_key?: string
+        }
+        Relationships: []
+      }
+      close_sync_stand: {
+        Row: {
+          details: Json
+          fehler: string | null
+          letzter_erfolg: string | null
+          letzter_lauf: string | null
+          letzter_voll: string | null
+          name: string
+          ok: boolean | null
+        }
+        Insert: {
+          details?: Json
+          fehler?: string | null
+          letzter_erfolg?: string | null
+          letzter_lauf?: string | null
+          letzter_voll?: string | null
+          name: string
+          ok?: boolean | null
+        }
+        Update: {
+          details?: Json
+          fehler?: string | null
+          letzter_erfolg?: string | null
+          letzter_lauf?: string | null
+          letzter_voll?: string | null
+          name?: string
+          ok?: boolean | null
         }
         Relationships: []
       }
@@ -3804,6 +4037,59 @@ export type Database = {
             columns: ["kunde_id"]
             isOneToOne: false
             referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kunden_laufzeit_stand: {
+        Row: {
+          aktualisiert_am: string
+          client_id: string
+          close_lead_id: string | null
+          close_opportunity_id: string | null
+          close_status_label: string | null
+          fehlt: string[]
+          kunde: string | null
+          laufzeit_monate: number | null
+          notion_fehler: string | null
+          notion_stand: string | null
+          startdatum: string | null
+          vertragsende: string | null
+        }
+        Insert: {
+          aktualisiert_am?: string
+          client_id: string
+          close_lead_id?: string | null
+          close_opportunity_id?: string | null
+          close_status_label?: string | null
+          fehlt?: string[]
+          kunde?: string | null
+          laufzeit_monate?: number | null
+          notion_fehler?: string | null
+          notion_stand?: string | null
+          startdatum?: string | null
+          vertragsende?: string | null
+        }
+        Update: {
+          aktualisiert_am?: string
+          client_id?: string
+          close_lead_id?: string | null
+          close_opportunity_id?: string | null
+          close_status_label?: string | null
+          fehlt?: string[]
+          kunde?: string | null
+          laufzeit_monate?: number | null
+          notion_fehler?: string | null
+          notion_stand?: string | null
+          startdatum?: string | null
+          vertragsende?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kunden_laufzeit_stand_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
