@@ -121,6 +121,7 @@ export default function SalesOverview() {
   const cur = tage.filter(t => t.datum >= r.start && t.datum <= r.end);
   const prev = tage.filter(t => t.datum >= r.pStart && t.datum <= r.pEnd);
   const hatDaten = tage.length > 0;
+  const egGefuehrtDa = cur.some(t => t.eg_gefuehrt != null);
 
   const serie = (m: Metric) => {
     const by = new Map<string, number>(); cur.forEach(t => by.set(t.datum, (by.get(t.datum) || 0) + (Number(t[m]) || 0)));
@@ -145,7 +146,6 @@ export default function SalesOverview() {
     const m = new Map<string, number>(); bestand.filter(b => b.bestand != null && b.datum >= r.start && b.datum <= r.end).forEach(b => m.set(b.datum, (m.get(b.datum) || 0) + Number(b.bestand)));
     return [...m.entries()].sort().map(([datum, v]) => ({ datum, v }));
   }, [bestand, r]);
-  const egGefuehrtDa = cur.some(t => t.eg_gefuehrt != null);
   const verworfenSumme = lauf ? Object.values(lauf.verworfen || {}).reduce((a, b) => a + (Number(b) || 0), 0) : 0;
 
   const pct = (a: number, b: number) => b ? `${((a / b) * 100).toFixed(1).replace('.', ',')} %` : '–';
