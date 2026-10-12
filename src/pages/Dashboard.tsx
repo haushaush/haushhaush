@@ -21,7 +21,6 @@ import { KpiSlider } from '@/components/dashboard/KpiSlider';
 import { SortableBlock } from '@/components/dashboard/SortableBlock';
 import { MitteilungenCard } from '@/components/dashboard/MitteilungenCard';
 import { OperationalCards } from '@/components/dashboard/OperationalCards';
-import { CheckinBanner } from '@/components/dashboard/CheckinBanner';
 import { ARIAHeroBlock } from '@/components/aria/ARIAHeroBlock';
 import { ARIAPanel } from '@/components/aria/ARIAPanel';
 import { useARIA } from '@/contexts/ARIAContext';
