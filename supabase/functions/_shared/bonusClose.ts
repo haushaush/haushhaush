@@ -35,20 +35,19 @@ export function closeClient(apiKey: string): Close {
   };
 }
 
+// Haush Haush Digital is the only Close account for all bonus data. No fallback to any other account.
+export const HAUSH_KEY = "CLOSE_API_KEY_SALES";
+export function haushKey(): string {
+  const k = Deno.env.get(HAUSH_KEY);
+  if (!k) throw new CloseError(`Haush-Haush-Close-Zugang (${HAUSH_KEY}) ist nicht gesetzt`);
+  return k;
+}
 export async function closeForPipeline(): Promise<{ call: Close; pipeline: any }> {
-  const probe: string[] = [];
-  for (const name of ["CLOSE_API_KEY_SALES", "CLOSE_API_KEY"]) {
-    const k = Deno.env.get(name);
-    if (!k) { probe.push(`${name}: nicht gesetzt`); continue; }
-    const c = closeClient(k);
-    try {
-      const l = await c(`/pipeline/`);
-      const p = (l.data || []).find((x: any) => x.id === SALES_PIPELINE_ID);
-      if (p) return { call: c, pipeline: p };
-      probe.push(`${name}: Pipeline nicht vorhanden`);
-    } catch (e) { probe.push(`${name}: ${e instanceof Error ? e.message : e}`); }
-  }
-  throw new CloseError(`Kein Close-Account mit Pipeline ${SALES_PIPELINE_ID} — ${probe.join(" | ")}`);
+  const c = closeClient(haushKey());
+  const l = await c(`/pipeline/`);
+  const p = (l.data || []).find((x: any) => x.id === SALES_PIPELINE_ID);
+  if (!p) throw new CloseError(`Pipeline ${SALES_PIPELINE_ID} im Haush-Haush-Close-Zugang nicht gefunden`);
+  return { call: c, pipeline: p };
 }
 
 export async function oppsByStatus(call: Close, statusId: string): Promise<any[]> {

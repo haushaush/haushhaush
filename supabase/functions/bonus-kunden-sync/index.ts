@@ -4,11 +4,11 @@
 // and keeps the current month's bonus_kunden_snapshot in step (added during the month, never silently shrunk
 // except for leads an admin excluded via zaehlt_fuer_betreuung).
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { checkCron, closeClient, cors, currentMonthBerlin, json, requireManager, type Close } from "../_shared/bonusClose.ts";
+import { checkCron, closeClient, HAUSH_KEY, haushKey, cors, currentMonthBerlin, json, requireManager, type Close } from "../_shared/bonusClose.ts";
 
 // Only the Haush Haush Digital account holds Justin's customers and the Client-Checkin type.
 // CLOSE_API_KEY belongs to Viral Connect GmbH (separate company) and is deliberately not mirrored.
-const ACCOUNTS = ["CLOSE_API_KEY_SALES"];
+const ACCOUNTS = [HAUSH_KEY];
 const AKTIV = "Aktueller Klient", PAUSIERT = "Pausiert", EHEMALIG = "Ehemaliger Klient";
 const LABELS = [AKTIV, PAUSIERT, EHEMALIG];
 const betreut = (l: string | null) => l === AKTIV || l === PAUSIERT;
@@ -183,7 +183,7 @@ async function adminAction(admin: any, body: any) {
   if (body.aktion === "uebernehmen") {
     const { data: k } = await admin.from("bonus_checkin_kandidaten").select("*").eq("id", body.kandidat_id).single();
     if (!k) throw new Error("Einsendung nicht gefunden");
-    const call = closeClient(Deno.env.get("CLOSE_API_KEY_SALES")!);
+    const call = closeClient(haushKey());
     const ids = await statusIds(call);
     await call(`/lead/${encodeURIComponent(k.close_lead_id)}/`, "PUT", { status_id: ids.get(AKTIV) });
     const r = await refreshAktuell(admin);
@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
   try {
     const r: any = await refreshAktuell(admin);
     r.snapshot = await reconcileSnapshot(admin, monat);
-    await admin.from("bonus_sync_log").update({ beendet_am: new Date().toISOString(), ok: true, gefunden: r.laufende_liste, neu: r.neu_angelegt.length, nicht_zuordenbar: r.neu_angelegt.map((n: string) => ({ name: n, grund: "Kein CRM-Kunde gefunden — neu angelegt, bitte prüfen" })) }).eq("id", log.id);
+    await admin.from("bonus_sync_log").update({ beendet_am: new Date().toISOString(), ok: true, gefunden: r.laufende_liste, neu: r.neu_angelegt.length, details: { status_geaendert: r.status_geaendert, ohne_close_lead: r.ohne_close_lead, nicht_mehr_klient: r.nicht_mehr_klient }, nicht_zuordenbar: r.neu_angelegt.map((n: string) => ({ name: n, grund: "Kein CRM-Kunde gefunden — neu angelegt, bitte prüfen" })) }).eq("id", log.id);
     return json({ ok: true, monat, ...r });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
