@@ -161,8 +161,14 @@ export default function BonusCockpit() {
                         <span className="text-xs text-muted-foreground tabular-nums shrink-0">max {k.max}</span>
                       </div>
                       <div className="text-xs text-muted-foreground tabular-nums min-h-8">{wertText(key, k)}</div>
-                      <div className="text-3xl font-semibold tabular-nums">{num(k.punkte)}</div>
-                      <Progress value={k.max > 0 ? (k.punkte / k.max) * 100 : 0} />
+                      {(() => {
+                        const vp = key === 'churn' && k.status !== 'ok' ? k.wert?.vorlaeufige_punkte : undefined;
+                        const shown = vp ?? k.punkte;
+                        return <>
+                          <div className="text-3xl font-semibold tabular-nums">{num(shown)}{vp !== undefined && <span className="ml-1 text-sm font-normal text-muted-foreground">(vorläufig)</span>}</div>
+                          <Progress value={k.max > 0 ? (shown / k.max) * 100 : 0} className={vp !== undefined ? 'opacity-50' : undefined} />
+                        </>;
+                      })()}
                       <div className="min-h-4 min-w-0">
                         {k.basis_hinweis && <p title={k.basis_hinweis} className="text-xs font-normal text-muted-foreground truncate">{k.basis_hinweis}</p>}
                       </div>
