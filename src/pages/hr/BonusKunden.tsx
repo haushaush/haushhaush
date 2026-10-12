@@ -180,14 +180,6 @@ function StatusProtokoll() {
   );
 }
 
-function _unused() {
-  return (
-    <div>
-
-    </div>
-  );
-}
-
 const QUELLE: Record<string, string> = { close_link: 'Bestehende Verknüpfung', kunde_close_deals: 'Bestehende Verknüpfung', name: 'Gleicher Name', neu_angelegt: 'Neu angelegt – bitte prüfen', manuell: 'Von Hand zugeordnet' };
 
 function LaufendeListe({ snapIds, allClients, onChanged }: { snapIds: Set<string | undefined>; allClients: Client[]; onChanged: () => void }) {
