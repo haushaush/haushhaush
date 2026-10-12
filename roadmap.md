@@ -1,3 +1,10 @@
+# Bonuspunkte und Zufriedenheitsfunnel
+
+- [ ] Alle fünf Kriterien inklusive Anti-Churn in der Summe; Freigabesperre und Punktzahl im Bestätigungsdialog.
+- [ ] Tokenlose Einsendungen, eindeutige Zuordnung, IP-Limit und kunden-/monatsweise Ersetzung.
+- [ ] Klärliste mit manueller Zuordnung, Kein Kunde und Neuberechnung.
+- [ ] Snapshot-basierte Ausfüllquote und Tests; nichts versenden.
+
 # Startseite
 
 - [x] Neueste Mitteilungen auf interne Nachrichten und Erinnerungen beschränken.
