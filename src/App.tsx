@@ -92,6 +92,7 @@ import CheckinOverview from "./pages/hr/CheckinOverview.tsx";
 import TimeTracking from "./pages/hr/TimeTracking.tsx";
 import BonusCockpit from "./pages/hr/BonusCockpit.tsx";
 import BonusKunden from "./pages/hr/BonusKunden.tsx";
+import Abschluesse from "./pages/Abschluesse.tsx";
 import BonusZuordnung from "./pages/hr/BonusZuordnung.tsx";
 import BonusFunnel from "./pages/hr/BonusFunnel.tsx";
 import SlackPage from "./pages/SlackPage.tsx";
@@ -161,6 +162,7 @@ const App = () => (
                 <Route path="/recovery" element={<Recovery />} />
                 <Route path="/" element={<PermissionRoute permissionKey="dashboard.view"><DL><Dashboard /></DL></PermissionRoute>} />
                 <Route path="/kunden" element={<PermissionRoute permissionKey="clients.view"><DL><Kunden /></DL></PermissionRoute>} />
+                <Route path="/abschluesse" element={<PermissionRoute permissionKey="clients.view"><DL><Abschluesse /></DL></PermissionRoute>} />
                 <Route path="/kunden/abschluesse" element={<PermissionRoute permissionKey="clients.view"><DL><KundenAbschluesse /></DL></PermissionRoute>} />
                 <Route path="/kunden/laufzeiten" element={<PermissionRoute permissionKey="clients.laufzeiten.view"><DL><KundenLaufzeiten /></DL></PermissionRoute>} />
                 <Route path="/kunden/liste" element={<PermissionRoute permissionKey="clients.view"><DL><Placeholder title="Kunden" /></DL></PermissionRoute>} />
