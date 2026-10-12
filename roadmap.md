@@ -1,8 +1,9 @@
 # Startseite
 
-- [ ] Neueste Mitteilungen auf interne Nachrichten und Erinnerungen beschränken.
-- [ ] Umsatzentwicklung entfernen; auslaufende Kunden und dringende Projekte anzeigen.
-- [ ] Startseite mit echten Daten prüfen.
+- [x] Neueste Mitteilungen auf interne Nachrichten und Erinnerungen beschränken.
+- [x] Umsatzentwicklung entfernen; auslaufende Kunden und dringende Projekte anzeigen.
+- [x] Kunden- und Projektanzeigen separat mit echter Sitzung und echten Daten auf Desktop/Mobil prüfen.
+- [ ] Vollständigen Einstieg der Startseite prüfen — Kontoeinrichtung und 2FA müssen vom Nutzer abgeschlossen werden.
 
 # Bonus-Cockpit
 
