@@ -271,7 +271,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
         const { data: c } = await supabase.from('bonus_cash_collect').select('id, betrag, eingang_am, quelle, zugeordnet, mitarbeiter_id, clients:client_id(name)').eq('monat', monat).or(`mitarbeiter_id.eq.${maId},zugeordnet.eq.false`).order('eingang_am');
         setData({ rows: (c as any[]) || [] });
       } else if (kind === 'churn') {
-        const { data: c } = await supabase.from('bonus_churn_events').select('typ, zaehlt_als_churn, bemerkung, festgestellt_am, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId);
+        const { data: c } = await supabase.from('bonus_churn_events').select('id, typ, zaehlt_als_churn, bemerkung, festgestellt_am, abgang_datum, kuendigungsdatum, letzter_vertragstag, freigabe_status, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId).order('abgang_datum');
         const { count } = await supabase.from('bonus_kunden_snapshot').select('id', { count: 'exact', head: true }).eq('monat', monat).eq('mitarbeiter_id', maId);
         const { data: frg } = await supabase.from('bonus_monat_freigaben').select('churn_erfassung_abgeschlossen, churn_bestaetigt_am').eq('monat', monat).eq('mitarbeiter_id', maId).maybeSingle();
         setData({ rows: (c as any[]) || [], snap: count ?? 0, frg });
@@ -339,23 +339,46 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
           );
         })()}
 
-        {data && kind === 'churn' && (
-          <>
+        {data && kind === 'churn' && (() => {
+          const offen = data.rows.filter((r: any) => r.freigabe_status === 'offen');
+          const typLabel: Record<string, string> = { abbruch: 'Laufzeit abgebrochen', planmaessiges_ende: 'Laufzeit regulär beendet', kuendigung_arbeitgeber: 'Vorzeitig entlassen (durch uns)', insolvenz: 'Insolvenz / Geschäftsaufgabe', ausserhalb_verantwortung: 'Sonderfall (außerhalb Verantwortung)', kuendigung_kunde: 'Kündigung Kunde' };
+          const decide = async (id: string, anerkennen: boolean) => {
+            const { data: u } = await supabase.auth.getUser();
+            const { error } = await supabase.from('bonus_churn_events').update({ freigabe_status: anerkennen ? 'freigegeben' : 'abgelehnt', zaehlt_als_churn: !anerkennen, freigegeben_von: u.user?.id ?? null, freigegeben_am: new Date().toISOString() }).eq('id', id);
+            if (error) return toast.error(error.message);
+            toast.success(anerkennen ? 'Als Sonderfall anerkannt' : 'Zählt als Churn');
+            setTick(t => t + 1); onChanged();
+          };
+          return <>
+            {canManage && offen.length > 0 && (
+              <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2">
+                <h3 className="text-sm font-medium flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Sonderfälle mit offener Freigabe ({offen.length})</h3>
+                {offen.map((r: any) => (
+                  <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span>{r.clients?.name || '–'} · <span className="tabular-nums">{dt(r.abgang_datum || r.festgestellt_am)}</span></span>
+                    <span className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => decide(r.id, true)}>Als Sonderfall anerkennen</Button>
+                      <Button size="sm" variant="outline" onClick={() => decide(r.id, false)}>Zählt als Churn</Button>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="rounded-lg border border-border p-4 flex items-start justify-between gap-4">
               <div>
                 <div className="text-sm font-medium">Churn-Erfassung für diesen Monat abgeschlossen</div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {data.frg?.churn_erfassung_abgeschlossen
                     ? `Bestätigt am ${data.frg.churn_bestaetigt_am ? new Date(data.frg.churn_bestaetigt_am).toLocaleString('de-DE') : '–'}`
-                    : 'Nicht bestätigt — derzeit 0 Punkte mit unvollständiger Datengrundlage.'}
+                    : offen.length ? 'Erst möglich, wenn alle Sonderfälle entschieden sind.' : 'Nicht bestätigt — derzeit 0 Punkte mit unvollständiger Datengrundlage.'}
                 </div>
               </div>
-              {canManage && <Switch checked={!!data.frg?.churn_erfassung_abgeschlossen} onCheckedChange={v => setConfirm(v)} />}
+              {canManage && <Switch checked={!!data.frg?.churn_erfassung_abgeschlossen} disabled={!data.frg?.churn_erfassung_abgeschlossen && offen.length > 0} onCheckedChange={v => setConfirm(v)} />}
             </div>
-            <p className="text-sm tabular-nums">Betreute Kunden am Monatsersten (Nenner): <b>{data.snap}</b></p>
-            <Table head={['Kunde', 'Typ', 'Zählt als Churn', 'Festgestellt', 'Bemerkung']}
-              rows={data.rows.map((r: any) => [r.clients?.name || '–', r.typ, r.zaehlt_als_churn ? 'Ja' : 'Nein', dt(r.festgestellt_am), r.bemerkung || '–'])}
-              empty="Keine Churn-Ereignisse erfasst." />
+            <p className="text-sm tabular-nums">Nenner: <b>{data.snap}</b> betreute Kunden im Snapshot zum Stichtag {new Date(monat).toLocaleDateString('de-DE')}</p>
+            <Table head={['Kunde', 'Abgangsart', 'Datum', 'Kündigungsdatum', 'Letzter Vertragstag', 'Zählt als Churn']}
+              rows={data.rows.map((r: any) => [r.clients?.name || '–', typLabel[r.typ] || r.typ, dt(r.abgang_datum || r.festgestellt_am), dt(r.kuendigungsdatum), dt(r.letzter_vertragstag), (r.zaehlt_als_churn ? 'Ja' : 'Nein') + (r.freigabe_status === 'offen' ? ' (Freigabe offen)' : '')])}
+              empty="Keine Abgänge in diesem Monat." />
             <AlertDialog open={confirm !== null} onOpenChange={o => !o && setConfirm(null)}>
               <AlertDialogContent className="z-[400]">
                 <AlertDialogHeader>
