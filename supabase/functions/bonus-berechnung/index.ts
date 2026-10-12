@@ -64,27 +64,21 @@ Deno.serve(async (req) => {
   const cfg: any = cfgRow.config;
   const max = cfg.punkte_max;
 
-  // ---------- 1) Zufriedenheit ----------
-  const { data: tokens, error: tErr } = await admin.from("bonus_survey_tokens").select("token, versendet_am, ausgefuellt_am").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
-  if (tErr) return json({ error: tErr.message }, 500);
-  const sent = (tokens || []).filter((t) => t.versendet_am);
-  const filled = sent.filter((t) => t.ausgefuellt_am);
-  let k1: Krit;
-  if (!tokens?.length) k1 = { status: "keine_daten", punkte: null, max: max.zufriedenheit, wert: {}, hinweis: "Für diesen Monat wurden keine Umfrage-Tokens erzeugt." };
-  else if (!sent.length) k1 = { status: "unvollstaendig", punkte: null, max: max.zufriedenheit, wert: { tokens: tokens.length }, hinweis: "Tokens vorhanden, aber noch keiner als versendet markiert." };
-  else {
-    const z = cfg.zufriedenheit;
-    // ONLY score_betreuung — score_leistung must never be used for points.
-    const field = "score_betreuung";
-    const { data: ans, error: aErr } = await admin.from("bonus_survey_antworten").select(field).in("token", filled.map((t) => t.token));
-    if (aErr) return json({ error: aErr.message }, 500);
-    const quote = (filled.length / sent.length) * 100;
-    const avg = ans?.length ? ans.reduce((s: number, a: any) => s + Number(a[field]), 0) / ans.length : null;
-    const qOk = quote >= z.ausfuellquote_schwelle;
-    const aOk = avg !== null && avg > z.durchschnitt_schwelle;
-    const p = qOk && aOk ? tierPoints(z.staffel, avg!) : qOk ? z.pauschale_quote_ok_schnitt_niedrig : aOk ? z.pauschale_quote_niedrig_schnitt_ok : z.pauschale_beides_niedrig;
-    k1 = { status: "ok", punkte: p, max: max.zufriedenheit, wert: { versendet: sent.length, ausgefuellt: filled.length, ausfuellquote: r2(quote), durchschnitt_score_betreuung: avg === null ? null : r2(avg) } };
-  }
+  // ---------- 1) Zufriedenheit: snapshot denominator, assigned customers only ----------
+  const { data: snapshot, error: snapshotError } = await admin.from("bonus_kunden_snapshot").select("client_id").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
+  if (snapshotError) return json({ error: snapshotError.message }, 500);
+  const snapshotIds = new Set((snapshot || []).map(row => row.client_id));
+  const { data: surveyAnswers, error: surveyError } = await admin.from("bonus_survey_antworten").select("client_id,score_betreuung,zuordnung_status").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).in("zuordnung_status", ["automatisch", "manuell"]);
+  if (surveyError) return json({ error: surveyError.message }, 500);
+  const assigned = (surveyAnswers || []).filter(row => snapshotIds.has(row.client_id));
+  const { count: openSurveys } = await admin.from("bonus_survey_antworten").select("id", { count: "exact", head: true }).eq("monat", monat).eq("zuordnung_status", "offen");
+  const quote = snapshotIds.size ? assigned.length / snapshotIds.size * 100 : 0;
+  const avg = assigned.length ? assigned.reduce((sum, row) => sum + Number(row.score_betreuung), 0) / assigned.length : null;
+  const z = cfg.zufriedenheit;
+  const qOk = quote >= z.ausfuellquote_schwelle;
+  const aOk = avg !== null && avg > z.durchschnitt_schwelle;
+  const satisfactionPoints = avg !== null && qOk && aOk ? tierPoints(z.staffel, avg) : qOk ? z.pauschale_quote_ok_schnitt_niedrig : aOk ? z.pauschale_quote_niedrig_schnitt_ok : z.pauschale_beides_niedrig;
+  const k1: Krit = { status: !snapshotIds.size || !assigned.length ? "keine_daten" : openSurveys ? "unvollstaendig" : "ok", punkte: snapshotIds.size ? satisfactionPoints : 0, max: max.zufriedenheit, wert: { betreute_kunden: snapshotIds.size, ausgefuellt: assigned.length, ausfuellquote: r2(quote), durchschnitt_score_betreuung: avg === null ? null : r2(avg), offene_einsendungen: openSurveys || 0 } };
 
   // ---------- 2/3) Cash Collect ----------
   const cashSum = async (m: string) => {
@@ -121,16 +115,16 @@ Deno.serve(async (req) => {
   const { count: snapCount } = await admin.from("bonus_kunden_snapshot").select("id", { count: "exact", head: true }).eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
   const { data: churn, error: chErr } = await admin.from("bonus_churn_events").select("zaehlt_als_churn").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
   if (chErr) return json({ error: chErr.message }, 500);
-  // An empty churn table means "nothing recorded", not "no churn" — only score once someone confirmed the capture is complete.
+  // Observed churn points always count; confirmation only controls completeness and approval.
   const { data: frg } = await admin.from("bonus_monat_freigaben").select("churn_erfassung_abgeschlossen, churn_bestaetigt_am").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).maybeSingle();
   const bestaetigt = frg?.churn_erfassung_abgeschlossen === true;
   let k4: Krit;
   if (!snapCount) k4 = { status: "keine_daten", punkte: null, max: max.churn, wert: { erfassung_bestaetigt: bestaetigt }, hinweis: "Kein Kundensnapshot zum Monatsersten — Nenner fehlt." };
   else if (!bestaetigt) {
-    // Preliminary points are shown but never counted in the total until the capture is confirmed.
+    // Actual observed points count even before capture confirmation.
     const zv = (churn || []).filter((c) => c.zaehlt_als_churn).length;
     const qv = (zv / snapCount) * 100;
-    k4 = { status: "keine_daten", punkte: null, max: max.churn, wert: { erfassung_bestaetigt: false, betreute_kunden: snapCount, churn_ereignisse: churn?.length ?? 0, zaehlt_als_churn: zv, churn_quote_vorlaeufig: r2(qv), vorlaeufige_punkte: tierPoints(cfg.churn.staffel, qv) }, hinweis: "Churn-Erfassung für diesen Monat noch nicht bestätigt" };
+    k4 = { status: "unvollstaendig", punkte: tierPoints(cfg.churn.staffel, qv), max: max.churn, wert: { erfassung_bestaetigt: false, betreute_kunden: snapCount, churn_ereignisse: churn?.length ?? 0, zaehlt_als_churn: zv, churn_quote: r2(qv) }, hinweis: "Bestätigung der Churn-Erfassung ausstehend" };
   }
   else {
     const z = (churn || []).filter((c) => c.zaehlt_als_churn).length;
@@ -203,10 +197,10 @@ Deno.serve(async (req) => {
 
   const kriterien = { zufriedenheit: k1, cash_niveau: k2, cash_entwicklung: k3, churn: k4, calls: k5 };
   const basis: Record<keyof typeof kriterien, string> = {
-    zufriedenheit: 'Basis: noch keine Funnel-Versände erfasst',
+    zufriedenheit: openSurveys ? `Basis: ${openSurveys} Einsendungen in der Klärliste` : !snapshotIds.size ? 'Basis: Kundensnapshot fehlt' : 'Basis: noch keine zugeordneten Einsendungen',
     cash_niveau: offenK > 0 ? `Basis: ${offenK} Rechnungen in der Klärliste` : cur.rows ? 'Basis: Zahlungseingänge noch nicht zugeordnet' : 'Basis: Zahlungsabgleich noch nicht angebunden',
     cash_entwicklung: offenK > 0 ? `Basis: ${offenK} Rechnungen in der Klärliste` : !cur.rows ? 'Basis: Zahlungsabgleich noch nicht angebunden' : `Basis: Referenzwert für ${refMonth} noch nicht vollständig`,
-    churn: !snapCount ? 'Basis: Kundensnapshot noch nicht erfasst' : 'Basis: Bestätigung ausstehend',
+    churn: !snapCount ? 'Basis: Kundensnapshot noch nicht erfasst' : 'Bestätigung der Churn-Erfassung ausstehend',
     calls: lastSync?.ok === false ? 'Basis: letzter Close-Abgleich nicht abgeschlossen' : nz > 0 ? `Basis: ${Math.max(0, zielwert - nz)} von ${zielwert} Kunden in Close erreichbar` : !zielwert ? 'Basis: Kundensnapshot noch nicht erfasst' : 'Basis: noch kein vollständiger Close-Abgleich',
   };
   for (const key of Object.keys(kriterien) as (keyof typeof kriterien)[]) {
