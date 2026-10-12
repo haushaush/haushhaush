@@ -142,6 +142,48 @@ export default function BonusKunden() {
       </div>
 
       <LaufendeListe snapIds={inSnapshot} allClients={allClients} onChanged={load} />
+      <StatusProtokoll />
+    </div>
+  );
+}
+
+function StatusProtokoll() {
+  const [logs, setLogs] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from('bonus_sync_log').select('beendet_am, details').eq('sync_typ', 'kunden_aktuell').eq('ok', true).not('details', 'is', null).order('beendet_am', { ascending: false }).limit(500)
+      .then(({ data }) => setLogs((data as any[]) || []));
+  }, []);
+  const last = logs.find(l => (l.details?.status_geaendert || []).length > 0);
+  const ohne = new Map<string, string>();
+  logs.forEach(l => (l.details?.ohne_close_lead || []).forEach((o: any) => ohne.set(o.client_id, o.kunde)));
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold text-foreground">Statusänderungen aus Close</h2>
+        <p className="text-sm text-muted-foreground">{last ? `Letzter Lauf mit Änderungen: ${new Date(last.beendet_am).toLocaleString('de-DE')} · ${last.details.status_geaendert.length} Änderungen` : 'Noch keine Änderungen protokolliert.'}</p>
+        <div className="rounded-lg border border-border max-h-96 overflow-auto">
+          <table className="w-full text-sm"><tbody>
+            {(last?.details.status_geaendert || []).map((c: any, i: number) => (
+              <tr key={i} className="border-t border-border first:border-0"><td className="px-4 py-2 text-foreground">{c.kunde}</td><td className="px-4 py-2 text-muted-foreground">{c.von} → {c.nach}</td></tr>
+            ))}
+          </tbody></table>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-lg font-semibold text-foreground">Im CRM betreut, in Close kein Klient</h2>
+        <p className="text-sm text-muted-foreground tabular-nums">{ohne.size} Kunden ohne Close-Lead, nicht mehr als betreut gezählt</p>
+        <div className="rounded-lg border border-border max-h-96 overflow-auto">
+          <ul className="text-sm">{[...ohne.values()].sort().map(n => <li key={n} className="border-t border-border first:border-0 px-4 py-2 text-foreground">{n}</li>)}</ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function _unused() {
+  return (
+    <div>
+
     </div>
   );
 }
