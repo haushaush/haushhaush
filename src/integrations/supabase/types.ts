@@ -1553,6 +1553,7 @@ export type Database = {
           ausloeser: string
           beendet_am: string | null
           calls_ohne_snapshot_kunde: Json
+          details: Json | null
           entfernt: number | null
           fehler: string | null
           gefunden: number | null
@@ -1570,6 +1571,7 @@ export type Database = {
           ausloeser: string
           beendet_am?: string | null
           calls_ohne_snapshot_kunde?: Json
+          details?: Json | null
           entfernt?: number | null
           fehler?: string | null
           gefunden?: number | null
@@ -1587,6 +1589,7 @@ export type Database = {
           ausloeser?: string
           beendet_am?: string | null
           calls_ohne_snapshot_kunde?: Json
+          details?: Json | null
           entfernt?: number | null
           fehler?: string | null
           gefunden?: number | null

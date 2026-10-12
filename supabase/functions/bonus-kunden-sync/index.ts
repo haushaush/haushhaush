@@ -96,19 +96,38 @@ export async function refreshAktuell(admin: any) {
       }
     }
     // Leads that no longer carry any client status in Close: mirror that.
-    for (const r of (existing || []).filter((r: any) => r.close_account === acc && !seen.has(r.close_lead_id) && r.close_status_label !== "kein Klient")) {
+    for (const r of (existing || []).filter((r: any) => r.close_account === acc && !seen.has(r.close_lead_id) && r.close_status_label !== "kein Klient" && !String(r.close_status_label || "").includes("(kein Klient)") && r.close_status_label !== "in Close gelöscht")) {
       let label = "kein Klient";
       try { const l = await call(`/lead/${r.close_lead_id}/?_fields=status_label`); label = l.status_label ? `${l.status_label} (kein Klient)` : label; } catch { label = "in Close gelöscht"; }
       await admin.from("bonus_kunden_aktuell").update({ aktiv: false, close_status_label: label, updated_at: now }).eq("id", r.id);
-      const c: any = clientById.get(r.client_id);
-      if (c?.kundenstatus === "In Betreuung") await admin.from("clients").update({ kundenstatus: "Offen" }).eq("id", r.client_id);
       report.nicht_mehr_klient.push({ lead: r.close_lead_id, status: label });
     }
+  }
+  // One-way mirror: every CRM customer marked as betreut without a betreut Close lead is downgraded, every run.
+  const { data: akt } = await admin.from("bonus_kunden_aktuell").select("client_id, close_status_label").not("client_id", "is", null);
+  const wantBy = new Map<string, string>();
+  for (const a of akt || []) {
+    const w = betreut(a.close_status_label) ? "In Betreuung" : a.close_status_label === EHEMALIG ? "Churned" : "Offen";
+    const prev = wantBy.get(a.client_id);
+    if (!prev || w === "In Betreuung" || (w === "Churned" && prev === "Offen")) wantBy.set(a.client_id, w);
+  }
+  report.ohne_close_lead = [];
+  for (const c of clientById.values() as any) {
+    if (!BETREUT_CRM.includes(c.kundenstatus)) continue;
+    const w = wantBy.get(c.id);
+    if (w === "In Betreuung") continue;
+    const nach = w ?? "Offen";
+    const { error } = await admin.from("clients").update({ kundenstatus: nach }).eq("id", c.id);
+    if (error) throw new Error("Kundenstatus schreiben fehlgeschlagen: " + error.message);
+    report.status_geaendert.push({ kunde: c.name, von: c.kundenstatus, nach, grund: w ? "Close: kein Klienten-Status" : "kein Close-Lead" });
+    if (!w) report.ohne_close_lead.push({ kunde: c.name, client_id: c.id });
+    c.kundenstatus = nach;
   }
   const { count } = await admin.from("bonus_kunden_aktuell").select("id", { count: "exact", head: true }).eq("aktiv", true).eq("zaehlt_fuer_betreuung", true);
   report.laufende_liste = count ?? 0;
   return report;
 }
+const BETREUT_CRM = ["In Betreuung", "Onboarding", "Pausiert"];
 
 /** Keeps the month snapshot in step: adds counted, betreute customers; removes only admin-excluded ones. */
 export async function reconcileSnapshot(admin: any, monat: string) {

@@ -1,0 +1,1 @@
+ALTER TABLE public.bonus_sync_log ADD COLUMN IF NOT EXISTS details jsonb;
