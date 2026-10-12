@@ -36,6 +36,10 @@ Deno.serve(async (req) => {
   const expected = Deno.env.get("SALES_KPI_INGEST_TOKEN");
   if (!expected) return json({ error: "SALES_KPI_INGEST_TOKEN ist nicht hinterlegt" }, 500);
   if (req.headers.get("x-ingest-token") !== expected) return json({ error: "unauthorized" }, 401);
+  const admin0 = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  // Fallback path only: the Google Sheet (sales-sheet-sync) is the source unless app_settings.sales_kpi_quelle = "ingest".
+  const { data: q } = await admin0.from("app_settings").select("value").eq("key", "sales_kpi_quelle").maybeSingle();
+  if (JSON.stringify(q?.value ?? "") !== '"ingest"') return json({ error: "Rückfallweg inaktiv: Quelle ist das Google Sheet (sales-sheet-sync)." }, 409);
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return json({ error: "Ungültiges Format", details: parsed.error.flatten() }, 400);
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
