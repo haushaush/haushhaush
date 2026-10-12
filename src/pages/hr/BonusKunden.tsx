@@ -139,6 +139,61 @@ export default function BonusKunden() {
           </tbody>
         </table>
       </div>
+
+      <LaufendeListe maId={maId} snapIds={inSnapshot} monat={monat} />
+    </div>
+  );
+}
+
+function LaufendeListe({ maId, snapIds, monat }: { maId: string; snapIds: Set<string | undefined>; monat: string }) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!maId) return;
+    supabase.from('bonus_kunden_aktuell').select('id, client_id, lead_name, seit, aktiv, clients:client_id(name)').eq('mitarbeiter_id', maId).order('lead_name')
+      .then(({ data }) => setRows((data as any[]) || []));
+  }, [maId, tick]);
+  const aktiv = rows.filter(r => r.aktiv);
+  const aktivIds = new Set(aktiv.map(r => r.client_id).filter(Boolean));
+  const dazu = aktiv.filter(r => !r.client_id || !snapIds.has(r.client_id));
+  const ab = [...snapIds].filter(id => id && !aktivIds.has(id)).length;
+  const sync = async () => {
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke('bonus-kunden-sync', { body: {} });
+    setBusy(false);
+    if (error || !data?.ok) return toast.error('Abgleich fehlgeschlagen', { description: data?.error || error?.message });
+    toast.success(`${data.laufende_liste} Kunden in der laufenden Liste`);
+    setTick(t => t + 1);
+  };
+  return (
+    <div className="space-y-3">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Laufende Kundenliste</h2>
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {aktiv.length} aktiv aus Close · seit Stichtag {new Date(monat).toLocaleDateString('de-DE')}: {dazu.length} dazugekommen, {ab} nicht mehr aktiv
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={sync} disabled={busy}>Jetzt abgleichen</Button>
+      </div>
+      <div className="rounded-lg border border-border overflow-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-muted-foreground">
+            <tr><th className="text-left px-4 py-2 font-medium">Kunde</th><th className="text-left px-4 py-2 font-medium">Seit</th><th className="text-left px-4 py-2 font-medium">Abweichung zum Snapshot</th></tr>
+          </thead>
+          <tbody>
+            {aktiv.map(r => (
+              <tr key={r.id} className="border-t border-border">
+                <td className="px-4 py-2 text-foreground">{r.clients?.name || r.lead_name || '–'}</td>
+                <td className="px-4 py-2 tabular-nums">{r.seit ? new Date(r.seit).toLocaleDateString('de-DE') : '–'}</td>
+                <td className="px-4 py-2 text-muted-foreground">{!r.client_id ? 'Kein Kunde zugeordnet' : !snapIds.has(r.client_id) ? 'Seit Stichtag dazugekommen' : '–'}</td>
+              </tr>
+            ))}
+            {aktiv.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">Keine Kunden in der laufenden Liste.</td></tr>}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
