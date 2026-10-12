@@ -34,13 +34,16 @@ const prevMonth = (m: string) => { const d = new Date(m + "T00:00:00Z"); d.setUT
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  const url = Deno.env.get("SUPABASE_URL")!;
-  const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const url = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!url || !serviceKey || !anonKey) return json({ error: "Runtime configuration missing" }, 500);
+  const admin = createClient(url, serviceKey);
 
   const jwt = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
   const { data: u } = await admin.auth.getUser(jwt);
   if (!u?.user) return json({ error: "unauthorized" }, 401);
-  const userClient = createClient(url, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: `Bearer ${jwt}` } } });
+  const userClient = createClient(url, anonKey, { global: { headers: { Authorization: `Bearer ${jwt}` } } });
 
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "invalid_json" }, 400); }
@@ -71,7 +74,8 @@ Deno.serve(async (req) => {
   const { data: surveyAnswers, error: surveyError } = await admin.from("bonus_survey_antworten").select("client_id,score_betreuung,zuordnung_status").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).in("zuordnung_status", ["automatisch", "manuell"]);
   if (surveyError) return json({ error: surveyError.message }, 500);
   const assigned = (surveyAnswers || []).filter(row => snapshotIds.has(row.client_id));
-  const { count: openSurveys } = await admin.from("bonus_survey_antworten").select("id", { count: "exact", head: true }).eq("monat", monat).eq("zuordnung_status", "offen");
+  const { count: openSurveys, error: openSurveyError } = await admin.from("bonus_survey_antworten").select("id", { count: "exact", head: true }).eq("monat", monat).eq("zuordnung_status", "offen");
+  if (openSurveyError) return json({ error: openSurveyError.message }, 500);
   const quote = snapshotIds.size ? assigned.length / snapshotIds.size * 100 : 0;
   const avg = assigned.length ? assigned.reduce((sum, row) => sum + Number(row.score_betreuung), 0) / assigned.length : null;
   const z = cfg.zufriedenheit;

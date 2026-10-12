@@ -80,7 +80,7 @@ export default function BonusFunnel() {
   const affected = (result.data as { mitarbeiter_ids?: string[] })?.mitarbeiter_ids || [];
   let recalculationFailed = false;
   for (const id of new Set([...affected, maId])) {
-   const calculation = await supabase.functions.invoke('bonus-berechnung', { body: { monat: answer ? monat : monat, mitarbeiter_id: id, speichern: true } });
+   const calculation = await supabase.functions.invoke('bonus-berechnung', { body: { monat, mitarbeiter_id: id, speichern: true } });
    if (calculation.error) recalculationFailed = true;
   }
   setBusy(null); toast.success(noCustomer ? 'Einsendung ausgeschlossen' : 'Kunde zugeordnet');

@@ -26,6 +26,11 @@ Deno.serve(async req => {
   const raw = await req.text();
   if (raw.length > 20000) return json({ error: 'payload_too_large' }, 413);
   let body: unknown; try { body = JSON.parse(raw); } catch { return json({ error: 'invalid_json' }, 400); }
+  // Token wins: do not even validate user-supplied identity fields in token mode.
+  if (body && typeof body === 'object' && 'token' in body && typeof body.token === 'string' && body.token.trim()) {
+   const { eingegeben_firma, eingegeben_email, firma, email, ...tokenBody } = body as Record<string, unknown>;
+   body = tokenBody;
+  }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return json({ error: 'invalid_value', fields: parsed.error.flatten().fieldErrors }, 400);
   const p = parsed.data;
