@@ -425,7 +425,6 @@ export default function Dashboard() {
     <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10">
 
       <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <CheckinBanner />
 
       {/* Hero — locked at top (ARIA input hidden) */}
       <div className="mb-8 space-y-0">
