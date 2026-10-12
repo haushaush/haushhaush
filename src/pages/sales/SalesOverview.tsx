@@ -190,7 +190,7 @@ export default function SalesOverview() {
 
       {lauf?.status === 'fehler' && <p className="text-xs text-destructive">Letzter Abgleich fehlgeschlagen: {lauf.fehler}</p>}
       {verworfenSumme > 0 && <p className="text-xs text-muted-foreground">Hinweis: {verworfenSumme} Zeile(n) im Sheet ohne lesbares Datum wurden nicht übernommen ({Object.entries(lauf!.verworfen).filter(([, n]) => n).map(([k, n]) => `${k}: ${n}`).join(', ')}).</p>}
-      {!!lauf?.unbekannte_kanaele?.length && <p className="text-xs text-muted-foreground">Hinweis: Kanal {lauf.unbekannte_kanaele.map(k => `„${k}“`).join(', ')} im Sheet passt zu keinem der fünf Kanäle und wird im Kanalvergleich nicht gezählt.</p>}
+      {!!lauf?.unbekannte_kanaele?.filter(k => !NICHT_GEWERTET.test(k)).length && <p className="text-xs text-muted-foreground">Hinweis: Kanal {lauf.unbekannte_kanaele.filter(k => !NICHT_GEWERTET.test(k)).map(k => `„${k}“`).join(', ')} im Sheet passt zu keinem der fünf Kanäle und wird im Kanalvergleich nicht gezählt.</p>}
       {loading ? <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}</div>
         : !hatDaten ? (
           <Card className="border-dashed"><CardContent className="py-12 text-center">
