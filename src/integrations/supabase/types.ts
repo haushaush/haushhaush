@@ -1055,6 +1055,7 @@ export type Database = {
           berechnungsdetails: Json
           bonus_eur: number
           created_at: string
+          datengrundlage_bestaetigung: Json | null
           freigegeben_am: string | null
           freigegeben_von: string | null
           funnel_ausfall: boolean
@@ -1074,6 +1075,7 @@ export type Database = {
           berechnungsdetails?: Json
           bonus_eur?: number
           created_at?: string
+          datengrundlage_bestaetigung?: Json | null
           freigegeben_am?: string | null
           freigegeben_von?: string | null
           funnel_ausfall?: boolean
@@ -1093,6 +1095,7 @@ export type Database = {
           berechnungsdetails?: Json
           bonus_eur?: number
           created_at?: string
+          datengrundlage_bestaetigung?: Json | null
           freigegeben_am?: string | null
           freigegeben_von?: string | null
           funnel_ausfall?: boolean
@@ -7774,6 +7777,15 @@ export type Database = {
       _finanzen_can_read: { Args: never; Returns: boolean }
       bonus_can_manage: { Args: never; Returns: boolean }
       bonus_is_own: { Args: { _mitarbeiter_id: string }; Returns: boolean }
+      bonus_monat_freigeben: {
+        Args: {
+          _berechnet_am: string
+          _mitarbeiter_id: string
+          _monat: string
+          _unvollstaendig_bestaetigt?: boolean
+        }
+        Returns: undefined
+      }
       bonus_my_team_id: { Args: never; Returns: string }
       create_or_get_unternehmen: { Args: { p_name: string }; Returns: string }
       current_user_team_rolle: {

@@ -10,7 +10,7 @@ const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: 
 
 type Tier = { von?: number; bis?: number; ab?: number; unter?: number; ueber?: number; punkte: number };
 type Status = "ok" | "keine_daten" | "unvollstaendig";
-type Krit = { status: Status; punkte: number | null; max: number; wert: Record<string, unknown>; hinweis?: string };
+type Krit = { status: Status; punkte: number | null; max: number; wert: Record<string, unknown>; hinweis?: string; basis_hinweis?: string | null };
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -179,6 +179,10 @@ Deno.serve(async (req) => {
       wert: { ...callWert, letzter_sync: lastSync?.beendet_am ?? null, nicht_zuordenbare_kunden: 0 } };
   }
 
+  // The observed coverage earns configured points even with incomplete mappings;
+  // completeness remains separate and must be acknowledged when approving.
+  k5.punkte = grad === null ? 0 : Math.min(tierPoints(cc.staffel, grad), max.calls);
+
   // ---------- Upsell ----------
   const { data: ups } = await admin.from("bonus_upsells").select("id").eq("mitarbeiter_id", mitarbeiter_id);
   let upsell = 0;
@@ -188,8 +192,20 @@ Deno.serve(async (req) => {
   }
 
   const kriterien = { zufriedenheit: k1, cash_niveau: k2, cash_entwicklung: k3, churn: k4, calls: k5 };
+  const basis: Record<keyof typeof kriterien, string> = {
+    zufriedenheit: 'Basis: noch keine Funnel-Versände erfasst',
+    cash_niveau: cur.rows ? 'Basis: Zahlungseingänge noch nicht zugeordnet' : 'Basis: Zahlungsabgleich noch nicht angebunden',
+    cash_entwicklung: !cur.rows ? 'Basis: Zahlungsabgleich noch nicht angebunden' : `Basis: Referenzwert für ${refMonth} noch nicht vollständig`,
+    churn: !snapCount ? 'Basis: Kundensnapshot noch nicht erfasst' : 'Basis: Churn-Erfassung für diesen Monat nicht bestätigt',
+    calls: lastSync?.ok === false ? 'Basis: letzter Close-Abgleich nicht abgeschlossen' : nz > 0 ? `Basis: ${Math.max(0, zielwert - nz)} von ${zielwert} Kunden in Close erreichbar` : !zielwert ? 'Basis: Kundensnapshot noch nicht erfasst' : 'Basis: noch kein vollständiger Close-Abgleich',
+  };
+  for (const key of Object.keys(kriterien) as (keyof typeof kriterien)[]) {
+    const k = kriterien[key];
+    k.punkte = k.punkte ?? 0;
+    k.basis_hinweis = k.status === 'ok' ? null : basis[key];
+  }
   const okList = Object.values(kriterien).filter((k) => k.status === "ok");
-  const punkte = r2(okList.reduce((s, k) => s + (k.punkte ?? 0), 0));
+  const punkte = r2(Object.values(kriterien).reduce((s, k) => s + (k.punkte ?? 0), 0));
   const bewertbar = okList.reduce((s, k) => s + k.max, 0);
   const gesamtMax = Object.values(kriterien).reduce((s, k) => s + k.max, 0);
   const bonus = r2(Math.min(punkte * cfg.bonus_pro_punkt_eur, cfg.bonus_max_eur));
