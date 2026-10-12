@@ -1,7 +1,8 @@
 // Narrow, independent sync: pulls ONLY "Client Checkin" custom activities from Close
-// for the clients in bonus_kunden_snapshot and writes them to bonus_checkins.
+// on leads of the Close-mirrored customer list (bonus_kunden_aktuell); checkins on non-client leads go to bonus_checkin_kandidaten and writes them to bonus_checkins.
 // Any Close API error aborts the run without touching stored data (a too-low call count costs the employee money).
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { closeClient as sharedClose } from "../_shared/bonusClose.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -171,14 +172,16 @@ async function syncOne(admin: any, get: (p: string) => Promise<any>, post: (p: s
     if (error) throw new Error("Bereinigen fehlgeschlagen: " + error.message);
   }
   const neu = uniq.filter((r) => !before.has(r.close_activity_id)).length;
-  return { gefunden: uniq.length, neu, aktualisiert: uniq.length - neu, entfernt: stale.length, nicht_zuordenbar, ignoriert_andere_nutzer: fremde, ignoriert_entwuerfe: entwuerfe };
+  return { gefunden: uniq.length, neu, aktualisiert: uniq.length - neu, entfernt: stale.length, nicht_zuordenbar, ignoriert_andere_nutzer: fremde, ignoriert_entwuerfe: entwuerfe, ignoriert_ausgeschlossen: ausgeschlossen, leads_mit_checkins: leads.length, ohne_klientenstatus: kandidaten.length };
 }
+
+let POST: ((p: string, b: unknown) => Promise<any>) | null = null;
 
 async function runLogged(admin: any, get: any, fields: Fields | null, monat: string, mitarbeiter_id: string, ausloeser: string) {
   const { data: log } = await admin.from("bonus_sync_log").insert({ sync_typ: "checkins", ausloeser, monat, mitarbeiter_id }).select("id").single();
   try {
     const f = fields ?? await resolveFields(get);
-    const r = await syncOne(admin, get, f, monat, mitarbeiter_id);
+    const r = await syncOne(admin, get, POST!, f, monat, mitarbeiter_id);
     await admin.from("bonus_sync_log").update({ beendet_am: new Date().toISOString(), ok: true, gefunden: r.gefunden, neu: r.neu, aktualisiert: r.aktualisiert, entfernt: r.entfernt, nicht_zuordenbar: r.nicht_zuordenbar }).eq("id", log.id);
     return { ok: true, monat, mitarbeiter_id, ...r };
   } catch (e) {
@@ -198,7 +201,7 @@ Deno.serve(async (req) => {
   if (!key) return json({ ok: false, error: "CLOSE_API_KEY_SALES ist nicht gesetzt" }, 502);
   const get = closeClient(key);
   const shared = sharedClose(key);
-  const post = (p: string, b: unknown) => shared(p, "POST", b).catch((e: unknown) => { throw new CloseError(e instanceof Error ? e.message : String(e)); });
+  POST = (p: string, b: unknown) => shared(p, "POST", b).catch((e: unknown) => { throw new CloseError(e instanceof Error ? e.message : String(e)); });
 
   let body: any = {};
   try { body = await req.json(); } catch { /* empty body allowed for cron */ }
