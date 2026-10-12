@@ -20,3 +20,11 @@
 - [x] Nicht erreichbare Kunden prominent in der Checkup-Detailansicht.
 - [x] Oktober 2026 neu berechnen; authentifizierte Cockpit-Ansicht separat auf Desktop/Mobil prüfen.
 - [ ] Regulären Einstieg über /bonus prüfen — Konto verlangt zunächst Passworteinrichtung; separate Ansicht mit echter Sitzung und echten Daten geprüft.
+
+# Bonus: Close als Kundenquelle
+
+- [x] Stündlicher Kundenabgleich aus Close, Kundenstatus aus Close, Schalter „zählt für Betreuung“.
+- [x] Oktober-Snapshot aus der Close-Liste neu (73), neu berechnet.
+- [x] Checkins nur über die Close-Liste, stündlich; Liste „Checkins ohne Klienten-Status“.
+- [ ] 9 automatisch angelegte Kunden prüfen/zuordnen (Admin).
+- [ ] Cash Collect auf neuen Snapshot umstellen (nächster Schritt laut Dennis).
