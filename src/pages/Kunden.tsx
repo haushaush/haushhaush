@@ -243,15 +243,29 @@ export default function Kunden() {
     }
   };
 
+  const ACTIVE_STATUSES = ['In Betreuung', 'Onboarding'];
+  const FORMER_STATUSES = ['Churned', 'Done'];
+
   const filtered = useMemo(() => {
-    return clients.filter(c => {
+    const list = clients.filter(c => {
       const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase());
       const matchStatus = filterStatus === 'all' || c.kundenstatus === filterStatus;
       const matchBranche = filterBranche === 'all' || c.branche === filterBranche;
       const matchUnternehmen = filterUnternehmen === 'all' || c.unternehmen?.display_name === filterUnternehmen;
-      return matchSearch && matchStatus && matchBranche && matchUnternehmen;
+      const matchQuick =
+        quickFilter === 'alle' ||
+        (quickFilter === 'aktiv' && ACTIVE_STATUSES.includes(c.kundenstatus)) ||
+        (quickFilter === 'ehemalig' && FORMER_STATUSES.includes(c.kundenstatus));
+      return matchSearch && matchStatus && matchBranche && matchUnternehmen && matchQuick;
     });
-  }, [clients, search, filterStatus, filterBranche, filterUnternehmen]);
+    // Aktive zuerst, danach alphabetisch
+    return list.sort((a, b) => {
+      const aActive = ACTIVE_STATUSES.includes(a.kundenstatus) ? 0 : 1;
+      const bActive = ACTIVE_STATUSES.includes(b.kundenstatus) ? 0 : 1;
+      if (aActive !== bActive) return aActive - bActive;
+      return a.name.localeCompare(b.name, 'de');
+    });
+  }, [clients, search, filterStatus, filterBranche, filterUnternehmen, quickFilter]);
 
   const statusCounts = useMemo(() => {
     const m: Record<string, number> = { all: clients.length };
