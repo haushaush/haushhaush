@@ -6641,18 +6641,21 @@ export type Database = {
           bestand: number | null
           datum: string
           empfangen_am: string
+          kanal: string
           werte: Json
         }
         Insert: {
           bestand?: number | null
           datum: string
           empfangen_am?: string
+          kanal?: string
           werte?: Json
         }
         Update: {
           bestand?: number | null
           datum?: string
           empfangen_am?: string
+          kanal?: string
           werte?: Json
         }
         Relationships: []
@@ -7092,6 +7095,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sales_sheet_sync_laeufe: {
+        Row: {
+          ausloeser: string
+          beendet_am: string | null
+          daten_ab: string | null
+          fehler: string | null
+          gestartet_am: string
+          id: string
+          modus: string
+          status: string
+          unbekannte_kanaele: Json
+          verworfen: Json
+          zeilen: Json
+        }
+        Insert: {
+          ausloeser: string
+          beendet_am?: string | null
+          daten_ab?: string | null
+          fehler?: string | null
+          gestartet_am?: string
+          id?: string
+          modus: string
+          status?: string
+          unbekannte_kanaele?: Json
+          verworfen?: Json
+          zeilen?: Json
+        }
+        Update: {
+          ausloeser?: string
+          beendet_am?: string | null
+          daten_ab?: string | null
+          fehler?: string | null
+          gestartet_am?: string
+          id?: string
+          modus?: string
+          status?: string
+          unbekannte_kanaele?: Json
+          verworfen?: Json
+          zeilen?: Json
+        }
+        Relationships: []
       }
       sales_status_changes: {
         Row: {

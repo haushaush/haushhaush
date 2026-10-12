@@ -148,6 +148,13 @@
       "when": 1791816020865,
       "tag": "0020_sales_kpi_sheet_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791816650895,
+      "tag": "0021_sales_sheet_sync",
+      "breakpoints": true
     }
   ]
 }
