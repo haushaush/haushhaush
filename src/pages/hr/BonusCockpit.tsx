@@ -161,14 +161,8 @@ export default function BonusCockpit() {
                         <span className="text-xs text-muted-foreground tabular-nums shrink-0">max {k.max}</span>
                       </div>
                       <div className="text-xs text-muted-foreground tabular-nums min-h-8">{wertText(key, k)}</div>
-                      {(() => {
-                        const vp = key === 'churn' && k.status !== 'ok' ? k.wert?.vorlaeufige_punkte : undefined;
-                        const shown = vp ?? k.punkte;
-                        return <>
-                          <div className="text-3xl font-semibold tabular-nums">{num(shown)}{vp !== undefined && <span className="ml-1 text-sm font-normal text-muted-foreground">(vorläufig)</span>}</div>
-                          <Progress value={k.max > 0 ? (shown / k.max) * 100 : 0} className={vp !== undefined ? 'opacity-50' : undefined} />
-                        </>;
-                      })()}
+                      <div className="text-3xl font-semibold tabular-nums">{num(k.punkte)}</div>
+                      <Progress value={k.max > 0 ? (k.punkte / k.max) * 100 : 0} />
                       <div className="min-h-4 min-w-0">
                         {k.basis_hinweis && <p title={k.basis_hinweis} className="text-xs font-normal text-muted-foreground truncate">{k.basis_hinweis}</p>}
                       </div>
@@ -207,6 +201,7 @@ export default function BonusCockpit() {
               {maName} · {new Date(monat).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })} · {num(approval?.punkte_gesamt)} Punkte · {eur(approval?.bonus_eur)}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {approval && !approval.kriterien.churn.wert?.erfassung_bestaetigt && <p className="text-sm text-destructive">Bestätige zuerst die Churn-Erfassung in den Anti-Churn-Details. {num(approval.kriterien.churn.punkte)} Punkte werden dadurch final.</p>}
           {approval && approval.nicht_bewertbare_kriterien > 0 && <div className="space-y-4 text-sm">
             <p>Diese Kriterien haben keine vollständige Datengrundlage:</p>
             <ul className="space-y-2">{ORDER.filter(o => approval.kriterien[o.key].status !== 'ok').map(o => <li key={o.key}><span className="font-medium">{o.label}</span><p className="text-xs text-muted-foreground">{approval.kriterien[o.key].basis_hinweis}</p></li>)}</ul>
@@ -216,7 +211,7 @@ export default function BonusCockpit() {
           </div>}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={approving}>Abbrechen</AlertDialogCancel>
-            <Button onClick={approve} disabled={approving || (!!approval?.nicht_bewertbare_kriterien && !acknowledged)}>{approving && <Loader2 className="h-4 w-4 animate-spin" />}Freigeben</Button>
+            <Button onClick={approve} disabled={approving || !approval?.kriterien.churn.wert?.erfassung_bestaetigt || (!!approval?.nicht_bewertbare_kriterien && !acknowledged)}>{approving && <Loader2 className="h-4 w-4 animate-spin" />}Freigeben</Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -269,9 +264,9 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
   useEffect(() => {
     (async () => {
       if (kind === 'zufriedenheit') {
-        const { data: t } = await supabase.from('bonus_survey_tokens').select('token, ausgefuellt_am, versendet_am, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId);
+        const { data: t } = await supabase.from('bonus_kunden_snapshot').select('client_id, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId);
         const toks = (t as any[]) || [];
-        const { data: a } = toks.length ? await supabase.from('bonus_survey_antworten').select('*').in('token', toks.map(x => x.token)) : { data: [] };
+        const { data: a } = await supabase.from('bonus_survey_antworten').select('*').eq('monat', monat).eq('mitarbeiter_id', maId).in('zuordnung_status', ['automatisch', 'manuell']);
         setData({ toks, ans: (a as any[]) || [] });
       } else if (kind === 'cash_niveau' || kind === 'cash_entwicklung') {
         const { data: c } = await supabase.from('bonus_cash_collect').select('id, betrag, eingang_am, quelle, zugeordnet, mitarbeiter_id, clients:client_id(name)').eq('monat', monat).or(`mitarbeiter_id.eq.${maId},zugeordnet.eq.false`).order('eingang_am');
@@ -295,8 +290,8 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
 
   const nichtGeantwortet = useMemo(() => {
     if (kind !== 'zufriedenheit' || !data) return [];
-    const answered = new Set(data.ans.map((a: any) => a.token));
-    return data.toks.filter((t: any) => !answered.has(t.token));
+    const answered = new Set(data.ans.map((a: any) => a.client_id));
+    return data.toks.filter((t: any) => !answered.has(t.client_id));
   }, [data, kind]);
 
   return (
@@ -307,18 +302,18 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
         {!data && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
 
         {data && kind === 'zufriedenheit' && (() => {
-          const nameOf = (tok: string) => data.toks.find((t: any) => t.token === tok)?.clients?.name || '–';
+          const nameOf = (clientId: string) => data.toks.find((t: any) => t.client_id === clientId)?.clients?.name || '–';
           return (
             <>
               <Table
                 head={['Kunde', 'Kontakt', 'Datum', 'B1', 'B2', 'B3', 'B4', 'L1', 'L2', 'L3', 'Score Betreuung', <span className="text-muted-foreground/70">Score Leistung (nicht bonusrelevant)</span>, 'Freitext']}
-                rows={data.ans.map((a: any) => [nameOf(a.token), a.kontaktname, dt(a.created_at), a.b1_reaktionszeit, a.b2_umgang, a.b3_verbindlichkeit, a.b4_eigeninitiative, a.l1_anfragemenge, a.l2_anfragequalitaet, a.l3_weiterempfehlung,
+                rows={data.ans.map((a: any) => [nameOf(a.client_id), a.kontaktname, dt(a.created_at), a.b1_reaktionszeit, a.b2_umgang, a.b3_verbindlichkeit, a.b4_eigeninitiative, a.l1_anfragemenge, a.l2_anfragequalitaet, a.l3_weiterempfehlung,
                   <b>{num(Number(a.score_betreuung))}</b>, <span className="text-muted-foreground/70">{num(Number(a.score_leistung))}</span>, <span className="font-sans text-xs">{a.freitext || '–'}</span>])}
                 empty="Noch keine Einsendungen."
               />
               <div>
                 <h3 className="text-sm font-medium mb-2">Nicht geantwortet ({nichtGeantwortet.length})</h3>
-                <Table head={['Kunde', 'Versendet am']} rows={nichtGeantwortet.map((t: any) => [t.clients?.name || '–', dt(t.versendet_am)])} empty="Alle haben geantwortet." />
+                <Table head={['Kunde']} rows={nichtGeantwortet.map((t: any) => [t.clients?.name || '–'])} empty="Alle haben geantwortet." />
               </div>
             </>
           );
@@ -389,7 +384,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
                 <div className="text-xs text-muted-foreground mt-1">
                   {data.frg?.churn_erfassung_abgeschlossen
                     ? `Bestätigt am ${data.frg.churn_bestaetigt_am ? new Date(data.frg.churn_bestaetigt_am).toLocaleString('de-DE') : '–'}`
-                    : blockiert ? `Erst möglich, wenn ${[offen.length && 'alle Sonderfälle entschieden', luecken.length && `die Angaben vollständig sind (${luecken.map((r: any) => r.clients?.name || '–').join(', ')})`].filter(Boolean).join(' und ')}.` : 'Nicht bestätigt — derzeit 0 Punkte mit unvollständiger Datengrundlage.'}
+                    : blockiert ? `Erst möglich, wenn ${[offen.length && 'alle Sonderfälle entschieden', luecken.length && `die Angaben vollständig sind (${luecken.map((r: any) => r.clients?.name || '–').join(', ')})`].filter(Boolean).join(' und ')}.` : `Bestätigung ausstehend — ${num(k?.punkte)} Punkte zählen bereits zur Gesamtsumme.`}
                 </div>
               </div>
               {canManage && <Switch checked={!!data.frg?.churn_erfassung_abgeschlossen} disabled={!data.frg?.churn_erfassung_abgeschlossen && blockiert} onCheckedChange={v => setConfirm(v)} />}
@@ -404,8 +399,8 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
                   <AlertDialogTitle>{confirm ? 'Churn-Erfassung bestätigen?' : 'Bestätigung zurücknehmen?'}</AlertDialogTitle>
                   <AlertDialogDescription>
                     {confirm
-                      ? `Du bestätigst, dass alle Kündigungen und Abbrüche für ${new Date(monat).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })} erfasst sind und die Liste vollständig ist. Auf dieser Grundlage wird das Kriterium Anti-Churn bewertet — auch wenn die Liste leer ist (dann 0 % Churn, volle Punkte).`
-                      : 'Das Kriterium Anti-Churn wird danach mit 0 Punkten und unvollständiger Datengrundlage geführt.'}
+                      ? `Du bestätigst, dass alle Kündigungen und Abbrüche für ${new Date(monat).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })} erfasst sind und die Liste vollständig ist. ${num(k?.punkte)} Anti-Churn-Punkte werden dadurch final; sie zählen bereits zur Gesamtsumme.`
+                      : 'Die Punkte zählen weiter zur Gesamtsumme. Die Datengrundlage wird wieder als unvollständig geführt; die Monatsfreigabe ist gesperrt.'}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
