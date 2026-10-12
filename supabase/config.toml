@@ -63,3 +63,9 @@ verify_jwt = false
 
 [functions.sync-sales-orchestrator]
 verify_jwt = false
+
+[functions.bonus-churn-sync]
+verify_jwt = false
+
+[functions.bonus-kunden-sync]
+verify_jwt = false
