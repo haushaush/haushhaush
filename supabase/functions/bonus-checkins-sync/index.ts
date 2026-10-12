@@ -157,6 +157,13 @@ async function syncOne(admin: any, get: (p: string) => Promise<any>, post: (p: s
     if (fresh.length) { const { error } = await admin.from("bonus_checkin_kandidaten").insert(fresh); if (error) throw new Error("Kandidaten schreiben: " + error.message); }
     for (const x of kandidaten.filter((x) => k.has(x.close_activity_id))) await admin.from("bonus_checkin_kandidaten").update({ close_status_label: x.close_status_label, lead_name: x.lead_name, datum: x.datum }).eq("close_activity_id", x.close_activity_id);
   }
+  // Lead became a client in Close since: close its open candidate automatically (checkin now counts).
+  if (uniq.length) {
+    const { error } = await admin.from("bonus_checkin_kandidaten").update({ status: "uebernommen", bearbeitet_am: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq("status", "offen").in("close_activity_id", uniq.map((r) => r.close_activity_id));
+    if (error) throw new Error("Kandidaten abschließen: " + error.message);
+  }
+
 
   // Everything fetched successfully — only now touch the database.
   const { data: existing } = await admin.from("bonus_checkins").select("close_activity_id").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).eq("quelle", "close");
