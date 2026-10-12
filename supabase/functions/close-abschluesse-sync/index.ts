@@ -29,8 +29,8 @@ const NOTION_KUNDEN_DB = "2229f181-82a0-8099-a477-d6ff96c0f59e";
 const txt = (v: any) => v == null || v === "" ? null : Array.isArray(v) ? v.join(", ") : typeof v === "object" ? (v.display_name || v.name || JSON.stringify(v)) : String(v);
 const num = (v: any) => { if (v == null || v === "") return null; const n = Number(String(v).replace(",", ".").replace(/[^0-9.\-]/g, "")); return Number.isFinite(n) ? n : null; };
 const day = (v: any) => v ? String(v).slice(0, 10) : null;
-const MARKEN: Record<string, string> = { "viral connect": "Viral Connect", "leadsharks": "LeadSharks", "attentionx": "AttentionX", "haush haush": "Haush Haush" };
-const marke = (v: any) => { const t = txt(v); return t ? (MARKEN[t.trim().toLowerCase()] || t) : "LeadSharks"; };
+// Closing company = origin of the lead: transferred from Viral Connect → Viral Connect, everything else (own Close) → LeadSharks.
+const marke = (v: any) => (txt(v) || "").trim().toLowerCase() === "viral connect" ? "Viral Connect" : "LeadSharks";
 function addMonths(iso: string, m: number) {
   const d = new Date(iso + "T00:00:00Z"); const whole = Math.floor(m);
   d.setUTCMonth(d.getUTCMonth() + whole);
@@ -44,6 +44,9 @@ async function syncAbschluesse(admin: any) {
   const fields = await call(`/custom_field/opportunity/?_limit=200`);
   const known = new Set(Object.values(CF));
   const upsellFields = (fields.data || []).filter((f: any) => !known.has(f.id) && /upsell|sparten|untermarke/i.test(f.name || ""));
+  const users = new Map<string, string>();
+  for (let skip = 0; ; skip += 100) { const u = await call(`/user/?_limit=100&_skip=${skip}`); (u.data || []).forEach((x: any) => users.set(x.id, `${x.first_name || ""} ${x.last_name || ""}`.trim() || x.email)); if (!u.has_more) break; }
+  const person = (v: any) => { const t = txt(v); return t && users.has(t) ? users.get(t)! : t; };
   const statuses = pipeline.statuses || [];
   const opps: any[] = [];
   for (const s of statuses) opps.push(...await oppsByStatus(call, s.id));
@@ -69,7 +72,7 @@ async function syncAbschluesse(admin: any) {
       geaendert_am: o.date_updated, upsell: Object.fromEntries(upsellFields.map((f: any) => [f.name, o[`custom.${f.id}`] ?? null])),
       branche: lead.branche ?? null, sub_niche: lead.sub_niche ?? null, kanal: lead.kanal ?? null, marke: marke(lead.marke), custom, synced_at: now,
     };
-    for (const k of Object.keys(CF) as (keyof typeof CF)[]) row[k] = NUM.has(k) ? num(c(k)) : DATE.has(k) ? day(c(k)) : txt(c(k));
+    for (const k of Object.keys(CF) as (keyof typeof CF)[]) row[k] = NUM.has(k) ? num(c(k)) : DATE.has(k) ? day(c(k)) : ["closer", "setter", "cold_caller"].includes(k) ? person(c(k)) : txt(c(k));
     return row;
   });
   for (let i = 0; i < rows.length; i += 300) {
