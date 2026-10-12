@@ -6606,6 +6606,57 @@ export type Database = {
           },
         ]
       }
+      sales_abgaenge: {
+        Row: {
+          datum: string | null
+          empfangen_am: string
+          grund: string | null
+          kanal: string | null
+          kunde: string | null
+          schluessel: string
+          werte: Json
+        }
+        Insert: {
+          datum?: string | null
+          empfangen_am?: string
+          grund?: string | null
+          kanal?: string | null
+          kunde?: string | null
+          schluessel: string
+          werte?: Json
+        }
+        Update: {
+          datum?: string | null
+          empfangen_am?: string
+          grund?: string | null
+          kanal?: string | null
+          kunde?: string | null
+          schluessel?: string
+          werte?: Json
+        }
+        Relationships: []
+      }
+      sales_bestand: {
+        Row: {
+          bestand: number | null
+          datum: string
+          empfangen_am: string
+          werte: Json
+        }
+        Insert: {
+          bestand?: number | null
+          datum: string
+          empfangen_am?: string
+          werte?: Json
+        }
+        Update: {
+          bestand?: number | null
+          datum?: string
+          empfangen_am?: string
+          werte?: Json
+        }
+        Relationships: []
+      }
       sales_calls: {
         Row: {
           date_created: string | null
@@ -7120,6 +7171,51 @@ export type Database = {
           id?: string
           step?: string
           upserted?: number | null
+        }
+        Relationships: []
+      }
+      sales_tagesdaten: {
+        Row: {
+          abschluesse: number | null
+          datum: string
+          dials: number | null
+          eg_gebucht: number | null
+          eg_gefuehrt: number | null
+          empfangen_am: string
+          kanal: string
+          umsatz: number | null
+          user_name: string
+          werte: Json
+          zg_gebucht: number | null
+          zg_gefuehrt: number | null
+        }
+        Insert: {
+          abschluesse?: number | null
+          datum: string
+          dials?: number | null
+          eg_gebucht?: number | null
+          eg_gefuehrt?: number | null
+          empfangen_am?: string
+          kanal?: string
+          umsatz?: number | null
+          user_name?: string
+          werte?: Json
+          zg_gebucht?: number | null
+          zg_gefuehrt?: number | null
+        }
+        Update: {
+          abschluesse?: number | null
+          datum?: string
+          dials?: number | null
+          eg_gebucht?: number | null
+          eg_gefuehrt?: number | null
+          empfangen_am?: string
+          kanal?: string
+          umsatz?: number | null
+          user_name?: string
+          werte?: Json
+          zg_gebucht?: number | null
+          zg_gefuehrt?: number | null
         }
         Relationships: []
       }

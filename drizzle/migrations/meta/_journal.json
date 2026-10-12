@@ -141,6 +141,13 @@
       "when": 1791815681174,
       "tag": "0019_vc_feldkatalog_abschluesse_alle",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791816020865,
+      "tag": "0020_sales_kpi_sheet_tables",
+      "breakpoints": true
     }
   ]
 }
