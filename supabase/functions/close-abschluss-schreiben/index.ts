@@ -55,9 +55,10 @@ Deno.serve(async (req) => {
   if (rawBody?.optionen) {
     try {
       const { call } = await closeForPipeline();
-      const [fo, fa, acts, { data: st }] = await Promise.all([
-        call(`/custom_field/opportunity/?_limit=200`), call(`/custom_field/activity/?_limit=200`), cashActivities(call),
-        admin.from("kunden_laufzeit_stand").select("client_id, close_lead_id"),
+      const { data: st } = await admin.from("kunden_laufzeit_stand").select("client_id, close_lead_id");
+      const [fo, fa, acts] = await Promise.all([
+        call(`/custom_field/opportunity/?_limit=200`), call(`/custom_field/activity/?_limit=200`),
+        cashActivities(call, (st || []).map((r: any) => r.close_lead_id).filter(Boolean)),
       ]);
       const ch = (list: any, id: string) => ((list.data || []).find((f: any) => f.id === id)?.choices) || [];
       const cash: Record<string, any> = {};
@@ -120,7 +121,7 @@ Deno.serve(async (req) => {
     // Package lives on the customer's "LS Cash Collect" activity; update it if one exists, never create one.
     let paket: any = null;
     if (werte.paket) {
-      const act = (await cashActivities(call, stand.close_lead_id)).get(stand.close_lead_id);
+      const act = (await cashActivities(call, [stand.close_lead_id])).get(stand.close_lead_id);
       if (!act) { paket = { gesetzt: false, hinweis: `Für ${stand.kunde} existiert keine Cash-Collect-Aktivität — Paket kann nicht gesetzt werden.` }; delete werte.paket; werte.paket_nicht_gesetzt = b.paket; }
       else {
         const fa = await call(`/custom_field/activity/${PAKET_CF}/`);
@@ -147,13 +148,16 @@ Deno.serve(async (req) => {
   }
 });
 
-// Latest "LS Cash Collect" activity per lead (optionally for one lead only).
-async function cashActivities(call: any, leadId?: string) {
+// Latest "LS Cash Collect" activity per lead. Close only filters by activity type per single lead.
+async function cashActivities(call: any, leadIds: string[]) {
   const out = new Map<string, any>();
-  for (let skip = 0; ; skip += 100) {
-    const p = await call(`/activity/custom/?custom_activity_type_id=${CASH_TYPE}${leadId ? `&lead_id=${leadId}` : ""}&_limit=100&_skip=${skip}`);
-    for (const a of p.data || []) { const prev = out.get(a.lead_id); if (!prev || String(a.date_created) > String(prev.date_created)) out.set(a.lead_id, a); }
-    if (!p.has_more) break;
-  }
+  const one = async (lid: string) => {
+    for (let skip = 0; ; skip += 100) {
+      const p = await call(`/activity/custom/?lead_id=${encodeURIComponent(lid)}&custom_activity_type_id=${CASH_TYPE}&_limit=100&_skip=${skip}`);
+      for (const a of p.data || []) { const prev = out.get(lid); if (!prev || String(a.date_created) > String(prev.date_created)) out.set(lid, a); }
+      if (!p.has_more) break;
+    }
+  };
+  for (let i = 0; i < leadIds.length; i += 5) await Promise.all(leadIds.slice(i, i + 5).map(one));
   return out;
 }
