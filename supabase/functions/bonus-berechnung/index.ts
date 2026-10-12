@@ -112,6 +112,11 @@ Deno.serve(async (req) => {
     k3 = { status: "ok", punkte: tierPoints(cfg.cash_entwicklung.staffel, pct), max: max.cash_entwicklung, wert: { referenzmonat: refMonth, summe_eur: cur.summe, vormonat_eur: prev.summe, veraenderung_prozent: r2(pct) } };
   }
 
+  // Open clarification items mean the sum may be too low: keep the points but flag the basis as incomplete.
+  const offenK = offeneZuordnung ?? 0;
+  if (offenK > 0 && k2.status === "ok") { k2.status = "unvollstaendig"; k2.hinweis = `${offenK} Zahlungen in der Klärliste`; }
+  if (offenK > 0 && k3.status === "ok") { k3.status = "unvollstaendig"; k3.hinweis = `${offenK} Zahlungen in der Klärliste`; }
+
   // ---------- 4) Churn ----------
   const { count: snapCount } = await admin.from("bonus_kunden_snapshot").select("id", { count: "exact", head: true }).eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
   const { data: churn, error: chErr } = await admin.from("bonus_churn_events").select("zaehlt_als_churn").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
@@ -199,8 +204,8 @@ Deno.serve(async (req) => {
   const kriterien = { zufriedenheit: k1, cash_niveau: k2, cash_entwicklung: k3, churn: k4, calls: k5 };
   const basis: Record<keyof typeof kriterien, string> = {
     zufriedenheit: 'Basis: noch keine Funnel-Versände erfasst',
-    cash_niveau: cur.rows ? 'Basis: Zahlungseingänge noch nicht zugeordnet' : 'Basis: Zahlungsabgleich noch nicht angebunden',
-    cash_entwicklung: !cur.rows ? 'Basis: Zahlungsabgleich noch nicht angebunden' : `Basis: Referenzwert für ${refMonth} noch nicht vollständig`,
+    cash_niveau: offenK > 0 ? `Basis: ${offenK} Rechnungen in der Klärliste` : cur.rows ? 'Basis: Zahlungseingänge noch nicht zugeordnet' : 'Basis: Zahlungsabgleich noch nicht angebunden',
+    cash_entwicklung: offenK > 0 ? `Basis: ${offenK} Rechnungen in der Klärliste` : !cur.rows ? 'Basis: Zahlungsabgleich noch nicht angebunden' : `Basis: Referenzwert für ${refMonth} noch nicht vollständig`,
     churn: !snapCount ? 'Basis: Kundensnapshot noch nicht erfasst' : 'Basis: Bestätigung ausstehend',
     calls: lastSync?.ok === false ? 'Basis: letzter Close-Abgleich nicht abgeschlossen' : nz > 0 ? `Basis: ${Math.max(0, zielwert - nz)} von ${zielwert} Kunden in Close erreichbar` : !zielwert ? 'Basis: Kundensnapshot noch nicht erfasst' : 'Basis: noch kein vollständiger Close-Abgleich',
   };
