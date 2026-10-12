@@ -1,5 +1,7 @@
 # Architecture Rules
 
+- Homepage operational cards read existing clients and projects with normal session permissions, and rank projects by deadline while matching the runtime page's latest client/project contract end. Why: surface actionable work without introducing another business-data source.
+
 - Navigation changes hide or regroup sidebar entries without removing destination routes; relocated settings groups retain their existing per-page permission checks. Why: simplify navigation without changing access or breaking direct links.
 - Meta access token: all Meta edge functions resolve the token via `supabase/functions/_shared/meta-config.ts` (`getMetaConfig`/`getMetaToken`/`getMetaBusinessId`), which reads the connected `integration_settings` row (provider `meta_ads`) first and falls back to `META_ACCESS_TOKEN`/`META_BUSINESS_ID` env secrets. Why: single source of truth in the Integrations UI. Exception: `sync-meta-billing`/`debug-meta-billing` intentionally use the separate `META_BILLING_ACCESS_TOKEN`.
 - Bonus calculations: `bonus-berechnung` owns all scoring and basis hints; completeness stays separate from numeric observed-data scores in saved details. Month approval uses a locked, calculation-version-checked RPC and a database guard requiring audited explicit acknowledgement of incomplete criteria. Why: daily numeric reporting must not silently approve incomplete payroll data.
