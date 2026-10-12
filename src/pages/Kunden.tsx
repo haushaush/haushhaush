@@ -74,6 +74,7 @@ export default function Kunden() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [quickFilter, setQuickFilter] = useState<'aktiv' | 'alle' | 'ehemalig'>('aktiv');
   const [filterBranche, setFilterBranche] = useState<string>('all');
   const [filterUnternehmen, setFilterUnternehmen] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -242,15 +243,29 @@ export default function Kunden() {
     }
   };
 
+  const ACTIVE_STATUSES = ['In Betreuung', 'Onboarding'];
+  const FORMER_STATUSES = ['Churned', 'Done'];
+
   const filtered = useMemo(() => {
-    return clients.filter(c => {
+    const list = clients.filter(c => {
       const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase());
       const matchStatus = filterStatus === 'all' || c.kundenstatus === filterStatus;
       const matchBranche = filterBranche === 'all' || c.branche === filterBranche;
       const matchUnternehmen = filterUnternehmen === 'all' || c.unternehmen?.display_name === filterUnternehmen;
-      return matchSearch && matchStatus && matchBranche && matchUnternehmen;
+      const matchQuick =
+        quickFilter === 'alle' ||
+        (quickFilter === 'aktiv' && ACTIVE_STATUSES.includes(c.kundenstatus)) ||
+        (quickFilter === 'ehemalig' && FORMER_STATUSES.includes(c.kundenstatus));
+      return matchSearch && matchStatus && matchBranche && matchUnternehmen && matchQuick;
     });
-  }, [clients, search, filterStatus, filterBranche, filterUnternehmen]);
+    // Aktive zuerst, danach alphabetisch
+    return list.sort((a, b) => {
+      const aActive = ACTIVE_STATUSES.includes(a.kundenstatus) ? 0 : 1;
+      const bActive = ACTIVE_STATUSES.includes(b.kundenstatus) ? 0 : 1;
+      if (aActive !== bActive) return aActive - bActive;
+      return a.name.localeCompare(b.name, 'de');
+    });
+  }, [clients, search, filterStatus, filterBranche, filterUnternehmen, quickFilter]);
 
   const statusCounts = useMemo(() => {
     const m: Record<string, number> = { all: clients.length };
@@ -369,6 +384,24 @@ export default function Kunden() {
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input className="pl-9 h-9" placeholder="Name oder Email…" value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+
+      <div className="flex items-center gap-1 bg-muted/40 rounded-md p-1 w-fit">
+        {([
+          { value: 'aktiv', label: `Aktive (${clients.filter(c => ACTIVE_STATUSES.includes(c.kundenstatus)).length})` },
+          { value: 'ehemalig', label: `Ehemalige (${clients.filter(c => FORMER_STATUSES.includes(c.kundenstatus)).length})` },
+          { value: 'alle', label: `Alle (${clients.length})` },
+        ] as const).map(f => (
+          <Button
+            key={f.value}
+            variant="ghost"
+            size="sm"
+            onClick={() => setQuickFilter(f.value)}
+            className={`h-7 px-3 text-xs ${quickFilter === f.value ? 'bg-background shadow-sm text-foreground' : ''}`}
+          >
+            {f.label}
+          </Button>
+        ))}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
