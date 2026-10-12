@@ -74,6 +74,7 @@ export default function Kunden() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [quickFilter, setQuickFilter] = useState<'aktiv' | 'alle' | 'ehemalig'>('aktiv');
   const [filterBranche, setFilterBranche] = useState<string>('all');
   const [filterUnternehmen, setFilterUnternehmen] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
