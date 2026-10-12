@@ -2106,6 +2106,48 @@ export type Database = {
           },
         ]
       }
+      close_abschluss_schreiblog: {
+        Row: {
+          aktion: string
+          client_id: string | null
+          close_lead_id: string | null
+          close_opportunity_id: string | null
+          created_at: string
+          fehler: string | null
+          id: string
+          kunde: string | null
+          user_email: string | null
+          user_id: string | null
+          werte: Json
+        }
+        Insert: {
+          aktion: string
+          client_id?: string | null
+          close_lead_id?: string | null
+          close_opportunity_id?: string | null
+          created_at?: string
+          fehler?: string | null
+          id?: string
+          kunde?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          werte?: Json
+        }
+        Update: {
+          aktion?: string
+          client_id?: string | null
+          close_lead_id?: string | null
+          close_opportunity_id?: string | null
+          created_at?: string
+          fehler?: string | null
+          id?: string
+          kunde?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          werte?: Json
+        }
+        Relationships: []
+      }
       close_activities: {
         Row: {
           activity_type: string | null
