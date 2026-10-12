@@ -7,11 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Euro, Users, Clock, TrendingUp, BarChart3, Target, CreditCard, UserCircle, ListTodo, AlertTriangle, ArrowRight, ChevronRight, Phone, CalendarCheck, Trophy, Banknote, Wallet, Zap, ArrowUpRight, ArrowDownRight, RotateCcw, GripVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatValue } from '@/lib/utils';
 import { MicroLearning } from '@/components/dashboard/MicroLearning';
@@ -22,6 +20,7 @@ import { Search } from 'lucide-react';
 import { KpiSlider } from '@/components/dashboard/KpiSlider';
 import { SortableBlock } from '@/components/dashboard/SortableBlock';
 import { MitteilungenCard } from '@/components/dashboard/MitteilungenCard';
+import { OperationalCards } from '@/components/dashboard/OperationalCards';
 import { CheckinBanner } from '@/components/dashboard/CheckinBanner';
 import { ARIAHeroBlock } from '@/components/aria/ARIAHeroBlock';
 import { ARIAPanel } from '@/components/aria/ARIAPanel';
@@ -60,9 +59,7 @@ const NAV_TILES = [
   { icon: ListTodo, label: 'Aufgaben', sub: 'Offene Tasks', href: '/projekte/aufgaben' },
 ];
 
-const RANK_COLORS = ['#F5A623', '#9B9B9B', '#8B6347'];
-
-const DEFAULT_ORDER = ['mitteilungen', 'music', 'widgets', 'kpi-slider', 'quicknav', 'handlungsbedarf', 'schnellaktionen', 'bottom-row', 'revenue-chart'];
+const DEFAULT_ORDER = ['mitteilungen', 'music', 'widgets', 'kpi-slider', 'quicknav', 'handlungsbedarf', 'schnellaktionen', 'bottom-row'];
 
 const BLOCK_LABELS: Record<string, string> = {
   'hero': 'Begrüßung',
@@ -73,8 +70,7 @@ const BLOCK_LABELS: Record<string, string> = {
   'quicknav': 'Schnellnavigation',
   'handlungsbedarf': 'Handlungsbedarf',
   'schnellaktionen': 'Schnellaktionen',
-  'bottom-row': 'Abschlüsse, Aufgaben, Sales',
-  'revenue-chart': 'Umsatzentwicklung',
+  'bottom-row': 'Abschlüsse, Laufzeiten, Projekte',
 };
 
 export default function Dashboard() {
@@ -251,55 +247,6 @@ export default function Dashboard() {
   }, []);
   const weekDeals = useMemo(() => deals.data.filter(d => new Date(d.created_at) >= weekStart), [deals.data, weekStart]);
 
-  // Sales top 3
-  const salesTop3 = useMemo(() => {
-    const map = new Map<string, { calls: number; appts: number; closes: number; revenue: number }>();
-    salesPerf.data.forEach(r => {
-      const ex = map.get(r.setter_id) || { calls: 0, appts: 0, closes: 0, revenue: 0 };
-      ex.calls += r.calls_made || 0;
-      ex.appts += r.appointments_set || 0;
-      ex.closes += r.closes || 0;
-      ex.revenue += Number(r.revenue_generated || 0);
-      map.set(r.setter_id, ex);
-    });
-    return Array.from(map.entries())
-      .map(([id, stats]) => {
-        const t = team.data.find(t => t.id === id);
-        const tq = stats.calls > 0 ? Math.round((stats.appts / stats.calls) * 100) : 0;
-        return { id, name: t?.name || 'Unbekannt', initials: (t?.name || 'U').split(' ').map((n: string) => n[0]).join('').slice(0, 2), ...stats, tq };
-      })
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 3);
-  }, [salesPerf.data, team.data]);
-
-  // Revenue chart (last 6 months from invoices)
-  const revenueChart = useMemo(() => {
-    const months: { name: string; bezahlt: number; offen: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const y = d.getFullYear();
-      const m = d.getMonth();
-      const name = d.toLocaleDateString('de-DE', { month: 'short' });
-      const paid = invoices.data
-        .filter(inv => inv.status === 'Bezahlt' && new Date(inv.leistungsdatum || inv.created_at).getFullYear() === y && new Date(inv.leistungsdatum || inv.created_at).getMonth() === m)
-        .reduce((s, inv) => s + Number(inv.brutto || 0), 0);
-      const open = invoices.data
-        .filter(inv => (inv.status === 'Versendet' || inv.status === 'Überfällig') && new Date(inv.leistungsdatum || inv.created_at).getFullYear() === y && new Date(inv.leistungsdatum || inv.created_at).getMonth() === m)
-        .reduce((s, inv) => s + Number(inv.brutto || 0), 0);
-      months.push({ name, bezahlt: paid, offen: open });
-    }
-    return months;
-  }, [invoices.data]);
-
-  // Task completion handler
-  const completeTask = async (taskId: string) => {
-    await supabase.from('tasks').update({ status: 'Erledigt' }).eq('id', taskId);
-    tasks.refetch();
-  };
-
-
-
   if (loading) {
     return (
       <div className="px-4 md:px-6 lg:px-10 py-6 md:py-10 space-y-8" role="status" aria-busy="true">
@@ -464,130 +411,8 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Tasks */}
-            <Card className="rounded-[14px]">
-              <CardHeader className="p-6 pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold">Dringendste Aufgaben</CardTitle>
-                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => navigate('/projekte/aufgaben')}>+ Neu</Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 pt-0 space-y-0">
-                {tasks.data.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">Keine offenen Aufgaben. 🎉</p>
-                ) : (
-                  tasks.data.map((t, i) => {
-                    const today = new Date().toISOString().split('T')[0];
-                    const isOverdue = t.due_date && t.due_date < today;
-                    const isToday = t.due_date === today;
-                    return (
-                      <div key={t.id} className={`flex items-center gap-3 py-2.5 leading-relaxed ${i < tasks.data.length - 1 ? 'border-b border-border' : ''}`}>
-                        <Checkbox className="shrink-0" onCheckedChange={() => completeTask(t.id)} aria-label={`Aufgabe erledigen: ${t.title}`} />
-                        <div className="flex-1 min-w-0"><p className="text-sm text-foreground truncate">{t.title}</p></div>
-                        <div className="shrink-0 text-right">
-                          {isOverdue && <span className="text-[11px] font-medium text-destructive">Überfällig</span>}
-                          {isToday && !isOverdue && <span className="text-[11px] font-medium text-warning">Heute</span>}
-                          {!isOverdue && !isToday && t.due_date && <span className="text-[11px] text-muted-foreground">{formatDate(t.due_date)}</span>}
-                          {!t.due_date && <span className="text-[11px] text-muted-foreground">–</span>}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-                {tasks.data.length > 0 && (
-                  <Button variant="ghost" size="sm" className="w-full mt-2 text-xs text-muted-foreground" onClick={() => navigate('/projekte/aufgaben')}>
-                    Alle Aufgaben <ArrowRight className="h-3 w-3 ml-1" />
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Sales Top 3 */}
-            <Card className="rounded-[14px]">
-              <CardHeader className="p-6 pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold">Sales Performance</CardTitle>
-                  <div className="flex rounded-lg border border-border overflow-hidden">
-                    <button className={`text-[11px] px-2.5 py-1 transition-colors ${salesPeriod === 'week' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`} onClick={() => setSalesPeriod('week')}>Woche</button>
-                    <button className={`text-[11px] px-2.5 py-1 transition-colors ${salesPeriod === 'month' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`} onClick={() => setSalesPeriod('month')}>Monat</button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                {salesTop3.length === 0 ? (
-                  <div className="text-center py-6">
-                    <p className="text-sm text-muted-foreground">Noch keine Performance-Daten.</p>
-                    <Button variant="ghost" size="sm" className="mt-1 text-xs" onClick={() => navigate('/sales/kpis')}>KPIs eintragen →</Button>
-                  </div>
-                ) : (
-                  <div className="space-y-0">
-                    {salesTop3.map((s, i) => (
-                      <div key={s.id} className={`py-3 ${i < salesTop3.length - 1 ? 'border-b border-border' : ''}`}>
-                        <div className="flex items-center gap-3">
-                          <div className="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ backgroundColor: RANK_COLORS[i] }}>{i + 1}</div>
-                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">{s.initials}</div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
-                            <div className="grid grid-cols-2 gap-x-3 mt-1">
-                              <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" />{s.calls} Calls</span>
-                              <span className="text-[11px] text-muted-foreground flex items-center gap-1"><CalendarCheck className="h-3 w-3" />{s.tq}% TQ</span>
-                              <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Trophy className="h-3 w-3" />{s.closes} Abschl.</span>
-                              <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Banknote className="h-3 w-3" />{fmtCurrency(s.revenue)}</span>
-                            </div>
-                          </div>
-                          <p className="text-sm font-semibold text-primary shrink-0">{fmtCurrency(s.revenue)}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {salesTop3.length > 0 && (
-                  <>
-                    <div className="mt-3" aria-label="Team Revenue Trend">
-                      <ResponsiveContainer width="100%" height={40}>
-                        <LineChart data={salesTop3.map((s) => ({ name: s.name, val: s.revenue }))}>
-                          <Line type="monotone" dataKey="val" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <Button variant="ghost" size="sm" className="w-full mt-1 text-xs text-muted-foreground" onClick={() => navigate('/sales/kpis')}>
-                      Vollständig ansehen <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+            <OperationalCards />
           </div>
-        );
-      case 'revenue-chart':
-        return (
-          <Card className="rounded-[14px]">
-            <CardHeader className="p-6 pb-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base font-semibold">Umsatzentwicklung</CardTitle>
-                  <p className="text-xs text-muted-foreground">letzte 6 Monate</p>
-                </div>
-                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => navigate('/finanzen')}>
-                  Details <ChevronRight className="h-3 w-3 ml-1" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 pt-0">
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={revenueChart} barCategoryGap="20%">
-                  <XAxis dataKey="name" axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis tickFormatter={v => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={35} />
-                  <RechartsTooltip
-                    formatter={(value: number, name: string) => [formatValue(value, 'currency'), name === 'bezahlt' ? 'Bezahlt' : 'Offen']}
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
-                  />
-                  <Bar dataKey="bezahlt" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="offen" stackId="a" fill="hsl(var(--primary) / 0.2)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
         );
       default:
         return null;

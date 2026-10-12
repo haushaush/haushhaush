@@ -101,7 +101,7 @@ export function OperationalCards() {
         {projects.loading ? <Skeleton className="h-40 w-full" /> : projects.error ? <p role="alert" className="text-sm text-muted-foreground py-6">Projekte konnten nicht geladen werden.</p> : urgentProjects.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Keine offenen Projekte mit Deadline.</p> : urgentProjects.map(project => {
           const client = clients.find(client => client.id === project.client_id);
           const overdue = new Date(project.deadline).getTime() < new Date().setHours(0, 0, 0, 0);
-          return <Button key={project.id} variant="ghost" className="w-full h-auto rounded-none border-b border-border last:border-0 px-0 py-3 justify-between gap-3 text-left" onClick={() => navigate(`/projekte?project=${encodeURIComponent(project.id)}`)}>
+          return <Button key={project.id} variant="ghost" className="w-full h-auto rounded-none border-b border-border last:border-0 px-0 py-3 justify-between gap-3 text-left" onClick={() => navigate(`/projekte?projekt=${encodeURIComponent(project.id)}`)}>
             <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{project.name}</span><span className="block truncate text-xs text-muted-foreground mt-1">{client?.name || project.status}</span></span>
             <span className={`text-xs tabular-nums shrink-0 ${overdue ? 'text-destructive' : 'text-muted-foreground'}`}>{overdue && <span className="block">Überfällig</span>}{dateLabel(project.deadline)}</span>
           </Button>;

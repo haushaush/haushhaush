@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Mail, MessageSquare, CheckSquare, ArrowRight } from 'lucide-react';
+import { Bell, CheckSquare, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 interface NotifRow {
   id: string;
@@ -28,14 +29,6 @@ const relativeTime = (dateStr: string) => {
   return `vor ${days} Tagen`;
 };
 
-const channelConfig: Record<string, { icon: typeof Bell; bg: string; color: string; label: string }> = {
-  slack: { icon: MessageSquare, bg: 'rgba(10,147,150,0.1)', color: 'hsl(var(--primary))', label: 'Slack' },
-  email: { icon: Mail, bg: 'rgba(59,130,246,0.1)', color: '#3b82f6', label: 'E-Mail' },
-  intern: { icon: Bell, bg: 'rgba(10,147,150,0.1)', color: 'hsl(var(--primary))', label: 'Intern' },
-  aufgabe: { icon: CheckSquare, bg: 'rgba(249,115,22,0.1)', color: '#f97316', label: 'Aufgabe' },
-  system: { icon: Bell, bg: 'rgba(10,147,150,0.1)', color: 'hsl(var(--primary))', label: 'System' },
-};
-
 export function MitteilungenCard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -49,6 +42,7 @@ export function MitteilungenCard() {
       .select('id, channel, title, preview, sender_name, read, created_at, tag, action_url')
       .eq('user_id', user.id)
       .eq('archived', false)
+      .in('channel', ['intern', 'aufgabe', 'system'])
       .order('created_at', { ascending: false })
       .limit(5);
     setNotifications((data as NotifRow[]) || []);
@@ -59,9 +53,11 @@ export function MitteilungenCard() {
   // Realtime
   useEffect(() => {
     if (!user?.id) return;
+    const name = `notifications-home-${user.id}`;
+    supabase.getChannels().filter(channel => channel.topic === `realtime:${name}`).forEach(channel => { void supabase.removeChannel(channel); });
     const channel = supabase
-      .channel(`notifications-home-${user.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => fetchNotifs())
+      .channel(name)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, () => fetchNotifs())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user?.id, fetchNotifs]);
@@ -95,12 +91,12 @@ export function MitteilungenCard() {
             </span>
           )}
         </div>
-        <button
+        <Button variant="ghost" size="sm"
           onClick={() => navigate('/nachrichten')}
           className="text-[12px] text-primary hover:underline cursor-pointer flex items-center gap-1 bg-transparent border-none"
         >
           Alle ansehen <ArrowRight className="h-3 w-3" />
-        </button>
+        </Button>
       </div>
 
       <div className="h-px bg-border" />
@@ -109,25 +105,22 @@ export function MitteilungenCard() {
       {notifications.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-6 gap-2">
           <Bell className="h-6 w-6 text-muted-foreground" />
-          <span className="text-[13px] text-muted-foreground">Keine neuen Mitteilungen</span>
+          <span className="text-[13px] text-muted-foreground">Keine neuen internen Mitteilungen</span>
         </div>
       ) : (
         notifications.map((n, i) => {
-          const cfg = channelConfig[n.channel] || channelConfig.intern;
-          const Icon = cfg.icon;
+          const Icon = n.channel === 'aufgabe' ? CheckSquare : Bell;
           return (
             <div
               key={n.id}
               onClick={() => handleClick(n)}
-              className="flex items-start gap-3 px-[18px] py-3 cursor-pointer transition-colors duration-150 hover:bg-muted/50"
-              style={{ borderBottom: i < notifications.length - 1 ? '1px solid hsl(var(--border))' : undefined }}
+              className="flex items-start gap-3 px-[18px] py-3 cursor-pointer transition-colors duration-150 hover:bg-muted/50 border-b border-border last:border-0"
             >
               {/* Channel icon */}
               <div
-                className="flex-shrink-0 flex items-center justify-center rounded-full"
-                style={{ width: 28, height: 28, background: cfg.bg }}
+                className="h-7 w-7 flex-shrink-0 flex items-center justify-center rounded-full bg-muted text-muted-foreground"
               >
-                <Icon style={{ width: 14, height: 14, color: cfg.color }} />
+                <Icon className="h-3.5 w-3.5" />
               </div>
 
               {/* Content */}
