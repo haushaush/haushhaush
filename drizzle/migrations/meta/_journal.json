@@ -92,6 +92,13 @@
       "when": 1791807236489,
       "tag": "0012_bonus_kunden_aus_close",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791808511969,
+      "tag": "0013_bonus_sync_log_details",
+      "breakpoints": true
     }
   ]
 }

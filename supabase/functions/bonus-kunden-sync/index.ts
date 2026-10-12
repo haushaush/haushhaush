@@ -4,11 +4,11 @@
 // and keeps the current month's bonus_kunden_snapshot in step (added during the month, never silently shrunk
 // except for leads an admin excluded via zaehlt_fuer_betreuung).
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { checkCron, closeClient, cors, currentMonthBerlin, json, requireManager, type Close } from "../_shared/bonusClose.ts";
+import { checkCron, closeClient, HAUSH_KEY, haushKey, cors, currentMonthBerlin, json, requireManager, type Close } from "../_shared/bonusClose.ts";
 
 // Only the Haush Haush Digital account holds Justin's customers and the Client-Checkin type.
 // CLOSE_API_KEY belongs to Viral Connect GmbH (separate company) and is deliberately not mirrored.
-const ACCOUNTS = ["CLOSE_API_KEY_SALES"];
+const ACCOUNTS = [HAUSH_KEY];
 const AKTIV = "Aktueller Klient", PAUSIERT = "Pausiert", EHEMALIG = "Ehemaliger Klient";
 const LABELS = [AKTIV, PAUSIERT, EHEMALIG];
 const betreut = (l: string | null) => l === AKTIV || l === PAUSIERT;
@@ -96,19 +96,38 @@ export async function refreshAktuell(admin: any) {
       }
     }
     // Leads that no longer carry any client status in Close: mirror that.
-    for (const r of (existing || []).filter((r: any) => r.close_account === acc && !seen.has(r.close_lead_id) && r.close_status_label !== "kein Klient")) {
+    for (const r of (existing || []).filter((r: any) => r.close_account === acc && !seen.has(r.close_lead_id) && r.close_status_label !== "kein Klient" && !String(r.close_status_label || "").includes("(kein Klient)") && r.close_status_label !== "in Close gelöscht")) {
       let label = "kein Klient";
       try { const l = await call(`/lead/${r.close_lead_id}/?_fields=status_label`); label = l.status_label ? `${l.status_label} (kein Klient)` : label; } catch { label = "in Close gelöscht"; }
       await admin.from("bonus_kunden_aktuell").update({ aktiv: false, close_status_label: label, updated_at: now }).eq("id", r.id);
-      const c: any = clientById.get(r.client_id);
-      if (c?.kundenstatus === "In Betreuung") await admin.from("clients").update({ kundenstatus: "Offen" }).eq("id", r.client_id);
       report.nicht_mehr_klient.push({ lead: r.close_lead_id, status: label });
     }
+  }
+  // One-way mirror: every CRM customer marked as betreut without a betreut Close lead is downgraded, every run.
+  const { data: akt } = await admin.from("bonus_kunden_aktuell").select("client_id, close_status_label").not("client_id", "is", null);
+  const wantBy = new Map<string, string>();
+  for (const a of akt || []) {
+    const w = betreut(a.close_status_label) ? "In Betreuung" : a.close_status_label === EHEMALIG ? "Churned" : "Offen";
+    const prev = wantBy.get(a.client_id);
+    if (!prev || w === "In Betreuung" || (w === "Churned" && prev === "Offen")) wantBy.set(a.client_id, w);
+  }
+  report.ohne_close_lead = [];
+  for (const c of clientById.values() as any) {
+    if (!BETREUT_CRM.includes(c.kundenstatus)) continue;
+    const w = wantBy.get(c.id);
+    if (w === "In Betreuung") continue;
+    const nach = w ?? "Offen";
+    const { error } = await admin.from("clients").update({ kundenstatus: nach }).eq("id", c.id);
+    if (error) throw new Error("Kundenstatus schreiben fehlgeschlagen: " + error.message);
+    report.status_geaendert.push({ kunde: c.name, von: c.kundenstatus, nach, grund: w ? "Close: kein Klienten-Status" : "kein Close-Lead" });
+    if (!w) report.ohne_close_lead.push({ kunde: c.name, client_id: c.id });
+    c.kundenstatus = nach;
   }
   const { count } = await admin.from("bonus_kunden_aktuell").select("id", { count: "exact", head: true }).eq("aktiv", true).eq("zaehlt_fuer_betreuung", true);
   report.laufende_liste = count ?? 0;
   return report;
 }
+const BETREUT_CRM = ["In Betreuung", "Onboarding", "Pausiert"];
 
 /** Keeps the month snapshot in step: adds counted, betreute customers; removes only admin-excluded ones. */
 export async function reconcileSnapshot(admin: any, monat: string) {
@@ -164,7 +183,7 @@ async function adminAction(admin: any, body: any) {
   if (body.aktion === "uebernehmen") {
     const { data: k } = await admin.from("bonus_checkin_kandidaten").select("*").eq("id", body.kandidat_id).single();
     if (!k) throw new Error("Einsendung nicht gefunden");
-    const call = closeClient(Deno.env.get("CLOSE_API_KEY_SALES")!);
+    const call = closeClient(haushKey());
     const ids = await statusIds(call);
     await call(`/lead/${encodeURIComponent(k.close_lead_id)}/`, "PUT", { status_id: ids.get(AKTIV) });
     const r = await refreshAktuell(admin);
@@ -196,7 +215,7 @@ Deno.serve(async (req) => {
   try {
     const r: any = await refreshAktuell(admin);
     r.snapshot = await reconcileSnapshot(admin, monat);
-    await admin.from("bonus_sync_log").update({ beendet_am: new Date().toISOString(), ok: true, gefunden: r.laufende_liste, neu: r.neu_angelegt.length, nicht_zuordenbar: r.neu_angelegt.map((n: string) => ({ name: n, grund: "Kein CRM-Kunde gefunden — neu angelegt, bitte prüfen" })) }).eq("id", log.id);
+    await admin.from("bonus_sync_log").update({ beendet_am: new Date().toISOString(), ok: true, gefunden: r.laufende_liste, neu: r.neu_angelegt.length, details: { status_geaendert: r.status_geaendert, ohne_close_lead: r.ohne_close_lead, nicht_mehr_klient: r.nicht_mehr_klient }, nicht_zuordenbar: r.neu_angelegt.map((n: string) => ({ name: n, grund: "Kein CRM-Kunde gefunden — neu angelegt, bitte prüfen" })) }).eq("id", log.id);
     return json({ ok: true, monat, ...r });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
