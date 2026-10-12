@@ -243,7 +243,7 @@ export default function Mitarbeiter() {
             {group.members.map((m: any) => (
               <Card
                 key={m.id}
-                className="rounded-[14px] cursor-pointer hover:border-primary/40 transition-colors group"
+                className="relative rounded-[14px] cursor-pointer hover:border-primary/40 transition-colors group"
                 onClick={() => navigate(`/hr/mitarbeiter/${m.id}`)}
               >
                 <CardContent className="p-4 flex items-start gap-3">
@@ -280,6 +280,33 @@ export default function Mitarbeiter() {
           </div>
         </div>
       ))}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteConfirm(''); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mitarbeiter löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.name} wird endgültig gelöscht — inklusive Zugang, Rollen und Berechtigungen. Das kann nicht rückgängig gemacht werden. Gib zur Bestätigung die E-Mail-Adresse ein: <span className="font-medium text-foreground">{deleteTarget?.email}</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={deleteConfirm}
+            onChange={(e) => setDeleteConfirm(e.target.value)}
+            placeholder="E-Mail-Adresse zur Bestätigung"
+            autoFocus
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting || deleteConfirm.trim().toLowerCase() !== (deleteTarget?.email || '').toLowerCase()}
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Lösche …' : 'Endgültig löschen'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
