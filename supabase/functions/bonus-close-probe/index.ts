@@ -1,26 +1,19 @@
-// Temporary diagnostic: lead statuses per Close account + checkin activity reachability.
+// Temporary diagnostic: can we find leads with Client Checkins by a user in a month via Advanced Filtering?
 import { closeClient, json, cors } from "../_shared/bonusClose.ts";
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  const out: any = {};
-  for (const name of ["CLOSE_API_KEY", "CLOSE_API_KEY_SALES"]) {
-    const k = Deno.env.get(name);
-    if (!k) { out[name] = "nicht gesetzt"; continue; }
-    const c = closeClient(k);
-    const r: any = {};
-    try {
-      const me = await c(`/me/`); r.org = (me.organizations || []).map((o: any) => o.name);
-      const st = await c(`/status/lead/`); r.lead_status = st.data.map((s: any) => ({ id: s.id, label: s.label }));
-      const ca = await c(`/custom_activity/`); r.custom_activity = ca.data.map((s: any) => ({ id: s.id, name: s.name }));
-      try { const a = await c(`/activity/custom/?user_id=user_cSZy2D3gJjQdHefmwdPY28D1jrgIXvn2G4Fct4vwdQT&custom_activity_type_id=actitype_7JTWiuJtwme5VEukVy6kJ6&date_created__gte=2026-10-01&_limit=5`); r.act_by_user = { n: a.data?.length, sample: (a.data||[]).map((x:any)=>({lead:x.lead_id, at:x.activity_at||x.date_created, u:x.user_id})) }; } catch (e) { r.act_by_user = String(e); }
-      try { const a = await c(`/activity/?user_id=user_cSZy2D3gJjQdHefmwdPY28D1jrgIXvn2G4Fct4vwdQT&_type=CustomActivity&date_created__gte=2026-10-01&_limit=5`); r.act_generic = { n: a.data?.length, sample: (a.data||[]).map((x:any)=>({lead:x.lead_id, t:x.custom_activity_type_id})) }; } catch (e) { r.act_generic = String(e); }
-      for (const s of r.lead_status) {
-        if (!/klient|pausiert/i.test(s.label)) continue;
-        const q = await c(`/lead/?query=${encodeURIComponent(`lead_status:"${s.label}"`)}&_limit=1&_fields=id`);
-        s.count = q.total_results;
-      }
-    } catch (e) { r.error = String(e); }
-    out[name] = r;
-  }
-  return json(out);
+  const c = closeClient(Deno.env.get("CLOSE_API_KEY_SALES")!);
+  const body = {
+    query: { type: "and", queries: [
+      { type: "object_type", object_type: "lead" },
+      { type: "has_related", this_object_type: "lead", related_object_type: "activity.custom_activity", related_query: { type: "and", queries: [
+        { type: "field_condition", field: { type: "regular_field", object_type: "activity.custom_activity", field_name: "custom_activity_type_id" }, condition: { type: "reference", reference_type: "custom_activity_type", object_ids: ["actitype_7JTWiuJtwme5VEukVy6kJ6"] } },
+        { type: "field_condition", field: { type: "regular_field", object_type: "activity.custom_activity", field_name: "user_id" }, condition: { type: "reference", reference_type: "user_or_group", object_ids: ["user_cSZy2D3gJjQdHefmwdPY28D1jrgIXvn2G4Fct4vwdQT"] } },
+        { type: "field_condition", field: { type: "regular_field", object_type: "activity.custom_activity", field_name: "activity_at" }, condition: { type: "moment_range", on_or_after: { type: "fixed_utc", value: "2026-09-30T22:00:00Z" } } },
+      ] } },
+    ] },
+    _fields: { lead: ["id", "display_name", "status_label"] },
+    _limit: 200,
+  };
+  try { return json(await c(`/data/search/`, "POST", body)); } catch (e) { return json({ error: String(e) }); }
 });
