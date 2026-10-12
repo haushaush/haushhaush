@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner';
 
 type KritKey = 'zufriedenheit' | 'cash_niveau' | 'cash_entwicklung' | 'churn' | 'calls';
-type Krit = { status: 'ok' | 'keine_daten' | 'unvollstaendig'; punkte: number | null; max: number; wert: any; hinweis?: string };
+type Krit = { status: 'ok' | 'keine_daten' | 'unvollstaendig'; punkte: number; max: number; wert: any; hinweis?: string; basis_hinweis: string | null };
 type Result = {
   kriterien: Record<KritKey, Krit>; punkte_gesamt: number; punkte_bewertbar_max: number; punkte_max: number;
   nicht_bewertbare_kriterien: number; bonus_eur: number; upsell_beteiligung_eur: number; berechnet_am: string;
@@ -54,6 +54,10 @@ export default function BonusCockpit() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [detail, setDetail] = useState<KritKey | null>(null);
+  const [monthStatus, setMonthStatus] = useState<string | null>(null);
+  const [approval, setApproval] = useState<Result | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [approving, setApproving] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -75,10 +79,28 @@ export default function BonusCockpit() {
     if (error) { setErr(error.message); if (speichern) toast.error('Berechnung fehlgeschlagen', { description: error.message }); return; }
     setRes(data as Result);
     if (speichern) toast.success('Neu berechnet und gespeichert');
-    const { data: bm } = await supabase.from('bonus_monate').select('updated_at').eq('monat', monat).eq('mitarbeiter_id', maId).maybeSingle();
+    const { data: bm } = await supabase.from('bonus_monate').select('updated_at, status').eq('monat', monat).eq('mitarbeiter_id', maId).maybeSingle();
     setLastSaved(bm?.updated_at ?? null);
+    setMonthStatus(bm?.status ?? null);
+    return data as Result;
   };
-  useEffect(() => { run(false); }, [monat, maId]);
+  useEffect(() => { setApproval(null); setAcknowledged(false); setMonthStatus(null); setRes(null); run(false); }, [monat, maId]);
+
+  const openApproval = async () => {
+    const calculation = await run(true);
+    if (calculation) { setAcknowledged(false); setApproval(calculation); }
+  };
+  const approve = async () => {
+    if (!approval) return;
+    setApproving(true);
+    const { error } = await supabase.rpc('bonus_monat_freigeben', {
+      _monat: monat, _mitarbeiter_id: maId, _berechnet_am: approval.berechnet_am,
+      _unvollstaendig_bestaetigt: acknowledged,
+    });
+    setApproving(false);
+    if (error) { toast.error('Freigabe fehlgeschlagen', { description: error.message }); return; }
+    setApproval(null); setMonthStatus('freigegeben'); toast.success('Bonusmonat freigegeben');
+  };
 
   const maName = mitarbeiter.find(m => m.id === maId)?.name;
 
@@ -122,39 +144,31 @@ export default function BonusCockpit() {
           </div>
 
           {res.nicht_bewertbare_kriterien > 0 && (
-            <div className="mt-4 flex items-start gap-2 rounded-lg border border-primary/40 bg-primary/5 p-4 text-sm">
-              <AlertTriangle className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-              <span>Nur <b className="tabular-nums">{res.punkte_bewertbar_max}</b> von {res.punkte_max} Punkten sind derzeit bewertbar — <b className="tabular-nums">{res.nicht_bewertbare_kriterien}</b> {res.nicht_bewertbare_kriterien === 1 ? 'Kriterium hat' : 'Kriterien haben'} keine Datengrundlage.</span>
-            </div>
+            <p className="mt-3 text-xs text-muted-foreground tabular-nums">
+              {res.nicht_bewertbare_kriterien} von 5 Kriterien haben keine vollständige Datengrundlage — Details je Kachel
+            </p>
           )}
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {ORDER.map(({ key, label }, i) => {
               const k = res.kriterien[key];
-              const ok = k.status === 'ok';
               return (
-                <button key={key} onClick={() => setDetail(key)} className="text-left">
-                  <Card className={`h-full transition-colors hover:border-primary/50 ${ok ? '' : 'border-dashed bg-muted/40'}`}>
+                <Button key={key} variant="ghost" onClick={() => setDetail(key)} className="h-auto min-w-0 p-0 text-left whitespace-normal block hover:bg-transparent">
+                  <Card className="h-full transition-colors hover:border-primary/50">
                     <CardContent className="p-4 flex flex-col gap-3 h-full">
                       <div className="flex items-start justify-between gap-2">
                         <div className="text-sm font-medium">{i + 1}. {label}</div>
-                        <span className="text-xs text-muted-foreground tabular-nums">max {k.max}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums shrink-0">max {k.max}</span>
                       </div>
-                      {ok ? (
-                        <>
-                          <div className="text-xs text-muted-foreground tabular-nums">{wertText(key, k)}</div>
-                          <div className="text-3xl font-semibold tabular-nums">{num(k.punkte)}</div>
-                          <Progress value={((k.punkte ?? 0) / k.max) * 100} />
-                        </>
-                      ) : (
-                        <div className="flex-1 flex flex-col gap-2">
-                          <Badge variant="outline" className="w-fit text-muted-foreground">{key === 'churn' && k.wert?.erfassung_bestaetigt === false ? 'Churn-Erfassung nicht bestätigt' : k.status === 'keine_daten' ? 'Keine Datengrundlage' : 'Unvollständig'}</Badge>
-                          <p className="text-xs text-muted-foreground">{k.hinweis}</p>
-                        </div>
-                      )}
+                      <div className="text-xs text-muted-foreground tabular-nums min-h-8">{wertText(key, k)}</div>
+                      <div className="text-3xl font-semibold tabular-nums">{num(k.punkte)}</div>
+                      <Progress value={k.max > 0 ? (k.punkte / k.max) * 100 : 0} />
+                      <div className="min-h-4 min-w-0">
+                        {k.basis_hinweis && <p title={k.basis_hinweis} className="text-xs font-normal text-muted-foreground truncate">{k.basis_hinweis}</p>}
+                      </div>
                     </CardContent>
                   </Card>
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -163,10 +177,12 @@ export default function BonusCockpit() {
 
       <div className="mt-8 flex flex-wrap items-center gap-4">
         {canManage && (
-          <Button onClick={() => run(true)} disabled={loading || !maId}>
+          <Button onClick={() => run(true)} disabled={loading || !maId || monthStatus === 'freigegeben'}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Neu berechnen
           </Button>
         )}
+        {canManage && monthStatus !== 'freigegeben' && <Button variant="outline" onClick={openApproval} disabled={loading || !res}>Monat freigeben</Button>}
+        {monthStatus === 'freigegeben' && <span className="text-sm text-muted-foreground">Freigegeben</span>}
         <span className="text-sm text-muted-foreground tabular-nums">
           Zuletzt gespeichert: {lastSaved ? new Date(lastSaved).toLocaleString('de-DE') : 'noch nie'}
         </span>
@@ -177,6 +193,27 @@ export default function BonusCockpit() {
           {detail && <Detail kind={detail} monat={monat} maId={maId} res={res} canManage={!!canManage} onChanged={() => run(true)} />}
         </SheetContent>
       </Sheet>
+      <AlertDialog open={!!approval} onOpenChange={open => { if (!open && !approving) setApproval(null); }}>
+        <AlertDialogContent className="z-[400]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bonusmonat freigeben?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {maName} · {new Date(monat).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })} · {num(approval?.punkte_gesamt)} Punkte · {eur(approval?.bonus_eur)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {approval && approval.nicht_bewertbare_kriterien > 0 && <div className="space-y-4 text-sm">
+            <p>Diese Kriterien haben keine vollständige Datengrundlage:</p>
+            <ul className="space-y-2">{ORDER.filter(o => approval.kriterien[o.key].status !== 'ok').map(o => <li key={o.key}><span className="font-medium">{o.label}</span><p className="text-xs text-muted-foreground">{approval.kriterien[o.key].basis_hinweis}</p></li>)}</ul>
+            <label className="flex items-start gap-3"><Checkbox checked={acknowledged} onCheckedChange={v => setAcknowledged(v === true)} aria-label="Unvollständige Datengrundlage ausdrücklich bestätigen" />
+              <span>Ich bestätige ausdrücklich die Freigabe trotz unvollständiger Datengrundlage und der dadurch gegebenenfalls mit 0 bewerteten Kriterien.</span>
+            </label>
+          </div>}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={approving}>Abbrechen</AlertDialogCancel>
+            <Button onClick={approve} disabled={approving || (!!approval?.nicht_bewertbare_kriterien && !acknowledged)}>{approving && <Loader2 className="h-4 w-4 animate-spin" />}Freigeben</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageShell>
   );
 }
@@ -310,7 +347,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
                 <div className="text-xs text-muted-foreground mt-1">
                   {data.frg?.churn_erfassung_abgeschlossen
                     ? `Bestätigt am ${data.frg.churn_bestaetigt_am ? new Date(data.frg.churn_bestaetigt_am).toLocaleString('de-DE') : '–'}`
-                    : 'Nicht bestätigt — Kriterium wird nicht bewertet.'}
+                    : 'Nicht bestätigt — derzeit 0 Punkte mit unvollständiger Datengrundlage.'}
                 </div>
               </div>
               {canManage && <Switch checked={!!data.frg?.churn_erfassung_abgeschlossen} onCheckedChange={v => setConfirm(v)} />}
@@ -326,7 +363,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
                   <AlertDialogDescription>
                     {confirm
                       ? `Du bestätigst, dass alle Kündigungen und Abbrüche für ${new Date(monat).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })} erfasst sind und die Liste vollständig ist. Auf dieser Grundlage wird das Kriterium Anti-Churn bewertet — auch wenn die Liste leer ist (dann 0 % Churn, volle Punkte).`
-                      : 'Das Kriterium Anti-Churn wird danach wieder als nicht bewertbar geführt.'}
+                      : 'Das Kriterium Anti-Churn wird danach mit 0 Punkten und unvollständiger Datengrundlage geführt.'}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -378,6 +415,11 @@ function CallsDetail({ data, canManage, syncing, onSync, wert }: { data: any; ca
       </div>
 
       <div>
+        <h3 className="text-sm font-medium mb-2">Nicht erreichbare Kunden ({nz.length} von {data.snap.length})</h3>
+        <Table head={['Kunde', 'Grund']} rows={nz.map(n => [n.name || '–', <span className="text-xs text-muted-foreground">{n.grund || '–'}</span>])} empty="Alle betreuten Kunden sind in Close erreichbar." />
+      </div>
+
+      <div>
         <h3 className="text-sm font-medium mb-2">Verteilung nach Anlass</h3>
         <div className="flex flex-wrap gap-2">
           {anlass.length ? anlass.map(([k, v]) => (
@@ -424,12 +466,6 @@ function CallsDetail({ data, canManage, syncing, onSync, wert }: { data: any; ca
         <Table head={['Kunde']} rows={ohne.map(s => [s.clients?.name || '–'])} empty="Alle betreuten Kunden hatten einen Checkin." />
       </div>
 
-      {nz.length > 0 && (
-        <div>
-          <h3 className="text-sm font-medium mb-2">Nicht in Close zuordenbar ({nz.length})</h3>
-          <Table head={['Kunde', 'Grund']} rows={nz.map(n => [n.name || '–', <span className="text-xs text-muted-foreground">{n.grund || '–'}</span>])} empty="" />
-        </div>
-      )}
     </>
   );
 }

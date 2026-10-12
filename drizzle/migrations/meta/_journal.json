@@ -43,6 +43,13 @@
       "when": 1791555907792,
       "tag": "0005_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791795072781,
+      "tag": "0006_bonus_approval_basis_acknowledgement",
+      "breakpoints": true
     }
   ]
 }
