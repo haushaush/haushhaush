@@ -39,17 +39,8 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Übersicht', url: '/sales/uebersicht', permissionKey: 'sales.uebersicht.view', anyKeys: ['sales.view'] },
       { title: 'KPI', url: '/sales/kpi', permissionKey: 'sales.kpi.view' },
-      { title: 'Provisionen', url: '/sales/provisions', permissionKey: 'sales.provisions.view' },
       { title: 'Referenzen', url: '/sales/referenz-showcase', permissionKey: 'sales.referenzen.view' },
-      { title: 'Lead Quality Audit', url: '/tools/lead-quality-audit', permissionKey: 'sales.leadquality.view' },
-    ],
-  },
-  {
-    title: 'Paid Ads', url: '/paid-ads', icon: Megaphone,
-    children: [
-      { title: 'Übersicht', url: '/paid-ads', permissionKey: 'paid_ads.view' },
-      { title: 'Kunden', url: '/paid-ads/kunden', permissionKey: 'paid_ads.kunden.view' },
-      { title: 'Leads', url: '/meta/leads', permissionKey: 'sales.meta.view' },
+      { title: 'Bonus-Cockpit', url: '/hr/bonus', permissionKey: 'hr.bonus.view' },
     ],
   },
   { title: 'Projekte', url: '/projekte', icon: ClipboardList, permissionKey: 'projects.view' },
@@ -67,7 +58,6 @@ const navItems: NavItem[] = [
     children: [
       { title: 'Mitarbeiter', url: '/hr/mitarbeiter', permissionKey: 'team.view' },
       { title: 'Time Tracking', url: '/hr/time-tracking', permissionKey: 'time_tracking.admin.view' },
-      { title: 'Bonus-Cockpit', url: '/hr/bonus', permissionKey: 'hr.bonus.view' },
     ],
   },
 ];
