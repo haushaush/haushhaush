@@ -113,6 +113,13 @@
       "when": 1791810329878,
       "tag": "0015_close_spiegel_altbestand",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791811074736,
+      "tag": "0016_deprecate_close_spiegel",
+      "breakpoints": true
     }
   ]
 }

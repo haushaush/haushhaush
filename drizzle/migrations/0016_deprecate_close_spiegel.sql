@@ -1,0 +1,1 @@
+COMMENT ON TABLE public.close_spiegel IS 'DEPRECATED: Spiegelung Viral Connect -> Haush Haush zurückgebaut, ersetzt durch n8n-Automation. Nicht mehr verwenden.';
