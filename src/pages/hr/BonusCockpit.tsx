@@ -239,7 +239,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
         const { data: frg } = await supabase.from('bonus_monat_freigaben').select('churn_erfassung_abgeschlossen, churn_bestaetigt_am').eq('monat', monat).eq('mitarbeiter_id', maId).maybeSingle();
         setData({ rows: (c as any[]) || [], snap: count ?? 0, frg });
       } else {
-        const { data: c } = await supabase.from('bonus_checkins').select('client_id, datum, quelle, stimmung, anlass, kampagne_nach_erwartung, upsell_potenzial, naechster_schritt, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId).order('datum');
+        const { data: c } = await supabase.from('bonus_checkins').select('close_activity_id, client_id, datum, quelle, stimmung, anlass, kampagne_nach_erwartung, upsell_potenzial, naechster_schritt, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId).order('datum');
         const { data: sn } = await supabase.from('bonus_kunden_snapshot').select('client_id, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId);
         const { data: lg } = await supabase.from('bonus_sync_log').select('ausloeser, gestartet_am, beendet_am, ok, gefunden, neu, fehler, nicht_zuordenbar').eq('sync_typ', 'checkins').eq('monat', monat).eq('mitarbeiter_id', maId).order('gestartet_am', { ascending: false }).limit(1);
         setData({ rows: (c as any[]) || [], snap: (sn as any[]) || [], log: (lg as any[])?.[0] ?? null });
@@ -338,7 +338,10 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
           </>
         )}
 
-        {data && kind === 'calls' && <CallsDetail data={data} canManage={canManage} syncing={syncing} onSync={sync} />}
+        {data && kind === 'calls' && <>
+          {k?.wert && <p className="text-sm tabular-nums">Erreichungsgrad: <b>{k.wert.erreichungsgrad_prozent != null ? `${num(k.wert.erreichungsgrad_prozent)} %` : '–'}</b> · {num(k.wert.gewichtete_summe)} von {k.wert.zielwert} gewichtet · {k.wert.anzahl_calls} Calls bei {k.wert.eindeutige_kunden} Kunden · {k.wert.abgewertete_checkins} abgewertet</p>}
+          <CallsDetail data={data} canManage={canManage} syncing={syncing} onSync={sync} wert={k?.wert} />
+        </>}
       </div>
     </>
   );
@@ -347,8 +350,10 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
 const isRisk = (s: string | null) => !!s && /abwanderung|unzufrieden/i.test(s);
 const isHandover = (s: string | null) => !!s && /übergeben|uebergeben/i.test(s);
 
-function CallsDetail({ data, canManage, syncing, onSync }: { data: any; canManage: boolean; syncing: boolean; onSync: () => void }) {
+function CallsDetail({ data, canManage, syncing, onSync, wert }: { data: any; canManage: boolean; syncing: boolean; onSync: () => void; wert?: any }) {
   const rows: any[] = data.rows;
+  const gewichte: Record<string, any> = wert?.gewichte || {};
+  const wochen: any[] = wert?.wochen || [];
   const anlass = Object.entries(rows.reduce((m: Record<string, number>, r) => { const k = r.anlass || 'Ohne Anlass'; m[k] = (m[k] || 0) + 1; return m; }, {})).sort((a, b) => (b[1] as number) - (a[1] as number));
   const risk = rows.filter(r => isRisk(r.stimmung));
   const handover = rows.filter(r => isHandover(r.upsell_potenzial));
@@ -395,9 +400,22 @@ function CallsDetail({ data, canManage, syncing, onSync }: { data: any; canManag
       </div>
 
       <div>
+        <h3 className="text-sm font-medium mb-2">Wochenübersicht (ISO-Wochen)</h3>
+        <Table head={['Woche', 'Kunden erreicht', 'Checkins', 'Gewichtete Summe']}
+          rows={wochen.map((w: any) => [w.woche, w.kunden_erreicht, w.checkins, num(w.gewichtete_summe)])}
+          empty="Keine Checkins in diesem Monat." />
+      </div>
+
+      <div>
         <h3 className="text-sm font-medium mb-2">Alle Calls ({rows.length})</h3>
-        <Table head={['Kunde', 'Datum', 'Anlass', 'Stimmung', 'Kampagne nach Erwartung', 'Upsell-Potenzial', 'Nächster Schritt']}
-          rows={rows.map(r => [r.clients?.name || '–', dt(r.datum), r.anlass || '–', r.stimmung || '–', r.kampagne_nach_erwartung || '–', r.upsell_potenzial || '–', <span className="text-xs">{r.naechster_schritt || '–'}</span>])}
+        <Table head={['Kunde', 'Datum', 'Gewicht', 'Anlass', 'Stimmung', 'Kampagne nach Erwartung', 'Upsell-Potenzial', 'Nächster Schritt']}
+          rows={rows.map(r => {
+            const g = gewichte[r.close_activity_id];
+            const why = !g ? 'Noch nicht berechnet — „Neu berechnen" ausführen.' : g.nr_in_woche === 1 ? `Erster Checkin dieses Kunden in ${g.woche}.` : `${g.nr_in_woche}. Checkin dieses Kunden in ${g.woche} — abgewertet nach Wochenregel.`;
+            return [r.clients?.name || '–', dt(r.datum),
+              <span title={why} className={`cursor-help underline decoration-dotted ${g && g.gewicht < 1 ? 'text-muted-foreground' : ''}`}>{g ? g.gewicht.toLocaleString('de-DE', { minimumFractionDigits: 1 }) : '–'}</span>,
+              r.anlass || '–', r.stimmung || '–', r.kampagne_nach_erwartung || '–', r.upsell_potenzial || '–', <span className="text-xs">{r.naechster_schritt || '–'}</span>];
+          })}
           empty="Keine Checkup-Calls erfasst." />
       </div>
 
