@@ -11,7 +11,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ExternalLink, ChevronDown, Pencil, Loader2, X } from 'lucide-react';
+import { ExternalLink, ChevronDown, Pencil, Loader2, X, Info, Search } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { LaufzeitAktionen } from '@/components/laufzeiten/LaufzeitAktionen';
@@ -31,6 +33,16 @@ function vorschau(f: Form, r: Row) {
   if (!s || !m || !Number.isInteger(m) || m < 1) return null;
   const d = new Date(s + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + m); return d.toISOString().slice(0, 10);
 }
+const AKTIV_STATUS = ['Aktueller Klient', 'Pausiert'];
+const plusM = (s: string, m: number) => { const d = new Date(s + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + m); return d.toISOString().slice(0, 10); };
+function fehltLabels(r: { startdatum: string | null; laufzeit_monate: number | null; close_opportunity_id: string | null; vc_opportunity_id: string | null }) {
+  const l: string[] = [];
+  if (!r.close_opportunity_id && !r.vc_opportunity_id) l.push('kein Abschluss verknüpft');
+  if (!r.startdatum) l.push('Startdatum fehlt');
+  if (!r.laufzeit_monate) l.push('Laufzeit fehlt');
+  return l;
+}
+const FEHLT_OPTIONEN = ['Startdatum fehlt', 'Laufzeit fehlt', 'kein Abschluss verknüpft'];
 const toNum = (v: string) => v.trim() === '' ? null : Number(v.replace(',', '.'));
 
 export default function KundenLaufzeiten() {
@@ -62,16 +74,23 @@ export default function KundenLaufzeiten() {
   useEffect(() => { if (isAdmin) loadOpts(); }, [isAdmin, loadOpts]);
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const klar = useMemo(() => rows.filter(r => r.vertragsende)
-    .map(r => ({ ...r, rest: Math.ceil((new Date(r.vertragsende!).getTime() - today.getTime()) / 86400000) }))
-    .sort((a, b) => a.rest - b.rest), [rows]); // eslint-disable-line react-hooks/exhaustive-deps
-  const unklar = rows.filter(r => !r.vertragsende).sort((a, b) => (a.kunde || '').localeCompare(b.kunde || ''));
+  const restTage = (end: string) => Math.ceil((new Date(end + 'T00:00:00').getTime() - today.getTime()) / 86400000);
+  // ONE list of active Close customers ("Aktueller Klient" / "Pausiert"); both blocks are a pure partition of it.
+  const aktive = useMemo(() => rows.filter(r => AKTIV_STATUS.includes(r.close_status_label || '')), [rows]);
+  const vollstaendig = (r: Row) => !!r.startdatum && !!r.laufzeit_monate;
+  const klar = useMemo(() => aktive.filter(vollstaendig)
+    .map(r => { const vertragsende = r.vertragsende || plusM(r.startdatum!, Number(r.laufzeit_monate)); return { ...r, vertragsende, rest: restTage(vertragsende) }; })
+    .sort((a, b) => a.rest - b.rest), [aktive]); // eslint-disable-line react-hooks/exhaustive-deps
+  const unklar = useMemo(() => aktive.filter(r => !vollstaendig(r)).sort((a, b) => (a.kunde || '').localeCompare(b.kunde || '')), [aktive]);
+  const [suche, setSuche] = useState(''); const [fehltFilter, setFehltFilter] = useState('alle'); const [anzahl, setAnzahl] = useState(12);
+  const [weg, setWeg] = useState<Set<string>>(new Set()); const [neu, setNeu] = useState<string | null>(null);
+  const unklarGefiltert = unklar.filter(r => (!suche || (r.kunde || '').toLowerCase().includes(suche.toLowerCase())) && (fehltFilter === 'alle' || fehltLabels(r).includes(fehltFilter)));
 
   const form = (id: string) => forms[id] || empty;
   const setF = (id: string, k: keyof Form, v: string | string[]) => setForms(p => ({ ...p, [id]: { ...form(id), [k]: v } }));
 
-  async function save(r: Row, bestaetigt = false) {
-    const f = form(r.client_id);
+  async function save(r: Row, bestaetigt = false, ueber?: Partial<Form>) {
+    const f = { ...form(r.client_id), ...(ueber || {}) };
     const body = {
       client_id: r.client_id, close_opportunity_id: r.close_opportunity_id,
       startdatum: f.startdatum || null, laufzeit_monate: toNum(f.laufzeit_monate),
@@ -93,8 +112,12 @@ export default function KundenLaufzeiten() {
     toast.success(`${r.kunde}: Abschluss in Close ${data.aktion}, Werte neu aus Close eingelesen.`);
     if (data.paket && !data.paket.gesetzt) toast.warning(data.paket.hinweis);
     loadOpts();
+    const warUnklar = !vollstaendig(r);
+    if (warUnklar) { setWeg(p => new Set(p).add(r.client_id)); await new Promise(res => setTimeout(res, 350)); }
     setForms(p => { const n = { ...p }; delete n[r.client_id]; return n; }); setEditing(null);
     await load();
+    setWeg(p => { const n = new Set(p); n.delete(r.client_id); return n; });
+    if (warUnklar) { setNeu(r.client_id); setTimeout(() => setNeu(null), 2500); }
   }
 
   const fields = (r: Row) => {
@@ -138,6 +161,56 @@ export default function KundenLaufzeiten() {
       </div>
     );
   };
+  const feld = 'h-10 rounded-xl border-0 bg-muted/60 shadow-none focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:ring-offset-0';
+  const tip = (t: string) => <Tooltip><TooltipTrigger asChild><Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent className="max-w-xs">{t}</TooltipContent></Tooltip>;
+  const karte = (r: Row) => {
+    const f = form(r.client_id); const busy = saving === r.client_id;
+    const s0 = f.startdatum || r.startdatum || ''; const m0 = f.laufzeit_monate || (r.laufzeit_monate ? String(r.laufzeit_monate) : '');
+    const mN = Number(m0); const bereit = !!s0 && Number.isInteger(mN) && mN >= 1;
+    const end = bereit ? plusM(s0, mN) : null;
+    const cur = r.close_opportunity_id ? opts?.opp[r.close_opportunity_id] : null;
+    const curL = cur?.leistungen ? cur.leistungen.split(', ') : []; const sel = f.leistungen ?? curL; const cash = opts?.cash[r.client_id];
+    const lbl = 'text-[11px] text-muted-foreground flex items-center gap-1 mb-1';
+    return (
+      <div key={r.client_id} className={cn('rounded-2xl bg-card p-6 shadow-[0_1px_3px_hsl(var(--foreground)/0.06),0_8px_24px_-12px_hsl(var(--foreground)/0.10)] flex flex-col gap-4 transition-all duration-300', weg.has(r.client_id) && 'opacity-0 scale-95 -translate-y-2')}>
+        <div>
+          <h3 className="text-base font-semibold leading-tight">{r.kunde}</h3>
+          <div className="flex flex-wrap gap-1.5 mt-2">{fehltLabels(r).map(l => <span key={l} className="text-[11px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{l}</span>)}
+            {r.quelle === 'Viral Connect' && <span className="text-[11px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground">aus Viral Connect</span>}</div>
+        </div>
+        {isAdmin ? <>
+          <div className="space-y-3">
+            <div><span className={lbl}>Startdatum{!r.close_opportunity_id && tip(r.vc_opportunity_id ? 'Abschluss existiert nur bei Viral Connect – beim Speichern wird er in unserem Close angelegt (Marke „Viral Connect“).' : 'Beim Speichern wird in Close ein gewonnener Abschluss angelegt (mit Bestätigung).')}</span>
+              <Input type="date" className={feld} value={s0} onChange={e => setF(r.client_id, 'startdatum', e.target.value)} /></div>
+            <div><span className={lbl}>Laufzeit (Mon.)</span>
+              <Input type="number" min={1} max={120} step={1} className={feld} value={m0} onChange={e => setF(r.client_id, 'laufzeit_monate', e.target.value)} /></div>
+          </div>
+          {end && <div className="rounded-xl bg-primary/5 px-4 py-3 text-sm tabular-nums"><span className="text-muted-foreground">Vertragsende:</span> <span className="font-semibold text-primary">{dt(end)}</span> <span className="text-muted-foreground">· Restlaufzeit {restTage(end)} Tage</span></div>}
+          <Collapsible>
+            <CollapsibleTrigger className="group text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">Weitere Angaben <ChevronDown className="h-3 w-3 transition-transform group-data-[state=open]:rotate-180" /></CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3 pt-3">
+              <div><span className={lbl}>Abschlusswert €</span><Input type="number" min={0} className={feld} value={f.abschlusswert} placeholder="optional" onChange={e => setF(r.client_id, 'abschlusswert', e.target.value)} /></div>
+              <div><span className={lbl}>Retainer/Monat €</span><Input type="number" min={0} className={feld} value={f.retainer_monat} placeholder="optional" onChange={e => setF(r.client_id, 'retainer_monat', e.target.value)} /></div>
+              <div><span className={lbl}>Leistungen{optsErr && tip(`Auswahlwerte aus Close nicht geladen: ${optsErr}`)}</span>
+                <Popover><PopoverTrigger asChild><Button variant="ghost" className={cn(feld, 'w-full justify-between font-normal')} disabled={!opts}><span className="truncate">{sel.length ? `${sel.length} gewählt` : 'auswählen'}</span><ChevronDown className="h-3 w-3" /></Button></PopoverTrigger>
+                  <PopoverContent className="w-80 max-h-72 overflow-y-auto p-2">{(opts?.leistungen || []).map(o => <label key={o} className="flex items-start gap-2 py-1 text-xs cursor-pointer"><Checkbox checked={sel.includes(o)} onCheckedChange={c => setF(r.client_id, 'leistungen', c ? [...sel, o] : sel.filter(x => x !== o))} />{o}</label>)}</PopoverContent></Popover></div>
+              <div><span className={lbl}>Deal-Typ</span>
+                <Select value={f.deal_typ || cur?.deal_typ || (!r.close_opportunity_id ? 'Neukunde' : '')} onValueChange={v => setF(r.client_id, 'deal_typ', v)} disabled={!opts}>
+                  <SelectTrigger className={feld}><SelectValue placeholder="–" /></SelectTrigger><SelectContent>{(opts?.deal_typ || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
+              <div><span className={lbl}>Paket{opts && !cash && tip(`Für ${r.kunde} existiert keine Cash-Collect-Aktivität — Paket kann nicht gesetzt werden.`)}</span>
+                <Select value={f.paket || cash?.paket || ''} onValueChange={v => setF(r.client_id, 'paket', v)} disabled={!cash}>
+                  <SelectTrigger className={feld}><SelectValue placeholder="–" /></SelectTrigger><SelectContent>{(opts?.paket || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
+            </CollapsibleContent>
+          </Collapsible>
+          {errors[r.client_id] && <p className="text-xs text-destructive">{errors[r.client_id]}</p>}
+        </> : <p className="text-xs text-muted-foreground">Nachtragen können Admins.</p>}
+        <div className="mt-auto flex items-center justify-between pt-1">
+          {r.close_lead_id ? <a href={`https://app.close.com/lead/${r.close_lead_id}/`} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">In Close öffnen <ExternalLink className="h-3 w-3" /></a> : <span />}
+          {isAdmin && <Button size="sm" className="rounded-xl" disabled={busy || !bereit} onClick={() => { if (!f.startdatum && s0) setF(r.client_id, 'startdatum', s0); save({ ...r }, false, { startdatum: s0, laufzeit_monate: m0 }); }}>{busy && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}Speichern</Button>}
+        </div>
+      </div>
+    );
+  };
   const closeLink = (r: Row) => r.close_lead_id && <a href={`https://app.close.com/lead/${r.close_lead_id}/`} target="_blank" rel="noreferrer" className="text-primary inline-flex items-center gap-1 text-xs">Close <ExternalLink className="h-3 w-3" /></a>;
 
   return (
@@ -145,6 +218,7 @@ export default function KundenLaufzeiten() {
       <div>
         <h1 className="text-2xl font-heading font-bold">Laufzeiten</h1>
         <p className="text-xs text-muted-foreground mt-0.5">Aktive Kunden laut Close („Aktueller Klient“, „Pausiert“). Eingaben werden direkt in Close gespeichert und danach neu aus Close eingelesen.</p>
+        {!loading && <p className="text-sm text-muted-foreground mt-2 tabular-nums"><span className="text-foreground font-medium">{aktive.length} aktive Kunden</span> · {klar.length} mit vollständiger Laufzeit · {unklar.length} unvollständig</p>}
       </div>
       {loading ? <Skeleton className="h-40" /> : <>
         <Card>
@@ -157,7 +231,7 @@ export default function KundenLaufzeiten() {
                   <TableRow key={r.client_id}><TableCell className="font-medium align-top pt-4">{r.kunde}</TableCell><TableCell colSpan={4}>{fields(r)}</TableCell>
                     <TableCell className="align-top"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditing(null)}><X className="h-4 w-4" /></Button></TableCell></TableRow>
                 ) : (
-                  <TableRow key={r.client_id}>
+                  <TableRow key={r.client_id} className={cn('transition-colors duration-700', neu === r.client_id && 'bg-primary/5 animate-in fade-in slide-in-from-bottom-2 duration-500')}>
                     <TableCell className="font-medium">{r.kunde}{r.quelle === 'Viral Connect' && <Badge variant="outline" className="ml-2 text-[10px]">aus Viral Connect</Badge>}</TableCell>
                     <TableCell className="tabular-nums">{dt(r.startdatum)}</TableCell>
                     <TableCell className="tabular-nums whitespace-nowrap">{r.upsell_startdatum && r.upsell_laufzeit ? <>{r.upsell_laufzeit} Mon.<Tooltip><TooltipTrigger asChild><Badge variant="outline" className="ml-2 text-[10px] font-normal text-muted-foreground cursor-default">verlängert</Badge></TooltipTrigger><TooltipContent>1. Laufzeit: {dt(r.startdatum)}, {r.laufzeit_monate} Mon. · Verlängerung ab {dt(r.upsell_startdatum)}</TooltipContent></Tooltip></> : <>{r.laufzeit_monate} Mon.</>}</TableCell>
@@ -171,25 +245,25 @@ export default function KundenLaufzeiten() {
             </Table>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Laufzeit unklar ({unklar.length})</CardTitle>
-            <p className="text-xs text-muted-foreground">Hier wird nichts geschätzt. {isAdmin ? 'Werte eintragen und je Zeile speichern – geschrieben wird nach Close.' : 'Nachtragen können Admins.'}</p></CardHeader>
-          <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader><TableRow><TableHead>Kunde</TableHead><TableHead>Was fehlt</TableHead>{isAdmin && <TableHead>Nachtragen</TableHead>}<TableHead /></TableRow></TableHeader>
-              <TableBody>
-                {unklar.map(r => (
-                  <TableRow key={r.client_id}>
-                    <TableCell className="font-medium align-top pt-4">{r.kunde}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground align-top pt-4">{r.fehlt.join(', ')}</TableCell>
-                    {isAdmin && <TableCell>{fields(r)}</TableCell>}
-                    <TableCell className="align-top pt-4">{closeLink(r)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold">Laufzeit unklar ({unklar.length})</h2>
+            <p className="text-xs text-muted-foreground">Hier wird nichts geschätzt. {isAdmin ? 'Startdatum und Laufzeit eintragen und speichern – geschrieben wird nach Close.' : 'Nachtragen können Admins.'}</p>
+          </div>
+          {unklar.length > 0 && <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative sm:w-72"><Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input className="h-9 pl-9 rounded-xl border-0 bg-muted/60 shadow-none" placeholder="Kunde suchen" value={suche} onChange={e => { setSuche(e.target.value); setAnzahl(12); }} /></div>
+            <Select value={fehltFilter} onValueChange={v => { setFehltFilter(v); setAnzahl(12); }}>
+              <SelectTrigger className="h-9 sm:w-56 rounded-xl border-0 bg-muted/60 shadow-none"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="alle">Alles, was fehlt</SelectItem>{FEHLT_OPTIONEN.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {unklarGefiltert.slice(0, anzahl).map(r => karte(r))}
+          </div>
+          {!unklarGefiltert.length && <p className="text-sm text-muted-foreground">{unklar.length ? 'Kein Kunde passt zu Suche oder Filter.' : 'Alle aktiven Kunden haben eine vollständige Laufzeit.'}</p>}
+          {unklarGefiltert.length > anzahl && <div className="flex justify-center"><Button variant="ghost" className="text-muted-foreground" onClick={() => setAnzahl(a => a + 12)}>Weitere anzeigen ({unklarGefiltert.length - anzahl})</Button></div>}
+        </section>
         {isAdmin && <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Schreibprotokoll Close (letzte 20)</CardTitle></CardHeader>
           <CardContent className="overflow-x-auto">
@@ -219,7 +293,7 @@ export default function KundenLaufzeiten() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { const r = confirm!; setConfirm(null); save(r, true); }}>Anlegen</AlertDialogAction>
+            <AlertDialogAction onClick={() => { const r = confirm!; setConfirm(null); save(r, true, { startdatum: forms[r.client_id]?.startdatum || r.startdatum || '', laufzeit_monate: forms[r.client_id]?.laufzeit_monate || (r.laufzeit_monate ? String(r.laufzeit_monate) : '') }); }}>Anlegen</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
