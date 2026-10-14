@@ -8579,6 +8579,85 @@ export type Database = {
         }
         Relationships: []
       }
+      werbebudget_vorschlag_verworfen: {
+        Row: {
+          client_id: string
+          id: string
+          kampagne_id: string
+          verworfen_am: string
+          verworfen_von: string | null
+        }
+        Insert: {
+          client_id: string
+          id?: string
+          kampagne_id: string
+          verworfen_am?: string
+          verworfen_von?: string | null
+        }
+        Update: {
+          client_id?: string
+          id?: string
+          kampagne_id?: string
+          verworfen_am?: string
+          verworfen_von?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "werbebudget_vorschlag_verworfen_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      werbebudget_zuordnung: {
+        Row: {
+          angelegt_am: string
+          angelegt_von: string | null
+          client_id: string
+          id: string
+          kampagne_id: string
+          meta_account_id: string
+          objekt_id: string
+          objekt_name: string | null
+          typ: string
+          untermarke: string | null
+        }
+        Insert: {
+          angelegt_am?: string
+          angelegt_von?: string | null
+          client_id: string
+          id?: string
+          kampagne_id: string
+          meta_account_id: string
+          objekt_id: string
+          objekt_name?: string | null
+          typ: string
+          untermarke?: string | null
+        }
+        Update: {
+          angelegt_am?: string
+          angelegt_von?: string | null
+          client_id?: string
+          id?: string
+          kampagne_id?: string
+          meta_account_id?: string
+          objekt_id?: string
+          objekt_name?: string | null
+          typ?: string
+          untermarke?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "werbebudget_zuordnung_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wiki_pages: {
         Row: {
           content: string | null
