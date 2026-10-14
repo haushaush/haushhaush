@@ -101,6 +101,47 @@ export default function Auth() {
 
         {/* Auth Card */}
         <div className="rounded-2xl border border-border p-8 shadow-[0_4px_24px_rgba(0,0,0,0.06)]" style={{ backgroundColor: 'hsl(var(--card))' }}>
+          {mode === 'reset' ? (
+            <>
+              <h2 className="text-xl font-semibold text-foreground mb-2">Passwort zurücksetzen</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Wir schicken dir einen Link per E-Mail, mit dem du ein neues Passwort festlegst.
+              </p>
+              {resetSent ? (
+                <div className="rounded-xl px-4 py-3 text-sm font-medium border border-success/30 bg-success/10 text-foreground">
+                  E-Mail ist unterwegs an <span className="font-semibold">{email}</span>. Bitte prüfe auch den Spam-Ordner.
+                </div>
+              ) : (
+                <form onSubmit={handleReset} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-email" className="text-sm text-foreground">E-Mail</Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="name@haushhaush.de"
+                      required
+                      className="h-12 rounded-[10px] text-[15px] bg-muted/50 border-border focus:border-primary focus:ring-primary/15"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full h-12 rounded-[10px] text-[15px] font-semibold transition-transform active:scale-[0.99]"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Wird gesendet...</> : 'Link zum Zurücksetzen senden'}
+                  </Button>
+                </form>
+              )}
+              <p className="text-center mt-4">
+                <button className="text-xs text-muted-foreground hover:text-primary transition-colors" onClick={() => { setMode('login'); setResetSent(false); }}>
+                  Zurück zur Anmeldung
+                </button>
+              </p>
+            </>
+          ) : (
+            <>
           <h2 className="text-xl font-semibold text-foreground mb-6">Anmelden</h2>
 
           <form onSubmit={handleLogin} className="space-y-4">
