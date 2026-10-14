@@ -1,0 +1,5 @@
+# Edge function rules
+
+- Bonus checkup sync: `bonus-checkins-sync` is the only writer of Close-sourced `bonus_checkins`; it resolves the key containing Client Checkin, verifies lead mappings, writes nothing on Close errors, and logs every run. Why: failed fetches must never silently replace the observed call data.
+- Bonus cash collect: `bonus-cash-sync` is the only writer of Qonto-sourced `bonus_cash_collect`; amounts are net minus ad-budget line items matched by title against `bonus_cash_ausschluesse`, deduped by a source-independent invoice key. Why: payroll must count each customer payment once, without pass-through ad budgets.
+- Bonus survey intake uses server-side matching, service-only atomic rate-limit/save RPCs and an authenticated admin assignment RPC; customer/month uniqueness is enforced in PostgreSQL and the UI shares the server name-similarity helper. Why: concurrent submissions must not double-count or bypass manual review, and suggestions must agree with automatic matching.
