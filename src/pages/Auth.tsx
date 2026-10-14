@@ -179,10 +179,12 @@ export default function Auth() {
           </form>
 
           <p className="text-center mt-4">
-            <button className="text-xs text-muted-foreground hover:text-primary transition-colors" onClick={() => toast.info('Kontaktiere einen Admin für Passwort-Reset.')}>
+            <button className="text-xs text-muted-foreground hover:text-primary transition-colors" onClick={() => setMode('reset')}>
               Passwort vergessen?
             </button>
           </p>
+            </>
+          )}
         </div>
 
       </div>
