@@ -110,6 +110,21 @@ Deno.serve(async (req) => {
         if (error) sectionErrors.contacts = error.message;
       }
       stats.contacts = contacts.length;
+      // Stammdaten aus Close nur in leere CRM-Felder übernehmen (Close führend, nichts raten, nichts überschreiben).
+      try {
+        const { data: cur } = await supabase.from("clients").select("vor_nachname,email,phone,website_url").eq("id", client_id).maybeSingle();
+        const c0 = contacts[0];
+        const fill: Record<string, string> = {};
+        const leer = (x: any) => x == null || String(x).trim() === "";
+        if (cur) {
+          if (leer(cur.vor_nachname) && c0?.name) fill.vor_nachname = c0.name;
+          if (leer(cur.email) && c0?.emails?.[0]?.email) fill.email = c0.emails[0].email;
+          if (leer(cur.phone) && c0?.phones?.[0]?.phone) fill.phone = c0.phones[0].phone;
+          if (leer(cur.website_url) && lead.url) fill.website_url = lead.url;
+          if (Object.keys(fill).length) await supabase.from("clients").update(fill).eq("id", client_id);
+          stats.stammdaten_gefuellt = Object.keys(fill).length;
+        }
+      } catch (e: any) { sectionErrors.stammdaten = e.message; }
     } catch (e: any) {
       sectionErrors.contacts = e.message;
     }

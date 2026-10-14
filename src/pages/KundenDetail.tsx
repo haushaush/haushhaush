@@ -76,6 +76,27 @@ function KpiCard({ label, value, hint, footer }: { label: string; value: string;
   );
 }
 
+/** Stammdatenfeld mit Herkunft: Close ist führend, Abweichungen im CRM werden markiert. */
+function QuellFeld({ label, crm, close, verknuepft, type }: { label: string; crm: any; close: string | null | undefined; verknuepft: boolean; type?: 'email' | 'phone' | 'url' }) {
+  const c = crm == null || crm === '' ? null : String(crm);
+  const gleich = c && close && c.trim().toLowerCase() === close.trim().toLowerCase();
+  const wert = c ?? close ?? null;
+  const quelle = !wert ? null
+    : gleich || (!c && close) ? { t: 'aus Close', tip: undefined }
+    : c && close ? { t: 'im CRM geändert', tip: `In Close: ${close}` }
+    : { t: verknuepft ? 'nur im CRM · in Close leer' : 'nur im CRM', tip: undefined };
+  return (
+    <div>
+      <InfoField label={label} value={wert} type={type} />
+      {quelle && (
+        <p className={`text-[10px] mt-0.5 ${quelle.tip ? 'text-warning' : 'text-muted-foreground/70'}`} title={quelle.tip}>
+          {quelle.t}{quelle.tip ? ' ⓘ' : ''}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** Erklärt, warum etwas leer ist, und bietet den nächsten Schritt an. */
 function Leer({ text, aktion, zentriert, klein }: { text: string; aktion?: () => void; zentriert?: boolean; klein?: boolean }) {
   return (
@@ -381,6 +402,22 @@ export default function KundenDetail() {
     }, null);
     return { wonCount: won.length, wonSum, lastWon, activeCount: active.length };
   }, [closeOpps]);
+  // Stammdaten wie in Close (führende Quelle); leere Close-Felder bleiben leer.
+  const closeWerte = useMemo(() => {
+    if (!closeLead) return null;
+    const c = closeContacts[0];
+    const custom = closeLead.custom || {};
+    const bk = Object.keys(custom).find(k => /branche/i.test(k));
+    const v = (x: any) => (x == null || x === '' ? null : String(Array.isArray(x) ? x.join(', ') : x));
+    return {
+      name: v(closeLead.display_name),
+      person: v(c?.name),
+      email: v(c?.emails?.[0]?.email),
+      phone: v(c?.phones?.[0]?.phone),
+      website: v(closeLead.url),
+      branche: bk ? v(custom[bk]) : null,
+    };
+  }, [closeLead, closeContacts]);
   const dealAnzahl = deals.length + closeOpps.length;
   const dealWert = totals.dealValue + closeStats.wonSum;
 
@@ -931,13 +968,13 @@ export default function KundenDetail() {
           <Card>
             <CardHeader><CardTitle className="text-base">Stammdaten</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
-              <InfoField label="Name" value={client.name} />
-              <InfoField label="Vor- & Nachname" value={client.vor_nachname} />
-              <InfoField label="E-Mail" value={client.email} type="email" />
-              <InfoField label="Telefon" value={client.phone} type="phone" />
-              <InfoField label="Website" value={client.website_url} type="url" />
-              <InfoField label="Branche" value={getBrancheLabel(client.branche_id) || client.branche} />
-              <InfoField label="Unternehmen" value={unternehmen?.display_name} />
+              <QuellFeld label="Name" crm={client.name} close={closeWerte?.name} verknuepft={!!closeLink} />
+              <QuellFeld label="Vor- & Nachname" crm={client.vor_nachname} close={closeWerte?.person} verknuepft={!!closeLink} />
+              <QuellFeld label="E-Mail" crm={client.email} close={closeWerte?.email} verknuepft={!!closeLink} type="email" />
+              <QuellFeld label="Telefon" crm={client.phone} close={closeWerte?.phone} verknuepft={!!closeLink} type="phone" />
+              <QuellFeld label="Website" crm={client.website_url} close={closeWerte?.website} verknuepft={!!closeLink} type="url" />
+              <QuellFeld label="Branche" crm={getBrancheLabel(client.branche_id) || client.branche} close={closeWerte?.branche} verknuepft={!!closeLink} />
+              <QuellFeld label="Unternehmen" crm={unternehmen?.display_name} close={closeWerte?.name} verknuepft={!!closeLink} />
               <InfoField label="Meta Account ID" value={client.meta_account_id} />
             </CardContent>
           </Card>
