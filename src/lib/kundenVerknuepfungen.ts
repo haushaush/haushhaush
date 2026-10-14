@@ -232,9 +232,6 @@ export async function verknuepfen(system: SystemKey, clientId: string, o: Objekt
     case 'drive':
       chk(await supabase.from('drive_folder_mappings').insert({ entity_type: 'client', entity_id: clientId, folder_section: 'root', drive_folder_id: o.id, drive_folder_url: o.url, drive_folder_name: o.name } as any));
       return;
-    case 'slack': case 'pipedrive':
-      chk(await (supabase.from as any)('kunde_externe_links').insert({ client_id: clientId, system, externe_id: o.id, name: o.name, url: o.url ?? null, verknuepft_von: await uid() }));
-      return;
   }
 }
 
@@ -245,8 +242,6 @@ export async function loesen(system: SystemKey, clientId: string, o: Objekt) {
     case 'qonto': chk(await supabase.from('qonto_client_links').update({ client_id: null, is_confirmed: false } as any).eq('id', o.ref || o.id)); return;
     case 'onepage': chk(await supabase.from('onepage_projects').update({ client_id_fk: null } as any).eq('id', o.id)); return;
     case 'drive': chk(await supabase.from('drive_folder_mappings').delete().eq('entity_type', 'client').eq('entity_id', clientId)); return;
-    case 'slack': case 'pipedrive':
-      chk(await (supabase.from as any)('kunde_externe_links').delete().eq('client_id', clientId).eq('system', system)); return;
   }
 }
 
