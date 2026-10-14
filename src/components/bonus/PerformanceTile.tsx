@@ -7,9 +7,10 @@ import { boundaries, callProgress, forecastPoints, monthClock, type Tier } from 
 const n = (v: number, d = 1) => v.toLocaleString('de-DE', { maximumFractionDigits: d });
 const weight = (v: number) => v.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
 const euro = (v: number) => `${n(v, 0)} €`;
-type Props = { criterion: string; label: string; k: any; config: any; month: string; basis?: { gesamt: number; heute_aktiv: number | null }; onClick: () => void };
+export type Basis = { gesamt: number; heute_aktiv: number | null; abgegangen?: number; neu?: number; ohne_startdatum?: number; regel?: string };
+type Props = { criterion: string; label: string; k: any; config: any; month: string; basis?: Basis; basisNeu?: Basis; onClick: () => void };
 
-export function PerformanceTile({ criterion: key, label, k, config, month, basis, onClick }: Props) {
+export function PerformanceTile({ criterion: key, label, k, config, month, basis, basisNeu, onClick }: Props) {
   const w = k.wert || {};
   const clock = monthClock(month);
   const provisional = clock.current || clock.future;
@@ -67,7 +68,7 @@ export function PerformanceTile({ criterion: key, label, k, config, month, basis
         <span className="text-xs text-muted-foreground font-normal tabular-nums">{sub}</span>
       </Button>
       <p className="text-sm tabular-nums">{outcome}</p>
-      {(w.zielwert !== undefined || w.betreute_kunden !== undefined) && <div className="flex items-center gap-1 text-xs text-muted-foreground">{key === 'calls' ? 'Zielzahl' : 'Monatsbasis'}: {w.zielwert ?? w.betreute_kunden}<Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Monatsbasis erklären"><Info className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent className="max-w-80 font-normal">Basis: {basis?.gesamt ?? w.zielwert ?? w.betreute_kunden} Kunden im {new Date(month).toLocaleDateString('de-DE', { month: 'long' })} · {basis?.heute_aktiv == null ? 'heutiger Aktivstatus nicht verfügbar' : `${basis.heute_aktiv} davon heute noch aktiv · ${basis.gesamt - basis.heute_aktiv} heute nicht mehr aktiv`}. Abgegangene Kunden bleiben in der Monatsbasis.</TooltipContent></Tooltip></div>}
+      {(w.zielwert !== undefined || w.betreute_kunden !== undefined) && <div className="flex items-center gap-1 text-xs text-muted-foreground">{key === 'calls' ? 'Zielzahl' : 'Monatsbasis'}: {w.zielwert ?? w.betreute_kunden}<Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Monatsbasis erklären"><Info className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent className="max-w-80 font-normal">{basis?.regel === 'aktiv_im_monat' ? `Basis: Kunden, die im ${new Date(month).toLocaleDateString('de-DE', { month: 'long' })} mindestens einen Tag aktiv waren. ${basis.gesamt} Kunden · davon ${basis.abgegangen ?? 0} abgegangen · ${basis.neu ?? 0} neu dazugekommen.` : <>Basis: {basis?.gesamt ?? w.zielwert ?? w.betreute_kunden} Kunden im {new Date(month).toLocaleDateString('de-DE', { month: 'long' })} (gespeicherter Stand).</>}{basisNeu && ` Nach neuer Regel wären es ${basisNeu.gesamt} Kunden — der freigegebene Monat bleibt unverändert.`}</TooltipContent></Tooltip>{basisNeu && basisNeu.gesamt !== (basis?.gesamt ?? w.zielwert) && <span className="text-muted-foreground/70">· neue Regel: {basisNeu.gesamt}</span>}</div>}
       <div className="relative h-2 rounded-full bg-muted my-1" role="progressbar" aria-label={`${label}: Fortschritt`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.max(0, progress))}>
         <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
         {marks.filter(m => m <= 100 && m > 0).map(m => <span key={m} title={`Stufe ab ${n(m)} %`} className="absolute top-[-3px] h-3.5 w-px bg-muted-foreground" style={{ left: `${Math.min(99.5, m)}%` }} />)}

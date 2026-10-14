@@ -11,14 +11,14 @@ import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { CheckinKandidaten } from '@/components/bonus/CheckinKandidaten';
-import { PerformanceTile } from '@/components/bonus/PerformanceTile';
+import { PerformanceTile, type Basis } from '@/components/bonus/PerformanceTile';
 import { monthClock } from '@/components/bonus/presentation';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type KritKey = 'zufriedenheit' | 'cash_niveau' | 'cash_entwicklung' | 'churn' | 'calls';
 type Krit = { status: 'ok' | 'keine_daten' | 'unvollstaendig'; punkte: number; max: number; wert: any; hinweis?: string; basis_hinweis: string | null };
 type Result = {
-  anzeige?: { config: any; calls: any[]; basis: { gesamt: number; heute_aktiv: number | null } };
+  anzeige?: { config: any; calls: any[]; basis: Basis; basis_neu?: Basis }; freigegeben?: boolean;
   kriterien: Record<KritKey, Krit>; punkte_gesamt: number; punkte_bewertbar_max: number; punkte_max: number;
   nicht_bewertbare_kriterien: number; bonus_eur: number; upsell_beteiligung_eur: number; berechnet_am: string;
 };
@@ -147,8 +147,10 @@ export default function BonusCockpit() {
 
           {clock.current && <p className="mt-6 mb-3 text-sm text-muted-foreground tabular-nums">Stand {String(clock.day).padStart(2, '0')}.{monat.slice(5, 7)}. · Tag {clock.day} von {clock.days} · Monat zu {Math.round(clock.fraction * 100)} % vorbei</p>}
           {clock.future && <p className="mt-6 text-sm text-muted-foreground">Monat hat noch nicht begonnen · Punkte vorläufig</p>}
+          {!!res.anzeige?.basis?.ohne_startdatum && <p className="mt-3 text-sm text-muted-foreground"><a href="/kunden/laufzeiten" className="text-primary hover:underline">{res.anzeige.basis.ohne_startdatum} Kunden ohne Startdatum — Zuordnung unsicher</a></p>}
+          {res.freigegeben && <p className="mt-3 text-sm text-muted-foreground">Freigegebener Monat: gespeicherte Werte{res.anzeige?.basis_neu ? ` · nach neuer Basisregel wären es ${res.anzeige.basis_neu.gesamt} Kunden (nur Hinweis)` : ''}.</p>}
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {ORDER.map(({ key, label }) => <PerformanceTile key={key} criterion={key} label={label} k={res.kriterien[key]} config={res.anzeige?.config} month={monat} basis={res.anzeige?.basis} onClick={() => showDetail(key)} />)}
+            {ORDER.map(({ key, label }) => <PerformanceTile key={key} criterion={key} label={label} k={res.kriterien[key]} config={res.anzeige?.config} month={monat} basis={res.anzeige?.basis} basisNeu={res.anzeige?.basis_neu} onClick={() => showDetail(key)} />)}
           </div>
         </>
       )}
