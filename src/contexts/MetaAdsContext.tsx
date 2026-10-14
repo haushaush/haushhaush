@@ -89,6 +89,7 @@ export function MetaAdsProvider({ children }: { children: ReactNode }) {
           await sleep(4000 * attempt);
           continue;
         }
+        if (isRateLimit(data)) throw new Error('Meta: gerade zu viele Anfragen – bitte in ein paar Minuten erneut laden.');
         const msg = typeof data.error === 'string' ? data.error : data.error.message || 'Meta API error';
         throw new Error(msg);
       }
