@@ -110,13 +110,22 @@ export async function checkCron(admin: any, req: Request, name: string) {
 /** Single active customer source for runtime and project workflows; read-only. */
 export const ACTIVE_CLIENT_STATUS_IDS = ["stat_QTXREz0rC7CthlaLyMUqbfRUst8okC2wdQYenN55bhd", "stat_emI3hqIc7XkLjiPW7jeIGBqCascfl96wLikyNo0p0qe"] as const;
 export async function activeCloseCustomers(call: Close): Promise<any[]> {
+  // Close's search language has no status_id field: resolve the labels at runtime and search by status label.
+  const statuses = await call(`/status/lead/`);
+  const labels = new Map<string, string>((statuses?.data || []).map((s: any) => [s.id, s.label]));
   const out: any[] = [];
   for (const statusId of ACTIVE_CLIENT_STATUS_IDS) {
+    const label = labels.get(statusId);
+    if (!label) throw new Error(`Close-Lead-Status ${statusId} nicht gefunden – kein Label vorhanden.`);
+    let treffer = 0;
     for (let skip = 0; ; skip += 100) {
-      const page = await call(`/lead/?query=${encodeURIComponent(`status_id:${statusId}`)}&_fields=id,display_name,status_id,status_label,date_updated&_limit=100&_skip=${skip}`);
-      out.push(...(page.data || []).filter((lead: any) => lead.status_id === statusId));
+      const page = await call(`/lead/?query=${encodeURIComponent(`status:"${label}"`)}&_fields=id,display_name,status_id,status_label,date_updated&_limit=100&_skip=${skip}`);
+      const leads = (page.data || []).filter((lead: any) => lead.status_id === statusId);
+      treffer += leads.length;
+      out.push(...leads);
       if (!page.has_more) break;
     }
+    if (!treffer) throw new Error(`Close-Suche lieferte 0 Leads für Status ${statusId} („${label}“).`);
   }
   return Array.from(new Map(out.map((lead: any) => [lead.id, lead])).values());
 }
