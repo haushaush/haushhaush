@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Check, X, Minus, Loader2, ExternalLink, GitMerge } from 'lucide-react';
 import { toast } from 'sonner';
+import { BuchhaltungUngeklaert } from '@/components/kunden/BuchhaltungUngeklaert';
 import { cn } from '@/lib/utils';
 import { SYSTEME, ladeStand, zaehle, verknuepfen, verwerfen, type KundeMin, type SystemKey, type SystemStand, type Vorschlag } from '@/lib/kundenVerknuepfungen';
 
@@ -57,6 +58,7 @@ export default function KundenVerknuepfungen() {
         </div>
       </div>
 
+      <BuchhaltungUngeklaert />
       <div className="rounded-2xl bg-card shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
