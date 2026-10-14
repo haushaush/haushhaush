@@ -35,12 +35,33 @@ export default function Abschluesse() {
 
   useEffect(() => {
     (async () => {
+      // Server returns max 1000 rows per request: page through everything
+      const alle = async (q: (from: number, to: number) => any) => {
+        const out: any[] = [];
+        for (let from = 0; ; from += 1000) {
+          const { data } = await q(from, from + 999);
+          out.push(...(data || []));
+          if (!data || data.length < 1000) break;
+        }
+        return out;
+      };
       const [a, l, s] = await Promise.all([
-        supabase.from('close_abschluesse_alle').select('quelle, dublette_von, close_opportunity_id, close_lead_id, lead_name, status_label, status_typ, status_geaendert_am, abschlusswert, setup_fee, retainer_monat, laufzeit_monate, startdatum, leistungen, deal_typ, closer, setter, marke, branche').order('status_geaendert_am', { ascending: false }).limit(10000),
-        supabase.from('close_lead_spiegel').select('close_lead_id, name, status_label, marke, branche, kanal, status_geaendert_am, date_updated').order('date_updated', { ascending: false }).limit(10000),
+        alle((f, t) => supabase.from('close_abschluesse_alle').select('quelle, dublette_von, close_opportunity_id, close_lead_id, lead_name, status_label, status_typ, status_geaendert_am, abschlusswert, setup_fee, retainer_monat, laufzeit_monate, startdatum, leistungen, deal_typ, closer, setter, marke, branche').order('status_geaendert_am', { ascending: false }).order('close_opportunity_id').range(f, t)),
+        alle((f, t) => supabase.from('close_lead_spiegel').select('close_lead_id, name, status_label, marke, branche, kanal, status_geaendert_am, date_updated').order('date_updated', { ascending: false }).order('close_lead_id').range(f, t)),
         supabase.from('close_sync_stand').select('letzter_lauf').eq('name', 'close_abschluesse').maybeSingle(),
       ]);
-      setRows((a.data as Abschluss[]) || []); setLeads((l.data as Lead[]) || []); setStand(s.data?.letzter_lauf ?? null); setLoading(false);
+      const norm = (m: string | null) => {
+        const k = (m || '').toLowerCase().replace(/[^a-z]/g, '');
+        if (!k) return null;
+        if (k === 'leadsharks') return 'LeadSharks';
+        if (k === 'viralconnect') return 'Viral Connect';
+        if (k === 'haushhaush') return 'Haush Haush';
+        if (k === 'attentionx') return 'AttentionX';
+        return m!.trim();
+      };
+      setRows((a as Abschluss[]).map(r => ({ ...r, marke: norm(r.marke) || r.marke })));
+      setLeads((l as Lead[]).map(r => ({ ...r, marke: norm(r.marke) })));
+      setStand(s.data?.letzter_lauf ?? null); setLoading(false);
     })();
   }, []);
 
@@ -49,19 +70,20 @@ export default function Abschluesse() {
     (!von || (r.status_geaendert_am || '') >= von) && (!bis || (r.status_geaendert_am || '').slice(0, 10) <= bis)), [rows, marke, typ, von, bis]);
 
   const summen = useMemo(() => {
-    const m = new Map<string, { monat: string; marke: string; n: number; aw: number; sf: number; rt: number }>();
+    const m = new Map<string, { marke: string; n: number; aw: number; sf: number; rt: number }>();
     for (const r of filtered) {
       if (r.dublette_von) continue; // duplicate of one of our deals: shown, not counted
-      const monat = (r.status_geaendert_am || '').slice(0, 7) || '–';
-      const k = `${monat}|${r.marke}`;
-      const e = m.get(k) || { monat, marke: r.marke, n: 0, aw: 0, sf: 0, rt: 0 };
-      e.n++; e.aw += r.abschlusswert || 0; e.sf += r.setup_fee || 0; e.rt += r.retainer_monat || 0; m.set(k, e);
+      const e = m.get(r.marke) || { marke: r.marke, n: 0, aw: 0, sf: 0, rt: 0 };
+      e.n++; e.aw += r.abschlusswert || 0; e.sf += r.setup_fee || 0; e.rt += r.retainer_monat || 0; m.set(r.marke, e);
     }
-    return [...m.values()].sort((a, b) => b.monat.localeCompare(a.monat) || a.marke.localeCompare(b.marke));
+    return [...m.values()].sort((a, b) => a.marke.localeCompare(b.marke));
   }, [filtered]);
 
-  const leadStatuses = useMemo(() => [...new Set(leads.map(l => l.status_label).filter(Boolean))] as string[], [leads]);
-  const leadsFiltered = leads.filter(l => leadStatus === 'alle' || l.status_label === leadStatus);
+  // Only leads in negotiation or that came in via ads
+  const relevantLeads = useMemo(() => leads.filter(l =>
+    /verhandlung/i.test(l.status_label || '') || (l.kanal || '').trim().toLowerCase() === 'ads'), [leads]);
+  const leadStatuses = useMemo(() => [...new Set(relevantLeads.map(l => l.status_label).filter(Boolean))] as string[], [relevantLeads]);
+  const leadsFiltered = relevantLeads.filter(l => leadStatus === 'alle' || l.status_label === leadStatus);
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -71,8 +93,8 @@ export default function Abschluesse() {
       </div>
       <Tabs defaultValue="abschluesse">
         <TabsList>
-          <TabsTrigger value="abschluesse">Abschlüsse ({rows.length})</TabsTrigger>
-          <TabsTrigger value="leads">Alle Leads ({leads.length})</TabsTrigger>
+          <TabsTrigger value="abschluesse">Abschlüsse ({filtered.length})</TabsTrigger>
+          <TabsTrigger value="leads">Leads ({relevantLeads.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="abschluesse" className="space-y-4">
           <div className="flex flex-wrap gap-2 items-center">
@@ -84,13 +106,13 @@ export default function Abschluesse() {
             <Input type="date" value={bis} onChange={e => setBis(e.target.value)} className="w-40" aria-label="Bis" />
           </div>
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Summen je Marke und Monat</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Summen je Marke</CardTitle></CardHeader>
             <CardContent>
               <Table>
-                <TableHeader><TableRow><TableHead>Monat</TableHead><TableHead>Marke</TableHead><TableHead className="text-right">Anzahl</TableHead><TableHead className="text-right">Abschlusswert</TableHead><TableHead className="text-right">Setup-Fee</TableHead><TableHead className="text-right">Retainer/Monat</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Marke</TableHead><TableHead className="text-right">Anzahl</TableHead><TableHead className="text-right">Abschlusswert</TableHead><TableHead className="text-right">Setup-Fee</TableHead><TableHead className="text-right">Retainer/Monat</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {summen.map(s => <TableRow key={s.monat + s.marke}><TableCell>{s.monat}</TableCell><TableCell>{s.marke}</TableCell><TableCell className="text-right tabular-nums">{s.n}</TableCell><TableCell className="text-right tabular-nums">{eur(s.aw)}</TableCell><TableCell className="text-right tabular-nums">{eur(s.sf)}</TableCell><TableCell className="text-right tabular-nums">{eur(s.rt)}</TableCell></TableRow>)}
-                  {!summen.length && !loading && <TableRow><TableCell colSpan={6} className="text-muted-foreground text-sm">Keine Abschlüsse im Filter.</TableCell></TableRow>}
+                  {summen.map(s => <TableRow key={s.marke}><TableCell>{s.marke}</TableCell><TableCell className="text-right tabular-nums">{s.n}</TableCell><TableCell className="text-right tabular-nums">{eur(s.aw)}</TableCell><TableCell className="text-right tabular-nums">{eur(s.sf)}</TableCell><TableCell className="text-right tabular-nums">{eur(s.rt)}</TableCell></TableRow>)}
+                  {!summen.length && !loading && <TableRow><TableCell colSpan={5} className="text-muted-foreground text-sm">Keine Abschlüsse im Filter.</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
@@ -104,7 +126,7 @@ export default function Abschluesse() {
                     <TableRow key={r.close_opportunity_id} className={r.dublette_von ? 'opacity-60' : ''}>
                       <TableCell className="tabular-nums">{dt(r.status_geaendert_am)}</TableCell>
                       <TableCell className="font-medium">{r.lead_name}<div className="text-xs text-muted-foreground">{[r.deal_typ, r.leistungen, r.branche].filter(Boolean).join(' · ')}</div></TableCell>
-                      <TableCell><Badge variant="outline">{TYP[r.status_typ || ''] || r.status_typ}</Badge><div className="text-xs text-muted-foreground">{r.status_label}</div></TableCell>
+                      <TableCell><Badge variant="outline">{TYP[r.status_typ || ''] || r.status_typ}</Badge>{r.status_label && !['won','gewonnen',(TYP[r.status_typ || ''] || '').toLowerCase()].includes(r.status_label.toLowerCase()) && <div className="text-xs text-muted-foreground">{r.status_label}</div>}</TableCell>
                       <TableCell>{r.marke}</TableCell>
                       <TableCell className="text-xs">{r.quelle}{r.dublette_von && <Badge variant="secondary" className="ml-1">Dublettenverdacht</Badge>}</TableCell>
                       <TableCell className="text-right tabular-nums">{eur(r.abschlusswert)}</TableCell>
@@ -129,7 +151,7 @@ export default function Abschluesse() {
             <Table>
               <TableHeader><TableRow><TableHead>Lead</TableHead><TableHead>Status</TableHead><TableHead>Marke</TableHead><TableHead>Branche</TableHead><TableHead>Kanal</TableHead><TableHead>Status geändert</TableHead><TableHead /></TableRow></TableHeader>
               <TableBody>
-                {leadsFiltered.slice(0, 500).map(l => (
+                {leadsFiltered.map(l => (
                   <TableRow key={l.close_lead_id}>
                     <TableCell className="font-medium">{l.name}</TableCell><TableCell>{l.status_label}</TableCell><TableCell>{l.marke || '–'}</TableCell>
                     <TableCell>{l.branche || '–'}</TableCell><TableCell>{l.kanal || '–'}</TableCell><TableCell className="tabular-nums">{dt(l.status_geaendert_am)}</TableCell>
