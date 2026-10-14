@@ -1,3 +1,11 @@
+# Projekte und Laufzeiten
+
+- [ ] Verlängern unabhängig von Restlaufzeit ermöglichen; nur optisch hervorheben.
+- [ ] Aktive Close-Kundenquelle für Laufzeiten und Projektvorschau gemeinsam verwenden.
+- [ ] Projektarchiv, Archivschalter und einzelne Wiederherstellung in allen Projektansichten.
+- [ ] Admin-Vorschau und atomare, idempotente Neuaufsetzung aus Close-Leistungen; nicht ausführen.
+- [ ] Vorschau, Archivansichten und Verlängerungsdialog prüfen; keine Geschäftsdaten verändern.
+
 # Bonuspunkte und Zufriedenheitsfunnel
 
 - [x] Alle fünf Kriterien inklusive Anti-Churn in der Summe; Freigabesperre und Punktzahl im Bestätigungsdialog.
