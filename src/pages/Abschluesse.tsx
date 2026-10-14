@@ -93,8 +93,8 @@ export default function Abschluesse() {
       </div>
       <Tabs defaultValue="abschluesse">
         <TabsList>
-          <TabsTrigger value="abschluesse">Abschlüsse ({rows.length})</TabsTrigger>
-          <TabsTrigger value="leads">Alle Leads ({leads.length})</TabsTrigger>
+          <TabsTrigger value="abschluesse">Abschlüsse ({filtered.length})</TabsTrigger>
+          <TabsTrigger value="leads">Leads ({relevantLeads.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="abschluesse" className="space-y-4">
           <div className="flex flex-wrap gap-2 items-center">
@@ -106,13 +106,13 @@ export default function Abschluesse() {
             <Input type="date" value={bis} onChange={e => setBis(e.target.value)} className="w-40" aria-label="Bis" />
           </div>
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Summen je Marke und Monat</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Summen je Marke</CardTitle></CardHeader>
             <CardContent>
               <Table>
-                <TableHeader><TableRow><TableHead>Monat</TableHead><TableHead>Marke</TableHead><TableHead className="text-right">Anzahl</TableHead><TableHead className="text-right">Abschlusswert</TableHead><TableHead className="text-right">Setup-Fee</TableHead><TableHead className="text-right">Retainer/Monat</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Marke</TableHead><TableHead className="text-right">Anzahl</TableHead><TableHead className="text-right">Abschlusswert</TableHead><TableHead className="text-right">Setup-Fee</TableHead><TableHead className="text-right">Retainer/Monat</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {summen.map(s => <TableRow key={s.monat + s.marke}><TableCell>{s.monat}</TableCell><TableCell>{s.marke}</TableCell><TableCell className="text-right tabular-nums">{s.n}</TableCell><TableCell className="text-right tabular-nums">{eur(s.aw)}</TableCell><TableCell className="text-right tabular-nums">{eur(s.sf)}</TableCell><TableCell className="text-right tabular-nums">{eur(s.rt)}</TableCell></TableRow>)}
-                  {!summen.length && !loading && <TableRow><TableCell colSpan={6} className="text-muted-foreground text-sm">Keine Abschlüsse im Filter.</TableCell></TableRow>}
+                  {summen.map(s => <TableRow key={s.marke}><TableCell>{s.marke}</TableCell><TableCell className="text-right tabular-nums">{s.n}</TableCell><TableCell className="text-right tabular-nums">{eur(s.aw)}</TableCell><TableCell className="text-right tabular-nums">{eur(s.sf)}</TableCell><TableCell className="text-right tabular-nums">{eur(s.rt)}</TableCell></TableRow>)}
+                  {!summen.length && !loading && <TableRow><TableCell colSpan={5} className="text-muted-foreground text-sm">Keine Abschlüsse im Filter.</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
@@ -126,7 +126,7 @@ export default function Abschluesse() {
                     <TableRow key={r.close_opportunity_id} className={r.dublette_von ? 'opacity-60' : ''}>
                       <TableCell className="tabular-nums">{dt(r.status_geaendert_am)}</TableCell>
                       <TableCell className="font-medium">{r.lead_name}<div className="text-xs text-muted-foreground">{[r.deal_typ, r.leistungen, r.branche].filter(Boolean).join(' · ')}</div></TableCell>
-                      <TableCell><Badge variant="outline">{TYP[r.status_typ || ''] || r.status_typ}</Badge><div className="text-xs text-muted-foreground">{r.status_label}</div></TableCell>
+                      <TableCell><Badge variant="outline">{TYP[r.status_typ || ''] || r.status_typ}</Badge>{r.status_label && !['won','gewonnen',(TYP[r.status_typ || ''] || '').toLowerCase()].includes(r.status_label.toLowerCase()) && <div className="text-xs text-muted-foreground">{r.status_label}</div>}</TableCell>
                       <TableCell>{r.marke}</TableCell>
                       <TableCell className="text-xs">{r.quelle}{r.dublette_von && <Badge variant="secondary" className="ml-1">Dublettenverdacht</Badge>}</TableCell>
                       <TableCell className="text-right tabular-nums">{eur(r.abschlusswert)}</TableCell>
@@ -151,7 +151,7 @@ export default function Abschluesse() {
             <Table>
               <TableHeader><TableRow><TableHead>Lead</TableHead><TableHead>Status</TableHead><TableHead>Marke</TableHead><TableHead>Branche</TableHead><TableHead>Kanal</TableHead><TableHead>Status geändert</TableHead><TableHead /></TableRow></TableHeader>
               <TableBody>
-                {leadsFiltered.slice(0, 500).map(l => (
+                {leadsFiltered.map(l => (
                   <TableRow key={l.close_lead_id}>
                     <TableCell className="font-medium">{l.name}</TableCell><TableCell>{l.status_label}</TableCell><TableCell>{l.marke || '–'}</TableCell>
                     <TableCell>{l.branche || '–'}</TableCell><TableCell>{l.kanal || '–'}</TableCell><TableCell className="tabular-nums">{dt(l.status_geaendert_am)}</TableCell>
