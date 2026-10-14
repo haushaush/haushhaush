@@ -129,62 +129,6 @@ export default function Auth() {
           </p>
         </div>
 
-
-        {/* Test-Zugang (dev) */}
-        <div className="mt-4 text-center space-y-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 rounded-lg text-xs"
-            disabled={isLoading}
-            onClick={() => {
-              setEmail(TEST_EMAIL);
-              setPassword('');
-              setPendingMsg('');
-              setTimeout(() => passwordInputRef.current?.focus(), 50);
-              toast.info('Passwort manuell eingeben um fortzufahren', {
-                description: `E-Mail wurde vorausgefüllt (${TEST_EMAIL}).`,
-              });
-            }}
-          >
-            <FlaskConical className="h-3 w-3 mr-1.5" />
-            🧪 Test-Zugang
-          </Button>
-
-          <div>
-            <button
-              className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-              onClick={() => setShowTestMode(prev => !prev)}
-            >
-              Legacy Test Mode
-            </button>
-            {showTestMode && (
-              <div className="mt-2 rounded-xl border border-border p-3" style={{ backgroundColor: 'hsl(var(--card))' }}>
-                <div className="flex gap-2">
-                  <Input
-                    type="password"
-                    value={testPassword}
-                    onChange={e => setTestPassword(e.target.value)}
-                    placeholder="Test-Passwort"
-                    className="h-8 text-xs rounded-lg"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 rounded-lg text-xs"
-                    onClick={() => {
-                      const ok = activateTestMode(testPassword);
-                      if (ok) toast.success('Test Mode aktiviert ✓');
-                      else toast.error('Falsches Passwort');
-                    }}
-                  >
-                    Unlock
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
     </div>
