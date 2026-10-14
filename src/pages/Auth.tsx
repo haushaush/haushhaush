@@ -1,20 +1,17 @@
-import { useRef, useState } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, FlaskConical } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const logoUrl = import.meta.env.VITE_LOGO_URL || null;
-const TEST_EMAIL = 'test@haushhaush.de';
-const TEST_PASSWORD = 'Test1234!';
 
 export default function Auth() {
-  const { user, loading, activateTestMode } = useAuth();
-  const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [searchParams] = useSearchParams();
   const rawNext = searchParams.get('next') ?? '';
   // Only accept same-origin relative paths.
@@ -23,9 +20,6 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [pendingMsg, setPendingMsg] = useState('');
-  const [showTestMode, setShowTestMode] = useState(false);
-  const [testPassword, setTestPassword] = useState('');
-  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="text-primary animate-pulse text-2xl font-semibold">Laden...</div></div>;
   if (user) return <Navigate to={nextPath} replace />;
@@ -110,7 +104,6 @@ export default function Auth() {
               <Label htmlFor="password" className="text-sm text-foreground">Passwort</Label>
               <Input
                 id="password"
-                ref={passwordInputRef}
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -135,62 +128,6 @@ export default function Auth() {
           </p>
         </div>
 
-
-        {/* Test-Zugang (dev) */}
-        <div className="mt-4 text-center space-y-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 rounded-lg text-xs"
-            disabled={isLoading}
-            onClick={() => {
-              setEmail(TEST_EMAIL);
-              setPassword('');
-              setPendingMsg('');
-              setTimeout(() => passwordInputRef.current?.focus(), 50);
-              toast.info('Passwort manuell eingeben um fortzufahren', {
-                description: `E-Mail wurde vorausgefüllt (${TEST_EMAIL}).`,
-              });
-            }}
-          >
-            <FlaskConical className="h-3 w-3 mr-1.5" />
-            🧪 Test-Zugang
-          </Button>
-
-          <div>
-            <button
-              className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-              onClick={() => setShowTestMode(prev => !prev)}
-            >
-              Legacy Test Mode
-            </button>
-            {showTestMode && (
-              <div className="mt-2 rounded-xl border border-border p-3" style={{ backgroundColor: 'hsl(var(--card))' }}>
-                <div className="flex gap-2">
-                  <Input
-                    type="password"
-                    value={testPassword}
-                    onChange={e => setTestPassword(e.target.value)}
-                    placeholder="Test-Passwort"
-                    className="h-8 text-xs rounded-lg"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 rounded-lg text-xs"
-                    onClick={() => {
-                      const ok = activateTestMode(testPassword);
-                      if (ok) toast.success('Test Mode aktiviert ✓');
-                      else toast.error('Falsches Passwort');
-                    }}
-                  >
-                    Unlock
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
     </div>

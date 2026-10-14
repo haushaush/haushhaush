@@ -13,11 +13,9 @@ interface AuthContextType {
   isAdminOrManager: boolean;
   signOut: () => Promise<void>;
   isTestMode: boolean;
-  activateTestMode: (password: string) => boolean;
 }
 
 const TEST_MODE_KEY = 'agency-hub-test-mode';
-const TEST_PASSWORD_HASH = '1gPsnsh,wem.';
 
 const FAKE_TEST_USER = {
   id: 'test-mode-user-00000000-0000-0000-0000-000000000000',
@@ -49,17 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const activateTestMode = (password: string): boolean => {
-    if (password === TEST_PASSWORD_HASH) {
-      sessionStorage.setItem(TEST_MODE_KEY, 'active');
-      setIsTestMode(true);
-      setUser(FAKE_TEST_USER);
-      setRoles(['admin']);
-      setLoading(false);
-      return true;
-    }
-    return false;
-  };
 
   useEffect(() => {
     // If test mode is active, skip real auth
@@ -113,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, roles, hasRole, isAdminOrManager, signOut, isTestMode, activateTestMode }}>
+    <AuthContext.Provider value={{ user, session, loading, roles, hasRole, isAdminOrManager, signOut, isTestMode }}>
       {children}
     </AuthContext.Provider>
   );
