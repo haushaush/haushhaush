@@ -41,8 +41,9 @@ export function namensTreffer(a: string | null | undefined, b: string | null | u
   return shared.some(t => t.length >= 6) && score >= 0.5 ? Math.max(score, 0.6) : score;
 }
 const FREEMAIL = new Set(['gmail.com', 'googlemail.com', 'gmx.de', 'gmx.net', 'web.de', 'outlook.com', 'outlook.de', 'hotmail.com', 'hotmail.de', 'yahoo.com', 'yahoo.de', 'icloud.com', 't-online.de', 'me.com', 'aol.com', 'freenet.de', 'live.de', 'mail.de']);
-export const domainVon = (s: string | null | undefined): string | null => {
-  if (!s) return null;
+export const domainVon = (raw: unknown): string | null => {
+  const s = Array.isArray(raw) ? raw.find(x => typeof x === 'string') : raw;
+  if (!s || typeof s !== 'string') return null;
   const v = s.includes('@') ? s.split('@')[1] : s.replace(/^https?:\/\//i, '').split('/')[0];
   const d = v.toLowerCase().replace(/^www\./, '').trim();
   return d && d.includes('.') && !FREEMAIL.has(d) ? d : null;
