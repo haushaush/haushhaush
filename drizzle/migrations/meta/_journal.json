@@ -183,6 +183,13 @@
       "when": 1791974937428,
       "tag": "0025_kunden_verknuepfungen",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791975501492,
+      "tag": "0026_projects_reset_schonend",
+      "breakpoints": true
     }
   ]
 }

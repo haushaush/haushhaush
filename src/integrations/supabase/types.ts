@@ -1889,6 +1889,7 @@ export type Database = {
           superchat_kosten: number | null
           unternehmen_id: string | null
           updated_at: string
+          verknuepfte_mitarbeiter_ids: string[] | null
           vor_nachname: string | null
           website: string | null
           website_kosten: number | null
@@ -1927,6 +1928,7 @@ export type Database = {
           superchat_kosten?: number | null
           unternehmen_id?: string | null
           updated_at?: string
+          verknuepfte_mitarbeiter_ids?: string[] | null
           vor_nachname?: string | null
           website?: string | null
           website_kosten?: number | null
@@ -1965,6 +1967,7 @@ export type Database = {
           superchat_kosten?: number | null
           unternehmen_id?: string | null
           updated_at?: string
+          verknuepfte_mitarbeiter_ids?: string[] | null
           vor_nachname?: string | null
           website?: string | null
           website_kosten?: number | null
@@ -3989,6 +3992,50 @@ export type Database = {
             columns: ["close_deal_id"]
             isOneToOne: false
             referencedRelation: "close_deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kunde_aenderungsprotokoll: {
+        Row: {
+          alter_wert: string | null
+          client_id: string
+          feld: string
+          geaendert_am: string
+          geaendert_von: string | null
+          id: string
+          neuer_wert: string | null
+          quelle: string
+          quelle_projekt_id: string | null
+        }
+        Insert: {
+          alter_wert?: string | null
+          client_id: string
+          feld: string
+          geaendert_am?: string
+          geaendert_von?: string | null
+          id?: string
+          neuer_wert?: string | null
+          quelle: string
+          quelle_projekt_id?: string | null
+        }
+        Update: {
+          alter_wert?: string | null
+          client_id?: string
+          feld?: string
+          geaendert_am?: string
+          geaendert_von?: string | null
+          id?: string
+          neuer_wert?: string | null
+          quelle?: string
+          quelle_projekt_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kunde_aenderungsprotokoll_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -8953,6 +9000,15 @@ export type Database = {
       }
       projects_reset_execute: {
         Args: { p_actor: string; p_fingerprint: string; p_plan: Json }
+        Returns: Json
+      }
+      projects_reset_run: {
+        Args: {
+          p_actor: string
+          p_dry: boolean
+          p_fingerprint: string
+          p_plan: Json
+        }
         Returns: Json
       }
       projects_reset_snapshot: { Args: never; Returns: Json }
