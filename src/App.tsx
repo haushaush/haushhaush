@@ -68,6 +68,7 @@ import EmailPage from "./pages/Email.tsx";
 import EmailAutomationRules from "./pages/EmailAutomationRules.tsx";
 
 import Recovery from "./pages/Recovery.tsx";
+import PasswortReset from "./pages/PasswortReset.tsx";
 import OnePageKunden from "./pages/OnePageKunden.tsx";
 import OnePageKundeDetail from "./pages/OnePageKundeDetail.tsx";
 import ReferenzShowcaseOverview from "./pages/sales/ReferenzShowcaseOverview.tsx";
@@ -159,6 +160,7 @@ const App = () => (
                 <Route path="/register" element={<Register />} />
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/recovery" element={<Recovery />} />
+                <Route path="/passwort-reset" element={<PasswortReset />} />
                 <Route path="/" element={<PermissionRoute permissionKey="dashboard.view"><DL><Dashboard /></DL></PermissionRoute>} />
                 <Route path="/kunden" element={<PermissionRoute permissionKey="clients.view"><DL><Kunden /></DL></PermissionRoute>} />
                 <Route path="/abschluesse" element={<PermissionRoute permissionKey="clients.view"><DL><Abschluesse /></DL></PermissionRoute>} />
