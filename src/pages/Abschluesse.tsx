@@ -20,6 +20,16 @@ type Lead = { close_lead_id: string; name: string | null; status_label: string |
 const eur = (n: number | null | undefined) => n == null ? '–' : new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 const dt = (d: string | null) => d ? new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '–';
 const TYP: Record<string, string> = { won: 'Gewonnen', lost: 'Verloren', active: 'Offen' };
+// The one real status of an entry: Close's own stage label, German for the three standard ones.
+const statusText = (r: { status_label: string | null; status_typ: string | null }) => {
+  const l = (r.status_label || '').trim();
+  if (!l) return TYP[r.status_typ || ''] || '–';
+  const k = l.toLowerCase();
+  if (k === 'won') return 'Gewonnen';
+  if (k === 'lost') return 'Verloren';
+  if (k === 'active' || k === 'open') return 'Offen';
+  return l;
+};
 const closeLink = (leadId: string | null) => leadId ? `https://app.close.com/lead/${leadId}/` : undefined;
 
 export default function Abschluesse() {
@@ -126,7 +136,7 @@ export default function Abschluesse() {
                     <TableRow key={r.close_opportunity_id} className={r.dublette_von ? 'opacity-60' : ''}>
                       <TableCell className="tabular-nums">{dt(r.status_geaendert_am)}</TableCell>
                       <TableCell className="font-medium">{r.lead_name}<div className="text-xs text-muted-foreground">{[r.deal_typ, r.leistungen, r.branche].filter(Boolean).join(' · ')}</div></TableCell>
-                      <TableCell><Badge variant="outline">{TYP[r.status_typ || ''] || r.status_typ}</Badge>{r.status_label && !['won','gewonnen',(TYP[r.status_typ || ''] || '').toLowerCase()].includes(r.status_label.toLowerCase()) && <div className="text-xs text-muted-foreground">{r.status_label}</div>}</TableCell>
+                      <TableCell><Badge variant="outline">{statusText(r)}</Badge></TableCell>
                       <TableCell>{r.marke}</TableCell>
                       <TableCell className="text-xs">{r.quelle}{r.dublette_von && <Badge variant="secondary" className="ml-1">Dublettenverdacht</Badge>}</TableCell>
                       <TableCell className="text-right tabular-nums">{eur(r.abschlusswert)}</TableCell>
