@@ -4062,6 +4062,82 @@ export type Database = {
           },
         ]
       }
+      kunde_externe_links: {
+        Row: {
+          client_id: string
+          created_at: string
+          externe_id: string
+          id: string
+          name: string | null
+          system: string
+          url: string | null
+          verknuepft_von: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          externe_id: string
+          id?: string
+          name?: string | null
+          system: string
+          url?: string | null
+          verknuepft_von?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          externe_id?: string
+          id?: string
+          name?: string | null
+          system?: string
+          url?: string | null
+          verknuepft_von?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kunde_externe_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kunde_link_vorschlag_verworfen: {
+        Row: {
+          client_id: string
+          externe_id: string
+          id: string
+          system: string
+          verworfen_am: string
+          verworfen_von: string | null
+        }
+        Insert: {
+          client_id: string
+          externe_id: string
+          id?: string
+          system: string
+          verworfen_am?: string
+          verworfen_von?: string | null
+        }
+        Update: {
+          client_id?: string
+          externe_id?: string
+          id?: string
+          system?: string
+          verworfen_am?: string
+          verworfen_von?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kunde_link_vorschlag_verworfen_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kunde_meta_accounts: {
         Row: {
           client_id: string | null
