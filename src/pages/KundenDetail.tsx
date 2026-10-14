@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { VerknuepfungenTab } from '@/components/kunden/VerknuepfungenTab';
+import { ladeStand, zaehle, type SystemKey, type SystemStand } from '@/lib/kundenVerknuepfungen';
 import { DriveBrowser } from '@/components/DriveBrowser';
 import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
 import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X, Loader2, AlertCircle, AlertTriangle, Cloud, RefreshCw, RotateCw, Mail as MailIcon, PhoneCall, StickyNote, Calendar as CalIcon, MessageSquare, Activity } from 'lucide-react';
@@ -71,6 +73,47 @@ function KpiCard({ label, value, hint, footer }: { label: string; value: string;
         {footer && <div className="mt-1 text-xs text-muted-foreground">{footer}</div>}
       </CardContent>
     </Card>
+  );
+}
+
+/** Stammdatenfeld mit Herkunft: Close ist führend, Abweichungen im CRM werden markiert. */
+function QuellFeld({ label, crm, close, verknuepft, type }: { label: string; crm: any; close: string | null | undefined; verknuepft: boolean; type?: 'email' | 'phone' | 'url' }) {
+  const c = crm == null || crm === '' ? null : String(crm);
+  const gleich = c && close && c.trim().toLowerCase() === close.trim().toLowerCase();
+  const wert = c ?? close ?? null;
+  const quelle = !wert ? null
+    : gleich || (!c && close) ? { t: 'aus Close', tip: undefined }
+    : c && close ? { t: 'im CRM geändert', tip: `In Close: ${close}` }
+    : { t: verknuepft ? 'nur im CRM · in Close leer' : 'nur im CRM', tip: undefined };
+  return (
+    <div>
+      <InfoField label={label} value={wert} type={type} />
+      {quelle && (
+        <p className={`text-[10px] mt-0.5 ${quelle.tip ? 'text-warning' : 'text-muted-foreground/70'}`} title={quelle.tip}>
+          {quelle.t}{quelle.tip ? ' ⓘ' : ''}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Erklärt, warum etwas leer ist, und bietet den nächsten Schritt an. */
+function Leer({ text, aktion, zentriert, klein }: { text: string; aktion?: () => void; zentriert?: boolean; klein?: boolean }) {
+  return (
+    <p className={`${klein ? 'text-xs' : 'text-sm'} text-muted-foreground ${zentriert ? 'text-center' : ''}`}>
+      {text}
+      {aktion && <> · <button type="button" onClick={aktion} className="text-primary hover:underline">Jetzt verknüpfen</button></>}
+    </p>
+  );
+}
+
+function KopfKachel({ label, wert, anzeige, leer, aktion, primary }: { label: string; wert: number; anzeige: string; leer: string; aktion?: () => void; primary?: boolean }) {
+  return (
+    <Card><CardContent className="p-4 text-center">
+      <p className={`text-xl font-heading font-bold tabular-nums ${primary && wert ? 'text-primary' : ''} ${wert ? '' : 'text-muted-foreground'}`}>{wert ? anzeige : '—'}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      {!wert && <div className="mt-1.5"><Leer klein text={leer} aktion={aktion} /></div>}
+    </CardContent></Card>
   );
 }
 
@@ -307,6 +350,23 @@ export default function KundenDetail() {
 
   useEffect(() => { load(); }, [id]);
 
+  // Verknüpfungen: eine Quelle für Tab, Kacheln und Badge
+  const [tab, setTab] = useState(defaultTab);
+  const [linkStand, setLinkStand] = useState<Record<SystemKey, SystemStand> | null>(null);
+  const [linkLoading, setLinkLoading] = useState(true);
+  const ladeLinks = async () => {
+    if (!client?.id) return;
+    setLinkLoading(true);
+    try { setLinkStand((await ladeStand([client])).get(client.id) || null); }
+    finally { setLinkLoading(false); }
+  };
+  useEffect(() => { ladeLinks(); }, [client?.id]);
+  const linkZahl = linkStand ? zaehle(linkStand) : null;
+  const zuVerknuepfungen = () => {
+    setTab('verknuepfungen');
+    setTimeout(() => document.getElementById('kunde-verknuepfungen')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
+
   const totals = useMemo(() => {
     const dealsValue = deals.reduce((s, x) => s + Number(x.wert_eur || 0), 0);
     return {
@@ -342,6 +402,24 @@ export default function KundenDetail() {
     }, null);
     return { wonCount: won.length, wonSum, lastWon, activeCount: active.length };
   }, [closeOpps]);
+  // Stammdaten wie in Close (führende Quelle); leere Close-Felder bleiben leer.
+  const closeWerte = useMemo(() => {
+    if (!closeLead) return null;
+    const c = closeContacts[0];
+    const custom = closeLead.custom || {};
+    const bk = Object.keys(custom).find(k => /branche/i.test(k));
+    const v = (x: any) => (x == null || x === '' ? null : String(Array.isArray(x) ? x.join(', ') : x));
+    return {
+      name: v(closeLead.display_name),
+      person: v(c?.name),
+      email: v(c?.emails?.[0]?.email),
+      phone: v(c?.phones?.[0]?.phone),
+      website: v(closeLead.url),
+      branche: bk ? v(custom[bk]) : null,
+    };
+  }, [closeLead, closeContacts]);
+  const dealAnzahl = deals.length + closeOpps.length;
+  const dealWert = totals.dealValue + closeStats.wonSum;
 
   const filteredOpps = useMemo(
     () => oppFilter === 'won' ? closeOpps.filter((o: any) => o.status_type === 'won') : closeOpps,
@@ -535,6 +613,17 @@ export default function KundenDetail() {
               <span className={`h-2.5 w-2.5 rounded-full ${AMPEL_DOT[client.ampelstatus] || 'bg-muted'}`} aria-hidden />
               <span className="text-xs text-muted-foreground">{client.ampelstatus}</span>
             </span>
+            {!closeLink ? (
+              <button type="button" onClick={zuVerknuepfungen}
+                className="inline-flex items-center gap-1.5 text-[11px] rounded-full px-2.5 py-1 border bg-muted/40 border-border text-muted-foreground hover:text-foreground">
+                <AlertCircle className="h-3 w-3" /> Close: nicht verknüpft · Jetzt verknüpfen
+              </button>
+            ) : (<>
+            {syncFreshness.color !== 'success' && !closeSyncing && (
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={handleResyncClose}>
+                <RefreshCw className="h-3 w-3 mr-1" /> Jetzt synchronisieren
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -577,6 +666,7 @@ export default function KundenDetail() {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            </>)}
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             {brancheLabel && <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />{brancheLabel}</span>}
@@ -618,10 +708,15 @@ export default function KundenDetail() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold text-primary">{totals.dealCount}</p><p className="text-xs text-muted-foreground">Deals</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold">{fmtMoney(totals.dealValue)}</p><p className="text-xs text-muted-foreground">Gesamtwert</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold">{totals.projectCount}</p><p className="text-xs text-muted-foreground">Aktive Projekte</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-xl font-heading font-bold">{totals.showcaseCount}</p><p className="text-xs text-muted-foreground">Showcase-Items</p></CardContent></Card>
+        <KopfKachel label="Deals" wert={dealAnzahl} anzeige={String(dealAnzahl)} primary
+          leer={closeLink ? 'Verknüpft, keine Deals vorhanden' : 'Kein Close-Lead verknüpft'} aktion={closeLink ? undefined : zuVerknuepfungen} />
+        <KopfKachel label="Gesamtwert" wert={dealWert} anzeige={fmtMoney(dealWert)}
+          leer={closeLink ? 'Verknüpft, kein gewonnener Deal mit Wert' : 'Kein Close-Lead verknüpft'} aktion={closeLink ? undefined : zuVerknuepfungen} />
+        <KopfKachel label="Aktive Projekte" wert={totals.projectCount} anzeige={String(totals.projectCount)}
+          leer={projects.length ? `${projects.length} Projekte, keins in laufender Betreuung` : closeLink ? 'Verknüpft, keine Projekte angelegt' : 'Kein Close-Lead verknüpft'}
+          aktion={!projects.length && !closeLink ? zuVerknuepfungen : undefined} />
+        <KopfKachel label="Showcase-Items" wert={totals.showcaseCount} anzeige={String(totals.showcaseCount)}
+          leer="Keine Referenzen im Showcase für diesen Kunden" />
       </div>
 
       {/* Edit Form */}
@@ -746,9 +841,12 @@ export default function KundenDetail() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue={defaultTab}>
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
+          <TabsTrigger value="verknuepfungen">
+            Verknüpfungen{linkZahl ? ` (${linkZahl.verknuepft}/${linkZahl.gesamt})` : ''}
+          </TabsTrigger>
           <TabsTrigger value="deals">Deals ({deals.length + closeOpps.length})</TabsTrigger>
           <TabsTrigger value="onepage">Onepage-Leads ({onepageProjects.length})</TabsTrigger>
           <TabsTrigger value="showcase">Showcase ({totals.showcaseCount})</TabsTrigger>
@@ -759,13 +857,23 @@ export default function KundenDetail() {
           <TabsTrigger value="dateien">Dateien</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="verknuepfungen" className="mt-4" id="kunde-verknuepfungen">
+          <VerknuepfungenTab kunde={client} stand={linkStand} loading={linkLoading} onChanged={() => { load(); ladeLinks(); }} />
+        </TabsContent>
+
         {/* ÜBERSICHT */}
         <TabsContent value="uebersicht" className="mt-4 space-y-4">
           {/* KPI-Karten */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="CLV" value={fmtEur(client.clv)} />
             <KpiCard label="Gesamt-Saldo" value={fmtEur(client.gesamt_saldo)} />
-            <KpiCard label="Ads-Budget" value={fmtEur(client.ads_budget)} />
+            {client.ads_budget == null || client.ads_budget === '' ? (
+              <KpiCard label="Ads-Budget" value="—" footer={
+                linkStand?.meta.zustand === 'verknuepft'
+                  ? <span>Verknüpft, kein Budget hinterlegt</span>
+                  : <Leer klein text="Kein Meta-Werbekonto verknüpft" aktion={zuVerknuepfungen} />
+              } />
+            ) : <KpiCard label="Ads-Budget" value={fmtEur(client.ads_budget)} />}
             {(() => {
               if (qontoForbidden) {
                 return <KpiCard label="Cash Collect offen" value={fmtEur(client.cash_collect_offen)} hint="Keine Finanzen-Berechtigung – zeige Hub-Wert" />;
@@ -777,7 +885,7 @@ export default function KundenDetail() {
                     value="—"
                     hint="Keine Qonto-Verknüpfung vorhanden"
                     footer={
-                      <Link to="/finanzen/verknuepfungen" className="text-primary hover:underline">
+                      <Link to={`/kunden/${id}?tab=verknuepfungen`} onClick={(e) => { e.preventDefault(); zuVerknuepfungen(); }} className="text-primary hover:underline">
                         Qonto-Verknüpfung erstellen
                       </Link>
                     }
@@ -860,13 +968,13 @@ export default function KundenDetail() {
           <Card>
             <CardHeader><CardTitle className="text-base">Stammdaten</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
-              <InfoField label="Name" value={client.name} />
-              <InfoField label="Vor- & Nachname" value={client.vor_nachname} />
-              <InfoField label="E-Mail" value={client.email} type="email" />
-              <InfoField label="Telefon" value={client.phone} type="phone" />
-              <InfoField label="Website" value={client.website_url} type="url" />
-              <InfoField label="Branche" value={getBrancheLabel(client.branche_id) || client.branche} />
-              <InfoField label="Unternehmen" value={unternehmen?.display_name} />
+              <QuellFeld label="Name" crm={client.name} close={closeWerte?.name} verknuepft={!!closeLink} />
+              <QuellFeld label="Vor- & Nachname" crm={client.vor_nachname} close={closeWerte?.person} verknuepft={!!closeLink} />
+              <QuellFeld label="E-Mail" crm={client.email} close={closeWerte?.email} verknuepft={!!closeLink} type="email" />
+              <QuellFeld label="Telefon" crm={client.phone} close={closeWerte?.phone} verknuepft={!!closeLink} type="phone" />
+              <QuellFeld label="Website" crm={client.website_url} close={closeWerte?.website} verknuepft={!!closeLink} type="url" />
+              <QuellFeld label="Branche" crm={getBrancheLabel(client.branche_id) || client.branche} close={closeWerte?.branche} verknuepft={!!closeLink} />
+              <QuellFeld label="Unternehmen" crm={unternehmen?.display_name} close={closeWerte?.name} verknuepft={!!closeLink} />
               <InfoField label="Meta Account ID" value={client.meta_account_id} />
             </CardContent>
           </Card>
@@ -1009,6 +1117,9 @@ export default function KundenDetail() {
 
         {/* DEALS */}
         <TabsContent value="deals" className="mt-4 space-y-6">
+          {closeOpps.length + deals.length === 0 && (
+            <Leer text={closeLink ? 'Verknüpft, keine Deals in Close vorhanden' : 'Kein Close-Lead verknüpft'} aktion={closeLink ? undefined : zuVerknuepfungen} />
+          )}
           {/* Aus Close.com synct */}
           <Card>
             <CardHeader className="pb-3">
@@ -1106,7 +1217,7 @@ export default function KundenDetail() {
         {/* ONEPAGE LEADS */}
         <TabsContent value="onepage" className="mt-4 space-y-2">
           {onepageProjects.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-muted-foreground">Keine Onepage-Leads</CardContent></Card>
+            <Card><CardContent className="py-8"><Leer zentriert text="Keine Onepage-Website verknüpft" aktion={zuVerknuepfungen} /></CardContent></Card>
           ) : onepageProjects.map(o => (
             <Card key={o.id}>
               <CardContent className="p-4 flex items-center justify-between">
@@ -1212,8 +1323,8 @@ export default function KundenDetail() {
         <TabsContent value="meta-ads" className="mt-4 space-y-4">
           {!client?.meta_account_id ? (
             <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                Keine Meta Account ID hinterlegt. Bitte im Bearbeiten-Panel ergänzen.
+              <CardContent className="py-8">
+                <Leer zentriert text="Kein Meta-Werbekonto verknüpft" aktion={zuVerknuepfungen} />
               </CardContent>
             </Card>
           ) : liveLoading ? (
@@ -1362,6 +1473,9 @@ export default function KundenDetail() {
         {/* PROJEKTE */}
         {/* AKTIVITÄTEN (Close.com) */}
         <TabsContent value="aktivitaeten" className="mt-4 space-y-3">
+          {closeActs.length === 0 && (
+            <Leer text={closeLink ? 'Verknüpft, keine Aktivitäten in Close vorhanden' : 'Kein Close-Lead verknüpft'} aktion={closeLink ? undefined : zuVerknuepfungen} />
+          )}
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1454,7 +1568,7 @@ export default function KundenDetail() {
         {/* PROJEKTE */}
         <TabsContent value="projekte" className="mt-4 space-y-2">
           {projects.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-muted-foreground">Keine Projekte</CardContent></Card>
+            <Card><CardContent className="py-8"><Leer zentriert text={closeLink ? 'Keine laufenden Projekte für diesen Kunden' : 'Kein Close-Lead verknüpft — Projekte entstehen aus den Leistungen in Close'} aktion={closeLink ? undefined : zuVerknuepfungen} /></CardContent></Card>
           ) : projects.map(p => (
             <Card
               key={p.id}

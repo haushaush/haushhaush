@@ -23,6 +23,7 @@ import Kunden from "./pages/Kunden.tsx";
 import KundenDetail from "./pages/KundenDetail.tsx";
 import KundenAbschluesse from "./pages/KundenAbschluesse.tsx";
 import KundenLaufzeiten from "./pages/KundenLaufzeiten.tsx";
+import KundenVerknuepfungen from "./pages/KundenVerknuepfungen.tsx";
 import Projekte from "./pages/Projekte.tsx";
 import ProjekteAufgaben from "./pages/ProjekteAufgaben.tsx";
 
@@ -165,6 +166,7 @@ const App = () => (
                 <Route path="/kunden" element={<PermissionRoute permissionKey="clients.view"><DL><Kunden /></DL></PermissionRoute>} />
                 <Route path="/abschluesse" element={<PermissionRoute permissionKey="clients.view"><DL><Abschluesse /></DL></PermissionRoute>} />
                 <Route path="/kunden/abschluesse" element={<PermissionRoute permissionKey="clients.view"><DL><KundenAbschluesse /></DL></PermissionRoute>} />
+                <Route path="/kunden/verknuepfungen" element={<PermissionRoute permissionKey="clients.view"><DL><KundenVerknuepfungen /></DL></PermissionRoute>} />
                 <Route path="/kunden/laufzeiten" element={<PermissionRoute permissionKey="clients.laufzeiten.view"><DL><KundenLaufzeiten /></DL></PermissionRoute>} />
                 <Route path="/kunden/liste" element={<PermissionRoute permissionKey="clients.view"><DL><Placeholder title="Kunden" /></DL></PermissionRoute>} />
                 <Route path="/kunden/:id" element={<PermissionRoute permissionKey="clients.view"><DL><KundenDetail /></DL></PermissionRoute>} />

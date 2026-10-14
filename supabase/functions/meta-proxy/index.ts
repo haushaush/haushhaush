@@ -62,6 +62,15 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Rate limit is transient: return 200 with the error so the client retries and shows a calm message
+    // instead of a hard failure that blanks the page.
+    if (!res.ok && [4, 17, 32, 80004].includes(code)) {
+      return new Response(JSON.stringify({ error: data.error, rate_limited: true }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify(data), {
       status: res.status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

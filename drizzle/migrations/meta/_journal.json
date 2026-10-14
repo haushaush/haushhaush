@@ -176,6 +176,13 @@
       "when": 1791967226374,
       "tag": "0024_projects_archive_atomic_reset",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791974937428,
+      "tag": "0025_kunden_verknuepfungen",
+      "breakpoints": true
     }
   ]
 }
