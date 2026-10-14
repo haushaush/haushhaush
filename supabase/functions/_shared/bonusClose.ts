@@ -106,3 +106,17 @@ export async function checkCron(admin: any, req: Request, name: string) {
   const { data } = await admin.from("bonus_cron_tokens").select("token").eq("name", name).maybeSingle();
   return !!data?.token && data.token === t;
 }
+
+/** Single active customer source for runtime and project workflows; read-only. */
+export const ACTIVE_CLIENT_STATUS_IDS = ["stat_QTXREz0rC7CthlaLyMUqbfRUst8okC2wdQYenN55bhd", "stat_emI3hqIc7XkLjiPW7jeIGBqCascfl96wLikyNo0p0qe"] as const;
+export async function activeCloseCustomers(call: Close): Promise<any[]> {
+  const out: any[] = [];
+  for (const statusId of ACTIVE_CLIENT_STATUS_IDS) {
+    for (let skip = 0; ; skip += 100) {
+      const page = await call(`/lead/?query=${encodeURIComponent(`status_id:${statusId}`)}&_fields=id,display_name,status_id,status_label,date_updated&_limit=100&_skip=${skip}`);
+      out.push(...(page.data || []).filter((lead: any) => lead.status_id === statusId));
+      if (!page.has_more) break;
+    }
+  }
+  return Array.from(new Map(out.map((lead: any) => [lead.id, lead])).values());
+}

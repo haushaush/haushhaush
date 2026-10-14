@@ -63,7 +63,7 @@ export function LaufzeitAktionen({ r, onDone }: { r: AktionRow; onDone: () => Pr
     const d = await rufen({ aktion: 'opps', client_id: r.client_id });
     if ('error' in d && d.error) { setErr(`Opportunities aus Close nicht geladen: ${d.error}`); setOpps([]); return; }
     const l = (d as { opps?: Opp[] }).opps || []; setOpps(l);
-    if (l.length === 1) setOpp(l[0].id); else if (l.some(o => o.id === r.close_opportunity_id)) setOpp(r.close_opportunity_id!);
+    if (l.length === 1) setOpp(l[0].id); else if (r.close_opportunity_id && l.some(o => o.id === r.close_opportunity_id)) setOpp(r.close_opportunity_id);
   };
 
   const m = Number(monate); const mOk = Number.isInteger(m) && m >= 1 && m <= 120;
@@ -88,14 +88,14 @@ export function LaufzeitAktionen({ r, onDone }: { r: AktionRow; onDone: () => Pr
 
   return <>
     <span className="hidden md:inline-flex gap-1">
-      <Button size="sm" variant={hervor ? 'default' : 'outline'} className="h-7" disabled={busy || !r.close_opportunity_id} onClick={openV}><RotateCw className="h-3 w-3 mr-1" />Verlängern</Button>
+      <Button size="sm" variant={hervor ? 'default' : 'outline'} className="h-7" disabled={busy} onClick={openV}><RotateCw className="h-3 w-3 mr-1" />Verlängern</Button>
       <Button size="sm" variant="outline" className="h-7 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={busy} onClick={openB}><LogOut className="h-3 w-3 mr-1" />Beenden</Button>
     </span>
     <span className="md:hidden">
       <DropdownMenu>
         <DropdownMenuTrigger asChild><Button size="icon" variant={hervor ? 'default' : 'ghost'} className="h-7 w-7" aria-label="Weitere Aktionen"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem disabled={!r.close_opportunity_id} onClick={openV}><RotateCw className="h-3 w-3 mr-2" />Verlängern</DropdownMenuItem>
+          <DropdownMenuItem disabled={busy} onClick={openV}><RotateCw className="h-3 w-3 mr-2" />Verlängern</DropdownMenuItem>
           <DropdownMenuItem className="text-destructive" onClick={openB}><LogOut className="h-3 w-3 mr-2" />Beenden</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

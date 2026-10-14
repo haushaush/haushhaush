@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { X, ExternalLink, Save, Users, CalendarIcon } from 'lucide-react';
+import { X, ExternalLink, Save, Users, CalendarIcon, ArchiveRestore } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -49,7 +50,7 @@ const BRANCHE_OPTIONS = [
   'Sterbegeld', 'Kindervorsorge', 'Haftpflicht', 'Wohngebäude', 'RS', 'Aviation', 'Andere',
 ];
 
-interface Props { project: any; onClose: () => void; }
+interface Props { project: any; onClose: () => void; onChanged?: () => Promise<void>; }
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -229,7 +230,8 @@ function DatePickerField({ value, onChange }: { value: string | null; onChange: 
   );
 }
 
-export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
+export default function ProjekteSlidePanel({ project: p, onClose, onChanged }: Props) {
+  const { hasRole } = useAuth();
   const navigate = useNavigate();
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
@@ -262,11 +264,19 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
   const upd = (k: string, v: any) => setEditData(prev => ({ ...prev, [k]: v }));
 
   const handleSave = async () => {
+    if (p.archiviert_am) return;
     setSaving(true);
-    const { id, created_at, ...rest } = editData;
+    const { id, created_at, archiviert_am, ...rest } = editData;
     const { error } = await supabase.from('projects').update(rest as any).eq('id', p.id);
     if (error) toast.error('Fehler', { description: error.message });
     else toast.success('Gespeichert');
+    setSaving(false);
+  };
+  const restore = async () => {
+    setSaving(true);
+    const { error } = await supabase.rpc('projects_restore', { p_project_id: p.id });
+    if (error) toast.error('Wiederherstellung fehlgeschlagen', { description: error.message });
+    else { toast.success('Projekt wiederhergestellt'); await onChanged?.(); onClose(); }
     setSaving(false);
   };
 
@@ -323,6 +333,7 @@ export default function ProjekteSlidePanel({ project: p, onClose }: Props) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          {p.archiviert_am && <div className="space-y-3 text-sm text-muted-foreground"><p>Archiviert am {new Date(p.archiviert_am).toLocaleDateString('de-DE')}</p>{hasRole('admin') && <Button variant="outline" disabled={saving} onClick={() => void restore()} className="gap-2"><ArchiveRestore className="h-4 w-4" />Wiederherstellen</Button>}</div>}
 
           {/* HAUPTKUNDE */}
           {directClient && (

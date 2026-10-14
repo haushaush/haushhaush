@@ -5510,10 +5510,12 @@ export type Database = {
           ads_budget: number | null
           aktuelle_rate: number | null
           aktueller_monat: string | null
+          archiviert_am: string | null
           branche: string[] | null
           cash_collect: number | null
           cash_collect_uebernommen: boolean | null
           client_id: string | null
+          close_lead_id: string | null
           created_at: string
           deadline: string | null
           deadline_management: boolean | null
@@ -5557,10 +5559,12 @@ export type Database = {
           ads_budget?: number | null
           aktuelle_rate?: number | null
           aktueller_monat?: string | null
+          archiviert_am?: string | null
           branche?: string[] | null
           cash_collect?: number | null
           cash_collect_uebernommen?: boolean | null
           client_id?: string | null
+          close_lead_id?: string | null
           created_at?: string
           deadline?: string | null
           deadline_management?: boolean | null
@@ -5604,10 +5608,12 @@ export type Database = {
           ads_budget?: number | null
           aktuelle_rate?: number | null
           aktueller_monat?: string | null
+          archiviert_am?: string | null
           branche?: string[] | null
           cash_collect?: number | null
           cash_collect_uebernommen?: boolean | null
           client_id?: string | null
+          close_lead_id?: string | null
           created_at?: string
           deadline?: string | null
           deadline_management?: boolean | null
@@ -8869,6 +8875,12 @@ export type Database = {
           removed_count: number
         }[]
       }
+      projects_reset_execute: {
+        Args: { p_actor: string; p_fingerprint: string; p_plan: Json }
+        Returns: Json
+      }
+      projects_reset_snapshot: { Args: never; Returns: Json }
+      projects_restore: { Args: { p_project_id: string }; Returns: undefined }
       qonto_auto_link_clients: { Args: never; Returns: Json }
       qonto_client_link_rows: {
         Args: never

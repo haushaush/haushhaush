@@ -10,6 +10,10 @@ import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, ResponsiveContainer, LabelList } from 'recharts';
 import ProjekteSlidePanel from '@/components/projekte/ProjekteSlidePanel';
 import NewProjectPanel from '@/components/projekte/NewProjectPanel';
+import { useAuth } from '@/contexts/AuthContext';
+import { Switch } from '@/components/ui/switch';
+import { ProjectResetDialog } from '@/components/projekte/ProjectResetDialog';
+import { loadProjects } from '@/lib/projectQueries';
 import {
   DndContext,
   DragOverlay,
@@ -110,7 +114,7 @@ function DraggableProjectCard({
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: p.id,
-    disabled: isDragDisabled,
+    disabled: isDragDisabled || !!p.archiviert_am,
   });
 
   const style = transform ? {
@@ -156,6 +160,7 @@ function ProjectCardContent({
     <div
       onClick={e => { if (!isDragging && onClick) { e.stopPropagation(); onClick(); } }}
       className={`w-full text-left bg-card border border-border rounded-lg p-3.5 transition-all group cursor-grab active:cursor-grabbing
+        ${p.archiviert_am ? 'opacity-60 border-dashed bg-muted/30 cursor-pointer' : ''}
         ${isDragging ? 'shadow-xl ring-2 ring-primary/30' : 'hover:shadow-md hover:border-primary/30'}`}
     >
       <div className="flex items-start gap-2">
@@ -168,6 +173,7 @@ function ProjectCardContent({
       )}
 
       <div className="flex flex-wrap items-center gap-1.5 mt-2">
+        {p.archiviert_am && <Badge variant="outline" className="text-[10px] text-muted-foreground">Archiviert</Badge>}
         <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-[4px] ${STATUS_STYLES[status] || 'bg-muted text-muted-foreground'}`}>{status}</span>
         {firstBranche && (
           <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-[4px] ${BRANCHE_COLORS[firstBranche] || 'bg-muted text-muted-foreground'}`}>{firstBranche}</span>
@@ -270,6 +276,9 @@ function DroppableKanbanColumn({
 
 /* ── Main Page ────────────────────────────────────── */
 export default function Projekte() {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
+  const [showArchive, setShowArchive] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -307,16 +316,19 @@ export default function Projekte() {
 
   /* ── Data fetching ── */
   const fetchData = useCallback(async () => {
-    const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
-    setProjects(data || []);
-    setLoading(false);
-    return data || [];
-  }, []);
+    try { const data = await loadProjects(showArchive); setProjects(data); return data; }
+    catch (error) { toast.error('Projekte konnten nicht geladen werden', { description: error instanceof Error ? error.message : undefined }); return []; }
+    finally { setLoading(false); }
+  }, [showArchive]);
 
   const fetchRelations = useCallback(async () => {
-    const { data: deals } = await supabase.from('close_deals').select('id, client_name, notion_id');
+    const [{ data: deals }, { data: clients }] = await Promise.all([
+      supabase.from('close_deals').select('id, client_name, notion_id'),
+      supabase.from('clients').select('id, name, notion_id'),
+    ]);
     const nameMap: Record<string, string> = {};
     (deals || []).forEach((d: any) => { if (d.notion_id) nameMap[d.notion_id] = d.client_name; });
+    (clients || []).forEach(c => { nameMap[c.id] = c.name; if (c.notion_id) nameMap[c.notion_id] = c.name; });
     setCustomerNames(nameMap);
   }, []);
 
@@ -336,7 +348,6 @@ export default function Projekte() {
   useEffect(() => {
     fetchRelations();
     fetchData().then((data) => {
-      if (data.length === 0 && !autoSyncDone.current) { autoSyncDone.current = true; handleSync(); }
       const projektId = searchParams.get('projekt');
       if (projektId && !autoOpenDone.current) {
         autoOpenDone.current = true;
@@ -345,6 +356,7 @@ export default function Projekte() {
       }
     });
   }, []);
+  useEffect(() => { void fetchData(); }, [showArchive, fetchData]);
 
   /* ── Filtering ── */
   const filtered = useMemo(() => projects.filter(p => {
@@ -365,7 +377,7 @@ export default function Projekte() {
       });
     } else if (viewMode === 'kunde') {
       filtered.forEach(p => {
-        const kundenIds: string[] = p.verknuepfte_kunden_ids || [];
+          const kundenIds: string[] = p.verknuepfte_kunden_ids?.length ? p.verknuepfte_kunden_ids : (p.client_id ? [p.client_id] : []);
         if (kundenIds.length === 0) {
           if (!groups['Ohne Kunde']) groups['Ohne Kunde'] = [];
           groups['Ohne Kunde'].push(p);
@@ -437,7 +449,7 @@ export default function Projekte() {
     const projectId = active.id as string;
     const targetColumn = over.id as string;
     const project = projects.find(p => p.id === projectId);
-    if (!project) return;
+    if (!project || project.archiviert_am) return;
 
     if (viewMode === 'status') {
       const oldStatus = project.projektstatus || 'Noch nicht gestartet';
@@ -561,7 +573,9 @@ export default function Projekte() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="flex items-center gap-2 text-xs text-muted-foreground"><Switch checked={showArchive} onCheckedChange={setShowArchive} aria-label="Archiv anzeigen" />Archiv anzeigen</label>
+          {isAdmin && <ProjectResetDialog onDone={async () => { setSelectedProject(null); await fetchData(); }} />}
           <Button variant="outline" size="sm" className="h-9" onClick={handleSync} disabled={syncing}>
             {syncing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
             Importieren
@@ -727,6 +741,7 @@ export default function Projekte() {
       {selectedProject && (
         <ProjekteSlidePanel
           project={selectedProject}
+          onChanged={async () => { setSelectedProject(null); await fetchData(); }}
           onClose={() => setSelectedProject(null)}
         />
       )}

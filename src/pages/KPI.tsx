@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { projectQuery } from '@/lib/projectQueries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -43,7 +44,7 @@ export default function KPI() {
         supabase.from('sales_performance').select('*').order('datum', { ascending: false }),
         supabase.from('ad_performance_intern').select('*').order('datum', { ascending: false }),
         supabase.from('team').select('*'),
-        supabase.from('projects').select('*'),
+        projectQuery(),
         supabase.from('tasks').select('*'),
       ]);
       if (c.data) setClients(c.data);

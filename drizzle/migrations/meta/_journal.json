@@ -169,6 +169,13 @@
       "when": 1791965041411,
       "tag": "0023_laufzeit_verlaengerung",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791967226374,
+      "tag": "0024_projects_archive_atomic_reset",
+      "breakpoints": true
     }
   ]
 }
