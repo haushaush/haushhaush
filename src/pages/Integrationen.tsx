@@ -29,6 +29,18 @@ interface CloseDeal {
   wert_eur: number | null;
 }
 
+// Credentials live only in secrets (META_ACCESS_TOKEN, GOOGLE_OAUTH_CLIENT_ID/SECRET), never in integration_settings.
+const SECRET_PROVIDERS = new Set(['meta_ads', 'google_drive']);
+function stripSecrets(providerId: string, cfg: any): any {
+  if (!cfg || typeof cfg !== 'object' || !SECRET_PROVIDERS.has(providerId)) return cfg;
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(cfg)) {
+    if (/token|secret|key|password|client_id/i.test(k)) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
 export default function Integrationen() {
   const { user, hasRole } = useAuth();
   const isAdmin = hasRole('admin');
@@ -112,7 +124,7 @@ export default function Integrationen() {
     const existing = getSettingForProvider(providerId);
     if (existing) {
       await supabase.from('integration_settings').update({
-        config: data,
+        config: stripSecrets(providerId, data) as any,
         connected: true,
         updated_at: new Date().toISOString(),
       }).eq('id', existing.id);
@@ -121,7 +133,7 @@ export default function Integrationen() {
         user_id: user.id,
         provider: providerId,
         display_name: PROVIDERS.find(p => p.id === providerId)?.name || providerId,
-        config: data,
+        config: stripSecrets(providerId, data) as any,
         connected: true,
       });
     }
@@ -136,7 +148,7 @@ export default function Integrationen() {
     if (existing) {
       const updatedConfig = { ...existing.config, dynamic_data: dynamicData };
       await supabase.from('integration_settings').update({
-        config: updatedConfig as any,
+        config: stripSecrets(providerId, updatedConfig) as any,
         updated_at: new Date().toISOString(),
       }).eq('id', existing.id);
     }
@@ -341,7 +353,7 @@ export default function Integrationen() {
     if (user && setting) {
       const serializedResults = results.map(r => ({ id: r.id, label: r.label, ok: r.ok, detail: r.detail || null }));
       await supabase.from('integration_settings').update({
-        config: { ...config, health_score: score, last_test: new Date().toISOString(), test_results: serializedResults } as any,
+        config: { ...stripSecrets('meta_ads', stripSecrets('google_drive', config)), health_score: score, last_test: new Date().toISOString(), test_results: serializedResults } as any,
         last_sync_at: new Date().toISOString(),
         last_sync_status: score > 50 ? 'success' : 'error',
       }).eq('id', setting.id);

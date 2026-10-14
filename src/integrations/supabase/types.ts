@@ -1770,6 +1770,24 @@ export type Database = {
         }
         Relationships: []
       }
+      buchhaltung_quelle: {
+        Row: {
+          marke: string
+          quelle: string
+          updated_at: string
+        }
+        Insert: {
+          marke: string
+          quelle: string
+          updated_at?: string
+        }
+        Update: {
+          marke?: string
+          quelle?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bug_reports: {
         Row: {
           browser_info: string | null
@@ -4300,6 +4318,119 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lexoffice_client_links: {
+        Row: {
+          client_id: string | null
+          confidence: number | null
+          created_at: string
+          id: string
+          is_confirmed: boolean
+          lexoffice_contact_id: string
+          lexoffice_contact_name: string | null
+          match_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          is_confirmed?: boolean
+          lexoffice_contact_id: string
+          lexoffice_contact_name?: string | null
+          match_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          is_confirmed?: boolean
+          lexoffice_contact_id?: string
+          lexoffice_contact_name?: string | null
+          match_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lexoffice_client_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lexoffice_contacts: {
+        Row: {
+          contact_id: string
+          email: string | null
+          name: string | null
+          raw: Json | null
+          updated_at: string
+        }
+        Insert: {
+          contact_id: string
+          email?: string | null
+          name?: string | null
+          raw?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          contact_id?: string
+          email?: string | null
+          name?: string | null
+          raw?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lexoffice_invoices: {
+        Row: {
+          contact_id: string | null
+          contact_name: string | null
+          currency: string | null
+          due_date: string | null
+          number: string | null
+          paid_date: string | null
+          raw: Json | null
+          status: string | null
+          total_amount: number | null
+          updated_at: string
+          voucher_date: string | null
+          voucher_id: string
+        }
+        Insert: {
+          contact_id?: string | null
+          contact_name?: string | null
+          currency?: string | null
+          due_date?: string | null
+          number?: string | null
+          paid_date?: string | null
+          raw?: Json | null
+          status?: string | null
+          total_amount?: number | null
+          updated_at?: string
+          voucher_date?: string | null
+          voucher_id: string
+        }
+        Update: {
+          contact_id?: string | null
+          contact_name?: string | null
+          currency?: string | null
+          due_date?: string | null
+          number?: string | null
+          paid_date?: string | null
+          raw?: Json | null
+          status?: string | null
+          total_amount?: number | null
+          updated_at?: string
+          voucher_date?: string | null
+          voucher_id?: string
+        }
+        Relationships: []
       }
       meta_accounts_cache: {
         Row: {
@@ -8910,6 +9041,19 @@ export type Database = {
       }
       bonus_survey_rate_allow: { Args: { _ip_hash: string }; Returns: boolean }
       bonus_survey_save: { Args: { _payload: Json }; Returns: string }
+      buchhaltung_quelle_ungeklaert: {
+        Args: never
+        Returns: {
+          client_id: string
+          client_name: string
+          grund: string
+          marke: string
+        }[]
+      }
+      client_buchhaltung_quelle: {
+        Args: { client_uuid: string }
+        Returns: Json
+      }
       create_or_get_unternehmen: { Args: { p_name: string }; Returns: string }
       current_user_team_rolle: {
         Args: never
@@ -8951,6 +9095,24 @@ export type Database = {
           team_name: string
           user_email: string
           user_id: string
+        }[]
+      }
+      get_client_finance_summary: {
+        Args: { client_uuid: string }
+        Returns: Json
+      }
+      get_client_open_invoices: {
+        Args: { client_uuid: string }
+        Returns: {
+          currency: string
+          due_date: string
+          id: string
+          invoice_url: string
+          issue_date: string
+          number: string
+          paid_at: string
+          status: string
+          total_amount: number
         }[]
       }
       get_client_qonto_finance_summary: {

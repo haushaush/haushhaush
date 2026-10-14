@@ -2,18 +2,20 @@ import { supabase } from '@/integrations/supabase/client';
 
 /** Alle externen Systeme eines Kunden — eine Quelle für Tab, Kacheln und Sammelansicht. */
 /** Slack und Pipedrive werden nicht auf Kundenebene verknüpft. */
-export type SystemKey = 'close' | 'meta' | 'qonto' | 'onepage' | 'drive' | 'superchat';
+export type SystemKey = 'close' | 'meta' | 'qonto' | 'lexoffice' | 'onepage' | 'drive' | 'superchat';
 
 export const SYSTEME: { key: SystemKey; label: string; objekt: string; angebunden: boolean }[] = [
   { key: 'close', label: 'Close', objekt: 'Lead', angebunden: true },
   { key: 'meta', label: 'Meta Ads', objekt: 'Werbekonto', angebunden: true },
   { key: 'qonto', label: 'Qonto', objekt: 'Gegenpartei', angebunden: true },
+  { key: 'lexoffice', label: 'lexoffice', objekt: 'Kontakt', angebunden: true },
   { key: 'onepage', label: 'Onepage', objekt: 'Website', angebunden: true },
   { key: 'drive', label: 'Google Drive', objekt: 'Ordner', angebunden: true },
   { key: 'superchat', label: 'Superchat', objekt: 'Kontakt', angebunden: false },
 ];
 
-export interface Objekt { id: string; name: string | null; url?: string | null; ref?: string; detail?: string }
+/** belegt = Name des anderen CRM-Kunden, dem das Objekt schon gehört (Treffer bleibt sichtbar, aber gesperrt). */
+export interface Objekt { id: string; name: string | null; url?: string | null; ref?: string; detail?: string; belegt?: string | null }
 export interface Vorschlag extends Objekt { system: SystemKey; grund: string }
 export type SystemStand =
   | { zustand: 'verknuepft'; objekt: Objekt }
@@ -77,19 +79,128 @@ async function alle(table: string, select: string, apply?: (q: any) => any): Pro
 
 const metaUrl = (id: string) => `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${id.replace(/^act_/, '')}`;
 
+// ---------- Buchhaltung (Qonto / lexoffice) ----------
+interface BuchKand { id: string; name: string | null; email: string | null; anzahl: number; letzte: string | null }
+interface BuchLink { ref: string; ext: string | null; name: string | null; client_id: string | null; is_confirmed: boolean; match_type: string | null }
+const fmtD = (d: string | null) => d ? new Date(d).toLocaleDateString('de-DE') : null;
+const buchDetail = (c?: BuchKand) => c ? [`${c.anzahl} Rechnung${c.anzahl === 1 ? '' : 'en'}`, c.letzte && `letzte ${fmtD(c.letzte)}`].filter(Boolean).join(' · ') : undefined;
+
+function qontoKandidaten(rows: any[]): Map<string, BuchKand> {
+  const m = new Map<string, BuchKand>();
+  for (const r of rows) {
+    if (!r.client_id) continue;
+    const c = m.get(r.client_id) || { id: r.client_id, name: r.client_name, email: r.contact_email, anzahl: 0, letzte: null };
+    c.anzahl++; c.name = c.name || r.client_name; c.email = c.email || r.contact_email;
+    if (r.issue_date && (!c.letzte || r.issue_date > c.letzte)) c.letzte = r.issue_date;
+    m.set(r.client_id, c);
+  }
+  return m;
+}
+function lexKandidaten(contacts: any[], invoices: any[]): Map<string, BuchKand> {
+  const m = new Map<string, BuchKand>(contacts.map(c => [c.contact_id, { id: c.contact_id, name: c.name, email: c.email, anzahl: 0, letzte: null }]));
+  for (const r of invoices) {
+    const c = r.contact_id && m.get(r.contact_id); if (!c) continue;
+    c.anzahl++; if (r.voucher_date && (!c.letzte || r.voucher_date > c.letzte)) c.letzte = r.voucher_date;
+  }
+  return m;
+}
+function buchStand(k: KundeMin, sys: 'qonto' | 'lexoffice', kand: Map<string, BuchKand>, links: BuchLink[],
+  ok: (k: KundeMin, s: SystemKey, id: string) => boolean): SystemStand {
+  const mine = links.find(l => l.client_id === k.id && l.is_confirmed);
+  if (mine) {
+    const c = mine.ext ? kand.get(mine.ext) : undefined;
+    return { zustand: 'verknuepft', objekt: { id: mine.ext || mine.ref, ref: mine.ref, name: mine.name || c?.name || null, detail: buchDetail(c) } };
+  }
+  const offen = links.find(l => l.client_id === k.id && !l.is_confirmed && l.ext && ok(k, sys, l.ext));
+  if (offen) {
+    const c = kand.get(offen.ext!);
+    return { zustand: 'vorschlag', vorschlag: { system: sys, id: offen.ext!, ref: offen.ref, name: offen.name || c?.name || null, detail: buchDetail(c), grund: offen.match_type === 'exact' ? 'Treffer über exakten Namen' : 'Treffer über Firmennamen' } };
+  }
+  const belegt = new Set(links.filter(l => l.client_id && l.is_confirmed && l.ext).map(l => l.ext!));
+  const frei = [...kand.values()].filter(c => !belegt.has(c.id) && ok(k, sys, c.id));
+  const kd = domainVon(k.email);
+  const mail = kd ? frei.find(c => domainVon(c.email) === kd) : undefined;
+  const t = mail ? { item: mail, grund: 'Treffer über E-Mail-Domain' } : besterName(k, frei, c => c.name);
+  if (!t) return { zustand: 'offen' };
+  const ref = links.find(l => l.ext === t.item.id)?.ref;
+  return { zustand: 'vorschlag', vorschlag: { system: sys, id: t.item.id, ref, name: t.item.name, detail: buchDetail(t.item), grund: `${t.grund} · ${buchDetail(t.item)}` } };
+}
+
+async function belegtNamen(clientIds: string[]): Promise<Map<string, string>> {
+  const ids = [...new Set(clientIds.filter(Boolean))];
+  if (!ids.length) return new Map();
+  const { data } = await supabase.from('clients').select('id, name').in('id', ids);
+  return new Map((data || []).map((c: any) => [c.id, c.name || 'anderer Kunde']));
+}
+
+async function sucheBuch(sys: 'qonto' | 'lexoffice', q: string, clientId?: string): Promise<Objekt[]> {
+  const like = `%${q}%`;
+  let kand: BuchKand[];
+  let links: { ext: string; ref: string; client_id: string | null; is_confirmed: boolean }[];
+  if (sys === 'qonto') {
+    const { data, error } = await supabase.from('qonto_client_invoices').select('client_id, client_name, contact_email, issue_date')
+      .or(`client_name.ilike.${like},contact_email.ilike.${like}`).limit(1000);
+    if (error) throw new Error(error.message);
+    kand = [...qontoKandidaten(data || []).values()].slice(0, 15);
+    const ids = kand.map(c => c.id);
+    const { data: l } = ids.length ? await supabase.from('qonto_client_links').select('id, qonto_client_id, client_id, is_confirmed').in('qonto_client_id', ids) : { data: [] as any[] };
+    links = (l || []).map((r: any) => ({ ext: r.qonto_client_id, ref: r.id, client_id: r.client_id, is_confirmed: r.is_confirmed }));
+  } else {
+    const { data, error } = await (supabase.from as any)('lexoffice_contacts').select('contact_id, name, email')
+      .or(`name.ilike.${like},email.ilike.${like}`).limit(15);
+    if (error) throw new Error(error.message);
+    const ids = (data || []).map((c: any) => c.contact_id);
+    const { data: inv } = ids.length ? await (supabase.from as any)('lexoffice_invoices').select('contact_id, voucher_date').in('contact_id', ids) : { data: [] };
+    kand = [...lexKandidaten(data || [], inv || []).values()];
+    const { data: l } = ids.length ? await (supabase.from as any)('lexoffice_client_links').select('id, lexoffice_contact_id, client_id, is_confirmed').in('lexoffice_contact_id', ids) : { data: [] };
+    links = (l || []).map((r: any) => ({ ext: r.lexoffice_contact_id, ref: r.id, client_id: r.client_id, is_confirmed: r.is_confirmed }));
+  }
+  const fremd = links.filter(l => l.client_id && l.is_confirmed && l.client_id !== clientId);
+  const namen = await belegtNamen(fremd.map(l => l.client_id!));
+  return kand.map(c => {
+    const l = links.find(x => x.ext === c.id);
+    const f = fremd.find(x => x.ext === c.id);
+    return { id: c.id, ref: l?.ref, name: c.name, detail: [buchDetail(c), c.email].filter(Boolean).join(' · '), belegt: f ? namen.get(f.client_id!) : null };
+  });
+}
+
+async function buchVerknuepfen(sys: 'qonto' | 'lexoffice', clientId: string, o: Objekt) {
+  const t = sys === 'qonto' ? 'qonto_client_links' : 'lexoffice_client_links';
+  const extCol = sys === 'qonto' ? 'qonto_client_id' : 'lexoffice_contact_id';
+  const nameCol = sys === 'qonto' ? 'qonto_client_name' : 'lexoffice_contact_name';
+  const { data: ex } = await (supabase.from as any)(t).select('id, client_id, is_confirmed').eq(extCol, o.id).maybeSingle();
+  if (ex?.client_id && ex.is_confirmed && ex.client_id !== clientId) {
+    const n = (await belegtNamen([ex.client_id])).get(ex.client_id);
+    throw new Error(`Bereits ${n} zugeordnet`);
+  }
+  const patch = { client_id: clientId, is_confirmed: true, match_type: 'manual', confidence: 1 };
+  if (ex) chk(await (supabase.from as any)(t).update(patch).eq('id', ex.id));
+  else if (sys === 'qonto') {
+    // Namensindex ist eindeutig: vorhandene Zeile gleichen Namens ohne ID übernehmen.
+    const { data: byName } = await supabase.from('qonto_client_links').select('id, qonto_client_id').ilike('qonto_client_name', o.name || '').maybeSingle();
+    if (byName && !byName.qonto_client_id) chk(await supabase.from('qonto_client_links').update({ ...patch, qonto_client_id: o.id } as any).eq('id', byName.id));
+    else chk(await supabase.from('qonto_client_links').insert({ ...patch, qonto_client_id: o.id, qonto_client_name: o.name } as any));
+  } else chk(await (supabase.from as any)(t).insert({ ...patch, [extCol]: o.id, [nameCol]: o.name }));
+}
+
 /** Lädt Verknüpfungen + Vorschläge für die übergebenen Kunden (alle Tabellen einmal, auch für die Sammelansicht). */
 export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<SystemKey, SystemStand>>> {
-  const [cl, sp, km, mc, ql, qi, op, dm, vw] = await Promise.all([
+  const [cl, sp, km, mc, ql, qi, op, dm, vw, ll, lc, li] = await Promise.all([
     alle('close_link', 'client_id, close_lead_id, last_synced_at'),
     alle('close_lead_spiegel', 'close_lead_id, name, status_label'),
     alle('kunde_meta_accounts', 'client_id, meta_account_id, meta_account_name'),
     alle('meta_accounts_cache', 'meta_account_id, name, business_name'),
     alle('qonto_client_links', 'id, qonto_client_name, qonto_client_id, client_id, match_type, is_confirmed'),
-    alle('qonto_client_invoices', 'client_name'),
+    alle('qonto_client_invoices', 'client_id, client_name, contact_email, issue_date'),
     alle('onepage_projects', 'id, name, page_url, client_id_fk'),
     alle('drive_folder_mappings', 'entity_id, drive_folder_id, drive_folder_name, drive_folder_url', q => q.eq('entity_type', 'client')),
     alle('kunde_link_vorschlag_verworfen', 'client_id, system, externe_id'),
+    alle('lexoffice_client_links', 'id, lexoffice_contact_id, lexoffice_contact_name, client_id, match_type, is_confirmed'),
+    alle('lexoffice_contacts', 'contact_id, name, email'),
+    alle('lexoffice_invoices', 'contact_id, voucher_date'),
   ]);
+  const qKand = qontoKandidaten(qi.rows);
+  const lKand = lexKandidaten(lc.rows, li.rows);
 
   const leadName = new Map(sp.rows.map(r => [r.close_lead_id, r.name]));
   const closeByClient = new Map(cl.rows.map(r => [r.client_id, r]));
@@ -98,9 +209,6 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
   const metaByClient = new Map(km.rows.filter(r => r.client_id).map(r => [r.client_id, r]));
   const linkedMeta = new Set(km.rows.map(r => String(r.meta_account_id)));
   const freieMeta = mc.rows.filter(r => !linkedMeta.has(String(r.meta_account_id)));
-  const qontoByClient = new Map(ql.rows.filter(r => r.client_id && r.is_confirmed).map(r => [r.client_id, r]));
-  const rechnungen = new Map<string, number>();
-  for (const r of qi.rows) rechnungen.set(r.client_name, (rechnungen.get(r.client_name) || 0) + 1);
   const opByClient = new Map(op.rows.filter(r => r.client_id_fk).map(r => [r.client_id_fk, r]));
   const freieOp = op.rows.filter(r => !r.client_id_fk);
   const driveByClient = new Map(dm.rows.map(r => [r.entity_id, r]));
@@ -128,20 +236,11 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
       st.meta = t ? { zustand: 'vorschlag', vorschlag: { system: 'meta', id: String(t.item.meta_account_id), name: t.item.name, url: metaUrl(String(t.item.meta_account_id)), grund: t.grund } } : { zustand: 'offen' };
     }
 
-    // Qonto
-    if (ql.error) st.qonto = { zustand: 'keine_berechtigung' };
-    else {
-      const q = qontoByClient.get(k.id);
-      const n = (name: string) => rechnungen.get(name) || 0;
-      if (q) st.qonto = { zustand: 'verknuepft', objekt: { id: q.qonto_client_id || q.id, ref: q.id, name: q.qonto_client_name, detail: `${n(q.qonto_client_name)} Rechnungen` } };
-      else {
-        // Vorhandene, unbestätigte Zuordnung aus dem Qonto-Abgleich hat Vorrang vor eigenem Namensabgleich.
-        const offen = ql.rows.find(r => r.client_id === k.id && !r.is_confirmed && ok(k, 'qonto', r.id));
-        const frei = ql.rows.filter(r => !r.client_id && ok(k, 'qonto', r.id));
-        const t = offen ? { item: offen, grund: offen.match_type === 'exact' ? 'Treffer über exakten Namen' : 'Treffer über Firmennamen' } : besterName(k, frei, r => r.qonto_client_name);
-        st.qonto = t ? { zustand: 'vorschlag', vorschlag: { system: 'qonto', id: t.item.id, ref: t.item.id, name: t.item.qonto_client_name, grund: `${t.grund} · ${n(t.item.qonto_client_name)} Rechnungen zugeordnet` } } : { zustand: 'offen' };
-      }
-    }
+    // Qonto + lexoffice: Kandidaten aus der vollständigen Kunden-/Kontaktliste, nicht aus der Zuordnungstabelle.
+    st.qonto = ql.error || qi.error ? { zustand: 'keine_berechtigung' }
+      : buchStand(k, 'qonto', qKand, ql.rows.map(r => ({ ref: r.id, ext: r.qonto_client_id, name: r.qonto_client_name, client_id: r.client_id, is_confirmed: r.is_confirmed, match_type: r.match_type })), ok);
+    st.lexoffice = ll.error || lc.error ? { zustand: 'keine_berechtigung' }
+      : buchStand(k, 'lexoffice', lKand, ll.rows.map(r => ({ ref: r.id, ext: r.lexoffice_contact_id, name: r.lexoffice_contact_name, client_id: r.client_id, is_confirmed: r.is_confirmed, match_type: r.match_type })), ok);
 
     // Onepage
     if (op.error) st.onepage = { zustand: 'keine_berechtigung' };
@@ -178,7 +277,7 @@ export function zaehle(st: Record<SystemKey, SystemStand>) {
 }
 
 // ---------- Suche im Zielsystem ----------
-export async function suche(system: SystemKey, q: string): Promise<Objekt[]> {
+export async function suche(system: SystemKey, q: string, clientId?: string): Promise<Objekt[]> {
   const like = `%${q}%`;
   switch (system) {
     case 'close': {
@@ -189,10 +288,7 @@ export async function suche(system: SystemKey, q: string): Promise<Objekt[]> {
       const { data } = await supabase.from('meta_accounts_cache').select('meta_account_id, name, business_name').or(`name.ilike.${like},business_name.ilike.${like}`).limit(15);
       return (data || []).map((r: any) => ({ id: String(r.meta_account_id), name: r.name, detail: r.business_name, url: metaUrl(String(r.meta_account_id)) }));
     }
-    case 'qonto': {
-      const { data } = await supabase.from('qonto_client_links').select('id, qonto_client_name, qonto_client_id, client_id').ilike('qonto_client_name', like).limit(15);
-      return (data || []).map((r: any) => ({ id: r.id, ref: r.id, name: r.qonto_client_name, detail: r.client_id ? 'bereits einem Kunden zugeordnet' : undefined }));
-    }
+    case 'qonto': case 'lexoffice': return sucheBuch(system, q, clientId);
     case 'onepage': {
       const { data } = await supabase.from('onepage_projects').select('id, name, page_url, client_id_fk').or(`name.ilike.${like},page_url.ilike.${like}`).limit(15);
       return (data || []).map((r: any) => ({ id: r.id, name: r.name, url: r.page_url, detail: r.client_id_fk ? 'bereits einem Kunden zugeordnet' : undefined }));
@@ -223,9 +319,7 @@ export async function verknuepfen(system: SystemKey, clientId: string, o: Objekt
     case 'meta':
       chk(await supabase.from('kunde_meta_accounts').insert({ client_id: clientId, meta_account_id: o.id, meta_account_name: o.name, match_type: 'manual', match_confidence: 1, matched_by: await uid() } as any));
       return;
-    case 'qonto':
-      chk(await supabase.from('qonto_client_links').update({ client_id: clientId, is_confirmed: true, match_type: 'manual', confidence: 1 } as any).eq('id', o.ref || o.id));
-      return;
+    case 'qonto': case 'lexoffice': return buchVerknuepfen(system, clientId, o);
     case 'onepage':
       chk(await supabase.from('onepage_projects').update({ client_id_fk: clientId } as any).eq('id', o.id));
       return;
@@ -240,6 +334,7 @@ export async function loesen(system: SystemKey, clientId: string, o: Objekt) {
     case 'close': chk(await supabase.from('close_link' as any).delete().eq('client_id', clientId)); return;
     case 'meta': chk(await supabase.from('kunde_meta_accounts').delete().eq('client_id', clientId).eq('meta_account_id', o.id)); return;
     case 'qonto': chk(await supabase.from('qonto_client_links').update({ client_id: null, is_confirmed: false } as any).eq('id', o.ref || o.id)); return;
+    case 'lexoffice': chk(await (supabase.from as any)('lexoffice_client_links').update({ client_id: null, is_confirmed: false }).eq('id', o.ref || o.id)); return;
     case 'onepage': chk(await supabase.from('onepage_projects').update({ client_id_fk: null } as any).eq('id', o.id)); return;
     case 'drive': chk(await supabase.from('drive_folder_mappings').delete().eq('entity_type', 'client').eq('entity_id', clientId)); return;
   }

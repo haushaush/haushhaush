@@ -188,6 +188,8 @@ export default function KundenDetail() {
     paid_invoice_amount: number;
     paid_invoice_count: number;
     last_invoice_date: string | null;
+    quelle?: 'qonto' | 'lexoffice' | null;
+    marke?: string | null;
   } | null>(null);
   const [qontoOpenInvoices, setQontoOpenInvoices] = useState<any[]>([]);
   const [qontoForbidden, setQontoForbidden] = useState(false);
@@ -196,7 +198,7 @@ export default function KundenDetail() {
     if (!id) return;
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase.rpc('get_client_qonto_finance_summary' as any, { client_uuid: id });
+      const { data, error } = await supabase.rpc('get_client_finance_summary' as any, { client_uuid: id });
       if (cancelled) return;
       if (error) {
         setQontoForbidden(true);
@@ -206,7 +208,7 @@ export default function KundenDetail() {
       setQontoForbidden(false);
       setQontoSummary(data as any);
       if ((data as any)?.open_invoice_count > 0) {
-        const { data: inv } = await supabase.rpc('get_client_qonto_open_invoices' as any, { client_uuid: id });
+        const { data: inv } = await supabase.rpc('get_client_open_invoices' as any, { client_uuid: id });
         if (!cancelled) setQontoOpenInvoices((inv as any) || []);
       } else {
         setQontoOpenInvoices([]);
@@ -878,15 +880,20 @@ export default function KundenDetail() {
               if (qontoForbidden) {
                 return <KpiCard label="Cash Collect offen" value={fmtEur(client.cash_collect_offen)} hint="Keine Finanzen-Berechtigung – zeige Hub-Wert" />;
               }
+              if (qontoSummary && !qontoSummary.quelle) {
+                return <KpiCard label="Cash Collect offen" value="—" hint="Buchhaltungsquelle ungeklärt"
+                  footer={<span>{qontoSummary.marke ? `Marke „${qontoSummary.marke}“ ist keiner Buchhaltung zugeordnet` : 'Keine Marke in Close – Quelle ungeklärt'}</span>} />;
+              }
+              const qName = qontoSummary?.quelle === 'lexoffice' ? 'lexoffice' : 'Qonto';
               if (!qontoSummary || !qontoSummary.has_link) {
                 return (
                   <KpiCard
                     label="Cash Collect offen"
                     value="—"
-                    hint="Keine Qonto-Verknüpfung vorhanden"
+                    hint={`Keine ${qName}-Verknüpfung vorhanden`}
                     footer={
                       <Link to={`/kunden/${id}?tab=verknuepfungen`} onClick={(e) => { e.preventDefault(); zuVerknuepfungen(); }} className="text-primary hover:underline">
-                        Qonto-Verknüpfung erstellen
+                        {qName}-Verknüpfung erstellen
                       </Link>
                     }
                   />
@@ -901,7 +908,7 @@ export default function KundenDetail() {
                 <KpiCard
                   label="Cash Collect offen"
                   value={fmtEur(s.open_invoice_amount)}
-                  hint={hint}
+                  hint={`Quelle: ${qName} · ${hint}`}
                   footer={
                     s.overdue_invoice_count > 0 ? (
                       <span className="text-destructive">
@@ -920,7 +927,7 @@ export default function KundenDetail() {
           {qontoSummary?.has_link && qontoOpenInvoices.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Offene Rechnungen aus Qonto</CardTitle>
+                <CardTitle className="text-base">Offene Rechnungen aus {qontoSummary.quelle === 'lexoffice' ? 'lexoffice' : 'Qonto'}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <Table>

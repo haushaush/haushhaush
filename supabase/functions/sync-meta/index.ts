@@ -50,11 +50,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    const accessToken = settings.config?.access_token || settings.access_token;
+    const accessToken = Deno.env.get("META_ACCESS_TOKEN")?.trim();
     const accountMappings: Record<string, string> = settings.config?.account_mappings || {};
 
     if (!accessToken) {
-      return new Response(JSON.stringify({ error: "Missing Meta access token" }), {
+      return new Response(JSON.stringify({ error: "Secret META_ACCESS_TOKEN fehlt" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
