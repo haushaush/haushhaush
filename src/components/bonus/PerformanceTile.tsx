@@ -24,7 +24,7 @@ export function PerformanceTile({ criterion: key, label, k, config, month, basis
     sub = count ? `gewichtet ${weight(weighted)} · ${w.eindeutige_kunden || 0} Kunden erreicht` : 'noch keine Calls in diesem Monat';
     const p = callProgress(weighted, target, k.punkte, tiers, cfg?.gewichtung_je_kunde_woche?.[0] ?? 1);
     outcome = `${target ? `${n(p.coverage)} % Abdeckung` : 'Zielzahl fehlt'} · ${points}`;
-    next = p.next ? `Nächste Stufe ab ${n(p.next.value)} % — dafür fehlen noch ${p.remaining ?? '–'} Calls mit vollem Gewicht.` : tiers.length ? 'Höchste Stufe erreicht.' : 'Staffel nicht verfügbar.';
+    next = !target ? 'Für die nächste Stufe fehlt die Monatsbasis.' : p.next ? `Nächste Stufe ab ${n(p.next.value)} % — dafür fehlen noch ${p.remaining ?? '–'} Calls mit vollem Gewicht.` : tiers.length ? 'Höchste Stufe erreicht.' : 'Staffel nicht verfügbar.';
     progress = p.coverage; marks = p.stages.map(t => t.value);
     if (clock.current && target > 0) {
       pacing = { actual: weighted, target: Math.round(target * clock.fraction), unit: 'gewichtet' };
@@ -59,9 +59,9 @@ export function PerformanceTile({ criterion: key, label, k, config, month, basis
     if (clock.current && w.betreute_kunden) { const limit = tiers.find(t => t.bis !== undefined && Number(t.bis) > 0)?.bis; forecast = `Kein Verlust-Soll. Anteilig bis heute: ${n((limit || 0) / 100 * w.betreute_kunden * clock.fraction)} Abgänge an der ${n(limit || 0)}-%-Grenze. Keine belastbare Churn-Prognose.`; }
   }
   const ratio = pacing && pacing.target > 0 ? pacing.actual / pacing.target : 1;
-  return <Card className="min-w-0 h-full">
+  return <Card className="min-w-0 h-full cursor-pointer" onClick={event => { if (!(event.target instanceof Element) || !event.target.closest('button, [role="button"]')) onClick(); }}>
     <CardContent className="p-5 flex flex-col gap-3 h-full">
-      <Button variant="ghost" onClick={onClick} aria-label={`${label}: Liste anzeigen`} className="p-0 h-auto w-full items-start flex-col text-left whitespace-normal hover:bg-transparent gap-3">
+      <Button variant="ghost" onClick={onClick} aria-label={`${label}: Liste anzeigen`} className="p-0 h-auto w-full items-start flex-col text-left text-foreground whitespace-normal hover:bg-transparent gap-3">
         <span className="text-sm font-medium">{label}</span>
         <span className="text-3xl font-semibold tabular-nums break-words">{headline}</span>
         <span className="text-xs text-muted-foreground font-normal tabular-nums">{sub}</span>

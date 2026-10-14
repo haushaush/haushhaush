@@ -49,7 +49,7 @@ export default function BonusCockpit() {
   const detailRef = useRef<HTMLDivElement>(null);
   const clock = monthClock(monat);
   const provisional = clock.current || clock.future;
-  const showDetail = (key: KritKey) => { setDetail(key); requestAnimationFrame(() => detailRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })); };
+  const showDetail = (key: KritKey) => { setDetail(key); requestAnimationFrame(() => { const target = key === 'calls' ? document.getElementById('bonus-alle-calls') ?? detailRef.current : detailRef.current; target?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }); }); };
   const [monthStatus, setMonthStatus] = useState<string | null>(null);
   const [approval, setApproval] = useState<Result | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -126,7 +126,7 @@ export default function BonusCockpit() {
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             <Card><CardContent className="p-5">
-              <div className="text-xs text-muted-foreground">Erreichte Punkte{provisional && ' · vorläufig'}</div>
+              <div className="text-xs text-muted-foreground">Erreichte Punkte</div>
               <div className="text-3xl font-semibold tabular-nums">{num(res.punkte_gesamt)} <span className="text-base text-muted-foreground">von {res.punkte_max}{provisional && ' · vorläufig'}</span></div>
             </CardContent></Card>
             <Card><CardContent className="p-5">
@@ -468,7 +468,7 @@ function CallsDetail({ data, canManage, syncing, onSync, wert }: { data: any; ca
           empty="Keine Checkins in diesem Monat." />
       </div>
 
-      <div id="bonus-alle-calls">
+      <div id="bonus-alle-calls" className="scroll-mt-24">
         {data.sourceUnavailable && <p className="text-sm text-destructive">Call-Liste nicht verfügbar. Bitte den Monatsstand neu laden.</p>}
         <h3 className="text-sm font-medium mb-2">Alle Calls ({rows.length})</h3>
         <Table head={['Kunde', 'Datum', 'Gewicht', 'Anlass', 'Stimmung', 'Kampagne nach Erwartung', 'Upsell-Potenzial', 'Nächster Schritt']}

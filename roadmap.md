@@ -15,9 +15,9 @@
 
 # Bonus-Cockpit
 
-- [ ] Leistung statt Punkte als Kachel-Hauptzahl; nächste Staffel und echte Restleistung anzeigen, Modell unverändert.
-- [ ] Laufenden Monat, anteiligen Soll-Stand, Prognose und nachvollziehbare Kundenbasis anzeigen.
-- [ ] Kacheln mit gefilterten Listen verbinden; Gewichte sichtbar; echte Sitzung auf Desktop/Mobil prüfen.
+- [x] Leistung statt Punkte als Kachel-Hauptzahl; nächste Staffel und echte Restleistung anzeigen, Modell unverändert.
+- [x] Laufenden Monat, anteiligen Soll-Stand, Prognose und nachvollziehbare Kundenbasis anzeigen.
+- [x] Kacheln mit gefilterten Listen verbinden; Gewichte sichtbar; separate Ansicht mit echter Sitzung und echten Daten auf Desktop/Mobil geprüft.
 
 - [x] Einheitliche numerische Kacheln und Basiszeilen aus der Berechnung.
 - [x] Explizite Freigabebestätigung bei unvollständigen Kriterien.
