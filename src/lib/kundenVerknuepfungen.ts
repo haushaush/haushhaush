@@ -1,7 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /** Alle externen Systeme eines Kunden — eine Quelle für Tab, Kacheln und Sammelansicht. */
-export type SystemKey = 'close' | 'meta' | 'qonto' | 'onepage' | 'drive' | 'slack' | 'pipedrive' | 'superchat';
+/** Slack und Pipedrive werden nicht auf Kundenebene verknüpft. */
+export type SystemKey = 'close' | 'meta' | 'qonto' | 'onepage' | 'drive' | 'superchat';
 
 export const SYSTEME: { key: SystemKey; label: string; objekt: string; angebunden: boolean }[] = [
   { key: 'close', label: 'Close', objekt: 'Lead', angebunden: true },
@@ -9,8 +10,6 @@ export const SYSTEME: { key: SystemKey; label: string; objekt: string; angebunde
   { key: 'qonto', label: 'Qonto', objekt: 'Gegenpartei', angebunden: true },
   { key: 'onepage', label: 'Onepage', objekt: 'Website', angebunden: true },
   { key: 'drive', label: 'Google Drive', objekt: 'Ordner', angebunden: true },
-  { key: 'slack', label: 'Slack', objekt: 'Channel', angebunden: true },
-  { key: 'pipedrive', label: 'Pipedrive', objekt: 'Kontakt', angebunden: true },
   { key: 'superchat', label: 'Superchat', objekt: 'Kontakt', angebunden: false },
 ];
 
@@ -80,7 +79,7 @@ const metaUrl = (id: string) => `https://adsmanager.facebook.com/adsmanager/mana
 
 /** Lädt Verknüpfungen + Vorschläge für die übergebenen Kunden (alle Tabellen einmal, auch für die Sammelansicht). */
 export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<SystemKey, SystemStand>>> {
-  const [cl, sp, km, mc, ql, qi, op, dm, ext, vw, pp] = await Promise.all([
+  const [cl, sp, km, mc, ql, qi, op, dm, vw] = await Promise.all([
     alle('close_link', 'client_id, close_lead_id, last_synced_at'),
     alle('close_lead_spiegel', 'close_lead_id, name, status_label'),
     alle('kunde_meta_accounts', 'client_id, meta_account_id, meta_account_name'),
@@ -89,9 +88,7 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
     alle('qonto_client_invoices', 'client_name'),
     alle('onepage_projects', 'id, name, page_url, client_id_fk'),
     alle('drive_folder_mappings', 'entity_id, drive_folder_id, drive_folder_name, drive_folder_url', q => q.eq('entity_type', 'client')),
-    alle('kunde_externe_links', 'client_id, system, externe_id, name, url'),
     alle('kunde_link_vorschlag_verworfen', 'client_id, system, externe_id'),
-    alle('pipedrive_persons', 'pipedrive_id, name, email, org_name'),
   ]);
 
   const leadName = new Map(sp.rows.map(r => [r.close_lead_id, r.name]));
@@ -107,8 +104,6 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
   const opByClient = new Map(op.rows.filter(r => r.client_id_fk).map(r => [r.client_id_fk, r]));
   const freieOp = op.rows.filter(r => !r.client_id_fk);
   const driveByClient = new Map(dm.rows.map(r => [r.entity_id, r]));
-  const extBy = new Map(ext.rows.map(r => [`${r.client_id}:${r.system}`, r]));
-  const linkedPd = new Set(ext.rows.filter(r => r.system === 'pipedrive').map(r => r.externe_id));
   const verworfen = new Set(vw.rows.map(r => `${r.client_id}:${r.system}:${r.externe_id}`));
   const ok = (k: KundeMin, s: SystemKey, id: string) => !verworfen.has(`${k.id}:${s}:${id}`);
 
