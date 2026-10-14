@@ -151,10 +151,11 @@ function SuchFeld({ system, label, onPick }: { system: SystemKey; label: string;
       {err && <p className="text-xs text-destructive">{err}</p>}
       {res && res.length === 0 && <p className="text-xs text-muted-foreground py-2">Nichts gefunden</p>}
       {res?.map(o => (
-        <button key={o.id} onClick={() => onPick(o)} className="w-full text-left flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted/60 text-sm">
+        <button key={o.id} disabled={!!o.belegt} onClick={() => !o.belegt && onPick(o)} className="w-full text-left flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted/60 text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">
           <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           <span className="truncate">{o.name || o.id}</span>
           {o.detail && <span className="text-[11px] text-muted-foreground truncate">{o.detail}</span>}
+          {o.belegt && <span className="text-[11px] text-muted-foreground shrink-0 ml-auto">bereits {o.belegt} zugeordnet</span>}
         </button>
       ))}
     </div>
