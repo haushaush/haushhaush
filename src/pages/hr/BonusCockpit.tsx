@@ -1,22 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { CheckinKandidaten } from '@/components/bonus/CheckinKandidaten';
+import { PerformanceTile } from '@/components/bonus/PerformanceTile';
+import { monthClock } from '@/components/bonus/presentation';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type KritKey = 'zufriedenheit' | 'cash_niveau' | 'cash_entwicklung' | 'churn' | 'calls';
 type Krit = { status: 'ok' | 'keine_daten' | 'unvollstaendig'; punkte: number; max: number; wert: any; hinweis?: string; basis_hinweis: string | null };
 type Result = {
+  anzeige?: { config: any; calls: any[]; basis: { gesamt: number; heute_aktiv: number | null } };
   kriterien: Record<KritKey, Krit>; punkte_gesamt: number; punkte_bewertbar_max: number; punkte_max: number;
   nicht_bewertbare_kriterien: number; bonus_eur: number; upsell_beteiligung_eur: number; berechnet_am: string;
 };
@@ -34,17 +36,6 @@ const dt = (s: string | null) => (s ? new Date(s).toLocaleDateString('de-DE') : 
 const months = () => { const o: string[] = []; const d = new Date(2026, 8, 1); for (let i = 0; i < 18; i++) { o.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`); d.setMonth(d.getMonth() + 1); } return o; };
 const defaultMonth = () => { const d = new Date(); const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; return months().includes(m) ? m : '2026-10-01'; };
 
-function wertText(key: KritKey, k: Krit) {
-  const w = k.wert || {};
-  switch (key) {
-    case 'zufriedenheit': return w.ausfuellquote !== undefined ? `Ø ${num(w.durchschnitt_score_betreuung)} · Quote ${num(w.ausfuellquote)} %` : '–';
-    case 'cash_niveau': return w.summe_eur !== undefined ? eur(w.summe_eur) : '–';
-    case 'cash_entwicklung': return w.veraenderung_prozent !== undefined ? `${w.veraenderung_prozent > 0 ? '+' : ''}${num(w.veraenderung_prozent)} %` : '–';
-    case 'churn': return w.churn_quote !== undefined ? `${num(w.churn_quote)} % Churn` : '–';
-    case 'calls': return w.erreichungsgrad_prozent != null ? `${num(w.erreichungsgrad_prozent)} % Abdeckung · ${num(w.gewichtete_summe)} von ${w.zielwert} gewichtet · ${w.anzahl_calls} Calls` : w.anzahl_calls !== undefined ? `${w.anzahl_calls} Calls` : '–';
-  }
-}
-
 export default function BonusCockpit() {
   const [canManage, setCanManage] = useState<boolean | null>(null);
   const [mitarbeiter, setMitarbeiter] = useState<{ id: string; name: string }[]>([]);
@@ -54,7 +45,11 @@ export default function BonusCockpit() {
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [detail, setDetail] = useState<KritKey | null>(null);
+  const [detail, setDetail] = useState<KritKey>('calls');
+  const detailRef = useRef<HTMLDivElement>(null);
+  const clock = monthClock(monat);
+  const provisional = clock.current || clock.future;
+  const showDetail = (key: KritKey) => { setDetail(key); requestAnimationFrame(() => { const target = key === 'calls' ? document.getElementById('bonus-alle-calls') ?? detailRef.current : detailRef.current; target?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }); }); };
   const [monthStatus, setMonthStatus] = useState<string | null>(null);
   const [approval, setApproval] = useState<Result | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -132,10 +127,10 @@ export default function BonusCockpit() {
           <div className="grid gap-4 sm:grid-cols-3">
             <Card><CardContent className="p-5">
               <div className="text-xs text-muted-foreground">Erreichte Punkte</div>
-              <div className="text-3xl font-semibold tabular-nums">{num(res.punkte_gesamt)} <span className="text-base text-muted-foreground">von {res.punkte_max}</span></div>
+              <div className="text-3xl font-semibold tabular-nums">{num(res.punkte_gesamt)} <span className="text-base text-muted-foreground">von {res.punkte_max}{provisional && ' · vorläufig'}</span></div>
             </CardContent></Card>
             <Card><CardContent className="p-5">
-              <div className="text-xs text-muted-foreground">Bonus</div>
+              <div className="text-xs text-muted-foreground">Bonus{provisional && ' · vorläufig'}</div>
               <div className="text-3xl font-semibold tabular-nums">{eur(res.bonus_eur)}</div>
             </CardContent></Card>
             <Card><CardContent className="p-5">
@@ -150,28 +145,10 @@ export default function BonusCockpit() {
             </p>
           )}
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {ORDER.map(({ key, label }, i) => {
-              const k = res.kriterien[key];
-              return (
-                <Button key={key} variant="ghost" onClick={() => setDetail(key)} className="h-auto min-w-0 p-0 text-left whitespace-normal block hover:bg-transparent">
-                  <Card className="h-full transition-colors hover:border-primary/50">
-                    <CardContent className="p-4 flex flex-col gap-3 h-full">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="text-sm font-medium">{i + 1}. {label}</div>
-                        <span className="text-xs text-muted-foreground tabular-nums shrink-0">max {k.max}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground tabular-nums min-h-8">{wertText(key, k)}</div>
-                      <div className="text-3xl font-semibold tabular-nums">{num(k.punkte)}</div>
-                      <Progress value={k.max > 0 ? (k.punkte / k.max) * 100 : 0} />
-                      <div className="min-h-4 min-w-0">
-                        {k.basis_hinweis && <p title={k.basis_hinweis} className="text-xs font-normal text-muted-foreground truncate">{k.basis_hinweis}</p>}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Button>
-              );
-            })}
+          {clock.current && <p className="mt-6 mb-3 text-sm text-muted-foreground tabular-nums">Stand {String(clock.day).padStart(2, '0')}.{monat.slice(5, 7)}. · Tag {clock.day} von {clock.days} · Monat zu {Math.round(clock.fraction * 100)} % vorbei</p>}
+          {clock.future && <p className="mt-6 text-sm text-muted-foreground">Monat hat noch nicht begonnen · Punkte vorläufig</p>}
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {ORDER.map(({ key, label }) => <PerformanceTile key={key} criterion={key} label={label} k={res.kriterien[key]} config={res.anzeige?.config} month={monat} basis={res.anzeige?.basis} onClick={() => showDetail(key)} />)}
           </div>
         </>
       )}
@@ -191,17 +168,18 @@ export default function BonusCockpit() {
       {maId && <CheckinKandidaten monat={monat} maId={maId} canManage={!!canManage} onChanged={() => canManage && run(true)} />}
 
 
-      <Sheet open={!!detail} onOpenChange={o => !o && setDetail(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
-          {detail && <Detail kind={detail} monat={monat} maId={maId} res={res} canManage={!!canManage} onChanged={() => run(true)} />}
-        </SheetContent>
-      </Sheet>
+      {res && <div ref={detailRef} className="mt-10 scroll-mt-24 min-w-0">
+        <div className="mb-5 flex flex-wrap gap-2" aria-label="Kriterium der Liste">
+          {ORDER.map(o => <Button key={o.key} size="sm" variant={detail === o.key ? 'secondary' : 'ghost'} onClick={() => setDetail(o.key)}>{o.label}</Button>)}
+        </div>
+        <Detail key={`${monat}-${maId}-${detail}`} kind={detail} monat={monat} maId={maId} res={res} canManage={!!canManage} onChanged={() => run(!!canManage)} />
+      </div>}
       <AlertDialog open={!!approval} onOpenChange={open => { if (!open && !approving) setApproval(null); }}>
         <AlertDialogContent className="z-[400]">
           <AlertDialogHeader>
             <AlertDialogTitle>Bonusmonat freigeben?</AlertDialogTitle>
             <AlertDialogDescription>
-              {maName} · {new Date(monat).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })} · {num(approval?.punkte_gesamt)} Punkte · {eur(approval?.bonus_eur)}
+              {maName} · {new Date(monat).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })} · {num(approval?.punkte_gesamt)} Punkte{provisional && ' (vorläufig)'} · {eur(approval?.bonus_eur)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {approval && !approval.kriterien.churn.wert?.erfassung_bestaetigt && <p className="text-sm text-destructive">Bestätige zuerst die Churn-Erfassung in den Anti-Churn-Details. {num(approval.kriterien.churn.punkte)} Punkte werden dadurch final.</p>}
@@ -280,13 +258,14 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
         const { data: frg } = await supabase.from('bonus_monat_freigaben').select('churn_erfassung_abgeschlossen, churn_bestaetigt_am').eq('monat', monat).eq('mitarbeiter_id', maId).maybeSingle();
         setData({ rows: (c as any[]) || [], snap: count ?? 0, frg });
       } else {
-        const { data: c } = await supabase.from('bonus_checkins').select('close_activity_id, client_id, datum, quelle, stimmung, anlass, kampagne_nach_erwartung, upsell_potenzial, naechster_schritt, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId).order('datum');
+        const c = res?.anzeige?.calls;
+        if (!c) { setData({ rows: [], snap: [], log: null, sourceUnavailable: true }); return; }
         const { data: sn } = await supabase.from('bonus_kunden_snapshot').select('client_id, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId);
         const { data: lg } = await supabase.from('bonus_sync_log').select('ausloeser, gestartet_am, beendet_am, ok, gefunden, neu, fehler, nicht_zuordenbar').eq('sync_typ', 'checkins').eq('monat', monat).eq('mitarbeiter_id', maId).order('gestartet_am', { ascending: false }).limit(1);
         setData({ rows: (c as any[]) || [], snap: (sn as any[]) || [], log: (lg as any[])?.[0] ?? null });
       }
     })();
-  }, [kind, monat, maId, tick]);
+  }, [kind, monat, maId, tick, res]);
 
   const title = ORDER.find(o => o.key === kind)?.label;
   const k = res?.kriterien[kind];
@@ -299,7 +278,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
 
   return (
     <>
-      <SheetHeader><SheetTitle>{title}</SheetTitle></SheetHeader>
+      <h2 className="text-lg font-semibold">{title}</h2>
       {k && k.status !== 'ok' && <p className="mt-2 text-sm text-muted-foreground">{k.hinweis}</p>}
       <div className="mt-4 space-y-6">
         {!data && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
@@ -387,7 +366,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
                 <div className="text-xs text-muted-foreground mt-1">
                   {data.frg?.churn_erfassung_abgeschlossen
                     ? `Bestätigt am ${data.frg.churn_bestaetigt_am ? new Date(data.frg.churn_bestaetigt_am).toLocaleString('de-DE') : '–'}`
-                    : blockiert ? `Erst möglich, wenn ${[offen.length && 'alle Sonderfälle entschieden', luecken.length && `die Angaben vollständig sind (${luecken.map((r: any) => r.clients?.name || '–').join(', ')})`].filter(Boolean).join(' und ')}.` : `Bestätigung ausstehend — ${num(k?.punkte)} Punkte zählen bereits zur Gesamtsumme.`}
+                    : blockiert ? `Erst möglich, wenn ${[offen.length && 'alle Sonderfälle entschieden', luecken.length && `die Angaben vollständig sind (${luecken.map((r: any) => r.clients?.name || '–').join(', ')})`].filter(Boolean).join(' und ')}.` : `Bestätigung ausstehend — ${num(k?.punkte)} {monthClock(monat).current || monthClock(monat).future ? 'vorläufige Punkte' : 'Punkte'} zählen bereits zur Gesamtsumme.`}
                 </div>
               </div>
               {canManage && <Switch checked={!!data.frg?.churn_erfassung_abgeschlossen} disabled={!data.frg?.churn_erfassung_abgeschlossen && blockiert} onCheckedChange={v => setConfirm(v)} />}
@@ -416,7 +395,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
         })()}
 
         {data && kind === 'calls' && <>
-          {k?.wert && <p className="text-sm tabular-nums">Erreichungsgrad: <b>{k.wert.erreichungsgrad_prozent != null ? `${num(k.wert.erreichungsgrad_prozent)} %` : '–'}</b> · {num(k.wert.gewichtete_summe)} von {k.wert.zielwert} gewichtet · {k.wert.anzahl_calls} Calls bei {k.wert.eindeutige_kunden} Kunden · {k.wert.abgewertete_checkins} abgewertet</p>}
+          {k?.wert && <p className="text-sm tabular-nums">Erreichungsgrad: <b>{k.wert.erreichungsgrad_prozent != null ? `${num(k.wert.erreichungsgrad_prozent)} %` : '–'}</b> · {Number(k.wert.gewichtete_summe).toLocaleString('de-DE', { minimumFractionDigits: 1 })} von {k.wert.zielwert} gewichtet · {k.wert.anzahl_calls} Calls bei {k.wert.eindeutige_kunden} Kunden · {k.wert.abgewertete_checkins} abgewertet</p>}
           <CallsDetail data={data} canManage={canManage} syncing={syncing} onSync={sync} wert={k?.wert} />
         </>}
       </div>
@@ -431,7 +410,8 @@ function CallsDetail({ data, canManage, syncing, onSync, wert }: { data: any; ca
   const rows: any[] = data.rows;
   const gewichte: Record<string, any> = wert?.gewichte || {};
   const wochen: any[] = wert?.wochen || [];
-  const anlass = Object.entries(rows.reduce((m: Record<string, number>, r) => { const k = r.anlass || 'Ohne Anlass'; m[k] = (m[k] || 0) + 1; return m; }, {})).sort((a, b) => (b[1] as number) - (a[1] as number));
+  const anlassLabel = (value: string | null) => ({ 'Regel-Checkin': 'Regel-Checkin', 'Beschwerde': 'Beschwerde' }[value || ''] || 'Sonstige');
+  const anlass = Object.entries(rows.reduce((m: Record<string, number>, r) => { const k = anlassLabel(r.anlass); m[k] = (m[k] || 0) + 1; return m; }, {})).sort((a, b) => (b[1] as number) - (a[1] as number));
   const risk = rows.filter(r => isRisk(r.stimmung));
   const handover = rows.filter(r => isHandover(r.upsell_potenzial));
   const withCall = new Set(rows.map(r => r.client_id));
@@ -488,15 +468,16 @@ function CallsDetail({ data, canManage, syncing, onSync, wert }: { data: any; ca
           empty="Keine Checkins in diesem Monat." />
       </div>
 
-      <div>
+      <div id="bonus-alle-calls" className="scroll-mt-24">
+        {data.sourceUnavailable && <p className="text-sm text-destructive">Call-Liste nicht verfügbar. Bitte den Monatsstand neu laden.</p>}
         <h3 className="text-sm font-medium mb-2">Alle Calls ({rows.length})</h3>
         <Table head={['Kunde', 'Datum', 'Gewicht', 'Anlass', 'Stimmung', 'Kampagne nach Erwartung', 'Upsell-Potenzial', 'Nächster Schritt']}
           rows={rows.map(r => {
             const g = gewichte[r.close_activity_id];
             const why = !g ? 'Noch nicht berechnet — „Neu berechnen" ausführen.' : g.nr_in_woche === 1 ? `Erster Checkin dieses Kunden in ${g.woche}.` : `${g.nr_in_woche}. Checkin dieses Kunden in ${g.woche} — abgewertet nach Wochenregel.`;
             return [r.clients?.name || '–', dt(r.datum),
-              <span title={why} className={`cursor-help underline decoration-dotted ${g && g.gewicht < 1 ? 'text-muted-foreground' : ''}`}>{g ? g.gewicht.toLocaleString('de-DE', { minimumFractionDigits: 1 }) : '–'}</span>,
-              r.anlass || '–', r.stimmung || '–', r.kampagne_nach_erwartung || '–', r.upsell_potenzial || '–', <span className="text-xs">{r.naechster_schritt || '–'}</span>];
+              <Tooltip><TooltipTrigger asChild><span tabIndex={0} className="cursor-help underline decoration-dotted">{g ? g.gewicht.toLocaleString('de-DE', { minimumFractionDigits: 1 }) : '–'}</span></TooltipTrigger><TooltipContent className="max-w-72">{why}</TooltipContent></Tooltip>,
+              <span title={r.anlass || 'Ohne Anlass'}>{anlassLabel(r.anlass)}</span>, r.stimmung || '–', r.kampagne_nach_erwartung || '–', r.upsell_potenzial || '–', <span className="text-xs">{r.naechster_schritt || '–'}</span>];
           })}
           empty="Keine Checkup-Calls erfasst." />
       </div>

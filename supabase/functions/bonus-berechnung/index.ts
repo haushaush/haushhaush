@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
   // ---------- 5) Calls (gewichtete Betreuungsabdeckung) ----------
   // 0 calls is only a real statement if the Close sync completed for this month; a failed latest run blocks scoring.
   const cc = cfg.calls || {};
-  const { data: ciRows, error: ciErr } = await admin.from("bonus_checkins").select("close_activity_id, client_id, datum").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).order("datum").order("close_activity_id");
+  const { data: ciRows, error: ciErr } = await admin.from("bonus_checkins").select("close_activity_id, client_id, datum, quelle, stimmung, anlass, kampagne_nach_erwartung, upsell_potenzial, naechster_schritt, clients:client_id(name)").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).order("datum").order("close_activity_id");
   if (ciErr) return json({ error: ciErr.message }, 500);
   const calls = ciRows?.length ?? 0;
   const gew: number[] = Array.isArray(cc.gewichtung_je_kunde_woche) && cc.gewichtung_je_kunde_woche.length ? cc.gewichtung_je_kunde_woche.map(Number) : [1];
@@ -218,8 +218,13 @@ Deno.serve(async (req) => {
   const gesamtMax = Object.values(kriterien).reduce((s, k) => s + k.max, 0);
   const bonus = r2(Math.min(punkte * cfg.bonus_pro_punkt_eur, cfg.bonus_max_eur));
 
+  // Presentation metadata only: call list and tiles use the exact rows scored above.
+  const { data: activeCustomers, error: activeError } = await admin.from("bonus_kunden_aktuell").select("client_id").eq("aktiv", true).eq("zaehlt_fuer_betreuung", true);
+  const activeIds = new Set((activeCustomers || []).map(row => row.client_id));
+  const activeInSnapshot = activeError ? null : [...snapshotIds].filter(id => activeIds.has(id)).length;
   const result = {
     monat, mitarbeiter_id, config_gueltig_ab: cfgRow.gueltig_ab, kriterien,
+    anzeige: { config: cfg, calls: ciRows || [], basis: { gesamt: snapshotIds.size, heute_aktiv: activeInSnapshot } },
     punkte_gesamt: punkte, punkte_bewertbar_max: bewertbar, punkte_max: gesamtMax,
     nicht_bewertbare_kriterien: 5 - okList.length,
     bonus_eur: bonus, upsell_beteiligung_eur: upsell, berechnet_am: new Date().toISOString(),
