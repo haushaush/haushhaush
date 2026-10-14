@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Werbebudgets } from '@/components/finanzen/Werbebudgets';
+import { WerbebudgetZuordnung } from '@/components/finanzen/WerbebudgetZuordnung';
 import { QontoVerknuepfungen } from '@/components/finanzen/QontoVerknuepfungen';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -1086,6 +1087,7 @@ export default function Finanzen() {
         </TabsContent>
 
         <TabsContent value="werbebudgets" className="space-y-4 mt-4">
+          <WerbebudgetZuordnung />
           <Werbebudgets />
         </TabsContent>
 
