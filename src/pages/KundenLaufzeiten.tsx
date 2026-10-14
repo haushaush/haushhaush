@@ -13,10 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { ExternalLink, ChevronDown, Pencil, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { LaufzeitAktionen } from '@/components/laufzeiten/LaufzeitAktionen';
 
 type Row = {
   client_id: string; kunde: string | null; close_lead_id: string | null; close_status_label: string | null; close_opportunity_id: string | null; quelle: string | null; vc_opportunity_id: string | null;
-  startdatum: string | null; laufzeit_monate: number | null; vertragsende: string | null; fehlt: string[];
+  startdatum: string | null; laufzeit_monate: number | null; upsell_startdatum: string | null; upsell_laufzeit: number | null; vertragsende: string | null; fehlt: string[];
 };
 type Log = { id: string; created_at: string; user_email: string | null; kunde: string | null; aktion: string; werte: Record<string, unknown>; fehler: string | null; close_opportunity_id: string | null };
 type Form = { startdatum: string; laufzeit_monate: string; abschlusswert: string; retainer_monat: string; leistungen: string[] | null; deal_typ: string; paket: string };
@@ -47,7 +49,7 @@ export default function KundenLaufzeiten() {
 
   const load = useCallback(async () => {
     const [{ data }, { data: l }] = await Promise.all([
-      supabase.from('kunden_laufzeit_stand').select('client_id, kunde, close_lead_id, close_status_label, close_opportunity_id, quelle, vc_opportunity_id, startdatum, laufzeit_monate, vertragsende, fehlt'),
+      supabase.from('kunden_laufzeit_stand').select('client_id, kunde, close_lead_id, close_status_label, close_opportunity_id, quelle, vc_opportunity_id, startdatum, laufzeit_monate, upsell_startdatum, upsell_laufzeit, vertragsende, fehlt'),
       supabase.from('close_abschluss_schreiblog').select('id, created_at, user_email, kunde, aktion, werte, fehler, close_opportunity_id').order('created_at', { ascending: false }).limit(20),
     ]);
     setRows((data as Row[]) || []); setLogs((l as Log[]) || []); setLoading(false);
@@ -158,10 +160,10 @@ export default function KundenLaufzeiten() {
                   <TableRow key={r.client_id}>
                     <TableCell className="font-medium">{r.kunde}{r.quelle === 'Viral Connect' && <Badge variant="outline" className="ml-2 text-[10px]">aus Viral Connect</Badge>}</TableCell>
                     <TableCell className="tabular-nums">{dt(r.startdatum)}</TableCell>
-                    <TableCell className="tabular-nums">{r.laufzeit_monate} Mon.</TableCell>
+                    <TableCell className="tabular-nums whitespace-nowrap">{r.upsell_startdatum && r.upsell_laufzeit ? <>{r.upsell_laufzeit} Mon.<Tooltip><TooltipTrigger asChild><Badge variant="outline" className="ml-2 text-[10px] font-normal text-muted-foreground cursor-default">verlängert</Badge></TooltipTrigger><TooltipContent>1. Laufzeit: {dt(r.startdatum)}, {r.laufzeit_monate} Mon. · Verlängerung ab {dt(r.upsell_startdatum)}</TooltipContent></Tooltip></> : <>{r.laufzeit_monate} Mon.</>}</TableCell>
                     <TableCell className="tabular-nums">{dt(r.vertragsende)}</TableCell>
                     <TableCell className="text-right tabular-nums">{r.rest} Tage {r.rest < 30 && <Badge variant="destructive" className="ml-2">unter 30 Tage</Badge>}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">{isAdmin && <Button size="sm" variant="ghost" className="h-7" onClick={() => setEditing(r.client_id)}><Pencil className="h-3 w-3 mr-1" />Bearbeiten</Button>}{closeLink(r)}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap space-x-1">{isAdmin && <LaufzeitAktionen r={r} onDone={load} />}{isAdmin && <Button size="sm" variant="ghost" className="h-7" onClick={() => setEditing(r.client_id)}><Pencil className="h-3 w-3 mr-1" />Bearbeiten</Button>}{closeLink(r)}</TableCell>
                   </TableRow>
                 ))}
                 {!klar.length && <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground">Noch kein aktiver Kunde mit vollständiger Laufzeit.</TableCell></TableRow>}

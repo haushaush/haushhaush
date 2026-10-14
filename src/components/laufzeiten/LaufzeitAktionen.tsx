@@ -143,7 +143,7 @@ export function LaufzeitAktionen({ r, onDone }: { r: AktionRow; onDone: () => Pr
             <p className="text-sm">Der Kunde verschwindet damit aus den aktiven Laufzeiten.</p>
           </div>
         </>}
-        {err && <p className={cn('text-sm', teilErfolg ? 'text-warning-foreground rounded-md border border-destructive/40 p-2' : 'text-destructive')}>{err}</p>}
+        {err && <p className={cn('text-sm', teilErfolg ? 'text-foreground rounded-md border border-destructive/40 p-2' : 'text-destructive')}>{err}</p>}
         <DialogFooter>
           <Button variant="outline" disabled={busy} onClick={() => setArt(null)}>{teilErfolg ? 'Schließen' : 'Abbrechen'}</Button>
           {!teilErfolg && (art === 'v'
