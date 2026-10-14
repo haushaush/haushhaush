@@ -36,7 +36,9 @@ export function namensTreffer(a: string | null | undefined, b: string | null | u
   if (!A.size || !B.size) return 0;
   const shared = [...A].filter(t => B.has(t));
   if (!shared.some(t => t.length >= 4)) return 0;
-  return shared.length / Math.min(A.size, B.size);
+  const score = shared.length / Math.min(A.size, B.size);
+  // Seltener, langer Nachname/Firmenname (z.B. „Koyuncu“) trägt den Treffer auch bei abweichender Vornamen-Schreibweise.
+  return shared.some(t => t.length >= 6) && score >= 0.5 ? Math.max(score, 0.6) : score;
 }
 const FREEMAIL = new Set(['gmail.com', 'googlemail.com', 'gmx.de', 'gmx.net', 'web.de', 'outlook.com', 'outlook.de', 'hotmail.com', 'hotmail.de', 'yahoo.com', 'yahoo.de', 'icloud.com', 't-online.de', 'me.com', 'aol.com', 'freenet.de', 'live.de', 'mail.de']);
 export const domainVon = (s: string | null | undefined): string | null => {
