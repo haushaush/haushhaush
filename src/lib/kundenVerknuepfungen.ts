@@ -1,7 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /** Alle externen Systeme eines Kunden — eine Quelle für Tab, Kacheln und Sammelansicht. */
-export type SystemKey = 'close' | 'meta' | 'qonto' | 'onepage' | 'drive' | 'slack' | 'pipedrive' | 'superchat';
+/** Slack und Pipedrive werden nicht auf Kundenebene verknüpft. */
+export type SystemKey = 'close' | 'meta' | 'qonto' | 'onepage' | 'drive' | 'superchat';
 
 export const SYSTEME: { key: SystemKey; label: string; objekt: string; angebunden: boolean }[] = [
   { key: 'close', label: 'Close', objekt: 'Lead', angebunden: true },
@@ -9,8 +10,6 @@ export const SYSTEME: { key: SystemKey; label: string; objekt: string; angebunde
   { key: 'qonto', label: 'Qonto', objekt: 'Gegenpartei', angebunden: true },
   { key: 'onepage', label: 'Onepage', objekt: 'Website', angebunden: true },
   { key: 'drive', label: 'Google Drive', objekt: 'Ordner', angebunden: true },
-  { key: 'slack', label: 'Slack', objekt: 'Channel', angebunden: true },
-  { key: 'pipedrive', label: 'Pipedrive', objekt: 'Kontakt', angebunden: true },
   { key: 'superchat', label: 'Superchat', objekt: 'Kontakt', angebunden: false },
 ];
 
@@ -80,7 +79,7 @@ const metaUrl = (id: string) => `https://adsmanager.facebook.com/adsmanager/mana
 
 /** Lädt Verknüpfungen + Vorschläge für die übergebenen Kunden (alle Tabellen einmal, auch für die Sammelansicht). */
 export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<SystemKey, SystemStand>>> {
-  const [cl, sp, km, mc, ql, qi, op, dm, ext, vw, pp] = await Promise.all([
+  const [cl, sp, km, mc, ql, qi, op, dm, vw] = await Promise.all([
     alle('close_link', 'client_id, close_lead_id, last_synced_at'),
     alle('close_lead_spiegel', 'close_lead_id, name, status_label'),
     alle('kunde_meta_accounts', 'client_id, meta_account_id, meta_account_name'),
@@ -89,9 +88,7 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
     alle('qonto_client_invoices', 'client_name'),
     alle('onepage_projects', 'id, name, page_url, client_id_fk'),
     alle('drive_folder_mappings', 'entity_id, drive_folder_id, drive_folder_name, drive_folder_url', q => q.eq('entity_type', 'client')),
-    alle('kunde_externe_links', 'client_id, system, externe_id, name, url'),
     alle('kunde_link_vorschlag_verworfen', 'client_id, system, externe_id'),
-    alle('pipedrive_persons', 'pipedrive_id, name, email, org_name'),
   ]);
 
   const leadName = new Map(sp.rows.map(r => [r.close_lead_id, r.name]));
@@ -107,8 +104,6 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
   const opByClient = new Map(op.rows.filter(r => r.client_id_fk).map(r => [r.client_id_fk, r]));
   const freieOp = op.rows.filter(r => !r.client_id_fk);
   const driveByClient = new Map(dm.rows.map(r => [r.entity_id, r]));
-  const extBy = new Map(ext.rows.map(r => [`${r.client_id}:${r.system}`, r]));
-  const linkedPd = new Set(ext.rows.filter(r => r.system === 'pipedrive').map(r => r.externe_id));
   const verworfen = new Set(vw.rows.map(r => `${r.client_id}:${r.system}:${r.externe_id}`));
   const ok = (k: KundeMin, s: SystemKey, id: string) => !verworfen.has(`${k.id}:${s}:${id}`);
 
@@ -166,21 +161,6 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
     const d = driveByClient.get(k.id);
     st.drive = d ? { zustand: 'verknuepft', objekt: { id: d.drive_folder_id, name: d.drive_folder_name, url: d.drive_folder_url || `https://drive.google.com/drive/folders/${d.drive_folder_id}` } } : { zustand: 'offen' };
 
-    // Slack
-    const s = extBy.get(`${k.id}:slack`);
-    st.slack = s ? { zustand: 'verknuepft', objekt: { id: s.externe_id, name: s.name, url: s.url } } : { zustand: 'offen' };
-
-    // Pipedrive
-    const p = extBy.get(`${k.id}:pipedrive`);
-    if (p) st.pipedrive = { zustand: 'verknuepft', objekt: { id: p.externe_id, name: p.name, url: p.url } };
-    else {
-      const kd = domainVon(k.email) || domainVon(k.website_url || k.website);
-      const kand = pp.rows.filter(r => !linkedPd.has(String(r.pipedrive_id)) && ok(k, 'pipedrive', String(r.pipedrive_id)));
-      const dom = kd ? kand.find(r => domainVon(r.email) === kd) : undefined;
-      const t = dom ? { item: dom, grund: 'Treffer über E-Mail-Domain' } : besterName(k, kand, r => r.org_name || r.name);
-      st.pipedrive = t ? { zustand: 'vorschlag', vorschlag: { system: 'pipedrive', id: String(t.item.pipedrive_id), name: t.item.org_name || t.item.name, grund: t.grund } } : { zustand: 'offen' };
-    }
-
     st.superchat = { zustand: 'nicht_angebunden' };
     out.set(k.id, st);
   }
@@ -217,17 +197,6 @@ export async function suche(system: SystemKey, q: string): Promise<Objekt[]> {
       const { data } = await supabase.from('onepage_projects').select('id, name, page_url, client_id_fk').or(`name.ilike.${like},page_url.ilike.${like}`).limit(15);
       return (data || []).map((r: any) => ({ id: r.id, name: r.name, url: r.page_url, detail: r.client_id_fk ? 'bereits einem Kunden zugeordnet' : undefined }));
     }
-    case 'pipedrive': {
-      const { data } = await supabase.from('pipedrive_persons').select('pipedrive_id, name, email, org_name').or(`name.ilike.${like},org_name.ilike.${like},email.ilike.${like}`).limit(15);
-      return (data || []).map((r: any) => ({ id: String(r.pipedrive_id), name: r.org_name || r.name, detail: [r.name, r.email].filter(Boolean).join(' · ') }));
-    }
-    case 'slack': {
-      const { data, error } = await supabase.functions.invoke('slack-list-channels', { body: {} });
-      if (error) throw new Error('Slack-Channels konnten nicht geladen werden');
-      const n = q.toLowerCase();
-      return (data?.channels || []).filter((c: any) => String(c.name || '').toLowerCase().includes(n)).slice(0, 15)
-        .map((c: any) => ({ id: c.id, name: `#${c.name}`, url: `https://slack.com/app_redirect?channel=${c.id}` }));
-    }
     case 'drive': {
       // Kein Ordner-Index im CRM: Link oder ID einfügen.
       const m = q.match(/folders\/([\w-]{10,})/) || q.match(/^([\w-]{20,})$/);
@@ -263,9 +232,6 @@ export async function verknuepfen(system: SystemKey, clientId: string, o: Objekt
     case 'drive':
       chk(await supabase.from('drive_folder_mappings').insert({ entity_type: 'client', entity_id: clientId, folder_section: 'root', drive_folder_id: o.id, drive_folder_url: o.url, drive_folder_name: o.name } as any));
       return;
-    case 'slack': case 'pipedrive':
-      chk(await (supabase.from as any)('kunde_externe_links').insert({ client_id: clientId, system, externe_id: o.id, name: o.name, url: o.url ?? null, verknuepft_von: await uid() }));
-      return;
   }
 }
 
@@ -276,8 +242,6 @@ export async function loesen(system: SystemKey, clientId: string, o: Objekt) {
     case 'qonto': chk(await supabase.from('qonto_client_links').update({ client_id: null, is_confirmed: false } as any).eq('id', o.ref || o.id)); return;
     case 'onepage': chk(await supabase.from('onepage_projects').update({ client_id_fk: null } as any).eq('id', o.id)); return;
     case 'drive': chk(await supabase.from('drive_folder_mappings').delete().eq('entity_type', 'client').eq('entity_id', clientId)); return;
-    case 'slack': case 'pipedrive':
-      chk(await (supabase.from as any)('kunde_externe_links').delete().eq('client_id', clientId).eq('system', system)); return;
   }
 }
 
