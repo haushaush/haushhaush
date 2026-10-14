@@ -204,10 +204,10 @@ export default function KundenDetail() {
     // 2. Projekt-Query: über client_id ODER notion_id-Array (verknuepfte_kunden_ids)
     const projectsQuery = cli?.notion_id
       ? supabase.from('projects')
-          .select('*')
+          .select('*').is('archiviert_am', null)
           .or(`client_id.eq.${id},verknuepfte_kunden_ids.cs.{${cli.notion_id}}`)
           .order('created_at', { ascending: false })
-      : supabase.from('projects').select('*').eq('client_id', id).order('created_at', { ascending: false });
+      : supabase.from('projects').select('*').is('archiviert_am', null).eq('client_id', id).order('created_at', { ascending: false });
 
     // Multi-Strategy OR-Filter für meta ads/campaigns (linked_client_id ODER meta_account_id)
     const buildMetaConditions = () => {

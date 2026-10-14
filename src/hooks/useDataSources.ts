@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { projectQuery } from '@/lib/projectQueries';
 
 // Data Adapter Pattern — swap these for external API hooks later
 // e.g.: import { useCloseCRM } from './integrations/close'
@@ -166,7 +167,7 @@ export function useProjects(): DataResult<any[]> {
 
   const refetch = useCallback(async () => {
     setLoading(true);
-    const { data: d, error: e } = await supabase.from('projects').select('*');
+    const { data: d, error: e } = await projectQuery();
     setData(d || []);
     setError(e?.message || null);
     setLoading(false);
@@ -194,7 +195,7 @@ export function useEffizienzScore(): EffizienzResult {
   const compute = useCallback(async () => {
     try {
       const [projectsRes, tasksRes, dealsRes] = await Promise.all([
-        supabase.from('projects').select('*'),
+        projectQuery(),
         supabase.from('tasks').select('*').eq('status', 'Abgeschlossen'),
         supabase.from('close_deals').select('*').not('start_datum', 'is', null),
       ]);

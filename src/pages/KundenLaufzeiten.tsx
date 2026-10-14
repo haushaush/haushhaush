@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { LaufzeitAktionen } from '@/components/laufzeiten/LaufzeitAktionen';
+import { useActiveCloseCustomers } from '@/hooks/useActiveCloseCustomers';
 
 type Row = {
   client_id: string; kunde: string | null; close_lead_id: string | null; close_status_label: string | null; close_opportunity_id: string | null; quelle: string | null; vc_opportunity_id: string | null;
@@ -33,7 +34,6 @@ function vorschau(f: Form, r: Row) {
   if (!s || !m || !Number.isInteger(m) || m < 1) return null;
   const d = new Date(s + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + m); return d.toISOString().slice(0, 10);
 }
-const AKTIV_STATUS = ['Aktueller Klient', 'Pausiert'];
 const plusM = (s: string, m: number) => { const d = new Date(s + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + m); return d.toISOString().slice(0, 10); };
 function fehltLabels(r: { startdatum: string | null; laufzeit_monate: number | null; close_opportunity_id: string | null; vc_opportunity_id: string | null }) {
   const l: string[] = [];
@@ -48,9 +48,8 @@ const toNum = (v: string) => v.trim() === '' ? null : Number(v.replace(',', '.')
 export default function KundenLaufzeiten() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
-  const [rows, setRows] = useState<Row[]>([]);
+  const { rows, loading, error: kundenFehler, refetch: loadCustomers } = useActiveCloseCustomers();
   const [logs, setLogs] = useState<Log[]>([]);
-  const [loading, setLoading] = useState(true);
   const [forms, setForms] = useState<Record<string, Form>>({});
   const [editing, setEditing] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
@@ -60,26 +59,24 @@ export default function KundenLaufzeiten() {
   const [confirm, setConfirm] = useState<Row | null>(null);
 
   const load = useCallback(async () => {
-    const [{ data }, { data: l }] = await Promise.all([
-      supabase.from('kunden_laufzeit_stand').select('client_id, kunde, close_lead_id, close_status_label, close_opportunity_id, quelle, vc_opportunity_id, startdatum, laufzeit_monate, upsell_startdatum, upsell_laufzeit, vertragsende, fehlt'),
-      supabase.from('close_abschluss_schreiblog').select('id, created_at, user_email, kunde, aktion, werte, fehler, close_opportunity_id').order('created_at', { ascending: false }).limit(20),
-    ]);
-    setRows((data as Row[]) || []); setLogs((l as Log[]) || []); setLoading(false);
-  }, []);
+    await loadCustomers();
+    const { data: l } = await supabase.from('close_abschluss_schreiblog').select('id, created_at, user_email, kunde, aktion, werte, fehler, close_opportunity_id').order('created_at', { ascending: false }).limit(20);
+    setLogs((l as Log[]) || []);
+  }, [loadCustomers]);
   const loadOpts = useCallback(async () => {
     const { data, error } = await supabase.functions.invoke('close-abschluss-schreiben', { body: { optionen: true } });
     if (error || data?.error) setOptsErr(data?.error || error?.message || 'Auswahlwerte aus Close nicht geladen'); else { setOpts(data as Opts); setOptsErr(null); }
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { supabase.from('close_abschluss_schreiblog').select('id, created_at, user_email, kunde, aktion, werte, fehler, close_opportunity_id').order('created_at', { ascending: false }).limit(20).then(({ data }) => setLogs((data as Log[]) || [])); }, []);
   useEffect(() => { if (isAdmin) loadOpts(); }, [isAdmin, loadOpts]);
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const restTage = (end: string) => Math.ceil((new Date(end + 'T00:00:00').getTime() - today.getTime()) / 86400000);
   // ONE list of active Close customers ("Aktueller Klient" / "Pausiert"); both blocks are a pure partition of it.
-  const aktive = useMemo(() => rows.filter(r => AKTIV_STATUS.includes(r.close_status_label || '')), [rows]);
+  const aktive = rows;
   const vollstaendig = (r: Row) => !!r.startdatum && !!r.laufzeit_monate;
   const klar = useMemo(() => aktive.filter(vollstaendig)
-    .map(r => { const vertragsende = r.vertragsende || plusM(r.startdatum!, Number(r.laufzeit_monate)); return { ...r, vertragsende, rest: restTage(vertragsende) }; })
+    .map(r => { const vertragsende = r.vertragsende || (r.startdatum ? plusM(r.startdatum, Number(r.laufzeit_monate)) : ''); return { ...r, vertragsende, rest: restTage(vertragsende) }; })
     .sort((a, b) => a.rest - b.rest), [aktive]); // eslint-disable-line react-hooks/exhaustive-deps
   const unklar = useMemo(() => aktive.filter(r => !vollstaendig(r)).sort((a, b) => (a.kunde || '').localeCompare(b.kunde || '')), [aktive]);
   const [suche, setSuche] = useState(''); const [fehltFilter, setFehltFilter] = useState('alle'); const [anzahl, setAnzahl] = useState(12);
@@ -220,7 +217,8 @@ export default function KundenLaufzeiten() {
         <p className="text-xs text-muted-foreground mt-0.5">Aktive Kunden laut Close („Aktueller Klient“, „Pausiert“). Eingaben werden direkt in Close gespeichert und danach neu aus Close eingelesen.</p>
         {!loading && <p className="text-sm text-muted-foreground mt-2 tabular-nums"><span className="text-foreground font-medium">{aktive.length} aktive Kunden</span> · {klar.length} mit vollständiger Laufzeit · {unklar.length} unvollständig</p>}
       </div>
-      {loading ? <Skeleton className="h-40" /> : <>
+      {kundenFehler && <p role="alert" className="text-sm text-destructive">{kundenFehler}</p>}
+      {loading ? <Skeleton className="h-40" /> : !kundenFehler && <>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Aktive Kunden mit Laufzeit ({klar.length})</CardTitle></CardHeader>
           <CardContent className="overflow-x-auto">
