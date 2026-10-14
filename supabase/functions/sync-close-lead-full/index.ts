@@ -7,13 +7,13 @@ const corsHeaders = {
 };
 
 const CLOSE_BASE = "https://api.close.com/api/v1";
-const CLOSE_API_KEY = Deno.env.get("CLOSE_API_KEY");
+const CLOSE_API_KEY = Deno.env.get("CLOSE_API_KEY_SALES");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const mem = () => Math.round((Deno.memoryUsage?.().heapUsed ?? 0) / 1024 / 1024);
 const truncate = (s: string | null | undefined, n: number) => (s ? String(s).slice(0, n) : null);
 
 async function closeFetch(path: string, attempt = 1): Promise<any> {
-  if (!CLOSE_API_KEY) throw new Error("CLOSE_API_KEY missing");
+  if (!CLOSE_API_KEY) throw new Error("CLOSE_API_KEY_SALES missing");
   const auth = btoa(`${CLOSE_API_KEY}:`);
   const res = await fetch(`${CLOSE_BASE}${path}`, {
     headers: { Authorization: `Basic ${auth}`, Accept: "application/json" },
