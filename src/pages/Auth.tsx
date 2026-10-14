@@ -20,6 +20,22 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [pendingMsg, setPendingMsg] = useState('');
+  const [mode, setMode] = useState<'login' | 'reset'>('login');
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/passwort-reset`,
+    });
+    setIsLoading(false);
+    if (error) {
+      toast.error('Rücksetzen fehlgeschlagen', { description: error.message });
+      return;
+    }
+    setResetSent(true);
+  };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="text-primary animate-pulse text-2xl font-semibold">Laden...</div></div>;
   if (user) return <Navigate to={nextPath} replace />;
