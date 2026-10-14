@@ -16,9 +16,11 @@ export const CF = {
   letzter_vertragstag: "cf_ZEvtumauW5XdcFJpGq52660WUxRFebOSnmWiOFbH2d2",
   abgangs_begruendung: "cf_4HaX7c7hvnnwDDXrBSm3ej6bGf70EiqhWPg4LgyHGDK",
   abgangsgrund: "cf_iuKZiMvCf8jfGN12dthhrfXY3U6V2ewMlODFAP4TPXm",
+  upsell_startdatum: "cf_goxl0TveI0B5zmQBso8asaUj237pKNbi8chtxddgfmH",
+  upsell_laufzeit: "cf_Cq5j39M9ciYolpoJsHmYTlAlibpyhsVDBuLEAsekSya",
 } as const;
-const NUM = new Set(["abschlusswert", "setup_fee", "retainer_monat", "laufzeit_monate"]);
-const DATE = new Set(["startdatum", "kuendigungsdatum", "letzter_vertragstag"]);
+const NUM = new Set(["abschlusswert", "setup_fee", "retainer_monat", "laufzeit_monate", "upsell_laufzeit"]);
+const DATE = new Set(["startdatum", "kuendigungsdatum", "letzter_vertragstag", "upsell_startdatum"]);
 export const NOTION_KUNDEN_DB = "2229f181-82a0-8099-a477-d6ff96c0f59e";
 
 export const txt = (v: any) => v == null || v === "" ? null : Array.isArray(v) ? v.join(", ") : typeof v === "object" ? (v.display_name || v.name || JSON.stringify(v)) : String(v);
@@ -74,7 +76,7 @@ export async function syncLaufzeiten(admin: any) {
   if (error) throw new Error(error.message);
   const active = (akt || []).filter((r: any) => r.aktiv);
   const leadIds = active.map((r: any) => r.close_lead_id);
-  const { data: ab } = await admin.from("close_abschluesse").select("close_opportunity_id, close_lead_id, status_typ, startdatum, laufzeit_monate, status_geaendert_am").in("close_lead_id", leadIds.length ? leadIds : ["-"]);
+  const { data: ab } = await admin.from("close_abschluesse").select("close_opportunity_id, close_lead_id, status_typ, startdatum, laufzeit_monate, upsell_startdatum, upsell_laufzeit, status_geaendert_am").in("close_lead_id", leadIds.length ? leadIds : ["-"]);
   const byLead = new Map<string, any[]>();
   (ab || []).forEach((a: any) => byLead.set(a.close_lead_id, [...(byLead.get(a.close_lead_id) || []), a]));
   // Fallback source: won Viral Connect deals (read-only mirror close_opportunities), matched by CRM client.
@@ -97,6 +99,8 @@ export async function syncLaufzeiten(admin: any) {
     if (!use) fehlt.push("kein gewonnener Abschluss verknüpft (weder Haush Haush noch Viral Connect)");
     else if (!full && !vfull) { if (!use.startdatum) fehlt.push("kein Startdatum"); if (!use.laufzeit_monate) fehlt.push("keine Laufzeit"); }
     const ok = full || vfull;
+    // Extension (Upsell fields) wins when both are set; otherwise start + runtime.
+    const verl = ok && ok.upsell_startdatum && ok.upsell_laufzeit ? ok : null;
     rows.push({
       client_id: r.client_id, close_lead_id: r.close_lead_id, kunde: r.lead_name, close_status_label: r.close_status_label,
       // close_opportunity_id only ever points at OUR Close; VC deals are referenced separately and never written.
@@ -104,7 +108,8 @@ export async function syncLaufzeiten(admin: any) {
       vc_opportunity_id: vfull ? vfull.close_opportunity_id : (!pick && vlist[0] ? vlist[0].close_opportunity_id : null),
       quelle: full || (pick && !vfull) ? "Haush Haush" : (vfull || vlist[0]) ? "Viral Connect" : null,
       startdatum: use?.startdatum ?? null, laufzeit_monate: use?.laufzeit_monate ?? null,
-      vertragsende: ok ? addMonths(String(ok.startdatum).slice(0, 10), Number(ok.laufzeit_monate)) : null, fehlt, aktualisiert_am: now,
+      upsell_startdatum: verl?.upsell_startdatum ?? null, upsell_laufzeit: verl?.upsell_laufzeit ?? null,
+      vertragsende: verl ? addMonths(String(verl.upsell_startdatum).slice(0, 10), Number(verl.upsell_laufzeit)) : ok ? addMonths(String(ok.startdatum).slice(0, 10), Number(ok.laufzeit_monate)) : null, fehlt, aktualisiert_am: now,
     });
   }
   if (rows.length) {

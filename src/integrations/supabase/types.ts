@@ -2017,6 +2017,8 @@ export type Database = {
           synced_at: string
           umsetzungszeitraum: string | null
           upsell: Json
+          upsell_laufzeit: number | null
+          upsell_startdatum: string | null
           wert: number | null
           wert_periode: string | null
         }
@@ -2055,6 +2057,8 @@ export type Database = {
           synced_at?: string
           umsetzungszeitraum?: string | null
           upsell?: Json
+          upsell_laufzeit?: number | null
+          upsell_startdatum?: string | null
           wert?: number | null
           wert_periode?: string | null
         }
@@ -2093,6 +2097,8 @@ export type Database = {
           synced_at?: string
           umsetzungszeitraum?: string | null
           upsell?: Json
+          upsell_laufzeit?: number | null
+          upsell_startdatum?: string | null
           wert?: number | null
           wert_periode?: string | null
         }
@@ -4121,6 +4127,8 @@ export type Database = {
           notion_stand: string | null
           quelle: string | null
           startdatum: string | null
+          upsell_laufzeit: number | null
+          upsell_startdatum: string | null
           vc_opportunity_id: string | null
           vertragsende: string | null
         }
@@ -4137,6 +4145,8 @@ export type Database = {
           notion_stand?: string | null
           quelle?: string | null
           startdatum?: string | null
+          upsell_laufzeit?: number | null
+          upsell_startdatum?: string | null
           vc_opportunity_id?: string | null
           vertragsende?: string | null
         }
@@ -4153,6 +4163,8 @@ export type Database = {
           notion_stand?: string | null
           quelle?: string | null
           startdatum?: string | null
+          upsell_laufzeit?: number | null
+          upsell_startdatum?: string | null
           vc_opportunity_id?: string | null
           vertragsende?: string | null
         }
