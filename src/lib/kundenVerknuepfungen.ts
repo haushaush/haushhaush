@@ -161,21 +161,6 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
     const d = driveByClient.get(k.id);
     st.drive = d ? { zustand: 'verknuepft', objekt: { id: d.drive_folder_id, name: d.drive_folder_name, url: d.drive_folder_url || `https://drive.google.com/drive/folders/${d.drive_folder_id}` } } : { zustand: 'offen' };
 
-    // Slack
-    const s = extBy.get(`${k.id}:slack`);
-    st.slack = s ? { zustand: 'verknuepft', objekt: { id: s.externe_id, name: s.name, url: s.url } } : { zustand: 'offen' };
-
-    // Pipedrive
-    const p = extBy.get(`${k.id}:pipedrive`);
-    if (p) st.pipedrive = { zustand: 'verknuepft', objekt: { id: p.externe_id, name: p.name, url: p.url } };
-    else {
-      const kd = domainVon(k.email) || domainVon(k.website_url || k.website);
-      const kand = pp.rows.filter(r => !linkedPd.has(String(r.pipedrive_id)) && ok(k, 'pipedrive', String(r.pipedrive_id)));
-      const dom = kd ? kand.find(r => domainVon(r.email) === kd) : undefined;
-      const t = dom ? { item: dom, grund: 'Treffer über E-Mail-Domain' } : besterName(k, kand, r => r.org_name || r.name);
-      st.pipedrive = t ? { zustand: 'vorschlag', vorschlag: { system: 'pipedrive', id: String(t.item.pipedrive_id), name: t.item.org_name || t.item.name, grund: t.grund } } : { zustand: 'offen' };
-    }
-
     st.superchat = { zustand: 'nicht_angebunden' };
     out.set(k.id, st);
   }
@@ -211,17 +196,6 @@ export async function suche(system: SystemKey, q: string): Promise<Objekt[]> {
     case 'onepage': {
       const { data } = await supabase.from('onepage_projects').select('id, name, page_url, client_id_fk').or(`name.ilike.${like},page_url.ilike.${like}`).limit(15);
       return (data || []).map((r: any) => ({ id: r.id, name: r.name, url: r.page_url, detail: r.client_id_fk ? 'bereits einem Kunden zugeordnet' : undefined }));
-    }
-    case 'pipedrive': {
-      const { data } = await supabase.from('pipedrive_persons').select('pipedrive_id, name, email, org_name').or(`name.ilike.${like},org_name.ilike.${like},email.ilike.${like}`).limit(15);
-      return (data || []).map((r: any) => ({ id: String(r.pipedrive_id), name: r.org_name || r.name, detail: [r.name, r.email].filter(Boolean).join(' · ') }));
-    }
-    case 'slack': {
-      const { data, error } = await supabase.functions.invoke('slack-list-channels', { body: {} });
-      if (error) throw new Error('Slack-Channels konnten nicht geladen werden');
-      const n = q.toLowerCase();
-      return (data?.channels || []).filter((c: any) => String(c.name || '').toLowerCase().includes(n)).slice(0, 15)
-        .map((c: any) => ({ id: c.id, name: `#${c.name}`, url: `https://slack.com/app_redirect?channel=${c.id}` }));
     }
     case 'drive': {
       // Kein Ordner-Index im CRM: Link oder ID einfügen.
