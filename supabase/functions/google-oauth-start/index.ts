@@ -2,6 +2,7 @@
 // Builds the Google OAuth consent URL for the currently authenticated user
 // and stores a one-time state token (with the user_id) in oauth_states.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { googleOAuthClientId } from '../_shared/google-oauth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,24 +44,12 @@ Deno.serve(async (req) => {
     }
     const userId = userData.user.id;
 
-    // Find Google OAuth client_id from any user's stored google_drive integration_settings
-    // (the admin who configured the credentials).
-    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { data: settings, error: settingsError } = await admin
-      .from('integration_settings')
-      .select('config')
-      .eq('provider', 'google_drive')
-      .order('updated_at', { ascending: false })
-      .limit(1);
-
-    if (settingsError) {
-      return new Response(JSON.stringify({ error: 'Failed to read integration settings' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    let clientId: string | undefined;
+    try { clientId = googleOAuthClientId(); } catch (e) {
+      return new Response(JSON.stringify({ error: (e as Error).message }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const clientId = (settings?.[0]?.config as Record<string, unknown> | undefined)?.client_id as string | undefined;
     if (!clientId) {
       return new Response(
         JSON.stringify({

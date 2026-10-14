@@ -2,6 +2,7 @@
 // Proxies Google Drive API v3 calls using the central (is_primary) Google Drive connection.
 // Enforces per-user / per-role visibility for non-admins via drive_permissions.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { googleOAuthCreds } from '../_shared/google-oauth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,20 +30,9 @@ async function refreshAccessToken(
   admin: ReturnType<typeof createClient>,
   refreshToken: string,
 ): Promise<string | null> {
-  const { data: settings } = await admin
-    .from('integration_settings')
-    .select('config')
-    .eq('provider', 'google_drive')
-    .order('updated_at', { ascending: false })
-    .limit(1);
-
-  const cfg = (settings?.[0]?.config as Record<string, unknown> | undefined) ?? {};
-  const clientId = cfg.client_id as string | undefined;
-  const clientSecret = cfg.client_secret as string | undefined;
-  if (!clientId || !clientSecret) {
-    console.error('Missing Google credentials for refresh');
-    return null;
-  }
+  let clientId: string, clientSecret: string;
+  try { ({ clientId, clientSecret } = googleOAuthCreds()); }
+  catch (e) { console.error((e as Error).message); throw e; }
 
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',

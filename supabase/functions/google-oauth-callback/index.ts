@@ -3,6 +3,7 @@
 // Validates the state token, exchanges code for tokens, fetches user info,
 // upserts a row in google_drive_connections, then redirects back to the app.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { googleOAuthCreds } from '../_shared/google-oauth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -61,22 +62,9 @@ Deno.serve(async (req) => {
     const userId = stateRow.user_id as string;
     await admin.from('oauth_states').delete().eq('state', state);
 
-    // Look up Google credentials
-    const { data: settings, error: settingsError } = await admin
-      .from('integration_settings')
-      .select('config')
-      .eq('provider', 'google_drive')
-      .order('updated_at', { ascending: false })
-      .limit(1);
-    if (settingsError) {
-      return htmlRedirect(errorUrl('settings_unavailable'), 'Google Credentials nicht abrufbar.');
-    }
-    const cfg = (settings?.[0]?.config as Record<string, unknown> | undefined) ?? {};
-    const clientId = cfg.client_id as string | undefined;
-    const clientSecret = cfg.client_secret as string | undefined;
-    if (!clientId || !clientSecret) {
-      return htmlRedirect(errorUrl('missing_credentials'), 'Client ID oder Secret fehlt.');
-    }
+    let clientId: string, clientSecret: string;
+    try { ({ clientId, clientSecret } = googleOAuthCreds()); }
+    catch (e) { return htmlRedirect(errorUrl('missing_credentials'), (e as Error).message); }
 
     // Exchange code for tokens
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
