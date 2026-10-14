@@ -74,6 +74,26 @@ function KpiCard({ label, value, hint, footer }: { label: string; value: string;
   );
 }
 
+/** Erklärt, warum etwas leer ist, und bietet den nächsten Schritt an. */
+function Leer({ text, aktion, zentriert, klein }: { text: string; aktion?: () => void; zentriert?: boolean; klein?: boolean }) {
+  return (
+    <p className={`${klein ? 'text-xs' : 'text-sm'} text-muted-foreground ${zentriert ? 'text-center' : ''}`}>
+      {text}
+      {aktion && <> · <button type="button" onClick={aktion} className="text-primary hover:underline">Jetzt verknüpfen</button></>}
+    </p>
+  );
+}
+
+function KopfKachel({ label, wert, anzeige, leer, aktion, primary }: { label: string; wert: number; anzeige: string; leer: string; aktion?: () => void; primary?: boolean }) {
+  return (
+    <Card><CardContent className="p-4 text-center">
+      <p className={`text-xl font-heading font-bold tabular-nums ${primary && wert ? 'text-primary' : ''} ${wert ? '' : 'text-muted-foreground'}`}>{wert ? anzeige : '—'}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      {!wert && <div className="mt-1.5"><Leer klein text={leer} aktion={aktion} /></div>}
+    </CardContent></Card>
+  );
+}
+
 function InfoField({ label, value, type }: { label: string; value: any; type?: 'email' | 'phone' | 'url' }) {
   const empty = value == null || value === '';
   const labelEl = <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>;
@@ -306,6 +326,25 @@ export default function KundenDetail() {
   };
 
   useEffect(() => { load(); }, [id]);
+
+  // Verknüpfungen: eine Quelle für Tab, Kacheln und Badge
+  const [tab, setTab] = useState(defaultTab);
+  const [linkStand, setLinkStand] = useState<Record<SystemKey, SystemStand> | null>(null);
+  const [linkLoading, setLinkLoading] = useState(true);
+  const ladeLinks = async () => {
+    if (!client?.id) return;
+    setLinkLoading(true);
+    try { setLinkStand((await ladeStand([client])).get(client.id) || null); }
+    finally { setLinkLoading(false); }
+  };
+  useEffect(() => { ladeLinks(); }, [client?.id]);
+  const linkZahl = linkStand ? zaehle(linkStand) : null;
+  const zuVerknuepfungen = () => {
+    setTab('verknuepfungen');
+    setTimeout(() => document.getElementById('kunde-verknuepfungen')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
+  const dealAnzahl = deals.length + closeOpps.length;
+  const dealWert = totals.dealValue + closeStats.wonSum;
 
   const totals = useMemo(() => {
     const dealsValue = deals.reduce((s, x) => s + Number(x.wert_eur || 0), 0);
@@ -588,6 +627,7 @@ export default function KundenDetail() {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+            </>)}
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             {brancheLabel && <span className="flex items-center gap-1"><Tag className="h-3.5 w-3.5" />{brancheLabel}</span>}
@@ -806,7 +846,7 @@ export default function KundenDetail() {
                     value="—"
                     hint="Keine Qonto-Verknüpfung vorhanden"
                     footer={
-                      <Link to="/finanzen/verknuepfungen" className="text-primary hover:underline">
+                      <Link to={`/kunden/${id}?tab=verknuepfungen`} onClick={(e) => { e.preventDefault(); zuVerknuepfungen(); }} className="text-primary hover:underline">
                         Qonto-Verknüpfung erstellen
                       </Link>
                     }
