@@ -245,7 +245,10 @@ export async function verknuepfen(system: SystemKey, clientId: string, o: Objekt
     case 'close':
       chk(await supabase.from('close_link' as any).insert({ client_id: clientId, close_lead_id: o.id, matched_via: 'manual', match_confidence: 1 } as any));
       // Daten sofort holen, damit Deals/Stammdaten erscheinen; Fehler hier lässt die Verknüpfung bestehen.
-      await supabase.functions.invoke('sync-close-lead-full', { body: { client_id: clientId } }).catch(() => null);
+      try {
+        const r = await supabase.functions.invoke('sync-close-lead-full', { body: { client_id: clientId } });
+        if (r.error) console.warn('Close-Sync nach Verknüpfung fehlgeschlagen', r.error.message);
+      } catch { /* Sync ist optional; Verknüpfung bleibt bestehen */ }
       return;
     case 'meta':
       chk(await supabase.from('kunde_meta_accounts').insert({ client_id: clientId, meta_account_id: o.id, meta_account_name: o.name, match_type: 'manual', match_confidence: 1, matched_by: await uid() } as any));
