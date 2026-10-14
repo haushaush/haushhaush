@@ -68,7 +68,7 @@ export function VerknuepfungenTab({ kunde, stand, loading, onChanged }: {
   );
 }
 
-function Zeile({ system, st, busy, onLink, onDiscard, onUnlink }: {
+function Zeile({ system, st, busy, clientId, onLink, onDiscard, onUnlink }: {
   system: (typeof SYSTEME)[number]; st: SystemStand; busy: boolean;
   clientId?: string; onLink: (o: Objekt) => void; onDiscard: (v: any) => void; onUnlink: (o: Objekt) => void;
 }) {
