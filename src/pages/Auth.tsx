@@ -1,19 +1,17 @@
-import { useRef, useState } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, FlaskConical } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const logoUrl = import.meta.env.VITE_LOGO_URL || null;
-const TEST_EMAIL = 'test@haushhaush.de';
-const TEST_PASSWORD = 'Test1234!';
 
 export default function Auth() {
-  const { user, loading, activateTestMode } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawNext = searchParams.get('next') ?? '';
