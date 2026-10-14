@@ -117,15 +117,16 @@ export async function activeCloseCustomers(call: Close): Promise<any[]> {
   for (const statusId of ACTIVE_CLIENT_STATUS_IDS) {
     const label = labels.get(statusId);
     if (!label) throw new Error(`Close-Lead-Status ${statusId} nicht gefunden – kein Label vorhanden.`);
-    let treffer = 0;
     for (let skip = 0; ; skip += 100) {
       const page = await call(`/lead/?query=${encodeURIComponent(`status:"${label}"`)}&_fields=id,display_name,status_id,status_label,date_updated&_limit=100&_skip=${skip}`);
       const leads = (page.data || []).filter((lead: any) => lead.status_id === statusId);
-      treffer += leads.length;
       out.push(...leads);
       if (!page.has_more) break;
     }
-    if (!treffer) throw new Error(`Close-Suche lieferte 0 Leads für Status ${statusId} („${label}“).`);
+  }
+  if (!out.length) {
+    const geprueft = ACTIVE_CLIENT_STATUS_IDS.map((id) => `${id} („${labels.get(id) ?? "kein Label"}“)`).join(", ");
+    throw new Error(`Close-Suche lieferte insgesamt 0 Leads – geprüfte Status: ${geprueft}.`);
   }
   return Array.from(new Map(out.map((lead: any) => [lead.id, lead])).values());
 }
