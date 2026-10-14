@@ -3,7 +3,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { closeForPipeline, cors, json, SALES_PIPELINE_ID } from "../_shared/bonusClose.ts";
-import { CF, mapContext, mapOpp, pushNotion, syncLaufzeiten } from "../_shared/closeAbschluesse.ts";
+import { addMonths, CF, mapContext, mapOpp, pushNotion, syncLaufzeiten } from "../_shared/closeAbschluesse.ts";
 
 const CASH_TYPE = "actitype_0lwRdK0dAAXgtFwpWwaFpb";
 const PAKET_CF = "cf_TQANvWAP5zk8A4txB6sevhXk78NhilRk4D2wPsHOXhc";
@@ -70,6 +70,7 @@ Deno.serve(async (req) => {
         mit_cash: Object.values(cash).filter(Boolean).length, ohne_cash: Object.values(cash).filter((x) => !x).length });
     } catch (e) { return json({ error: e instanceof Error ? e.message : String(e) }, 502); }
   }
+  if (rawBody?.aktion === "opps" || rawBody?.aktion === "verlaengern" || rawBody?.aktion === "beenden") return lifecycle(admin, u.user, rawBody);
   const parsed = Body.safeParse(rawBody);
   if (!parsed.success) return json({ error: "Ungültige Eingabe", details: parsed.error.flatten().fieldErrors }, 400);
   const b = parsed.data;
@@ -168,4 +169,105 @@ async function cashActivities(call: any, leadIds: string[]) {
   };
   for (let i = 0; i < leadIds.length; i += 5) await Promise.all(leadIds.slice(i, i + 5).map(one));
   return out;
+}
+
+// ---- Quick actions: extend / end a customer's contract. Writes only to Close, notes each step, re-reads afterwards.
+const ABGANG: Record<string, string> = {
+  stat_PRdhsPNJcgb2ZZ13rFEkaMldqH2gvwQHWnDXnZ32qo1: "Abgang: Laufzeit regulär beendet",
+  stat_lw0C84V0kcTzRAyOFc9SNgpCq4l1mJLyea5fFEcW4Hg: "Abgang: Laufzeit abgebrochen",
+  stat_4fldj1q89q9hJnOCwQd7wKyPLkUS9JtVkLw5t8je9Yx: "Abgang: Vorzeitig entlassen (durch uns)",
+  stat_9Oxmm9S77UPZgEnwepIlXZr30CP4ncY3OTdzyOEmfZT: "Abgang: Insolvenz / Geschäftsaufgabe",
+  stat_L1fkxQFOSGFrXGY9DVdB784etCE38HyLZqMVf94ZF8m: "Abgang: Sonderfall (außerhalb Verantwortung)",
+};
+const EHEMALIG = "stat_4NdZZtf9GLcjvzP8AjAuit0lmnJgOeyjs8P2JOVTfkF";
+const D = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const Life = z.discriminatedUnion("aktion", [
+  z.object({ aktion: z.literal("opps"), client_id: z.string().uuid() }),
+  z.object({ aktion: z.literal("verlaengern"), client_id: z.string().uuid(), close_opportunity_id: z.string().min(1).max(100), startdatum: D, monate: z.number().int().min(1).max(120), notiz: z.string().max(2000).optional().nullable(), ueberschreiben_bestaetigt: z.boolean().optional() }),
+  z.object({ aktion: z.literal("beenden"), client_id: z.string().uuid(), close_opportunity_id: z.string().min(1).max(100), status_id: z.enum(Object.keys(ABGANG) as [string, ...string[]]), kuendigungsdatum: D, letzter_vertragstag: D, begruendung: z.string().trim().min(1).max(4000) }),
+]);
+const de = (d: string | null | undefined) => d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : "–";
+const mon = (m: any) => `${Number(m)} ${Number(m) === 1 ? "Monat" : "Monate"}`;
+const span = (s: string | null, m: any) => s && m ? `${de(s)} – ${de(addMonths(s.slice(0, 10), Number(m)))} (${mon(m)})` : "unbekannt";
+const errMsg = (e: unknown) => e instanceof Error ? e.message : String(e);
+
+async function lifecycle(admin: any, user: any, raw: any) {
+  const p = Life.safeParse(raw);
+  if (!p.success) return json({ error: "Ungültige Eingabe", details: p.error.flatten().fieldErrors }, 400);
+  const b = p.data;
+  const { data: stand } = await admin.from("kunden_laufzeit_stand").select("client_id, kunde, close_lead_id").eq("client_id", b.client_id).maybeSingle();
+  if (!stand?.close_lead_id) return json({ error: "Kunde ist kein aktiver Close-Klient (oder ohne Close-Lead)." }, 404);
+  let call: any;
+  try { call = (await closeForPipeline()).call; } catch (e) { return json({ error: errMsg(e) }, 502); }
+  const sd = `custom.${CF.startdatum}`, lz = `custom.${CF.laufzeit_monate}`, usd = `custom.${CF.upsell_startdatum}`, ulz = `custom.${CF.upsell_laufzeit}`;
+
+  if (b.aktion === "opps") {
+    try {
+      const live = await call(`/opportunity/?lead_id=${encodeURIComponent(stand.close_lead_id)}&_limit=100`);
+      const open = (live.data || []).filter((o: any) => o.status_type !== "lost" && !ABGANG[o.status_id]);
+      return json({ opps: open.map((o: any) => ({ id: o.id, name: o.note || o.status_label || o.id, status: o.status_label, startdatum: o[sd] ?? null, laufzeit: o[lz] ?? null, wert: o.value != null ? o.value / 100 : null })) });
+    } catch (e) { return json({ error: errMsg(e) }, 502); }
+  }
+
+  const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email;
+  const heute = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
+  const log = (aktion: string, werte: any, fehler: string | null = null) => admin.from("close_abschluss_schreiblog").insert({
+    user_id: user.id, user_email: user.email, client_id: stand.client_id, kunde: stand.kunde, close_lead_id: stand.close_lead_id,
+    close_opportunity_id: b.close_opportunity_id, aktion, werte, fehler,
+  });
+  let opp: any;
+  try {
+    opp = await call(`/opportunity/${encodeURIComponent(b.close_opportunity_id)}/`);
+    if (opp.lead_id !== stand.close_lead_id) throw new Error("Die Opportunity gehört nicht zu diesem Kunden.");
+  } catch (e) { return json({ error: errMsg(e), schritt: 0 }, 502); }
+  const ersteLz = span(opp[sd], opp[lz]);
+  const bisher = opp[usd] && opp[ulz] ? { s: String(opp[usd]).slice(0, 10), m: opp[ulz] } : null;
+  const nachher = async () => {
+    try {
+      const fresh = await call(`/opportunity/${opp.id}/`);
+      const ctx = await mapContext(call, admin, [stand.close_lead_id]);
+      await admin.from("close_abschluesse").upsert(mapOpp(fresh, ctx), { onConflict: "close_opportunity_id" });
+      const lzr = await syncLaufzeiten(admin);
+      try { await pushNotion(admin, lzr.rows.filter((r: any) => r.client_id === stand.client_id)); } catch { /* notion optional */ }
+      return null;
+    } catch (e) { return "In Close gespeichert, aber Neu-Einlesen fehlgeschlagen: " + errMsg(e); }
+  };
+
+  if (b.aktion === "verlaengern") {
+    if (bisher && !b.ueberschreiben_bestaetigt) return json({ error: `Für diesen Kunden ist bereits eine Verlängerung hinterlegt (${de(bisher.s)}, ${bisher.m} Mon.). Bestätigung fehlt.`, bisher, schritt: 0 }, 409);
+    const werte = { verlaengerung_start: b.startdatum, verlaengerung_monate: b.monate, ueberschrieben: bisher };
+    try { await call(`/opportunity/${opp.id}/`, "PUT", { [usd]: b.startdatum, [ulz]: b.monate }); }
+    catch (e) { await log("fehlgeschlagen", werte, errMsg(e)); return json({ error: errMsg(e), schritt: 1 }, 502); }
+    const vorher = bisher ? span(bisher.s, bisher.m) : ersteLz;
+    const note = ["Verlängerung erfasst (CRM)", "", `Bisher:  ${vorher}`, `Neu:     ${span(b.startdatum, b.monate)}`,
+      ...(bisher ? ["", `Überschrieben: bisherige Verlängerung ${span(bisher.s, bisher.m)} (Startdatum (Upsell) ${de(bisher.s)}, Laufzeit (Upsell) ${mon(bisher.m)}). 1. Laufzeit: ${ersteLz}`] : []),
+      "", `Erfasst am ${de(heute)} durch ${name}`, ...(b.notiz?.trim() ? [b.notiz.trim()] : [])].join("\n");
+    let teil: string | null = null;
+    try { await call(`/activity/note/`, "POST", { lead_id: stand.close_lead_id, note }); }
+    catch (e) { teil = `Verlängerung wurde gespeichert, aber die Notiz konnte nicht angelegt werden: ${errMsg(e)}. Bitte in Close prüfen.`; }
+    await log(teil ? "verlängert (teilweise)" : "verlängert", werte, teil);
+    const re = await nachher();
+    return json({ ok: true, teilfehler: teil, einlesen_fehler: re });
+  }
+
+  // beenden: strict order, abort on step 1, report partial success on 2/3, never retry.
+  const grund = ABGANG[b.status_id];
+  const werte = { grund, kuendigungsdatum: b.kuendigungsdatum, letzter_vertragstag: b.letzter_vertragstag, begruendung: b.begruendung };
+  try {
+    await call(`/opportunity/${opp.id}/`, "PUT", { status_id: b.status_id, [`custom.${CF.kuendigungsdatum}`]: b.kuendigungsdatum, [`custom.${CF.letzter_vertragstag}`]: b.letzter_vertragstag, [`custom.${CF.abgangs_begruendung}`]: b.begruendung });
+  } catch (e) { await log("fehlgeschlagen", werte, errMsg(e)); return json({ error: errMsg(e), schritt: 1 }, 502); }
+  let teil: string | null = null;
+  try {
+    await call(`/lead/${stand.close_lead_id}/`, "PUT", { status_id: EHEMALIG });
+    // Mirror the state Close just accepted so the customer leaves the active list now, not at the next hourly sync.
+    await admin.from("bonus_kunden_aktuell").update({ aktiv: false, close_status_label: "Ehemaliger Klient" }).eq("close_lead_id", stand.close_lead_id);
+  } catch (e) { teil = `Opportunity wurde ausgebucht, aber der Lead-Status konnte nicht gesetzt werden: ${errMsg(e)}. Bitte in Close prüfen.`; }
+  const gesamt = bisher ? `${opp[sd] ? de(String(opp[sd]).slice(0, 10)) : "unbekannt"} – ${de(addMonths(bisher.s, Number(bisher.m)))} (inkl. Verlängerung ${mon(bisher.m)})` : ersteLz;
+  const note = ["Kunde ausgebucht (CRM)", "", `Grund:               ${grund}`, `Kündigungsdatum:     ${de(b.kuendigungsdatum)}`, `Letzter Vertragstag: ${de(b.letzter_vertragstag)}`,
+    `Laufzeit gesamt:     ${gesamt}`, "", `Begründung: ${b.begruendung}`, "", `Erfasst am ${de(heute)} durch ${name}`].join("\n");
+  try { await call(`/activity/note/`, "POST", { lead_id: stand.close_lead_id, note }); }
+  catch (e) { const t = `die Notiz konnte nicht angelegt werden: ${errMsg(e)}`; teil = teil ? `${teil} Außerdem ${t}.` : `Opportunity wurde ausgebucht, aber ${t}. Bitte in Close prüfen.`; }
+  await log(teil ? "ausgebucht (teilweise)" : "ausgebucht", werte, teil);
+  const re = await nachher();
+  return json({ ok: true, teilfehler: teil, einlesen_fehler: re });
 }
