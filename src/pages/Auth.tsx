@@ -12,7 +12,6 @@ const logoUrl = import.meta.env.VITE_LOGO_URL || null;
 
 export default function Auth() {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawNext = searchParams.get('next') ?? '';
   // Only accept same-origin relative paths.
