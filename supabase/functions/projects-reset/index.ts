@@ -2,7 +2,10 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { closeForPipeline, cors, json } from "../_shared/bonusClose.ts";
 import { loadActiveCustomers } from "../_shared/activeCustomers.ts";
 import { CF } from "../_shared/closeAbschluesse.ts";
-import { mergeServices, PROJECT_TYPES, resetCounts } from "../_shared/projectReset.ts";
+import { mergeServices, PROJECT_TYPES } from "../_shared/projectReset.ts";
+
+// Only active (Close: Aktueller Klient / Pausiert) customers keep their projects; everything else is archived.
+const runPlan = (source: any) => ({ projects: source.projects, active_client_ids: [...new Set(source.customers.map((c: any) => c.client_id).filter(Boolean))] });
 
 const UPSELL_SERVICES = "cf_jgeLLARF6nrKr1bxhsoNCgOUX2VGpcxsTtyXBEdiv80";
 const enc = new TextEncoder();
@@ -51,13 +54,14 @@ Deno.serve(async req => {
       // Re-read Close before the transaction: changing memberships/services invalidates the preview.
       const fresh = await sourcePlan(admin);
       if (JSON.stringify(fresh) !== JSON.stringify(plan.source)) throw new Error("Close-Daten wurden seit der Vorschau geändert. Bitte Vorschau neu laden.");
-      const { data, error } = await admin.rpc("projects_reset_execute", { p_actor: auth.user.id, p_fingerprint: plan.fingerprint, p_plan: { projects: plan.source.projects, customers: plan.source.customers, without_services: plan.source.without_services } });
-      if (error) throw new Error(error.message); return json({ ok: true, result: data });
+      const { data, error } = await admin.rpc("projects_reset_run", { p_actor: auth.user.id, p_fingerprint: plan.fingerprint, p_plan: runPlan(plan.source), p_dry: false });
+      if (error) throw new Error(error.message); return json({ ok: true, result: { ...data, active_customers: plan.source.customers.length, without_services: plan.source.without_services } });
     }
     if (body.action !== "preview") return json({ error: "Unbekannte Aktion." }, 400);
     const source = await sourcePlan(admin);
     const { data: snapshot, error } = await admin.rpc("projects_reset_snapshot"); if (error) throw new Error(error.message);
-    const counts = resetCounts(snapshot.projects || [], source.projects);
+    const { data: counts, error: pe } = await admin.rpc("projects_reset_run", { p_actor: auth.user.id, p_fingerprint: snapshot.fingerprint, p_plan: runPlan(source), p_dry: true });
+    if (pe) throw new Error(pe.message);
     const token = source.missing_links.length ? null : await sign({ source, fingerprint: snapshot.fingerprint, missing_links: source.missing_links, actor: auth.user.id, exp: Date.now() + 15 * 60_000 });
     return json({ preview: { ...counts, active_customers: source.customers.length, customers: source.customers, without_services: source.without_services, missing_links: source.missing_links, status: "Laufzeitbetreuung" }, token });
   } catch (e) { return json({ error: e instanceof Error ? e.message : String(e) }, 409); }
