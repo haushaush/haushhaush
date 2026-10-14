@@ -39,6 +39,7 @@ export function VerknuepfungenTab({ kunde, stand, loading, onChanged }: {
       <div className="rounded-2xl bg-card shadow-sm divide-y divide-border/60">
         {SYSTEME.map(s => (
           <Zeile key={s.key} system={s} st={stand[s.key]} busy={busy === s.key}
+            clientId={kunde.id}
             onLink={(o) => run(s.key, () => verknuepfen(s.key, kunde.id, o), `${s.label} verknüpft`)}
             onDiscard={(v) => run(s.key, () => verwerfen(v, kunde.id), 'Vorschlag verworfen')}
             onUnlink={(o) => setLoeseZiel({ system: s.key, objekt: o })}
@@ -69,7 +70,7 @@ export function VerknuepfungenTab({ kunde, stand, loading, onChanged }: {
 
 function Zeile({ system, st, busy, onLink, onDiscard, onUnlink }: {
   system: (typeof SYSTEME)[number]; st: SystemStand; busy: boolean;
-  onLink: (o: Objekt) => void; onDiscard: (v: any) => void; onUnlink: (o: Objekt) => void;
+  clientId?: string; onLink: (o: Objekt) => void; onDiscard: (v: any) => void; onUnlink: (o: Objekt) => void;
 }) {
   const [suchen, setSuchen] = useState(false);
   const grau = st.zustand === 'nicht_angebunden' || st.zustand === 'keine_berechtigung';
@@ -117,7 +118,7 @@ function Zeile({ system, st, busy, onLink, onDiscard, onUnlink }: {
           )}
         </div>
       </div>
-      {suchen && <SuchFeld system={system.key} label={system.label} onPick={(o) => { setSuchen(false); onLink(o); }} />}
+      {suchen && <SuchFeld system={system.key} clientId={clientId} label={system.label} onPick={(o) => { setSuchen(false); onLink(o); }} />}
     </div>
   );
 }
@@ -133,17 +134,17 @@ function ObjektZeile({ o }: { o: Objekt }) {
   );
 }
 
-function SuchFeld({ system, label, onPick }: { system: SystemKey; label: string; onPick: (o: Objekt) => void }) {
+function SuchFeld({ system, clientId, label, onPick }: { system: SystemKey; clientId?: string; label: string; onPick: (o: Objekt) => void }) {
   const [q, setQ] = useState('');
   const [res, setRes] = useState<Objekt[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
     if (q.trim().length < 2) { setRes(null); return; }
     const t = setTimeout(() => {
-      suche(system, q.trim()).then(r => { setRes(r); setErr(null); }).catch(e => setErr(e.message));
+      suche(system, q.trim(), clientId).then(r => { setRes(r); setErr(null); }).catch(e => setErr(e.message));
     }, 300);
     return () => clearTimeout(t);
-  }, [q, system]);
+  }, [q, system, clientId]);
   const ph = system === 'drive' ? 'Link zum Drive-Ordner einfügen…' : `In ${label} suchen…`;
   return (
     <div className="mt-3 sm:ml-[290px] space-y-1.5">
