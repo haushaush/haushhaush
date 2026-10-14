@@ -70,7 +70,39 @@ Deno.serve(async (req) => {
   // ---------- 1) Zufriedenheit: snapshot denominator, assigned customers only ----------
   const { data: snapshot, error: snapshotError } = await admin.from("bonus_kunden_snapshot").select("client_id").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
   if (snapshotError) return json({ error: snapshotError.message }, 500);
-  const snapshotIds = new Set((snapshot || []).map(row => row.client_id));
+  const snapshotOnly = new Set((snapshot || []).map(row => row.client_id));
+  // Monatsbasis: jeder Kunde, der im Monat mindestens einen Tag aktiv war (Close-Startdatum <= Monatsende
+  // und Letzter Vertragstag leer oder >= Monatserster; Upsell-Verlängerung wie auf der Laufzeiten-Seite).
+  // Kunden ohne Startdatum zählen nach bisheriger Logik (Snapshot) und werden sichtbar ausgewiesen.
+  const monatEnde = (() => { const d = new Date(monat + "T00:00:00Z"); d.setUTCMonth(d.getUTCMonth() + 1); d.setUTCDate(0); return d.toISOString().slice(0, 10); })();
+  const { data: zugeordnet, error: zErr } = await admin.from("bonus_kunden_aktuell").select("client_id").eq("mitarbeiter_id", mitarbeiter_id).not("client_id", "is", null);
+  if (zErr) return json({ error: zErr.message }, 500);
+  const kandidaten = [...new Set([...snapshotOnly, ...(zugeordnet || []).map(r => r.client_id)])];
+  const { data: abs, error: aErr } = await admin.from("close_abschluesse").select("client_id, status_typ, startdatum, letzter_vertragstag, upsell_startdatum, upsell_laufzeit").in("client_id", kandidaten.length ? kandidaten : ["00000000-0000-0000-0000-000000000000"]).eq("status_typ", "won");
+  if (aErr) return json({ error: aErr.message }, 500);
+  const plusM = (d: string, m: number) => { const x = new Date(d + "T00:00:00Z"); x.setUTCMonth(x.getUTCMonth() + m); x.setUTCDate(x.getUTCDate() - 1); return x.toISOString().slice(0, 10); };
+  const lauf = new Map<string, { start: string | null; ende: string | null; offen: boolean }>();
+  for (const a of abs || []) {
+    const l = lauf.get(a.client_id) ?? { start: null, ende: null, offen: false };
+    const st = a.startdatum ? String(a.startdatum).slice(0, 10) : null;
+    if (st && (!l.start || st < l.start)) l.start = st;
+    let ende = a.letzter_vertragstag ? String(a.letzter_vertragstag).slice(0, 10) : null;
+    if (ende && a.upsell_startdatum && Number(a.upsell_laufzeit) > 0) { const u = plusM(String(a.upsell_startdatum).slice(0, 10), Number(a.upsell_laufzeit)); if (u > ende) ende = u; }
+    if (st && !ende) l.offen = true; else if (ende && (!l.ende || ende > l.ende)) l.ende = ende;
+    lauf.set(a.client_id, l);
+  }
+  const snapshotIds = new Set<string>(); const ohneStart: string[] = []; let abgegangen = 0, neu = 0;
+  for (const id of kandidaten) {
+    const l = lauf.get(id);
+    if (!l?.start) { if (snapshotOnly.has(id)) { snapshotIds.add(id); ohneStart.push(id); } continue; }
+    const ende = l.offen ? null : l.ende;
+    if (l.start <= monatEnde && (!ende || ende >= monat)) {
+      snapshotIds.add(id);
+      if (l.start >= monat) neu++;
+      if (ende && ende <= monatEnde) abgegangen++;
+    }
+  }
+  const snapCount = snapshotIds.size;
   const { data: surveyAnswers, error: surveyError } = await admin.from("bonus_survey_antworten").select("client_id,score_betreuung,zuordnung_status").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).in("zuordnung_status", ["automatisch", "manuell"]);
   if (surveyError) return json({ error: surveyError.message }, 500);
   const assigned = (surveyAnswers || []).filter(row => snapshotIds.has(row.client_id));
@@ -116,7 +148,6 @@ Deno.serve(async (req) => {
   if (offenK > 0 && k3.status === "ok") { k3.status = "unvollstaendig"; k3.hinweis = `${offenK} Zahlungen in der Klärliste`; }
 
   // ---------- 4) Churn ----------
-  const { count: snapCount } = await admin.from("bonus_kunden_snapshot").select("id", { count: "exact", head: true }).eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
   const { data: churn, error: chErr } = await admin.from("bonus_churn_events").select("zaehlt_als_churn").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id);
   if (chErr) return json({ error: chErr.message }, 500);
   // Observed churn points always count; confirmation only controls completeness and approval.
@@ -224,15 +255,22 @@ Deno.serve(async (req) => {
   const activeInSnapshot = activeError ? null : [...snapshotIds].filter(id => activeIds.has(id)).length;
   const result = {
     monat, mitarbeiter_id, config_gueltig_ab: cfgRow.gueltig_ab, kriterien,
-    anzeige: { config: cfg, calls: ciRows || [], basis: { gesamt: snapshotIds.size, heute_aktiv: activeInSnapshot } },
+    anzeige: { config: cfg, calls: ciRows || [], basis: { gesamt: snapshotIds.size, heute_aktiv: activeInSnapshot, abgegangen, neu, ohne_startdatum: ohneStart.length, regel: "aktiv_im_monat" } },
     punkte_gesamt: punkte, punkte_bewertbar_max: bewertbar, punkte_max: gesamtMax,
     nicht_bewertbare_kriterien: 5 - okList.length,
     bonus_eur: bonus, upsell_beteiligung_eur: upsell, berechnet_am: new Date().toISOString(),
   };
 
+  // Freigegebene Monate werden nie neu berechnet: gespeicherten Stand zeigen, neue Basis nur als Hinweis.
+  const { data: ex } = await admin.from("bonus_monate").select("status, berechnungsdetails").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).maybeSingle();
+  if (ex?.status === "freigegeben" && ex.berechnungsdetails) {
+    const alt: any = ex.berechnungsdetails;
+    const altBasis = alt?.anzeige?.basis ?? { gesamt: alt?.kriterien?.calls?.wert?.zielwert ?? null };
+    const stored = { ...alt, freigegeben: true, anzeige: { ...(alt.anzeige || { config: cfg, calls: ciRows || [] }), basis: altBasis, basis_neu: result.anzeige.basis } };
+    if (speichern) return json({ error: "Monat ist bereits freigegeben und wird nicht überschrieben", ...stored }, 409);
+    return json(stored);
+  }
   if (speichern) {
-    const { data: ex } = await admin.from("bonus_monate").select("status").eq("monat", monat).eq("mitarbeiter_id", mitarbeiter_id).maybeSingle();
-    if (ex?.status === "freigegeben") return json({ error: "Monat ist bereits freigegeben und wird nicht überschrieben", ...result }, 409);
     const { error: sErr } = await admin.from("bonus_monate").upsert({
       monat, mitarbeiter_id,
       p1_zufriedenheit: k1.punkte ?? 0, p2_cash_niveau: k2.punkte ?? 0, p3_cash_entwicklung: k3.punkte ?? 0,
