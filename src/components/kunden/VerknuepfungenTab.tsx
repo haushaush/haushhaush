@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ExternalLink, Search, Loader2, Check, X, Link2 } from 'lucide-react';
+import { ExternalLink, Search, Loader2, Check, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -161,4 +161,3 @@ function SuchFeld({ system, label, onPick }: { system: SystemKey; label: string;
   );
 }
 
-export { X };

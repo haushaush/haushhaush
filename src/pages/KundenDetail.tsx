@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { VerknuepfungenTab } from '@/components/kunden/VerknuepfungenTab';
+import { ladeStand, zaehle, type SystemKey, type SystemStand } from '@/lib/kundenVerknuepfungen';
 import { DriveBrowser } from '@/components/DriveBrowser';
 import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
 import { ChevronLeft, ChevronDown, ExternalLink, Mail, Phone, Building2, Tag, Save, Pencil, X, Loader2, AlertCircle, AlertTriangle, Cloud, RefreshCw, RotateCw, Mail as MailIcon, PhoneCall, StickyNote, Calendar as CalIcon, MessageSquare, Activity } from 'lucide-react';
@@ -343,8 +345,6 @@ export default function KundenDetail() {
     setTab('verknuepfungen');
     setTimeout(() => document.getElementById('kunde-verknuepfungen')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   };
-  const dealAnzahl = deals.length + closeOpps.length;
-  const dealWert = totals.dealValue + closeStats.wonSum;
 
   const totals = useMemo(() => {
     const dealsValue = deals.reduce((s, x) => s + Number(x.wert_eur || 0), 0);
@@ -381,6 +381,8 @@ export default function KundenDetail() {
     }, null);
     return { wonCount: won.length, wonSum, lastWon, activeCount: active.length };
   }, [closeOpps]);
+  const dealAnzahl = deals.length + closeOpps.length;
+  const dealWert = totals.dealValue + closeStats.wonSum;
 
   const filteredOpps = useMemo(
     () => oppFilter === 'won' ? closeOpps.filter((o: any) => o.status_type === 'won') : closeOpps,
