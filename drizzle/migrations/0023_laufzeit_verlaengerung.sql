@@ -1,0 +1,2 @@
+ALTER TABLE public.close_abschluesse ADD COLUMN IF NOT EXISTS upsell_startdatum date, ADD COLUMN IF NOT EXISTS upsell_laufzeit numeric;
+ALTER TABLE public.kunden_laufzeit_stand ADD COLUMN IF NOT EXISTS upsell_startdatum date, ADD COLUMN IF NOT EXISTS upsell_laufzeit numeric;
