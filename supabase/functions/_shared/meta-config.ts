@@ -1,67 +1,44 @@
 // Shared Meta config resolver.
-// Priority: connected integration_settings row (provider 'meta_ads') -> env secrets.
-// This lets the whole app use the access token configured in the Integrations UI.
+// Credentials come ONLY from secrets (META_ACCESS_TOKEN). No fallback to integration_settings.
+// META_BUSINESS_ID is non-secret and may come from env or integration_settings.config.business_manager_id.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 export interface MetaConfig {
   accessToken: string | null;
   businessId: string | null;
-  source: "integration_settings" | "env" | "none";
+  source: "env" | "none";
 }
 
 let cached: MetaConfig | null = null;
 
 export async function getMetaConfig(forceRefresh = false): Promise<MetaConfig> {
   if (cached && !forceRefresh) return cached;
-
-  const envToken = Deno.env.get("META_ACCESS_TOKEN") ?? null;
-  const envBusiness = Deno.env.get("META_BUSINESS_ID") ?? null;
-
-  try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-    const { data } = await supabase
-      .from("integration_settings")
-      .select("config, connected")
-      .eq("provider", "meta_ads")
-      .eq("connected", true)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const cfg = (data?.config ?? {}) as Record<string, any>;
-    const dbToken = typeof cfg.access_token === "string" && cfg.access_token.trim()
-      ? cfg.access_token.trim()
-      : null;
-    const dbBusiness =
-      typeof cfg.business_manager_id === "string" && cfg.business_manager_id.trim()
-        ? cfg.business_manager_id.trim()
-        : null;
-
-    if (dbToken) {
-      cached = {
-        accessToken: dbToken,
-        businessId: dbBusiness ?? envBusiness,
-        source: "integration_settings",
-      };
-      return cached;
-    }
-  } catch (e) {
-    console.error("[meta-config] integration_settings lookup failed, falling back to env", e);
+  const envToken = Deno.env.get("META_ACCESS_TOKEN")?.trim() || null;
+  let businessId = Deno.env.get("META_BUSINESS_ID")?.trim() || null;
+  if (!businessId) {
+    try {
+      const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data } = await supabase.from("integration_settings").select("config")
+        .eq("provider", "meta_ads").order("updated_at", { ascending: false }).limit(1).maybeSingle();
+      const b = (data?.config as any)?.business_manager_id;
+      if (typeof b === "string" && b.trim()) businessId = b.trim();
+    } catch (_) { /* non-secret, optional */ }
   }
-
-  cached = {
-    accessToken: envToken,
-    businessId: envBusiness,
-    source: envToken ? "env" : "none",
-  };
+  cached = { accessToken: envToken, businessId, source: envToken ? "env" : "none" };
   return cached;
 }
 
+/** Returns the token or throws naming the missing secret. */
+export async function requireMetaToken(): Promise<string> {
+  const t = (await getMetaConfig()).accessToken;
+  if (!t) throw new Error("Secret META_ACCESS_TOKEN fehlt");
+  return t;
+}
+
 export async function getMetaToken(): Promise<string | null> {
-  return (await getMetaConfig()).accessToken;
+  const t = (await getMetaConfig()).accessToken;
+  if (!t) console.error("[meta-config] Secret META_ACCESS_TOKEN fehlt");
+  return t;
 }
 
 export async function getMetaBusinessId(): Promise<string | null> {
