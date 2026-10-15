@@ -13,8 +13,10 @@ const KNAPP_TAGE = 3;
 const AKTIV = new Set(['ACTIVE', 'IN_PROCESS', 'WITH_ISSUES']);
 
 type Zuordnung = { client_id: string; meta_account_id: string; untermarke: string | null; typ: 'kampagne' | 'adset'; objekt_id: string; kampagne_id: string | null; objekt_name: string | null };
-type Eingezahlt = { client_id: string; quelle: string | null; eingezahlt_netto: number | null; offen_netto: number | null; rechnungen_offen: number | null; letzte_zahlung: string | null; aelteste_ueberfaellig: string | null };
+type Eingezahlt = { client_id: string; quelle: string | null; eingezahlt_netto: number | null; uebertrag_frueher_netto: number | null; eingezahlt_gesamt_netto: number | null; zahlungen: number | null; offen_netto: number | null; rechnungen_offen: number | null; letzte_zahlung: string | null; aelteste_ueberfaellig: string | null };
 type Meta = { seit: number | null; d7: number; aktiv: boolean };
+type DetailZeile = { o: Zuordnung; status: string | null; tagesbudget: number | null; seit: number | null };
+type Detail = { laedt: boolean; fehler: string | null; zeilen: DetailZeile[] };
 type Status = 'Aufgebraucht' | 'Zahlung offen' | 'Knapp' | 'Läuft' | 'Nicht zuordenbar' | 'Unklar';
 const RANG: Record<Status, number> = { 'Aufgebraucht': 0, 'Zahlung offen': 1, 'Knapp': 2, 'Läuft': 3, 'Unklar': 4, 'Nicht zuordenbar': 5 };
 
@@ -34,6 +36,31 @@ export function Werbebudgets() {
   const [laedt, setLaedt] = useState(true);
   const [metaLaedt, setMetaLaedt] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
+  const [offen, setOffen] = useState<Set<string>>(new Set());
+  const [details, setDetails] = useState<Map<string, Detail>>(new Map());
+
+  /** Detail je Kunde — Meta-Abfragen (nur GET) erst beim Aufklappen. */
+  const umschalten = useCallback(async (clientId: string) => {
+    const istOffen = offen.has(clientId);
+    setOffen(prev => { const n = new Set(prev); istOffen ? n.delete(clientId) : n.add(clientId); return n; });
+    if (istOffen || details.get(clientId)?.zeilen.length) return;
+    const objs = zuo.filter(z => z.client_id === clientId);
+    const seitDatum = ein.get(clientId)?.letzte_zahlung?.slice(0, 10);
+    setDetails(prev => new Map(prev).set(clientId, { laedt: true, fehler: null, zeilen: [] }));
+    const zeilen: DetailZeile[] = [];
+    let f: string | null = null;
+    try {
+      for (const o of objs) {
+        const [info, seit] = await Promise.all([
+          callMeta<any>(`/${o.objekt_id}`, { fields: 'effective_status,daily_budget' }),
+          seitDatum ? callMeta<any>(`/${o.objekt_id}/insights`, { fields: 'spend', time_range: JSON.stringify({ since: seitDatum, until: heute() }) }) : Promise.resolve(null),
+        ]);
+        const db = info?.daily_budget != null && info.daily_budget !== '' ? Number(info.daily_budget) / 100 : null;
+        zeilen.push({ o, status: info?.effective_status ?? null, tagesbudget: db && db > 0 ? db : null, seit: seit ? spendAus(seit) : null });
+      }
+    } catch (err) { f = (err as Error).message; }
+    setDetails(prev => new Map(prev).set(clientId, { laedt: false, fehler: f, zeilen }));
+  }, [offen, details, zuo, ein, callMeta]);
 
   const laden = useCallback(async () => {
     setLaedt(true); setFehler(null);
@@ -61,7 +88,7 @@ export function Werbebudgets() {
         out.set(o.objekt_id, { aktiv: AKTIV.has(info?.effective_status), d7: spendAus(d7), seit: seit ? spendAus(seit) : null });
       }
     } catch (err) { setFehler((err as Error).message); }
-    setMeta(out); setStand(new Date()); setMetaLaedt(false);
+    setMeta(out); setStand(new Date()); setMetaLaedt(false); setDetails(new Map());
   }, [callMeta]);
 
   useEffect(() => { laden(); }, [laden]);
