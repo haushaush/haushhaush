@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatCard } from '@/components/StatCard';
-import { RefreshCw, Users, TrendingDown, AlertTriangle, Receipt } from 'lucide-react';
+import { RefreshCw, Users, TrendingDown, AlertTriangle, Receipt, ChevronDown, ChevronRight } from 'lucide-react';
 import { useMetaAds } from '@/contexts/MetaAdsContext';
 
 /** Unter dieser Reichweite (Tage) gilt ein Kunde als knapp. */
@@ -147,7 +147,7 @@ export function Werbebudgets() {
 
       <p className="text-xs text-muted-foreground">
         {metaLaedt ? 'Meta-Ausgaben werden geladen …' : stand ? `Meta-Stand: ${stand.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })} Uhr.` : ''}
-        {' '}Meta meldet Ausgaben zeitversetzt — Werte können nachlaufen. Verbraucht = Ausgaben seit der letzten Werbebudget-Zahlung.
+        {' '}Meta meldet Ausgaben zeitversetzt — Werte können nachlaufen. Verbraucht und Rest beziehen sich auf die letzte Aufladung (Ausgaben seit dieser Zahlung); frühere Aufladungen sind separat ausgewiesen und nicht eingerechnet.
         {fehler && <span className="text-destructive"> Meta-Fehler: {fehler}</span>}
       </p>
 
@@ -157,7 +157,7 @@ export function Werbebudgets() {
             <TableHeader>
               <TableRow>
                 <TableHead>Kunde</TableHead><TableHead>Untermarke</TableHead>
-                <TableHead className="text-right">Eingezahlt</TableHead><TableHead className="text-right">Verbraucht</TableHead>
+                <TableHead className="text-right">Letzte Aufladung</TableHead><TableHead className="text-right">Verbraucht</TableHead>
                 <TableHead className="text-right">Rest</TableHead><TableHead className="text-right">Reicht noch</TableHead>
                 <TableHead>Zahlung</TableHead><TableHead>Status</TableHead>
               </TableRow>
@@ -167,12 +167,26 @@ export function Werbebudgets() {
                 <TableRow key={`g-${g}`} className="bg-muted/40 hover:bg-muted/40">
                   <TableCell colSpan={8} className="text-xs font-medium text-muted-foreground py-2">{g} · {rows.length}</TableCell>
                 </TableRow>,
-                ...rows.map(z => (
+                ...rows.flatMap(z => {
+                  const aufklappbar = z.status !== 'Nicht zuordenbar';
+                  const istOffen = aufklappbar && offen.has(z.k.id);
+                  const d = details.get(z.k.id);
+                  const out = [
                   <TableRow key={z.k.id}>
-                    <TableCell className="font-medium">{z.k.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {aufklappbar ? (
+                        <button type="button" onClick={() => umschalten(z.k.id)} className="inline-flex items-center gap-1 text-left hover:underline" aria-expanded={istOffen}>
+                          {istOffen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                          {z.k.name}
+                        </button>
+                      ) : z.k.name}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{z.untermarke}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {z.eingezahlt != null ? eur(z.eingezahlt) : <span className="text-muted-foreground" title="keine Qonto-Verknüpfung">— <span className="text-xs">keine Qonto-Verknüpfung</span></span>}
+                      {Number(z.e?.zahlungen || 0) > 1 && z.e?.uebertrag_frueher_netto != null && (
+                        <div className="text-xs text-muted-foreground">+ {eur(Number(z.e.uebertrag_frueher_netto))} aus früheren Aufladungen</div>
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{z.verbraucht != null ? eur(z.verbraucht) : '—'}</TableCell>
                     <TableCell className={`text-right tabular-nums ${z.rest != null && z.rest <= 0 ? 'text-destructive' : ''}`}>{z.rest != null ? eur(z.rest) : '—'}</TableCell>
@@ -183,8 +197,15 @@ export function Werbebudgets() {
                       {!!z.e?.rechnungen_offen && <div>{z.e.rechnungen_offen} offen · {eur(Number(z.e.offen_netto || 0))}</div>}
                     </TableCell>
                     <TableCell className={`text-sm ${statusFarbe(z.status)}`}>{z.status === 'Unklar' ? '—' : z.status}</TableCell>
-                  </TableRow>
-                )),
+                  </TableRow>];
+                  if (istOffen) out.push(
+                    <TableRow key={`${z.k.id}-d`} className="hover:bg-transparent">
+                      <TableCell colSpan={8} className="bg-muted/20 py-3">
+                        <DetailTabelle d={d} hauptwert={z.verbraucht} ohneZahlung={!z.e?.letzte_zahlung} />
+                      </TableCell>
+                    </TableRow>);
+                  return out;
+                }),
               ])}
               {zeilen.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Keine aktiven Kunden gefunden</TableCell></TableRow>}
             </TableBody>
