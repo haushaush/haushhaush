@@ -29,16 +29,9 @@ interface CloseDeal {
   wert_eur: number | null;
 }
 
-// Credentials live only in secrets (META_ACCESS_TOKEN, GOOGLE_OAUTH_CLIENT_ID/SECRET), never in integration_settings.
-const SECRET_PROVIDERS = new Set(['meta_ads', 'google_drive']);
-function stripSecrets(providerId: string, cfg: any): any {
-  if (!cfg || typeof cfg !== 'object' || !SECRET_PROVIDERS.has(providerId)) return cfg;
-  const out: Record<string, any> = {};
-  for (const [k, v] of Object.entries(cfg)) {
-    if (/token|secret|key|password|client_id/i.test(k)) continue;
-    out[k] = v;
-  }
-  return out;
+// Existing tokens in integration_settings stay as fallback; nothing is stripped.
+function stripSecrets(_providerId: string, cfg: any): any {
+  return cfg;
 }
 
 export default function Integrationen() {

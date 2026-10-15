@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
 
     let clientId: string | undefined;
-    try { clientId = googleOAuthClientId(); } catch (e) {
+    try { clientId = await googleOAuthClientId(); } catch (e) {
       return new Response(JSON.stringify({ error: (e as Error).message }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
