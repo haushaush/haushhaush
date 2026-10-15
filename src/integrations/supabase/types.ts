@@ -9095,11 +9095,14 @@ export type Database = {
         Row: {
           aelteste_ueberfaellig: string | null
           client_id: string | null
+          eingezahlt_gesamt_netto: number | null
           eingezahlt_netto: number | null
           letzte_zahlung: string | null
           offen_netto: number | null
           quelle: string | null
           rechnungen_offen: number | null
+          uebertrag_frueher_netto: number | null
+          zahlungen: number | null
         }
         Relationships: [
           {

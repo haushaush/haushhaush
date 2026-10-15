@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StatCard } from '@/components/StatCard';
-import { RefreshCw, Users, TrendingDown, AlertTriangle, Receipt } from 'lucide-react';
+import { RefreshCw, Users, TrendingDown, AlertTriangle, Receipt, ChevronDown, ChevronRight } from 'lucide-react';
 import { useMetaAds } from '@/contexts/MetaAdsContext';
 
 /** Unter dieser Reichweite (Tage) gilt ein Kunde als knapp. */
@@ -13,8 +13,10 @@ const KNAPP_TAGE = 3;
 const AKTIV = new Set(['ACTIVE', 'IN_PROCESS', 'WITH_ISSUES']);
 
 type Zuordnung = { client_id: string; meta_account_id: string; untermarke: string | null; typ: 'kampagne' | 'adset'; objekt_id: string; kampagne_id: string | null; objekt_name: string | null };
-type Eingezahlt = { client_id: string; quelle: string | null; eingezahlt_netto: number | null; offen_netto: number | null; rechnungen_offen: number | null; letzte_zahlung: string | null; aelteste_ueberfaellig: string | null };
+type Eingezahlt = { client_id: string; quelle: string | null; eingezahlt_netto: number | null; uebertrag_frueher_netto: number | null; eingezahlt_gesamt_netto: number | null; zahlungen: number | null; offen_netto: number | null; rechnungen_offen: number | null; letzte_zahlung: string | null; aelteste_ueberfaellig: string | null };
 type Meta = { seit: number | null; d7: number; aktiv: boolean };
+type DetailZeile = { o: Zuordnung; status: string | null; tagesbudget: number | null; seit: number | null };
+type Detail = { laedt: boolean; fehler: string | null; zeilen: DetailZeile[] };
 type Status = 'Aufgebraucht' | 'Zahlung offen' | 'Knapp' | 'Läuft' | 'Nicht zuordenbar' | 'Unklar';
 const RANG: Record<Status, number> = { 'Aufgebraucht': 0, 'Zahlung offen': 1, 'Knapp': 2, 'Läuft': 3, 'Unklar': 4, 'Nicht zuordenbar': 5 };
 
@@ -34,6 +36,31 @@ export function Werbebudgets() {
   const [laedt, setLaedt] = useState(true);
   const [metaLaedt, setMetaLaedt] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
+  const [offen, setOffen] = useState<Set<string>>(new Set());
+  const [details, setDetails] = useState<Map<string, Detail>>(new Map());
+
+  /** Detail je Kunde — Meta-Abfragen (nur GET) erst beim Aufklappen. */
+  const umschalten = useCallback(async (clientId: string) => {
+    const istOffen = offen.has(clientId);
+    setOffen(prev => { const n = new Set(prev); istOffen ? n.delete(clientId) : n.add(clientId); return n; });
+    if (istOffen || details.get(clientId)?.zeilen.length) return;
+    const objs = zuo.filter(z => z.client_id === clientId);
+    const seitDatum = ein.get(clientId)?.letzte_zahlung?.slice(0, 10);
+    setDetails(prev => new Map(prev).set(clientId, { laedt: true, fehler: null, zeilen: [] }));
+    const zeilen: DetailZeile[] = [];
+    let f: string | null = null;
+    try {
+      for (const o of objs) {
+        const [info, seit] = await Promise.all([
+          callMeta<any>(`/${o.objekt_id}`, { fields: 'effective_status,daily_budget' }),
+          seitDatum ? callMeta<any>(`/${o.objekt_id}/insights`, { fields: 'spend', time_range: JSON.stringify({ since: seitDatum, until: heute() }) }) : Promise.resolve(null),
+        ]);
+        const db = info?.daily_budget != null && info.daily_budget !== '' ? Number(info.daily_budget) / 100 : null;
+        zeilen.push({ o, status: info?.effective_status ?? null, tagesbudget: db && db > 0 ? db : null, seit: seit ? spendAus(seit) : null });
+      }
+    } catch (err) { f = (err as Error).message; }
+    setDetails(prev => new Map(prev).set(clientId, { laedt: false, fehler: f, zeilen }));
+  }, [offen, details, zuo, ein, callMeta]);
 
   const laden = useCallback(async () => {
     setLaedt(true); setFehler(null);
@@ -61,7 +88,7 @@ export function Werbebudgets() {
         out.set(o.objekt_id, { aktiv: AKTIV.has(info?.effective_status), d7: spendAus(d7), seit: seit ? spendAus(seit) : null });
       }
     } catch (err) { setFehler((err as Error).message); }
-    setMeta(out); setStand(new Date()); setMetaLaedt(false);
+    setMeta(out); setStand(new Date()); setMetaLaedt(false); setDetails(new Map());
   }, [callMeta]);
 
   useEffect(() => { laden(); }, [laden]);
@@ -120,7 +147,7 @@ export function Werbebudgets() {
 
       <p className="text-xs text-muted-foreground">
         {metaLaedt ? 'Meta-Ausgaben werden geladen …' : stand ? `Meta-Stand: ${stand.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })} Uhr.` : ''}
-        {' '}Meta meldet Ausgaben zeitversetzt — Werte können nachlaufen. Verbraucht = Ausgaben seit der letzten Werbebudget-Zahlung.
+        {' '}Meta meldet Ausgaben zeitversetzt — Werte können nachlaufen. Verbraucht und Rest beziehen sich auf die letzte Aufladung (Ausgaben seit dieser Zahlung); frühere Aufladungen sind separat ausgewiesen und nicht eingerechnet.
         {fehler && <span className="text-destructive"> Meta-Fehler: {fehler}</span>}
       </p>
 
@@ -130,7 +157,7 @@ export function Werbebudgets() {
             <TableHeader>
               <TableRow>
                 <TableHead>Kunde</TableHead><TableHead>Untermarke</TableHead>
-                <TableHead className="text-right">Eingezahlt</TableHead><TableHead className="text-right">Verbraucht</TableHead>
+                <TableHead className="text-right">Letzte Aufladung</TableHead><TableHead className="text-right">Verbraucht</TableHead>
                 <TableHead className="text-right">Rest</TableHead><TableHead className="text-right">Reicht noch</TableHead>
                 <TableHead>Zahlung</TableHead><TableHead>Status</TableHead>
               </TableRow>
@@ -140,12 +167,26 @@ export function Werbebudgets() {
                 <TableRow key={`g-${g}`} className="bg-muted/40 hover:bg-muted/40">
                   <TableCell colSpan={8} className="text-xs font-medium text-muted-foreground py-2">{g} · {rows.length}</TableCell>
                 </TableRow>,
-                ...rows.map(z => (
+                ...rows.flatMap(z => {
+                  const aufklappbar = z.status !== 'Nicht zuordenbar';
+                  const istOffen = aufklappbar && offen.has(z.k.id);
+                  const d = details.get(z.k.id);
+                  const out = [
                   <TableRow key={z.k.id}>
-                    <TableCell className="font-medium">{z.k.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {aufklappbar ? (
+                        <button type="button" onClick={() => umschalten(z.k.id)} className="inline-flex items-center gap-1 text-left hover:underline" aria-expanded={istOffen}>
+                          {istOffen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                          {z.k.name}
+                        </button>
+                      ) : z.k.name}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{z.untermarke}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {z.eingezahlt != null ? eur(z.eingezahlt) : <span className="text-muted-foreground" title="keine Qonto-Verknüpfung">— <span className="text-xs">keine Qonto-Verknüpfung</span></span>}
+                      {Number(z.e?.zahlungen || 0) > 1 && z.e?.uebertrag_frueher_netto != null && (
+                        <div className="text-xs text-muted-foreground">+ {eur(Number(z.e.uebertrag_frueher_netto))} aus früheren Aufladungen</div>
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{z.verbraucht != null ? eur(z.verbraucht) : '—'}</TableCell>
                     <TableCell className={`text-right tabular-nums ${z.rest != null && z.rest <= 0 ? 'text-destructive' : ''}`}>{z.rest != null ? eur(z.rest) : '—'}</TableCell>
@@ -156,8 +197,15 @@ export function Werbebudgets() {
                       {!!z.e?.rechnungen_offen && <div>{z.e.rechnungen_offen} offen · {eur(Number(z.e.offen_netto || 0))}</div>}
                     </TableCell>
                     <TableCell className={`text-sm ${statusFarbe(z.status)}`}>{z.status === 'Unklar' ? '—' : z.status}</TableCell>
-                  </TableRow>
-                )),
+                  </TableRow>];
+                  if (istOffen) out.push(
+                    <TableRow key={`${z.k.id}-d`} className="hover:bg-transparent">
+                      <TableCell colSpan={8} className="bg-muted/20 py-3">
+                        <DetailTabelle d={d} hauptwert={z.verbraucht} ohneZahlung={!z.e?.letzte_zahlung} />
+                      </TableCell>
+                    </TableRow>);
+                  return out;
+                }),
               ])}
               {zeilen.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Keine aktiven Kunden gefunden</TableCell></TableRow>}
             </TableBody>
@@ -165,5 +213,45 @@ export function Werbebudgets() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/** Aufgeklappte Kundenzeile: Verbrauch je Zuordnung seit der letzten Aufladung, gruppiert nach Untermarke. */
+function DetailTabelle({ d, hauptwert, ohneZahlung }: { d?: Detail; hauptwert: number | null; ohneZahlung: boolean }) {
+  if (!d || d.laedt) return <p className="text-xs text-muted-foreground">Meta-Daten werden geladen …</p>;
+  if (d.fehler) return <p className="text-xs text-destructive">Meta-Fehler: {d.fehler}</p>;
+  const gruppen = new Map<string, DetailZeile[]>();
+  d.zeilen.forEach(z => { const g = z.o.untermarke || z.o.meta_account_id; gruppen.set(g, [...(gruppen.get(g) || []), z]); });
+  const summe = d.zeilen.every(z => z.seit !== null) ? d.zeilen.reduce((s, z) => s + (z.seit || 0), 0) : null;
+  const diff = hauptwert != null && summe != null ? hauptwert - summe : null;
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead className="h-8">Was</TableHead><TableHead className="h-8">Ebene</TableHead><TableHead className="h-8">Status</TableHead>
+          <TableHead className="h-8 text-right">Tagesbudget</TableHead><TableHead className="h-8 text-right">Verbraucht</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {[...gruppen.entries()].flatMap(([g, zs]) => [
+          ...(gruppen.size > 1 ? [<TableRow key={`u-${g}`} className="hover:bg-transparent"><TableCell colSpan={5} className="py-1.5 text-xs font-medium text-muted-foreground">{g}</TableCell></TableRow>] : []),
+          ...zs.map(z => (
+            <TableRow key={z.o.objekt_id} className="hover:bg-transparent">
+              <TableCell className="py-2 text-sm">{z.o.objekt_name || z.o.objekt_id}</TableCell>
+              <TableCell className="py-2 text-sm text-muted-foreground">{z.o.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'}</TableCell>
+              <TableCell className="py-2 text-sm text-muted-foreground">{z.status ? (AKTIV.has(z.status) ? 'Aktiv' : z.status === 'PAUSED' ? 'Pausiert' : z.status) : '—'}</TableCell>
+              <TableCell className="py-2 text-right tabular-nums text-sm">{z.tagesbudget != null ? eur(z.tagesbudget) : '—'}</TableCell>
+              <TableCell className="py-2 text-right tabular-nums text-sm">{z.seit != null ? eur(z.seit) : ohneZahlung ? '— keine Zahlung' : '—'}</TableCell>
+            </TableRow>
+          )),
+        ])}
+        {diff != null && Math.abs(diff) >= 0.5 && (
+          <TableRow className="hover:bg-transparent">
+            <TableCell colSpan={4} className="py-2 text-sm text-muted-foreground">nicht zugeordnet (Differenz zur Hauptzeile)</TableCell>
+            <TableCell className="py-2 text-right tabular-nums text-sm">{eur(diff)}</TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
   );
 }
