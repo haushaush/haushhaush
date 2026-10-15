@@ -17,3 +17,4 @@ Subdirectories may have their own `AGENTS.md` (e.g. `supabase/functions/`); read
 - Ad-budget mapping: `werbebudget_zuordnung` maps a customer to a whole campaign or to adsets of a shared campaign on our own Meta accounts (one owner per object, trigger-enforced, never auto-set). Why: spend per customer must be attributable without splitting or estimating.
 - Credentials only from secrets, never `integration_settings` (non-secret state only). Why: no access data in app tables.
 - Bookkeeping: one source per customer via Close "Marke" → `buchhaltung_quelle`; unknown = ungeklärt, never default, never add both sources; lexoffice read-only. Why: two separate companies.
+- Finance invoices: `src/lib/rechnungen.ts` is the only mapping of Qonto/lexoffice invoice fields and statuses (unknown → "sonstige", shown raw); every Finanzen tab reading invoice rows uses it. Why: tabs must never disagree.
