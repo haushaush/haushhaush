@@ -1,6 +1,6 @@
 // Shared Meta config resolver.
-// Credentials come ONLY from secrets (META_ACCESS_TOKEN). No fallback to integration_settings.
-// META_BUSINESS_ID is non-secret and may come from env or integration_settings.config.business_manager_id.
+// Token: secret META_ACCESS_TOKEN first, fallback to integration_settings.config.access_token
+// so existing setups keep working. META_BUSINESS_ID may come from env or config.business_manager_id.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 export interface MetaConfig {
