@@ -25,7 +25,7 @@ export type SystemStand =
   | { zustand: 'nicht_angebunden' }
   | { zustand: 'keine_berechtigung' };
 
-export interface KundeMin { id: string; name: string | null; vor_nachname?: string | null; email?: string | null; website_url?: string | null; website?: string | null }
+export interface KundeMin { id: string; name: string | null; vor_nachname?: string | null; email?: string | null; phone?: string | null; website_url?: string | null; website?: string | null }
 
 // ---------- Abgleich ----------
 const STOP = new Set(['gmbh', 'ug', 'ag', 'kg', 'ohg', 'gbr', 'mbh', 'co', 'und', 'the', 'der', 'die', 'das', 'von', 'haftungsbeschraenkt', 'ek', 'inh']);
@@ -368,7 +368,7 @@ export async function verwerfen(v: Vorschlag, clientId: string) {
 }
 
 // ---------- LeadSharks Portal (nur über portal-bruecke, Token bleibt serverseitig) ----------
-export const PORTAL_URL = 'https://portal.leadsharks.de';
+export const PORTAL_URL = 'https://leadsharks-demo.lovable.app';
 export interface PortalKonto { id: string; email: string; company_name: string | null; first_name: string | null; last_name: string | null; created_at: string; crm_client_id: string | null; is_active: boolean }
 
 async function portalAufruf(body: Record<string, unknown>): Promise<any> {
@@ -388,7 +388,7 @@ export async function portalListe(): Promise<PortalKonto[]> {
   return r.konten || [];
 }
 
-export async function portalAnlegen(p: { email: string; passwort: string; crm_client_id: string; firma: string; vorname: string; nachname: string }):
+export async function portalAnlegen(p: { email: string; passwort: string; crm_client_id: string; firma: string; vorname: string; nachname: string; telefon: string }):
   Promise<{ ok: boolean; error?: string; profile_id?: string }> {
   const r = await portalAufruf({ action: 'create', ...p });
   if (r?.ok && r.profile_id) return { ok: true, profile_id: r.profile_id };

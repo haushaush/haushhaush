@@ -195,9 +195,14 @@ function PortalAuswahl({ kunde, onPick }: { kunde: KundeMin; onPick: (o: Objekt)
 }
 
 type Feld = 'email' | 'passwort' | 'crm_client_id';
+/** Vorbelegung nur aus clients.name: letztes Wort = Nachname, alles davor = Vorname, ein Wort = nur Nachname. */
+function aufteilen(name: string | null | undefined) {
+  const w = (name || '').trim().replace(/\s+/g, ' ').split(' ').filter(Boolean);
+  return { firma: w.join(' '), nachname: w.length ? w[w.length - 1] : '', vorname: w.length > 1 ? w.slice(0, -1).join(' ') : '' };
+}
 function PortalAnlegen({ kunde, onPick }: { kunde: KundeMin; onPick: (o: Objekt) => void }) {
-  const teile = (kunde.vor_nachname || '').trim().split(/\s+/).filter(Boolean);
-  const [f, setF] = useState({ email: kunde.email || '', firma: kunde.name || '', vorname: teile[0] || '', nachname: teile.slice(1).join(' ') });
+  const vor = aufteilen(kunde.name);
+  const [f, setF] = useState({ email: kunde.email || '', firma: vor.firma, vorname: vor.vorname, nachname: vor.nachname, telefon: kunde.phone || '' });
   const [busy, setBusy] = useState(false);
   const [feldFehler, setFeldFehler] = useState<Partial<Record<Feld, string>>>({});
   const [konflikt, setKonflikt] = useState<{ text: string; profile_id: string } | null>(null);
