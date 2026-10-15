@@ -17,13 +17,13 @@ const BEREICH_NAMEN: Record<string, string> = {
 
 const VERTRAG_FELDER: { key: string; label: string; typ: 'text' | 'number' | 'date' }[] = [
   { key: 'tier', label: 'Tier', typ: 'text' },
-  { key: 'betreuungsmonate', label: 'Betreuungsmonate', typ: 'number' },
-  { key: 'startdatum', label: 'Startdatum', typ: 'date' },
-  { key: 'live_datum', label: 'Live-Datum', typ: 'date' },
-  { key: 'verlaengerungsmonate', label: 'Verlängerungsmonate', typ: 'number' },
-  { key: 'garantiemenge', label: 'Garantiemenge', typ: 'number' },
+  { key: 'betreuung_monate', label: 'Betreuungsmonate', typ: 'number' },
+  { key: 'start_date', label: 'Startdatum', typ: 'date' },
+  { key: 'live_date', label: 'Live-Datum', typ: 'date' },
+  { key: 'verlaengerung_monate', label: 'Verlängerungsmonate', typ: 'number' },
+  { key: 'garantie_menge', label: 'Garantiemenge', typ: 'number' },
   { key: 'budget_guthaben', label: 'Budget-Guthaben', typ: 'number' },
-  { key: 'budget_empfehlung', label: 'Budget-Empfehlung', typ: 'number' },
+  { key: 'budget_empfohlen', label: 'Budget-Empfehlung', typ: 'number' },
 ];
 
 function fehlerText(code: unknown): string {
@@ -138,11 +138,11 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
   );
 
   const k = daten?.konto || {};
-  const ablauf = k.passwort_ablauf || k.uebergangspasswort_ablauf || k.temp_password_expires_at || null;
+  const ablauf = k.uebergangspasswort_bis || null;
   const abgelaufen = ablauf && new Date(ablauf).getTime() < Date.now();
   const ll = daten?.lead_limit || {};
   const leads = daten?.leads || {};
-  const ansprechpartner = [k.first_name ?? k.vorname, k.last_name ?? k.nachname].filter(Boolean).join(' ') || k.ansprechpartner || '—';
+  const ansprechpartner = [k.first_name, k.last_name].filter(Boolean).join(' ') || '—';
 
   return (
     <div className="space-y-4">
@@ -159,9 +159,9 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
         <CardContent className="space-y-3 text-sm">
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
             <Feld label="E-Mail" wert={k.email} />
-            <Feld label="Firma" wert={k.company_name ?? k.firma} />
+            <Feld label="Firma" wert={k.company_name} />
             <Feld label="Ansprechpartner" wert={ansprechpartner} />
-            <Feld label="Telefon" wert={k.phone ?? k.telefon} />
+            <Feld label="Telefon" wert={k.phone} />
             <Feld label="Status" wert={<Badge variant={k.is_active === false ? 'secondary' : 'outline'}>{k.is_active === false ? 'inaktiv' : 'aktiv'}</Badge>} />
             <Feld label="Angelegt am" wert={fmtDatum(k.created_at)} />
           </dl>
@@ -222,7 +222,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
         <CardContent className="space-y-2">
           <div className="flex flex-wrap items-center gap-3">
             <Input className="w-40 tabular-nums" type="number" min={0} placeholder="kein Limit" value={limit} onChange={e => setLimit(e.target.value)} />
-            <span className="text-sm text-muted-foreground tabular-nums">davon erhalten: {ll.received ?? ll.erhalten ?? ll.global_lead_count ?? 0}</span>
+            <span className="text-sm text-muted-foreground tabular-nums">davon erhalten: {ll.global_leads_received ?? 0}</span>
             {ll.global_lead_limit_reached && <Badge variant="destructive">Limit erreicht</Badge>}
           </div>
           <p className="text-xs text-muted-foreground">Leer oder 0 bedeutet kein Limit.</p>
@@ -246,12 +246,12 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
               <TableBody>
                 {(daten.bestellungen as any[]).map((b, i) => (
                   <TableRow key={b.id || i}>
-                    <TableCell>{b.sparte ?? b.category ?? '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums">{b.menge ?? b.quantity ?? '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtEur(b.preis_pro_lead ?? b.price_per_lead)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtEur(b.gesamt_brutto ?? b.total_gross)}</TableCell>
+                    <TableCell>{b.lead_type_label || '—'}</TableCell>
+                    <TableCell className="text-right tabular-nums">{b.quantity ?? '—'}</TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtEur(b.price_per_lead)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtEur(b.total_gross)}</TableCell>
                     <TableCell>{b.status ?? '—'}</TableCell>
-                    <TableCell className="tabular-nums">{fmtDatum(b.datum ?? b.created_at)}</TableCell>
+                    <TableCell className="tabular-nums">{fmtDatum(b.created_at)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -270,9 +270,9 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
               <TableBody>
                 {(daten.rechnungen as any[]).map((r, i) => (
                   <TableRow key={r.id || i}>
-                    <TableCell>{r.nummer ?? r.invoice_number ?? '—'}</TableCell>
-                    <TableCell className="tabular-nums">{fmtDatum(r.datum ?? r.created_at)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtEur(r.betrag ?? r.amount)}</TableCell>
+                    <TableCell>{r.nummer || '—'}</TableCell>
+                    <TableCell className="tabular-nums">{fmtDatum(r.datum)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtEur(r.betrag)}</TableCell>
                     <TableCell>{r.status ?? '—'}</TableCell>
                     <TableCell>{r.file_url && <a href={r.file_url} target="_blank" rel="noreferrer" className="text-primary inline-flex items-center gap-1 text-sm">Öffnen<ExternalLink className="h-3 w-3" /></a>}</TableCell>
                   </TableRow>
@@ -287,7 +287,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
       <Card>
         <CardHeader><CardTitle className="text-base">Leads</CardTitle></CardHeader>
         <CardContent className="text-sm tabular-nums">
-          {(leads.anzahl ?? leads.count ?? 0).toLocaleString('de-DE')} Leads geliefert{(leads.zuletzt ?? leads.last_at) ? `, zuletzt am ${fmtDatum(leads.zuletzt ?? leads.last_at)}` : ''}
+          {(leads.gesamt ?? 0).toLocaleString('de-DE')} Leads geliefert{leads.letzte_lieferung ? `, zuletzt am ${fmtDatum(leads.letzte_lieferung)}` : ''}
         </CardContent>
       </Card>
 
