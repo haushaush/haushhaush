@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { ladeRechnungen, type Quelle } from '@/lib/rechnungen';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, Legend } from 'recharts';
 
 /**
  * Rechnungs-Auswertung aus den gespiegelten Rechnungstabellen (Qonto, lexoffice).
  * Nur Rechnungsdaten — keine Bank-Kennzahlen. Bei mehreren Quellen werden Beträge je Kennzahl addiert.
  */
-export type Quelle = 'qonto' | 'lexoffice';
-type Row = { quelle: Quelle; status: 'paid' | 'open'; amount: number; issue: string | null; due: string | null; paid: string | null };
+type Row = { quelle: Quelle; status: 'paid' | 'open'; amount: number; issue: string | null; due: string | null; paid: string | null; sonstige?: boolean; ueber?: boolean };
 
 const LABEL: Record<Quelle, string> = { qonto: 'Qonto', lexoffice: 'lexoffice' };
 const BUCKETS = ['0-7', '8-14', '15-30', '31-60', '60+'];
@@ -17,29 +17,11 @@ const eur = (n: number) => n.toLocaleString('de-DE', { style: 'currency', curren
 const pct = (n: number | null) => (n == null ? '–' : `${(n * 100).toFixed(1).replace('.', ',')} %`);
 const tooltipStyle = { borderRadius: 12, border: '1px solid hsl(var(--border))', fontSize: 12 };
 
-async function alle(table: string, cols: string) {
-  const out: any[] = [];
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await supabase.from(table as any).select(cols).range(from, from + 999);
-    if (error) throw error;
-    out.push(...(data || []));
-    if (!data || data.length < 1000) break;
-  }
-  return out;
-}
-
 async function lade(q: Quelle): Promise<Row[]> {
-  if (q === 'qonto') {
-    const rows = await alle('qonto_client_invoices', 'status,total_amount,issue_date,due_date,paid_at');
-    return rows.filter(r => r.status === 'paid' || r.status === 'unpaid').map(r => ({
-      quelle: q, status: r.status === 'paid' ? 'paid' : 'open', amount: Number(r.total_amount || 0),
-      issue: r.issue_date, due: r.due_date, paid: r.paid_at ? String(r.paid_at).slice(0, 10) : null,
-    }));
-  }
-  const rows = await alle('lexoffice_invoices', 'status,total_amount,voucher_date,due_date,paid_date');
-  return rows.filter(r => ['paid', 'paidoff', 'open', 'overdue'].includes(r.status)).map(r => ({
-    quelle: q, status: r.status === 'paid' || r.status === 'paidoff' ? 'paid' : 'open', amount: Number(r.total_amount || 0),
-    issue: r.voucher_date, due: r.due_date, paid: r.paid_date,
+  const rows = await ladeRechnungen(q);
+  return rows.filter(r => r.status !== 'storniert').map(r => ({
+    quelle: q, status: r.status === 'bezahlt' ? 'paid' : 'open', amount: r.amount,
+    issue: r.issue, due: r.due, paid: r.paid, sonstige: r.status === 'sonstige', ueber: r.status === 'überfällig',
   }));
 }
 
@@ -69,11 +51,13 @@ export function RechnungsAuswertung({ quellen, quelleText }: { quellen: Quelle[]
     if (!rows) return null;
     const heute = new Date().toISOString().slice(0, 10);
     const tage = (d: string) => Math.floor((Date.parse(heute) - Date.parse(d)) / 86400000);
-    const paid = rows.filter(r => r.status === 'paid');
-    const open = rows.filter(r => r.status === 'open');
-    const overdue = open.filter(r => r.due && r.due < heute);
+    const sonst = rows.filter(r => r.sonstige);
+    const zaehlbar = rows.filter(r => !r.sonstige);
+    const paid = zaehlbar.filter(r => r.status === 'paid');
+    const open = zaehlbar.filter(r => r.status === 'open');
+    const overdue = open.filter(r => r.ueber);
     const sum = (a: Row[]) => a.reduce((s, r) => s + r.amount, 0);
-    const issuedSum = sum(rows);
+    const issuedSum = sum(zaehlbar);
     const fehlend = quellen.filter(q => !rows.some(r => r.quelle === q));
     const aging = BUCKETS.map(b => ({ bucket: b, count: 0, total: 0 }));
     open.forEach(r => {
@@ -92,7 +76,7 @@ export function RechnungsAuswertung({ quellen, quelleText }: { quellen: Quelle[]
       bezahlt: sum(paid.filter(r => r.paid?.startsWith(k))),
     }));
     return {
-      count: rows.length, paidCount: paid.length, openCount: open.length, overdueCount: overdue.length,
+      count: rows.length, sonstigeCount: sonst.length, paidCount: paid.length, openCount: open.length, overdueCount: overdue.length,
       paidSum: sum(paid), openSum: sum(open), overdueSum: sum(overdue),
       rate: issuedSum > 0 ? sum(paid) / issuedSum : null,
       largest: open.reduce((mx, r) => Math.max(mx, r.amount), 0),
@@ -113,10 +97,10 @@ export function RechnungsAuswertung({ quellen, quelleText }: { quellen: Quelle[]
       <div>
         <div className="mb-3">
           <h3 className="text-sm font-semibold">C · Rechnungen & Cash Collected</h3>
-          <p className="text-[11px] text-muted-foreground">{quelleText} · alle Rechnungen ohne stornierte und Entwürfe</p>
+          <p className="text-[11px] text-muted-foreground">{quelleText} · alle Rechnungen ohne stornierte</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-3">
-          <Kachel title="Rechnungen gesamt" value={m.count.toLocaleString('de-DE')} hint={hint} />
+          <Kachel title="Rechnungen gesamt" value={m.count.toLocaleString('de-DE')} sub={m.sonstigeCount ? `davon ${m.sonstigeCount.toLocaleString('de-DE')} sonstige (Status unbekannt)` : undefined} hint={hint} />
           <Kachel title="Bezahlt" value={eur(m.paidSum)} sub={`${m.paidCount.toLocaleString('de-DE')} Stück`} hint={hint} />
           <Kachel title="Offen" value={eur(m.openSum)} sub={`${m.openCount.toLocaleString('de-DE')} Stück`} hint={hint} />
           <Kachel title="Überfällig" value={eur(m.overdueSum)} sub={`${m.overdueCount.toLocaleString('de-DE')} Stück`} hint={hint} />
