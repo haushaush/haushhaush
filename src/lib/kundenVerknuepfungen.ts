@@ -389,7 +389,7 @@ export async function portalListe(): Promise<PortalKonto[]> {
 }
 
 export async function portalAnlegen(p: { email: string; passwort: string; crm_client_id: string; firma: string; vorname: string; nachname: string }):
-  Promise<{ ok: true; profile_id: string } | { ok: false; error: string; profile_id?: string }> {
+  Promise<{ ok: boolean; error?: string; profile_id?: string }> {
   const r = await portalAufruf({ action: 'create', ...p });
   if (r?.ok && r.profile_id) return { ok: true, profile_id: r.profile_id };
   return { ok: false, error: r?.error || 'unbekannter Fehler', profile_id: r?.profile_id };

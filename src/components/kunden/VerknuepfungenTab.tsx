@@ -209,7 +209,7 @@ function PortalAnlegen({ kunde, onPick }: { kunde: KundeMin; onPick: (o: Objekt)
     const pw = erzeugePasswort();
     try {
       const r = await portalAnlegen({ email: f.email.trim(), passwort: pw, crm_client_id: kunde.id, firma: f.firma.trim(), vorname: f.vorname.trim(), nachname: f.nachname.trim() });
-      if (r.ok) { setFertig({ pw, o: { id: r.profile_id, name: f.firma.trim() || f.email.trim(), url: PORTAL_URL } }); return; }
+      if (r.ok && r.profile_id) { setFertig({ pw, o: { id: r.profile_id, name: f.firma.trim() || f.email.trim(), url: PORTAL_URL } }); return; }
       if (r.error === 'email_exists' && r.profile_id) setKonflikt({ text: 'Für diese Mailadresse gibt es bereits ein Portalkonto.', profile_id: r.profile_id });
       else if (r.error === 'crm_client_id_exists' && r.profile_id) setKonflikt({ text: 'Dieser Kunde hat bereits ein Portalkonto.', profile_id: r.profile_id });
       else if (r.error === 'invalid_email') setFeldFehler({ email: 'Bitte eine gültige Mailadresse eingeben.' });
