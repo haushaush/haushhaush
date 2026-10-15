@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,22 +16,36 @@ const BEREICH_NAMEN: Record<string, string> = {
   benchmark: 'Marktradar', compliance: 'Compliance', contracts: 'Verträge', kennzahlen: 'Kennzahlen', outreach: 'Outreach',
 };
 
-const VERTRAG_FELDER: { key: string; label: string; typ: 'text' | 'number' | 'date' }[] = [
-  { key: 'tier', label: 'Tier', typ: 'text' },
-  { key: 'betreuung_monate', label: 'Betreuungsmonate', typ: 'number' },
-  { key: 'start_date', label: 'Startdatum', typ: 'date' },
-  { key: 'live_date', label: 'Live-Datum', typ: 'date' },
-  { key: 'verlaengerung_monate', label: 'Verlängerungsmonate', typ: 'number' },
-  { key: 'garantie_menge', label: 'Garantiemenge', typ: 'number' },
-  { key: 'budget_guthaben', label: 'Budget-Guthaben', typ: 'number' },
-  { key: 'budget_empfohlen', label: 'Budget-Empfehlung', typ: 'number' },
+const SYSTEME = [
+  { wert: 'lead_system', name: 'Lead System', beschreibung: 'Eigene Kampagne, Leads direkt per Mail' },
+  { wert: 'termin_system_solo', name: 'Termin System Solo', beschreibung: 'Terminierung durch LeadSharks' },
+  { wert: 'termin_system', name: 'Termin System', beschreibung: 'Terminierung plus Sales Enablement' },
+  { wert: 'leadkauf', name: 'Leadkauf', beschreibung: 'Bezug von Leads, kein Betreuungspaket' },
+  { wert: 'kein_system', name: 'Kein System', beschreibung: 'Derzeit nichts gebucht' },
 ];
+
+const VERTRAG_FELDER: { key: string; label: string; typ: 'number' | 'date'; hilfe?: string }[] = [
+  { key: 'start_date', label: 'Start', typ: 'date' },
+  { key: 'live_date', label: 'Livegang', typ: 'date' },
+  { key: 'betreuung_monate', label: 'Betreuung (Monate)', typ: 'number', hilfe: 'Laufzeit ab Livegang.' },
+  { key: 'verlaengerung_monate', label: 'Verlängerung (Monate)', typ: 'number', hilfe: 'Aus Garantie-Nacherfüllung.' },
+  { key: 'garantie_menge', label: 'Garantiemenge', typ: 'number', hilfe: 'Leer lassen, wenn nicht vereinbart.' },
+  { key: 'budget_guthaben', label: 'Werbebudget-Guthaben (€)', typ: 'number' },
+  { key: 'budget_empfohlen', label: 'Empfohlenes Monatsbudget (€)', typ: 'number' },
+];
+
+const systemName = (wert: string) => SYSTEME.find(s => s.wert === wert)?.name || wert;
+const sichtbareVertragsfelder = (system: string) => {
+  if (system === 'leadkauf') return VERTRAG_FELDER.filter(f => f.key === 'start_date' || f.key === 'garantie_menge');
+  if (['lead_system', 'termin_system_solo', 'termin_system'].includes(system)) return VERTRAG_FELDER;
+  return [];
+};
 
 function fehlerText(code: unknown): string {
   const c = String(code || '');
   const m: Record<string, string> = {
     profile_not_found: 'Das verknüpfte Portalkonto existiert nicht mehr. Die Verknüpfung zeigt ins Leere – bitte im Tab „Verknüpfungen" lösen und neu setzen.',
-    tier_required: 'Bitte ein Tier angeben – ohne Tier kann kein Vertrag angelegt werden.',
+    tier_required: 'Bitte ein gültiges System auswählen – ohne System können keine Vertragsangaben gespeichert werden.',
     invalid_password: 'Das erzeugte Passwort wurde abgelehnt. Bitte erneut versuchen.',
     unauthorized: 'Das Portal hat die Anfrage abgelehnt (Zugangsschlüssel ungültig).',
     invalid_action: 'Diese Aktion wird von der Portal-Schnittstelle nicht unterstützt.',
@@ -58,8 +73,9 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
   const [frage, setFrage] = useState(false);
   const [reset, setReset] = useState(false);
   const [neuesPw, setNeuesPw] = useState<string | null>(null);
+  const [systemFrage, setSystemFrage] = useState(false);
 
-  const initVertrag = (v: any) => Object.fromEntries(VERTRAG_FELDER.map(f => [f.key, v ? zuText(v[f.key]) : '']));
+  const initVertrag = (v: any) => Object.fromEntries(['tier', ...VERTRAG_FELDER.map(f => f.key)].map(key => [key, v ? zuText(v[key]) : '']));
   const initBereiche = (b: any[]) => Object.fromEntries((b || []).map(x => [x.module_key, !!x.enabled]));
   const initLimit = (l: any) => (l?.global_lead_limit ? String(l.global_lead_limit) : '');
 
@@ -82,12 +98,14 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
     if (!daten) return {};
     const out: any = {};
     const v0 = initVertrag(daten.vertrag);
-    if (VERTRAG_FELDER.some(f => v0[f.key] !== vertrag[f.key])) {
-      out.vertrag = Object.fromEntries(VERTRAG_FELDER.map(f => {
-        const s = (vertrag[f.key] ?? '').trim();
-        return [f.key, s === '' ? null : f.typ === 'number' ? Number(s.replace(',', '.')) : s];
-      }));
+    const vertragsAenderungen: Record<string, string | number | null> = {};
+    if (v0.tier !== vertrag.tier) vertragsAenderungen.tier = vertrag.tier;
+    for (const f of sichtbareVertragsfelder(vertrag.tier)) {
+      const s = (vertrag[f.key] ?? '').trim();
+      if (v0[f.key] === s) continue;
+      vertragsAenderungen[f.key] = s === '' ? null : f.typ === 'number' ? Number(s.replace(',', '.')) : s;
     }
+    if (Object.keys(vertragsAenderungen).length) out.vertrag = vertragsAenderungen;
     const b0 = initBereiche(daten.bereiche);
     const geaendert = Object.keys(bereiche).filter(k => b0[k] !== bereiche[k]);
     if (geaendert.length) out.bereiche = geaendert.map(k => ({ module_key: k, enabled: bereiche[k] }));
@@ -101,7 +119,16 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
 
   async function speichernKlick() {
     setSpeicherFehler(null);
-    if (aenderungen.vertrag && !daten.vertrag && !(vertrag.tier || '').trim()) { setSpeicherFehler(fehlerText('tier_required')); return; }
+    if (aenderungen.vertrag && !SYSTEME.some(s => s.wert === vertrag.tier)) { setSpeicherFehler(fehlerText('tier_required')); return; }
+    if (daten?.vertrag?.tier && aenderungen.vertrag?.tier && daten.vertrag.tier !== vertrag.tier) {
+      setSystemFrage(true);
+      return;
+    }
+    await speichernAusfuehren();
+  }
+
+  async function speichernAusfuehren() {
+    setSystemFrage(false);
     setSpeichern(true);
     try {
       const r = await portalEinstellungenSetzen(profileId, aenderungen);
@@ -182,19 +209,58 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
         </CardContent>
       </Card>
 
-      {/* 2. Vertrag */}
+      {/* 2. Gebuchtes System */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Vertrag</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          {!daten?.vertrag && <p className="text-sm text-muted-foreground">Noch kein Vertrag hinterlegt.</p>}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {VERTRAG_FELDER.map(f => (
-              <label key={f.key} className="space-y-1">
-                <span className="text-xs text-muted-foreground">{f.label}{f.key === 'tier' && !daten?.vertrag ? ' *' : ''}</span>
-                <Input type={f.typ} inputMode={f.typ === 'number' ? 'decimal' : undefined} value={vertrag[f.key] ?? ''}
-                  onChange={e => setVertrag(v => ({ ...v, [f.key]: e.target.value }))} />
-              </label>
-            ))}
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="text-base">Gebuchtes System</CardTitle>
+            <p className="text-sm text-muted-foreground">Erscheint beim Kunden unter „Mein System". Schaltet keine Module oder Kennzahlen frei.</p>
+          </div>
+          {!daten?.vertrag?.tier && <Badge variant="outline" className="shrink-0 border-warning/40 bg-warning/10 text-warning">Noch nicht festgelegt</Badge>}
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {!daten?.vertrag?.tier && <p className="text-sm text-muted-foreground">Für diesen Kunden ist noch kein System hinterlegt. Bitte nachtragen – bis dahin sieht der Kunde nur einen neutralen Hinweis.</p>}
+          <div className="space-y-1.5">
+            <label htmlFor="leadsharks-system" className="text-sm font-medium">System*</label>
+            <Select value={vertrag.tier || ''} onValueChange={tier => setVertrag(v => ({ ...v, tier }))} required>
+              <SelectTrigger id="leadsharks-system" className="h-auto min-h-10 text-left [&>span]:line-clamp-none [&>span]:min-w-0 [&>span]:whitespace-normal">
+                <SelectValue placeholder="System auswählen" />
+              </SelectTrigger>
+              <SelectContent className="max-w-[calc(100vw-2rem)]">
+                {SYSTEME.map(s => <SelectItem key={s.wert} value={s.wert} className="whitespace-normal">{s.name} – {s.beschreibung}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {vertrag.tier === 'kein_system' && <p className="text-sm text-muted-foreground">Betreuung, Laufzeit, Garantie und Budget gibt es hier nicht. Vorhandene Werte bleiben gespeichert, sind nur ausgeblendet.</p>}
+          {vertrag.tier === 'leadkauf' && <p className="text-sm text-muted-foreground">Betreuung voraussichtlich 1 Monat – keine feste Laufzeit, keine Vertragsbindung.</p>}
+          {sichtbareVertragsfelder(vertrag.tier).length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4">
+              {sichtbareVertragsfelder(vertrag.tier).map(f => {
+                const label = f.key !== 'garantie_menge' ? f.label : vertrag.tier === 'leadkauf' ? 'Leadanzahl' : vertrag.tier === 'lead_system' ? 'Garantiemenge (Leads/Monat)' : 'Garantiemenge (erschienene Termine/Monat)';
+                const hilfe = f.key === 'garantie_menge' && vertrag.tier === 'leadkauf' ? 'Vereinbarte Menge, keine Garantie. Leer lassen, wenn nicht vereinbart.' : f.hilfe;
+                return (
+                  <div key={f.key} className="min-w-0 space-y-1.5">
+                    <label htmlFor={`leadsharks-${f.key}`} className="block text-sm font-medium">{label}</label>
+                    <Input id={`leadsharks-${f.key}`} type={f.typ} inputMode={f.typ === 'number' ? 'decimal' : undefined} value={vertrag[f.key] ?? ''}
+                      aria-describedby={hilfe ? `leadsharks-${f.key}-hilfe` : undefined}
+                      onChange={e => setVertrag(v => ({ ...v, [f.key]: e.target.value }))} />
+                    {hilfe && <p id={`leadsharks-${f.key}-hilfe`} className="text-xs text-muted-foreground">{hilfe}</p>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="border-t pt-4 space-y-3">
+            <div>
+              <h3 className="text-sm font-medium">Ansprechpartner</h3>
+              <p className="text-xs text-muted-foreground">Wird derzeit im Portal gepflegt</p>
+            </div>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm [&_dd]:break-words">
+              <Feld label="Name" wert={daten?.vertrag?.ansprechpartner_name} />
+              <Feld label="Rolle" wert={daten?.vertrag?.ansprechpartner_rolle} />
+              <Feld label="E-Mail" wert={daten?.vertrag?.ansprechpartner_email} />
+              <Feld label="Telefon" wert={daten?.vertrag?.ansprechpartner_telefon} />
+            </dl>
           </div>
         </CardContent>
       </Card>
@@ -290,6 +356,22 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
           {(leads.gesamt ?? 0).toLocaleString('de-DE')} Leads geliefert{leads.letzte_lieferung ? `, zuletzt am ${fmtDatum(leads.letzte_lieferung)}` : ''}
         </CardContent>
       </Card>
+
+      <AlertDialog open={systemFrage} onOpenChange={setSystemFrage}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>System ändern: {systemName(daten?.vertrag?.tier || '')} → {systemName(vertrag.tier || '')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Der Kunde sieht die Änderung sofort unter ‚Mein System'. Module, Kennzahlen und Vertragswerte bleiben unverändert.
+              {vertrag.tier === 'kein_system' && <span className="block mt-2">Der Kunde sieht dann nur: ‚Derzeit ist kein System gebucht'.</span>}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction disabled={speichern} onClick={speichernAusfuehren}>System ändern und speichern</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={frage} onOpenChange={setFrage}>
         <AlertDialogContent>
