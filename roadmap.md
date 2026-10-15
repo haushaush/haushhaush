@@ -1,10 +1,8 @@
-# Projekte und Laufzeiten
-
 # LeadSharks: Gebuchtes System
 
-- [ ] Vertragskarte durch Systemauswahl, bedingte Felder, lesenden Ansprechpartner und Wechselbestätigung ersetzen; keine Tests oder Gegenprüfung.
+- [x] Vertragskarte durch Systemauswahl, bedingte Felder, lesenden Ansprechpartner und Wechselbestätigung ersetzt; keine Tests oder Gegenprüfung ausgeführt.
 
-# Projekte und Laufzeiten (bestehend)
+# Projekte und Laufzeiten
 
 - [ ] Verlängern unabhängig von Restlaufzeit ermöglichen; nur optisch hervorheben.
 - [ ] Aktive Close-Kundenquelle für Laufzeiten und Projektvorschau gemeinsam verwenden.
