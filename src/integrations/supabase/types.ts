@@ -4432,6 +4432,81 @@ export type Database = {
         }
         Relationships: []
       }
+      lexoffice_sync_runs: {
+        Row: {
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          records_contacts: number
+          records_invoices: number
+          started_at: string
+          status: string
+          trigger_type: string
+        }
+        Insert: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          records_contacts?: number
+          records_invoices?: number
+          started_at?: string
+          status?: string
+          trigger_type?: string
+        }
+        Update: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          records_contacts?: number
+          records_invoices?: number
+          started_at?: string
+          status?: string
+          trigger_type?: string
+        }
+        Relationships: []
+      }
+      lexoffice_sync_status: {
+        Row: {
+          completed: boolean | null
+          fetched_count: number | null
+          last_error: string | null
+          last_success_at: string | null
+          last_synced_at: string | null
+          pages_loaded: number | null
+          resource: string
+          started_at: string | null
+          total_pages: number | null
+          triggered_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          completed?: boolean | null
+          fetched_count?: number | null
+          last_error?: string | null
+          last_success_at?: string | null
+          last_synced_at?: string | null
+          pages_loaded?: number | null
+          resource: string
+          started_at?: string | null
+          total_pages?: number | null
+          triggered_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          completed?: boolean | null
+          fetched_count?: number | null
+          last_error?: string | null
+          last_success_at?: string | null
+          last_synced_at?: string | null
+          pages_loaded?: number | null
+          resource?: string
+          started_at?: string | null
+          total_pages?: number | null
+          triggered_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meta_accounts_cache: {
         Row: {
           business_name: string | null
