@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VerknuepfungenTab } from '@/components/kunden/VerknuepfungenTab';
+import { LeadSharksTab } from '@/components/kunden/LeadSharksTab';
 import { ladeStand, zaehle, type SystemKey, type SystemStand } from '@/lib/kundenVerknuepfungen';
 import { DriveBrowser } from '@/components/DriveBrowser';
 import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
@@ -849,6 +850,7 @@ export default function KundenDetail() {
           <TabsTrigger value="verknuepfungen">
             Verknüpfungen{linkZahl ? ` (${linkZahl.verknuepft}/${linkZahl.gesamt})` : ''}
           </TabsTrigger>
+          {linkStand?.portal?.zustand === 'verknuepft' && <TabsTrigger value="leadsharks">LeadSharks</TabsTrigger>}
           <TabsTrigger value="deals">Deals ({deals.length + closeOpps.length})</TabsTrigger>
           <TabsTrigger value="onepage">Onepage-Leads ({onepageProjects.length})</TabsTrigger>
           <TabsTrigger value="showcase">Showcase ({totals.showcaseCount})</TabsTrigger>
@@ -858,6 +860,12 @@ export default function KundenDetail() {
           <TabsTrigger value="projekte">Projekte ({projects.length})</TabsTrigger>
           <TabsTrigger value="dateien">Dateien</TabsTrigger>
         </TabsList>
+
+        {linkStand?.portal?.zustand === 'verknuepft' && (
+          <TabsContent value="leadsharks" className="mt-4">
+            <LeadSharksTab profileId={linkStand.portal.objekt.id} />
+          </TabsContent>
+        )}
 
         <TabsContent value="verknuepfungen" className="mt-4" id="kunde-verknuepfungen">
           <VerknuepfungenTab kunde={client} stand={linkStand} loading={linkLoading} onChanged={() => { load(); ladeLinks(); }} />
