@@ -48,8 +48,11 @@ const navItems: NavItem[] = [
     title: 'Finanzen', url: '/finanzen', icon: Euro,
     children: [
       { title: 'Übersicht', url: '/finanzen', permissionKey: 'finanzen.view' },
+      { title: 'Lexware', url: '/finanzen/lexware', permissionKey: 'finanzen.view' },
+      { title: 'Qonto', url: '/finanzen/qonto', permissionKey: 'finanzen.view' },
       { title: 'Rechnungen', url: '/finanzen/rechnungen', permissionKey: 'finanzen.rechnungen.view' },
       { title: 'Werbebudgets', url: '/finanzen/werbebudgets', permissionKey: 'finanzen.werbebudgets.view' },
+      { title: 'Verknüpfungen', url: '/finanzen/verknuepfungen', permissionKey: 'finanzen.view' },
       { title: 'Meta Belege', url: '/finanzen/abrechnungen', permissionKey: 'meta.billing.view' },
     ],
   },

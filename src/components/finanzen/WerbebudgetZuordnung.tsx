@@ -34,12 +34,14 @@ export function WerbebudgetZuordnung() {
 
   const ladeDb = useCallback(async () => {
     const [k, c, z, v] = await Promise.all([
-      supabase.from('meta_accounts_cache').select('meta_account_id, name').order('name'),
+      (supabase.from as any)('meta_accounts_cache').select('meta_account_id, name, status, last_synced_at').eq('status', 'active')
+        .gte('last_synced_at', new Date(Date.now() - 30 * 86400000).toISOString()).order('name'),
       supabase.from('clients').select('id, name').is('deleted_at', null).in('kundenstatus', ['In Betreuung', 'Pausiert'] as any).order('name'),
       (supabase.from as any)('werbebudget_zuordnung').select('*'),
       (supabase.from as any)('werbebudget_vorschlag_verworfen').select('kampagne_id, client_id'),
     ]);
-    setKonten((k.data || []) as any);
+    const belegt = new Set(((z.data || []) as any[]).map(r => r.meta_account_id));
+    setKonten((((k.data || []) as any[])).sort((a, b) => Number(belegt.has(b.meta_account_id)) - Number(belegt.has(a.meta_account_id)) || (a.name || '').localeCompare(b.name || '')));
     setKunden(((c.data || []) as any[]).filter(x => x.name));
     setZuo((z.data || []) as Zuordnung[]);
     setVerworfen(new Set(((v.data || []) as any[]).map(r => `${r.kampagne_id}:${r.client_id}`)));
