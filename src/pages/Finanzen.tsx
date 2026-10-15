@@ -3,6 +3,7 @@ import { Werbebudgets } from '@/components/finanzen/Werbebudgets';
 import { WerbebudgetZuordnung } from '@/components/finanzen/WerbebudgetZuordnung';
 import { QontoVerknuepfungen } from '@/components/finanzen/QontoVerknuepfungen';
 import { LexofficeSyncCard } from '@/components/integrations/LexofficeSyncCard';
+import { RechnungsAuswertung } from '@/components/finanzen/RechnungsAuswertung';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +29,7 @@ import {
   Database, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
-const ALLOWED_TABS = ['uebersicht', 'rechnungen', 'werbebudgets', 'verknuepfungen'];
+const ALLOWED_TABS = ['uebersicht', 'lexware', 'qonto', 'rechnungen', 'werbebudgets', 'verknuepfungen'];
 type Range = 'this_month' | 'last_month' | 'this_year' | 'last_12m' | 'all' | 'custom';
 
 const tooltipStyle = { backgroundColor: '#fff', border: '1px solid #E5E5E7', borderRadius: '8px', color: '#1D1D1F', fontSize: 12 };
@@ -505,6 +506,8 @@ export default function Finanzen() {
       <Tabs value={currentTab} onValueChange={v => navigate(v === 'uebersicht' ? '/finanzen' : `/finanzen/${v}`)}>
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
+          <TabsTrigger value="lexware">Lexware</TabsTrigger>
+          <TabsTrigger value="qonto">Qonto</TabsTrigger>
           <TabsTrigger value="rechnungen">Rechnungen</TabsTrigger>
           <TabsTrigger value="werbebudgets">Werbebudgets</TabsTrigger>
           <TabsTrigger value="verknuepfungen">Verknüpfungen</TabsTrigger>
@@ -512,7 +515,19 @@ export default function Finanzen() {
 
         {/* ============ ÜBERSICHT ============ */}
         <TabsContent value="uebersicht" className="space-y-6 mt-4">
+          <RechnungsAuswertung quellen={['qonto', 'lexoffice']} quelleText="Qonto + lexoffice zusammengerechnet" />
+          <p className="text-[11px] text-muted-foreground">Kontostand, Bankeingänge und Bankausgänge gibt es nur bei Qonto — sie stehen im Tab Qonto und werden hier nicht summiert.</p>
+        </TabsContent>
+
+        {/* ============ LEXWARE ============ */}
+        <TabsContent value="lexware" className="space-y-6 mt-4">
           {isAdmin && <LexofficeSyncCard />}
+          <RechnungsAuswertung quellen={['lexoffice']} quelleText="lexoffice Rechnungen" />
+          <p className="text-[11px] text-muted-foreground">Liquidität und Cashflow gibt es nur bei Qonto — lexoffice führt kein Bankkonto.</p>
+        </TabsContent>
+
+        {/* ============ QONTO ============ */}
+        <TabsContent value="qonto" className="space-y-6 mt-4">
 
           {/* HERO KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
