@@ -1,3 +1,7 @@
+# LeadSharks: Gebuchtes System
+
+- [x] Vertragskarte durch Systemauswahl, bedingte Felder, lesenden Ansprechpartner und Wechselbestätigung ersetzt; keine Tests oder Gegenprüfung ausgeführt.
+
 # Projekte und Laufzeiten
 
 - [ ] Verlängern unabhängig von Restlaufzeit ermöglichen; nur optisch hervorheben.
