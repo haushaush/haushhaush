@@ -215,3 +215,43 @@ export function Werbebudgets() {
     </div>
   );
 }
+
+/** Aufgeklappte Kundenzeile: Verbrauch je Zuordnung seit der letzten Aufladung, gruppiert nach Untermarke. */
+function DetailTabelle({ d, hauptwert, ohneZahlung }: { d?: Detail; hauptwert: number | null; ohneZahlung: boolean }) {
+  if (!d || d.laedt) return <p className="text-xs text-muted-foreground">Meta-Daten werden geladen …</p>;
+  if (d.fehler) return <p className="text-xs text-destructive">Meta-Fehler: {d.fehler}</p>;
+  const gruppen = new Map<string, DetailZeile[]>();
+  d.zeilen.forEach(z => { const g = z.o.untermarke || z.o.meta_account_id; gruppen.set(g, [...(gruppen.get(g) || []), z]); });
+  const summe = d.zeilen.every(z => z.seit !== null) ? d.zeilen.reduce((s, z) => s + (z.seit || 0), 0) : null;
+  const diff = hauptwert != null && summe != null ? hauptwert - summe : null;
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead className="h-8">Was</TableHead><TableHead className="h-8">Ebene</TableHead><TableHead className="h-8">Status</TableHead>
+          <TableHead className="h-8 text-right">Tagesbudget</TableHead><TableHead className="h-8 text-right">Verbraucht</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {[...gruppen.entries()].flatMap(([g, zs]) => [
+          ...(gruppen.size > 1 ? [<TableRow key={`u-${g}`} className="hover:bg-transparent"><TableCell colSpan={5} className="py-1.5 text-xs font-medium text-muted-foreground">{g}</TableCell></TableRow>] : []),
+          ...zs.map(z => (
+            <TableRow key={z.o.objekt_id} className="hover:bg-transparent">
+              <TableCell className="py-2 text-sm">{z.o.objekt_name || z.o.objekt_id}</TableCell>
+              <TableCell className="py-2 text-sm text-muted-foreground">{z.o.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'}</TableCell>
+              <TableCell className="py-2 text-sm text-muted-foreground">{z.status ? (AKTIV.has(z.status) ? 'Aktiv' : z.status === 'PAUSED' ? 'Pausiert' : z.status) : '—'}</TableCell>
+              <TableCell className="py-2 text-right tabular-nums text-sm">{z.tagesbudget != null ? eur(z.tagesbudget) : '—'}</TableCell>
+              <TableCell className="py-2 text-right tabular-nums text-sm">{z.seit != null ? eur(z.seit) : ohneZahlung ? '— keine Zahlung' : '—'}</TableCell>
+            </TableRow>
+          )),
+        ])}
+        {diff != null && Math.abs(diff) >= 0.5 && (
+          <TableRow className="hover:bg-transparent">
+            <TableCell colSpan={4} className="py-2 text-sm text-muted-foreground">nicht zugeordnet (Differenz zur Hauptzeile)</TableCell>
+            <TableCell className="py-2 text-right tabular-nums text-sm">{eur(diff)}</TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
+  );
+}
