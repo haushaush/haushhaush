@@ -56,7 +56,7 @@ export default function BonusFunnel() {
   if (failure) setError(failure.message);
   setRows(((tokens.data as any[]) || []).map(t => ({ token: t.token, client_name: t.clients?.name || '–', versendet_am: t.versendet_am, ausgefuellt_am: t.ausgefuellt_am })).sort((a,b) => a.client_name.localeCompare(b.client_name)));
   setCandidates((snapshot.data || []) as Candidate[]); setAnswers((matched.data || []) as Answer[]); setOpen((pending.data || []) as Answer[]);
-  setPoints(calculation.data?.kriterien?.zufriedenheit?.punkte ?? null); setLoading(false);
+  setPoints((calculation.data as any)?.kein_config ? null : calculation.data?.kriterien?.zufriedenheit?.punkte ?? null); setLoading(false);
  }, [monat, maId]);
  useEffect(() => { setSelections({}); void load(); }, [load]);
  const snapshot = candidates.filter(c => c.mitarbeiter_id === maId);
@@ -81,7 +81,7 @@ export default function BonusFunnel() {
   let recalculationFailed = false;
   for (const id of new Set([...affected, maId])) {
    const calculation = await supabase.functions.invoke('bonus-berechnung', { body: { monat, mitarbeiter_id: id, speichern: true } });
-   if (calculation.error) recalculationFailed = true;
+   if (calculation.error || (calculation.data as any)?.kein_config) recalculationFailed = true;
   }
   setBusy(null); toast.success(noCustomer ? 'Einsendung ausgeschlossen' : 'Kunde zugeordnet');
   if (recalculationFailed) toast.warning('Zuordnung gespeichert; Bonus konnte nicht gespeichert werden. Freigegebene Monate bleiben unverändert.');

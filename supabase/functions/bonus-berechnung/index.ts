@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
   const { data: cfgRow, error: cErr } = await admin.from("bonus_config").select("config, gueltig_ab")
     .eq("mitarbeiter_id", mitarbeiter_id).lte("gueltig_ab", monat).order("gueltig_ab", { ascending: false }).limit(1).maybeSingle();
   if (cErr) return json({ error: cErr.message }, 500);
-  if (!cfgRow) return json({ error: "Keine bonus_config für diesen Monat gefunden" }, 404);
+  if (!cfgRow) return json({ kein_config: true, hinweis: "Für diesen Mitarbeiter ist für diesen Monat noch kein Bonusmodell hinterlegt." });
   const cfg: any = cfgRow.config;
   const max = cfg.punkte_max;
 

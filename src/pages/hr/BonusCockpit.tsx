@@ -73,6 +73,7 @@ export default function BonusCockpit() {
     const { data, error } = await supabase.functions.invoke('bonus-berechnung', { body: { monat, mitarbeiter_id: maId, speichern } });
     setLoading(false);
     if (error) { setErr(error.message); if (speichern) toast.error('Berechnung fehlgeschlagen', { description: error.message }); return; }
+    if ((data as any)?.kein_config) { setErr((data as any).hinweis); setRes(null); return; }
     setRes(data as Result);
     if (speichern) toast.success('Neu berechnet und gespeichert');
     const { data: bm } = await supabase.from('bonus_monate').select('updated_at, status').eq('monat', monat).eq('mitarbeiter_id', maId).maybeSingle();
