@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 /** Alle externen Systeme eines Kunden — eine Quelle für Tab, Kacheln und Sammelansicht. */
 /** Slack und Pipedrive werden nicht auf Kundenebene verknüpft. */
-export type SystemKey = 'close' | 'meta' | 'qonto' | 'lexoffice' | 'onepage' | 'drive' | 'superchat';
+export type SystemKey = 'close' | 'meta' | 'qonto' | 'lexoffice' | 'onepage' | 'drive' | 'superchat' | 'portal';
 
 export const SYSTEME: { key: SystemKey; label: string; objekt: string; angebunden: boolean }[] = [
   { key: 'close', label: 'Close', objekt: 'Lead', angebunden: true },
@@ -11,6 +11,7 @@ export const SYSTEME: { key: SystemKey; label: string; objekt: string; angebunde
   { key: 'lexoffice', label: 'lexoffice', objekt: 'Kontakt', angebunden: true },
   { key: 'onepage', label: 'Onepage', objekt: 'Website', angebunden: true },
   { key: 'drive', label: 'Google Drive', objekt: 'Ordner', angebunden: true },
+  { key: 'portal', label: 'LeadSharks Portal', objekt: 'Portalkonto', angebunden: true },
   { key: 'superchat', label: 'Superchat', objekt: 'Kontakt', angebunden: false },
 ];
 
@@ -185,7 +186,7 @@ async function buchVerknuepfen(sys: 'qonto' | 'lexoffice', clientId: string, o: 
 
 /** Lädt Verknüpfungen + Vorschläge für die übergebenen Kunden (alle Tabellen einmal, auch für die Sammelansicht). */
 export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<SystemKey, SystemStand>>> {
-  const [cl, sp, km, mc, ql, qi, op, dm, vw, ll, lc, li] = await Promise.all([
+  const [cl, sp, km, mc, ql, qi, op, dm, vw, ll, lc, li, pl] = await Promise.all([
     alle('close_link', 'client_id, close_lead_id, last_synced_at'),
     alle('close_lead_spiegel', 'close_lead_id, name, status_label'),
     alle('kunde_meta_accounts', 'client_id, meta_account_id, meta_account_name'),
@@ -198,7 +199,9 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
     alle('lexoffice_client_links', 'id, lexoffice_contact_id, lexoffice_contact_name, client_id, match_type, is_confirmed'),
     alle('lexoffice_contacts', 'contact_id, name, email'),
     alle('lexoffice_invoices', 'contact_id, voucher_date'),
+    alle('kunde_externe_links', 'client_id, externe_id, name, url', q => q.eq('system', 'portal')),
   ]);
+  const portalByClient = new Map(pl.rows.map(r => [r.client_id, r]));
   const qKand = qontoKandidaten(qi.rows);
   const lKand = lexKandidaten(lc.rows, li.rows);
 
@@ -260,6 +263,11 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
     const d = driveByClient.get(k.id);
     st.drive = d ? { zustand: 'verknuepft', objekt: { id: d.drive_folder_id, name: d.drive_folder_name, url: d.drive_folder_url || `https://drive.google.com/drive/folders/${d.drive_folder_id}` } } : { zustand: 'offen' };
 
+    // LeadSharks Portal
+    const pk = portalByClient.get(k.id);
+    st.portal = pl.error ? { zustand: 'keine_berechtigung' }
+      : pk ? { zustand: 'verknuepft', objekt: { id: pk.externe_id, name: pk.name, url: pk.url } } : { zustand: 'offen' };
+
     st.superchat = { zustand: 'nicht_angebunden' };
     out.set(k.id, st);
   }
@@ -289,6 +297,17 @@ export async function suche(system: SystemKey, q: string, clientId?: string): Pr
       return (data || []).map((r: any) => ({ id: String(r.meta_account_id), name: r.name, detail: r.business_name, url: metaUrl(String(r.meta_account_id)) }));
     }
     case 'qonto': case 'lexoffice': return sucheBuch(system, q, clientId);
+    case 'portal': {
+      const konten = await portalListe();
+      const n = q.toLowerCase();
+      const treffer = konten.filter(k => [k.email, k.company_name, k.first_name, k.last_name].some(v => (v || '').toLowerCase().includes(n))).slice(0, 20);
+      const namen = await belegtNamen(treffer.map(k => k.crm_client_id).filter((id): id is string => !!id && id !== clientId));
+      return treffer.map(k => ({
+        id: k.id, name: k.company_name || k.email, url: PORTAL_URL,
+        detail: [[k.first_name, k.last_name].filter(Boolean).join(' '), k.email, k.is_active === false && 'inaktiv'].filter(Boolean).join(' · '),
+        belegt: k.crm_client_id && k.crm_client_id !== clientId ? (namen.get(k.crm_client_id) || 'anderem Kunden') : null,
+      }));
+    }
     case 'onepage': {
       const { data } = await supabase.from('onepage_projects').select('id, name, page_url, client_id_fk').or(`name.ilike.${like},page_url.ilike.${like}`).limit(15);
       return (data || []).map((r: any) => ({ id: r.id, name: r.name, url: r.page_url, detail: r.client_id_fk ? 'bereits einem Kunden zugeordnet' : undefined }));
@@ -323,6 +342,9 @@ export async function verknuepfen(system: SystemKey, clientId: string, o: Objekt
     case 'onepage':
       chk(await supabase.from('onepage_projects').update({ client_id_fk: clientId } as any).eq('id', o.id));
       return;
+    case 'portal':
+      chk(await (supabase.from as any)('kunde_externe_links').insert({ client_id: clientId, system: 'portal', externe_id: o.id, name: o.name, url: o.url ?? PORTAL_URL }));
+      return;
     case 'drive':
       chk(await supabase.from('drive_folder_mappings').insert({ entity_type: 'client', entity_id: clientId, folder_section: 'root', drive_folder_id: o.id, drive_folder_url: o.url, drive_folder_name: o.name } as any));
       return;
@@ -336,10 +358,50 @@ export async function loesen(system: SystemKey, clientId: string, o: Objekt) {
     case 'qonto': chk(await supabase.from('qonto_client_links').update({ client_id: null, is_confirmed: false } as any).eq('id', o.ref || o.id)); return;
     case 'lexoffice': chk(await (supabase.from as any)('lexoffice_client_links').update({ client_id: null, is_confirmed: false }).eq('id', o.ref || o.id)); return;
     case 'onepage': chk(await supabase.from('onepage_projects').update({ client_id_fk: null } as any).eq('id', o.id)); return;
+    case 'portal': chk(await (supabase.from as any)('kunde_externe_links').delete().eq('client_id', clientId).eq('system', 'portal')); return;
     case 'drive': chk(await supabase.from('drive_folder_mappings').delete().eq('entity_type', 'client').eq('entity_id', clientId)); return;
   }
 }
 
 export async function verwerfen(v: Vorschlag, clientId: string) {
   chk(await (supabase.from as any)('kunde_link_vorschlag_verworfen').insert({ client_id: clientId, system: v.system, externe_id: v.id, verworfen_von: await uid() }));
+}
+
+// ---------- LeadSharks Portal (nur über portal-bruecke, Token bleibt serverseitig) ----------
+export const PORTAL_URL = 'https://portal.leadsharks.de';
+export interface PortalKonto { id: string; email: string; company_name: string | null; first_name: string | null; last_name: string | null; created_at: string; crm_client_id: string | null; is_active: boolean }
+
+async function portalAufruf(body: Record<string, unknown>): Promise<any> {
+  const { data, error } = await supabase.functions.invoke('portal-bruecke', { body });
+  if (error) {
+    // Bei 4xx steckt die Portal-Antwort im Response-Kontext.
+    const ctx: any = (error as any).context;
+    if (ctx && typeof ctx.json === 'function') { try { return await ctx.json(); } catch { /* fällt durch */ } }
+    throw new Error(error.message);
+  }
+  return data;
+}
+
+export async function portalListe(): Promise<PortalKonto[]> {
+  const r = await portalAufruf({ action: 'list' });
+  if (!r?.ok) throw new Error(r?.error || 'Portal-Kontenliste nicht abrufbar');
+  return r.konten || [];
+}
+
+export async function portalAnlegen(p: { email: string; passwort: string; crm_client_id: string; firma: string; vorname: string; nachname: string }):
+  Promise<{ ok: boolean; error?: string; profile_id?: string }> {
+  const r = await portalAufruf({ action: 'create', ...p });
+  if (r?.ok && r.profile_id) return { ok: true, profile_id: r.profile_id };
+  return { ok: false, error: r?.error || 'unbekannter Fehler', profile_id: r?.profile_id };
+}
+
+/** 16 Zeichen aus Groß-, Kleinbuchstaben, Ziffern, Sonderzeichen – je Klasse mindestens eines, kryptografisch zufällig. */
+export function erzeugePasswort(len = 16): string {
+  const klassen = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnpqrstuvwxyz', '23456789', '!@#$%&*?-_+='];
+  const alle = klassen.join('');
+  const zufall = (n: number) => { const a = new Uint32Array(1); const max = Math.floor(0x100000000 / n) * n; do crypto.getRandomValues(a); while (a[0] >= max); return a[0] % n; };
+  const z = klassen.map(k => k[zufall(k.length)]);
+  while (z.length < len) z.push(alle[zufall(alle.length)]);
+  for (let i = z.length - 1; i > 0; i--) { const j = zufall(i + 1); [z[i], z[j]] = [z[j], z[i]]; }
+  return z.join('');
 }
