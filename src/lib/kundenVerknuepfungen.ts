@@ -395,6 +395,16 @@ export async function portalAnlegen(p: { email: string; passwort: string; crm_cl
   return { ok: false, error: r?.error || 'unbekannter Fehler', profile_id: r?.profile_id };
 }
 
+export async function portalEinstellungen(profile_id: string): Promise<any> {
+  return portalAufruf({ action: 'settings_get', profile_id });
+}
+export async function portalEinstellungenSetzen(profile_id: string, teile: { vertrag?: Record<string, unknown>; bereiche?: { module_key: string; enabled: boolean }[]; global_lead_limit?: number | null }): Promise<any> {
+  return portalAufruf({ action: 'settings_set', profile_id, ...teile });
+}
+export async function portalZugangZuruecksetzen(profile_id: string, passwort: string): Promise<any> {
+  return portalAufruf({ action: 'zugang_zuruecksetzen', profile_id, passwort });
+}
+
 /** 16 Zeichen aus Groß-, Kleinbuchstaben, Ziffern, Sonderzeichen – je Klasse mindestens eines, kryptografisch zufällig. */
 export function erzeugePasswort(len = 16): string {
   const klassen = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnpqrstuvwxyz', '23456789', '!@#$%&*?-_+='];
