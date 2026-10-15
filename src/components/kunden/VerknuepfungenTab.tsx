@@ -195,9 +195,14 @@ function PortalAuswahl({ kunde, onPick }: { kunde: KundeMin; onPick: (o: Objekt)
 }
 
 type Feld = 'email' | 'passwort' | 'crm_client_id';
+/** Vorbelegung nur aus clients.name: letztes Wort = Nachname, alles davor = Vorname, ein Wort = nur Nachname. */
+function aufteilen(name: string | null | undefined) {
+  const w = (name || '').trim().replace(/\s+/g, ' ').split(' ').filter(Boolean);
+  return { firma: w.join(' '), nachname: w.length ? w[w.length - 1] : '', vorname: w.length > 1 ? w.slice(0, -1).join(' ') : '' };
+}
 function PortalAnlegen({ kunde, onPick }: { kunde: KundeMin; onPick: (o: Objekt) => void }) {
-  const teile = (kunde.vor_nachname || '').trim().split(/\s+/).filter(Boolean);
-  const [f, setF] = useState({ email: kunde.email || '', firma: kunde.name || '', vorname: teile[0] || '', nachname: teile.slice(1).join(' ') });
+  const vor = aufteilen(kunde.name);
+  const [f, setF] = useState({ email: kunde.email || '', firma: vor.firma, vorname: vor.vorname, nachname: vor.nachname, telefon: kunde.phone || '' });
   const [busy, setBusy] = useState(false);
   const [feldFehler, setFeldFehler] = useState<Partial<Record<Feld, string>>>({});
   const [konflikt, setKonflikt] = useState<{ text: string; profile_id: string } | null>(null);
@@ -208,7 +213,7 @@ function PortalAnlegen({ kunde, onPick }: { kunde: KundeMin; onPick: (o: Objekt)
     setBusy(true); setFeldFehler({}); setKonflikt(null); setFehler(null);
     const pw = erzeugePasswort();
     try {
-      const r = await portalAnlegen({ email: f.email.trim(), passwort: pw, crm_client_id: kunde.id, firma: f.firma.trim(), vorname: f.vorname.trim(), nachname: f.nachname.trim() });
+      const r = await portalAnlegen({ email: f.email.trim(), passwort: pw, crm_client_id: kunde.id, firma: f.firma.trim(), vorname: f.vorname.trim(), nachname: f.nachname.trim(), telefon: f.telefon.trim() });
       if (r.ok && r.profile_id) { setFertig({ pw, o: { id: r.profile_id, name: f.firma.trim() || f.email.trim(), url: PORTAL_URL } }); return; }
       if (r.error === 'email_exists' && r.profile_id) setKonflikt({ text: 'Für diese Mailadresse gibt es bereits ein Portalkonto.', profile_id: r.profile_id });
       else if (r.error === 'crm_client_id_exists' && r.profile_id) setKonflikt({ text: 'Dieser Kunde hat bereits ein Portalkonto.', profile_id: r.profile_id });
@@ -244,6 +249,8 @@ function PortalAnlegen({ kunde, onPick }: { kunde: KundeMin; onPick: (o: Objekt)
       {feld('email', 'Mail', feldFehler.email)}
       {feld('firma', 'Firma')}
       <div className="grid grid-cols-2 gap-3">{feld('vorname', 'Vorname')}{feld('nachname', 'Nachname')}</div>
+      {feld('telefon', 'Telefon')}
+      <p className="text-xs text-muted-foreground">Vorbelegt aus dem Kundennamen. Bei Firmenkunden bitte Vor- und Nachname des Ansprechpartners eintragen.</p>
       {feldFehler.passwort && <p className="text-xs text-destructive">{feldFehler.passwort}</p>}
       {feldFehler.crm_client_id && <p className="text-xs text-destructive">{feldFehler.crm_client_id}</p>}
       {fehler && <p className="text-xs text-destructive">{fehler}</p>}
