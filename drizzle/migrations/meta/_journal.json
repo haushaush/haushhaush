@@ -204,6 +204,13 @@
       "when": 1791981571779,
       "tag": "0028_lexoffice_buchhaltung_quelle",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792052404310,
+      "tag": "0029_lexoffice_sync_status",
+      "breakpoints": true
     }
   ]
 }
