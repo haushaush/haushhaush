@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Werbebudgets } from '@/components/finanzen/Werbebudgets';
-import { WerbebudgetZuordnung } from '@/components/finanzen/WerbebudgetZuordnung';
+import { KampagnenOhneKunde } from '@/components/finanzen/KampagnenOhneKunde';
 import { QontoVerknuepfungen } from '@/components/finanzen/QontoVerknuepfungen';
 import { LexofficeSyncCard } from '@/components/integrations/LexofficeSyncCard';
 import { RechnungenListe } from '@/components/finanzen/RechnungenListe';
@@ -888,7 +888,7 @@ export default function Finanzen() {
 
         <TabsContent value="werbebudgets" className="space-y-4 mt-4">
           <Werbebudgets />
-          <WerbebudgetZuordnung />
+          <KampagnenOhneKunde />
         </TabsContent>
 
         <TabsContent value="verknuepfungen" className="space-y-4 mt-4">
