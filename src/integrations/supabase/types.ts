@@ -9091,6 +9091,26 @@ export type Database = {
         }
         Relationships: []
       }
+      werbebudget_eingezahlt: {
+        Row: {
+          aelteste_ueberfaellig: string | null
+          client_id: string | null
+          eingezahlt_netto: number | null
+          letzte_zahlung: string | null
+          offen_netto: number | null
+          quelle: string | null
+          rechnungen_offen: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qonto_client_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _finanzen_can_read: { Args: never; Returns: boolean }
