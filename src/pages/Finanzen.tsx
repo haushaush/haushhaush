@@ -3,6 +3,7 @@ import { Werbebudgets } from '@/components/finanzen/Werbebudgets';
 import { WerbebudgetZuordnung } from '@/components/finanzen/WerbebudgetZuordnung';
 import { QontoVerknuepfungen } from '@/components/finanzen/QontoVerknuepfungen';
 import { LexofficeSyncCard } from '@/components/integrations/LexofficeSyncCard';
+import { RechnungenListe } from '@/components/finanzen/RechnungenListe';
 import { RechnungsAuswertung } from '@/components/finanzen/RechnungsAuswertung';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -193,7 +194,7 @@ export default function Finanzen() {
   const [invoiceMetrics, setInvoiceMetrics] = useState<any>(null);
   const [dbInvoiceTotal, setDbInvoiceTotal] = useState(0);
   const [clientList, setClientList] = useState<string[]>([]);
-  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [invoiceReload, setInvoiceReload] = useState(0);
 
   // Invoices tab state
   const [filterStatus, setFilterStatus] = useState('all');
@@ -279,7 +280,7 @@ export default function Finanzen() {
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
-        await Promise.all([loadBase(), loadAggregates(), loadInvoicePage(), loadInvoiceMetrics()]);
+        await Promise.all([loadBase(), loadAggregates(), ]); setInvoiceReload(k => k + 1);
         if (attempts >= (mode === 'backfill' ? 60 : 24)) { clearInterval(poll); setSyncing(false); }
       }, 5000);
     } catch (e: any) {
@@ -352,89 +353,13 @@ export default function Finanzen() {
     || (dbInvoiceTotal <= 100 && invoiceSync.completed !== true)
   );
 
-  // Reset page when filters change
-  useEffect(() => { setPageIdx(0); }, [filterStatus, filterOverdue, filterClient, search, range, pageSize]);
-
-  const cleanSearch = search.trim().replace(/[%(),]/g, ' ');
-
-  const buildInvoiceQuery = useCallback((withCount = true) => {
-    let query = supabase
-      .from('qonto_client_invoices' as any)
-      .select('*', withCount ? { count: 'exact' } : undefined)
-      .order('issue_date', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false });
-
-    if (range !== 'all') query = query.gte('issue_date', fromISO).lte('issue_date', toISOd);
-    if (filterStatus !== 'all') query = query.eq('status', filterStatus);
-    if (filterOverdue) query = query.eq('status', 'unpaid').lt('due_date', toISO(today));
-    if (filterClient !== 'all') query = query.eq('client_name', filterClient);
-    if (cleanSearch) query = query.or(`number.ilike.%${cleanSearch}%,client_name.ilike.%${cleanSearch}%`);
-
-    return query;
-  }, [range, fromISO, toISOd, filterStatus, filterOverdue, filterClient, cleanSearch, today]);
-
-  const loadInvoicePage = useCallback(async () => {
-    setInvoiceLoading(true);
-    const fromRow = pageIdx * pageSize;
-    const toRow = fromRow + pageSize - 1;
-    const { data, count, error } = await buildInvoiceQuery(true).range(fromRow, toRow);
-    if (!error) {
-      setInvoices((data as any) || []);
-      setInvoiceTotal(count || 0);
-    }
-    setInvoiceLoading(false);
-  }, [buildInvoiceQuery, pageIdx, pageSize]);
-
-  const loadInvoiceMetrics = useCallback(async () => {
-    const { data } = await (supabase.rpc as any)('get_qonto_invoice_metrics', {
-      p_start: range === 'all' ? null : fromISO,
-      p_end: range === 'all' ? null : toISOd,
-      p_status: filterStatus === 'all' ? null : filterStatus,
-      p_overdue: filterOverdue,
-      p_client: filterClient === 'all' ? null : filterClient,
-      p_search: cleanSearch || null,
-    });
-    setInvoiceMetrics(data || null);
-  }, [range, fromISO, toISOd, filterStatus, filterOverdue, filterClient, cleanSearch]);
-
-  useEffect(() => {
-    Promise.all([loadInvoicePage(), loadInvoiceMetrics()]);
-  }, [loadInvoicePage, loadInvoiceMetrics]);
-
-  useEffect(() => {
-    if (pageIdx > 0 && invoiceTotal > 0 && pageIdx * pageSize >= invoiceTotal) {
-      setPageIdx(Math.max(0, Math.ceil(invoiceTotal / pageSize) - 1));
-    }
-  }, [invoiceTotal, pageIdx, pageSize]);
-
-  const invSummary = useMemo(() => {
-    return {
-      openS: Number(invoiceMetrics?.open_amount || 0),
-      overS: Number(invoiceMetrics?.overdue_amount || 0),
-      paidS: Number(invoiceMetrics?.paid_amount || 0),
-      totalS: Number(invoiceMetrics?.total_amount || 0),
-      count: Number(invoiceMetrics?.filtered_count ?? invoiceTotal),
-    };
-  }, [invoiceMetrics, invoiceTotal]);
-
-  const statusBadge = (i: Invoice) => {
-    const isOverdue = i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today;
-    if (i.status === 'paid') return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">Bezahlt</Badge>;
-    if (i.status === 'canceled') return <Badge variant="outline">Storniert</Badge>;
-    if (i.status === 'draft') return <Badge variant="secondary">Entwurf</Badge>;
-    if (i.status === 'unpaid') return isOverdue
-      ? <Badge variant="destructive">Überfällig</Badge>
-      : <Badge className="bg-amber-100 text-amber-800 border-amber-200">Offen</Badge>;
-    return <Badge variant="outline">{i.status}</Badge>;
-  };
-
   if (loading) return (
     <div className="space-y-4"><Skeleton className="h-8 w-48" /><div className="grid grid-cols-6 gap-3">
       {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
     </div><Skeleton className="h-64" /></div>
   );
 
-  const hasQontoData = accounts.length > 0 || dbInvoiceTotal > 0 || invoices.length > 0;
+  const hasQontoData = accounts.length > 0 || dbInvoiceTotal > 0;
   const top3Share = topCustomers.length > 0 && (inv.paid_sum || 0) > 0
     ? topCustomers.slice(0, 3).reduce((s, c) => s + Number(c.total_paid), 0) / (inv.paid_sum || 1)
     : null;
@@ -958,149 +883,7 @@ export default function Finanzen() {
 
         {/* ============ RECHNUNGEN ============ */}
         <TabsContent value="rechnungen" className="space-y-4 mt-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Kpi title="Offen" value={eur(invSummary.openS)} source="Qonto Rechnungen" />
-            <Kpi title="Überfällig" value={eur(invSummary.overS)} source="Qonto Rechnungen" />
-            <Kpi title="Bezahlt (Filter)" value={eur(invSummary.paidS)} source="Qonto Rechnungen" />
-            <Kpi title="Summe gefiltert" value={eur(invSummary.totalS)} source="Qonto Rechnungen" subtitle={`${num(invSummary.count)} Einträge`} />
-          </div>
-
-          {invoiceSyncIncomplete && (
-            <Card className="border-amber-200 bg-amber-50">
-              <CardContent className="p-3 text-xs text-amber-800 flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>
-                  Qonto-Rechnungssync wirkt unvollständig. Starte als Admin einen vollständigen Backfill; die Tabelle zeigt nur Daten, die bereits in der Datenbank gespeichert sind.
-                </span>
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="flex flex-wrap gap-2 items-center">
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Kunde oder Nr. suchen" value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9" />
-            </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle Status</SelectItem>
-                <SelectItem value="paid">Bezahlt</SelectItem>
-                <SelectItem value="unpaid">Offen</SelectItem>
-                <SelectItem value="draft">Entwurf</SelectItem>
-                <SelectItem value="canceled">Storniert</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterClient} onValueChange={setFilterClient}>
-              <SelectTrigger className="w-44 h-9"><SelectValue placeholder="Kunde" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle Kunden</SelectItem>
-                {clientList.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button variant={filterOverdue ? 'default' : 'outline'} size="sm" onClick={() => setFilterOverdue(!filterOverdue)}>
-              Nur überfällig
-            </Button>
-          </div>
-
-          <Card><CardContent className="p-0"><div className="overflow-x-auto">
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Nr.</TableHead>
-                <TableHead>Kunde</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Betrag</TableHead>
-                <TableHead>Ausgestellt</TableHead>
-                <TableHead>Fällig</TableHead>
-                <TableHead>Bezahlt</TableHead>
-                <TableHead className="text-right">Überfällig (T)</TableHead>
-                <TableHead>Zuletzt aktual.</TableHead>
-                <TableHead></TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {!invoiceLoading && invoices.length === 0 && (
-                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Keine Rechnungen gefunden</TableCell></TableRow>
-                )}
-                {invoiceLoading && (
-                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Lade Rechnungen…</TableCell></TableRow>
-                )}
-                {invoices.map(i => {
-                  const overdueDays = i.status === 'unpaid' && i.due_date && new Date(i.due_date) < today
-                    ? Math.floor((today.getTime() - new Date(i.due_date).getTime()) / 86400000)
-                    : null;
-                  return (
-                    <TableRow key={i.id}>
-                      <TableCell className="font-medium">{i.number || '–'}</TableCell>
-                      <TableCell className="text-muted-foreground">{i.client_name || '–'}</TableCell>
-                      <TableCell>{statusBadge(i)}</TableCell>
-                      <TableCell className="text-right font-medium tabular-nums">{eur2(i.total_amount)}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{i.issue_date || '–'}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{i.due_date || '–'}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs">{i.paid_at || '–'}</TableCell>
-                      <TableCell className="text-right text-xs">
-                        {overdueDays != null ? <span className="text-red-600 font-medium">{overdueDays}</span> : '–'}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-xs">
-                        {i.updated_at_qonto ? new Date(i.updated_at_qonto).toLocaleDateString('de-DE') : '–'}
-                      </TableCell>
-                      <TableCell>
-                        {i.invoice_url && (
-                          <a href={i.invoice_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1 text-xs">
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-          {/* Pagination footer — nur Tabellen-Pagination. KPIs oben nutzen alle gefilterten Rechnungen laut DB-Count/RPC. */}
-          <div className="flex items-center justify-between px-4 py-3 border-t text-xs">
-            <div className="text-muted-foreground">
-              {invoiceTotal === 0
-                ? '0 Rechnungen'
-                : `${pageIdx * pageSize + 1}–${Math.min(invoiceTotal, (pageIdx + 1) * pageSize)} von ${invoiceTotal}`}
-              {' · KPIs oben basieren auf allen '}<strong>{num(invSummary.count)}</strong>{' gefilterten Rechnungen'}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Pro Seite:</span>
-              <Select value={String(pageSize)} onValueChange={v => setPageSize(Number(v))}>
-                <SelectTrigger className="h-7 w-[70px] text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="sm" className="h-7 px-2" disabled={pageIdx === 0} onClick={() => setPageIdx(p => Math.max(0, p - 1))}>
-                <ChevronLeft className="h-3 w-3" />
-              </Button>
-              <span className="tabular-nums">
-                {pageIdx + 1} / {Math.max(1, Math.ceil(invoiceTotal / pageSize))}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-2"
-                disabled={(pageIdx + 1) * pageSize >= invoiceTotal}
-                onClick={() => setPageIdx(p => p + 1)}
-              >
-                <ChevronRight className="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
-          {isAdmin && (
-            <div className="px-4 py-3 border-t text-[11px] text-muted-foreground grid grid-cols-2 md:grid-cols-5 gap-2">
-              <span>DB gesamt: <strong className="text-foreground tabular-nums">{num(dbInvoiceTotal)}</strong></span>
-              <span>Gefiltert laut Count: <strong className="text-foreground tabular-nums">{num(invoiceTotal)}</strong></span>
-              <span>Geladene Zeilen: <strong className="text-foreground tabular-nums">{num(invoices.length)}</strong></span>
-              <span>Page Size: <strong className="text-foreground tabular-nums">{pageSize}</strong></span>
-              <span>Seite: <strong className="text-foreground tabular-nums">{pageIdx + 1}</strong></span>
-            </div>
-          )}
-          </CardContent></Card>
+          <RechnungenListe from={range === 'all' ? null : fromISO} to={range === 'all' ? null : toISOd} reloadKey={invoiceReload} qontoSyncUnvollstaendig={invoiceSyncIncomplete} />
         </TabsContent>
 
         <TabsContent value="werbebudgets" className="space-y-4 mt-4">

@@ -9,7 +9,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, Legend
  * Rechnungs-Auswertung aus den gespiegelten Rechnungstabellen (Qonto, lexoffice).
  * Nur Rechnungsdaten — keine Bank-Kennzahlen. Bei mehreren Quellen werden Beträge je Kennzahl addiert.
  */
-type Row = { quelle: Quelle; status: 'paid' | 'open'; amount: number; issue: string | null; due: string | null; paid: string | null; sonstige?: boolean };
+type Row = { quelle: Quelle; status: 'paid' | 'open'; amount: number; issue: string | null; due: string | null; paid: string | null; sonstige?: boolean; ueber?: boolean };
 
 const LABEL: Record<Quelle, string> = { qonto: 'Qonto', lexoffice: 'lexoffice' };
 const BUCKETS = ['0-7', '8-14', '15-30', '31-60', '60+'];
@@ -21,7 +21,7 @@ async function lade(q: Quelle): Promise<Row[]> {
   const rows = await ladeRechnungen(q);
   return rows.filter(r => r.status !== 'storniert').map(r => ({
     quelle: q, status: r.status === 'bezahlt' ? 'paid' : 'open', amount: r.amount,
-    issue: r.issue, due: r.due, paid: r.paid, sonstige: r.status === 'sonstige',
+    issue: r.issue, due: r.due, paid: r.paid, sonstige: r.status === 'sonstige', ueber: r.status === 'überfällig',
   }));
 }
 
@@ -55,7 +55,7 @@ export function RechnungsAuswertung({ quellen, quelleText }: { quellen: Quelle[]
     const zaehlbar = rows.filter(r => !r.sonstige);
     const paid = zaehlbar.filter(r => r.status === 'paid');
     const open = zaehlbar.filter(r => r.status === 'open');
-    const overdue = open.filter(r => r.due && r.due < heute);
+    const overdue = open.filter(r => r.ueber);
     const sum = (a: Row[]) => a.reduce((s, r) => s + r.amount, 0);
     const issuedSum = sum(zaehlbar);
     const fehlend = quellen.filter(q => !rows.some(r => r.quelle === q));
