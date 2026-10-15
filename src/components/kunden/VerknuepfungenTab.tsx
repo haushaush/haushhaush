@@ -10,6 +10,7 @@ import {
   SYSTEME, type SystemKey, type SystemStand, type Objekt, type KundeMin,
   suche, verknuepfen, loesen, verwerfen, zaehle,
 } from '@/lib/kundenVerknuepfungen';
+import { MetaWerbebudgetBlock } from './MetaWerbebudgetBlock';
 
 export function VerknuepfungenTab({ kunde, stand, loading, onChanged }: {
   kunde: KundeMin;
@@ -46,6 +47,8 @@ export function VerknuepfungenTab({ kunde, stand, loading, onChanged }: {
           />
         ))}
       </div>
+
+      <MetaWerbebudgetBlock clientId={kunde.id} />
 
       <Dialog open={!!loeseZiel} onOpenChange={(o) => !o && setLoeseZiel(null)}>
         <DialogContent className="max-w-sm">
