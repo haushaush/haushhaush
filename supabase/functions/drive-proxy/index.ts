@@ -31,7 +31,7 @@ async function refreshAccessToken(
   refreshToken: string,
 ): Promise<string | null> {
   let clientId: string, clientSecret: string;
-  try { ({ clientId, clientSecret } = googleOAuthCreds()); }
+  try { ({ clientId, clientSecret } = await googleOAuthCreds()); }
   catch (e) { console.error((e as Error).message); throw e; }
 
   const res = await fetch('https://oauth2.googleapis.com/token', {

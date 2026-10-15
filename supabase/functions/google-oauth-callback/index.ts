@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     await admin.from('oauth_states').delete().eq('state', state);
 
     let clientId: string, clientSecret: string;
-    try { ({ clientId, clientSecret } = googleOAuthCreds()); }
+    try { ({ clientId, clientSecret } = await googleOAuthCreds()); }
     catch (e) { return htmlRedirect(errorUrl('missing_credentials'), (e as Error).message); }
 
     // Exchange code for tokens
