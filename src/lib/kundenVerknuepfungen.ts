@@ -293,8 +293,21 @@ export async function suche(system: SystemKey, q: string, clientId?: string): Pr
       return (data || []).map((r: any) => ({ id: r.close_lead_id, name: r.name, detail: r.status_label, url: `https://app.close.com/lead/${r.close_lead_id}/` }));
     }
     case 'meta': {
-      const { data } = await supabase.from('meta_accounts_cache').select('meta_account_id, name, business_name').or(`name.ilike.${like},business_name.ilike.${like}`).limit(15);
-      return (data || []).map((r: any) => ({ id: String(r.meta_account_id), name: r.name, detail: r.business_name, url: metaUrl(String(r.meta_account_id)) }));
+      const { data, error } = await supabase.from('meta_accounts_cache').select('meta_account_id, name, business_name').or(`name.ilike.${like},business_name.ilike.${like}`).limit(15);
+      if (error) throw new Error(error.message);
+      const ids = (data || []).map(r => r.meta_account_id);
+      if (!ids.length) return [];
+      const { data: links, error: linkError } = await supabase.from('kunde_meta_accounts').select('meta_account_id, client_id').in('meta_account_id', ids);
+      if (linkError) throw new Error(linkError.message);
+      const fremd = (links || []).filter(l => l.client_id && l.client_id !== clientId);
+      const namen = await belegtNamen(fremd.flatMap(l => l.client_id ? [l.client_id] : []));
+      return (data || []).map(r => {
+        const belegt = fremd.find(l => String(l.meta_account_id) === String(r.meta_account_id));
+        return {
+          id: String(r.meta_account_id), name: r.name, detail: r.business_name, url: metaUrl(String(r.meta_account_id)),
+          belegt: belegt?.client_id ? (namen.get(belegt.client_id) || 'anderer Kunde') : null,
+        };
+      });
     }
     case 'qonto': case 'lexoffice': return sucheBuch(system, q, clientId);
     case 'portal': {
@@ -335,9 +348,17 @@ export async function verknuepfen(system: SystemKey, clientId: string, o: Objekt
         if (r.error) console.warn('Close-Sync nach Verknüpfung fehlgeschlagen', r.error.message);
       } catch { /* Sync ist optional; Verknüpfung bleibt bestehen */ }
       return;
-    case 'meta':
+    case 'meta': {
+      const { data: ex, error } = await supabase.from('kunde_meta_accounts').select('client_id').eq('meta_account_id', o.id).maybeSingle();
+      if (error) throw new Error(error.message);
+      if (ex?.client_id && ex.client_id !== clientId) {
+        const n = (await belegtNamen([ex.client_id])).get(ex.client_id) || 'anderem Kunden';
+        throw new Error(`Bereits ${n} zugeordnet`);
+      }
+      if (ex?.client_id === clientId) return;
       chk(await supabase.from('kunde_meta_accounts').insert({ client_id: clientId, meta_account_id: o.id, meta_account_name: o.name, match_type: 'manual', match_confidence: 1, matched_by: await uid() } as any));
       return;
+    }
     case 'qonto': case 'lexoffice': return buchVerknuepfen(system, clientId, o);
     case 'onepage':
       chk(await supabase.from('onepage_projects').update({ client_id_fk: clientId } as any).eq('id', o.id));

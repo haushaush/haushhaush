@@ -4207,7 +4207,7 @@ export type Database = {
         Row: {
           client_id: string | null
           id: string
-          kunde_id: string
+          kunde_id: string | null
           match_confidence: number | null
           match_type: string
           matched_at: string
@@ -4218,7 +4218,7 @@ export type Database = {
         Insert: {
           client_id?: string | null
           id?: string
-          kunde_id: string
+          kunde_id?: string | null
           match_confidence?: number | null
           match_type?: string
           matched_at?: string
@@ -4229,7 +4229,7 @@ export type Database = {
         Update: {
           client_id?: string | null
           id?: string
-          kunde_id?: string
+          kunde_id?: string | null
           match_confidence?: number | null
           match_type?: string
           matched_at?: string

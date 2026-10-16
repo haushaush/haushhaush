@@ -87,7 +87,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
   const [abschnitt, setAbschnitt] = useState<Abschnitt>('uebersicht');
 
   const initVertrag = (v: any) => Object.fromEntries(['tier', ...VERTRAG_FELDER.map(f => f.key)].map(key => [key, v ? zuText(v[key]) : '']));
-  const initBereiche = (b: any[]) => Object.fromEntries((b || []).map(x => [x.module_key, !!x.enabled]));
+  const initBereiche = (b: any[]) => Object.fromEntries(Object.keys(BEREICH_NAMEN).map(key => [key, !!(b || []).find(x => x.module_key === key)?.enabled]));
   const initLimit = (l: any) => (l?.global_lead_limit ? String(l.global_lead_limit) : '');
 
   const holen = useCallback(async () => {
@@ -118,7 +118,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
     }
     if (Object.keys(vertragsAenderungen).length) out.vertrag = vertragsAenderungen;
     const b0 = initBereiche(daten.bereiche);
-    const geaendert = Object.keys(bereiche).filter(k => b0[k] !== bereiche[k]);
+    const geaendert = Object.keys(BEREICH_NAMEN).filter(k => b0[k] !== !!bereiche[k]);
     if (geaendert.length) out.bereiche = geaendert.map(k => ({ module_key: k, enabled: bereiche[k] }));
     if (initLimit(daten.lead_limit) !== limit.trim()) {
       const n = Number(limit.trim() || 0);
@@ -313,16 +313,14 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
       <Card>
         <CardHeader><CardTitle className="text-base">Freigeschaltete Bereiche</CardTitle></CardHeader>
         <CardContent>
-          {(daten?.bereiche || []).length === 0 ? <p className="text-sm text-muted-foreground">Keine Bereiche vorhanden.</p> : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {(daten.bereiche as any[]).map(b => (
-                <label key={b.module_key} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
-                  {BEREICH_NAMEN[b.module_key] || b.module_key}
-                  <Switch checked={!!bereiche[b.module_key]} onCheckedChange={c => setBereiche(s => ({ ...s, [b.module_key]: c }))} />
-                </label>
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {Object.entries(BEREICH_NAMEN).map(([key, name]) => (
+              <label key={key} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                {name}
+                <Switch checked={!!bereiche[key]} onCheckedChange={c => setBereiche(s => ({ ...s, [key]: c }))} />
+              </label>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
