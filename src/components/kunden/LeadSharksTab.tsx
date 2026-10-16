@@ -380,7 +380,6 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
 
       </>}
       {abschnitt === 'rechnungen' && (
-      {/* 6. Rechnungen */}
       <Card>
         <CardHeader><CardTitle className="text-base">Rechnungen</CardTitle></CardHeader>
         <CardContent>
