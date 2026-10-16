@@ -7,7 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 type Abschluss = {
   close_opportunity_id: string; close_lead_id: string | null; lead_name: string | null; status_label: string | null; status_typ: string | null;
@@ -55,11 +57,13 @@ export default function Abschluesse() {
         }
         return out;
       };
-      const [a, l, s] = await Promise.all([
+      const [a, l, s, h] = await Promise.all([
         alle((f, t) => supabase.from('close_abschluesse_alle').select('quelle, dublette_von, close_opportunity_id, close_lead_id, lead_name, status_label, status_typ, status_geaendert_am, abschlusswert, setup_fee, retainer_monat, laufzeit_monate, startdatum, leistungen, deal_typ, closer, setter, marke, branche').order('status_geaendert_am', { ascending: false }).order('close_opportunity_id').range(f, t)),
         alle((f, t) => supabase.from('close_lead_spiegel').select('close_lead_id, name, status_label, marke, branche, kanal, status_geaendert_am, date_updated').order('date_updated', { ascending: false }).order('close_lead_id').range(f, t)),
         supabase.from('close_sync_stand').select('letzter_lauf').eq('name', 'close_abschluesse').maybeSingle(),
+        alle((f, t) => supabase.from('close_abschluss_ausgeblendet').select('close_opportunity_id').range(f, t)),
       ]);
+      const weg = new Set((h as any[]).map(x => x.close_opportunity_id));
       const norm = (m: string | null) => {
         const k = (m || '').toLowerCase().replace(/[^a-z]/g, '');
         if (!k) return null;
@@ -69,11 +73,21 @@ export default function Abschluesse() {
         if (k === 'attentionx') return 'AttentionX';
         return m!.trim();
       };
-      setRows((a as Abschluss[]).map(r => ({ ...r, marke: norm(r.marke) || r.marke })));
+      // Duplicates (same deal in LeadSharks and Viral Connect) are dropped: each deal shows once.
+      setRows((a as Abschluss[]).filter(r => !r.dublette_von && !weg.has(r.close_opportunity_id)).map(r => ({ ...r, marke: norm(r.marke) || r.marke })));
       setLeads((l as Lead[]).map(r => ({ ...r, marke: norm(r.marke) })));
       setStand(s.data?.letzter_lauf ?? null); setLoading(false);
     })();
   }, []);
+
+  const loeschen = async (r: Abschluss) => {
+    if (!confirm(`Abschluss „${r.lead_name || r.close_opportunity_id}“ löschen? Er wird in Close nicht verändert.`)) return;
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await supabase.from('close_abschluss_ausgeblendet').insert({ close_opportunity_id: r.close_opportunity_id, geloescht_von: u.user?.id ?? null });
+    if (error) { toast.error('Löschen fehlgeschlagen: ' + error.message); return; }
+    setRows(prev => prev.filter(x => x.close_opportunity_id !== r.close_opportunity_id));
+    toast.success('Abschluss gelöscht');
+  };
 
   const filtered = useMemo(() => rows.filter(r =>
     (marke === 'alle' || r.marke === marke) && (typ === 'alle' || r.status_typ === typ) &&
@@ -146,7 +160,8 @@ export default function Abschluesse() {
                       <TableCell className="tabular-nums">{dt(r.startdatum)}</TableCell>
                       <TableCell>{r.closer || '–'}</TableCell>
                       <TableCell>{r.setter || '–'}</TableCell>
-                      <TableCell>{closeLink(r.close_lead_id) && <a href={closeLink(r.close_lead_id)} target="_blank" rel="noreferrer" className="text-primary inline-flex items-center gap-1 text-xs">Close <ExternalLink className="h-3 w-3" /></a>}</TableCell>
+                      <TableCell><div className="flex items-center gap-2">{closeLink(r.close_lead_id) && <a href={closeLink(r.close_lead_id)} target="_blank" rel="noreferrer" className="text-primary inline-flex items-center gap-1 text-xs">Close <ExternalLink className="h-3 w-3" /></a>}
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" aria-label="Abschluss löschen" onClick={() => loeschen(r)}><Trash2 className="h-3.5 w-3.5" /></Button></div></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
