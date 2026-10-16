@@ -10,7 +10,7 @@ import {
   SYSTEME, type SystemKey, type SystemStand, type Objekt, type KundeMin,
   suche, verknuepfen, loesen, verwerfen, zaehle, portalAnlegen, erzeugePasswort, PORTAL_URL,
 } from '@/lib/kundenVerknuepfungen';
-import { MetaWerbebudgetBlock } from './MetaWerbebudgetBlock';
+import { MetaKarte } from './MetaKarte';
 
 export function VerknuepfungenTab({ kunde, stand, loading, onChanged }: {
   kunde: KundeMin;
@@ -38,7 +38,7 @@ export function VerknuepfungenTab({ kunde, stand, loading, onChanged }: {
         {' · '}{z.vorschlaege === 1 ? '1 Vorschlag offen' : `${z.vorschlaege} Vorschläge offen`}
       </p>
       <div className="rounded-2xl bg-card shadow-sm divide-y divide-border/60">
-        {SYSTEME.map(s => (
+        {SYSTEME.map(s => s.key === 'meta' ? <MetaKarte key={s.key} kunde={kunde} stand={stand} onChanged={onChanged} /> : (
           <Zeile key={s.key} system={s} st={stand[s.key]} busy={busy === s.key}
             kunde={kunde}
             onLink={(o) => run(s.key, () => verknuepfen(s.key, kunde.id, o), `${s.label} verknüpft`)}
@@ -47,8 +47,6 @@ export function VerknuepfungenTab({ kunde, stand, loading, onChanged }: {
           />
         ))}
       </div>
-
-      <MetaWerbebudgetBlock clientId={kunde.id} />
 
       <Dialog open={!!loeseZiel} onOpenChange={(o) => !o && setLoeseZiel(null)}>
         <DialogContent className="max-w-sm">
