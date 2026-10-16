@@ -41,6 +41,7 @@ function useLeadSharks(profileId: string | null) {
 
 /** Budgetstand aus der View werbebudget_eingezahlt; Fehler werden sichtbar gemacht. */
 function useBudgetstand(clientId: string, aktiv: boolean) {
+  const [budget, setBudget] = useState<any[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   useEffect(() => {
     if (!aktiv) return;
