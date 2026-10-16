@@ -18,7 +18,7 @@ import { portalMeta } from '@/lib/kundenVerknuepfungen';
 
 type Kampagne = Record<string, any>;
 type Formular = Record<string, any>;
-type LeadTyp = { id: string; name: string } & Record<string, any>;
+export type LeadTyp = { id: string; name: string } & Record<string, any>;
 
 export function fehlerMeldung(r: any): string {
   const c = String(r?.error || '');
@@ -500,7 +500,7 @@ export function ZuordnungErgebnis({ zuordnung, onAusblenden }: { zuordnung: any[
   return (
         <Card>
           <CardHeader className="pb-2 flex-row items-center justify-between"><CardTitle className="text-sm">Erkannte Felder der neuen Formulare</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => onAusblenden}>Ausblenden</Button></CardHeader>
+            <Button variant="ghost" size="sm" onClick={onAusblenden}>Ausblenden</Button></CardHeader>
           <CardContent className="space-y-2">
             {zuordnung.length === 0 && <p className="text-sm text-muted-foreground">Keine Formulare angelegt.</p>}
             {zuordnung.map((z, i) => {
