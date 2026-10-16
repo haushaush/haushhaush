@@ -44,10 +44,11 @@ function useBudgetstand(clientId: string, aktiv: boolean) {
   const [budget, setBudget] = useState<any[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   useEffect(() => {
-    if (!aktiv) return;
     setBudget(null); setFehler(null);
+    if (!aktiv) return;
     (supabase.from as any)('werbebudget_eingezahlt').select('quelle, eingezahlt_netto, offen_netto, rechnungen_offen, aelteste_ueberfaellig, letzte_zahlung').eq('client_id', clientId)
-      .then(({ data, error }: any) => { if (error) setFehler(`Budgetstand konnte nicht geladen werden: ${error.message}`); else setBudget(data || []); });
+      .then(({ data, error }: any) => { if (error) setFehler(`Budgetstand konnte nicht geladen werden: ${error.message}`); else setBudget(data || []); },
+        (e: any) => setFehler(`Budgetstand konnte nicht geladen werden: ${e?.message || 'Verbindung unterbrochen'}`));
   }, [clientId, aktiv]);
   return { budget, fehler };
 }
@@ -56,6 +57,24 @@ function useBudgetstand(clientId: string, aktiv: boolean) {
 function useMetaRechte() {
   const { isAdmin, hasPermission, loading } = usePermissions();
   return { loading, budget: isAdmin || hasPermission('finanzen.view'), snapshot: isAdmin };
+}
+
+type KundenKonto = { meta_account_id: string; meta_account_name: string | null; match_type: string | null; matched_at: string | null };
+/** Alle verknüpften Werbekonten dieses Kunden (ein Kunde kann mehrere haben). */
+function useKundenKonten(clientId: string) {
+  const [konten, setKonten] = useState<KundenKonto[] | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const laden = useCallback(async () => {
+    setFehler(null);
+    try {
+      const { data, error } = await supabase.from('kunde_meta_accounts').select('meta_account_id, meta_account_name, match_type, matched_at')
+        .eq('client_id', clientId).order('matched_at', { ascending: false });
+      if (error) { setFehler(`Werbekonten konnten nicht geladen werden: ${error.message}`); return; }
+      setKonten((data || []).map((r: any) => ({ ...r, meta_account_id: String(r.meta_account_id) })));
+    } catch (e: any) { setFehler(`Werbekonten konnten nicht geladen werden: ${e?.message || 'Verbindung unterbrochen'}`); }
+  }, [clientId]);
+  useEffect(() => { laden(); }, [laden]);
+  return { konten, fehler, laden };
 }
 
 function Status({ ok, text }: { ok: boolean; text: string }) {
