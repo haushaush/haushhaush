@@ -73,8 +73,17 @@ export default function Abschluesse() {
         if (k === 'attentionx') return 'AttentionX';
         return m!.trim();
       };
-      // Duplicates (same deal in LeadSharks and Viral Connect) are dropped: each deal shows once.
-      setRows((a as Abschluss[]).filter(r => !r.dublette_von && !weg.has(r.close_opportunity_id)).map(r => ({ ...r, marke: norm(r.marke) || r.marke })));
+      // Duplicates (same deal in LeadSharks and Viral Connect) are dropped: each deal shows once
+      // (same opportunity id, or same customer + month + deal value).
+      const gesehenId = new Set<string>(); const gesehenInhalt = new Set<string>();
+      const eindeutig = (a as Abschluss[]).filter(r => {
+        if (r.dublette_von || weg.has(r.close_opportunity_id) || gesehenId.has(r.close_opportunity_id)) return false;
+        const k = `${(r.lead_name || '').trim().toLowerCase()}|${(r.status_geaendert_am || '').slice(0, 7)}|${r.abschlusswert ?? ''}`;
+        if (r.lead_name && gesehenInhalt.has(k)) return false;
+        gesehenId.add(r.close_opportunity_id); gesehenInhalt.add(k);
+        return true;
+      });
+      setRows(eindeutig.map(r => ({ ...r, marke: norm(r.marke) || r.marke })));
       setLeads((l as Lead[]).map(r => ({ ...r, marke: norm(r.marke) })));
       setStand(s.data?.letzter_lauf ?? null); setLoading(false);
     })();
@@ -83,7 +92,7 @@ export default function Abschluesse() {
   const loeschen = async (r: Abschluss) => {
     if (!confirm(`Abschluss „${r.lead_name || r.close_opportunity_id}“ löschen? Er wird in Close nicht verändert.`)) return;
     const { data: u } = await supabase.auth.getUser();
-    const { error } = await supabase.from('close_abschluss_ausgeblendet').insert({ close_opportunity_id: r.close_opportunity_id, geloescht_von: u.user?.id ?? null });
+    const { error } = await supabase.from('close_abschluss_ausgeblendet').upsert({ close_opportunity_id: r.close_opportunity_id, geloescht_von: u.user?.id ?? null }, { onConflict: 'close_opportunity_id', ignoreDuplicates: true });
     if (error) { toast.error('Löschen fehlgeschlagen: ' + error.message); return; }
     setRows(prev => prev.filter(x => x.close_opportunity_id !== r.close_opportunity_id));
     toast.success('Abschluss gelöscht');
