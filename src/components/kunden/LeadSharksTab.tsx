@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AlertCircle, AlertTriangle, Copy, ExternalLink, KeyRound, Loader2, Save, ShieldAlert, Bell, ChartNoAxesCombined, LayoutDashboard, Receipt, UserRound, Megaphone, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { LeadSharksMeta } from './LeadSharksMeta';
 import { PORTAL_URL, erzeugePasswort, portalEinstellungen, portalEinstellungenSetzen, portalZugangZuruecksetzen } from '@/lib/kundenVerknuepfungen';
 
 const BEREICH_NAMEN: Record<string, string> = {
@@ -449,7 +450,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
         </Card>
         <SpeichernZeile fehler={speicherFehler} deaktiviert={!hatAenderungen || speichern} speichern={speichern} onClick={speichernKlick} />
       </>}
-      {abschnitt === 'meta' && <Platzhalter icon={Megaphone} text="Noch nicht angebunden." />}
+      {abschnitt === 'meta' && <LeadSharksMeta profileId={profileId} />}
         </div>
       </div>
 

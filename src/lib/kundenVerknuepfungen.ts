@@ -416,6 +416,9 @@ export async function portalAnlegen(p: { email: string; passwort: string; crm_cl
   return { ok: false, error: r?.error || 'unbekannter Fehler', profile_id: r?.profile_id };
 }
 
+export async function portalMeta(action: 'meta_get' | 'meta_katalog' | 'meta_anlegen' | 'meta_steuern', body: Record<string, unknown>): Promise<any> {
+  return portalAufruf({ action, ...body });
+}
 export async function portalEinstellungen(profile_id: string): Promise<any> {
   return portalAufruf({ action: 'settings_get', profile_id });
 }

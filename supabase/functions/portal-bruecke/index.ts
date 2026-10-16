@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
   if (!token) return json({ ok: false, error: "Secret CRM_BRIDGE_TOKEN fehlt" }, 500);
   let body: any;
   try { body = await req.json(); } catch { return json({ ok: false, error: "invalid_json" }, 400); }
-  const ERLAUBT = ["list", "create", "settings_get", "settings_set", "zugang_zuruecksetzen"];
+  const ERLAUBT = ["list", "create", "settings_get", "settings_set", "zugang_zuruecksetzen", "meta_get", "meta_katalog", "meta_anlegen", "meta_steuern"];
   if (!body || !ERLAUBT.includes(body.action)) return json({ ok: false, error: "invalid_action" }, 400);
   // Body (inkl. Passwort) wird unverändert weitergereicht und nie geloggt.
   const r = await fetch(PORTAL, { method: "POST", headers: { "Content-Type": "application/json", "x-crm-token": token }, body: JSON.stringify(body) });
