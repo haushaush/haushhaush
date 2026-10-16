@@ -16,6 +16,13 @@ const BEREICH_NAMEN: Record<string, string> = {
   benchmark: 'Marktradar', compliance: 'Compliance', contracts: 'Verträge', kennzahlen: 'Kennzahlen', outreach: 'Outreach',
 };
 
+const KENNZAHLEN_TABS: Record<string, string> = {
+  ueberblick: 'Überblick', telefonie: 'Telefonie', termine: 'Termine', abschluesse: 'Abschlüsse', kampagnen: 'Kampagnen', werbung: 'Werbung',
+};
+const KENNZAHLEN_WERBUNG: Record<string, string> = {
+  leads: 'Leads', clicks: 'Klicks', impressions: 'Impressionen', reach: 'Reichweite', ctr: 'CTR', spend: 'Ausgaben', cpl: 'Kosten je Lead',
+};
+
 const ABSCHNITTE = [
   { id: 'uebersicht', name: 'Übersicht', icon: LayoutDashboard, gruppe: 'Kunde' },
   { id: 'kundendaten', name: 'Kundendaten & Zugang', icon: UserRound, gruppe: 'Kunde' },
@@ -60,6 +67,8 @@ function fehlerText(code: unknown): string {
     unauthorized: 'Das Portal hat die Anfrage abgelehnt (Zugangsschlüssel ungültig).',
     invalid_action: 'Diese Aktion wird von der Portal-Schnittstelle nicht unterstützt.',
     invalid_json: 'Die Anfrage war fehlerhaft aufgebaut.',
+    invalid_kennzahlen: 'Die Kennzahlen-Einstellung wurde in einer unerwarteten Form übermittelt.',
+    kennzahlen_failed: 'Die Kennzahlen-Einstellung konnte nicht gespeichert werden.',
   };
   if (m[c]) return m[c];
   if (/fetch|network|failed/i.test(c)) return 'Das Portal ist gerade nicht erreichbar. Bitte später erneut versuchen.';
@@ -77,6 +86,8 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
   const [fehler, setFehler] = useState<string | null>(null);
   const [vertrag, setVertrag] = useState<Record<string, string>>({});
   const [bereiche, setBereiche] = useState<Record<string, boolean>>({});
+  const [kennzahlenTabs, setKennzahlenTabs] = useState<Record<string, boolean>>({});
+  const [kennzahlenWerbung, setKennzahlenWerbung] = useState<Record<string, boolean>>({});
   const [limit, setLimit] = useState('');
   const [speichern, setSpeichern] = useState(false);
   const [speicherFehler, setSpeicherFehler] = useState<string | null>(null);
@@ -88,6 +99,8 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
 
   const initVertrag = (v: any) => Object.fromEntries(['tier', ...VERTRAG_FELDER.map(f => f.key)].map(key => [key, v ? zuText(v[key]) : '']));
   const initBereiche = (b: any[]) => Object.fromEntries(Object.keys(BEREICH_NAMEN).map(key => [key, !!(b || []).find(x => x.module_key === key)?.enabled]));
+  const initKennzahlen = (k: any, gruppe: 'tabs' | 'werbung', namen: Record<string, string>) =>
+    Object.fromEntries(Object.keys(namen).map(key => [key, !!k?.[gruppe]?.[key]]));
   const initLimit = (l: any) => (l?.global_lead_limit ? String(l.global_lead_limit) : '');
 
   const holen = useCallback(async () => {
@@ -98,6 +111,8 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
       setDaten(r);
       setVertrag(initVertrag(r.vertrag));
       setBereiche(initBereiche(r.bereiche));
+      setKennzahlenTabs(initKennzahlen(r.kennzahlen, 'tabs', KENNZAHLEN_TABS));
+      setKennzahlenWerbung(initKennzahlen(r.kennzahlen, 'werbung', KENNZAHLEN_WERBUNG));
       setLimit(initLimit(r.lead_limit));
     } catch (e: any) { setFehler(fehlerText(e?.message)); }
     finally { setLaden(false); }
@@ -120,12 +135,19 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
     const b0 = initBereiche(daten.bereiche);
     const geaendert = Object.keys(BEREICH_NAMEN).filter(k => b0[k] !== !!bereiche[k]);
     if (geaendert.length) out.bereiche = geaendert.map(k => ({ module_key: k, enabled: bereiche[k] }));
+    const k0t = initKennzahlen(daten.kennzahlen, 'tabs', KENNZAHLEN_TABS);
+    const k0w = initKennzahlen(daten.kennzahlen, 'werbung', KENNZAHLEN_WERBUNG);
+    const kennzahlenGeaendert = [
+      ...Object.keys(KENNZAHLEN_TABS).filter(k => k0t[k] !== !!kennzahlenTabs[k]).map(k => ({ gruppe: 'tabs', key: k, wert: !!kennzahlenTabs[k] })),
+      ...Object.keys(KENNZAHLEN_WERBUNG).filter(k => k0w[k] !== !!kennzahlenWerbung[k]).map(k => ({ gruppe: 'werbung', key: k, wert: !!kennzahlenWerbung[k] })),
+    ];
+    if (kennzahlenGeaendert.length) out.kennzahlen = kennzahlenGeaendert;
     if (initLimit(daten.lead_limit) !== limit.trim()) {
       const n = Number(limit.trim() || 0);
       out.global_lead_limit = n > 0 ? n : null;
     }
     return out;
-  }, [daten, vertrag, bereiche, limit]);
+  }, [daten, vertrag, bereiche, kennzahlenTabs, kennzahlenWerbung, limit]);
   const hatAenderungen = Object.keys(aenderungen).length > 0;
 
   async function speichernKlick() {
@@ -337,12 +359,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        {speicherFehler && <p className="text-sm text-destructive flex gap-1.5"><AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />{speicherFehler}</p>}
-        <Button disabled={!hatAenderungen || speichern} onClick={speichernKlick}>
-          {speichern ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}Änderungen speichern
-        </Button>
-      </div>
+      <SpeichernZeile fehler={speicherFehler} deaktiviert={!hatAenderungen || speichern} speichern={speichern} onClick={speichernKlick} />
 
       {/* 5. Bestellungen */}
       <Card>
@@ -402,7 +419,36 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
 
       )}
       {abschnitt === 'benachrichtigungen' && <Platzhalter icon={Bell} text="Noch nicht angebunden. Die Benachrichtigungsadressen liegen im Portal und werden von der Schnittstelle noch nicht geliefert." />}
-      {abschnitt === 'kennzahlen' && <Platzhalter icon={ChartNoAxesCombined} text="Noch nicht angebunden." />}
+      {abschnitt === 'kennzahlen' && <>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Sichtbare Reiter</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {Object.entries(KENNZAHLEN_TABS).map(([key, name]) => (
+                <label key={key} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                  {name}
+                  <Switch checked={!!kennzahlenTabs[key]} onCheckedChange={c => setKennzahlenTabs(s => ({ ...s, [key]: c }))} />
+                </label>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Werte im Reiter Werbung</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {!kennzahlenTabs.werbung && <p className="text-xs text-muted-foreground">Der Reiter Werbung ist ausgeblendet – diese Werte sieht der Kunde derzeit nicht.</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {Object.entries(KENNZAHLEN_WERBUNG).map(([key, name]) => (
+                <label key={key} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                  {name}
+                  <Switch checked={!!kennzahlenWerbung[key]} onCheckedChange={c => setKennzahlenWerbung(s => ({ ...s, [key]: c }))} />
+                </label>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <SpeichernZeile fehler={speicherFehler} deaktiviert={!hatAenderungen || speichern} speichern={speichern} onClick={speichernKlick} />
+      </>}
       {abschnitt === 'meta' && <Platzhalter icon={Megaphone} text="Noch nicht angebunden." />}
         </div>
       </div>
@@ -435,6 +481,17 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function SpeichernZeile({ fehler, deaktiviert, speichern, onClick }: { fehler: string | null; deaktiviert: boolean; speichern: boolean; onClick: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-3">
+      {fehler && <p className="text-sm text-destructive flex gap-1.5"><AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />{fehler}</p>}
+      <Button disabled={deaktiviert} onClick={onClick}>
+        {speichern ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}Änderungen speichern
+      </Button>
     </div>
   );
 }
