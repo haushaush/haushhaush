@@ -113,7 +113,7 @@ export default function Abschluesse() {
     <div className="space-y-6 p-4 md:p-6">
       <div>
         <h1 className="text-2xl font-heading font-bold">Abschlüsse</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Haush-Haush-Close (Pipeline „Sales“) und Viral Connect (Noahs Close, nur gelesen). Dublettenverdacht: gleicher Kunde, Monat und Abschlusswert – zählt nicht in die Summen{stand ? ` · letzter Abgleich ${new Date(stand).toLocaleString('de-DE')}` : ''}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Haush-Haush-Close (Pipeline „Sales“) und Viral Connect (Noahs Close, nur gelesen). Steht ein Abschluss bei LeadSharks und Viral Connect, wird er nur einmal gezeigt{stand ? ` · letzter Abgleich ${new Date(stand).toLocaleString('de-DE')}` : ''}</p>
       </div>
       <Tabs defaultValue="abschluesse">
         <TabsList>
