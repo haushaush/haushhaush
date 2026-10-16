@@ -189,7 +189,7 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
   const [cl, sp, km, mc, ql, qi, op, dm, vw, ll, lc, li, pl] = await Promise.all([
     alle('close_link', 'client_id, close_lead_id, last_synced_at'),
     alle('close_lead_spiegel', 'close_lead_id, name, status_label'),
-    alle('kunde_meta_accounts', 'client_id, meta_account_id, meta_account_name'),
+    alle('kunde_meta_accounts', 'client_id, meta_account_id, meta_account_name', q => q.order('matched_at', { ascending: false }).order('meta_account_id')),
     alle('meta_accounts_cache', 'meta_account_id, name, business_name'),
     alle('qonto_client_links', 'id, qonto_client_name, qonto_client_id, client_id, match_type, is_confirmed'),
     alle('qonto_client_invoices', 'client_id, client_name, contact_email, issue_date'),
@@ -209,7 +209,9 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
   const closeByClient = new Map(cl.rows.map(r => [r.client_id, r]));
   const linkedLeads = new Set(cl.rows.map(r => r.close_lead_id));
   const freieLeads = sp.rows.filter(r => !linkedLeads.has(r.close_lead_id));
-  const metaByClient = new Map(km.rows.filter(r => r.client_id).map(r => [r.client_id, r]));
+  // Newest link per client wins (rows are sorted by matched_at desc).
+  const metaByClient = new Map<string, any>();
+  for (const r of km.rows) if (r.client_id && !metaByClient.has(r.client_id)) metaByClient.set(r.client_id, r);
   const linkedMeta = new Set(km.rows.map(r => String(r.meta_account_id)));
   const freieMeta = mc.rows.filter(r => !linkedMeta.has(String(r.meta_account_id)));
   const opByClient = new Map(op.rows.filter(r => r.client_id_fk).map(r => [r.client_id_fk, r]));
@@ -233,7 +235,8 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
 
     // Meta
     const m = metaByClient.get(k.id);
-    if (m) st.meta = { zustand: 'verknuepft', objekt: { id: String(m.meta_account_id), name: m.meta_account_name, url: metaUrl(String(m.meta_account_id)) } };
+    if (km.error || mc.error) st.meta = { zustand: 'keine_berechtigung' };
+    else if (m) st.meta = { zustand: 'verknuepft', objekt: { id: String(m.meta_account_id), name: m.meta_account_name, url: metaUrl(String(m.meta_account_id)) } };
     else {
       const t = besterName(k, freieMeta.filter(a => ok(k, 'meta', String(a.meta_account_id))), a => a.name || a.business_name);
       st.meta = t ? { zustand: 'vorschlag', vorschlag: { system: 'meta', id: String(t.item.meta_account_id), name: t.item.name, url: metaUrl(String(t.item.meta_account_id)), grund: t.grund } } : { zustand: 'offen' };
@@ -356,7 +359,8 @@ export async function verknuepfen(system: SystemKey, clientId: string, o: Objekt
         throw new Error(`Bereits ${n} zugeordnet`);
       }
       if (ex?.client_id === clientId) return;
-      chk(await supabase.from('kunde_meta_accounts').insert({ client_id: clientId, meta_account_id: o.id, meta_account_name: o.name, match_type: 'manual', match_confidence: 1, matched_by: await uid() } as any));
+      const ins = await supabase.from('kunde_meta_accounts').insert({ client_id: clientId, meta_account_id: o.id, meta_account_name: o.name, match_type: 'manual', match_confidence: 1, matched_by: await uid() } as any);
+      if (ins.error) throw new Error(ins.error.code === '23505' ? 'Dieses Werbekonto ist bereits einem anderen Kunden zugeordnet.' : ins.error.message);
       return;
     }
     case 'qonto': case 'lexoffice': return buchVerknuepfen(system, clientId, o);
