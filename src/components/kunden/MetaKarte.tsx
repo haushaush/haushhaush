@@ -112,13 +112,14 @@ function BudgetStand({ budget, fehler, recht }: { budget: any[] | null; fehler: 
   );
 }
 
-type DialogStart = { stufe: 1 | 3; weg?: Weg; konto?: Untermarke | null } | null;
+type DialogStart = { stufe: 1 | 2 | 3; weg?: Weg; konto?: Untermarke | null } | null;
 
 export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand: Record<SystemKey, SystemStand>; onChanged: () => void }) {
   const wb = useWerbebudgetZuordnung(kunde.id);
   const profileId = stand.portal?.zustand === 'verknuepft' ? stand.portal.objekt.id : null;
   const ls = useLeadSharks(profileId);
   const rechte = useMetaRechte();
+  const kk = useKundenKonten(kunde.id);
   const [start, setStart] = useState<DialogStart>(null);
   const [auf, setAuf] = useState<Record<string, boolean>>({});
   const [loeseZiel, setLoeseZiel] = useState<Objekt | null>(null);
@@ -131,44 +132,55 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
   const nK = eigene.filter(z => z.typ === 'kampagne').length, nA = eigene.filter(z => z.typ === 'adset').length;
   const marken = [...new Set(eigene.map(z => z.untermarke || z.meta_account_id))];
   const gruppen = eigene.reduce<Record<string, Zuo[]>>((acc, z) => { (acc[z.untermarke || z.meta_account_id] ||= []).push(z); return acc; }, {});
-  const verknuepftId = meta?.zustand === 'verknuepft' ? meta.objekt.id : null;
+  const kontenListe = kk.konten || [];
+  const kontoIds = kontenListe.map(k => k.meta_account_id);
 
-  const budgetStatus = !rechte.budget ? 'Keine Berechtigung' : wb.fehler ? 'Fehler' : eigene.length ? 'Zugeordnet' : 'Nicht zugeordnet';
-  const budgetText = !rechte.budget ? 'Für dein Konto nicht sichtbar' : wb.fehler ? wb.fehler
+  const budgetStatus = rechte.loading ? 'Lädt …' : !rechte.budget ? 'Keine Berechtigung' : wb.fehler ? 'Fehler' : eigene.length ? 'Zugeordnet' : 'Nicht zugeordnet';
+  const budgetText = rechte.loading ? '…' : !rechte.budget ? 'Für dein Konto nicht sichtbar' : wb.fehler ? wb.fehler
     : eigene.length ? `${nK} ${nK === 1 ? 'Kampagne' : 'Kampagnen'}, ${nA} ${nA === 1 ? 'Anzeigengruppe' : 'Anzeigengruppen'} · ${marken.join(', ')}` : 'Keine Kampagne auf einer Untermarke zugeordnet';
 
+  const kontoStatus = kk.fehler || meta?.zustand === 'keine_berechtigung' ? 'Fehler' : !kk.konten ? 'Lädt …' : kontenListe.length ? 'Verknüpft' : meta?.zustand === 'vorschlag' ? 'Vorschlag' : 'Nicht verknüpft';
+  const kontoText = kk.fehler ? kk.fehler : meta?.zustand === 'keine_berechtigung' ? 'Werbekonten konnten nicht geladen werden' : !kk.konten ? '…'
+    : kontenListe.length === 1 ? (kontenListe[0].meta_account_name || kontenListe[0].meta_account_id)
+    : kontenListe.length > 1 ? `${kontenListe.length} Werbekonten`
+    : meta?.zustand === 'vorschlag' ? `${meta.vorschlag.name || meta.vorschlag.id} · ${meta.vorschlag.grund}` : 'Kein Kundenkonto zugeordnet';
+
   const zeilen: { key: string; label: string; ok: boolean; status: string; text: string }[] = [
-    {
-      key: 'konto', label: 'Werbekonto', ok: meta?.zustand === 'verknuepft',
-      status: meta?.zustand === 'verknuepft' ? 'Verknüpft' : meta?.zustand === 'vorschlag' ? 'Vorschlag' : 'Nicht verknüpft',
-      text: meta?.zustand === 'verknuepft' ? (meta.objekt.name || meta.objekt.id) : meta?.zustand === 'vorschlag' ? `${meta.vorschlag.name || meta.vorschlag.id} · ${meta.vorschlag.grund}` : 'Kein Kundenkonto zugeordnet',
-    },
+    { key: 'konto', label: 'Werbekonto', ok: kontenListe.length > 0, status: kontoStatus, text: kontoText },
     { key: 'budget', label: 'Werbebudget', ok: rechte.budget && !wb.fehler && eigene.length > 0, status: budgetStatus, text: budgetText },
     {
-      key: 'ls', label: 'LeadSharks', ok: !!profileId && !!ls.daten?.kampagnen.length,
+      key: 'ls', label: 'LeadSharks', ok: !!profileId && !ls.fehler && !!ls.daten?.kampagnen.length,
       status: !profileId ? 'Portalkonto fehlt' : ls.fehler ? 'Fehler' : ls.daten ? (ls.daten.kampagnen.length ? 'Eingerichtet' : 'Nicht eingerichtet') : 'Lädt …',
       text: !profileId ? 'Portalkonto fehlt' : ls.fehler ? ls.fehler : ls.daten ? `${ls.daten.kampagnen.length} Kampagnen, ${ls.daten.formulare.length} Formulare` : '…',
     },
   ];
-  const eingerichtet = !!verknuepftId || (rechte.budget && eigene.length > 0) || !!ls.daten?.kampagnen.length;
+  const eingerichtet = kontenListe.length > 0 || (rechte.budget && eigene.length > 0) || !!ls.daten?.kampagnen.length;
+  // Solange Rechte oder Konten laden, weder „nicht eingerichtet" noch „Keine Berechtigung" behaupten.
+  const laedt = !eingerichtet && (rechte.loading || (!kk.konten && !kk.fehler) || (rechte.budget && !wb.geladen && !wb.fehler));
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);
-    try { await fn(); toast.success(ok); onChanged(); }
+    try { await fn(); toast.success(ok); onChanged(); kk.laden(); }
     catch (e: any) { toast.error(e.message || 'Fehlgeschlagen'); }
     finally { setBusy(false); }
   };
 
-  // Direkt bei der Kampagnenwahl starten, wenn das Konto feststeht; sonst bei der Kontowahl.
   const kampagneStart = (weg: Weg) => {
-    if (weg === 'kundenkonto' && meta?.zustand === 'verknuepft') return setStart({ stufe: 3, weg, konto: { meta_account_id: meta.objekt.id, name: meta.objekt.name ?? null } });
     const ids = [...new Set(eigene.map(z => z.meta_account_id))];
     if (weg === 'untermarke' && ids.length === 1) return setStart({ stufe: 3, weg, konto: { meta_account_id: ids[0], name: eigene.find(z => z.meta_account_id === ids[0])?.untermarke ?? null } });
     setStart({ stufe: 3, weg, konto: null });
   };
+  // LeadSharks: bei der Kontowahl beginnen, vorausgewählt das Konto der bereits zugewiesenen Kampagnen.
+  const lsStart = () => {
+    const k = (ls.daten?.kampagnen || []).find((c: any) => c.meta_ad_account_id);
+    if (!k) return setStart({ stufe: 2, weg: kontenListe.length ? 'kundenkonto' : 'untermarke', konto: null });
+    const id = `act_${ohneAct(String(k.meta_ad_account_id))}`;
+    const weg: Weg = kontoIds.includes(id) ? 'kundenkonto' : 'untermarke';
+    setStart({ stufe: 2, weg, konto: { meta_account_id: id, name: k.meta_ad_account_name ?? null } });
+  };
 
-  const dialog = start && <MetaDialog kunde={kunde} stand={stand} wb={wb} profileId={profileId} ls={ls} rechte={rechte} start={start}
-    onChanged={onChanged} onClose={() => { setStart(null); wb.ladeZuo(); ls.laden(); }} />;
+  const dialog = start && <MetaDialog kunde={kunde} stand={stand} wb={wb} profileId={profileId} ls={ls} rechte={rechte} start={start} kundenKonten={kontenListe}
+    onChanged={() => { onChanged(); kk.laden(); }} onClose={() => { setStart(null); wb.ladeZuo(); ls.laden(); kk.laden(); }} />;
 
   if (!eingerichtet) return (
     <div className="px-5 py-4 space-y-3">
