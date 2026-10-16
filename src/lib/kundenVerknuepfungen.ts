@@ -423,6 +423,9 @@ export async function portalAnlegen(p: { email: string; passwort: string; crm_cl
 export async function portalMeta(action: 'meta_get' | 'meta_katalog' | 'meta_anlegen' | 'meta_steuern', body: Record<string, unknown>): Promise<any> {
   return portalAufruf({ action, ...body });
 }
+export async function portalRechnung(action: 'rechnung_anlegen' | 'rechnung_aendern' | 'rechnung_loeschen', profile_id: string, body: Record<string, unknown>): Promise<any> {
+  return portalAufruf({ action, profile_id, ...body });
+}
 export async function portalEinstellungen(profile_id: string): Promise<any> {
   return portalAufruf({ action: 'settings_get', profile_id });
 }
