@@ -18,9 +18,9 @@ import { portalMeta } from '@/lib/kundenVerknuepfungen';
 
 type Kampagne = Record<string, any>;
 type Formular = Record<string, any>;
-type LeadTyp = { id: string; name: string } & Record<string, any>;
+export type LeadTyp = { id: string; name: string } & Record<string, any>;
 
-function fehlerMeldung(r: any): string {
+export function fehlerMeldung(r: any): string {
   const c = String(r?.error || '');
   if (c === 'profile_not_found') return 'Das verknüpfte Portalkonto existiert nicht mehr.';
   if (c === 'invalid_action') return 'Diese Aktion wird von der Portal-Schnittstelle nicht unterstützt.';
@@ -109,26 +109,7 @@ export function LeadSharksMeta({ profileId }: { profileId: string }) {
         </div>
       )}
 
-      {zuordnung && (
-        <Card>
-          <CardHeader className="pb-2 flex-row items-center justify-between"><CardTitle className="text-sm">Erkannte Felder der neuen Formulare</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => setZuordnung(null)}>Ausblenden</Button></CardHeader>
-          <CardContent className="space-y-2">
-            {zuordnung.length === 0 && <p className="text-sm text-muted-foreground">Keine Formulare angelegt.</p>}
-            {zuordnung.map((z, i) => {
-              const erkannt: string[] = Array.isArray(z?.erkannt) ? z.erkannt : [];
-              return (
-                <div key={z?.meta_form_id || i} className={cn('rounded-lg border p-3 text-sm', erkannt.length === 0 ? 'border-destructive/40 bg-destructive/5' : 'border-border')}>
-                  <p className="font-medium">{z?.meta_form_name || z?.form_name || z?.meta_form_id || `Formular ${i + 1}`}</p>
-                  {erkannt.length === 0
-                    ? <p className="mt-1 flex items-start gap-1.5 text-destructive"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />Keine Kernfelder erkannt – hier kommen Leads ohne Name, E-Mail und Telefon an.</p>
-                    : <div className="mt-1.5 flex flex-wrap gap-1.5">{erkannt.map(e => <Badge key={e} variant="secondary">{e}</Badge>)}</div>}
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
+      {zuordnung && <ZuordnungErgebnis zuordnung={zuordnung} onAusblenden={() => setZuordnung(null)} />}
 
       {!fehler && kampagnen.length === 0 && (
         <Card><CardContent className="py-10 flex flex-col items-center gap-2 text-center text-sm text-muted-foreground">
@@ -285,7 +266,7 @@ function Pausiert({ text, onClick }: { text: string; onClick: () => void }) {
   );
 }
 
-function Kachel({ aktiv, onClick, titel, unter }: { aktiv: boolean; onClick: () => void; titel: string; unter?: string }) {
+export function Kachel({ aktiv, onClick, titel, unter }: { aktiv: boolean; onClick: () => void; titel: string; unter?: string }) {
   return (
     <button type="button" onClick={onClick}
       className={cn('relative w-full text-left rounded-xl border p-4 min-h-[76px] transition-colors',
@@ -299,24 +280,27 @@ function Kachel({ aktiv, onClick, titel, unter }: { aktiv: boolean; onClick: () 
 
 type Zustand = 'bearbeiten' | 'senden' | 'unklar';
 
-function ZuweisenAssistent({ profileId, leadTypen, onClose, onErfolg }: {
+/** Zuweisungsassistent. Mit vorKonto/vorKampagne sind Werbekonto und Kampagne fest vorbelegt (keine erneute Auswahl). */
+export function ZuweisenAssistent({ profileId, leadTypen, onClose, onErfolg, vorKonto, vorKampagne }: {
   profileId: string; leadTypen: LeadTyp[]; onClose: () => void; onErfolg: (r: any) => void;
+  vorKonto?: { id: string; name: string | null }; vorKampagne?: { id: string; name: string | null };
 }) {
+  const vorbelegt = !!(vorKonto && vorKampagne);
   // p_id einmal je Assistent – wird nie geändert, auch nicht bei Wiederholung.
   const [pId] = useState(() => crypto.randomUUID());
   const [eingefroren, setEingefroren] = useState<Record<string, unknown> | null>(null);
   const [zustand, setZustand] = useState<Zustand>('bearbeiten');
   const [meldung, setMeldung] = useState<string | null>(null);
 
-  const [schritt, setSchritt] = useState(1);
+  const [schritt, setSchritt] = useState(vorbelegt ? 2 : 1);
   const [kLaden, setKLaden] = useState(false);
   const [kFehler, setKFehler] = useState<string | null>(null);
   const [konten, setKonten] = useState<any[]>([]);
   const [mKampagnen, setMKampagnen] = useState<any[]>([]);
   const [mFormulare, setMFormulare] = useState<any[]>([]);
-  const [konto, setKonto] = useState<any | null>(null);
-  const [kampagne, setKampagne] = useState<any | null>(null);
-  const [name, setName] = useState('');
+  const [konto, setKonto] = useState<any | null>(vorbelegt ? vorKonto : null);
+  const [kampagne, setKampagne] = useState<any | null>(vorbelegt ? vorKampagne : null);
+  const [name, setName] = useState(vorbelegt ? String(vorKampagne!.name || '').slice(0, 500) : '');
   const [abrufAb, setAbrufAb] = useState('');
   const [auswahl, setAuswahl] = useState<Record<string, string>>({}); // meta_form_id -> lead_type_id
   const [ohneFormular, setOhneFormular] = useState(false);
@@ -331,7 +315,7 @@ function ZuweisenAssistent({ profileId, leadTypen, onClose, onErfolg }: {
     finally { setKLaden(false); }
   }, [profileId]);
 
-  useEffect(() => { katalog({ schritt: 'konten' }, r => setKonten(r.konten || [])); }, [katalog]);
+  useEffect(() => { if (!vorbelegt) katalog({ schritt: 'konten' }, r => setKonten(r.konten || [])); }, [katalog, vorbelegt]);
 
   const gesperrt = eingefroren !== null;
 
@@ -425,10 +409,15 @@ function ZuweisenAssistent({ profileId, leadTypen, onClose, onErfolg }: {
 
             {!kLaden && schritt === 2 && (
               <>
-                <div className="grid gap-3 sm:grid-cols-2">
+                {vorbelegt ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Kachel aktiv onClick={() => {}} titel={konto?.name || konto?.id} unter="Werbekonto (gewählt)" />
+                    <Kachel aktiv onClick={() => {}} titel={kampagne?.name || kampagne?.id} unter="Kampagne (gewählt)" />
+                  </div>
+                ) : <div className="grid gap-3 sm:grid-cols-2">
                   {mKampagnen.length === 0 && !kFehler && <p className="text-sm text-muted-foreground">Keine Kampagnen in diesem Werbekonto.</p>}
                   {mKampagnen.map(c => <Kachel key={c.id} aktiv={kampagne?.id === c.id} onClick={() => { setKampagne(c); setName(String(c.name || '').slice(0, 500)); }} titel={c.name || c.id} unter={c.status || c.effective_status || ''} />)}
-                </div>
+                </div>}
                 {kampagne && (
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
@@ -491,7 +480,7 @@ function ZuweisenAssistent({ profileId, leadTypen, onClose, onErfolg }: {
             </Button>
           ) : (
             <>
-              {schritt > 1 && <Button variant="outline" disabled={zustand !== 'bearbeiten'} onClick={() => setSchritt(s => s - 1)}>Zurück</Button>}
+              {schritt > (vorbelegt ? 2 : 1) && <Button variant="outline" disabled={zustand !== 'bearbeiten'} onClick={() => setSchritt(s => s - 1)}>Zurück</Button>}
               <Button variant="ghost" disabled={zustand !== 'bearbeiten'} onClick={onClose}>Abbrechen</Button>
               {schritt < 3
                 ? <Button disabled={kLaden || (schritt === 1 ? !konto : !kampagne || !name.trim())} onClick={weiter}>Weiter</Button>
@@ -503,5 +492,29 @@ function ZuweisenAssistent({ profileId, leadTypen, onClose, onErfolg }: {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Ergebnis von meta_anlegen: erkannte Kernfelder je Formular, leere Listen deutlich gewarnt. */
+export function ZuordnungErgebnis({ zuordnung, onAusblenden }: { zuordnung: any[]; onAusblenden: () => void }) {
+  return (
+        <Card>
+          <CardHeader className="pb-2 flex-row items-center justify-between"><CardTitle className="text-sm">Erkannte Felder der neuen Formulare</CardTitle>
+            <Button variant="ghost" size="sm" onClick={onAusblenden}>Ausblenden</Button></CardHeader>
+          <CardContent className="space-y-2">
+            {zuordnung.length === 0 && <p className="text-sm text-muted-foreground">Keine Formulare angelegt.</p>}
+            {zuordnung.map((z, i) => {
+              const erkannt: string[] = Array.isArray(z?.erkannt) ? z.erkannt : [];
+              return (
+                <div key={z?.meta_form_id || i} className={cn('rounded-lg border p-3 text-sm', erkannt.length === 0 ? 'border-destructive/40 bg-destructive/5' : 'border-border')}>
+                  <p className="font-medium">{z?.meta_form_name || z?.form_name || z?.meta_form_id || `Formular ${i + 1}`}</p>
+                  {erkannt.length === 0
+                    ? <p className="mt-1 flex items-start gap-1.5 text-destructive"><AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />Keine Kernfelder erkannt – hier kommen Leads ohne Name, E-Mail und Telefon an.</p>
+                    : <div className="mt-1.5 flex flex-wrap gap-1.5">{erkannt.map(e => <Badge key={e} variant="secondary">{e}</Badge>)}</div>}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
   );
 }

@@ -170,7 +170,7 @@ function SuchFeld({ system, clientId, label, onPick }: { system: SystemKey; clie
 }
 
 
-function PortalAuswahl({ kunde, onPick }: { kunde: KundeMin; onPick: (o: Objekt) => void }) {
+export function PortalAuswahl({ kunde, onPick }: { kunde: KundeMin; onPick: (o: Objekt) => void }) {
   const [modus, setModus] = useState<'verknuepfen' | 'anlegen' | null>(null);
   const kachel = (aktiv: boolean) => cn('flex-1 flex flex-col items-start gap-2 rounded-2xl border p-5 text-left transition-colors hover:bg-muted/50',
     aktiv ? 'border-primary bg-primary/5' : 'border-border/60');
