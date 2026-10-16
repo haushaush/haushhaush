@@ -300,7 +300,7 @@ export function ZuweisenAssistent({ profileId, leadTypen, onClose, onErfolg, vor
   const [mFormulare, setMFormulare] = useState<any[]>([]);
   const [konto, setKonto] = useState<any | null>(vorbelegt ? vorKonto : null);
   const [kampagne, setKampagne] = useState<any | null>(vorbelegt ? vorKampagne : null);
-  const [name, setName] = useState(vorbelegt ? String(vorKampagne!.name || '').slice(0, 500) : '');
+  const [name, setName] = useState(vorbelegt ? String(vorKampagne!.name || vorKampagne!.id).slice(0, 500) : '');
   const [abrufAb, setAbrufAb] = useState('');
   const [auswahl, setAuswahl] = useState<Record<string, string>>({}); // meta_form_id -> lead_type_id
   const [ohneFormular, setOhneFormular] = useState(false);
@@ -344,8 +344,8 @@ export function ZuweisenAssistent({ profileId, leadTypen, onClose, onErfolg, vor
     });
     return {
       profile_id: profileId, p_id: pId, p_name: name.trim(),
-      p_account_id: konto.id, p_account_name: konto.name,
-      p_campaign_id: kampagne.id, p_campaign_name: kampagne.name,
+      p_account_id: konto.id, p_account_name: konto.name || konto.id,
+      p_campaign_id: kampagne.id, p_campaign_name: kampagne.name || kampagne.id,
       p_polling_start: abrufAb ? new Date(abrufAb).toISOString() : null,
       p_forms, p_confirm_no_forms: p_forms.length === 0 && ohneFormular,
     };
@@ -411,8 +411,8 @@ export function ZuweisenAssistent({ profileId, leadTypen, onClose, onErfolg, vor
               <>
                 {vorbelegt ? (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <Kachel aktiv onClick={() => {}} titel={konto?.name || konto?.id} unter="Werbekonto (gewählt)" />
-                    <Kachel aktiv onClick={() => {}} titel={kampagne?.name || kampagne?.id} unter="Kampagne (gewählt)" />
+                    <div className="rounded-xl border border-primary bg-primary/5 p-4 min-h-[76px]"><p className="text-sm font-medium break-words">{konto?.name || konto?.id}</p><p className="text-xs text-muted-foreground mt-1">Werbekonto (gewählt)</p></div>
+                    <div className="rounded-xl border border-primary bg-primary/5 p-4 min-h-[76px]"><p className="text-sm font-medium break-words">{kampagne?.name || kampagne?.id}</p><p className="text-xs text-muted-foreground mt-1">Kampagne (gewählt)</p></div>
                   </div>
                 ) : <div className="grid gap-3 sm:grid-cols-2">
                   {mKampagnen.length === 0 && !kFehler && <p className="text-sm text-muted-foreground">Keine Kampagnen in diesem Werbekonto.</p>}
