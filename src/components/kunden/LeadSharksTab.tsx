@@ -207,7 +207,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
       <div className="flex justify-end">{kopf}</div>
       <div className="flex min-w-0 flex-col gap-5 md:flex-row md:gap-6">
         <nav aria-label="LeadSharks Abschnitte" className="flex min-w-0 gap-5 overflow-x-auto border-b pb-3 md:w-[220px] md:shrink-0 md:flex-col md:gap-6 md:overflow-visible md:border-b-0 md:border-r md:pb-0 md:pr-4">
-          {['Kunde', 'Integrationen'].map(gruppe => (
+          {['Kunde'].map(gruppe => (
             <div key={gruppe} className="shrink-0 space-y-2">
               <h3 className="px-2 text-xs uppercase tracking-wide text-muted-foreground">{gruppe}</h3>
               <div className="flex gap-1 md:flex-col">
