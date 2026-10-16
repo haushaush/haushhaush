@@ -359,12 +359,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        {speicherFehler && <p className="text-sm text-destructive flex gap-1.5"><AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />{speicherFehler}</p>}
-        <Button disabled={!hatAenderungen || speichern} onClick={speichernKlick}>
-          {speichern ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}Änderungen speichern
-        </Button>
-      </div>
+      <SpeichernZeile fehler={speicherFehler} deaktiviert={!hatAenderungen || speichern} speichern={speichern} onClick={speichernKlick} />
 
       {/* 5. Bestellungen */}
       <Card>
@@ -424,7 +419,36 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
 
       )}
       {abschnitt === 'benachrichtigungen' && <Platzhalter icon={Bell} text="Noch nicht angebunden. Die Benachrichtigungsadressen liegen im Portal und werden von der Schnittstelle noch nicht geliefert." />}
-      {abschnitt === 'kennzahlen' && <Platzhalter icon={ChartNoAxesCombined} text="Noch nicht angebunden." />}
+      {abschnitt === 'kennzahlen' && <>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Sichtbare Reiter</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {Object.entries(KENNZAHLEN_TABS).map(([key, name]) => (
+                <label key={key} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                  {name}
+                  <Switch checked={!!kennzahlenTabs[key]} onCheckedChange={c => setKennzahlenTabs(s => ({ ...s, [key]: c }))} />
+                </label>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Werte im Reiter Werbung</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {!kennzahlenTabs.werbung && <p className="text-xs text-muted-foreground">Der Reiter Werbung ist ausgeblendet – diese Werte sieht der Kunde derzeit nicht.</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {Object.entries(KENNZAHLEN_WERBUNG).map(([key, name]) => (
+                <label key={key} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                  {name}
+                  <Switch checked={!!kennzahlenWerbung[key]} onCheckedChange={c => setKennzahlenWerbung(s => ({ ...s, [key]: c }))} />
+                </label>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <SpeichernZeile fehler={speicherFehler} deaktiviert={!hatAenderungen || speichern} speichern={speichern} onClick={speichernKlick} />
+      </>}
       {abschnitt === 'meta' && <Platzhalter icon={Megaphone} text="Noch nicht angebunden." />}
         </div>
       </div>
@@ -457,6 +481,17 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function SpeichernZeile({ fehler, deaktiviert, speichern, onClick }: { fehler: string | null; deaktiviert: boolean; speichern: boolean; onClick: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-3">
+      {fehler && <p className="text-sm text-destructive flex gap-1.5"><AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />{fehler}</p>}
+      <Button disabled={deaktiviert} onClick={onClick}>
+        {speichern ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}Änderungen speichern
+      </Button>
     </div>
   );
 }
