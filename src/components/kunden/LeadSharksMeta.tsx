@@ -24,7 +24,13 @@ function fehlerMeldung(r: any): string {
   const c = String(r?.error || '');
   if (c === 'profile_not_found') return 'Das verknüpfte Portalkonto existiert nicht mehr.';
   if (c === 'invalid_action') return 'Diese Aktion wird von der Portal-Schnittstelle nicht unterstützt.';
+  if (c === 'fremder_kunde') return 'Dieses Formular gehört nicht zu diesem Kunden.';
+  if (c === 'form_not_found') return 'Dieses Formular wurde im Portal nicht gefunden.';
+  if (c === 'campaign_not_found') return 'Diese Kampagne wurde im Portal nicht gefunden.';
+  if (c === 'steuern_failed') return 'Die Änderung konnte im Portal nicht gespeichert werden.';
+  if (c.startsWith('invalid_')) return 'Die Angaben wurden in einer unerwarteten Form übermittelt.';
   if (/fetch|network|failed to send/i.test(c)) return 'Das Portal ist gerade nicht erreichbar. Bitte später erneut versuchen.';
+  if (c && c !== 'undefined') return c;
   return r?.detail ? `Das Portal hat einen Fehler gemeldet: ${r.detail}` : 'Das Portal hat einen Fehler gemeldet. Bitte später erneut versuchen.';
 }
 
@@ -66,7 +72,11 @@ export function LeadSharksMeta({ profileId }: { profileId: string }) {
     try {
       const r = await portalMeta('meta_steuern', { profile_id: profileId, ...body });
       if (!r?.ok) { toast.error(fehlerMeldung(r)); return false; }
-      toast.success('Gespeichert');
+      if (r.reactivate_error) {
+        toast.warning(`Limit gespeichert, aber die Kampagne konnte bei Meta nicht reaktiviert werden: ${r.reactivate_error}`);
+      } else {
+        toast.success('Gespeichert');
+      }
       await neuLaden();
       return true;
     } catch (e: any) { toast.error(fehlerMeldung({ error: e?.message })); return false; }
