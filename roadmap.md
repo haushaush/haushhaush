@@ -1,5 +1,7 @@
 # LeadSharks: Gebuchtes System
 
+- [x] Seitennavigation mit sechs Abschnitten und mobiler Scrollreihe; bestehende Logik unverändert, fehlende Anbindungen als Platzhalter.
+
 - [x] Vertragskarte durch Systemauswahl, bedingte Felder, lesenden Ansprechpartner und Wechselbestätigung ersetzt; keine Tests oder Gegenprüfung ausgeführt.
 
 # Projekte und Laufzeiten
