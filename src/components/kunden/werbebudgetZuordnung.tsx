@@ -20,9 +20,12 @@ export const zuoKundenName = (z?: Zuo) => z?.clients?.name || 'anderem Kunden';
 export function useWerbebudgetZuordnung(clientId: string) {
   const [alle, setAlle] = useState<Zuo[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const [geladen, setGeladen] = useState(false);
   const ladeZuo = useCallback(async () => {
-    const { data } = await (supabase.from as any)('werbebudget_zuordnung').select('*, clients(name)');
-    setAlle((data || []) as Zuo[]);
+    const { data, error } = await (supabase.from as any)('werbebudget_zuordnung').select('*, clients(name)');
+    if (error) { setFehler(`Zuordnungen konnten nicht geladen werden: ${error.message}`); setGeladen(true); return; }
+    setFehler(null); setAlle((data || []) as Zuo[]); setGeladen(true);
   }, []);
   useEffect(() => { ladeZuo(); }, [ladeZuo]);
 
@@ -44,11 +47,11 @@ export function useWerbebudgetZuordnung(clientId: string) {
     if (error) toast.error(error.message); else ladeZuo();
   }, [ladeZuo]);
 
-  return { alle, busy, ladeZuo, zuordnen, loesen };
+  return { alle, busy, fehler, geladen, ladeZuo, zuordnen, loesen };
 }
 
-export function KampagneZeile({ k, alle, clientId, busy, kname = zuoKundenName, callMeta, zuordnen, loesen }: {
-  k: ZuoKampagne; alle: Zuo[]; clientId: string; busy: string | null; kname?: (z?: Zuo) => string; callMeta: any;
+export function KampagneZeile({ k, alle, clientId, busy, kname = zuoKundenName, callMeta, zuordnen, loesen, ohneAusgaben = false }: {
+  ohneAusgaben?: boolean; k: ZuoKampagne; alle: Zuo[]; clientId: string; busy: string | null; kname?: (z?: Zuo) => string; callMeta: any;
   zuordnen: (t: 'kampagne' | 'adset', o: string, kid: string, n: string) => Promise<void>; loesen: (z: Zuo) => void;
 }) {
   const [offen, setOffen] = useState(false);
@@ -71,14 +74,14 @@ export function KampagneZeile({ k, alle, clientId, busy, kname = zuoKundenName, 
 
   return (
     <div className="px-3 py-2.5">
-      <div className="grid grid-cols-[1fr_110px_80px_80px_auto] gap-3 items-center text-sm">
+      <div className={cn('grid gap-3 items-center text-sm', ohneAusgaben ? 'grid-cols-[1fr_110px_80px_auto]' : 'grid-cols-[1fr_110px_80px_80px_auto]')}>
         <button onClick={() => !ganz && setOffen(v => !v)} disabled={!!ganz} className={cn('flex items-start gap-1 text-left min-w-0', !ganz && 'hover:text-primary')}>
           <ChevronRight className={cn('h-4 w-4 mt-0.5 shrink-0 transition-transform', offen && 'rotate-90', ganz && 'opacity-0')} />
           <span className="break-words">{k.name}</span>
         </button>
         <span className="text-xs text-muted-foreground">{STATUS_LABEL[k.effective_status] || k.effective_status}</span>
         <span className="text-right tabular-nums text-xs">{k.daily_budget ? eurC(k.daily_budget) : '—'}</span>
-        <span className="text-right tabular-nums text-xs" title="Ausgaben 7 Tage">{eurR(k.insights?.data?.[0]?.spend)}</span>
+        {!ohneAusgaben && <span className="text-right tabular-nums text-xs" title="Ausgaben 7 Tage">{eurR(k.insights?.data?.[0]?.spend)}</span>}
         <div className="justify-self-end">{aktion}</div>
       </div>
       {offen && !ganz && (

@@ -8,9 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { AlertCircle, AlertTriangle, Copy, ExternalLink, KeyRound, Loader2, Save, ShieldAlert, Bell, ChartNoAxesCombined, LayoutDashboard, Receipt, UserRound, Megaphone, type LucideIcon } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Copy, ExternalLink, KeyRound, Loader2, Save, ShieldAlert, Bell, ChartNoAxesCombined, LayoutDashboard, Receipt, UserRound, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { LeadSharksMeta } from './LeadSharksMeta';
 import { PORTAL_URL, erzeugePasswort, portalEinstellungen, portalEinstellungenSetzen, portalZugangZuruecksetzen } from '@/lib/kundenVerknuepfungen';
 
 const BEREICH_NAMEN: Record<string, string> = {
@@ -30,7 +29,6 @@ const ABSCHNITTE = [
   { id: 'benachrichtigungen', name: 'Benachrichtigungen', icon: Bell, gruppe: 'Kunde' },
   { id: 'kennzahlen', name: 'Kennzahlen', icon: ChartNoAxesCombined, gruppe: 'Kunde' },
   { id: 'rechnungen', name: 'Rechnungen', icon: Receipt, gruppe: 'Kunde' },
-  { id: 'meta', name: 'Meta', icon: Megaphone, gruppe: 'Integrationen' },
 ] as const;
 type Abschnitt = typeof ABSCHNITTE[number]['id'];
 
@@ -209,7 +207,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
       <div className="flex justify-end">{kopf}</div>
       <div className="flex min-w-0 flex-col gap-5 md:flex-row md:gap-6">
         <nav aria-label="LeadSharks Abschnitte" className="flex min-w-0 gap-5 overflow-x-auto border-b pb-3 md:w-[220px] md:shrink-0 md:flex-col md:gap-6 md:overflow-visible md:border-b-0 md:border-r md:pb-0 md:pr-4">
-          {['Kunde', 'Integrationen'].map(gruppe => (
+          {['Kunde'].map(gruppe => (
             <div key={gruppe} className="shrink-0 space-y-2">
               <h3 className="px-2 text-xs uppercase tracking-wide text-muted-foreground">{gruppe}</h3>
               <div className="flex gap-1 md:flex-col">
@@ -450,7 +448,6 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
         </Card>
         <SpeichernZeile fehler={speicherFehler} deaktiviert={!hatAenderungen || speichern} speichern={speichern} onClick={speichernKlick} />
       </>}
-      {abschnitt === 'meta' && <LeadSharksMeta profileId={profileId} />}
         </div>
       </div>
 

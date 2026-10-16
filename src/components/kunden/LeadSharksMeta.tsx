@@ -51,8 +51,6 @@ export function LeadSharksMeta({ profileId }: { profileId: string }) {
   const [kampagnen, setKampagnen] = useState<Kampagne[]>([]);
   const [formulare, setFormulare] = useState<Formular[]>([]);
   const [leadTypen, setLeadTypen] = useState<LeadTyp[]>([]);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [reakt, setReakt] = useState<{ form: Formular; body: Record<string, unknown>; text: string } | null>(null);
   const [assistent, setAssistent] = useState(false);
   const [zuordnung, setZuordnung] = useState<any[] | null>(null);
 
@@ -66,6 +64,47 @@ export function LeadSharksMeta({ profileId }: { profileId: string }) {
     finally { setLaden(false); }
   }, [profileId]);
   useEffect(() => { setLaden(true); neuLaden(); }, [neuLaden]);
+
+  if (laden) return <div className="space-y-3"><Skeleton className="h-40 w-full" /><Skeleton className="h-40 w-full" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Meta-Kampagnen und Formulare, aus denen das Portal Leads für diesen Kunden abruft.</p>
+        <Button size="sm" onClick={() => setAssistent(true)} disabled={!!fehler}><Plus className="h-4 w-4 mr-1.5" />Kampagne zuweisen</Button>
+      </div>
+
+      {fehler && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /><span>{fehler}</span>
+        </div>
+      )}
+
+      {zuordnung && <ZuordnungErgebnis zuordnung={zuordnung} onAusblenden={() => setZuordnung(null)} />}
+
+      {!fehler && kampagnen.length === 0 && (
+        <Card><CardContent className="py-10 flex flex-col items-center gap-2 text-center text-sm text-muted-foreground">
+          <Megaphone className="h-6 w-6" />Diesem Kunden ist noch keine Meta-Kampagne zugewiesen.
+        </CardContent></Card>
+      )}
+
+      <LeadSharksSteuerung profileId={profileId} kampagnen={kampagnen} formulare={formulare} neuLaden={neuLaden} />
+
+      {assistent && (
+        <ZuweisenAssistent profileId={profileId} leadTypen={leadTypen}
+          onClose={() => setAssistent(false)}
+          onErfolg={async r => { setAssistent(false); setZuordnung(Array.isArray(r?.zuordnung) ? r.zuordnung : []); toast.success('Kampagne angelegt'); await neuLaden(); }} />
+      )}
+    </div>
+  );
+}
+
+/** Kampagnenkarten mit Formularen, Aktiv-Schaltern, Limits und Reaktivieren-Rückfrage (meta_steuern). */
+export function LeadSharksSteuerung({ profileId, kampagnen, formulare, neuLaden }: {
+  profileId: string; kampagnen: Kampagne[]; formulare: Formular[]; neuLaden: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [reakt, setReakt] = useState<{ form: Formular; body: Record<string, unknown>; text: string } | null>(null);
 
   async function steuern(key: string, body: Record<string, unknown>): Promise<boolean> {
     setBusy(key);
@@ -94,29 +133,8 @@ export function LeadSharksMeta({ profileId }: { profileId: string }) {
     setReakt({ form, body, text });
   }
 
-  if (laden) return <div className="space-y-3"><Skeleton className="h-40 w-full" /><Skeleton className="h-40 w-full" /></div>;
-
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">Meta-Kampagnen und Formulare, aus denen das Portal Leads für diesen Kunden abruft.</p>
-        <Button size="sm" onClick={() => setAssistent(true)} disabled={!!fehler}><Plus className="h-4 w-4 mr-1.5" />Kampagne zuweisen</Button>
-      </div>
-
-      {fehler && (
-        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /><span>{fehler}</span>
-        </div>
-      )}
-
-      {zuordnung && <ZuordnungErgebnis zuordnung={zuordnung} onAusblenden={() => setZuordnung(null)} />}
-
-      {!fehler && kampagnen.length === 0 && (
-        <Card><CardContent className="py-10 flex flex-col items-center gap-2 text-center text-sm text-muted-foreground">
-          <Megaphone className="h-6 w-6" />Diesem Kunden ist noch keine Meta-Kampagne zugewiesen.
-        </CardContent></Card>
-      )}
-
+    <>
       {kampagnen.map(k => (
         <Card key={k.id}>
           <CardHeader className="pb-3">
@@ -170,12 +188,7 @@ export function LeadSharksMeta({ profileId }: { profileId: string }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {assistent && (
-        <ZuweisenAssistent profileId={profileId} leadTypen={leadTypen}
-          onClose={() => setAssistent(false)}
-          onErfolg={async r => { setAssistent(false); setZuordnung(Array.isArray(r?.zuordnung) ? r.zuordnung : []); toast.success('Kampagne angelegt'); await neuLaden(); }} />
-      )}
-    </div>
+    </>
   );
 }
 
