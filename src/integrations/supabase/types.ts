@@ -2133,6 +2133,24 @@ export type Database = {
           },
         ]
       }
+      close_abschluss_ausgeblendet: {
+        Row: {
+          close_opportunity_id: string
+          geloescht_am: string
+          geloescht_von: string | null
+        }
+        Insert: {
+          close_opportunity_id: string
+          geloescht_am?: string
+          geloescht_von?: string | null
+        }
+        Update: {
+          close_opportunity_id?: string
+          geloescht_am?: string
+          geloescht_von?: string | null
+        }
+        Relationships: []
+      }
       close_abschluss_schreiblog: {
         Row: {
           aktion: string
@@ -9153,6 +9171,7 @@ export type Database = {
         Returns: Json
       }
       create_or_get_unternehmen: { Args: { p_name: string }; Returns: string }
+      cs_laufzeiten: { Args: { p_token: string }; Returns: Json }
       current_user_team_rolle: {
         Args: never
         Returns: Database["public"]["Enums"]["team_rolle"]
