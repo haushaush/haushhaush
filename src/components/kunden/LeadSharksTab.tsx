@@ -86,6 +86,8 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
   const [fehler, setFehler] = useState<string | null>(null);
   const [vertrag, setVertrag] = useState<Record<string, string>>({});
   const [bereiche, setBereiche] = useState<Record<string, boolean>>({});
+  const [kennzahlenTabs, setKennzahlenTabs] = useState<Record<string, boolean>>({});
+  const [kennzahlenWerbung, setKennzahlenWerbung] = useState<Record<string, boolean>>({});
   const [limit, setLimit] = useState('');
   const [speichern, setSpeichern] = useState(false);
   const [speicherFehler, setSpeicherFehler] = useState<string | null>(null);
@@ -97,6 +99,8 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
 
   const initVertrag = (v: any) => Object.fromEntries(['tier', ...VERTRAG_FELDER.map(f => f.key)].map(key => [key, v ? zuText(v[key]) : '']));
   const initBereiche = (b: any[]) => Object.fromEntries(Object.keys(BEREICH_NAMEN).map(key => [key, !!(b || []).find(x => x.module_key === key)?.enabled]));
+  const initKennzahlen = (k: any, gruppe: 'tabs' | 'werbung', namen: Record<string, string>) =>
+    Object.fromEntries(Object.keys(namen).map(key => [key, !!k?.[gruppe]?.[key]]));
   const initLimit = (l: any) => (l?.global_lead_limit ? String(l.global_lead_limit) : '');
 
   const holen = useCallback(async () => {
