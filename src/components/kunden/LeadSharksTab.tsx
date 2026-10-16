@@ -8,13 +8,23 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { AlertCircle, AlertTriangle, Copy, ExternalLink, KeyRound, Loader2, Save, ShieldAlert } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Copy, ExternalLink, KeyRound, Loader2, Save, ShieldAlert, Bell, ChartNoAxesCombined, LayoutDashboard, Receipt, UserRound, Megaphone, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { PORTAL_URL, erzeugePasswort, portalEinstellungen, portalEinstellungenSetzen, portalZugangZuruecksetzen } from '@/lib/kundenVerknuepfungen';
 
 const BEREICH_NAMEN: Record<string, string> = {
   benchmark: 'Marktradar', compliance: 'Compliance', contracts: 'Verträge', kennzahlen: 'Kennzahlen', outreach: 'Outreach',
 };
+
+const ABSCHNITTE = [
+  { id: 'uebersicht', name: 'Übersicht', icon: LayoutDashboard, gruppe: 'Kunde' },
+  { id: 'kundendaten', name: 'Kundendaten & Zugang', icon: UserRound, gruppe: 'Kunde' },
+  { id: 'benachrichtigungen', name: 'Benachrichtigungen', icon: Bell, gruppe: 'Kunde' },
+  { id: 'kennzahlen', name: 'Kennzahlen', icon: ChartNoAxesCombined, gruppe: 'Kunde' },
+  { id: 'rechnungen', name: 'Rechnungen', icon: Receipt, gruppe: 'Kunde' },
+  { id: 'meta', name: 'Meta', icon: Megaphone, gruppe: 'Integrationen' },
+] as const;
+type Abschnitt = typeof ABSCHNITTE[number]['id'];
 
 const SYSTEME = [
   { wert: 'lead_system', name: 'Lead System', beschreibung: 'Eigene Kampagne, Leads direkt per Mail' },
@@ -74,6 +84,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
   const [reset, setReset] = useState(false);
   const [neuesPw, setNeuesPw] = useState<string | null>(null);
   const [systemFrage, setSystemFrage] = useState(false);
+  const [abschnitt, setAbschnitt] = useState<Abschnitt>('uebersicht');
 
   const initVertrag = (v: any) => Object.fromEntries(['tier', ...VERTRAG_FELDER.map(f => f.key)].map(key => [key, v ? zuText(v[key]) : '']));
   const initBereiche = (b: any[]) => Object.fromEntries((b || []).map(x => [x.module_key, !!x.enabled]));
@@ -169,37 +180,68 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
   const abgelaufen = ablauf && new Date(ablauf).getTime() < Date.now();
   const ll = daten?.lead_limit || {};
   const leads = daten?.leads || {};
-  const ansprechpartner = [k.first_name, k.last_name].filter(Boolean).join(' ') || '—';
 
   return (
     <div className="space-y-4">
-      {kopf}
+      <div className="flex justify-end">{kopf}</div>
+      <div className="flex min-w-0 flex-col gap-5 md:flex-row md:gap-6">
+        <nav aria-label="LeadSharks Abschnitte" className="flex min-w-0 gap-5 overflow-x-auto border-b pb-3 md:w-[220px] md:shrink-0 md:flex-col md:gap-6 md:overflow-visible md:border-b-0 md:border-r md:pb-0 md:pr-4">
+          {['Kunde', 'Integrationen'].map(gruppe => (
+            <div key={gruppe} className="shrink-0 space-y-2">
+              <h3 className="px-2 text-xs uppercase tracking-wide text-muted-foreground">{gruppe}</h3>
+              <div className="flex gap-1 md:flex-col">
+                {ABSCHNITTE.filter(a => a.gruppe === gruppe).map(a => (
+                  <Button key={a.id} variant="ghost" aria-current={abschnitt === a.id ? 'page' : undefined}
+                    onClick={() => setAbschnitt(a.id)}
+                    className={`justify-start gap-2 whitespace-nowrap px-2 md:w-full ${abschnitt === a.id ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary' : 'text-muted-foreground'}`}>
+                    <a.icon className="h-4 w-4 shrink-0" />{a.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </nav>
+        <div className="min-w-0 flex-1 space-y-4">
+          <h2 className="text-lg font-semibold">{ABSCHNITTE.find(a => a.id === abschnitt)?.name}</h2>
 
-      {/* 1. Konto */}
+      {abschnitt === 'kundendaten' && <>
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-          <CardTitle className="text-base">Konto</CardTitle>
+        <CardHeader><CardTitle className="text-base">Kontaktdaten</CardTitle></CardHeader>
+        <CardContent className="text-sm">
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 [&_dd]:break-words">
+            <Feld label="Firmenname" wert={k.company_name} />
+            <Feld label="Vorname" wert={k.first_name} />
+            <Feld label="Nachname" wert={k.last_name} />
+            <div>
+              <Feld label="E-Mail (Login)" wert={k.email} />
+              <p className="mt-1 text-xs text-muted-foreground">Nicht änderbar.</p>
+            </div>
+            <Feld label="Telefon" wert={k.phone} />
+            <Feld label="USt-IdNr." wert="—" />
+          </dl>
+        </CardContent>
+      </Card>
+      <p className="text-xs text-muted-foreground">Diese Daten werden derzeit im Portal gepflegt.</p>
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+          <CardTitle className="text-base">Rolle & Zugang</CardTitle>
           <Button size="sm" variant="outline" disabled={reset} onClick={() => setFrage(true)}>
             {reset ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <KeyRound className="h-3.5 w-3.5 mr-1" />}Zugang zurücksetzen
           </Button>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
-            <Feld label="E-Mail" wert={k.email} />
-            <Feld label="Firma" wert={k.company_name} />
-            <Feld label="Ansprechpartner" wert={ansprechpartner} />
-            <Feld label="Telefon" wert={k.phone} />
             <Feld label="Status" wert={<Badge variant={k.is_active === false ? 'secondary' : 'outline'}>{k.is_active === false ? 'inaktiv' : 'aktiv'}</Badge>} />
             <Feld label="Angelegt am" wert={fmtDatum(k.created_at)} />
           </dl>
           {k.passwort_wechsel_noetig && (abgelaufen
             ? <p className="flex gap-1.5 text-destructive font-medium"><AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />Zugang abgelaufen</p>
-            : <p className="flex gap-1.5 font-medium text-amber-600 dark:text-amber-400"><AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            : <p className="flex gap-1.5 font-medium text-warning"><AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                 Passwortwechsel offen{ablauf ? `, Übergangspasswort läuft am ${fmtDatum(ablauf)} um ${fmtZeit(ablauf)} ab` : ''}
               </p>)}
           {neuesPw && (
             <div className="rounded-lg border p-3 space-y-2">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <code className="font-mono text-sm bg-muted px-2 py-1 rounded">{neuesPw}</code>
                 <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(neuesPw).then(() => toast.success('Passwort kopiert'))}><Copy className="h-3.5 w-3.5 mr-1" />Kopieren</Button>
               </div>
@@ -209,6 +251,8 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
         </CardContent>
       </Card>
 
+      </>}
+      {abschnitt === 'uebersicht' && <>
       {/* 2. Gebuchtes System */}
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
@@ -326,6 +370,16 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
         </CardContent>
       </Card>
 
+      {/* 7. Leads */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Leads</CardTitle></CardHeader>
+        <CardContent className="text-sm tabular-nums">
+          {(leads.gesamt ?? 0).toLocaleString('de-DE')} Leads geliefert{leads.letzte_lieferung ? `, zuletzt am ${fmtDatum(leads.letzte_lieferung)}` : ''}
+        </CardContent>
+      </Card>
+
+      </>}
+      {abschnitt === 'rechnungen' && (
       {/* 6. Rechnungen */}
       <Card>
         <CardHeader><CardTitle className="text-base">Rechnungen</CardTitle></CardHeader>
@@ -349,13 +403,12 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
         </CardContent>
       </Card>
 
-      {/* 7. Leads */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Leads</CardTitle></CardHeader>
-        <CardContent className="text-sm tabular-nums">
-          {(leads.gesamt ?? 0).toLocaleString('de-DE')} Leads geliefert{leads.letzte_lieferung ? `, zuletzt am ${fmtDatum(leads.letzte_lieferung)}` : ''}
-        </CardContent>
-      </Card>
+      )}
+      {abschnitt === 'benachrichtigungen' && <Platzhalter icon={Bell} text="Noch nicht angebunden. Die Benachrichtigungsadressen liegen im Portal und werden von der Schnittstelle noch nicht geliefert." />}
+      {abschnitt === 'kennzahlen' && <Platzhalter icon={ChartNoAxesCombined} text="Noch nicht angebunden." />}
+      {abschnitt === 'meta' && <Platzhalter icon={Megaphone} text="Noch nicht angebunden." />}
+        </div>
+      </div>
 
       <AlertDialog open={systemFrage} onOpenChange={setSystemFrage}>
         <AlertDialogContent>
@@ -386,6 +439,17 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function Platzhalter({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
+  return (
+    <Card>
+      <CardContent className="flex items-start gap-3 p-5 text-sm text-muted-foreground">
+        <Icon className="mt-0.5 h-5 w-5 shrink-0" />
+        <p>{text}</p>
+      </CardContent>
+    </Card>
   );
 }
 

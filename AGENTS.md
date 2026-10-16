@@ -14,7 +14,7 @@ Subdirectories may have their own `AGENTS.md` (e.g. `supabase/functions/`); read
 
 - Project resets share the active Close source with runtimes, use signed previews and one atomic RPC, archive rather than delete, and exclude archived projects from operational reads. Why: keep history, no partial resets.
 - Customer links: `src/lib/kundenVerknuepfungen.ts` owns status, reasoned manual suggestions and link/unlink writes; searches read full objects, not links; dismissals in `kunde_link_vorschlag_verworfen`. Never add Slack/Pipedrive to customer `SYSTEME`. Why: views must agree.
-- LeadSharks writes allowlist changed visible contract fields; contacts stay read-only. Why: preserve hidden values and avoid unsupported writes.
+- LeadSharks sections share settings/save/reset state; allowlist changed visible contract fields, contacts read-only. Why: preserve edits and hidden values.
 - Ad-budget mapping: `werbebudget_zuordnung` maps a customer to a whole campaign or to adsets of a shared campaign on our own Meta accounts (one owner per object, campaign-or-adsets enforced by trigger, never auto-set); edited only in the customer Verknüpfungen tab; the Finanzen tab is overview-only. Why: spend per customer must be attributable without splitting or estimating.
 - Credentials come from secrets; `integration_settings` holds non-secret state. Why: no secrets in tables.
 - Bookkeeping: one source per customer via Close "Marke" → `buchhaltung_quelle`; unknown = ungeklärt, never default or add both; lexoffice read-only. Why: two companies.
