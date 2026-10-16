@@ -111,6 +111,8 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
       setDaten(r);
       setVertrag(initVertrag(r.vertrag));
       setBereiche(initBereiche(r.bereiche));
+      setKennzahlenTabs(initKennzahlen(r.kennzahlen, 'tabs', KENNZAHLEN_TABS));
+      setKennzahlenWerbung(initKennzahlen(r.kennzahlen, 'werbung', KENNZAHLEN_WERBUNG));
       setLimit(initLimit(r.lead_limit));
     } catch (e: any) { setFehler(fehlerText(e?.message)); }
     finally { setLaden(false); }
@@ -133,12 +135,19 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
     const b0 = initBereiche(daten.bereiche);
     const geaendert = Object.keys(BEREICH_NAMEN).filter(k => b0[k] !== !!bereiche[k]);
     if (geaendert.length) out.bereiche = geaendert.map(k => ({ module_key: k, enabled: bereiche[k] }));
+    const k0t = initKennzahlen(daten.kennzahlen, 'tabs', KENNZAHLEN_TABS);
+    const k0w = initKennzahlen(daten.kennzahlen, 'werbung', KENNZAHLEN_WERBUNG);
+    const kennzahlenGeaendert = [
+      ...Object.keys(KENNZAHLEN_TABS).filter(k => k0t[k] !== !!kennzahlenTabs[k]).map(k => ({ gruppe: 'tabs', key: k, wert: !!kennzahlenTabs[k] })),
+      ...Object.keys(KENNZAHLEN_WERBUNG).filter(k => k0w[k] !== !!kennzahlenWerbung[k]).map(k => ({ gruppe: 'werbung', key: k, wert: !!kennzahlenWerbung[k] })),
+    ];
+    if (kennzahlenGeaendert.length) out.kennzahlen = kennzahlenGeaendert;
     if (initLimit(daten.lead_limit) !== limit.trim()) {
       const n = Number(limit.trim() || 0);
       out.global_lead_limit = n > 0 ? n : null;
     }
     return out;
-  }, [daten, vertrag, bereiche, limit]);
+  }, [daten, vertrag, bereiche, kennzahlenTabs, kennzahlenWerbung, limit]);
   const hatAenderungen = Object.keys(aenderungen).length > 0;
 
   async function speichernKlick() {
