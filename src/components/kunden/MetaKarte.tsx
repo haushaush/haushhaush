@@ -182,6 +182,13 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
   const dialog = start && <MetaDialog kunde={kunde} stand={stand} wb={wb} profileId={profileId} ls={ls} rechte={rechte} start={start} kundenKonten={kontenListe}
     onChanged={() => { onChanged(); kk.laden(); }} onClose={() => { setStart(null); wb.ladeZuo(); ls.laden(); kk.laden(); }} />;
 
+  if (laedt) return (
+    <div className="px-5 py-4 space-y-3">
+      <p className="text-sm font-medium">Meta</p>
+      <Skeleton className="h-16 rounded-xl" />
+    </div>
+  );
+
   if (!eingerichtet) return (
     <div className="px-5 py-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -193,10 +200,16 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
       </div>
       <div className="space-y-1.5">
         {zeilen.map(z => (
-          <div key={z.label} className="grid grid-cols-1 sm:grid-cols-[140px_130px_1fr] gap-1 sm:gap-4 sm:items-center text-sm">
+          <div key={z.label} className="grid grid-cols-1 sm:grid-cols-[140px_130px_1fr_auto] gap-1 sm:gap-4 sm:items-center text-sm">
             <span className="text-xs text-muted-foreground">{z.label}</span>
             <Status ok={z.ok} text={z.status} />
             <span className="text-xs truncate">{z.text}</span>
+            {z.key === 'konto' && meta?.zustand === 'vorschlag' ? (
+              <div className="flex gap-2">
+                <Button size="sm" disabled={busy} onClick={() => run(() => verknuepfen('meta', kunde.id, meta.vorschlag), 'Meta Ads verknüpft')}><Check className="h-3.5 w-3.5 mr-1" />Übernehmen</Button>
+                <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => verwerfen(meta.vorschlag, kunde.id), 'Vorschlag verworfen')}>Verwerfen</Button>
+              </div>
+            ) : <span />}
           </div>
         ))}
       </div>
@@ -230,18 +243,19 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
           <Kopf k="konto" />
           {auf.konto && (
             <div className="pl-6 pb-3 space-y-3">
-              {meta?.zustand === 'verknuepft' && (
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="font-medium">{meta.objekt.name || '(ohne Namen)'}</span>
-                  <span className="text-[11px] text-muted-foreground tabular-nums">{meta.objekt.id}</span>
-                  {meta.objekt.url && <a href={meta.objekt.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary" title="In Meta öffnen"><ExternalLink className="h-3.5 w-3.5" /></a>}
-                  <div className="ml-auto flex gap-2">
-                    <Button size="sm" variant="outline" disabled={busy} onClick={() => setAendern(v => !v)}><Search className="h-3.5 w-3.5 mr-1" />Ändern</Button>
-                    <Button size="sm" variant="ghost" disabled={busy} className="text-muted-foreground hover:text-destructive" onClick={() => setLoeseZiel(meta.objekt)}>Verknüpfung lösen</Button>
+              {kk.fehler && <Fehler text={kk.fehler} />}
+              {kontenListe.map(k => {
+                const o: Objekt = { id: k.meta_account_id, name: k.meta_account_name, url: `https://business.facebook.com/adsmanager/manage/campaigns?act=${ohneAct(k.meta_account_id)}` } as Objekt;
+                return (
+                  <div key={k.meta_account_id} className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="font-medium">{k.meta_account_name || '(ohne Namen)'}</span>
+                    <span className="text-[11px] text-muted-foreground tabular-nums">{k.meta_account_id}</span>
+                    <a href={o.url!} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary" title="In Meta öffnen"><ExternalLink className="h-3.5 w-3.5" /></a>
+                    <Button size="sm" variant="ghost" disabled={busy} className="ml-auto text-muted-foreground hover:text-destructive" onClick={() => setLoeseZiel(o)}>Verknüpfung lösen</Button>
                   </div>
-                </div>
-              )}
-              {meta?.zustand === 'vorschlag' && (
+                );
+              })}
+              {meta?.zustand === 'vorschlag' && kontenListe.length === 0 && (
                 <div className="rounded-xl border border-primary/40 bg-primary/5 p-3 text-sm flex flex-wrap items-center gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium">Vorschlag: {meta.vorschlag.name || meta.vorschlag.id}</p>
@@ -251,13 +265,13 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
                   <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => verwerfen(meta.vorschlag, kunde.id), 'Vorschlag verworfen')}>Verwerfen</Button>
                 </div>
               )}
-              {meta?.zustand !== 'verknuepft' && !aendern && <Button size="sm" variant="outline" onClick={() => setAendern(true)}><Search className="h-3.5 w-3.5 mr-1" />Werbekonto suchen</Button>}
+              {!aendern && <Button size="sm" variant="outline" disabled={busy} onClick={() => setAendern(true)}><Plus className="h-3.5 w-3.5 mr-1" />{kontenListe.length ? 'Weiteres Konto verknüpfen' : 'Werbekonto verknüpfen'}</Button>}
               {aendern && (
                 <div className="[&>div]:sm:ml-0 [&>div]:mt-0">
                   <SuchFeld system="meta" clientId={kunde.id} label="Meta Ads" onPick={o => {
                     setAendern(false);
-                    const alt = meta?.zustand === 'verknuepft' ? meta.objekt : null;
-                    run(async () => { await verknuepfen('meta', kunde.id, o); if (alt && alt.id !== o.id) await loesen('meta', kunde.id, alt); }, 'Meta Ads verknüpft');
+                    // Nur hinzufügen; bestehende Konten bleiben verknüpft.
+                    run(() => verknuepfen('meta', kunde.id, o), 'Werbekonto hinzugefügt');
                   }} />
                 </div>
               )}
@@ -303,9 +317,9 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
               {!profileId && <p className="text-xs text-muted-foreground">Für LeadSharks fehlt noch das Portalkonto dieses Kunden.</p>}
               {profileId && ls.fehler && <Fehler text={ls.fehler} />}
               {profileId && !ls.daten && !ls.fehler && <Skeleton className="h-16 rounded-xl" />}
-              {profileId && ls.daten && ls.daten.kampagnen.length === 0 && <p className="text-xs text-muted-foreground">Diesem Kunden ist noch keine Meta-Kampagne zugewiesen.</p>}
-              {profileId && ls.daten && <LeadSharksSteuerung profileId={profileId} kampagnen={ls.daten.kampagnen} formulare={ls.daten.formulare} neuLaden={ls.laden} />}
-              <Button size="sm" variant="outline" onClick={() => kampagneStart(verknuepftId ? 'kundenkonto' : 'untermarke')}><Plus className="h-3.5 w-3.5 mr-1" />Weitere Kampagne zuweisen</Button>
+              {profileId && !ls.fehler && ls.daten && ls.daten.kampagnen.length === 0 && <p className="text-xs text-muted-foreground">Diesem Kunden ist noch keine Meta-Kampagne zugewiesen.</p>}
+              {profileId && !ls.fehler && ls.daten && <LeadSharksSteuerung profileId={profileId} kampagnen={ls.daten.kampagnen} formulare={ls.daten.formulare} neuLaden={ls.laden} />}
+              {!ls.fehler && <Button size="sm" variant="outline" onClick={lsStart}><Plus className="h-3.5 w-3.5 mr-1" />Weitere Kampagne zuweisen</Button>}
             </div>
           )}
         </div>
