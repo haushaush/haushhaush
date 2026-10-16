@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AlertCircle, AlertTriangle, Copy, ExternalLink, KeyRound, Loader2, Save, ShieldAlert, Bell, ChartNoAxesCombined, LayoutDashboard, Receipt, UserRound, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { RechnungenPflege } from './RechnungenPflege';
 import { PORTAL_URL, erzeugePasswort, portalEinstellungen, portalEinstellungenSetzen, portalZugangZuruecksetzen } from '@/lib/kundenVerknuepfungen';
 
 const BEREICH_NAMEN: Record<string, string> = {
@@ -394,28 +395,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
 
       </>}
       {abschnitt === 'rechnungen' && (
-      <Card>
-        <CardHeader><CardTitle className="text-base">Rechnungen</CardTitle></CardHeader>
-        <CardContent>
-          {(daten?.rechnungen || []).length === 0 ? <p className="text-sm text-muted-foreground">Keine Rechnungen.</p> : (
-            <Table>
-              <TableHeader><TableRow><TableHead>Nummer</TableHead><TableHead>Datum</TableHead><TableHead className="text-right">Betrag</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
-              <TableBody>
-                {(daten.rechnungen as any[]).map((r, i) => (
-                  <TableRow key={r.id || i}>
-                    <TableCell>{r.nummer || '—'}</TableCell>
-                    <TableCell className="tabular-nums">{fmtDatum(r.datum)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{fmtEur(r.betrag)}</TableCell>
-                    <TableCell>{r.status ?? '—'}</TableCell>
-                    <TableCell>{r.file_url && <a href={r.file_url} target="_blank" rel="noreferrer" className="text-primary inline-flex items-center gap-1 text-sm">Öffnen<ExternalLink className="h-3 w-3" /></a>}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
+      <RechnungenPflege profileId={profileId} rechnungen={(daten?.rechnungen || []) as any[]} neuLaden={holen} />
       )}
       {abschnitt === 'benachrichtigungen' && <Platzhalter icon={Bell} text="Noch nicht angebunden. Die Benachrichtigungsadressen liegen im Portal und werden von der Schnittstelle noch nicht geliefert." />}
       {abschnitt === 'kennzahlen' && <>
