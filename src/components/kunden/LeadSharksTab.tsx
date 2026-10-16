@@ -16,6 +16,13 @@ const BEREICH_NAMEN: Record<string, string> = {
   benchmark: 'Marktradar', compliance: 'Compliance', contracts: 'Verträge', kennzahlen: 'Kennzahlen', outreach: 'Outreach',
 };
 
+const KENNZAHLEN_TABS: Record<string, string> = {
+  ueberblick: 'Überblick', telefonie: 'Telefonie', termine: 'Termine', abschluesse: 'Abschlüsse', kampagnen: 'Kampagnen', werbung: 'Werbung',
+};
+const KENNZAHLEN_WERBUNG: Record<string, string> = {
+  leads: 'Leads', clicks: 'Klicks', impressions: 'Impressionen', reach: 'Reichweite', ctr: 'CTR', spend: 'Ausgaben', cpl: 'Kosten je Lead',
+};
+
 const ABSCHNITTE = [
   { id: 'uebersicht', name: 'Übersicht', icon: LayoutDashboard, gruppe: 'Kunde' },
   { id: 'kundendaten', name: 'Kundendaten & Zugang', icon: UserRound, gruppe: 'Kunde' },
@@ -60,6 +67,8 @@ function fehlerText(code: unknown): string {
     unauthorized: 'Das Portal hat die Anfrage abgelehnt (Zugangsschlüssel ungültig).',
     invalid_action: 'Diese Aktion wird von der Portal-Schnittstelle nicht unterstützt.',
     invalid_json: 'Die Anfrage war fehlerhaft aufgebaut.',
+    invalid_kennzahlen: 'Die Kennzahlen-Einstellung wurde in einer unerwarteten Form übermittelt.',
+    kennzahlen_failed: 'Die Kennzahlen-Einstellung konnte nicht gespeichert werden.',
   };
   if (m[c]) return m[c];
   if (/fetch|network|failed/i.test(c)) return 'Das Portal ist gerade nicht erreichbar. Bitte später erneut versuchen.';
