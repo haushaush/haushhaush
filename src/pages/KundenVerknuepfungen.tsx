@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Check, X, Minus, Loader2, ExternalLink, GitMerge } from 'lucide-react';
-import { toast } from 'sonner';
+import { Check, X, Minus, ExternalLink, GitMerge } from 'lucide-react';
 import { BuchhaltungUngeklaert } from '@/components/kunden/BuchhaltungUngeklaert';
+import { VerknuepfungsArbeitsliste, type ArbeitslisteZahlen } from '@/components/kunden/VerknuepfungsArbeitsliste';
 import { cn } from '@/lib/utils';
-import { SYSTEME, ladeStand, zaehle, verknuepfen, verwerfen, type KundeMin, type SystemKey, type SystemStand, type Vorschlag } from '@/lib/kundenVerknuepfungen';
+import { SYSTEME, ladeStand, zaehle, type KundeMin, type SystemKey, type SystemStand, type Vorschlag } from '@/lib/kundenVerknuepfungen';
 
 type Stand = Record<SystemKey, SystemStand>;
 
@@ -19,6 +19,7 @@ export default function KundenVerknuepfungen() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
   const [pruefen, setPruefen] = useState(false);
+  const [zahlen, setZahlen] = useState<ArbeitslisteZahlen | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -48,8 +49,11 @@ export default function KundenVerknuepfungen() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2"><GitMerge className="h-6 w-6 text-primary" />Verknüpfungen prüfen</h1>
-          <p className="text-sm text-muted-foreground mt-1 tabular-nums">
-            {loading ? 'Lade …' : `${zeilen.length} aktive Kunden · ${mitLuecken} mit Lücken · ${vorschlaege.length} Vorschläge offen`}
+          <p className="text-sm mt-1 tabular-nums font-medium">
+            {zahlen ? `${zahlen.zahler} Zahler · ${zahlen.kampagnen} Kampagnen · ${zahlen.ohneZahler} Kunden ohne Zahler · ${zahlen.dubletten} Dubletten` : 'Lade offene Posten …'}
+          </p>
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {loading ? '…' : `${zeilen.length} aktive Kunden · ${mitLuecken} mit Lücken · ${vorschlaege.length} Vorschläge offen`}
           </p>
         </div>
         <div className="flex gap-2">
@@ -58,7 +62,9 @@ export default function KundenVerknuepfungen() {
         </div>
       </div>
 
+      <VerknuepfungsArbeitsliste onZahlen={setZahlen} />
       <BuchhaltungUngeklaert />
+      <h2 className="text-sm font-medium pt-2">Übersicht je Kunde</h2>
       <div className="rounded-2xl bg-card shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -83,7 +89,7 @@ export default function KundenVerknuepfungen() {
       </div>
       <p className="text-xs text-muted-foreground">✓ verknüpft · • Vorschlag offen · ✕ fehlt · – nicht angebunden oder nicht sichtbar</p>
 
-      <VorschlagPruefung open={pruefen} onClose={() => { setPruefen(false); load(); }} liste={vorschlaege} />
+      <VorschlagPruefung open={pruefen} onClose={() => setPruefen(false)} liste={vorschlaege} />
     </div>
   );
 }
@@ -95,57 +101,28 @@ function Symbol({ st }: { st: SystemStand }) {
   return <Minus className="h-4 w-4 text-muted-foreground/40 inline" />;
 }
 
+/** Zeigt alle offenen Vorschläge nur an; übernommen wird einzeln beim Kunden oder in der Arbeitsliste. */
 function VorschlagPruefung({ open, onClose, liste }: { open: boolean; onClose: () => void; liste: { kunde: KundeMin; v: Vorschlag }[] }) {
-  const [i, setI] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [erledigt, setErledigt] = useState({ an: 0, ver: 0 });
-  useEffect(() => { if (open) { setI(0); setErledigt({ an: 0, ver: 0 }); } }, [open]);
-  const cur = liste[i];
   const label = (s: SystemKey) => SYSTEME.find(x => x.key === s)?.label;
-
-  const act = async (art: 'an' | 'ver' | 'skip') => {
-    if (!cur) return;
-    setBusy(true);
-    try {
-      if (art === 'an') await verknuepfen(cur.v.system, cur.kunde.id, cur.v);
-      if (art === 'ver') await verwerfen(cur.v, cur.kunde.id);
-      if (art !== 'skip') setErledigt(e => ({ ...e, [art]: e[art] + 1 }));
-      setI(n => n + 1);
-    } catch (e: any) { toast.error(e.message); }
-    finally { setBusy(false); }
-  };
-
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Vorschläge prüfen</DialogTitle>
-          <DialogDescription className="tabular-nums">
-            {cur ? `${i + 1} von ${liste.length}` : 'Fertig'} · {erledigt.an} übernommen · {erledigt.ver} verworfen
-          </DialogDescription>
+          <DialogTitle>Offene Vorschläge</DialogTitle>
+          <DialogDescription className="tabular-nums">{liste.length} Vorschläge · nur Anzeige – übernehmen beim jeweiligen Kunden</DialogDescription>
         </DialogHeader>
-        {cur ? (
-          <div className="space-y-4">
-            <div className="rounded-xl bg-muted/40 p-4 space-y-1.5">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Kunde</p>
-              <p className="font-semibold">{cur.kunde.name}</p>
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground pt-2">{label(cur.v.system)}</p>
-              <p className="font-medium flex items-center gap-1.5">{cur.v.name || cur.v.id}
-                {cur.v.url && <a href={cur.v.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary"><ExternalLink className="h-3.5 w-3.5" /></a>}
-              </p>
-              <p className="text-xs text-muted-foreground">{cur.v.grund}</p>
-            </div>
-            <div className="flex justify-between gap-2">
-              <Button variant="ghost" size="sm" disabled={busy} onClick={() => act('skip')}>Überspringen</Button>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={busy} onClick={() => act('ver')}>Verwerfen</Button>
-                <Button size="sm" disabled={busy} onClick={() => act('an')}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Übernehmen'}</Button>
+        <div className="divide-y divide-border/50">
+          {liste.map((x, i) => (
+            <div key={i} className="py-2.5 grid grid-cols-[1fr_1fr_auto] gap-3 items-center text-sm">
+              <Link to={`/kunden/${x.kunde.id}?tab=verknuepfungen`} onClick={onClose} className="font-medium hover:text-primary truncate">{x.kunde.name}</Link>
+              <div className="min-w-0">
+                <p className="truncate"><span className="text-xs text-muted-foreground">{label(x.v.system)}: </span>{x.v.name || x.v.id}</p>
+                <p className="text-xs text-muted-foreground truncate">{x.v.grund}</p>
               </div>
+              {x.v.url ? <a href={x.v.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary"><ExternalLink className="h-3.5 w-3.5" /></a> : <span />}
             </div>
-          </div>
-        ) : (
-          <div className="text-sm text-muted-foreground py-4">Alle Vorschläge durchgesehen. <Button size="sm" variant="outline" className="ml-2" onClick={onClose}>Schließen</Button></div>
-        )}
+          ))}
+        </div>
       </DialogContent>
     </Dialog>
   );
