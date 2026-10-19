@@ -44,14 +44,15 @@ export function PerformanceTile({ criterion: key, label, k, config, month, basis
   } else if (key === 'cash_niveau' || key === 'cash_entwicklung') {
     const amount = Number(w.summe_eur || 0);
     headline = w.summe_eur !== undefined ? euro(amount) : 'Noch keine Zahlungen';
-    sub = key === 'cash_niveau' ? `${w.zugeordnet || 0} zugeordnete Zahlungseingänge` : `Referenz: ${w.vormonat_eur !== undefined ? euro(w.vormonat_eur) : 'noch nicht verfügbar'}`;
+    sub = key === 'cash_niveau' ? `${w.zugeordnet || 0} zugeordnete Zahlungseingänge` : `Referenz: ${w.vormonat_eur !== undefined ? euro(w.vormonat_eur) : 'noch nicht verfügbar'}${w.vergleich?.text ? ` · ${w.vergleich.text}` : ''}`;
     outcome = key === 'cash_entwicklung' ? `${w.veraenderung_prozent !== undefined ? `${n(w.veraenderung_prozent)} % Entwicklung` : 'Vergleich noch nicht verfügbar'} · ${points}` : points;
     const value = key === 'cash_niveau' ? amount : Number(w.veraenderung_prozent || 0);
     const stage = boundaries(tiers).find(t => t.value > value && t.points > k.punkte);
     next = stage ? `Nächste Stufe ab ${key === 'cash_niveau' ? euro(stage.value) : `${n(stage.value, 2)} %`} — noch ${euro(Math.max(0, key === 'cash_niveau' ? stage.value - amount : (w.vormonat_eur || 0) * (1 + stage.value / 100) - amount))} Zahlungseingang.` : tiers.length ? 'Höchste Stufe erreicht.' : 'Staffel nicht verfügbar.';
     const fullTarget = key === 'cash_niveau' ? stage?.value ?? boundaries(tiers).at(-1)?.value : w.vormonat_eur;
     progress = fullTarget > 0 ? amount / fullTarget * 100 : 0;
-    if (clock.current && fullTarget > 0 && w.summe_eur !== undefined) { pacing = { actual: amount, target: Math.round(fullTarget * clock.fraction), unit: '€' }; const projected = amount / clock.fraction; const v = key === 'cash_niveau' ? projected : (projected - w.vormonat_eur) / w.vormonat_eur * 100; forecast = `Bei diesem Tempo: ${euro(projected)}${key === 'cash_entwicklung' ? `, ${n(v)} % Entwicklung` : ''}, ${n(forecastPoints(tiers, v))} Punkte.`; }
+    // Reference already cut to the same day span: a pro-rata target would cut it twice.
+    if (clock.current && fullTarget > 0 && w.summe_eur !== undefined && !(key === 'cash_entwicklung' && w.vergleich?.art === 'zeitgleich')) { pacing = { actual: amount, target: Math.round(fullTarget * clock.fraction), unit: '€' }; const projected = amount / clock.fraction; const v = key === 'cash_niveau' ? projected : (projected - w.vormonat_eur) / w.vormonat_eur * 100; forecast = `Bei diesem Tempo: ${euro(projected)}${key === 'cash_entwicklung' ? `, ${n(v)} % Entwicklung` : ''}, ${n(forecastPoints(tiers, v))} Punkte.`; }
   } else {
     headline = `${w.churn_ereignisse || 0} Abgänge`; sub = `${w.zaehlt_als_churn || 0} zählen als Churn`;
     outcome = `${n(w.churn_quote || 0)} % Churn · ${points}`;
