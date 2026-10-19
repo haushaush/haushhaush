@@ -1,73 +1,44 @@
-// Cash Collect (criteria 2/3) from incoming bank transactions on the Qonto main account: NET (amount − raw.vat_amount), no ad-budget deduction.
-// Payers are matched by transaction label to confirmed qonto_client_links; unmatched payers or customers outside the month snapshot go to the
-// clarification list with a reason and a name suggestion (never auto-assigned). Dedupe key: transaktion:<transaction_id>.
+// Cash Collect (criteria 2/3) from paid Qonto invoices: full NET amount (subtotal, else total − VAT); no ad-budget deduction.
+// Invoices without a confirmed customer link, or of customers outside the month snapshot, go to the clarification list.
+// Dedupe key is source-independent (invoice number) so a later lexoffice source cannot double-count the same payment.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { checkCron, cors, currentMonthBerlin, json, requireManager } from "../_shared/bonusClose.ts";
-import { namensTreffer } from "../_shared/namensTreffer.ts";
 
-const HAUPTKONTO_IBAN = "DE57100101236561378569";
 const r2 = (n: number) => Math.round(n * 100) / 100;
-const shift = (m: string, d: number) => { const x = new Date(m + "T00:00:00Z"); x.setUTCMonth(x.getUTCMonth() + d); return x.toISOString().slice(0, 10); };
-const nameKey = (s: string | null | undefined) => (s || "").toLowerCase().replace(/\s+/g, " ").trim();
+const nextMonth = (m: string) => { const d = new Date(m + "T00:00:00Z"); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 10); };
+const squash = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 const num = (v: any) => { const n = Number(v); return isFinite(n) ? n : null; };
-const berlinMonth = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date(iso)).slice(0, 7) + "-01";
-
-async function loadTransactions(admin: any, monat: string) {
-  const out: any[] = [];
-  // a day of margin on both sides, then cut to the Berlin calendar month
-  const von = new Date(new Date(monat + "T00:00:00Z").getTime() - 86400000).toISOString();
-  const bis = new Date(new Date(shift(monat, 1) + "T00:00:00Z").getTime() + 86400000).toISOString();
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await admin.from("qonto_transactions_new").select("transaction_id, label, amount, settled_at, raw")
-      .eq("side", "credit").in("status", ["completed", "settled"]).eq("bank_account_iban", HAUPTKONTO_IBAN)
-      .gte("settled_at", von).lt("settled_at", bis).not("label", "ilike", "%viral connect%")
-      .order("settled_at").range(from, from + 999);
-    if (error) throw new Error("Transaktionen: " + error.message);
-    out.push(...(data || []));
-    if (!data || data.length < 1000) break;
-  }
-  return out.filter((t) => t.settled_at && berlinMonth(t.settled_at) === monat);
-}
 
 async function syncMonth(admin: any, monat: string, mitarbeiter_id: string, snapshotMonat: string) {
-  const [tx, { data: links, error: lErr }, { data: ign, error: gErr }, { data: snap, error: sErr }, { data: clients, error: cErr }] = await Promise.all([
-    loadTransactions(admin, monat),
-    admin.from("qonto_client_links").select("qonto_client_name, client_id").eq("is_confirmed", true).not("client_id", "is", null),
+  const [{ data: inv, error: iErr }, { data: links }, { data: ign }, { data: snap }] = await Promise.all([
+    admin.from("qonto_client_invoices").select("qonto_invoice_id, number, client_name, client_id, total_amount, subtotal_amount, vat_amount, paid_at, raw").eq("status", "paid").gte("paid_at", monat).lt("paid_at", nextMonth(monat)),
+    admin.from("qonto_client_links").select("qonto_client_name, qonto_client_id, client_id").eq("is_confirmed", true).not("client_id", "is", null),
     admin.from("bonus_cash_ignorierte_empfaenger").select("qonto_client_name"),
     admin.from("bonus_kunden_snapshot").select("client_id").eq("monat", snapshotMonat).eq("mitarbeiter_id", mitarbeiter_id),
-    admin.from("clients").select("id, name").is("deleted_at", null),
   ]);
-  const err = lErr || gErr || sErr || cErr;
-  if (err) throw new Error("Stammdaten: " + err.message);
+  if (iErr) throw new Error("Rechnungen: " + iErr.message);
   if (!snap?.length) throw new Error(`Kein Kundensnapshot für ${snapshotMonat}`);
-  const byName = new Map((links || []).map((l: any) => [nameKey(l.qonto_client_name), l.client_id]));
-  const ignored = new Set((ign || []).map((x: any) => nameKey(x.qonto_client_name)));
+  const byName = new Map((links || []).map((l: any) => [l.qonto_client_name.trim().toLowerCase(), l.client_id]));
+  const byQid = new Map((links || []).filter((l: any) => l.qonto_client_id).map((l: any) => [l.qonto_client_id, l.client_id]));
+  const ignored = new Set((ign || []).map((x: any) => x.qonto_client_name.trim().toLowerCase()));
   const inSnap = new Set(snap.map((s: any) => s.client_id));
-  const vorschlag = (label: string) => {
-    let best: any = null;
-    for (const c of clients || []) { const s = namensTreffer(label, c.name); if (s >= 0.5 && (!best || s > best.score)) best = { client_id: c.id, name: c.name, score: r2(s) }; }
-    return best;
-  };
 
   const rows: any[] = [];
-  const vorschlaege = new Map<string, any>();
   let ignoriert = 0;
-  for (const t of tx) {
-    const name = (t.label || "").trim();
-    const key = nameKey(name);
-    if (ignored.has(key)) { ignoriert++; continue; }
-    const brutto = num(t.amount) ?? 0;
-    const vat = num(t.raw?.vat_amount) ?? 0;
-    const netto = r2(brutto - vat);
-    const clientId = byName.get(key) || null;
+  for (const i of inv || []) {
+    const name = (i.client_name || "").trim();
+    if (ignored.has(name.toLowerCase())) { ignoriert++; continue; }
+    const brutto = num(i.raw?.total_amount?.value) ?? num(i.total_amount) ?? 0;
+    const vat = num(i.raw?.vat_amount?.value) ?? num(i.vat_amount) ?? 0;
+    const netto = r2(num(i.subtotal_amount) ?? brutto - vat);
+    const clientId = byQid.get(i.client_id) || byName.get(name.toLowerCase()) || null;
     const ok = !!clientId && inSnap.has(clientId);
-    if (!clientId && !vorschlaege.has(key)) vorschlaege.set(key, vorschlag(name));
     rows.push({
       monat, client_id: clientId, mitarbeiter_id: ok ? mitarbeiter_id : null, betrag: netto,
-      eingang_am: t.settled_at, quelle: "qonto", quelle_id: t.transaction_id,
-      zahlung_schluessel: `transaktion:${t.transaction_id}`,
-      rechnungsnummer: null, empfaenger_name: name || null, brutto: r2(brutto), netto_voll: netto, werbebudget_abzug: 0, abzug_positionen: [],
-      zugeordnet: ok, klaer_grund: ok ? null : !clientId ? "Zahler keinem Kunden zugeordnet" : "Kunde nicht im Kundensnapshot dieses Monats",
+      eingang_am: i.paid_at, quelle: "qonto", quelle_id: i.qonto_invoice_id,
+      zahlung_schluessel: i.number ? `rechnung:${squash(i.number)}` : `qonto:${i.qonto_invoice_id}`,
+      rechnungsnummer: i.number, empfaenger_name: name || null, brutto: r2(brutto), netto_voll: netto, werbebudget_abzug: 0, abzug_positionen: [],
+      zugeordnet: ok, klaer_grund: ok ? null : !clientId ? "Rechnungsempfänger keinem Kunden zugeordnet" : "Kunde nicht im Kundensnapshot dieses Monats",
       updated_at: new Date().toISOString(),
     });
   }
@@ -80,7 +51,6 @@ async function syncMonth(admin: any, monat: string, mitarbeiter_id: string, snap
     const { error } = await admin.from("bonus_cash_collect").upsert(write, { onConflict: "zahlung_schluessel" });
     if (error) throw new Error("Schreiben fehlgeschlagen: " + error.message);
   }
-  // Removes rows of the old invoice logic for this month as well (their keys are not in `keep`).
   const { data: ex } = await admin.from("bonus_cash_collect").select("id, zahlung_schluessel").eq("monat", monat).eq("quelle", "qonto");
   const keep = new Set(write.map((r) => r.zahlung_schluessel));
   const stale = (ex || []).filter((e: any) => !keep.has(e.zahlung_schluessel)).map((e: any) => e.id);
@@ -91,7 +61,7 @@ async function syncMonth(admin: any, monat: string, mitarbeiter_id: string, snap
     monat, rechnungen: write.length, zugeordnet: zu.length, netto_summe: r2(zu.reduce((s, r) => s + r.betrag, 0)),
     netto_voll_summe: r2(zu.reduce((s, r) => s + r.netto_voll, 0)), werbebudget_abgezogen: 0,
     klaerliste_anzahl: kl.length, klaerliste_eur: r2(kl.reduce((s, r) => s + r.betrag, 0)), ignoriert, doppelt_andere_quelle: taken.size,
-    klaerliste: kl.map((r) => ({ empfaenger: r.empfaenger_name, betrag: r.betrag, eingang_am: r.eingang_am, grund: r.klaer_grund, vorschlag: r.client_id ? null : vorschlaege.get(nameKey(r.empfaenger_name)) ?? null })),
+    klaerliste: kl.map((r) => ({ empfaenger: r.empfaenger_name, betrag: r.betrag, grund: r.klaer_grund })),
   };
 }
 
