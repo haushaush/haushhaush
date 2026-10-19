@@ -311,7 +311,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
           return (
             <>
               {kind === 'cash_entwicklung' && k?.wert && (
-                <p className="text-sm tabular-nums">Monat: {eur(k.wert.summe_eur)} · Referenz {k.wert.referenzmonat}: {eur(k.wert.vormonat_eur)} · Veränderung: {k.wert.veraenderung_prozent !== undefined ? `${num(k.wert.veraenderung_prozent)} %` : '–'}</p>
+                <p className="text-sm tabular-nums">Monat: {eur(k.wert.summe_eur)} · Referenz {k.wert.referenzmonat}: {eur(k.wert.vormonat_eur)} · Veränderung: {k.wert.veraenderung_prozent !== undefined ? `${num(k.wert.veraenderung_prozent)} %` : '–'}{k.wert.vergleich?.text ? ` · ${k.wert.vergleich.text}` : ''}</p>
               )}
               <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
                 <h3 className="text-sm font-medium mb-2 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Klärliste – nicht zugeordnete Zahlungen ({offen.length})</h3>
