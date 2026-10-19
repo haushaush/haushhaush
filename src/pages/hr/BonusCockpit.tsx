@@ -10,6 +10,7 @@ import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { CashKlaerliste } from '@/components/bonus/CashKlaerliste';
 import { CheckinKandidaten } from '@/components/bonus/CheckinKandidaten';
 import { PerformanceTile, type Basis } from '@/components/bonus/PerformanceTile';
 import { monthClock } from '@/components/bonus/presentation';
@@ -253,7 +254,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
         const { data: a } = await supabase.from('bonus_survey_antworten').select('*').eq('monat', monat).eq('mitarbeiter_id', maId).in('zuordnung_status', ['automatisch', 'manuell']);
         setData({ toks, ans: (a as any[]) || [] });
       } else if (kind === 'cash_niveau' || kind === 'cash_entwicklung') {
-        const { data: c } = await supabase.from('bonus_cash_collect').select('id, betrag, eingang_am, quelle, zugeordnet, mitarbeiter_id, clients:client_id(name)').eq('monat', monat).or(`mitarbeiter_id.eq.${maId},zugeordnet.eq.false`).order('eingang_am');
+        const { data: c } = await supabase.from('bonus_cash_collect').select('id, betrag, eingang_am, quelle, zugeordnet, mitarbeiter_id, client_id, empfaenger_name, rechnungsnummer, klaer_grund, clients:client_id(name)').eq('monat', monat).or(`mitarbeiter_id.eq.${maId},zugeordnet.eq.false`).order('eingang_am');
         setData({ rows: (c as any[]) || [] });
       } else if (kind === 'churn') {
         const { data: c } = await supabase.from('bonus_churn_events').select('id, typ, zaehlt_als_churn, bemerkung, festgestellt_am, abgang_datum, kuendigungsdatum, letzter_vertragstag, freigabe_status, close_lead_id, close_opportunity_id, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId).order('abgang_datum');
@@ -313,10 +314,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
               {kind === 'cash_entwicklung' && k?.wert && (
                 <p className="text-sm tabular-nums">Monat: {eur(k.wert.summe_eur)} · Referenz {k.wert.referenzmonat}: {eur(k.wert.vormonat_eur)} · Veränderung: {k.wert.veraenderung_prozent !== undefined ? `${num(k.wert.veraenderung_prozent)} %` : '–'}{k.wert.vergleich?.text ? ` · ${k.wert.vergleich.text}` : ''}</p>
               )}
-              <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
-                <h3 className="text-sm font-medium mb-2 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Klärliste – nicht zugeordnete Zahlungen ({offen.length})</h3>
-                <Table head={['Kunde', 'Betrag', 'Eingang', 'Quelle', 'Zugeordnet']} rows={offen.map(row)} empty="Keine offenen Zahlungen." />
-              </div>
+              <CashKlaerliste rows={offen} onChanged={() => setTick(t => t + 1)} />
               <div>
                 <h3 className="text-sm font-medium mb-2">Zugeordnete Zahlungseingänge ({zu.length})</h3>
                 <Table head={['Kunde', 'Betrag', 'Eingang', 'Quelle', 'Zugeordnet']} rows={zu.map(row)} empty="Keine zugeordneten Zahlungen." />
