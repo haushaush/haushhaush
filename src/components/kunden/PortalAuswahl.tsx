@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Loader2, Link2, UserPlus, Copy, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { type SystemKey, type Objekt, type KundeMin, suche, portalAnlegen, erzeugePasswort, PORTAL_URL } from '@/lib/kundenVerknuepfungen';
+import { type SystemKey, type Objekt, type KundeMin, suche, portalAnlegen, erzeugePasswort, PORTAL_URL, auchBeiText } from '@/lib/kundenVerknuepfungen';
 
 export function SuchFeld({ system, clientId, label, onPick }: { system: SystemKey; clientId?: string; label: string; onPick: (o: Objekt) => void }) {
   const [q, setQ] = useState('');
