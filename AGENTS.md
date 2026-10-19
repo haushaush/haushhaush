@@ -2,9 +2,9 @@
 
 Subdirectories may have their own `AGENTS.md` (e.g. `supabase/functions/`); read it before changing files there.
 
-- Homepage cards use session-scoped clients/projects, deadline-ranked projects and latest client/project contract end. Why: actionable work.
+- Homepage cards: session-scoped clients/projects, deadline-ranked, latest contract end. Why: actionable work.
 
-- Navigation changes keep routes and permission checks. Why: no broken links.
+- Navigation changes keep routes/permissions. Why: no broken links.
 - Meta token: resolve via `_shared/meta-config.ts` (secret only); billing functions use `META_BILLING_ACCESS_TOKEN`. Why: one resolver.
 - Bonus: `bonus-berechnung` owns scoring, tiers and the exact call rows supplied to tiles/lists; frontend presentation helpers only calculate pacing and labelled forecasts. Completeness stays separate; approval uses a locked version-checked RPC requiring audited acknowledgement. Why: honest progress without changing payroll or divergent call lists.
 - Bonus customer base: Close is the source of truth for customers, Qonto for payments. `bonus-kunden-sync` mirrors Close leads with client status (hourly) into `bonus_kunden_aktuell`, links each lead once to a client (stored link → exact name → create; manual relink sticks), writes `clients.kundenstatus` only from Close and downgrades every CRM-betreut client without a betreut Close lead on each run (logged in `bonus_sync_log.details`); all bonus syncs use only the Haush-Haush Close key with no fallback account, and grows the current month's snapshot from counted rows. `bonus-checkins-sync` resolves checkins only via that list; checkins on non-client leads go to `bonus_checkin_kandidaten` and never count until promoted. `bonus-churn-sync` is the only automated writer of Close-sourced `bonus_churn_events` (insert-only). Why: the CRM must mirror Close, and only humans may turn a lead into a counted customer.
@@ -15,7 +15,7 @@ Subdirectories may have their own `AGENTS.md` (e.g. `supabase/functions/`); read
 - Project resets share the active Close source with runtimes, use signed previews and one atomic RPC, archive rather than delete, and exclude archived projects from operational reads. Why: keep history, no partial resets.
 - Customer links: `src/lib/kundenVerknuepfungen.ts` owns status, reasoned manual suggestions and link/unlink writes; searches read full objects, not links; dismissals in `kunde_link_vorschlag_verworfen`. Never add Slack/Pipedrive to customer `SYSTEME`. Why: views must agree.
 - LeadSharks sections share settings/save/reset state; allowlist changed visible contract fields, contacts read-only. Why: preserve edits and hidden values.
-- Ad-budget mapping: `werbebudget_zuordnung` maps a customer to a whole campaign or to adsets of a shared campaign on our own Meta accounts (one owner per object, campaign-or-adsets enforced by trigger, never auto-set); edited only in the customer Verknüpfungen tab; the Finanzen tab is overview-only. `kunde_meta_accounts` is many-to-many; never assume one client per account. Why: spend per customer must be attributable without splitting or estimating.
-- Credentials only from secrets, never tables.
-- Bookkeeping: one source per customer via Close "Marke" → `buchhaltung_quelle`; unknown = ungeklärt, never default or add both; lexoffice read-only. Why: two companies.
+- Ad-budget mapping: `werbebudget_zuordnung` maps a customer to a whole campaign or to adsets of a shared campaign on our own Meta accounts (one owner per object, campaign-or-adsets enforced by trigger, never auto-set); edited only in the Verknüpfungen tab; a mapping derives its `kunde_meta_accounts` row (dropped with the last one); customer-owned accounts link separately, reporting only; the Finanzen tab is overview-only. `kunde_meta_accounts` is many-to-many; never assume one client per account. Why: attributable spend, no splitting or estimates.
+- Credentials: secrets only.
+- Bookkeeping: one source/customer via Close "Marke" → `buchhaltung_quelle`; unknown = ungeklärt, never default or add both; lexoffice read-only. Why: two companies.
 - Finance invoices: `src/lib/rechnungen.ts` alone maps Qonto/lexoffice invoice fields and statuses (unknown → "sonstige", shown raw). Why: consistency.

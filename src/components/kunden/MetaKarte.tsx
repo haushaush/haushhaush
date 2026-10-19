@@ -1,5 +1,5 @@
-// Karte „Meta" im Verknüpfungen-Tab: bündelt Werbekonto, Werbebudget-Zuordnung und LeadSharks in einem Stufendialog.
-// Verwendet ausschließlich vorhandene Logik (kundenVerknuepfungen, werbebudgetZuordnung, LeadSharksMeta).
+// Karte „Meta" im Verknüpfungen-Tab. Kern ist die Kampagnen-/Anzeigengruppen-Zuordnung auf unseren Untermarken;
+// die Kontoverknüpfung entsteht daraus automatisch. Eigene Kundenkonten (nur Reporting) sind getrennt.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useMetaAds } from '@/contexts/MetaAdsContext';
@@ -8,20 +8,19 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { AlertTriangle, Check, ChevronRight, ExternalLink, Loader2, Plus, Search, X } from 'lucide-react';
+import { AlertTriangle, Check, ChevronRight, ExternalLink, Plus, X } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { type SystemKey, type SystemStand, type KundeMin, type Objekt, verknuepfen, verwerfen, loesen, portalMeta, auchBeiText } from '@/lib/kundenVerknuepfungen';
+import { type SystemKey, type SystemStand, type KundeMin, type Objekt, verknuepfen, verwerfen, loesen, portalMeta } from '@/lib/kundenVerknuepfungen';
 import { ladeUntermarken, STATUS_LABEL, type Untermarke } from '@/lib/werbebudgetKonten';
 import { KampagneZeile, useWerbebudgetZuordnung, type Zuo, type ZuoKampagne } from './werbebudgetZuordnung';
-import { Kachel, LeadSharksSteuerung, ZuweisenAssistent, ZuordnungErgebnis, fehlerMeldung, type LeadTyp } from './LeadSharksMeta';
-import { PortalAuswahl, SuchFeld } from './PortalAuswahl';
+import { LeadSharksSteuerung, ZuweisenAssistent, ZuordnungErgebnis, fehlerMeldung, type LeadTyp } from './LeadSharksMeta';
+import { SuchFeld } from './PortalAuswahl';
 
-type Weg = 'untermarke' | 'kundenkonto';
-type SnapKampagne = { campaign_id: string; campaign_name: string | null; status: string | null; daily_budget: any };
 const ohneAct = (id: string) => id.replace(/^act_/, '');
 const eur = (v: any) => v == null ? '—' : `€${Number(v).toLocaleString('de-DE', { maximumFractionDigits: 2 })}`;
+const actUrl = (id: string) => `https://business.facebook.com/adsmanager/manage/campaigns?act=${ohneAct(id)}`;
 
 function useLeadSharks(profileId: string | null) {
   const [daten, setDaten] = useState<{ kampagnen: any[]; formulare: any[]; lead_typen: LeadTyp[] } | null>(null);
@@ -53,21 +52,20 @@ function useBudgetstand(clientId: string, aktiv: boolean) {
   return { budget, fehler };
 }
 
-/** Leserechte: werbebudget_zuordnung nur Admin oder finanzen.view, meta_campaign_snapshot nur Admin. */
+/** werbebudget_zuordnung nur Admin oder finanzen.view. */
 function useMetaRechte() {
   const { isAdmin, hasPermission, loading } = usePermissions();
-  return { loading, budget: isAdmin || hasPermission('finanzen.view'), snapshot: isAdmin };
+  return { loading, budget: isAdmin || hasPermission('finanzen.view') };
 }
 
-type KundenKonto = { meta_account_id: string; meta_account_name: string | null; match_type: string | null; matched_at: string | null };
-/** Alle verknüpften Werbekonten dieses Kunden (ein Kunde kann mehrere haben). */
+type KundenKonto = { meta_account_id: string; meta_account_name: string | null; match_type: string | null };
 function useKundenKonten(clientId: string) {
   const [konten, setKonten] = useState<KundenKonto[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const laden = useCallback(async () => {
     setFehler(null);
     try {
-      const { data, error } = await supabase.from('kunde_meta_accounts').select('meta_account_id, meta_account_name, match_type, matched_at')
+      const { data, error } = await supabase.from('kunde_meta_accounts').select('meta_account_id, meta_account_name, match_type')
         .eq('client_id', clientId).order('matched_at', { ascending: false });
       if (error) { setFehler(`Werbekonten konnten nicht geladen werden: ${error.message}`); return; }
       setKonten((data || []).map((r: any) => ({ ...r, meta_account_id: String(r.meta_account_id) })));
@@ -77,6 +75,14 @@ function useKundenKonten(clientId: string) {
   return { konten, fehler, laden };
 }
 
+/** Unsere Untermarken-Konten (aktiv, < 30 Tage synchronisiert). */
+function useUntermarken() {
+  const [liste, setListe] = useState<Untermarke[] | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+  useEffect(() => { ladeUntermarken(null).then(setListe, (e: Error) => { setFehler(e.message); setListe([]); }); }, []);
+  return { liste, fehler };
+}
+
 function Status({ ok, text }: { ok: boolean; text: string }) {
   return <span className={cn('text-xs font-medium flex items-center gap-1.5', ok ? 'text-success' : 'text-muted-foreground')}><span className="h-1.5 w-1.5 rounded-full bg-current" />{text}</span>;
 }
@@ -84,11 +90,11 @@ function Fehler({ text }: { text: string }) {
   return <p className="text-xs text-destructive flex items-start gap-1.5"><AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />{text}</p>;
 }
 
-function BudgetStand({ budget, fehler, recht }: { budget: any[] | null; fehler: string | null; recht: boolean }) {
+function BudgetStand({ budget, fehler }: { budget: any[] | null; fehler: string | null }) {
   return (
     <div className="space-y-2">
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Budgetstand dieses Kunden</p>
-      {!recht ? <p className="text-xs text-muted-foreground">Keine Berechtigung</p> : fehler ? <Fehler text={fehler} /> : <>
+      {fehler ? <Fehler text={fehler} /> : <>
         {!budget && <Skeleton className="h-16 rounded-xl" />}
         {budget?.length === 0 && <p className="text-xs text-muted-foreground">Kein Budgetstand vorhanden.</p>}
         {budget?.map((b, i) => {
@@ -112,7 +118,65 @@ function BudgetStand({ budget, fehler, recht }: { budget: any[] | null; fehler: 
   );
 }
 
-type DialogStart = { stufe: 1 | 2 | 3; weg?: Weg; konto?: Untermarke | null } | null;
+type SuchKampagne = ZuoKampagne & { konto: Untermarke };
+
+/** Lädt live alle Kampagnen der angegebenen Konten (mit Ausgaben der letzten 7 Tage). */
+function useKampagnen(konten: Untermarke[] | null) {
+  const { callMeta } = useMetaAds();
+  const [liste, setListe] = useState<SuchKampagne[] | null>(null);
+  const [fehler, setFehler] = useState<string[]>([]);
+  useEffect(() => {
+    if (!konten) return;
+    let ab = false;
+    setListe(null); setFehler([]);
+    Promise.all(konten.map(k => callMeta<any>(`/${k.meta_account_id}/campaigns`, { fields: 'id,name,effective_status,daily_budget,insights.date_preset(last_7d){spend}', limit: 500 })
+      .then(r => ({ k, data: (r?.data || []) as ZuoKampagne[], err: null as string | null }), (e: Error) => ({ k, data: [] as ZuoKampagne[], err: `${k.name || k.meta_account_id}: ${e?.message || 'Fehler'}` }))))
+      .then(rs => {
+        if (ab) return;
+        setFehler(rs.map(r => r.err).filter(Boolean) as string[]);
+        const alle = rs.flatMap(r => r.data.map(c => ({ ...c, konto: r.k })));
+        // Aktive zuerst, dann nach Ausgaben 7 Tage.
+        alle.sort((a, b) => Number(b.effective_status === 'ACTIVE') - Number(a.effective_status === 'ACTIVE')
+          || Number(b.insights?.data?.[0]?.spend || 0) - Number(a.insights?.data?.[0]?.spend || 0) || a.name.localeCompare(b.name));
+        setListe(alle);
+      });
+    return () => { ab = true; };
+  }, [konten, callMeta]);
+  return { liste, fehler, callMeta };
+}
+
+const MAX_ZEILEN = 60;
+
+/** Suchliste über alle Kampagnen; Konto ist nur Filter. */
+function KampagnenSuche({ konten, render }: { konten: Untermarke[] | null; render: (c: SuchKampagne) => React.ReactNode }) {
+  const k = useKampagnen(konten);
+  const [q, setQ] = useState('');
+  const [konto, setKonto] = useState('');
+  const treffer = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return (k.liste || []).filter(c => (!konto || c.konto.meta_account_id === konto) && (!s || `${c.name} ${c.id} ${c.konto.name || ''}`.toLowerCase().includes(s)));
+  }, [k.liste, q, konto]);
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Kampagne suchen…" className="h-9 bg-muted/50 border-0" />
+        <select value={konto} onChange={e => setKonto(e.target.value)} className="h-9 rounded-md bg-muted/50 px-2 text-sm sm:w-56" aria-label="Untermarke filtern">
+          <option value="">Alle Untermarken</option>
+          {(konten || []).map(u => <option key={u.meta_account_id} value={u.meta_account_id}>{u.name || u.meta_account_id}</option>)}
+        </select>
+      </div>
+      {k.fehler.length > 0 && <Fehler text={`Kampagnen einzelner Konten konnten nicht geladen werden – ${k.fehler.join(' · ')}`} />}
+      {!k.liste && <div className="space-y-2">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-12 rounded-xl" />)}</div>}
+      {k.liste && treffer.length === 0 && <p className="text-sm text-muted-foreground">Keine Kampagnen gefunden.</p>}
+      {treffer.length > 0 && (
+        <div className="divide-y divide-border/40 rounded-xl bg-muted/20">
+          {treffer.slice(0, MAX_ZEILEN).map(c => <div key={c.id}>{render(c)}</div>)}
+        </div>
+      )}
+      {treffer.length > MAX_ZEILEN && <p className="text-[11px] text-muted-foreground">{treffer.length - MAX_ZEILEN} weitere – Suche eingrenzen.</p>}
+    </div>
+  );
+}
 
 export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand: Record<SystemKey, SystemStand>; onChanged: () => void }) {
   const wb = useWerbebudgetZuordnung(kunde.id);
@@ -120,44 +184,26 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
   const ls = useLeadSharks(profileId);
   const rechte = useMetaRechte();
   const kk = useKundenKonten(kunde.id);
-  const [start, setStart] = useState<DialogStart>(null);
-  const [auf, setAuf] = useState<Record<string, boolean>>({});
+  const um = useUntermarken();
+  const [verknuepfenOffen, setVerknuepfenOffen] = useState(false);
+  const [lsOffen, setLsOffen] = useState(false);
+  const [lsAuf, setLsAuf] = useState(false);
+  const [eigenSuche, setEigenSuche] = useState(false);
   const [loeseZiel, setLoeseZiel] = useState<Objekt | null>(null);
-  const [aendern, setAendern] = useState(false);
-  const [geteilt, setGeteilt] = useState<Objekt | null>(null);
+  const [loeseZuo, setLoeseZuo] = useState<Zuo | null>(null);
   const [busy, setBusy] = useState(false);
-  const bs = useBudgetstand(kunde.id, !!auf.budget && rechte.budget);
 
   const meta = stand.meta;
+  const unsereIds = useMemo(() => new Set((um.liste || []).map(u => u.meta_account_id)), [um.liste]);
   const eigene = wb.alle.filter(z => z.client_id === kunde.id);
-  const nK = eigene.filter(z => z.typ === 'kampagne').length, nA = eigene.filter(z => z.typ === 'adset').length;
-  const marken = [...new Set(eigene.map(z => z.untermarke || z.meta_account_id))];
+  const zuoKonten = new Set(eigene.map(z => z.meta_account_id));
   const gruppen = eigene.reduce<Record<string, Zuo[]>>((acc, z) => { (acc[z.untermarke || z.meta_account_id] ||= []).push(z); return acc; }, {});
   const kontenListe = kk.konten || [];
-  const kontoIds = kontenListe.map(k => k.meta_account_id);
-
-  const budgetStatus = rechte.loading ? 'Lädt …' : !rechte.budget ? 'Keine Berechtigung' : wb.fehler ? 'Fehler' : eigene.length ? 'Zugeordnet' : 'Nicht zugeordnet';
-  const budgetText = rechte.loading ? '…' : !rechte.budget ? 'Für dein Konto nicht sichtbar' : wb.fehler ? wb.fehler
-    : eigene.length ? `${nK} ${nK === 1 ? 'Kampagne' : 'Kampagnen'}, ${nA} ${nA === 1 ? 'Anzeigengruppe' : 'Anzeigengruppen'} · ${marken.join(', ')}` : 'Keine Kampagne auf einer Untermarke zugeordnet';
-
-  const kontoStatus = kk.fehler || meta?.zustand === 'keine_berechtigung' ? 'Fehler' : !kk.konten ? 'Lädt …' : kontenListe.length ? 'Verknüpft' : meta?.zustand === 'vorschlag' ? 'Vorschlag' : 'Nicht verknüpft';
-  const kontoText = kk.fehler ? kk.fehler : meta?.zustand === 'keine_berechtigung' ? 'Werbekonten konnten nicht geladen werden' : !kk.konten ? '…'
-    : kontenListe.length === 1 ? (kontenListe[0].meta_account_name || kontenListe[0].meta_account_id)
-    : kontenListe.length > 1 ? `${kontenListe.length} Werbekonten`
-    : meta?.zustand === 'vorschlag' ? `${meta.vorschlag.name || meta.vorschlag.id} · ${meta.vorschlag.grund}` : 'Kein Kundenkonto zugeordnet';
-
-  const zeilen: { key: string; label: string; ok: boolean; status: string; text: string }[] = [
-    { key: 'konto', label: 'Werbekonto', ok: kontenListe.length > 0, status: kontoStatus, text: kontoText },
-    { key: 'budget', label: 'Werbebudget', ok: rechte.budget && !wb.fehler && eigene.length > 0, status: budgetStatus, text: budgetText },
-    {
-      key: 'ls', label: 'LeadSharks', ok: !!profileId && !ls.fehler && !!ls.daten?.kampagnen.length,
-      status: !profileId ? 'Portalkonto fehlt' : ls.fehler ? 'Fehler' : ls.daten ? (ls.daten.kampagnen.length ? 'Eingerichtet' : 'Nicht eingerichtet') : 'Lädt …',
-      text: !profileId ? 'Portalkonto fehlt' : ls.fehler ? ls.fehler : ls.daten ? `${ls.daten.kampagnen.length} Kampagnen, ${ls.daten.formulare.length} Formulare` : '…',
-    },
-  ];
-  const eingerichtet = kontenListe.length > 0 || (rechte.budget && eigene.length > 0) || !!ls.daten?.kampagnen.length;
-  // Solange Rechte oder Konten laden, weder „nicht eingerichtet" noch „Keine Berechtigung" behaupten.
-  const laedt = !eingerichtet && (rechte.loading || (!kk.konten && !kk.fehler) || (rechte.budget && !wb.geladen && !wb.fehler));
+  // Eigenes Kundenkonto = verknüpftes Konto, das keines unserer Untermarken-Konten ist und keine Zuordnung trägt.
+  const eigeneKonten = kontenListe.filter(k => !unsereIds.has(k.meta_account_id) && !zuoKonten.has(k.meta_account_id));
+  // Untermarken-Konten ohne Kampagnenzuordnung (Altbestand) – sichtbar, damit sie gelöst oder ergänzt werden können.
+  const ohneKampagne = kontenListe.filter(k => unsereIds.has(k.meta_account_id) && !zuoKonten.has(k.meta_account_id));
+  const nK = eigene.filter(z => z.typ === 'kampagne').length, nA = eigene.filter(z => z.typ === 'adset').length;
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);
@@ -165,23 +211,18 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
     catch (e: any) { toast.error(e.message || 'Fehlgeschlagen'); }
     finally { setBusy(false); }
   };
+  const zuoLoesen = async (z: Zuo) => { await wb.loesen(z); kk.laden(); onChanged(); };
 
-  const kampagneStart = (weg: Weg) => {
-    const ids = [...new Set(eigene.map(z => z.meta_account_id))];
-    if (weg === 'untermarke' && ids.length === 1) return setStart({ stufe: 3, weg, konto: { meta_account_id: ids[0], name: eigene.find(z => z.meta_account_id === ids[0])?.untermarke ?? null } });
-    setStart({ stufe: 3, weg, konto: null });
-  };
-  // LeadSharks: bei der Kontowahl beginnen, vorausgewählt das Konto der bereits zugewiesenen Kampagnen.
-  const lsStart = () => {
-    const k = (ls.daten?.kampagnen || []).find((c: any) => c.meta_ad_account_id);
-    if (!k) return setStart({ stufe: 2, weg: kontenListe.length ? 'kundenkonto' : 'untermarke', konto: null });
-    const id = `act_${ohneAct(String(k.meta_ad_account_id))}`;
-    const weg: Weg = kontoIds.includes(id) ? 'kundenkonto' : 'untermarke';
-    setStart({ stufe: 2, weg, konto: { meta_account_id: id, name: k.meta_ad_account_name ?? null } });
-  };
+  const lsKampagnen = ls.daten?.kampagnen.length ?? 0;
+  const laedt = rechte.loading || !um.liste || (!kk.konten && !kk.fehler) || (rechte.budget && !wb.geladen);
 
-  const dialog = start && <MetaDialog kunde={kunde} stand={stand} wb={wb} profileId={profileId} ls={ls} rechte={rechte} start={start} kundenKonten={kontenListe}
-    onChanged={() => { onChanged(); kk.laden(); }} onClose={() => { setStart(null); wb.ladeZuo(); ls.laden(); kk.laden(); }} />;
+  // Statuszeile Werbebudget ist Ergebnis der Kampagnen-Zuordnung, kein eigener Konfigurationspunkt.
+  const budgetZeile = !rechte.budget ? <span className="text-xs text-muted-foreground">Werbebudget-Zuordnung für dein Konto nicht sichtbar</span>
+    : wb.fehler ? <Fehler text={wb.fehler} />
+    : eigene.length ? <Status ok text={[nK && `${nK} ${nK === 1 ? 'Kampagne' : 'Kampagnen'}`, nA && `${nA} ${nA === 1 ? 'Anzeigengruppe' : 'Anzeigengruppen'}`].filter(Boolean).join(', ') + ' zugeordnet'} />
+    : <span className="text-xs text-muted-foreground">Kein Werbebudget zuordenbar — <button className="underline hover:text-primary" onClick={() => setVerknuepfenOffen(true)}>Kampagne verknüpfen</button></span>;
+
+  const bs = useBudgetstand(kunde.id, rechte.budget && eigene.length > 0);
 
   if (laedt) return (
     <div className="px-5 py-4 space-y-3">
@@ -190,155 +231,119 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
     </div>
   );
 
-  if (!eingerichtet) return (
-    <div className="px-5 py-4 space-y-3">
+  return (
+    <div className="px-5 py-4 space-y-4">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="space-y-1">
           <p className="text-sm font-medium">Meta</p>
-          <p className="text-[11px] text-muted-foreground">Werbekonto, Werbebudget und LeadSharks</p>
+          {budgetZeile}
         </div>
-        <Button size="sm" variant="outline" onClick={() => setStart({ stufe: 1 })}>Einrichten</Button>
+        {rechte.budget && !wb.fehler && <Button size="sm" variant="outline" onClick={() => setVerknuepfenOffen(true)}><Plus className="h-3.5 w-3.5 mr-1" />Kampagne verknüpfen</Button>}
       </div>
-      <div className="space-y-1.5">
-        {zeilen.map(z => (
-          <div key={z.label} className="grid grid-cols-1 sm:grid-cols-[140px_130px_1fr_auto] gap-1 sm:gap-4 sm:items-center text-sm">
-            <span className="text-xs text-muted-foreground">{z.label}</span>
-            <Status ok={z.ok} text={z.status} />
-            <span className="text-xs truncate">{z.text}</span>
-            {z.key === 'konto' && meta?.zustand === 'vorschlag' ? (
-              <div className="flex gap-2">
-                <Button size="sm" disabled={busy} onClick={() => run(() => verknuepfen('meta', kunde.id, meta.vorschlag), 'Meta Ads verknüpft')}><Check className="h-3.5 w-3.5 mr-1" />Übernehmen</Button>
-                <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => verwerfen(meta.vorschlag, kunde.id), 'Vorschlag verworfen')}>Verwerfen</Button>
-              </div>
-            ) : <span />}
+      {um.fehler && <Fehler text={um.fehler} />}
+      {kk.fehler && <Fehler text={kk.fehler} />}
+
+      {/* Untermarken-Zuordnungen */}
+      {rechte.budget && !wb.fehler && (Object.keys(gruppen).length > 0 || ohneKampagne.length > 0) && (
+        <div className="space-y-3">
+          {Object.entries(gruppen).map(([marke, zs]) => (
+            <div key={marke}>
+              <p className="text-xs font-medium mb-1">{marke}</p>
+              {zs.map(z => (
+                <div key={z.id} className="flex items-center gap-3 text-sm py-1 pl-3">
+                  <span className="text-[11px] text-muted-foreground w-28 shrink-0">{z.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'}</span>
+                  <span className="truncate flex-1 min-w-0">{z.objekt_name || z.objekt_id}</span>
+                  <button disabled={wb.busy === z.id} onClick={() => setLoeseZuo(z)} title="Zuordnung lösen" className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              ))}
+            </div>
+          ))}
+          {ohneKampagne.map(k => (
+            <div key={k.meta_account_id} className="rounded-lg bg-muted/40 px-3 py-2 text-xs flex flex-wrap items-center gap-2">
+              <span className="flex-1 min-w-0"><span className="font-medium">{k.meta_account_name || k.meta_account_id}</span> ist verknüpft, aber ohne Kampagne – darüber ist kein Budget zuordenbar.</span>
+              <Button size="sm" variant="ghost" className="h-7" onClick={() => setVerknuepfenOffen(true)}>Kampagne verknüpfen</Button>
+              <Button size="sm" variant="ghost" className="h-7 text-muted-foreground hover:text-destructive" disabled={busy} onClick={() => setLoeseZiel({ id: k.meta_account_id, name: k.meta_account_name } as Objekt)}>Lösen</Button>
+            </div>
+          ))}
+          {eigene.length > 0 && <BudgetStand budget={bs.budget} fehler={bs.fehler} />}
+        </div>
+      )}
+
+      {/* Eigenes Werbekonto des Kunden – nur Reporting */}
+      <div className="rounded-xl border border-dashed border-border p-3 space-y-2">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium">Eigenes Werbekonto des Kunden</p>
+            <p className="text-[11px] text-muted-foreground">Nur für Reporting – der Kunde zahlt Meta direkt, hierüber wird kein Werbebudget abgerechnet.</p>
+          </div>
+          {!eigenSuche && <Button size="sm" variant="ghost" onClick={() => setEigenSuche(true)}><Plus className="h-3.5 w-3.5 mr-1" />Verknüpfen</Button>}
+        </div>
+        {eigeneKonten.map(k => (
+          <div key={k.meta_account_id} className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-medium">{k.meta_account_name || '(ohne Namen)'}</span>
+            <span className="text-[11px] text-muted-foreground tabular-nums">{k.meta_account_id}</span>
+            <a href={actUrl(k.meta_account_id)} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary" title="In Meta öffnen"><ExternalLink className="h-3.5 w-3.5" /></a>
+            <Button size="sm" variant="ghost" disabled={busy} className="ml-auto text-muted-foreground hover:text-destructive" onClick={() => setLoeseZiel({ id: k.meta_account_id, name: k.meta_account_name } as Objekt)}>Verknüpfung lösen</Button>
           </div>
         ))}
+        {meta?.zustand === 'vorschlag' && !unsereIds.has(meta.vorschlag.id) && (
+          <div className="rounded-lg border border-primary/40 bg-primary/5 p-2.5 text-sm flex flex-wrap items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-xs">Vorschlag: {meta.vorschlag.name || meta.vorschlag.id}</p>
+              <p className="text-[11px] text-muted-foreground">{meta.vorschlag.grund}</p>
+            </div>
+            <Button size="sm" disabled={busy} onClick={() => run(() => verknuepfen('meta', kunde.id, meta.vorschlag), 'Eigenes Werbekonto verknüpft')}><Check className="h-3.5 w-3.5 mr-1" />Übernehmen</Button>
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => verwerfen(meta.vorschlag, kunde.id), 'Vorschlag verworfen')}>Verwerfen</Button>
+          </div>
+        )}
+        {eigenSuche && (
+          <div className="[&>div]:sm:ml-0 [&>div]:mt-0">
+            <SuchFeld system="meta" clientId={kunde.id} label="Meta Ads" onPick={o => {
+              setEigenSuche(false);
+              if (unsereIds.has(o.id)) { toast.error(`„${o.name || o.id}“ ist eine unserer Untermarken – bitte über „Kampagne verknüpfen“ zuordnen.`); return; }
+              run(() => verknuepfen('meta', kunde.id, o), 'Eigenes Werbekonto verknüpft');
+            }} />
+          </div>
+        )}
       </div>
-      {dialog}
-    </div>
-  );
 
-  const zeile = (k: string) => zeilen.find(z => z.key === k)!;
-  const Kopf = ({ k }: { k: string }) => {
-    const z = zeile(k);
-    return (
-      <button onClick={() => setAuf(a => ({ ...a, [k]: !a[k] }))} aria-expanded={!!auf[k]}
-        className="w-full grid grid-cols-[16px_1fr] sm:grid-cols-[16px_124px_130px_1fr] gap-1 sm:gap-4 items-center text-left py-2 hover:text-primary">
-        <ChevronRight className={cn('h-4 w-4 transition-transform', auf[k] && 'rotate-90')} />
-        <span className="text-xs text-muted-foreground">{z.label}</span>
-        <span className="hidden sm:flex"><Status ok={z.ok} text={z.status} /></span>
-        <span className="hidden sm:block text-xs truncate text-foreground">{z.text}</span>
-      </button>
-    );
-  };
-
-  return (
-    <div className="px-5 py-4 space-y-2">
+      {/* LeadSharks – unverändert */}
       <div>
-        <p className="text-sm font-medium">Meta</p>
-        <p className="text-[11px] text-muted-foreground">Werbekonto, Werbebudget und LeadSharks</p>
+        <button onClick={() => setLsAuf(v => !v)} aria-expanded={lsAuf}
+          className="w-full grid grid-cols-[16px_1fr] sm:grid-cols-[16px_124px_130px_1fr] gap-1 sm:gap-4 items-center text-left py-1 hover:text-primary">
+          <ChevronRight className={cn('h-4 w-4 transition-transform', lsAuf && 'rotate-90')} />
+          <span className="text-xs text-muted-foreground">LeadSharks</span>
+          <span className="hidden sm:flex"><Status ok={!!profileId && !ls.fehler && lsKampagnen > 0}
+            text={!profileId ? 'Portalkonto fehlt' : ls.fehler ? 'Fehler' : ls.daten ? (lsKampagnen ? 'Eingerichtet' : 'Nicht eingerichtet') : 'Lädt …'} /></span>
+          <span className="hidden sm:block text-xs truncate text-foreground">{!profileId ? 'Portalkonto fehlt' : ls.fehler ? ls.fehler : ls.daten ? `${lsKampagnen} Kampagnen, ${ls.daten.formulare.length} Formulare` : '…'}</span>
+        </button>
+        {lsAuf && (
+          <div className="pl-6 pt-2 space-y-3">
+            {!profileId && <p className="text-xs text-muted-foreground">Für LeadSharks fehlt noch das Portalkonto dieses Kunden.</p>}
+            {profileId && ls.fehler && <Fehler text={ls.fehler} />}
+            {profileId && !ls.daten && !ls.fehler && <Skeleton className="h-16 rounded-xl" />}
+            {profileId && !ls.fehler && ls.daten && lsKampagnen === 0 && <p className="text-xs text-muted-foreground">Diesem Kunden ist noch keine Meta-Kampagne zugewiesen.</p>}
+            {profileId && !ls.fehler && ls.daten && <LeadSharksSteuerung profileId={profileId} kampagnen={ls.daten.kampagnen} formulare={ls.daten.formulare} neuLaden={ls.laden} />}
+            {profileId && !ls.fehler && ls.daten && <Button size="sm" variant="outline" onClick={() => setLsOffen(true)}><Plus className="h-3.5 w-3.5 mr-1" />Weitere Kampagne zuweisen</Button>}
+          </div>
+        )}
       </div>
-      <div className="divide-y divide-border/40">
-        {/* Werbekonto */}
-        <div>
-          <Kopf k="konto" />
-          {auf.konto && (
-            <div className="pl-6 pb-3 space-y-3">
-              {kk.fehler && <Fehler text={kk.fehler} />}
-              {kontenListe.map(k => {
-                const o: Objekt = { id: k.meta_account_id, name: k.meta_account_name, url: `https://business.facebook.com/adsmanager/manage/campaigns?act=${ohneAct(k.meta_account_id)}` } as Objekt;
-                return (
-                  <div key={k.meta_account_id} className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="font-medium">{k.meta_account_name || '(ohne Namen)'}</span>
-                    <span className="text-[11px] text-muted-foreground tabular-nums">{k.meta_account_id}</span>
-                    <a href={o.url!} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary" title="In Meta öffnen"><ExternalLink className="h-3.5 w-3.5" /></a>
-                    <Button size="sm" variant="ghost" disabled={busy} className="ml-auto text-muted-foreground hover:text-destructive" onClick={() => setLoeseZiel(o)}>Verknüpfung lösen</Button>
-                  </div>
-                );
-              })}
-              {meta?.zustand === 'vorschlag' && kontenListe.length === 0 && (
-                <div className="rounded-xl border border-primary/40 bg-primary/5 p-3 text-sm flex flex-wrap items-center gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium">Vorschlag: {meta.vorschlag.name || meta.vorschlag.id}</p>
-                    <p className="text-xs text-muted-foreground">{meta.vorschlag.grund}</p>
-                  </div>
-                  <Button size="sm" disabled={busy} onClick={() => run(() => verknuepfen('meta', kunde.id, meta.vorschlag), 'Meta Ads verknüpft')}><Check className="h-3.5 w-3.5 mr-1" />Übernehmen</Button>
-                  <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => verwerfen(meta.vorschlag, kunde.id), 'Vorschlag verworfen')}>Verwerfen</Button>
-                </div>
-              )}
-              {!aendern && <Button size="sm" variant="outline" disabled={busy} onClick={() => setAendern(true)}><Plus className="h-3.5 w-3.5 mr-1" />{kontenListe.length ? 'Weiteres Konto verknüpfen' : 'Werbekonto verknüpfen'}</Button>}
-              {aendern && (
-                <div className="[&>div]:sm:ml-0 [&>div]:mt-0">
-                  <SuchFeld system="meta" clientId={kunde.id} label="Meta Ads" onPick={o => {
-                    setAendern(false);
-                    // Nur hinzufügen; bestehende Konten bleiben verknüpft.
-                    run(() => verknuepfen('meta', kunde.id, o).then(() => setGeteilt(o.auchBei?.length ? o : null)), 'Werbekonto hinzugefügt');
-                  }} />
-                </div>
-              )}
-              {geteilt && (
-                <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm flex flex-wrap items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
-                  <p className="flex-1 min-w-0 text-xs">„{geteilt.name || geteilt.id}“ läuft auch für andere Kunden ({auchBeiText(geteilt.auchBei, 3)?.replace('läuft auch für: ', '')}). Die Kontoverknüpfung allein ordnet kein Budget zu – bitte zusätzlich Kampagne oder Anzeigengruppe zuordnen.</p>
-                  <Button size="sm" onClick={() => { setStart({ stufe: 3, weg: 'untermarke', konto: { meta_account_id: geteilt.id, name: geteilt.name } }); setGeteilt(null); }}>Kampagne zuordnen</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setGeteilt(null)}>Später</Button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
 
-        {/* Werbebudget */}
-        <div>
-          <Kopf k="budget" />
-          {auf.budget && (
-            <div className="pl-6 pb-3 space-y-4">
-              {!rechte.budget ? <p className="text-xs text-muted-foreground">Keine Berechtigung</p> : wb.fehler ? <Fehler text={wb.fehler} /> : (
-                <div className="space-y-2">
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Zuordnungen dieses Kunden</p>
-                  {!wb.geladen && <Skeleton className="h-10 rounded-xl" />}
-                  {wb.geladen && eigene.length === 0 && <p className="text-xs text-muted-foreground">Noch keine Kampagne oder Anzeigengruppe zugeordnet.</p>}
-                  {Object.entries(gruppen).map(([um, zs]) => (
-                    <div key={um}>
-                      <p className="text-xs font-medium mb-1">{um}</p>
-                      {zs.map(z => (
-                        <div key={z.id} className="flex items-center gap-2 text-sm py-1">
-                          <span className="text-[11px] text-muted-foreground w-28 shrink-0">{z.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'}</span>
-                          <span className="truncate">{z.objekt_name || z.objekt_id}</span>
-                          <button disabled={wb.busy === z.id} onClick={() => wb.loesen(z)} title="Zuordnung lösen" className="ml-auto text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <BudgetStand budget={bs.budget} fehler={bs.fehler} recht={rechte.budget} />
-              {rechte.budget && !wb.fehler && <Button size="sm" variant="outline" onClick={() => kampagneStart('untermarke')}><Plus className="h-3.5 w-3.5 mr-1" />Kampagne zuordnen</Button>}
-            </div>
-          )}
-        </div>
-
-        {/* LeadSharks */}
-        <div>
-          <Kopf k="ls" />
-          {auf.ls && (
-            <div className="pl-6 pb-3 space-y-3">
-              {!profileId && <p className="text-xs text-muted-foreground">Für LeadSharks fehlt noch das Portalkonto dieses Kunden.</p>}
-              {profileId && ls.fehler && <Fehler text={ls.fehler} />}
-              {profileId && !ls.daten && !ls.fehler && <Skeleton className="h-16 rounded-xl" />}
-              {profileId && !ls.fehler && ls.daten && ls.daten.kampagnen.length === 0 && <p className="text-xs text-muted-foreground">Diesem Kunden ist noch keine Meta-Kampagne zugewiesen.</p>}
-              {profileId && !ls.fehler && ls.daten && <LeadSharksSteuerung profileId={profileId} kampagnen={ls.daten.kampagnen} formulare={ls.daten.formulare} neuLaden={ls.laden} />}
-              {!ls.fehler && <Button size="sm" variant="outline" onClick={lsStart}><Plus className="h-3.5 w-3.5 mr-1" />Weitere Kampagne zuweisen</Button>}
-            </div>
-          )}
-        </div>
-      </div>
+      {verknuepfenOffen && (
+        <VerknuepfenDialog kunde={kunde} wb={wb} konten={um.liste}
+          onClose={() => { setVerknuepfenOffen(false); wb.ladeZuo(); kk.laden(); onChanged(); }} />
+      )}
+      {lsOffen && profileId && ls.daten && (
+        <LeadSharksDialog profileId={profileId} ls={ls} wb={wb} kundeId={kunde.id}
+          konten={[...(um.liste || []), ...eigeneKonten.map(k => ({ meta_account_id: k.meta_account_id, name: k.meta_account_name }))]}
+          onClose={() => { setLsOffen(false); ls.laden(); }} />
+      )}
 
       <AlertDialog open={!!loeseZiel} onOpenChange={o => !o && setLoeseZiel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Verknüpfung lösen?</AlertDialogTitle>
-            <AlertDialogDescription>Meta Ads: „{loeseZiel?.name || loeseZiel?.id}“ wird von diesem Kunden getrennt. Daten in Meta bleiben unverändert.</AlertDialogDescription>
+            <AlertDialogDescription>Werbekonto „{loeseZiel?.name || loeseZiel?.id}“ wird von diesem Kunden getrennt. Daten in Meta bleiben unverändert.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
@@ -346,233 +351,91 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {dialog}
+      <AlertDialog open={!!loeseZuo} onOpenChange={o => !o && setLoeseZuo(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Zuordnung lösen?</AlertDialogTitle>
+            <AlertDialogDescription>{loeseZuo?.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'} „{loeseZuo?.objekt_name || loeseZuo?.objekt_id}“ wird diesem Kunden nicht mehr zugerechnet. Ist es die letzte Zuordnung auf {loeseZuo?.untermarke || 'diesem Konto'}, fällt auch die Kontoverknüpfung weg.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { const z = loeseZuo!; setLoeseZuo(null); zuoLoesen(z); }}>Lösen</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-function MetaDialog({ kunde, stand, wb, profileId, ls, rechte, start, kundenKonten, onChanged, onClose }: {
-  kunde: KundeMin; stand: Record<SystemKey, SystemStand>; wb: ReturnType<typeof useWerbebudgetZuordnung>;
-  rechte: ReturnType<typeof useMetaRechte>; start: NonNullable<DialogStart>;
-  profileId: string | null; ls: ReturnType<typeof useLeadSharks>; kundenKonten: KundenKonto[]; onChanged: () => void; onClose: () => void;
+/** „Kampagne verknüpfen": eine Suche über alle Kampagnen unserer Untermarken, optional einzelne Anzeigengruppen. */
+function VerknuepfenDialog({ kunde, wb, konten, onClose }: {
+  kunde: KundeMin; wb: ReturnType<typeof useWerbebudgetZuordnung>; konten: Untermarke[] | null; onClose: () => void;
 }) {
   const { callMeta } = useMetaAds();
-  const meta = stand.meta;
-  const verknuepftIds = kundenKonten.map(k => k.meta_account_id);
-  const verknuepftId = verknuepftIds[0] ?? null;
-  const hatZuo = wb.alle.some(z => z.client_id === kunde.id);
-  const [weg, setWeg] = useState<Weg>(start.weg ?? (hatZuo ? 'untermarke' : verknuepftId ? 'kundenkonto' : 'untermarke'));
-  const stufen = weg === 'untermarke' ? [1, 2, 3, 4, 5] : [1, 2, 3, 5];
-  // Start bei der Kampagnenwahl, wenn das Konto feststeht; sonst bei der Kontowahl.
-  const [idx, setIdx] = useState(start.stufe === 3 ? (start.konto ? 2 : 1) : start.stufe === 2 ? 1 : 0);
-  const stufe = stufen[idx];
-
-  const [konten, setKonten] = useState<Untermarke[] | null>(null);
-  const [q, setQ] = useState('');
-  const [konto, setKonto] = useState<Untermarke | null>(start.konto ?? null);
-  const [kontenFehler, setKontenFehler] = useState<string | null>(null);
-  const [belegt, setBelegt] = useState<Record<string, string[]>>({});
-  const [belegtFehler, setBelegtFehler] = useState<string | null>(null);
-  const [kampagnenFehler, setKampagnenFehler] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [kampagnen, setKampagnen] = useState<SnapKampagne[] | null>(null);
-  const [kampagne, setKampagne] = useState<SnapKampagne | null>(null);
-  const [assistent, setAssistent] = useState(false);
-  const [zuordnung, setZuordnung] = useState<any[] | null>(null);
-
-  useEffect(() => {
-    setKonten(null); setKontenFehler(null);
-    // Alle verknüpften Kundenkonten (und ein vorausgewähltes Konto) immer wählbar, auch außerhalb des Filters.
-    const extra: Untermarke[] = [
-      ...(weg === 'kundenkonto' ? kundenKonten.map(k => ({ meta_account_id: k.meta_account_id, name: k.meta_account_name })) : []),
-      ...(start.konto ? [start.konto] : []),
-    ];
-    ladeUntermarken(null)
-      .then(l => { const ids = new Set(l.map(x => x.meta_account_id)); setKonten([...extra.filter(e => !ids.has(e.meta_account_id) && (ids.add(e.meta_account_id), true)), ...l]); })
-      .catch((e: Error) => { setKontenFehler(e.message); setKonten([]); });
-  }, [weg, kundenKonten, start.konto]);
-
-  // Belegte Kundenkonten (kunde_meta_accounts) für „gehört zu <Kunde>".
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase.from('kunde_meta_accounts').select('meta_account_id, client_id');
-      if (error) { setBelegtFehler(`Belegte Werbekonten konnten nicht geprüft werden: ${error.message}`); return; }
-      setBelegtFehler(null);
-      const fremd = (data || []).filter((r: any) => r.client_id !== kunde.id);
-      const ids = [...new Set(fremd.map((r: any) => r.client_id))];
-      const { data: cl } = ids.length ? await supabase.from('clients').select('id, name').in('id', ids) : { data: [] as any[] };
-      const n = new Map((cl || []).map((c: any) => [c.id, c.name]));
-      // Mehrere Kunden je Konto möglich (Untermarken) – nur Hinweis, keine Sperre.
-      const m: Record<string, string[]> = {};
-      for (const r of fremd as any[]) { const k = String(r.meta_account_id); const name = n.get(r.client_id) || 'anderer Kunde'; (m[k] ||= []).includes(name) || m[k].push(name); }
-      setBelegt(m);
-    })();
-  }, [kunde.id, verknuepftId]);
-
-  useEffect(() => {
-    setKampagnen(null); setKampagnenFehler(null);
-    if (!konto || !rechte.snapshot) return;
-    (supabase.from as any)('meta_campaign_snapshot').select('campaign_id, campaign_name, status, daily_budget').eq('account_id', konto.meta_account_id).order('campaign_name')
-      .then(({ data, error }: any) => { if (error) setKampagnenFehler(`Kampagnen konnten nicht geladen werden: ${error.message}`); else setKampagnen(data || []); },
-        (e: any) => setKampagnenFehler(`Kampagnen konnten nicht geladen werden: ${e?.message || 'Verbindung unterbrochen'}`));
-  }, [konto, rechte.snapshot]);
-  const bs = useBudgetstand(kunde.id, stufe === 4 && rechte.budget);
-
-  const run = async (fn: () => Promise<void>, ok: string) => {
-    setBusy(true);
-    try { await fn(); toast.success(ok); onChanged(); }
-    catch (e: any) { toast.error(e.message || 'Fehlgeschlagen'); }
-    finally { setBusy(false); }
-  };
-
-  const gefiltert = (konten || []).filter(k => !q.trim() || `${k.name || ''} ${k.meta_account_id}`.toLowerCase().includes(q.trim().toLowerCase()));
-  const kontoVerknuepft = weg === 'untermarke' || (!!konto && verknuepftIds.includes(konto.meta_account_id));
-  const kannWeiter = stufe === 1 || (stufe === 2 && !!konto && kontoVerknuepft) || (stufe === 3 && !!kampagne) || stufe === 4;
-
-  const zuoKampagne: ZuoKampagne | null = kampagne ? { id: kampagne.campaign_id, name: kampagne.campaign_name || kampagne.campaign_id, effective_status: kampagne.status || '', daily_budget: kampagne.daily_budget != null ? String(kampagne.daily_budget) : undefined } : null;
-  const zuordnen = (typ: 'kampagne' | 'adset', objekt_id: string, kampagne_id: string, objekt_name: string) =>
-    wb.zuordnen(konto!.meta_account_id, konto!.name ?? null, typ, objekt_id, kampagne_id, objekt_name);
-
-  const andereKunden = useMemo(() => {
-    if (!kampagne) return [] as string[];
-    const sets = wb.alle.filter(z => z.typ === 'adset' && z.kampagne_id === kampagne.campaign_id);
-    if (new Set(sets.map(z => z.client_id)).size < 2) return [];
-    return [...new Set(sets.filter(z => z.client_id !== kunde.id).map(z => z.clients?.name || 'anderer Kunde'))];
-  }, [wb.alle, kampagne, kunde.id]);
-
-  const titel = { 1: 'Weg wählen', 2: 'Werbekonto', 3: 'Kampagne', 4: 'Werbebudget', 5: 'LeadSharks' }[stufe as 1];
-
   return (
     <Dialog open onOpenChange={o => !o && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Meta einrichten</DialogTitle>
-          <DialogDescription>Stufe {idx + 1} von {stufen.length} · {titel}</DialogDescription>
+          <DialogTitle>Kampagne verknüpfen</DialogTitle>
+          <DialogDescription>Alle Kampagnen unserer Untermarken. Teilen sich zwei Kunden eine Kampagne, Kampagne aufklappen und einzelne Anzeigengruppen wählen. Konto und Untermarke werden automatisch abgeleitet.</DialogDescription>
         </DialogHeader>
-
-        {stufe === 1 && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Kachel aktiv={weg === 'untermarke'} onClick={() => { if (weg !== 'untermarke') { setKonto(null); setKampagne(null); } setWeg('untermarke'); }} titel="Über Untermarke" unter="Kampagnen auf unseren Werbekonten, Budget wird diesem Kunden zugeordnet" />
-            <Kachel aktiv={weg === 'kundenkonto'} onClick={() => { if (weg !== 'kundenkonto') { setKonto(null); setKampagne(null); } setWeg('kundenkonto'); }} titel="Über Kundenkonto" unter="Eigenes Werbekonto des Kunden" />
+        <KampagnenSuche konten={konten} render={c => (
+          <div>
+            <p className="px-3 pt-2 text-[11px] text-muted-foreground">{c.konto.name || c.konto.meta_account_id}</p>
+            <KampagneZeile k={c} alle={wb.alle} clientId={kunde.id} busy={wb.busy} callMeta={callMeta}
+              zuordnen={(t, o, kid, n) => wb.zuordnen(c.konto.meta_account_id, c.konto.name ?? null, t, o, kid, n)} loesen={wb.loesen} />
           </div>
-        )}
-
-        {stufe === 2 && (
-          <div className="space-y-3">
-            {weg === 'kundenkonto' && meta?.zustand === 'vorschlag' && (
-              <div className="rounded-xl border border-primary/40 bg-primary/5 p-3 text-sm flex flex-wrap items-center gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium">Vorschlag: {meta.vorschlag.name || meta.vorschlag.id}</p>
-                  <p className="text-xs text-muted-foreground">{meta.vorschlag.grund}</p>
-                </div>
-                <Button size="sm" disabled={busy} onClick={() => run(() => verknuepfen('meta', kunde.id, meta.vorschlag), 'Meta Ads verknüpft')}><Check className="h-3.5 w-3.5 mr-1" />Übernehmen</Button>
-                <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => verwerfen(meta.vorschlag, kunde.id), 'Vorschlag verworfen')}>Verwerfen</Button>
-              </div>
-            )}
-            {kontenFehler && <Fehler text={kontenFehler} />}
-            {weg === 'kundenkonto' && belegtFehler && <Fehler text={belegtFehler} />}
-            <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Werbekonto suchen…" className="h-9 bg-muted/50 border-0" />
-            {!konten && <div className="grid gap-3 sm:grid-cols-2">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[76px] rounded-xl" />)}</div>}
-            {konten && gefiltert.length === 0 && <p className="text-sm text-muted-foreground">Keine Werbekonten gefunden.</p>}
-            <div className="grid gap-3 sm:grid-cols-2">
-              {gefiltert.map(k => {
-                const eigen = weg === 'kundenkonto' && verknuepftIds.includes(k.meta_account_id);
-                const auch = auchBeiText(belegt[k.meta_account_id]);
-                return <Kachel key={k.meta_account_id} aktiv={konto?.meta_account_id === k.meta_account_id}
-                  onClick={() => { setKonto(k); setKampagne(null); }} titel={k.name || k.meta_account_id}
-                  unter={[k.meta_account_id, eigen && 'mit diesem Kunden verknüpft', auch].filter(Boolean).join(' · ')} />;
-              })}
-            </div>
-            {weg === 'kundenkonto' && konto && kontoVerknuepft && !!belegt[konto.meta_account_id]?.length && (
-              <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 flex flex-wrap items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
-                <p className="text-xs flex-1 min-w-0">Auf diesem Konto liegen weitere Kunden. Die Kontoverknüpfung allein ordnet kein Budget zu – bitte zusätzlich Kampagne oder Anzeigengruppe zuordnen.</p>
-                <Button size="sm" onClick={() => { setWeg('untermarke'); setKampagne(null); setIdx(2); }}>Zur Kampagnen-Zuordnung</Button>
-              </div>
-            )}
-            {weg === 'kundenkonto' && konto && !kontoVerknuepft && (
-              <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
-                <p className="text-xs flex-1">„{konto.name || konto.meta_account_id}“ ist noch nicht mit diesem Kunden verknüpft.{verknuepftIds.length ? ' Bereits verknüpfte Konten bleiben bestehen.' : ''}</p>
-                <Button size="sm" disabled={busy} onClick={() => run(() => verknuepfen('meta', kunde.id, { id: konto.meta_account_id, name: konto.name } as Objekt), 'Meta Ads verknüpft')}>
-                  {busy && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}Konto zusätzlich mit Kunden verknüpfen
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {stufe === 3 && (
-          <div className="space-y-3">
-            {!rechte.snapshot && <p className="text-sm text-muted-foreground">Keine Berechtigung</p>}
-            {kampagnenFehler && <Fehler text={kampagnenFehler} />}
-            {rechte.snapshot && !kampagnen && !kampagnenFehler && <div className="grid gap-3 sm:grid-cols-2">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[76px] rounded-xl" />)}</div>}
-            {kampagnen?.length === 0 && <p className="text-sm text-muted-foreground">Keine Kampagnen zu diesem Konto gespiegelt.</p>}
-            <div className="grid gap-3 sm:grid-cols-2">
-              {kampagnen?.map(c => <Kachel key={c.campaign_id} aktiv={kampagne?.campaign_id === c.campaign_id} onClick={() => setKampagne(c)}
-                titel={c.campaign_name || c.campaign_id} unter={c.status ? (STATUS_LABEL[c.status] || c.status) : ''} />)}
-            </div>
-          </div>
-        )}
-
-        {stufe === 4 && zuoKampagne && (
-          <div className="space-y-4">
-            {!rechte.budget ? <p className="text-sm text-muted-foreground">Keine Berechtigung</p> : wb.fehler ? <Fehler text={wb.fehler} /> : (
-              <div className="divide-y divide-border/40 rounded-xl bg-muted/20">
-                <KampagneZeile k={zuoKampagne} alle={wb.alle} clientId={kunde.id} busy={wb.busy} callMeta={callMeta} zuordnen={zuordnen} loesen={wb.loesen} ohneAusgaben />
-              </div>
-            )}
-            <BudgetStand budget={bs.budget} fehler={bs.fehler} recht={rechte.budget} />
-          </div>
-        )}
-
-        {stufe === 5 && konto && kampagne && (
-          <div className="space-y-4">
-            {andereKunden.length > 0 && (
-              <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
-                <AlertTriangle className="h-4 w-4 mt-0.5 text-warning shrink-0" />
-                <span>Diese Kampagne ist auf Anzeigengruppen-Ebene mit {andereKunden.join(', ')} geteilt. Budget trennt auf Anzeigengruppen-Ebene, Leads trennen auf Formular-Ebene: Beide Kunden brauchen <strong>verschiedene Lead-Formulare</strong>, sonst bekommt nur der zuerst angelegte Kunde Leads – ohne Fehlermeldung.</span>
-              </div>
-            )}
-            {!profileId ? (
-              <div className="space-y-2">
-                <p className="text-sm">Für LeadSharks fehlt noch das Portalkonto dieses Kunden.</p>
-                <div className="[&>div]:sm:ml-0 [&>div]:mt-0">
-                  <PortalAuswahl kunde={kunde} onPick={o => run(() => verknuepfen('portal', kunde.id, o), 'LeadSharks Portal verknüpft')} />
-                </div>
-              </div>
-            ) : (
-              <>
-                {ls.fehler && <p className="text-sm text-destructive">{ls.fehler}</p>}
-                {!ls.daten && !ls.fehler && <Skeleton className="h-16 rounded-xl" />}
-                {ls.daten && (
-                  <div className="space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-xl border border-border p-4"><p className="text-sm font-medium break-words">{konto.name || konto.meta_account_id}</p><p className="text-xs text-muted-foreground mt-1">Werbekonto</p></div>
-                      <div className="rounded-xl border border-border p-4"><p className="text-sm font-medium break-words">{kampagne.campaign_name || kampagne.campaign_id}</p><p className="text-xs text-muted-foreground mt-1">Kampagne</p></div>
-                    </div>
-                    <Button onClick={() => setAssistent(true)}>LeadSharks-Kampagne anlegen</Button>
-                  </div>
-                )}
-                {zuordnung && <ZuordnungErgebnis zuordnung={zuordnung} onAusblenden={() => setZuordnung(null)} />}
-                {assistent && ls.daten && (
-                  <ZuweisenAssistent profileId={profileId} leadTypen={ls.daten.lead_typen}
-                    vorKonto={{ id: ohneAct(konto.meta_account_id), name: konto.name }}
-                    vorKampagne={{ id: kampagne.campaign_id, name: kampagne.campaign_name }}
-                    onClose={() => setAssistent(false)}
-                    onErfolg={r => { setAssistent(false); setZuordnung(Array.isArray(r?.zuordnung) ? r.zuordnung : []); ls.laden(); }} />
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        <DialogFooter>
-          {idx > 0 && <Button variant="outline" onClick={() => setIdx(i => i - 1)}>Zurück</Button>}
-          {idx < stufen.length - 1
-            ? <Button disabled={!kannWeiter || busy} onClick={() => setIdx(i => i + 1)}>Weiter</Button>
-            : <Button variant="outline" onClick={onClose}>Schließen</Button>}
-        </DialogFooter>
+        )} />
+        <DialogFooter><Button variant="outline" onClick={onClose}>Fertig</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+/** LeadSharks: Kampagne aus derselben Suche wählen, dann der bestehende Zuweisen-Assistent. */
+function LeadSharksDialog({ profileId, ls, wb, kundeId, konten, onClose }: {
+  profileId: string; ls: ReturnType<typeof useLeadSharks>; wb: ReturnType<typeof useWerbebudgetZuordnung>; kundeId: string; konten: Untermarke[]; onClose: () => void;
+}) {
+  const [wahl, setWahl] = useState<SuchKampagne | null>(null);
+  const [zuordnung, setZuordnung] = useState<any[] | null>(null);
+  const geteiltMit = (c: SuchKampagne) => {
+    const sets = wb.alle.filter(z => z.typ === 'adset' && z.kampagne_id === c.id);
+    if (new Set(sets.map(z => z.client_id)).size < 2) return [];
+    return [...new Set(sets.filter(z => z.client_id !== kundeId).map(z => z.clients?.name || 'anderer Kunde'))];
+  };
+  const andere = wahl ? geteiltMit(wahl) : [];
+  return (
+    <Dialog open onOpenChange={o => !o && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>LeadSharks-Kampagne zuweisen</DialogTitle>
+          <DialogDescription>Meta-Kampagne wählen, danach Formulare und Lead-Typ festlegen.</DialogDescription>
+        </DialogHeader>
+        {zuordnung && <ZuordnungErgebnis zuordnung={zuordnung} onAusblenden={() => setZuordnung(null)} />}
+        {andere.length > 0 && (
+          <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+            <AlertTriangle className="h-4 w-4 mt-0.5 text-warning shrink-0" />
+            <span>Diese Kampagne ist auf Anzeigengruppen-Ebene mit {andere.join(', ')} geteilt. Beide Kunden brauchen <strong>verschiedene Lead-Formulare</strong>, sonst bekommt nur der zuerst angelegte Kunde Leads – ohne Fehlermeldung.</span>
+          </div>
+        )}
+        <KampagnenSuche konten={konten} render={c => (
+          <button onClick={() => setWahl(c)} className={cn('w-full text-left px-3 py-2.5 grid grid-cols-[1fr_150px_100px_80px] gap-3 items-center text-sm hover:bg-muted/50', wahl?.id === c.id && 'bg-primary/10')}>
+            <span className="break-words">{c.name}</span>
+            <span className="text-xs text-muted-foreground truncate">{c.konto.name || c.konto.meta_account_id}</span>
+            <span className="text-xs text-muted-foreground">{STATUS_LABEL[c.effective_status] || c.effective_status}</span>
+            <span className="text-right tabular-nums text-xs" title="Ausgaben 7 Tage">{eur(c.insights?.data?.[0]?.spend)}</span>
+          </button>
+        )} />
+        {wahl && (
+          <ZuweisenAssistent profileId={profileId} leadTypen={ls.daten?.lead_typen || []}
+            vorKonto={{ id: ohneAct(wahl.konto.meta_account_id), name: wahl.konto.name }}
+            vorKampagne={{ id: wahl.id, name: wahl.name }}
+            onClose={() => setWahl(null)}
+            onErfolg={r => { setWahl(null); setZuordnung(Array.isArray(r?.zuordnung) ? r.zuordnung : []); ls.laden(); }} />
+        )}
+        <DialogFooter><Button variant="outline" onClick={onClose}>Schließen</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
