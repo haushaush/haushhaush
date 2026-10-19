@@ -30,6 +30,7 @@ export function SuchFeld({ system, clientId, label, onPick }: { system: SystemKe
           <span className="truncate">{o.name || o.id}</span>
           {o.detail && <span className="text-[11px] text-muted-foreground truncate">{o.detail}</span>}
           {o.belegt && <span className="text-[11px] text-muted-foreground shrink-0 ml-auto">bereits {o.belegt} zugeordnet</span>}
+          {!o.belegt && auchBeiText(o.auchBei) && <span className="text-[11px] text-muted-foreground shrink-0 ml-auto">{auchBeiText(o.auchBei)}</span>}
         </button>
       ))}
     </div>
