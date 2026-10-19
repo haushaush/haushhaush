@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { AlertTriangle, Check, ChevronRight, ExternalLink, Loader2, Plus, X } from 'lucide-react';
+import { AlertTriangle, Check, ChevronRight, ExternalLink, Plus, X } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -371,6 +371,7 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
 function VerknuepfenDialog({ kunde, wb, konten, onClose }: {
   kunde: KundeMin; wb: ReturnType<typeof useWerbebudgetZuordnung>; konten: Untermarke[] | null; onClose: () => void;
 }) {
+  const { callMeta } = useMetaAds();
   return (
     <Dialog open onOpenChange={o => !o && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -381,7 +382,7 @@ function VerknuepfenDialog({ kunde, wb, konten, onClose }: {
         <KampagnenSuche konten={konten} render={c => (
           <div>
             <p className="px-3 pt-2 text-[11px] text-muted-foreground">{c.konto.name || c.konto.meta_account_id}</p>
-            <KampagneZeile k={c} alle={wb.alle} clientId={kunde.id} busy={wb.busy} callMeta={undefined as any /* ersetzt unten */}
+            <KampagneZeile k={c} alle={wb.alle} clientId={kunde.id} busy={wb.busy} callMeta={callMeta}
               zuordnen={(t, o, kid, n) => wb.zuordnen(c.konto.meta_account_id, c.konto.name ?? null, t, o, kid, n)} loesen={wb.loesen} />
           </div>
         )} />
@@ -438,4 +439,3 @@ function LeadSharksDialog({ profileId, ls, wb, kundeId, konten, onClose }: {
   );
 }
 
-export { Loader2 };
