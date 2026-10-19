@@ -117,17 +117,25 @@ Deno.serve(async (req) => {
   const k1: Krit = { status: !snapshotIds.size || !assigned.length ? "keine_daten" : openSurveys ? "unvollstaendig" : "ok", punkte: snapshotIds.size ? satisfactionPoints : 0, max: max.zufriedenheit, wert: { betreute_kunden: snapshotIds.size, ausgefuellt: assigned.length, ausfuellquote: r2(quote), durchschnitt_score_betreuung: avg === null ? null : r2(avg), offene_einsendungen: openSurveys || 0 } };
 
   // ---------- 2/3) Cash Collect ----------
-  const cashSum = async (m: string) => {
-    const { data, error } = await admin.from("bonus_cash_collect").select("betrag, zugeordnet").eq("monat", m).eq("mitarbeiter_id", mitarbeiter_id);
+  // Berlin calendar day of a payment; used to cut the reference month to the same span as the running month.
+  const berlinDay = (iso: string) => Number(new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin", day: "2-digit" }).format(new Date(iso)));
+  const todayBerlin = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
+  const laufend = todayBerlin.slice(0, 7) + "-01" === monat;
+  const bisTag = laufend ? Number(todayBerlin.slice(8, 10)) : null;
+  const cashSum = async (m: string, maxTag: number | null = null) => {
+    const { data, error } = await admin.from("bonus_cash_collect").select("betrag, zugeordnet, eingang_am").eq("monat", m).eq("mitarbeiter_id", mitarbeiter_id);
     if (error) throw error;
-    const rows = data || [];
+    const rows = (data || []).filter((r: any) => maxTag === null || (r.eingang_am && berlinDay(r.eingang_am) <= maxTag));
     return { rows: rows.length, zugeordnet: rows.filter((r) => r.zugeordnet).length, summe: r2(rows.filter((r) => r.zugeordnet).reduce((s, r) => s + Number(r.betrag), 0)) };
   };
   // Unassigned payments (mitarbeiter_id null) for the month, as clarification count
   const { count: offeneZuordnung } = await admin.from("bonus_cash_collect").select("id", { count: "exact", head: true }).eq("monat", monat).eq("zugeordnet", false);
   const cur = await cashSum(monat);
   const refMonth = cfg.cash_entwicklung?.referenz_erster_monat && prevMonth(monat) === cfg.cash_entwicklung.referenz_erster_monat ? cfg.cash_entwicklung.referenz_erster_monat : prevMonth(monat);
-  const prev = await cashSum(refMonth);
+  const prev = await cashSum(refMonth, bisTag);
+  const vergleich = bisTag !== null
+    ? { art: "zeitgleich", bis_tag: bisTag, text: `Vergleich Tag 1–${bisTag} gegen Tag 1–${bisTag}` }
+    : { art: "voller_monat", bis_tag: null, text: "Vergleich voller Monat gegen vollen Referenzmonat" };
 
   let k2: Krit;
   if (!cur.rows) k2 = { status: "keine_daten", punkte: null, max: max.cash_niveau, wert: {}, hinweis: "Keine Zahlungseingänge für diesen Monat erfasst." };
@@ -135,11 +143,11 @@ Deno.serve(async (req) => {
   else k2 = { status: "ok", punkte: tierPoints(cfg.cash_niveau.staffel, cur.summe), max: max.cash_niveau, wert: { summe_eur: cur.summe, eingaenge: cur.rows, zugeordnet: cur.zugeordnet, offene_zuordnung: offeneZuordnung ?? 0 } };
 
   let k3: Krit;
-  if (!cur.rows) k3 = { status: "keine_daten", punkte: null, max: max.cash_entwicklung, wert: { referenzmonat: refMonth }, hinweis: "Keine Zahlungseingänge für diesen Monat erfasst." };
-  else if (k2.status !== "ok" || !prev.zugeordnet || prev.summe <= 0) k3 = { status: "unvollstaendig", punkte: null, max: max.cash_entwicklung, wert: { referenzmonat: refMonth, summe_eur: cur.summe, vormonat_eur: prev.summe }, hinweis: `Kein belastbarer Referenzwert für ${refMonth}.` };
+  if (!cur.rows) k3 = { status: "keine_daten", punkte: null, max: max.cash_entwicklung, wert: { referenzmonat: refMonth, vergleich }, hinweis: "Keine Zahlungseingänge für diesen Monat erfasst." };
+  else if (k2.status !== "ok" || !prev.zugeordnet || prev.summe <= 0) k3 = { status: "unvollstaendig", punkte: null, max: max.cash_entwicklung, wert: { referenzmonat: refMonth, vergleich, summe_eur: cur.summe, vormonat_eur: prev.summe }, hinweis: `Kein belastbarer Referenzwert für ${refMonth}.` };
   else {
     const pct = ((cur.summe - prev.summe) / prev.summe) * 100;
-    k3 = { status: "ok", punkte: tierPoints(cfg.cash_entwicklung.staffel, pct), max: max.cash_entwicklung, wert: { referenzmonat: refMonth, summe_eur: cur.summe, vormonat_eur: prev.summe, veraenderung_prozent: r2(pct) } };
+    k3 = { status: "ok", punkte: tierPoints(cfg.cash_entwicklung.staffel, pct), max: max.cash_entwicklung, wert: { referenzmonat: refMonth, vergleich, summe_eur: cur.summe, vormonat_eur: prev.summe, veraenderung_prozent: r2(pct) } };
   }
 
   // Open clarification items mean the sum may be too low: keep the points but flag the basis as incomplete.
@@ -233,8 +241,8 @@ Deno.serve(async (req) => {
   const kriterien = { zufriedenheit: k1, cash_niveau: k2, cash_entwicklung: k3, churn: k4, calls: k5 };
   const basis: Record<keyof typeof kriterien, string> = {
     zufriedenheit: openSurveys ? `Basis: ${openSurveys} Einsendungen in der Klärliste` : !snapshotIds.size ? 'Basis: Kundensnapshot fehlt' : 'Basis: noch keine zugeordneten Einsendungen',
-    cash_niveau: offenK > 0 ? `Basis: ${offenK} Rechnungen in der Klärliste` : cur.rows ? 'Basis: Zahlungseingänge noch nicht zugeordnet' : 'Basis: Zahlungsabgleich noch nicht angebunden',
-    cash_entwicklung: offenK > 0 ? `Basis: ${offenK} Rechnungen in der Klärliste` : !cur.rows ? 'Basis: Zahlungsabgleich noch nicht angebunden' : `Basis: Referenzwert für ${refMonth} noch nicht vollständig`,
+    cash_niveau: offenK > 0 ? `Basis: ${offenK} Zahlungseingänge in der Klärliste` : cur.rows ? 'Basis: Zahlungseingänge noch nicht zugeordnet' : 'Basis: Zahlungsabgleich noch nicht angebunden',
+    cash_entwicklung: offenK > 0 ? `Basis: ${offenK} Zahlungseingänge in der Klärliste` : !cur.rows ? 'Basis: Zahlungsabgleich noch nicht angebunden' : `Basis: Referenzwert für ${refMonth} noch nicht vollständig`,
     churn: !snapCount ? 'Basis: Kundensnapshot noch nicht erfasst' : 'Bestätigung der Churn-Erfassung ausstehend',
     calls: lastSync?.ok === false ? 'Basis: letzter Close-Abgleich nicht abgeschlossen' : nz > 0 ? `Basis: ${Math.max(0, zielwert - nz)} von ${zielwert} Kunden in Close erreichbar` : !zielwert ? 'Basis: Kundensnapshot noch nicht erfasst' : 'Basis: noch kein vollständiger Close-Abgleich',
   };
