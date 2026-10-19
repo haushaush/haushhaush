@@ -13,7 +13,7 @@ export function BuchhaltungUngeklaert() {
   }, []);
   if (!rows) return null;
   const gruppen = new Map<string, Row[]>();
-  for (const r of rows) { const g = r.grund || 'Buchhaltungsquelle ungeklärt'; (gruppen.get(g) || gruppen.set(g, []).get(g)!).push(r); }
+  for (const r of rows) { const g = !r.grund || r.grund === 'Unbekannte Marke' ? 'Buchhaltungsquelle ungeklärt' : r.grund; (gruppen.get(g) || gruppen.set(g, []).get(g)!).push(r); }
   const titel = [...new Set([...REIHENFOLGE, ...gruppen.keys()])];
   return (
     <div className="space-y-3">
@@ -28,7 +28,7 @@ export function BuchhaltungUngeklaert() {
                 {rs.map(r => (
                   <Link key={r.client_id} to={`/kunden/${r.client_id}`} className="flex items-center justify-between gap-3 py-2 text-sm hover:text-primary">
                     <span className="truncate">{r.client_name || '—'}</span>
-                    {r.marke && <span className="text-xs text-muted-foreground shrink-0">„{r.marke}“</span>}
+                    {r.marke && <span className="text-xs text-muted-foreground shrink-0">Marke „{r.marke}“ unbekannt</span>}
                   </Link>
                 ))}
               </div>
