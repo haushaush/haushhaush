@@ -20,7 +20,11 @@ async function syncMonth(admin: any, monat: string, mitarbeiter_id: string, snap
   ]);
   if (iErr) throw new Error("Rechnungen: " + iErr.message);
   if (!snap?.length) throw new Error(`Kein Kundensnapshot für ${snapshotMonat}`);
-  const byName = new Map((links || []).map((l: any) => [norm(l.qonto_client_name), l.client_id]));
+  // Name fallback only when every link with that name points to the same client; otherwise the name is ambiguous.
+  const nameKunden = new Map<string, Set<string>>();
+  for (const l of links || []) { const k = norm(l.qonto_client_name); if (!nameKunden.has(k)) nameKunden.set(k, new Set()); nameKunden.get(k)!.add(l.client_id); }
+  const byName = new Map([...nameKunden].filter(([, s]) => s.size === 1).map(([k, s]) => [k, [...s][0]]));
+  const mehrdeutig = new Set([...nameKunden].filter(([, s]) => s.size > 1).map(([k]) => k));
   const byQid = new Map((links || []).filter((l: any) => l.qonto_client_id).map((l: any) => [l.qonto_client_id, l.client_id]));
   const ignored = new Set((ign || []).map((x: any) => norm(x.qonto_client_name)));
   const inSnap = new Set(snap.map((s: any) => s.client_id));
@@ -33,14 +37,16 @@ async function syncMonth(admin: any, monat: string, mitarbeiter_id: string, snap
     const brutto = num(i.raw?.total_amount?.value) ?? num(i.total_amount) ?? 0;
     const vat = num(i.raw?.vat_amount?.value) ?? num(i.vat_amount) ?? 0;
     const netto = r2(num(i.subtotal_amount) ?? brutto - vat);
-    const clientId = byQid.get(i.client_id) || byName.get(norm(name)) || null;
+    const viaQid = i.client_id ? byQid.get(i.client_id) : undefined;
+    const unklar = !viaQid && mehrdeutig.has(norm(name));
+    const clientId = viaQid || (unklar ? null : byName.get(norm(name))) || null;
     const ok = !!clientId && inSnap.has(clientId);
     rows.push({
       monat, client_id: clientId, mitarbeiter_id: ok ? mitarbeiter_id : null, betrag: netto,
       eingang_am: i.paid_at, quelle: "qonto", quelle_id: i.qonto_invoice_id,
       zahlung_schluessel: i.number ? `rechnung:${squash(i.number)}` : `qonto:${i.qonto_invoice_id}`,
       rechnungsnummer: i.number, empfaenger_name: name || null, brutto: r2(brutto), netto_voll: netto, werbebudget_abzug: 0, abzug_positionen: [],
-      zugeordnet: ok, klaer_grund: ok ? null : !clientId ? "Rechnungsempfänger keinem Kunden zugeordnet" : "Kunde nicht im Kundensnapshot dieses Monats",
+      zugeordnet: ok, klaer_grund: ok ? null : unklar ? "Name mehrdeutig — Zuordnung über Qonto-ID nötig" : !clientId ? "Rechnungsempfänger keinem Kunden zugeordnet" : "Kunde nicht im Kundensnapshot dieses Monats",
       updated_at: new Date().toISOString(),
     });
   }
