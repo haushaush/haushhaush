@@ -16,6 +16,6 @@ Subdirectories may have their own `AGENTS.md` (e.g. `supabase/functions/`); read
 - Customer links: `src/lib/kundenVerknuepfungen.ts` owns status, reasoned manual suggestions and link/unlink writes; searches read full objects, not links; dismissals in `kunde_link_vorschlag_verworfen`. Never add Slack/Pipedrive to customer `SYSTEME`. Why: views must agree.
 - LeadSharks sections share settings/save/reset state; allowlist changed visible contract fields, contacts read-only. Why: preserve edits and hidden values.
 - Ad-budget mapping: `werbebudget_zuordnung` maps a customer to a whole campaign or to adsets of a shared campaign on our own Meta accounts (one owner per object, campaign-or-adsets enforced by trigger, never auto-set); edited only in the Verknüpfungen tab; a mapping derives its `kunde_meta_accounts` row (dropped with the last one); customer-owned accounts link separately, reporting only; the Finanzen tab is overview-only. `kunde_meta_accounts` is many-to-many; never assume one client per account. Why: spend per customer must be attributable without splitting or estimating.
-- Credentials only from secrets, never tables.
-- Bookkeeping: one source per customer via Close "Marke" → `buchhaltung_quelle`; unknown = ungeklärt, never default or add both; lexoffice read-only. Why: two companies.
+- Credentials: secrets only.
+- Bookkeeping: one source/customer via Close "Marke" → `buchhaltung_quelle`; unknown = ungeklärt, never default or add both; lexoffice read-only. Why: two companies.
 - Finance invoices: `src/lib/rechnungen.ts` alone maps Qonto/lexoffice invoice fields and statuses (unknown → "sonstige", shown raw). Why: consistency.
