@@ -254,7 +254,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
         const { data: a } = await supabase.from('bonus_survey_antworten').select('*').eq('monat', monat).eq('mitarbeiter_id', maId).in('zuordnung_status', ['automatisch', 'manuell']);
         setData({ toks, ans: (a as any[]) || [] });
       } else if (kind === 'cash_niveau' || kind === 'cash_entwicklung') {
-        const { data: c } = await supabase.from('bonus_cash_collect').select('id, betrag, eingang_am, quelle, zugeordnet, mitarbeiter_id, client_id, empfaenger_name, rechnungsnummer, klaer_grund, clients:client_id(name)').eq('monat', monat).or(`mitarbeiter_id.eq.${maId},zugeordnet.eq.false`).order('eingang_am');
+        const { data: c } = await supabase.from('bonus_cash_collect').select('id, betrag, eingang_am, quelle, zugeordnet, mitarbeiter_id, client_id, empfaenger_name, rechnungsnummer, klaer_grund, quelle_id, clients:client_id(name)').eq('monat', monat).or(`mitarbeiter_id.eq.${maId},zugeordnet.eq.false`).order('eingang_am');
         setData({ rows: (c as any[]) || [] });
       } else if (kind === 'churn') {
         const { data: c } = await supabase.from('bonus_churn_events').select('id, typ, zaehlt_als_churn, bemerkung, festgestellt_am, abgang_datum, kuendigungsdatum, letzter_vertragstag, freigabe_status, close_lead_id, close_opportunity_id, clients:client_id(name)').eq('monat', monat).eq('mitarbeiter_id', maId).order('abgang_datum');
