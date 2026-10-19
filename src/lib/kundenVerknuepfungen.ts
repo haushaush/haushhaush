@@ -15,8 +15,16 @@ export const SYSTEME: { key: SystemKey; label: string; objekt: string; angebunde
   { key: 'superchat', label: 'Superchat', objekt: 'Kontakt', angebunden: false },
 ];
 
-/** belegt = Name des anderen CRM-Kunden, dem das Objekt schon gehört (Treffer bleibt sichtbar, aber gesperrt). */
-export interface Objekt { id: string; name: string | null; url?: string | null; ref?: string; detail?: string; belegt?: string | null }
+/** belegt = Name des Kunden, dem das Objekt exklusiv gehört (Treffer sichtbar, aber gesperrt).
+ *  auchBei = weitere Kunden auf demselben, teilbaren Objekt (nur Hinweis, keine Sperre – z. B. Meta-Untermarken). */
+export interface Objekt { id: string; name: string | null; url?: string | null; ref?: string; detail?: string; belegt?: string | null; auchBei?: string[] }
+
+/** „läuft auch für: A, B (+18)" */
+export function auchBeiText(namen?: string[] | null, max = 2): string | null {
+  if (!namen?.length) return null;
+  const rest = namen.length - max;
+  return `läuft auch für: ${namen.slice(0, max).join(', ')}${rest > 0 ? ` (+${rest})` : ''}`;
+}
 export interface Vorschlag extends Objekt { system: SystemKey; grund: string }
 export type SystemStand =
   | { zustand: 'verknuepft'; objekt: Objekt }
@@ -303,13 +311,13 @@ export async function suche(system: SystemKey, q: string, clientId?: string): Pr
       const { data: links, error: linkError } = await supabase.from('kunde_meta_accounts').select('meta_account_id, client_id').in('meta_account_id', ids);
       if (linkError) throw new Error(linkError.message);
       const fremd = (links || []).filter(l => l.client_id && l.client_id !== clientId);
-      const namen = await belegtNamen(fremd.flatMap(l => l.client_id ? [l.client_id] : []));
+      const namen = await belegtNamen([...new Set(fremd.flatMap(l => l.client_id ? [l.client_id] : []))]);
       return (data || []).map(r => {
-        const belegt = fremd.find(l => String(l.meta_account_id) === String(r.meta_account_id));
-        return {
-          id: String(r.meta_account_id), name: r.name, detail: r.business_name, url: metaUrl(String(r.meta_account_id)),
-          belegt: belegt?.client_id ? (namen.get(belegt.client_id) || 'anderer Kunde') : null,
-        };
+        const id = String(r.meta_account_id);
+        const eigen = (links || []).some(l => String(l.meta_account_id) === id && clientId && l.client_id === clientId);
+        const auchBei = [...new Set(fremd.filter(l => String(l.meta_account_id) === id).map(l => namen.get(l.client_id!) || 'anderer Kunde'))];
+        // Gesperrt nur, wenn derselbe Kunde das Konto schon hat; andere Kunden sind nur ein Hinweis.
+        return { id, name: r.name, detail: r.business_name, url: metaUrl(id), belegt: eigen ? 'diesem Kunden' : null, auchBei };
       });
     }
     case 'qonto': case 'lexoffice': return sucheBuch(system, q, clientId);
@@ -352,15 +360,12 @@ export async function verknuepfen(system: SystemKey, clientId: string, o: Objekt
       } catch { /* Sync ist optional; Verknüpfung bleibt bestehen */ }
       return;
     case 'meta': {
-      const { data: ex, error } = await supabase.from('kunde_meta_accounts').select('client_id').eq('meta_account_id', o.id).maybeSingle();
+      // Ein Werbekonto darf mehreren Kunden gehören (Untermarken); exklusiv ist nur die Kampagne/Anzeigengruppe.
+      const { data: ex, error } = await supabase.from('kunde_meta_accounts').select('client_id').eq('meta_account_id', o.id).eq('client_id', clientId).limit(1);
       if (error) throw new Error(error.message);
-      if (ex?.client_id && ex.client_id !== clientId) {
-        const n = (await belegtNamen([ex.client_id])).get(ex.client_id) || 'anderem Kunden';
-        throw new Error(`Bereits ${n} zugeordnet`);
-      }
-      if (ex?.client_id === clientId) return;
+      if (ex && ex.length) throw new Error('Dieses Werbekonto ist dem Kunden bereits zugeordnet.');
       const ins = await supabase.from('kunde_meta_accounts').insert({ client_id: clientId, meta_account_id: o.id, meta_account_name: o.name, match_type: 'manual', match_confidence: 1, matched_by: await uid() } as any);
-      if (ins.error) throw new Error(ins.error.code === '23505' ? 'Dieses Werbekonto ist bereits einem anderen Kunden zugeordnet.' : ins.error.message);
+      if (ins.error) throw new Error(ins.error.code === '23505' ? 'Dieses Werbekonto ist dem Kunden bereits zugeordnet.' : ins.error.message);
       return;
     }
     case 'qonto': case 'lexoffice': return buchVerknuepfen(system, clientId, o);
