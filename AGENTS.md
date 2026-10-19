@@ -2,7 +2,7 @@
 
 Subdirectories may have their own `AGENTS.md` (e.g. `supabase/functions/`); read it before changing files there.
 
-- Homepage cards use session-scoped clients/projects, deadline-ranked projects and latest client/project contract end. Why: actionable work.
+- Homepage cards: session-scoped clients/projects, deadline-ranked, latest contract end. Why: actionable work.
 
 - Navigation changes keep routes/permissions. Why: no broken links.
 - Meta token: resolve via `_shared/meta-config.ts` (secret only); billing functions use `META_BILLING_ACCESS_TOKEN`. Why: one resolver.
