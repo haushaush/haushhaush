@@ -16,6 +16,19 @@ const eurC = (c?: string) => c ? `€${(Number(c) / 100).toLocaleString('de-DE',
 const eurR = (v?: string) => v == null ? '—' : `€${Number(v).toLocaleString('de-DE', { maximumFractionDigits: 0 })}`;
 export const zuoKundenName = (z?: Zuo) => z?.clients?.name || 'anderem Kunden';
 
+/** Legt die Zuordnung an und leitet die Kontoverknüpfung (kunde_meta_accounts) daraus ab, falls noch nicht vorhanden. */
+export async function zuordnungAnlegen(clientId: string, konto: string, untermarke: string | null, typ: 'kampagne' | 'adset', objekt_id: string, kampagne_id: string, objekt_name: string) {
+  const uid = (await supabase.auth.getUser()).data.user?.id ?? null;
+  const { error } = await (supabase.from as any)('werbebudget_zuordnung').insert({ client_id: clientId, typ, objekt_id, kampagne_id, objekt_name, meta_account_id: konto, untermarke, angelegt_von: uid });
+  if (error) throw new Error(error.message);
+  const { data: da, error: e1 } = await supabase.from('kunde_meta_accounts').select('id').eq('client_id', clientId).eq('meta_account_id', konto).limit(1);
+  if (e1) { toast.warning(`Zugeordnet, aber Kontoverknüpfung nicht geprüft: ${e1.message}`); return; }
+  if (!da?.length) {
+    const { error: e2 } = await supabase.from('kunde_meta_accounts').insert({ client_id: clientId, meta_account_id: konto, meta_account_name: untermarke, match_type: 'kampagne', match_confidence: 1, matched_by: uid } as any);
+    if (e2) toast.warning(`Zugeordnet, aber Kontoverknüpfung fehlgeschlagen: ${e2.message}`);
+  }
+}
+
 /** Lädt alle Zuordnungen einmal (für Fremdbelegungen) und bietet zuordnen/loesen für einen Kunden. */
 export function useWerbebudgetZuordnung(clientId: string) {
   const [alle, setAlle] = useState<Zuo[]>([]);
@@ -29,25 +42,11 @@ export function useWerbebudgetZuordnung(clientId: string) {
   }, []);
   useEffect(() => { ladeZuo(); }, [ladeZuo]);
 
-  /** Legt die Zuordnung an und leitet die Kontoverknüpfung (kunde_meta_accounts) daraus ab, falls noch nicht vorhanden. */
   const zuordnen = useCallback(async (konto: string, untermarke: string | null, typ: 'kampagne' | 'adset', objekt_id: string, kampagne_id: string, objekt_name: string) => {
     setBusy(objekt_id);
-    try {
-      const uid = (await supabase.auth.getUser()).data.user?.id ?? null;
-      const { error } = await (supabase.from as any)('werbebudget_zuordnung').insert({
-        client_id: clientId, typ, objekt_id, kampagne_id, objekt_name, meta_account_id: konto,
-        untermarke, angelegt_von: uid,
-      });
-      if (error) { toast.error(error.message); return false; }
-      const { data: da, error: e1 } = await supabase.from('kunde_meta_accounts').select('id').eq('client_id', clientId).eq('meta_account_id', konto).limit(1);
-      if (e1) toast.warning(`Zugeordnet, aber Kontoverknüpfung nicht geprüft: ${e1.message}`);
-      else if (!da?.length) {
-        const { error: e2 } = await supabase.from('kunde_meta_accounts').insert({ client_id: clientId, meta_account_id: konto, meta_account_name: untermarke, match_type: 'kampagne', match_confidence: 1, matched_by: uid } as any);
-        if (e2) toast.warning(`Zugeordnet, aber Kontoverknüpfung fehlgeschlagen: ${e2.message}`);
-      }
-      toast.success(`${objekt_name} zugeordnet`);
-      return true;
-    } finally { setBusy(null); ladeZuo(); }
+    try { await zuordnungAnlegen(clientId, konto, untermarke, typ, objekt_id, kampagne_id, objekt_name); toast.success(`${objekt_name} zugeordnet`); return true; }
+    catch (e: any) { toast.error(e.message); return false; }
+    finally { setBusy(null); ladeZuo(); }
   }, [clientId, ladeZuo]);
 
   /** Löst die Zuordnung; war es die letzte dieses Kunden auf dem Konto, fällt auch die abgeleitete Kontoverknüpfung weg. */

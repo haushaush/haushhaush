@@ -1,29 +1,41 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-/** Kunden ohne eindeutige Buchhaltungsquelle (Close-Marke fehlt oder ist unbekannt). Nie geraten. */
+type Row = { client_id: string; client_name: string | null; marke: string | null; grund: string };
+const REIHENFOLGE = ['Buchhaltungsquelle ungeklärt', 'Keine Marke in Close', 'Kein Close-Lead verknüpft'];
+
+/** Kunden ohne eindeutige Buchhaltungsquelle, je Grund ein Abschnitt mit Anzahl. Hinweise – gepflegt wird in Close. Nie geraten. */
 export function BuchhaltungUngeklaert() {
-  const [rows, setRows] = useState<{ client_id: string; client_name: string | null; marke: string | null; grund: string }[] | null>(null);
+  const [rows, setRows] = useState<Row[] | null>(null);
   useEffect(() => {
     (supabase.rpc as any)('buchhaltung_quelle_ungeklaert').then(({ data }: any) => setRows(data || []));
   }, []);
-  if (!rows || rows.length === 0) return null;
+  if (!rows) return null;
+  const gruppen = new Map<string, Row[]>();
+  for (const r of rows) { const g = !r.grund || r.grund === 'Unbekannte Marke' ? 'Buchhaltungsquelle ungeklärt' : r.grund; (gruppen.get(g) || gruppen.set(g, []).get(g)!).push(r); }
+  const titel = [...new Set([...REIHENFOLGE, ...gruppen.keys()])];
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Buchhaltungsquelle ungeklärt</CardTitle>
-        <p className="text-xs text-muted-foreground">Für diese Kunden bleibt der Zahlungsstatus leer, bis die Marke in Close gesetzt ist.</p>
-      </CardHeader>
-      <CardContent className="divide-y divide-border">
-        {rows.map(r => (
-          <Link key={r.client_id} to={`/kunden/${r.client_id}`} className="flex items-center justify-between gap-3 py-2 text-sm hover:text-primary">
-            <span className="truncate">{r.client_name || '—'}</span>
-            <span className="text-xs text-muted-foreground shrink-0">{r.grund}{r.marke ? ` („${r.marke}“)` : ''}</span>
-          </Link>
-        ))}
-      </CardContent>
-    </Card>
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground px-1">Hinweise – diese Punkte werden in Close gepflegt, nicht hier. Bis dahin bleibt der Zahlungsstatus leer.</p>
+      {titel.map(t => {
+        const rs = gruppen.get(t) || [];
+        return (
+          <section key={t} className="rounded-2xl bg-card/60 border border-border/50 px-5 py-3">
+            <div className="flex items-center gap-3"><span className="text-sm font-medium">{t}</span><span className="ml-auto text-sm tabular-nums text-muted-foreground">{rs.length}</span></div>
+            {rs.length === 0 ? <p className="text-sm text-muted-foreground pt-1">nichts offen</p> : (
+              <div className="divide-y divide-border/50 pt-1">
+                {rs.map(r => (
+                  <Link key={r.client_id} to={`/kunden/${r.client_id}`} className="flex items-center justify-between gap-3 py-2 text-sm hover:text-primary">
+                    <span className="truncate">{r.client_name || '—'}</span>
+                    {r.marke && <span className="text-xs text-muted-foreground shrink-0">Marke „{r.marke}“ unbekannt</span>}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })}
+    </div>
   );
 }
