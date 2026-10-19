@@ -9356,6 +9356,7 @@ export type Database = {
           removed_count: number
         }[]
       }
+      nkey: { Args: { t: string }; Returns: string }
       projects_reset_execute: {
         Args: { p_actor: string; p_fingerprint: string; p_plan: Json }
         Returns: Json
