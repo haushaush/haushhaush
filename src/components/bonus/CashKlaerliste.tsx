@@ -8,7 +8,8 @@ import { namensTreffer } from '@/lib/kundenVerknuepfungen';
 
 const eur = (n: number) => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const dt = (s: string | null) => (s ? new Date(s).toLocaleDateString('de-DE') : '–');
-const key = (s: string | null | undefined) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+// Same normalization as bonus-cash-sync: existing link for the normalized name is updated, never duplicated.
+const key = (s: string | null | undefined) => (s ?? '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
 
 type Kunde = { id: string; name: string | null };
 type Vorschlag = { kunde: Kunde; score: number };
