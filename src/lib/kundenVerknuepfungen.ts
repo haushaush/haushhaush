@@ -183,13 +183,22 @@ async function buchVerknuepfen(sys: 'qonto' | 'lexoffice', clientId: string, o: 
     throw new Error(`Bereits ${n} zugeordnet`);
   }
   const patch = { client_id: clientId, is_confirmed: true, match_type: 'manual', confidence: 1 };
+  if (sys === 'qonto') return qontoVerknuepfen(o.id, o.name, clientId, 1);
   if (ex) chk(await (supabase.from as any)(t).update(patch).eq('id', ex.id));
-  else if (sys === 'qonto') {
-    // Namensindex ist eindeutig: vorhandene Zeile gleichen Namens ohne ID übernehmen.
-    const { data: byName } = await supabase.from('qonto_client_links').select('id, qonto_client_id').ilike('qonto_client_name', o.name || '').maybeSingle();
-    if (byName && !byName.qonto_client_id) chk(await supabase.from('qonto_client_links').update({ ...patch, qonto_client_id: o.id } as any).eq('id', byName.id));
-    else chk(await supabase.from('qonto_client_links').insert({ ...patch, qonto_client_id: o.id, qonto_client_name: o.name } as any));
-  } else chk(await (supabase.from as any)(t).insert({ ...patch, [extCol]: o.id, [nameCol]: o.name }));
+  else chk(await (supabase.from as any)(t).insert({ ...patch, [extCol]: o.id, [nameCol]: o.name }));
+}
+
+/** Qonto-Verknüpfung je Datensatz: immer mit qonto_client_id und Name. Vorhandene Zeile dieser ID wird aktualisiert;
+ *  eine Altzeile gleichen Namens ohne ID wird übernommen; sonst neu. Ein Qonto-Datensatz gehört genau einem Kunden. */
+export async function qontoVerknuepfen(qid: string, name: string | null, clientId: string, confidence: number) {
+  const patch = { client_id: clientId, is_confirmed: true, match_type: 'manual', confidence, qonto_client_id: qid, qonto_client_name: name, updated_at: new Date().toISOString() };
+  const { data: ex, error } = await supabase.from('qonto_client_links').select('id, client_id, is_confirmed').eq('qonto_client_id', qid).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (ex?.client_id && ex.is_confirmed && ex.client_id !== clientId) throw new Error(`Bereits ${(await belegtNamen([ex.client_id])).get(ex.client_id)} zugeordnet`);
+  if (ex) { chk(await supabase.from('qonto_client_links').update(patch as any).eq('id', ex.id)); return; }
+  const { data: alt } = await supabase.from('qonto_client_links').select('id, qonto_client_name').is('qonto_client_id', null).ilike('qonto_client_name', name || '-').limit(1);
+  if (alt?.length) { chk(await supabase.from('qonto_client_links').update(patch as any).eq('id', alt[0].id)); return; }
+  chk(await supabase.from('qonto_client_links').insert(patch as any));
 }
 
 /** Lädt Verknüpfungen + Vorschläge für die übergebenen Kunden (alle Tabellen einmal, auch für die Sammelansicht). */
