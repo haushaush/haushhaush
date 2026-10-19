@@ -8,6 +8,8 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 const nextMonth = (m: string) => { const d = new Date(m + "T00:00:00Z"); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 10); };
 const squash = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 const num = (v: any) => { const n = Number(v); return isFinite(n) ? n : null; };
+// Comparison only (Qonto writes two spaces between first/last name); stored names stay original.
+const norm = (s: string | null | undefined) => (s ?? "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
 
 async function syncMonth(admin: any, monat: string, mitarbeiter_id: string, snapshotMonat: string) {
   const [{ data: inv, error: iErr }, { data: links }, { data: ign }, { data: snap }] = await Promise.all([
@@ -18,20 +20,20 @@ async function syncMonth(admin: any, monat: string, mitarbeiter_id: string, snap
   ]);
   if (iErr) throw new Error("Rechnungen: " + iErr.message);
   if (!snap?.length) throw new Error(`Kein Kundensnapshot für ${snapshotMonat}`);
-  const byName = new Map((links || []).map((l: any) => [l.qonto_client_name.trim().toLowerCase(), l.client_id]));
+  const byName = new Map((links || []).map((l: any) => [norm(l.qonto_client_name), l.client_id]));
   const byQid = new Map((links || []).filter((l: any) => l.qonto_client_id).map((l: any) => [l.qonto_client_id, l.client_id]));
-  const ignored = new Set((ign || []).map((x: any) => x.qonto_client_name.trim().toLowerCase()));
+  const ignored = new Set((ign || []).map((x: any) => norm(x.qonto_client_name)));
   const inSnap = new Set(snap.map((s: any) => s.client_id));
 
   const rows: any[] = [];
   let ignoriert = 0;
   for (const i of inv || []) {
     const name = (i.client_name || "").trim();
-    if (ignored.has(name.toLowerCase())) { ignoriert++; continue; }
+    if (ignored.has(norm(name))) { ignoriert++; continue; }
     const brutto = num(i.raw?.total_amount?.value) ?? num(i.total_amount) ?? 0;
     const vat = num(i.raw?.vat_amount?.value) ?? num(i.vat_amount) ?? 0;
     const netto = r2(num(i.subtotal_amount) ?? brutto - vat);
-    const clientId = byQid.get(i.client_id) || byName.get(name.toLowerCase()) || null;
+    const clientId = byQid.get(i.client_id) || byName.get(norm(name)) || null;
     const ok = !!clientId && inSnap.has(clientId);
     rows.push({
       monat, client_id: clientId, mitarbeiter_id: ok ? mitarbeiter_id : null, betrag: netto,
