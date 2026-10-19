@@ -163,7 +163,7 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
   const aktive = useMemo(() => (kunden || []).filter(k => AKTIV.includes(k.kundenstatus || '')), [kunden]);
 
   // Qonto-Zahler je normalisiertem Namen, darunter die einzelnen Qonto-Datensätze.
-  const { zahler, offeneZahler, dubletten } = useMemo(() => {
+  const { offeneZahler, dubletten } = useMemo(() => {
     const bestaetigt = links.filter(l => l.is_confirmed && l.client_id);
     const linkQid = new Map(bestaetigt.filter(l => l.qonto_client_id).map(l => [l.qonto_client_id, l.client_id]));
     const linkName = new Set(bestaetigt.map(l => key(l.qonto_client_name)));
@@ -187,7 +187,6 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
     const alleZ = [...m.values()];
     for (const z of alleZ) z.eintraege.sort((a, b) => b.anzahl - a.anzahl);
     return {
-      zahler: alleZ,
       offeneZahler: alleZ.filter(z => !linkName.has(z.key) && z.eintraege.every(e => !e.client_id)).sort((a, b) => b.netto - a.netto),
       dubletten: alleZ.filter(z => z.eintraege.filter(e => !e.qid.startsWith('name:')).length > 1 && z.eintraege.some(e => !e.client_id)),
     };
