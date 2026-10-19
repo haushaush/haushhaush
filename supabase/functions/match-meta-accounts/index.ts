@@ -370,7 +370,7 @@ Deno.serve(async (req) => {
     if (insertsAuto.length > 0) {
       const { error } = await supabase
         .from("kunde_meta_accounts")
-        .upsert(insertsAuto, { onConflict: "meta_account_id", ignoreDuplicates: true });
+        .insert(insertsAuto); // nur Konten ohne jede Verknüpfung (matchedSet), daher kein Konflikt
       if (error) console.error("auto insert error", error);
     }
     if (insertsPending.length > 0) {

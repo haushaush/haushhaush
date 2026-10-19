@@ -54,7 +54,11 @@ export async function resolveKundeFromMetaAccount(
       .from("kunde_meta_accounts")
       .select("kunde_id")
       .in("meta_account_id", candidates)
-      .maybeSingle();
+      .then((r: any) => {
+        // Mehrere Kunden auf einem Konto (Untermarke) → kein eindeutiger Direkttreffer.
+        const ids = [...new Set((r.data ?? []).map((x: any) => x.kunde_id).filter(Boolean))];
+        return { data: ids.length === 1 ? { kunde_id: ids[0] as string } : null };
+      });
 
     if (link?.kunde_id) {
       const { data: kunde } = await svc

@@ -75,13 +75,19 @@ Deno.serve(async (req) => {
     const kundeMap = new Map<string, any>();
     for (const k of (kunden ?? [])) kundeMap.set(k.id, k);
 
-    const accountToKunde = new Map<string, any>();
+    // Ein Konto kann mehreren Kunden gehören (Untermarken) – dann ist das Konto kein eindeutiger Treffer.
+    const kundenJeKonto = new Map<string, Set<string>>();
     for (const l of (links ?? [])) {
-      const k = kundeMap.get(l.kunde_id);
+      if (!l.kunde_id) continue;
+      const s = String(l.meta_account_id).replace(/^act_/, "");
+      if (!kundenJeKonto.has(s)) kundenJeKonto.set(s, new Set());
+      kundenJeKonto.get(s)!.add(l.kunde_id);
+    }
+    const accountToKunde = new Map<string, any>();
+    for (const [stripped, ks] of kundenJeKonto) {
+      if (ks.size !== 1) continue;
+      const k = kundeMap.get([...ks][0]);
       if (!k) continue;
-      const id = String(l.meta_account_id);
-      const stripped = id.replace(/^act_/, "");
-      accountToKunde.set(id, k);
       accountToKunde.set(stripped, k);
       accountToKunde.set(`act_${stripped}`, k);
     }

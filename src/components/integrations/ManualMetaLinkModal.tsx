@@ -127,16 +127,13 @@ export function ManualMetaLinkModal({ open, onOpenChange, onSaved }: Props) {
       const stripped = selectedAccount.replace(/^act_/, "");
       const variants = Array.from(new Set([selectedAccount, stripped, `act_${stripped}`]));
 
-      // Bisherige Verknüpfung(en) für dieses Konto merken und entfernen
-      const { data: prevLinks } = await supabase
-        .from("kunde_meta_accounts")
-        .select("kunde_id, client_id")
-        .eq("meta_account_id", selectedAccount);
-
+      // Ein Werbekonto darf mehreren Kunden gehören (Untermarken). Nur eine eventuelle
+      // Altzeile desselben Kunden ersetzen; Verknüpfungen anderer Kunden bleiben unangetastet.
       const { error: delErr } = await supabase
         .from("kunde_meta_accounts")
         .delete()
-        .eq("meta_account_id", selectedAccount);
+        .eq("meta_account_id", selectedAccount)
+        .eq("kunde_id", selectedKunde);
       if (delErr) throw delErr;
 
       const { data: inserted, error } = await supabase
@@ -151,38 +148,14 @@ export function ManualMetaLinkModal({ open, onOpenChange, onSaved }: Props) {
         })
         .select("id, kunde_id, client_id")
         .maybeSingle();
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === "23505") throw new Error("Dieses Werbekonto ist dem Kunden bereits zugeordnet.");
+        throw error;
+      }
       if (!inserted || inserted.kunde_id !== selectedKunde) {
         throw new Error("Verknüpfung konnte nicht gespeichert werden (keine Berechtigung?)");
       }
-
-      // Konto-ID beim alten Kunden entfernen
-      const oldKundeIds = Array.from(
-        new Set((prevLinks || []).map((l: any) => l.kunde_id).filter((id: string) => id && id !== selectedKunde)),
-      );
-      if (oldKundeIds.length) {
-        await supabase
-          .from("close_deals")
-          .update({ meta_ad_account_id: null })
-          .in("id", oldKundeIds as string[])
-          .in("meta_ad_account_id", variants);
-      }
-
-      // Konto-ID bei allen anderen Clients entfernen
-      const newClientId = (inserted as any).client_id ?? null;
-      const { data: otherClients } = await supabase
-        .from("clients")
-        .select("id, meta_account_id, meta_account_ids")
-        .or(`meta_account_id.in.(${variants.join(",")}),meta_account_ids.ov.{${variants.join(",")}}`);
-      for (const c of (otherClients || []) as any[]) {
-        if (newClientId && c.id === newClientId) continue;
-        const nextIds = ((c.meta_account_ids || []) as string[]).filter((v) => !variants.includes(v));
-        const nextSingle = variants.includes(c.meta_account_id || "") ? null : c.meta_account_id;
-        await supabase
-          .from("clients")
-          .update({ meta_account_id: nextSingle, meta_account_ids: nextIds })
-          .eq("id", c.id);
-      }
+      void variants;
 
       // Remove any pending suggestion for that account
       await supabase.from("pending_meta_matches").delete().eq("meta_account_id", selectedAccount);

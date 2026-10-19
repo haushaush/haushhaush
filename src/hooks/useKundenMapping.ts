@@ -48,9 +48,18 @@ export function useKundenMapping() {
     }
 
     const map = new Map<string, KundeMatch>();
+    // Konten mit mehreren Kunden (Untermarken) sind kein eindeutiger Kundentreffer.
+    const kundenJeKonto = new Map<string, Set<string>>();
+    for (const l of links) {
+      if (!l.meta_account_id) continue;
+      const s = String(l.meta_account_id).replace(/^act_/, '');
+      if (!kundenJeKonto.has(s)) kundenJeKonto.set(s, new Set());
+      kundenJeKonto.get(s)!.add(String(l.kunde_id ?? ''));
+    }
     // 1) Explicit links via kunde_meta_accounts
     for (const l of links) {
       if (!l.meta_account_id) continue;
+      if ((kundenJeKonto.get(String(l.meta_account_id).replace(/^act_/, ''))?.size ?? 0) > 1) continue;
       const deal = l.kunde_id ? dealsById.get(l.kunde_id) : null;
       const norm = String(l.meta_account_id).replace(/^act_/, '');
       const match: KundeMatch = {

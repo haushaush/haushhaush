@@ -12,7 +12,7 @@ import { AlertTriangle, Check, ChevronRight, ExternalLink, Loader2, Plus, Search
 import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { type SystemKey, type SystemStand, type KundeMin, type Objekt, verknuepfen, verwerfen, loesen, portalMeta } from '@/lib/kundenVerknuepfungen';
+import { type SystemKey, type SystemStand, type KundeMin, type Objekt, verknuepfen, verwerfen, loesen, portalMeta, auchBeiText } from '@/lib/kundenVerknuepfungen';
 import { ladeUntermarken, STATUS_LABEL, type Untermarke } from '@/lib/werbebudgetKonten';
 import { KampagneZeile, useWerbebudgetZuordnung, type Zuo, type ZuoKampagne } from './werbebudgetZuordnung';
 import { Kachel, LeadSharksSteuerung, ZuweisenAssistent, ZuordnungErgebnis, fehlerMeldung, type LeadTyp } from './LeadSharksMeta';
@@ -124,6 +124,7 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
   const [auf, setAuf] = useState<Record<string, boolean>>({});
   const [loeseZiel, setLoeseZiel] = useState<Objekt | null>(null);
   const [aendern, setAendern] = useState(false);
+  const [geteilt, setGeteilt] = useState<Objekt | null>(null);
   const [busy, setBusy] = useState(false);
   const bs = useBudgetstand(kunde.id, !!auf.budget && rechte.budget);
 
@@ -271,8 +272,16 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
                   <SuchFeld system="meta" clientId={kunde.id} label="Meta Ads" onPick={o => {
                     setAendern(false);
                     // Nur hinzufügen; bestehende Konten bleiben verknüpft.
-                    run(() => verknuepfen('meta', kunde.id, o), 'Werbekonto hinzugefügt');
+                    run(() => verknuepfen('meta', kunde.id, o).then(() => setGeteilt(o.auchBei?.length ? o : null)), 'Werbekonto hinzugefügt');
                   }} />
+                </div>
+              )}
+              {geteilt && (
+                <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm flex flex-wrap items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+                  <p className="flex-1 min-w-0 text-xs">„{geteilt.name || geteilt.id}“ läuft auch für andere Kunden ({auchBeiText(geteilt.auchBei, 3)?.replace('läuft auch für: ', '')}). Die Kontoverknüpfung allein ordnet kein Budget zu – bitte zusätzlich Kampagne oder Anzeigengruppe zuordnen.</p>
+                  <Button size="sm" onClick={() => { setStart({ stufe: 3, weg: 'untermarke', konto: { meta_account_id: geteilt.id, name: geteilt.name } }); setGeteilt(null); }}>Kampagne zuordnen</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setGeteilt(null)}>Später</Button>
                 </div>
               )}
             </div>
@@ -362,7 +371,7 @@ function MetaDialog({ kunde, stand, wb, profileId, ls, rechte, start, kundenKont
   const [q, setQ] = useState('');
   const [konto, setKonto] = useState<Untermarke | null>(start.konto ?? null);
   const [kontenFehler, setKontenFehler] = useState<string | null>(null);
-  const [belegt, setBelegt] = useState<Record<string, string>>({});
+  const [belegt, setBelegt] = useState<Record<string, string[]>>({});
   const [belegtFehler, setBelegtFehler] = useState<string | null>(null);
   const [kampagnenFehler, setKampagnenFehler] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -393,7 +402,10 @@ function MetaDialog({ kunde, stand, wb, profileId, ls, rechte, start, kundenKont
       const ids = [...new Set(fremd.map((r: any) => r.client_id))];
       const { data: cl } = ids.length ? await supabase.from('clients').select('id, name').in('id', ids) : { data: [] as any[] };
       const n = new Map((cl || []).map((c: any) => [c.id, c.name]));
-      setBelegt(Object.fromEntries(fremd.map((r: any) => [r.meta_account_id, n.get(r.client_id) || 'anderem Kunden'])));
+      // Mehrere Kunden je Konto möglich (Untermarken) – nur Hinweis, keine Sperre.
+      const m: Record<string, string[]> = {};
+      for (const r of fremd as any[]) { const k = String(r.meta_account_id); const name = n.get(r.client_id) || 'anderer Kunde'; (m[k] ||= []).includes(name) || m[k].push(name); }
+      setBelegt(m);
     })();
   }, [kunde.id, verknuepftId]);
 
@@ -464,19 +476,20 @@ function MetaDialog({ kunde, stand, wb, profileId, ls, rechte, start, kundenKont
             {konten && gefiltert.length === 0 && <p className="text-sm text-muted-foreground">Keine Werbekonten gefunden.</p>}
             <div className="grid gap-3 sm:grid-cols-2">
               {gefiltert.map(k => {
-                const fremd = weg === 'kundenkonto' ? belegt[k.meta_account_id] : undefined;
-                if (fremd) return (
-                  <div key={k.meta_account_id} className="rounded-xl border border-border p-4 min-h-[76px] opacity-50">
-                    <p className="text-sm font-medium break-words">{k.name || k.meta_account_id}</p>
-                    <p className="text-xs text-muted-foreground mt-1">gehört zu {fremd}</p>
-                  </div>
-                );
                 const eigen = weg === 'kundenkonto' && verknuepftIds.includes(k.meta_account_id);
+                const auch = auchBeiText(belegt[k.meta_account_id]);
                 return <Kachel key={k.meta_account_id} aktiv={konto?.meta_account_id === k.meta_account_id}
                   onClick={() => { setKonto(k); setKampagne(null); }} titel={k.name || k.meta_account_id}
-                  unter={eigen ? `${k.meta_account_id} · mit diesem Kunden verknüpft` : k.meta_account_id} />;
+                  unter={[k.meta_account_id, eigen && 'mit diesem Kunden verknüpft', auch].filter(Boolean).join(' · ')} />;
               })}
             </div>
+            {weg === 'kundenkonto' && konto && kontoVerknuepft && !!belegt[konto.meta_account_id]?.length && (
+              <div className="rounded-xl border border-warning/40 bg-warning/10 p-3 flex flex-wrap items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+                <p className="text-xs flex-1 min-w-0">Auf diesem Konto liegen weitere Kunden. Die Kontoverknüpfung allein ordnet kein Budget zu – bitte zusätzlich Kampagne oder Anzeigengruppe zuordnen.</p>
+                <Button size="sm" onClick={() => { setWeg('untermarke'); setKampagne(null); setIdx(2); }}>Zur Kampagnen-Zuordnung</Button>
+              </div>
+            )}
             {weg === 'kundenkonto' && konto && !kontoVerknuepft && (
               <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
                 <p className="text-xs flex-1">„{konto.name || konto.meta_account_id}“ ist noch nicht mit diesem Kunden verknüpft.{verknuepftIds.length ? ' Bereits verknüpfte Konten bleiben bestehen.' : ''}</p>
