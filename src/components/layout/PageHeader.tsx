@@ -46,16 +46,18 @@ export function PageHeader({
   description,
   actions,
   size = 'lg',
+  className,
+  titleClassName,
+  descriptionClassName,
   centered = false,
   align = 'left',
-  className,
 }: PageHeaderProps) {
   if (centered) {
     return (
       <header className={cn('text-center max-w-3xl mx-auto mb-16 pt-8', className)}>
-        <h1 className={cn(titleSize[size], 'text-gray-900 dark:text-white')}>{title}</h1>
+        <h1 className={cn(titleClassName ?? titleSize[size], 'text-gray-900 dark:text-white')}>{title}</h1>
         {description && (
-          <p className={cn(descSize[size], 'text-gray-500 dark:text-gray-400 mt-5 font-normal')}>
+          <p className={cn(descriptionClassName ?? descSize[size], 'text-gray-500 dark:text-gray-400 mt-5 font-normal')}>
             {description}
           </p>
         )}
