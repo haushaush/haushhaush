@@ -185,18 +185,26 @@ async function sucheBuch(sys: 'qonto' | 'lexoffice', q: string, clientId?: strin
 }
 
 async function buchVerknuepfen(sys: 'qonto' | 'lexoffice', clientId: string, o: Objekt) {
-  const t = sys === 'qonto' ? 'qonto_client_links' : 'lexoffice_client_links';
-  const extCol = sys === 'qonto' ? 'qonto_client_id' : 'lexoffice_contact_id';
-  const nameCol = sys === 'qonto' ? 'qonto_client_name' : 'lexoffice_contact_name';
-  const { data: ex } = await (supabase.from as any)(t).select('id, client_id, is_confirmed').eq(extCol, o.id).maybeSingle();
-  if (ex?.client_id && ex.is_confirmed && ex.client_id !== clientId) {
-    const n = (await belegtNamen([ex.client_id])).get(ex.client_id);
-    throw new Error(`Bereits ${n} zugeordnet`);
+  if (sys === 'qonto') {
+    const { data: ex } = await supabase.from('qonto_client_links').select('id, client_id, is_confirmed').eq('qonto_client_id', o.id).maybeSingle();
+    if (ex?.client_id && ex.is_confirmed && ex.client_id !== clientId) throw new Error(`Bereits ${(await belegtNamen([ex.client_id])).get(ex.client_id)} zugeordnet`);
+    return qontoVerknuepfen(o.id, o.name, clientId, 1);
   }
-  const patch = { client_id: clientId, is_confirmed: true, match_type: 'manual', confidence: 1 };
-  if (sys === 'qonto') return qontoVerknuepfen(o.id, o.name, clientId, 1);
-  if (ex) chk(await (supabase.from as any)(t).update(patch).eq('id', ex.id));
-  else chk(await (supabase.from as any)(t).insert({ ...patch, [extCol]: o.id, [nameCol]: o.name }));
+  return lexofficeVerknuepfen(o.ref || o.id, o.name, clientId);
+}
+
+/** lexoffice-Verknüpfung: Schlüssel ist der normalisierte Empfängername. Zeile über id, contact_id oder Namen finden, sonst anlegen. */
+export async function lexofficeVerknuepfen(idOderContact: string, name: string | null, clientId: string) {
+  const t = () => (supabase.from as any)('lexoffice_client_links');
+  const isUuid = /^[0-9a-f-]{36}$/i.test(idOderContact);
+  let ex: any = null;
+  if (isUuid) ex = (await t().select('id, client_id, is_confirmed').eq('id', idOderContact).maybeSingle()).data;
+  if (!ex) ex = (await t().select('id, client_id, is_confirmed').eq('lexoffice_contact_id', idOderContact).limit(1)).data?.[0];
+  if (!ex && name) ex = (await t().select('id, client_id, is_confirmed').ilike('lexoffice_contact_name', name.trim()).limit(1)).data?.[0];
+  if (ex?.client_id && ex.is_confirmed && ex.client_id !== clientId) throw new Error(`Bereits ${(await belegtNamen([ex.client_id])).get(ex.client_id)} zugeordnet`);
+  const patch = { client_id: clientId, is_confirmed: true, match_type: 'manual', confidence: 1, updated_at: new Date().toISOString() };
+  if (ex) chk(await t().update(patch).eq('id', ex.id));
+  else chk(await t().insert({ ...patch, lexoffice_contact_name: name?.trim() || null, lexoffice_contact_id: isUuid ? null : idOderContact }));
 }
 
 /** Qonto-Verknüpfung je Datensatz: immer mit qonto_client_id und Name. Vorhandene Zeile dieser ID wird aktualisiert;
