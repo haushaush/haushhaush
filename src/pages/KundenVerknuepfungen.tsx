@@ -35,8 +35,8 @@ export default function KundenVerknuepfungen() {
 
   const zeilen = useMemo(() => kunden
     .filter(k => !q || (k.name || '').toLowerCase().includes(q.toLowerCase()))
+    .filter(k => stand.has(k.id))
     .map(k => ({ k, st: stand.get(k.id)!, z: zaehle(stand.get(k.id)!) }))
-    .filter(r => r.st)
     .sort((a, b) => b.z.luecken - a.z.luecken || (a.k.name || '').localeCompare(b.k.name || '')), [kunden, stand, q]);
 
   const vorschlaege = useMemo(() => zeilen.flatMap(r =>
