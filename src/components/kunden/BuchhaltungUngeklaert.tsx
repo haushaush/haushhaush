@@ -8,7 +8,7 @@ const REIHENFOLGE = ['Buchhaltungsquelle ungeklärt', 'Keine Marke in Close', 'K
 const SYS: Record<string, string> = { 'Buchhaltungsquelle ungeklärt': 'buchhaltung', 'Keine Marke in Close': 'marke', 'Kein Close-Lead verknüpft': 'close' };
 
 /** Kunden ohne eindeutige Buchhaltungsquelle, je Grund ein Abschnitt mit Anzahl und Schnellzuordnung je Zeile. */
-export function BuchhaltungUngeklaert({ onCloseVerknuepft }: { onCloseVerknuepft?: (clientId: string) => void }) {
+export function BuchhaltungUngeklaert({ onCloseVerknuepft }: { onCloseVerknuepft?: (clientId: string, keinBedarf: boolean) => void }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [kein, setKein] = useState<Set<string>>(new Set());
   const [vn, setVn] = useState<Map<string, string | null>>(new Map());
@@ -38,7 +38,7 @@ export function BuchhaltungUngeklaert({ onCloseVerknuepft }: { onCloseVerknuepft
                   <QuickZeile key={r.client_id} clientId={r.client_id} titel={r.client_name || '—'}
                     info={t === 'Buchhaltungsquelle ungeklärt' && r.marke ? `Marke „${r.marke}" ohne Buchhaltungsquelle` : undefined}
                     panel={fertig => t === 'Kein Close-Lead verknüpft'
-                      ? <ClosePanel clientId={r.client_id} namen={[r.client_name, vn.get(r.client_id)]} fertig={e => { fertig(e); onCloseVerknuepft?.(r.client_id); }} />
+                      ? <ClosePanel clientId={r.client_id} namen={[r.client_name, vn.get(r.client_id)]} fertig={e => { fertig(e); onCloseVerknuepft?.(r.client_id, e.text === 'Kein Close-Lead'); }} />
                       : t === 'Keine Marke in Close' ? <MarkePanel clientId={r.client_id} fertig={fertig} />
                       : <QuellePanel clientId={r.client_id} marke={r.marke} fertig={fertig} />} />
                 ))}

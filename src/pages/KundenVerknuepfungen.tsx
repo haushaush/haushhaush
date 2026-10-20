@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import { Check, X, Minus, ExternalLink, GitMerge } from 'lucide-react';
 import { BuchhaltungUngeklaert } from '@/components/kunden/BuchhaltungUngeklaert';
 import { VerknuepfungsArbeitsliste, type ArbeitslisteZahlen } from '@/components/kunden/VerknuepfungsArbeitsliste';
 import { cn } from '@/lib/utils';
-import { SYSTEME, ladeStand, zaehle, type KundeMin, type SystemKey, type SystemStand, type Vorschlag } from '@/lib/kundenVerknuepfungen';
+import { SYSTEME, ladeStand, zaehle, type KundeMin, type Objekt, type SystemKey, type SystemStand, type Vorschlag } from '@/lib/kundenVerknuepfungen';
+import { SystemPanel } from '@/components/kunden/QuickMatch';
 
 type Stand = Record<SystemKey, SystemStand>;
 
@@ -20,6 +21,19 @@ export default function KundenVerknuepfungen() {
   const [q, setQ] = useState('');
   const [pruefen, setPruefen] = useState(false);
   const [zahlen, setZahlen] = useState<ArbeitslisteZahlen | null>(null);
+  const [offen, setOffen] = useState<{ id: string; sys: SystemKey } | null>(null);
+  const [erledigt, setErledigt] = useState<Map<string, string>>(new Map());
+  useEffect(() => { document.title = 'Verknüpfungen · Kunden'; }, []);
+  /** Nach erfolgreichem Match: Zelle sofort umstellen, damit LÜCKEN live sinkt. */
+  const setzeStand = (clientId: string, sys: SystemKey, objekt: Objekt | null, text?: string) => {
+    setStand(m => {
+      const st = m.get(clientId); if (!st) return m;
+      const n = new Map(m); n.set(clientId, { ...st, [sys]: objekt ? { zustand: 'verknuepft', objekt } : { zustand: 'nicht_angebunden' } });
+      return n;
+    });
+    if (text) setErledigt(e => new Map(e).set(`${clientId}|${sys}`, text));
+    setOffen(null);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -63,7 +77,7 @@ export default function KundenVerknuepfungen() {
       </div>
 
       <VerknuepfungsArbeitsliste onZahlen={setZahlen} />
-      <BuchhaltungUngeklaert />
+      <BuchhaltungUngeklaert onCloseVerknuepft={(id, kein) => setzeStand(id, 'close', kein ? null : { id: '', name: 'Close' })} />
       <h2 className="text-sm font-medium pt-2">Übersicht je Kunde</h2>
       <div className="rounded-2xl bg-card shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
@@ -76,18 +90,39 @@ export default function KundenVerknuepfungen() {
           </thead>
           <tbody>
             {loading ? Array.from({ length: 8 }).map((_, i) => (
-              <tr key={i}><td colSpan={10} className="px-4 py-2"><Skeleton className="h-6 w-full" /></td></tr>
+              <tr key={i}><td colSpan={2 + SYSTEME.length} className="px-4 py-2"><Skeleton className="h-6 w-full" /></td></tr>
             )) : zeilen.map(({ k, st, z }) => (
-              <tr key={k.id} className="border-b border-border/40 last:border-0 hover:bg-muted/30">
+              <Fragment key={k.id}>
+              <tr className="border-b border-border/40 last:border-0 hover:bg-muted/30">
                 <td className="px-4 py-2.5"><Link to={`/kunden/${k.id}?tab=verknuepfungen`} className="font-medium hover:text-primary">{k.name}</Link></td>
                 <td className="px-2 py-2.5 text-right tabular-nums text-muted-foreground">{z.luecken}</td>
-                {SYSTEME.map(s => <td key={s.key} className="px-2 py-2.5 text-center"><Symbol st={st[s.key]} /></td>)}
+                {SYSTEME.map(s => {
+                  const klickbar = s.angebunden && (st[s.key].zustand === 'offen' || st[s.key].zustand === 'vorschlag');
+                  const aktiv = offen?.id === k.id && offen.sys === s.key;
+                  return <td key={s.key} className="px-2 py-2.5 text-center">
+                    {klickbar ? <button onClick={() => setOffen(aktiv ? null : { id: k.id, sys: s.key })} title={`${s.label} zuordnen`} aria-expanded={aktiv}
+                      className={cn('rounded-md px-1.5 py-0.5 hover:bg-muted', aktiv && 'bg-muted ring-1 ring-primary/40')}><Symbol st={st[s.key]} /></button>
+                      : <span title={erledigt.get(`${k.id}|${s.key}`)}><Symbol st={st[s.key]} /></span>}
+                  </td>;
+                })}
               </tr>
+              {offen?.id === k.id && (
+                <tr className="border-b border-border/40 bg-muted/10">
+                  <td colSpan={2 + SYSTEME.length} className="px-4 py-3">
+                    <div className="flex items-center gap-2 text-xs mb-2"><span className="font-medium">{SYSTEME.find(s => s.key === offen.sys)?.label} für {k.name}</span>
+                      <Button size="sm" variant="ghost" className="ml-auto h-6 text-xs" onClick={() => setOffen(null)}>Schließen</Button></div>
+                    <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
+                      <SystemPanel key={offen.sys} system={offen.sys} kunde={k} stand={st[offen.sys]} fertig={(e, o) => setzeStand(k.id, offen.sys, o, e.text)} />
+                    </div>
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-muted-foreground">✓ verknüpft · • Vorschlag offen · ✕ fehlt · – nicht angebunden oder nicht sichtbar</p>
+      <p className="text-xs text-muted-foreground">✓ verknüpft · • Vorschlag offen · ✕ fehlt (anklicken zum Zuordnen) · – nicht nötig, nicht angebunden oder nicht sichtbar</p>
 
       <VorschlagPruefung open={pruefen} onClose={() => setPruefen(false)} liste={vorschlaege} />
     </div>
