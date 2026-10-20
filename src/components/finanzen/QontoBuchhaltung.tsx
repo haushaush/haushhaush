@@ -205,7 +205,7 @@ export function QontoBuchhaltung() {
       <Card className="border-[var(--border)]">
         <CardContent className="py-6">
           <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-medium mb-1">Aktueller Kontostand</p>
-          <p className="text-3xl font-bold text-[var(--color-teal)]">{formatValue(balance, 'currency')}</p>
+          <p className="text-2xl font-semibold tabular-nums text-[var(--color-teal)]">{formatValue(balance, 'currency')}</p>
           <p className="text-xs text-[var(--text-muted)] mt-1">{maskedIban}</p>
           {setting?.last_sync_at && (
             <p className="text-xs text-[var(--text-muted)] mt-2">

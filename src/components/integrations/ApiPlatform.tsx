@@ -313,7 +313,7 @@ export function ApiPlatform() {
             <Card key={s.label} className="border-[var(--border)] bg-[var(--bg-surface)]">
               <CardContent className="p-4">
                 <p className="text-xs uppercase tracking-wider text-[var(--text-muted)] font-medium">{s.label}</p>
-                <p className="text-xl font-bold text-[var(--text-primary)] mt-1">{s.value}</p>
+                <p className="text-2xl font-semibold tabular-nums text-[var(--text-primary)] mt-1">{s.value}</p>
               </CardContent>
             </Card>
           ))}
