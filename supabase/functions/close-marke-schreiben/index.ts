@@ -26,6 +26,9 @@ Deno.serve(async (req) => {
   const { data: link } = await admin.from("close_link").select("close_lead_id").eq("client_id", client_id).limit(1).maybeSingle();
   if (!link?.close_lead_id) return json({ error: "Kunde hat keinen verknüpften Close-Lead." }, 404);
   const leadId = link.close_lead_id;
+  // Nur Leads aus unserem Close (Haush Haush) – der Spiegel enthält jeden HH-Lead. Fremde Leads (z. B. Viral Connect) nie anfassen.
+  const { data: sp } = await admin.from("close_lead_spiegel").select("close_lead_id").eq("close_lead_id", leadId).maybeSingle();
+  if (!sp) return json({ error: `Der verknüpfte Close-Lead (${leadId}) liegt nicht in unserem Close-Konto – vermutlich ein Lead aus dem Viral-Connect-Konto oder gelöscht/zusammengeführt. Bitte zuerst den Kunden mit dem richtigen Lead verknüpfen. Nichts wurde geschrieben.` }, 409);
 
   const werte: Record<string, unknown> = { feld: MARKE_CF, marke };
   const log = (fehler: string | null) => admin.from("close_abschluss_schreiblog").insert({
@@ -50,7 +53,8 @@ Deno.serve(async (req) => {
     if (jetzt) await admin.from("close_lead_spiegel").update({ marke: jetzt }).eq("close_lead_id", leadId);
     return json({ ok: jetzt === wahl, marke: jetzt, close_lead_id: leadId });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const roh = e instanceof Error ? e.message : String(e);
+    const msg = / 404 /.test(roh) ? `Close kennt den Lead ${leadId} nicht (404) – Verknüpfung prüfen. Nichts wurde geschrieben.` : roh;
     await log(msg);
     return json({ error: msg }, 502);
   }
