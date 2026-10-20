@@ -25,7 +25,7 @@ type Row = {
 };
 type Log = { id: string; created_at: string; user_email: string | null; kunde: string | null; aktion: string; werte: Record<string, unknown>; fehler: string | null; close_opportunity_id: string | null };
 type Form = { startdatum: string; laufzeit_monate: string; abschlusswert: string; retainer_monat: string; leistungen: string[] | null; deal_typ: string; paket: string };
-type Opts = { leistungen: string[]; deal_typ: string[]; paket: string[]; cash: Record<string, { activity_id: string; paket: string | null } | null>; opp: Record<string, { leistungen: string | null; deal_typ: string | null }> };
+type Opts = { leistungen: string[]; deal_typ: string[]; paket: string[]; cash: Record<string, { activity_id: string; paket: string | null } | null>; opp: Record<string, { leistungen: string | null; deal_typ: string | null; retainer_monat: number | null }> };
 const dt = (d: string | null) => d ? new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '–';
 const empty: Form = { startdatum: '', laufzeit_monate: '', abschlusswert: '', retainer_monat: '', leistungen: null, deal_typ: '', paket: '' };
 // Same formula as the server (startdatum + months), only a preview — the saved value always comes back from Close.
@@ -192,12 +192,12 @@ export default function KundenLaufzeiten() {
     const slackLz = !!v && v.abgleich !== 'widerspruch' && v.laufzeit_monate != null;
     const slackAw = v?.abschlusswert != null; const slackDt = !!v?.deal_typ;
     const fehlt: Record<string, boolean> = {
-      laufzeit_monate: !r.laufzeit_monate && !slackLz, abschlusswert: !slackAw, retainer_monat: true,
+      laufzeit_monate: !r.laufzeit_monate && !slackLz, abschlusswert: !slackAw, retainer_monat: false, // optional: leer ist hier kein Fehler
       leistungen: curL.length === 0, deal_typ: !slackDt && !cur?.deal_typ, paket: !!cash && !cash.paket,
     };
     const offen = aendern.has(r.client_id);
     const slackTeile = [slackLz && `Laufzeit ${v!.laufzeit_monate} Mon.`, slackAw && `Abschlusswert ${formatValue(Number(v!.abschlusswert), 'currency')}`, slackDt && v!.deal_typ].filter(Boolean) as string[];
-    const vorhanden = [!fehlt.laufzeit_monate && !slackLz && `Laufzeit ${m0} Mon.`, curL.length > 0 && `Leistungen ${curL.length}`, !slackDt && cur?.deal_typ, cash?.paket && `Paket ${cash.paket}`].filter(Boolean) as string[];
+    const vorhanden = [!fehlt.laufzeit_monate && !slackLz && `Laufzeit ${m0} Mon.`, curL.length > 0 && `Leistungen ${curL.length}`, !slackDt && cur?.deal_typ, cur?.retainer_monat != null && `Retainer ${formatValue(Number(cur.retainer_monat), 'currency')}/Mon.`, cash?.paket && `Paket ${cash.paket}`].filter(Boolean) as string[];
     const feldEl: Record<string, JSX.Element> = {
       laufzeit_monate: <div key="lz"><span className={lbl}>Laufzeit (Mon.)</span><Input type="number" min={1} max={120} step={1} className={feld} value={m0} onChange={e => setF(r.client_id, 'laufzeit_monate', e.target.value)} /></div>,
       abschlusswert: <div key="aw"><span className={lbl}>Abschlusswert €</span><Input type="number" min={0} className={feld} value={f.abschlusswert} placeholder="optional" onChange={e => setF(r.client_id, 'abschlusswert', e.target.value)} /></div>,
@@ -225,7 +225,7 @@ export default function KundenLaufzeiten() {
         {isAdmin ? <>
           {v ? <p className="text-xs text-muted-foreground">Vorschlag aus Slack vom {dt(v.quelle_datum)} · Quelle: {v.quelle_typ === 'upsell' ? 'Upsell' : 'Abschluss'}</p>
             : <p className="text-xs text-muted-foreground">kein Slack-Vorschlag vorhanden</p>}
-          {(slackTeile.length > 0 || vorhanden.length > 0) && <div className="rounded-xl bg-muted/40 px-4 py-3 text-xs space-y-1">
+          <div className="rounded-xl bg-muted/40 px-4 py-3 text-xs space-y-1">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1 min-w-0">
                 {slackTeile.length > 0 && <p><span className="text-muted-foreground">Übernommen aus Slack: </span><span className="tabular-nums">{slackTeile.join(' · ')}</span></p>}
@@ -234,7 +234,7 @@ export default function KundenLaufzeiten() {
               <button type="button" className="shrink-0 text-muted-foreground hover:text-primary underline-offset-2 hover:underline" onClick={toggle}>{offen ? 'Fertig' : 'Ändern'}</button>
             </div>
             {offen && <div className="space-y-3 pt-2">{reihenfolge.filter(k => !fehlt[k] && (k !== 'paket' || !!cash)).map(k => feldEl[k])}</div>}
-          </div>}
+          </div>
           {v?.abgleich === 'widerspruch' && <div className="rounded-xl bg-muted/60 px-4 py-3 text-xs space-y-2">
             <p>Portal: {v.portal_laufzeit ?? '–'} Mon. · Slack: {v.laufzeit_monate ?? '–'} Mon.{(v.weitere_upsells ?? 0) > 0 && ` · ${v.weitere_upsells} Upsell(s) vorhanden`}</p>
             <div className="flex gap-2">
