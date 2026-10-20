@@ -144,7 +144,6 @@ export function MarkePanel({ clientId, fertig }: { clientId: string; fertig: (e:
   };
   return <>
     <p className="text-xs flex items-center gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 w-fit"><AlertTriangle className="h-3.5 w-3.5 text-warning" />Schreibt direkt in Close (Feld „Marke" am verknüpften Lead).</p>
-    {grund && <p className="text-xs text-muted-foreground">{grund}</p>}
     <div className="flex flex-wrap items-center gap-2">
       {MARKEN.map(m => <Button key={m} size="sm" variant={wahl === m ? 'default' : 'outline'} className="h-7 text-xs" onClick={() => setWahl(m)}>{m}</Button>)}
       <Button size="sm" className="h-7 text-xs" disabled={!wahl || busy} onClick={speichern}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'In Close speichern'}</Button>
