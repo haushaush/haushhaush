@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -49,7 +49,7 @@ function Gruppe({ titel, felder }: { titel: string; felder: Feld[] }) {
     <div>
       <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">{titel}</div>
       <dl className="grid grid-cols-[140px_1fr] gap-x-3 gap-y-1 text-xs">
-        {da.map(([k, v]) => <><dt key={k + 'k'} className="text-muted-foreground">{k}</dt><dd key={k + 'v'} className="tabular-nums break-words">{v}</dd></>)}
+        {da.map(([k, v]) => <Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd className="tabular-nums break-words">{v}</dd></Fragment>)}
       </dl>
     </div>
   );

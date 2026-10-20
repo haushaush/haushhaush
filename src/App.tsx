@@ -165,7 +165,7 @@ const App = () => (
                 <Route path="/" element={<PermissionRoute permissionKey="dashboard.view"><DL><Dashboard /></DL></PermissionRoute>} />
                 <Route path="/kunden" element={<PermissionRoute permissionKey="clients.view"><DL><Kunden /></DL></PermissionRoute>} />
                 <Route path="/abschluesse" element={<PermissionRoute permissionKey="clients.view"><DL><Abschluesse /></DL></PermissionRoute>} />
-                <Route path="/kunden/abschluesse" element={<PermissionRoute permissionKey="clients.view"><DL><KundenAbschluesse /></DL></PermissionRoute>} />
+                <Route path="/kunden/abschluesse" element={<PermissionRoute permissionKey="clients.view"><DL><Abschluesse /></DL></PermissionRoute>} />
                 <Route path="/kunden/verknuepfungen" element={<PermissionRoute permissionKey="clients.view"><DL><KundenVerknuepfungen /></DL></PermissionRoute>} />
                 <Route path="/kunden/laufzeiten" element={<PermissionRoute permissionKey="clients.laufzeiten.view"><DL><KundenLaufzeiten /></DL></PermissionRoute>} />
                 <Route path="/kunden/liste" element={<PermissionRoute permissionKey="clients.view"><DL><Placeholder title="Kunden" /></DL></PermissionRoute>} />
