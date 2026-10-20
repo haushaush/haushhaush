@@ -39,7 +39,7 @@ export default function Aufgaben() {
     const [t, tm, c, p] = await Promise.all([
       supabase.from('tasks').select('*').order('created_at', { ascending: false }),
       supabase.from('team').select('id, name'),
-      supabase.from('clients').select('id, name'),
+      supabase.from('clients').select('id, name').is('deleted_at', null),
       supabase.from('projects').select('id, name'),
     ]);
     if (t.data) setTasks(t.data);

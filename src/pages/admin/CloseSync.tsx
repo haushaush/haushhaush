@@ -23,6 +23,7 @@ export default function CloseSync() {
     const { data: cs } = await supabase
       .from('clients')
       .select('id, name, email')
+      .is('deleted_at', null)
       .order('name', { ascending: true });
     setClients((cs || []).filter((c) => !linkedIds.has(c.id)));
     setLoading(false);
