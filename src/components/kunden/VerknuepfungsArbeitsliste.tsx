@@ -382,7 +382,7 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
             <Link to={`/kunden/${k.id}?tab=verknuepfungen`} className="font-medium hover:text-primary truncate">{k.name}</Link>
             <span className="text-xs text-muted-foreground">{k.kundenstatus}</span>
             {!!neuZugeordnet.get(k.id) && <span className="text-[11px] rounded-full bg-success/10 text-success px-2 py-0.5 tabular-nums">{neuZugeordnet.get(k.id)} zugeordnet</span>}
-            <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => verwerfen(SYS_OHNE_KAMPAGNE, 'eigenes_konto', k.id).catch(e => toast.error(e.message))}>Abhaken – zahlt selbst</Button>
+            <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => verwerfen(SYS_OHNE_KAMPAGNE, 'eigenes_konto', k.id).catch(e => toast.error(e.message))}>Abhaken – zahlt Werbebudget selbst bei Meta</Button>
             <Button size="sm" variant="outline" className="h-7 text-xs" asChild><Link to={`/kunden/${k.id}?tab=verknuepfungen`}>Zum Kunden</Link></Button>
           </div>
         </KundeOhneKampagneZeile>)}

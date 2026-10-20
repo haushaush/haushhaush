@@ -9,7 +9,7 @@ const nextMonth = (m: string) => { const d = new Date(m + "T00:00:00Z"); d.setUT
 const squash = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 const num = (v: any) => { const n = Number(v); return isFinite(n) ? n : null; };
 // Comparison only (Qonto writes two spaces between first/last name); stored names stay original.
-const norm = (s: string | null | undefined) => (s ?? "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+const norm = (s: string | null | undefined) => (s ?? "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[\u200b-\u200d\ufeff]/g, "").replace(/\s+/g, " ").trim();
 
 async function syncMonth(admin: any, monat: string, mitarbeiter_id: string, snapshotMonat: string) {
   const [{ data: inv, error: iErr }, { data: links }, { data: ign }, { data: snap }] = await Promise.all([
