@@ -227,7 +227,7 @@ export default function BonusCockpit() {
           </div>}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={approving}>Abbrechen</AlertDialogCancel>
-            <Button onClick={approve} disabled={approving || !approval?.kriterien.churn.wert?.erfassung_bestaetigt || (!!approval?.nicht_bewertbare_kriterien && !acknowledged)}>{approving && <Loader2 className="h-4 w-4 animate-spin" />}Freigeben</Button>
+            <GlassButton variant="primary" onClick={approve} disabled={approving || !approval?.kriterien.churn.wert?.erfassung_bestaetigt || (!!approval?.nicht_bewertbare_kriterien && !acknowledged)}>{approving && <Loader2 className="h-4 w-4 animate-spin" />}Freigeben</GlassButton>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -249,7 +249,7 @@ function Table({ head, rows, empty }: { head: React.ReactNode[]; rows: React.Rea
   );
 }
 
-function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKey; monat: string; maId: string; res: Result | null; canManage: boolean; onChanged: () => void }) {
+function Detail({ kind, title: titleOverride, monat, maId, res, canManage, onChanged }: { kind: KritKey; title?: string; monat: string; maId: string; res: Result | null; canManage: boolean; onChanged: () => void }) {
   const [data, setData] = useState<any>(null);
   const [confirm, setConfirm] = useState<boolean | null>(null);
   const [tick, setTick] = useState(0);
@@ -302,7 +302,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
     })();
   }, [kind, monat, maId, tick, res]);
 
-  const title = ORDER.find(o => o.key === kind)?.label;
+  const title = titleOverride ?? ORDER.find(o => o.key === kind)?.label;
   const k = res?.kriterien[kind];
 
   const nichtGeantwortet = useMemo(() => {
@@ -314,7 +314,6 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
   return (
     <>
       <h2 className="text-lg font-semibold font-heading">{title}</h2>
-      {k && k.status !== 'ok' && <p className="mt-2 text-sm text-muted-foreground">{k.hinweis}</p>}
       <div className="mt-4 space-y-6">
         {!data && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
 
@@ -375,7 +374,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
                     <span>{r.clients?.name || '–'} · <span className="tabular-nums">{dt(r.abgang_datum || r.festgestellt_am)}</span></span>
                     <span className="flex gap-2">
                       <Button size="sm" variant="outline" onClick={() => decide(r.id, true)}>Als Sonderfall anerkennen</Button>
-                      <Button size="sm" variant="outline" onClick={() => decide(r.id, false)}>Zählt als Churn</Button>
+                      <GlassButton size="sm" variant="secondary" onClick={() => decide(r.id, false)}>Zählt als Churn</GlassButton>
                     </span>
                   </div>
                 ))}

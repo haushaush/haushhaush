@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
+import { GlassButton } from "./GlassButton";
 import { Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -52,9 +52,9 @@ export function CheckinKandidaten({ monat, maId, canManage, onChanged }: { monat
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
         {canManage && (
-          <Button size="sm" variant="outline" onClick={sync} disabled={!!busy}>
+          <GlassButton size="sm" variant="secondary" onClick={sync} disabled={!!busy}>
             {busy === 'sync' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Checkins jetzt synchronisieren
-          </Button>
+          </GlassButton>
         )}
         <span className="text-xs text-muted-foreground tabular-nums">
           Letzter Checkin-Abgleich: {log ? <>{new Date(log.gestartet_am).toLocaleString('de-DE')}{log.ok ? '' : <span className="text-destructive"> · fehlgeschlagen: {log.fehler}</span>}</> : 'noch nie'}
@@ -78,8 +78,8 @@ export function CheckinKandidaten({ monat, maId, canManage, onChanged }: { monat
                   <td className="px-4 py-2 text-muted-foreground">{r.close_status_label || '–'}</td>
                   <td className="px-4 py-2 text-right whitespace-nowrap">
                     {canManage && <>
-                      <Button size="sm" onClick={() => uebernehmen(r)} disabled={!!busy}>{busy === r.id && <Loader2 className="h-4 w-4 animate-spin" />}Als Klient übernehmen</Button>
-                      <Button size="sm" variant="ghost" className="ml-2" onClick={() => ignorieren(r)} disabled={!!busy}>Ignorieren</Button>
+                      <GlassButton size="sm" variant="primary" onClick={() => uebernehmen(r)} disabled={!!busy}>{busy === r.id && <Loader2 className="h-4 w-4 animate-spin" />}Als Klient übernehmen</GlassButton>
+                      <GlassButton size="sm" variant="ghost" className="ml-2" onClick={() => ignorieren(r)} disabled={!!busy}>Ignorieren</GlassButton>
                     </>}
                   </td>
                 </tr>
