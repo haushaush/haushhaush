@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@100;200;300;400;500;600;700;800&display=swap');
 
 @tailwind base;
@@ -17,55 +18,93 @@
     --z-modal: 400;
     --z-toast: 500;
 
-    --background: 240 5% 96%;
-    --foreground: 0 0% 11%;
+    /* Design-Umstellung Schritt 1: Briefing-Werte, zusammengeführt mit Projekt-Tokens */
+    --background: 210 40% 98%;
+    --background-subtle: 210 40% 96%;
+    --surface: 0 0% 100%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 11%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 11%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 229.306931 86.324786% 54.117647%;
+    --primary: 231 79% 52%;
     --primary-foreground: 0 0% 100%;
+    --primary-hover: 231 79% 44%;
 
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 0 0% 11%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 19% 41%;
+    --tertiary: 215 20% 65%;
 
-    --accent: 229 86% 96%;
-    --accent-foreground: var(--primary);
+    --accent: 231 79% 52%;
+    --accent-foreground: 0 0% 100%;
+    --accent-subtle: 231 79% 52%;
 
-    --destructive: 4 90% 58%;
+    --destructive: 350 89% 60%;
     --destructive-foreground: 0 0% 100%;
+    --destructive-text: 350 89% 48%;
 
+    /* Projekt-eigene Tokens (unverändert) */
     --kanal-ads: 228 85% 54%;
     --kanal-coldcall: 24 90% 52%;
     --kanal-organisch: 152 60% 40%;
     --kanal-attentionx: 280 60% 55%;
     --kanal-direkt: 190 80% 40%;
+
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
+    --success-text: 142 71% 31%;
 
-    --warning: 36 100% 50%;
-    --warning-foreground: 0 0% 0%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-text: 38 92% 33%;
 
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: var(--primary);
+    --info: 217 91% 60%;
 
-    --radius: 0.75rem;
+    --border: 214 32% 91%;
+    --border-hover: 213 27% 84%;
+    --input: 214 32% 91%;
+    --ring: 231 79% 52%;
+
+    --radius: 0.5rem;
+
+    --dark-panel: 222 47% 11%;
+    --dark-panel-foreground: 210 40% 98%;
+    --dark-panel-muted: 215 20% 75%;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 4% 46%;
-    --sidebar-primary: var(--primary);
+    --sidebar-foreground: 215 16% 47%;
+    --sidebar-primary: 231 79% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: var(--accent);
-    --sidebar-accent-foreground: var(--accent-foreground);
-    --sidebar-border: 240 6% 90%;
-    --sidebar-ring: var(--ring);
+    --sidebar-accent: 231 79% 52%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 231 79% 52%;
+
+    --cat-1: 211 72% 45%;  --cat-2: 28 90% 50%;
+    --cat-3: 168 70% 34%;  --cat-4: 268 55% 55%;
+    --cat-5: 330 68% 50%;  --cat-6: 82 55% 36%;
+    --cat-7: 195 85% 40%;  --cat-8: 18 55% 42%;
+
+    --shadow-card: 0 18px 50px -24px rgb(15 23 42 / 0.16);
+    --shadow-elegant: 0 8px 24px rgb(15 23 42 / 0.10);
+
+    --glass-blur: 20px;
+    --glass-sat: 120%;
+    --glass-fill: rgba(255,255,255,0.6);
+    --glass-fill-dense: rgba(255,255,255,0.92);
+    --glass-fill-chrome: rgba(255,255,255,0.45);
+    --glass-edge: rgba(255,255,255,0.55);
+    --glass-border: rgba(255,255,255,0.7);
+    --glass-border-soft: hsl(var(--foreground) / 0.06);
+    --glass-shadow: 0 18px 50px -24px hsl(var(--foreground) / 0.16);
+    --glass-shadow-float: 0 30px 70px -28px hsl(var(--foreground) / 0.28);
+    --glass-grain-opacity: 0.02;
 
     --font-body: 'Inter', sans-serif;
 
@@ -1012,4 +1051,191 @@
 @keyframes errorCardSlideIn {
   from { opacity: 0; transform: translateX(20px) scale(0.96); }
   to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+/* ═════════════ Design-Umstellung Schritt 1: Fundament ═════════════ */
+html { --ui-text: 1; font-size: calc(16px * var(--ui-text)); }
+html[data-density="kompakt"] { --ui-text: 0.875; }
+html[data-density="gross"]   { --ui-text: 1.15; }
+
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 0% 0%, hsl(var(--primary) / 0.05), transparent 60%),
+    radial-gradient(110% 90% at 100% 100%, hsl(var(--info) / 0.04), transparent 65%),
+    hsl(var(--background));
+}
+
+@layer components {
+  /* Glasklassen – nur angelegt, noch nirgends angewendet */
+  .glass-surface, .glass-tile, .glass-float, .glass-panel, .glass-chrome {
+    position: relative;
+    isolation: isolate;
+    background-color: var(--glass-fill);
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 var(--glass-edge), var(--glass-shadow);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  }
+  .glass-surface, .glass-tile { border-radius: 8px; }
+  .glass-float, .glass-panel {
+    background-color: var(--glass-fill-dense);
+    box-shadow: inset 0 1px 0 var(--glass-edge), var(--glass-shadow-float);
+    border-radius: 16px;
+  }
+  .glass-chrome {
+    background-color: var(--glass-fill-chrome);
+    box-shadow: inset 0 1px 0 var(--glass-edge);
+  }
+  :is(.glass-surface,.glass-tile,.glass-float,.glass-panel,.glass-chrome)
+    :is(.glass-surface,.glass-tile,.glass-panel),
+  li .glass-surface, li .glass-tile, table .glass-surface {
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    box-shadow: inset 0 1px 0 var(--glass-edge);
+  }
+  /* Körnung: liegt hinter dem Inhalt, fängt nie Klicks ab */
+  :is(.glass-surface,.glass-tile,.glass-float,.glass-panel,.glass-chrome)::after {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    border-radius: inherit;
+    opacity: var(--glass-grain-opacity, 0.02);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  .glass-field {
+    background-color: hsl(var(--surface) / 0.7);
+    border: 1px solid var(--glass-border-soft);
+    border-radius: 4px;
+  }
+
+  .glass-btn-primary, .glass-btn-secondary, .glass-btn-ghost, .glass-btn-destructive {
+    border-radius: 4px;
+    border: 1px solid transparent;
+  }
+  .glass-btn-primary { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .glass-btn-primary:hover { background-color: hsl(var(--primary-hover)); }
+  .glass-btn-secondary { background-color: var(--glass-fill); border-color: var(--glass-border-soft); color: hsl(var(--foreground)); }
+  .glass-btn-secondary:hover { border-color: hsl(var(--border-hover)); }
+  .glass-btn-ghost { background-color: transparent; color: hsl(var(--foreground)); }
+  .glass-btn-ghost:hover { background-color: hsl(var(--foreground) / 0.05); }
+  .glass-btn-destructive { background-color: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); }
+  .glass-btn-destructive:hover { background-color: hsl(var(--destructive) / 0.9); }
+
+  .glass-active {
+    border-radius: 14px;
+    background-color: hsl(var(--primary) / 0.08);
+    box-shadow: inset 0 1px 0 var(--glass-edge), inset 0 0 0 1px hsl(var(--primary) / 0.12);
+  }
+  .glass-active-sm { border-radius: 6px; background-color: hsl(var(--primary) / 0.08); }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-surface, .glass-tile, .glass-chrome { background-color: hsl(var(--card) / 0.97); }
+    .glass-float, .glass-panel { background-color: hsl(var(--card) / 0.98); }
+    .glass-field { background-color: hsl(var(--background-subtle)); }
+  }
+
+  /* Kennzahlkarten */
+  .kz-card { @apply bg-card text-left; border-radius: 22px; padding: 24px;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 12px 32px -16px rgb(15 23 42 / 0.12); }
+  .kz-zahl { font-size: 3.25rem; line-height: 1; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .kz-label { @apply text-xs font-bold uppercase; letter-spacing: 0.12em; }
+
+  /* Bewegung – nur für die neuen Klassen */
+  .glass-surface, .glass-tile, .glass-panel, .glass-chrome, .glass-field, .glass-active, .glass-active-sm,
+  .glass-btn-primary, .glass-btn-secondary, .glass-btn-ghost, .glass-btn-destructive {
+    transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease,
+                color 200ms ease, fill 200ms ease, stroke 200ms ease, transform 120ms ease;
+  }
+  :is(.glass-btn-primary,.glass-btn-secondary,.glass-btn-ghost,.glass-btn-destructive):active { transform: scale(0.97); }
+  .glass-float { animation: glass-float-in 150ms ease both; transform-origin: top center; }
+  .glass-float[data-state="closed"] { animation: glass-float-out 100ms ease both; }
+
+  :is(.glass-surface,.glass-tile,.glass-float,.glass-panel,.glass-chrome,.glass-field,
+      .glass-btn-primary,.glass-btn-secondary,.glass-btn-ghost,.glass-btn-destructive):focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+}
+
+@keyframes glass-float-in  { from { opacity: 0; transform: translateY(4px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes glass-float-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(4px) scale(0.97); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-surface, .glass-tile, .glass-float, .glass-panel, .glass-chrome, .glass-field, .glass-active, .glass-active-sm,
+  .glass-btn-primary, .glass-btn-secondary, .glass-btn-ghost, .glass-btn-destructive {
+    transition: none !important; animation: none !important;
+  }
+  :is(.glass-btn-primary,.glass-btn-secondary,.glass-btn-ghost,.glass-btn-destructive):active { transform: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}
+
+/* ───────────── Dunkelmodus (additiv, Design-Umstellung) ───────────── */
+.dark {
+  --background: 222 35% 10%; --background-subtle: 222 38% 7%; --surface: 222 28% 16%;
+  --foreground: 210 40% 96%; --card: 222 28% 16%; --card-foreground: 210 40% 96%;
+  --popover: 222 28% 18%; --popover-foreground: 210 40% 96%;
+  --primary: 231 90% 78%; --primary-foreground: 231 55% 12%; --primary-hover: 231 95% 84%;
+  --accent: 231 90% 78%; --accent-foreground: 231 55% 12%; --accent-subtle: 231 90% 78%;
+  --ring: 231 90% 78%;
+  --secondary: 222 25% 21%; --secondary-foreground: 210 40% 96%;
+  --muted: 222 25% 12%; --muted-foreground: 215 22% 76%; --tertiary: 215 20% 72%;
+  --destructive: 350 80% 75%; --destructive-foreground: 350 60% 10%;
+  --success: 142 62% 62%; --success-foreground: 142 55% 9%;
+  --warning: 38 95% 64%; --warning-foreground: 38 65% 9%;
+  --success-text: 142 68% 76%; --warning-text: 38 95% 78%; --destructive-text: 350 90% 82%;
+  --info: 217 95% 76%;
+  --border: 222 22% 18%; --border-hover: 222 22% 28%; --input: 222 22% 28%;
+  --sidebar-background: 222 30% 13%; --sidebar-foreground: 215 22% 76%; --sidebar-border: 222 30% 13%;
+  --cat-1: 211 90% 74%; --cat-2: 28 95% 72%; --cat-3: 168 65% 65%; --cat-4: 268 85% 79%;
+  --cat-5: 330 85% 76%; --cat-6: 82 65% 67%; --cat-7: 195 85% 69%; --cat-8: 18 75% 75%;
+  --shadow-card: 0 18px 50px -24px rgb(0 0 0 / 0.65);
+  --shadow-elegant: 0 8px 24px rgb(0 0 0 / 0.5);
+  --glass-fill: hsl(var(--card) / 0.94);
+  --glass-fill-dense: hsl(var(--popover) / 0.98);
+  --glass-fill-chrome: hsl(var(--sidebar-background) / 0.97);
+  --glass-edge: rgba(255,255,255,0.025);
+  --glass-border: hsl(var(--border));
+  --glass-border-soft: hsl(var(--input));
+  --glass-shadow: 0 18px 50px -24px rgba(0,0,0,0.6);
+  --glass-shadow-float: 0 30px 70px -28px rgba(0,0,0,0.75);
+  color-scheme: dark;
+}
+.dark .shadow-card { box-shadow: var(--shadow-card); }
+.dark .shadow-elegant { box-shadow: var(--shadow-elegant); }
+.dark .glass-chrome { border-color: transparent; box-shadow: none; }
+.dark table tr {
+  border-color: hsl(var(--border) / 0.5);
+  border-left-width: 0; border-right-width: 0; border-top-width: 0; border-radius: 0;
+}
+
+@media print {
+  .dark {
+    --background: 210 40% 98%; --background-subtle: 210 40% 96%; --surface: 0 0% 100%;
+    --foreground: 222 47% 11%; --card: 0 0% 100%; --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%; --popover-foreground: 222 47% 11%;
+    --primary: 231 79% 52%; --primary-foreground: 0 0% 100%; --primary-hover: 231 79% 44%;
+    --accent: 231 79% 52%; --accent-foreground: 0 0% 100%; --accent-subtle: 231 79% 52%;
+    --ring: 231 79% 52%;
+    --secondary: 210 40% 96%; --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%; --muted-foreground: 215 19% 41%; --tertiary: 215 20% 65%;
+    --destructive: 350 89% 60%; --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%; --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%; --warning-foreground: 0 0% 100%;
+    --success-text: 142 71% 31%; --warning-text: 38 92% 33%; --destructive-text: 350 89% 48%;
+    --info: 217 91% 60%;
+    --border: 214 32% 91%; --border-hover: 213 27% 84%; --input: 214 32% 91%;
+    --sidebar-background: 0 0% 100%; --sidebar-foreground: 215 16% 47%; --sidebar-border: 214 32% 91%;
+    --cat-1: 211 72% 45%; --cat-2: 28 90% 50%; --cat-3: 168 70% 34%; --cat-4: 268 55% 55%;
+    --cat-5: 330 68% 50%; --cat-6: 82 55% 36%; --cat-7: 195 85% 40%; --cat-8: 18 55% 42%;
+    --shadow-card: 0 18px 50px -24px rgb(15 23 42 / 0.16);
+    --shadow-elegant: 0 8px 24px rgb(15 23 42 / 0.10);
+    --glass-fill: rgba(255,255,255,0.6); --glass-fill-dense: rgba(255,255,255,0.92);
+    --glass-fill-chrome: rgba(255,255,255,0.45); --glass-edge: rgba(255,255,255,0.55);
+    --glass-border: rgba(255,255,255,0.7); --glass-border-soft: hsl(var(--foreground) / 0.06);
+    --glass-shadow: 0 18px 50px -24px hsl(var(--foreground) / 0.16);
+    --glass-shadow-float: 0 30px 70px -28px hsl(var(--foreground) / 0.28);
+    color-scheme: light;
+  }
 }
