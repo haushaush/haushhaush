@@ -188,7 +188,7 @@ export default function KundenLaufzeiten() {
     const curL = cur?.leistungen ? cur.leistungen.split(', ') : []; const sel = f.leistungen ?? curL; const cash = opts?.cash[r.client_id];
     const lbl = 'text-[11px] text-muted-foreground flex items-center gap-1 mb-1';
     const v = vorschlaege[r.client_id]; const vb = vorbelegt[r.client_id];
-    const vf = (k: keyof Form) => vb?.has(k) ? 'ring-1 ring-dashed ring-primary/40 bg-primary/5 italic' : '';
+    const vf = (k: keyof Form) => vb?.has(k) ? 'ring-1 ring-primary/40 bg-primary/5 italic' : '';
     const vTag = (k: keyof Form) => vb?.has(k) ? <span className="text-[10px] text-primary/80">· Vorschlag</span> : null;
     return (
       <div key={r.client_id} className={cn('rounded-2xl bg-card p-6 shadow-[0_1px_3px_hsl(var(--foreground)/0.06),0_8px_24px_-12px_hsl(var(--foreground)/0.10)] flex flex-col gap-4 transition-all duration-300', weg.has(r.client_id) && 'opacity-0 scale-95 -translate-y-2')}>
