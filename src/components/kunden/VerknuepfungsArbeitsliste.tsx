@@ -11,7 +11,8 @@ import { AlertTriangle, Check, ChevronRight, Loader2, Search, X } from 'lucide-r
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { alle, namensTreffer, qontoVerknuepfen } from '@/lib/kundenVerknuepfungen';
-import { STATUS_LABEL, ladeUntermarken, type Untermarke } from '@/lib/werbebudgetKonten';
+import { STATUS_LABEL, ladeUntermarken, suchKey, type Untermarke } from '@/lib/werbebudgetKonten';
+import { KontoCombobox } from '@/components/kunden/KontoCombobox';
 import { zuordnungAnlegen, useWerbebudgetZuordnung, KampagneZeile, kontoZuo, zuoKundenName, type ZuoKampagne } from './werbebudgetZuordnung';
 
 const key = (s: string | null | undefined) => (s ?? '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[\u200b-\u200d\ufeff]/g, '').replace(/\s+/g, ' ').trim();
@@ -357,14 +358,13 @@ function Schnellzuordnung({ clientId, callMeta, onZugeordnet }: { clientId: stri
       .then((r: any) => setKamp(r?.data || [])).catch((e: Error) => setErr(e.message));
   }, [konto, callMeta]);
   const untermarke = konten?.find(x => x.meta_account_id === konto)?.name ?? null;
+  const [kq, setKq] = useState('');
+  const kampTreffer = useMemo(() => { const s = suchKey(kq); return (kamp || []).filter(c => !s || suchKey(`${c.name} ${c.id}`).includes(s)); }, [kamp, kq]);
   return <div className="ml-2 mb-2 rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
     {zuoFehler && <p className="text-xs text-destructive">{zuoFehler}</p>}
     {err && <p className="text-xs text-destructive">{err}</p>}
     {!konten && !err ? <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Werbekonten werden geladen …</p> :
-      <select value={konto} onChange={e => setKonto(e.target.value)} className="h-8 w-full max-w-sm rounded-md border border-input bg-background px-2 text-xs">
-        <option value="">Werbekonto wählen …</option>
-        {konten?.map(x => <option key={x.meta_account_id} value={x.meta_account_id}>{x.name || x.meta_account_id}</option>)}
-      </select>}
+      <KontoCombobox konten={konten || []} value={konto} onChange={k => { setKonto(k); setKq(''); }} className="max-w-sm" />}
     {konto && (() => {
       const kz = kontoZuo(zuoAlle, konto);
       const einzeln = zuoAlle.filter(z => z.typ !== 'konto' && z.meta_account_id === konto);
@@ -380,8 +380,10 @@ function Schnellzuordnung({ clientId, callMeta, onZugeordnet }: { clientId: stri
     })()}
     {konto && !kamp && !err && <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Kampagnen werden geladen …</p>}
     {kamp?.length === 0 && <p className="text-xs text-muted-foreground">Keine Kampagnen auf diesem Konto.</p>}
-    {kamp && kamp.length > 0 && <div className="divide-y divide-border/40 rounded-lg bg-card">
-      {kamp.map(c => <KampagneZeile key={c.id} k={c} kontoId={konto} alle={zuoAlle} clientId={clientId} busy={busy} callMeta={callMeta} loesen={loesen}
+    {kamp && kamp.length > 0 && <Input value={kq} onChange={e => setKq(e.target.value)} placeholder="Kampagne suchen (Name oder ID) …" className="h-8 max-w-sm text-xs" />}
+    {kamp && kamp.length > 0 && kampTreffer.length === 0 && <p className="text-xs text-muted-foreground">Keine Kampagne passt zur Suche.</p>}
+    {kamp && kampTreffer.length > 0 && <div className="divide-y divide-border/40 rounded-lg bg-card">
+      {kampTreffer.map(c => <KampagneZeile key={c.id} k={c} kontoId={konto} alle={zuoAlle} clientId={clientId} busy={busy} callMeta={callMeta} loesen={loesen}
         zuordnen={async (t, o, kid, n) => { const ok = await zuordnen(konto, untermarke, t, o, kid, n); if (ok) onZugeordnet(); return ok; }} />)}
     </div>}
     <p className="text-[11px] text-muted-foreground">Ohne Auswahl einer Anzeigengruppe wird die ganze Kampagne zugeordnet. Anzeigengruppen nur nötig, wenn sich zwei Kunden eine Kampagne teilen.</p>
