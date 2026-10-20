@@ -140,7 +140,7 @@ function buchStand(k: KundeMin, sys: 'qonto' | 'lexoffice', kand: Map<string, Bu
 async function belegtNamen(clientIds: string[]): Promise<Map<string, string>> {
   const ids = [...new Set(clientIds.filter(Boolean))];
   if (!ids.length) return new Map();
-  const { data } = await supabase.from('clients').select('id, name').in('id', ids);
+  const { data } = await supabase.from('clients').select('id, name').is('deleted_at', null).in('id', ids);
   return new Map((data || []).map((c: any) => [c.id, c.name || 'anderer Kunde']));
 }
 

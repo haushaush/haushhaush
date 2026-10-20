@@ -45,7 +45,7 @@ export function OperationalCards() {
   useEffect(() => {
     let cancelled = false;
     const fetchClients = async () => {
-      const result = await supabase.from('clients').select('id, name, kundenstatus, enddatum, startdatum, laufzeit');
+      const result = await supabase.from('clients').select('id, name, kundenstatus, enddatum, startdatum, laufzeit').is('deleted_at', null);
       if (cancelled) return;
       setClients(result.data || []);
       setError(result.error?.message || null);

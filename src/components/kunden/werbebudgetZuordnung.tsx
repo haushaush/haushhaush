@@ -39,7 +39,7 @@ export function useWerbebudgetZuordnung(clientId: string) {
   const [fehler, setFehler] = useState<string | null>(null);
   const [geladen, setGeladen] = useState(false);
   const ladeZuo = useCallback(async () => {
-    const { data, error } = await (supabase.from as any)('werbebudget_zuordnung').select('*, clients(name)');
+    const { data, error } = await (supabase.from as any)('werbebudget_zuordnung').select('*, clients!inner(name, deleted_at)').is('clients.deleted_at', null);
     if (error) { setFehler(`Zuordnungen konnten nicht geladen werden: ${error.message}`); setGeladen(true); return; }
     setFehler(null); setAlle((data || []) as Zuo[]); setGeladen(true);
   }, []);

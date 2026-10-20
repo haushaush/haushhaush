@@ -141,6 +141,7 @@ export function MetaAccountAssignModal({
     const { data: clients } = await supabase
       .from('clients')
       .select('id, name, meta_account_id')
+      .is('deleted_at', null)
       .not('meta_account_id', 'is', null);
     let best: Suggestion | null = null;
     for (const c of clients || []) {

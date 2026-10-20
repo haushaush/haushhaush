@@ -116,6 +116,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
       const { data, error } = await supabase
         .from("clients")
         .select("id, name")
+        .is("deleted_at", null)
         .order("name")
         .limit(2000);
       if (error) {

@@ -127,6 +127,7 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
       const { data, error } = await supabase
         .from("clients" as any)
         .select("id, name, branche, meta_account_id, meta_account_ids")
+        .is("deleted_at", null)
         .order("name");
       if (error) {
         toast.error("Kunden konnten nicht geladen werden");

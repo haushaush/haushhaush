@@ -80,6 +80,7 @@ serve(async (req) => {
         supabase
           .from("clients")
           .select("id, name, meta_account_id")
+          .is("deleted_at", null)
           .not("meta_account_id", "is", null),
         supabase.from("meta_accounts_cache").select("meta_account_id, name"),
       ]);
