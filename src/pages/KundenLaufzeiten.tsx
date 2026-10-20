@@ -192,7 +192,7 @@ export default function KundenLaufzeiten() {
     const slackLz = !!v && v.abgleich !== 'widerspruch' && v.laufzeit_monate != null;
     const slackAw = v?.abschlusswert != null; const slackDt = !!v?.deal_typ;
     const fehlt: Record<string, boolean> = {
-      laufzeit_monate: !r.laufzeit_monate && !slackLz, abschlusswert: !slackAw, retainer_monat: false, // optional: leer ist hier kein Fehler
+      laufzeit_monate: !r.laufzeit_monate && !slackLz, abschlusswert: !slackAw, retainer_monat: cur?.retainer_monat == null,
       leistungen: curL.length === 0, deal_typ: !slackDt && !cur?.deal_typ, paket: !!cash && !cash.paket,
     };
     const offen = aendern.has(r.client_id);
@@ -201,7 +201,7 @@ export default function KundenLaufzeiten() {
     const feldEl: Record<string, JSX.Element> = {
       laufzeit_monate: <div key="lz"><span className={lbl}>Laufzeit (Mon.)</span><Input type="number" min={1} max={120} step={1} className={feld} value={m0} onChange={e => setF(r.client_id, 'laufzeit_monate', e.target.value)} /></div>,
       abschlusswert: <div key="aw"><span className={lbl}>Abschlusswert €</span><Input type="number" min={0} className={feld} value={f.abschlusswert} placeholder="optional" onChange={e => setF(r.client_id, 'abschlusswert', e.target.value)} /></div>,
-      retainer_monat: <div key="rt"><span className={lbl}>Retainer/Monat €</span><Input type="number" min={0} className={feld} value={f.retainer_monat} placeholder="optional" onChange={e => setF(r.client_id, 'retainer_monat', e.target.value)} /></div>,
+      retainer_monat: <div key="rt"><span className={lbl}>Retainer/Monat €</span><Input type="number" min={0} className={feld} value={f.retainer_monat} onChange={e => setF(r.client_id, 'retainer_monat', e.target.value)} /></div>,
       leistungen: <div key="ls"><span className={lbl}>Leistungen{optsErr && tip(`Auswahlwerte aus Close nicht geladen: ${optsErr}`)}</span>
         <Popover><PopoverTrigger asChild><Button variant="ghost" className={cn(feld, 'w-full justify-between font-normal')} disabled={!opts}><span className="truncate">{sel.length ? `${sel.length} gewählt` : 'auswählen'}</span><ChevronDown className="h-3 w-3" /></Button></PopoverTrigger>
           <PopoverContent className="w-80 max-h-72 overflow-y-auto p-2">{(opts?.leistungen || []).map(o => <label key={o} className="flex items-start gap-2 py-1 text-xs cursor-pointer"><Checkbox checked={sel.includes(o)} onCheckedChange={c => setF(r.client_id, 'leistungen', c ? [...sel, o] : sel.filter(x => x !== o))} />{o}</label>)}</PopoverContent></Popover></div>,
