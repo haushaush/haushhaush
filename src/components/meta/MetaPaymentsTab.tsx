@@ -397,7 +397,7 @@ export default function MetaPaymentsTab() {
         <Card className="p-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Belege gesamt</p>
           <p className="text-xl font-semibold mt-1 font-mono tabular-nums">{kpis.count}</p>
-          <p className="text-[10px] text-muted-foreground mt-2">Quelle: n8n / Gmail Import</p>
+          <p className="text-xs text-muted-foreground mt-2">Quelle: n8n / Gmail Import</p>
         </Card>
         <Card className="p-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Summe Zahlungen</p>
@@ -406,19 +406,19 @@ export default function MetaPaymentsTab() {
               ? '–'
               : Object.entries(kpis.totalByCur).map(([c, v]) => formatCurrency(v, c)).join(' · ')}
           </p>
-          <p className="text-[10px] text-muted-foreground mt-2">Nach aktuellen Filtern</p>
+          <p className="text-xs text-muted-foreground mt-2">Nach aktuellen Filtern</p>
         </Card>
         <Card className="p-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Letzte 30 Tage</p>
           <p className="text-xl font-semibold mt-1 font-mono tabular-nums">
             {kpis.last30Count} · {Object.entries(kpis.last30Sum).map(([c, v]) => formatCurrency(v, c)).join(' · ') || '–'}
           </p>
-          <p className="text-[10px] text-muted-foreground mt-2">Belege in den letzten 30 Tagen</p>
+          <p className="text-xs text-muted-foreground mt-2">Belege in den letzten 30 Tagen</p>
         </Card>
         <Card className="p-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Werbekonten</p>
           <p className="text-xl font-semibold mt-1 font-mono tabular-nums">{accounts.length}</p>
-          <p className="text-[10px] text-muted-foreground mt-2">Mit importierten Belegen</p>
+          <p className="text-xs text-muted-foreground mt-2">Mit importierten Belegen</p>
         </Card>
       </div>
 
@@ -426,7 +426,7 @@ export default function MetaPaymentsTab() {
       <Card className="p-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2">
           <div className="lg:col-span-3">
-            <Label className="text-[10px] uppercase text-muted-foreground">Transaktions-ID</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Transaktions-ID</Label>
             <Input
               placeholder="z. B. 27951790884507869-27902250049461958"
               value={draftFilters.transactionId}
@@ -437,7 +437,7 @@ export default function MetaPaymentsTab() {
             />
           </div>
           <div className="lg:col-span-2">
-            <Label className="text-[10px] uppercase text-muted-foreground">Datum von</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Datum von</Label>
             <Input
               type="date"
               value={draftFilters.dateFrom}
@@ -448,7 +448,7 @@ export default function MetaPaymentsTab() {
             />
           </div>
           <div className="lg:col-span-2">
-            <Label className="text-[10px] uppercase text-muted-foreground">Datum bis</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Datum bis</Label>
             <Input
               type="date"
               value={draftFilters.dateTo}
@@ -459,7 +459,7 @@ export default function MetaPaymentsTab() {
             />
           </div>
           <div className="lg:col-span-1">
-            <Label className="text-[10px] uppercase text-muted-foreground">Betrag</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Betrag</Label>
             <Input
               inputMode="decimal"
               placeholder="z. B. 46,00"
@@ -471,7 +471,7 @@ export default function MetaPaymentsTab() {
             />
           </div>
           <div className="lg:col-span-2">
-            <Label className="text-[10px] uppercase text-muted-foreground">Meta Account ID</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Meta Account ID</Label>
             <Input
               placeholder="z. B. act_2070598240224366"
               value={draftFilters.metaAccountId}
@@ -482,7 +482,7 @@ export default function MetaPaymentsTab() {
             />
           </div>
           <div className="lg:col-span-2">
-            <Label className="text-[10px] uppercase text-muted-foreground">Werbekonto-Name</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Werbekonto-Name</Label>
             <Input
               placeholder="z. B. Alexander Stursberg"
               value={draftFilters.accountName}
@@ -517,7 +517,7 @@ export default function MetaPaymentsTab() {
           <Button variant="outline" size="sm" className="h-8" onClick={load} disabled={loading}>
             <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} /> Aktualisieren
           </Button>
-          <span className="text-[11px] text-muted-foreground ml-auto">
+          <span className="text-xs text-muted-foreground ml-auto">
             {sorted.length} von {rows.length}
           </span>
         </div>
@@ -604,7 +604,7 @@ export default function MetaPaymentsTab() {
                       <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.transaction_date)}</TableCell>
                       <TableCell className="text-xs">
                         <div className="font-medium">{r.account_name || '–'}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono">{r.meta_account_id || r.meta_account_id_numeric || '–'}</div>
+                        <div className="text-xs text-muted-foreground font-mono">{r.meta_account_id || r.meta_account_id_numeric || '–'}</div>
                       </TableCell>
                       <TableCell className="text-xs">{r.payment_method || '–'}</TableCell>
                       <TableCell className="text-right text-xs font-mono tabular-nums">
@@ -612,12 +612,12 @@ export default function MetaPaymentsTab() {
                       </TableCell>
                       <TableCell>
                         {r.payment_status_label || r.payment_status ? (
-                          <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
+                          <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-700 border-emerald-500/30">
                             {r.payment_status_label || r.payment_status}
                           </Badge>
                         ) : '–'}
                       </TableCell>
-                      <TableCell className="text-[11px] text-muted-foreground whitespace-nowrap">
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                         {r.period_start_raw && r.period_end_raw
                           ? <>{r.period_start_raw} – {r.period_end_raw}</>
                           : '–'}
@@ -630,7 +630,7 @@ export default function MetaPaymentsTab() {
                             target="_blank"
                             rel="noopener noreferrer"
                             title="Meta-Zahlungsbeleg in neuem Tab öffnen"
-                            className="inline-flex items-center gap-1 h-7 px-2 text-[11px] rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                            className="inline-flex items-center gap-1 h-7 px-2 text-xs rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
                           >
                             <ExternalLink className="h-3 w-3" /> Zur Rechnung
                           </a>
@@ -644,15 +644,15 @@ export default function MetaPaymentsTab() {
                           <div className="space-y-3 text-xs">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                               <div>
-                                <div className="text-[10px] uppercase text-muted-foreground">Transaktions-ID</div>
+                                <div className="text-xs uppercase text-muted-foreground">Transaktions-ID</div>
                                 <div className="font-mono break-all">{r.transaction_id || '–'}</div>
                               </div>
                               <div>
-                                <div className="text-[10px] uppercase text-muted-foreground">Grund</div>
+                                <div className="text-xs uppercase text-muted-foreground">Grund</div>
                                 <div>{r.billing_reason || '–'}</div>
                               </div>
                               <div>
-                                <div className="text-[10px] uppercase text-muted-foreground">Produkt</div>
+                                <div className="text-xs uppercase text-muted-foreground">Produkt</div>
                                 <div>{r.product_type || '–'}</div>
                               </div>
                             </div>
@@ -667,7 +667,7 @@ export default function MetaPaymentsTab() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-7 px-2 text-[11px]"
+                                className="h-7 px-2 text-xs"
                                 disabled={!canGeneratePdf(r)}
                                 onClick={() => {
                                   try { generatePaymentReceiptPdf(r); }
@@ -679,7 +679,7 @@ export default function MetaPaymentsTab() {
                             </div>
                             {Array.isArray(r.campaigns) && r.campaigns.length > 0 && (
                               <div>
-                                <div className="text-[10px] uppercase text-muted-foreground mb-1">Kampagnenaufschlüsselung</div>
+                                <div className="text-xs uppercase text-muted-foreground mb-1">Kampagnenaufschlüsselung</div>
                                 <div className="border rounded overflow-hidden">
                                   <Table>
                                     <TableHeader>
@@ -720,7 +720,7 @@ export default function MetaPaymentsTab() {
         )}
       </Card>
 
-      <p className="text-[11px] text-muted-foreground flex items-start gap-1">
+      <p className="text-xs text-muted-foreground flex items-start gap-1">
         <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
         Zahlungsbelege werden über n8n aus Meta-Bestätigungsmails
         (<code className="bg-muted px-1 rounded">noreply@business-updates.facebook.com</code>) importiert. Idempotent per Gmail-ID.

@@ -127,7 +127,7 @@ export function ImportOrphanModal({ open, onOpenChange, email, onImported }: Pro
               </Select>
             </div>
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Beim Import wird ein neues temporäres Passwort gesetzt und angezeigt.
           </p>
         </div>

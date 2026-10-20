@@ -106,15 +106,15 @@ function KpiCard({ card, isMobile }: { card: KpiCardData; isMobile: boolean }) {
         {card.zustand
           ? <p className={cn('text-sm font-medium leading-tight py-1', card.zustand.ton === 'fehler' ? 'text-destructive' : 'text-muted-foreground')}>{card.zustand.text}</p>
           : <p className={cn('text-[clamp(16px,2vw,22px)] font-bold leading-tight', valueColor)}>{card.value}</p>}
-        <p className="text-[11px] text-muted-foreground line-clamp-1">{card.subtext}</p>
+        <p className="text-xs text-muted-foreground line-clamp-1">{card.subtext}</p>
         {card.badge && (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold mt-0.5 px-1.5 py-0.5 rounded bg-destructive/10 text-destructive whitespace-nowrap truncate max-w-full">
+          <span className="inline-flex items-center gap-1 text-xs font-semibold mt-0.5 px-1.5 py-0.5 rounded bg-destructive/10 text-destructive whitespace-nowrap truncate max-w-full">
             {card.badge}
           </span>
         )}
         {card.trend !== undefined && card.trend !== null && !card.zustand && (
           <span className={cn(
-            'inline-flex items-center gap-0.5 text-[10px] font-medium mt-0.5 px-1.5 py-0.5 rounded-full',
+            'inline-flex items-center gap-0.5 text-xs font-medium mt-0.5 px-1.5 py-0.5 rounded-full',
             card.trend >= 0 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-destructive/10 text-destructive'
           )}>
             {card.trend >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
@@ -419,7 +419,7 @@ export function KpiSlider({ deals, invoices, invoicesZustand, revenue, cashColle
             key={label}
             onClick={() => goToSlide(i)}
             className={cn(
-              'text-[13px] font-medium rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap border',
+              'text-xs font-medium rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap border',
               activeSlide === i
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/30'

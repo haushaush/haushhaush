@@ -976,7 +976,7 @@ export function CloseSyncCard() {
                             >
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border tabular-nums ${confidenceColor(s.confidence)}`}>
+                                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded border tabular-nums ${confidenceColor(s.confidence)}`}>
                                     {Math.round(s.confidence * 100)}%
                                   </span>
                                 </TooltipTrigger>

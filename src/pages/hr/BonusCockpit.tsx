@@ -282,7 +282,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
 
   return (
     <>
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <h2 className="text-lg font-semibold font-heading">{title}</h2>
       {k && k.status !== 'ok' && <p className="mt-2 text-sm text-muted-foreground">{k.hinweis}</p>}
       <div className="mt-4 space-y-6">
         {!data && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
@@ -298,7 +298,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
                 empty="Noch keine Einsendungen."
               />
               <div>
-                <h3 className="text-sm font-medium mb-2">Nicht geantwortet ({nichtGeantwortet.length})</h3>
+                <h3 className="text-sm font-semibold mb-2">Nicht geantwortet ({nichtGeantwortet.length})</h3>
                 <Table head={['Kunde']} rows={nichtGeantwortet.map((t: any) => [t.clients?.name || '–'])} empty="Alle haben geantwortet." />
               </div>
             </>
@@ -316,7 +316,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
               )}
               <CashKlaerliste rows={offen} onChanged={() => setTick(t => t + 1)} />
               <div>
-                <h3 className="text-sm font-medium mb-2">Zugeordnete Zahlungseingänge ({zu.length})</h3>
+                <h3 className="text-sm font-semibold mb-2">Zugeordnete Zahlungseingänge ({zu.length})</h3>
                 <Table head={['Kunde', 'Betrag', 'Eingang', 'Quelle', 'Zugeordnet']} rows={zu.map(row)} empty="Keine zugeordneten Zahlungen." />
               </div>
             </>
@@ -338,7 +338,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
           return <>
             {canManage && offen.length > 0 && (
               <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2">
-                <h3 className="text-sm font-medium flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Sonderfälle mit offener Freigabe ({offen.length})</h3>
+                <h3 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Sonderfälle mit offener Freigabe ({offen.length})</h3>
                 {offen.map((r: any) => (
                   <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span>{r.clients?.name || '–'} · <span className="tabular-nums">{dt(r.abgang_datum || r.festgestellt_am)}</span></span>
@@ -352,7 +352,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
             )}
             {luecken.length > 0 && (
               <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2">
-                <h3 className="text-sm font-medium flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Angaben unvollständig ({luecken.length})</h3>
+                <h3 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Angaben unvollständig ({luecken.length})</h3>
                 {luecken.map((r: any) => (
                   <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span>{r.clients?.name || '–'} · <span className="text-muted-foreground">fehlt: {[!r.kuendigungsdatum && 'Kündigungsdatum', !(r.bemerkung || '').trim() && 'Begründung'].filter(Boolean).join(', ')}</span></span>
@@ -436,12 +436,12 @@ function CallsDetail({ data, canManage, syncing, onSync, wert }: { data: any; ca
       </div>
 
       <div>
-        <h3 className="text-sm font-medium mb-2">Nicht erreichbare Kunden ({nz.length} von {data.snap.length})</h3>
+        <h3 className="text-sm font-semibold mb-2">Nicht erreichbare Kunden ({nz.length} von {data.snap.length})</h3>
         <Table head={['Kunde', 'Grund']} rows={nz.map(n => [n.name || '–', <span className="text-xs text-muted-foreground">{n.grund || '–'}</span>])} empty="Alle betreuten Kunden sind in Close erreichbar." />
       </div>
 
       <div>
-        <h3 className="text-sm font-medium mb-2">Verteilung nach Anlass</h3>
+        <h3 className="text-sm font-semibold mb-2">Verteilung nach Anlass</h3>
         <div className="flex flex-wrap gap-2">
           {anlass.length ? anlass.map(([k, v]) => (
             <div key={k} className="rounded-md border border-border px-3 py-2 text-sm"><span className="text-muted-foreground">{k}</span> <b className="tabular-nums ml-1">{v as number}</b></div>
@@ -451,19 +451,19 @@ function CallsDetail({ data, canManage, syncing, onSync, wert }: { data: any; ca
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
-          <h3 className="text-sm font-medium mb-1 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" />Frühwarnung Churn ({risk.length})</h3>
+          <h3 className="text-sm font-semibold mb-1 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" />Frühwarnung Churn ({risk.length})</h3>
           <p className="text-xs text-muted-foreground mb-2">Stimmung „Abwanderungsgefahr" oder „Unzufrieden" — nicht punkterelevant.</p>
           {risk.length ? <ul className="text-sm space-y-1">{risk.map((r, i) => <li key={i}>{r.clients?.name || '–'} <span className="text-muted-foreground tabular-nums">· {dt(r.datum)} · {r.stimmung}</span></li>)}</ul> : <p className="text-sm text-muted-foreground">Keine.</p>}
         </div>
         <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
-          <h3 className="text-sm font-medium mb-1 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Upsell übergeben ({handover.length})</h3>
+          <h3 className="text-sm font-semibold mb-1 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Upsell übergeben ({handover.length})</h3>
           <p className="text-xs text-muted-foreground mb-2">Kandidaten für die Upsell-Beteiligung nach § 7 — nicht punkterelevant.</p>
           {handover.length ? <ul className="text-sm space-y-1">{handover.map((r, i) => <li key={i}>{r.clients?.name || '–'} <span className="text-muted-foreground tabular-nums">· {dt(r.datum)}</span></li>)}</ul> : <p className="text-sm text-muted-foreground">Keine.</p>}
         </div>
       </div>
 
       <div>
-        <h3 className="text-sm font-medium mb-2">Wochenübersicht (ISO-Wochen)</h3>
+        <h3 className="text-sm font-semibold mb-2">Wochenübersicht (ISO-Wochen)</h3>
         <Table head={['Woche', 'Kunden erreicht', 'Checkins', 'Gewichtete Summe']}
           rows={wochen.map((w: any) => [w.woche, w.kunden_erreicht, w.checkins, num(w.gewichtete_summe)])}
           empty="Keine Checkins in diesem Monat." />
@@ -471,7 +471,7 @@ function CallsDetail({ data, canManage, syncing, onSync, wert }: { data: any; ca
 
       <div id="bonus-alle-calls" className="scroll-mt-24">
         {data.sourceUnavailable && <p className="text-sm text-destructive">Call-Liste nicht verfügbar. Bitte den Monatsstand neu laden.</p>}
-        <h3 className="text-sm font-medium mb-2">Alle Calls ({rows.length})</h3>
+        <h3 className="text-sm font-semibold mb-2">Alle Calls ({rows.length})</h3>
         <Table head={['Kunde', 'Datum', 'Gewicht', 'Anlass', 'Stimmung', 'Kampagne nach Erwartung', 'Upsell-Potenzial', 'Nächster Schritt']}
           rows={rows.map(r => {
             const g = gewichte[r.close_activity_id];
@@ -484,7 +484,7 @@ function CallsDetail({ data, canManage, syncing, onSync, wert }: { data: any; ca
       </div>
 
       <div>
-        <h3 className="text-sm font-medium mb-2">Betreute Kunden ohne Checkin ({ohne.length})</h3>
+        <h3 className="text-sm font-semibold mb-2">Betreute Kunden ohne Checkin ({ohne.length})</h3>
         <Table head={['Kunde']} rows={ohne.map(s => [s.clients?.name || '–'])} empty="Alle betreuten Kunden hatten einen Checkin." />
       </div>
 

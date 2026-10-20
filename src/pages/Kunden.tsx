@@ -303,7 +303,7 @@ export default function Kunden() {
             <Users className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-heading font-bold leading-tight">Kunden</h1>
+            <h1 className="text-2xl font-semibold font-heading leading-tight">Kunden</h1>
             <p className="text-xs text-muted-foreground mt-0.5">{clients.length} Personen</p>
           </div>
         </div>

@@ -456,7 +456,7 @@ export default function EmailPage({ mode = 'personal', embedded = false, initial
           <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
             <Mail className="h-8 w-8 text-primary" />
           </div>
-          <h2 className="text-xl font-semibold">Noch keine E-Mail-Konten verbunden</h2>
+          <h2 className="text-lg font-semibold font-heading">Noch keine E-Mail-Konten verbunden</h2>
           <p className="text-sm text-muted-foreground">
             Füge dein erstes Konto hinzu, um deine E-Mails im Portal zu lesen.
           </p>
@@ -729,7 +729,7 @@ export default function EmailPage({ mode = 'personal', embedded = false, initial
               )}
 
               {/* Subject + sender */}
-              <h1 className="text-xl font-semibold leading-tight">
+              <h1 className="text-2xl font-semibold font-heading leading-tight">
                 {fullMessage.subject || '(kein Betreff)'}
               </h1>
               <div className="flex items-start gap-3">

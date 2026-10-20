@@ -369,7 +369,7 @@ export default function SalesKPI() {
               const label = k === 'heute' ? 'Heute' : k === 'woche' ? 'Diese Woche' : 'Dieser Monat';
               return (
                 <div key={k} className="space-y-3">
-                  <h3 className="text-sm font-medium text-muted-foreground">{label}</h3>
+                  <h3 className="text-sm font-semibold text-muted-foreground">{label}</h3>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <Kpi label="Dials" value={formatValue(b.brutto, 'number', false)} />
                     <Kpi label="Erreichbarkeit" value={pct(b.erreichbarkeit)} sub={`${b.erreicht} erreicht`} />

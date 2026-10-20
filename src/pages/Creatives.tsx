@@ -141,7 +141,7 @@ export default function Creatives() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-heading font-bold">Creatives</h1>
+          <h1 className="text-2xl font-semibold font-heading">Creatives</h1>
           <p className="text-muted-foreground text-sm">Ad Creative Review Pipeline</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -253,11 +253,11 @@ export default function Creatives() {
                           </div>
                           <p className="font-medium text-sm leading-tight">{project.name}</p>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <Badge className={`text-[10px] ${VERTICAL_COLORS[project.vertical] || VERTICAL_COLORS.Sonstiges}`}>
+                            <Badge className={`text-xs ${VERTICAL_COLORS[project.vertical] || VERTICAL_COLORS.Sonstiges}`}>
                               {project.vertical}
                             </Badge>
                             {counts.total > 0 && (
-                              <span className="text-[10px] text-muted-foreground">{counts.total} Creatives</span>
+                              <span className="text-xs text-muted-foreground">{counts.total} Creatives</span>
                             )}
                           </div>
                           {/* Progress bar */}
@@ -269,7 +269,7 @@ export default function Creatives() {
                               />
                             </div>
                           )}
-                          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
                             {project.due_date && (
                               <span className={`flex items-center gap-1 ${overdue ? 'text-destructive font-semibold' : ''}`}>
                                 <Calendar className="h-3 w-3" aria-hidden="true" />

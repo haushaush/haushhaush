@@ -173,13 +173,13 @@ function ProjectCardContent({
       )}
 
       <div className="flex flex-wrap items-center gap-1.5 mt-2">
-        {p.archiviert_am && <Badge variant="outline" className="text-[10px] text-muted-foreground">Archiviert</Badge>}
-        <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-[4px] ${STATUS_STYLES[status] || 'bg-muted text-muted-foreground'}`}>{status}</span>
+        {p.archiviert_am && <Badge variant="outline" className="text-xs text-muted-foreground">Archiviert</Badge>}
+        <span className={`inline-block text-xs font-medium px-1.5 py-0.5 rounded-[4px] ${STATUS_STYLES[status] || 'bg-muted text-muted-foreground'}`}>{status}</span>
         {firstBranche && (
-          <span className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded-[4px] ${BRANCHE_COLORS[firstBranche] || 'bg-muted text-muted-foreground'}`}>{firstBranche}</span>
+          <span className={`inline-block text-xs font-medium px-1.5 py-0.5 rounded-[4px] ${BRANCHE_COLORS[firstBranche] || 'bg-muted text-muted-foreground'}`}>{firstBranche}</span>
         )}
         {nearDeadline && (
-          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-[4px] bg-destructive/15 text-destructive">
+          <span className="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-[4px] bg-destructive/15 text-destructive">
             <Clock className="h-2.5 w-2.5" />Deadline
           </span>
         )}
@@ -188,14 +188,14 @@ function ProjectCardContent({
       {typArr.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
           {typArr.slice(0, 2).map((t: string) => (
-            <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/8 text-primary/80 font-medium">{t}</span>
+            <span key={t} className="text-xs px-1.5 py-0.5 rounded bg-primary/8 text-primary/80 font-medium">{t}</span>
           ))}
-          {typArr.length > 2 && <span className="text-[10px] text-muted-foreground">+{typArr.length - 2}</span>}
+          {typArr.length > 2 && <span className="text-xs text-muted-foreground">+{typArr.length - 2}</span>}
         </div>
       )}
 
       <div className="flex items-center justify-between mt-2.5">
-        {p.startdatum ? <span className="text-[10px] text-muted-foreground">{fmtDate(p.startdatum)}</span> : <span />}
+        {p.startdatum ? <span className="text-xs text-muted-foreground">{fmtDate(p.startdatum)}</span> : <span />}
         {members.length > 0 && (
           <div className="flex -space-x-1.5">
             {members.slice(0, 3).map((m) => {
@@ -247,8 +247,8 @@ function DroppableKanbanColumn({
     <div className="min-w-[280px] max-w-[320px] flex-shrink-0 flex flex-col" ref={setNodeRef}>
       <div className={`flex items-center gap-2 px-3 py-2 rounded-t-lg border transition-colors ${headerClass || 'bg-muted/30 border-border'}`}>
         {headerIcon}
-        <h3 className="text-xs font-semibold truncate">{title}</h3>
-        <Badge variant="secondary" className="text-[10px] h-5 px-1.5 rounded-md">{count}</Badge>
+        <h3 className="text-sm font-semibold truncate">{title}</h3>
+        <Badge variant="secondary" className="text-xs h-5 px-1.5 rounded-md">{count}</Badge>
       </div>
       <div className={`flex-1 border-x border-b rounded-b-lg p-2 space-y-2 overflow-y-auto scrollbar-none max-h-[calc(100vh-260px)] transition-all duration-200
         ${highlighted ? 'bg-primary/5 border-primary/40 ring-1 ring-primary/30' : 'bg-muted/10 border-border'}`}>
@@ -567,7 +567,7 @@ export default function Projekte() {
             <FolderKanban className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-heading font-bold leading-tight">Projekte</h1>
+            <h1 className="text-2xl font-semibold font-heading leading-tight">Projekte</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
               {projects.length} Projekte {syncing && '· Synchronisiert...'}
             </p>
@@ -624,7 +624,7 @@ export default function Projekte() {
           <Clock className="h-3.5 w-3.5" />
           Kurz vor Deadline
           {deadlineCount > 0 && (
-            <Badge variant={deadlineFilter ? 'secondary' : 'destructive'} className="text-[10px] h-4 px-1 rounded-md ml-0.5">
+            <Badge variant={deadlineFilter ? 'secondary' : 'destructive'} className="text-xs h-4 px-1 rounded-md ml-0.5">
               {deadlineCount}
             </Badge>
           )}
@@ -637,7 +637,7 @@ export default function Projekte() {
         <div className="flex-1 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 p-6">
           <div className="flex items-center gap-2 mb-6">
             <BarChart3 className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-heading font-bold">KPI Tracking</h2>
+            <h2 className="text-lg font-semibold font-heading">KPI Tracking</h2>
             <span className="text-xs text-muted-foreground ml-1">Projekte nach Projektart</span>
           </div>
           {kpiChartData.length === 0 ? (

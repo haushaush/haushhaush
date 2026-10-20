@@ -45,7 +45,7 @@ export function DriveFreigabenTab({ targetUserId }: Props) {
         </CardHeader>
         <CardContent className="p-5 pt-0">
           <p className="text-xs text-muted-foreground mb-3">
-            Generelles Recht <code className="text-[11px]">drive.view</code> wird im Tab „Rollen & Rechte" gesteuert.
+            Generelles Recht <code className="text-xs">drive.view</code> wird im Tab „Rollen & Rechte" gesteuert.
             Konkrete Datei-/Ordnerfreigaben werden weiterhin direkt im Drive verwaltet.
           </p>
           {loading ? <Skeleton className="h-24" /> : perms.length === 0 ? (
@@ -55,12 +55,12 @@ export function DriveFreigabenTab({ targetUserId }: Props) {
               {perms.slice(0, 50).map((p: any) => (
                 <div key={p.id} className="flex items-center justify-between text-xs p-2 rounded border border-border/60">
                   <span className="font-mono truncate">{p.drive_item_id}</span>
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-xs">
                     {p.grantee_type === 'role' ? `Rolle: ${p.grantee_role}` : 'direkt'}
                   </Badge>
                 </div>
               ))}
-              {perms.length > 50 && <p className="text-[11px] text-muted-foreground">+ {perms.length - 50} weitere…</p>}
+              {perms.length > 50 && <p className="text-xs text-muted-foreground">+ {perms.length - 50} weitere…</p>}
             </div>
           )}
         </CardContent>

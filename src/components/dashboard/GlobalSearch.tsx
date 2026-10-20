@@ -46,8 +46,8 @@ export function SearchBar({ onClick }: { onClick: () => void }) {
         className="w-full h-12 bg-card border border-border rounded-[10px] px-[18px] flex items-center gap-2.5 cursor-text hover:border-primary/40 focus:border-primary focus:ring-[3px] focus:ring-accent transition-all duration-150"
       >
         <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-        <span className="text-[14px] text-muted-foreground flex-1 text-left">Kunden, Aufgaben, Seiten suchen...</span>
-        <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[11px] text-muted-foreground border border-border rounded px-1.5 py-0.5">⌘K</kbd>
+        <span className="text-sm text-muted-foreground flex-1 text-left">Kunden, Aufgaben, Seiten suchen...</span>
+        <kbd className="hidden sm:inline-flex items-center gap-0.5 text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5">⌘K</kbd>
       </button>
     </div>
   );
@@ -183,7 +183,7 @@ export function GlobalSearchModal({ open, onClose }: { open: boolean; onClose: (
           <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
           {item.subtitle && <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>}
         </div>
-        {item.badge && <Badge variant="outline" className="text-[10px] shrink-0">{item.badge}</Badge>}
+        {item.badge && <Badge variant="outline" className="text-xs shrink-0">{item.badge}</Badge>}
         <ArrowRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100" />
       </button>
     );
@@ -207,7 +207,7 @@ export function GlobalSearchModal({ open, onClose }: { open: boolean; onClose: (
             placeholder="Suchen..."
             className="flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground outline-none"
           />
-          <kbd className="text-[11px] text-muted-foreground border border-border rounded px-1.5 py-0.5 shrink-0">Esc</kbd>
+          <kbd className="text-xs text-muted-foreground border border-border rounded px-1.5 py-0.5 shrink-0">Esc</kbd>
           <button onClick={onClose} className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors">
             <X className="h-4 w-4" />
           </button>
@@ -218,7 +218,7 @@ export function GlobalSearchModal({ open, onClose }: { open: boolean; onClose: (
           {/* Recent searches */}
           {query.length < 2 && recentSearches.length > 0 && (
             <div className="py-2">
-              <p className="px-4 py-1 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">Zuletzt gesucht</p>
+              <p className="px-4 py-1 text-xs font-semibold text-muted-foreground tracking-wider uppercase">Zuletzt gesucht</p>
               {recentSearches.map(s => (
                 <div key={s} className="flex items-center gap-3 px-4 py-2 hover:bg-accent/50 transition-colors">
                   <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -246,31 +246,31 @@ export function GlobalSearchModal({ open, onClose }: { open: boolean; onClose: (
             <>
               {grouped.kunden.length > 0 && (
                 <div className="py-1">
-                  <p className="px-4 py-1 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">Kunden</p>
+                  <p className="px-4 py-1 text-xs font-semibold text-muted-foreground tracking-wider uppercase">Kunden</p>
                   {grouped.kunden.map(renderRow)}
                 </div>
               )}
               {grouped.aufgaben.length > 0 && (
                 <div className="py-1">
-                  <p className="px-4 py-1 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">Aufgaben</p>
+                  <p className="px-4 py-1 text-xs font-semibold text-muted-foreground tracking-wider uppercase">Aufgaben</p>
                   {grouped.aufgaben.map(renderRow)}
                 </div>
               )}
               {grouped.rechnungen.length > 0 && (
                 <div className="py-1">
-                  <p className="px-4 py-1 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">Rechnungen</p>
+                  <p className="px-4 py-1 text-xs font-semibold text-muted-foreground tracking-wider uppercase">Rechnungen</p>
                   {grouped.rechnungen.map(renderRow)}
                 </div>
               )}
               {grouped.team.length > 0 && (
                 <div className="py-1">
-                  <p className="px-4 py-1 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">Team</p>
+                  <p className="px-4 py-1 text-xs font-semibold text-muted-foreground tracking-wider uppercase">Team</p>
                   {grouped.team.map(renderRow)}
                 </div>
               )}
               {grouped.nav.length > 0 && (
                 <div className="py-1">
-                  <p className="px-4 py-1 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">Navigation</p>
+                  <p className="px-4 py-1 text-xs font-semibold text-muted-foreground tracking-wider uppercase">Navigation</p>
                   {grouped.nav.map(renderRow)}
                 </div>
               )}
@@ -280,7 +280,7 @@ export function GlobalSearchModal({ open, onClose }: { open: boolean; onClose: (
           {/* Quick nav when no query */}
           {!loading && query.length < 2 && (
             <div className="py-1">
-              <p className="px-4 py-1 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase">Schnellnavigation</p>
+              <p className="px-4 py-1 text-xs font-semibold text-muted-foreground tracking-wider uppercase">Schnellnavigation</p>
               {allItems.map(renderRow)}
             </div>
           )}

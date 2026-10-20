@@ -24,10 +24,10 @@ export function LeistungenChips({ wert }: { wert: string | null }) {
   const rest = l.slice(2);
   return (
     <div className="flex flex-wrap gap-1 max-w-[260px]">
-      {l.slice(0, 2).map((x, i) => <Badge key={i} variant="outline" className="text-[10px] font-normal px-1.5 py-0 max-w-[180px] truncate" title={x}>{x}</Badge>)}
+      {l.slice(0, 2).map((x, i) => <Badge key={i} variant="outline" className="text-xs font-normal px-1.5 py-0 max-w-[180px] truncate" title={x}>{x}</Badge>)}
       {rest.length > 0 && (
         <TooltipProvider><Tooltip><TooltipTrigger asChild>
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 cursor-default">+{rest.length}</Badge>
+          <Badge variant="secondary" className="text-xs px-1.5 py-0 cursor-default">+{rest.length}</Badge>
         </TooltipTrigger><TooltipContent><ul className="text-xs space-y-0.5">{rest.map((x, i) => <li key={i}>{x}</li>)}</ul></TooltipContent></Tooltip></TooltipProvider>
       )}
     </div>
@@ -47,7 +47,7 @@ function Gruppe({ titel, felder }: { titel: string; felder: Feld[] }) {
   if (!da.length) return null;
   return (
     <div>
-      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">{titel}</div>
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5">{titel}</div>
       <dl className="grid grid-cols-[140px_1fr] gap-x-3 gap-y-1 text-xs">
         {da.map(([k, v]) => <Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd className="tabular-nums break-words">{v}</dd></Fragment>)}
       </dl>
@@ -70,7 +70,7 @@ function Notizen({ leadId }: { leadId: string | null }) {
   const sichtbar = rows ? (alle ? rows : rows.slice(0, 3)) : [];
   return (
     <div className="md:col-span-2">
-      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">Notizen aus Close</div>
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1.5">Notizen aus Close</div>
       {fehler ? <p className="text-xs text-destructive">Notizen nicht lesbar: {fehler}</p>
         : !rows ? <p className="text-xs text-muted-foreground">Lade …</p>
         : !rows.length ? <p className="text-xs text-muted-foreground">Keine Notizen zu diesem Lead.</p> : (

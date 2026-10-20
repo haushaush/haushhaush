@@ -135,7 +135,7 @@ export function TimeTracker() {
   return (
     <div className="bg-card border border-border rounded-xl flex flex-col overflow-hidden box-border h-full min-h-[200px]" style={{ padding: '18px 18px 20px 18px', gap: '8px' }}>
       {/* Row 1 — Label */}
-      <span className="text-[11px] font-semibold text-muted-foreground shrink-0 text-center" style={{ letterSpacing: '0.02em' }}>Zeiterfassung</span>
+      <span className="text-xs font-semibold text-muted-foreground shrink-0 text-center" style={{ letterSpacing: '0.02em' }}>Zeiterfassung</span>
 
       {/* Row 2 — Timer display */}
       <div className="flex items-center justify-center shrink-0">
@@ -154,7 +154,7 @@ export function TimeTracker() {
         {timer.running ? (
           <div className="flex items-center gap-2 h-9 rounded-lg bg-background border border-border px-3 opacity-60">
             <Pencil className="h-3 w-3 text-muted-foreground shrink-0" />
-            <span className="text-[13px] text-muted-foreground truncate">
+            <span className="text-xs text-muted-foreground truncate">
               {timer.taskLabel || 'Keine Aufgabe'}
             </span>
           </div>
@@ -165,7 +165,7 @@ export function TimeTracker() {
               value={timer.taskLabel}
               onChange={e => setTimer(prev => ({ ...prev, taskLabel: e.target.value }))}
               placeholder="Woran arbeitest du?"
-              className="w-full h-9 rounded-lg bg-background border border-border pl-8 pr-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-[3px] focus:ring-primary/12 focus:outline-none transition-all"
+              className="w-full h-9 rounded-lg bg-background border border-border pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-[3px] focus:ring-primary/12 focus:outline-none transition-all"
             />
           </div>
         )}
@@ -174,7 +174,7 @@ export function TimeTracker() {
       {/* Row 4 — Action buttons */}
       <div className="shrink-0">
         {!timer.running ? (
-          <Button onClick={handleStart} className="w-full h-9 gap-2 rounded-lg text-[13px] font-semibold">
+          <Button onClick={handleStart} className="w-full h-9 gap-2 rounded-lg text-xs font-semibold">
             <Play className="h-4 w-4" /> Starten
           </Button>
         ) : (
@@ -182,7 +182,7 @@ export function TimeTracker() {
             <Button
               onClick={handleStop}
               variant="outline"
-              className="h-9 gap-1.5 text-[13px] rounded-lg border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20"
+              className="h-9 gap-1.5 text-xs rounded-lg border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20"
             >
               <Square className="h-3.5 w-3.5" /> Stopp
             </Button>

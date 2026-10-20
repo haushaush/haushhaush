@@ -134,7 +134,7 @@ export function NotificationDrawer({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h2 className="text-base font-semibold text-foreground">Benachrichtigungen</h2>
+          <h2 className="text-lg font-semibold font-heading text-foreground">Benachrichtigungen</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={onMarkAllAsRead}
@@ -168,7 +168,7 @@ export function NotificationDrawer({
               >
                 {tab.label}
                 {count > 0 && (
-                  <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 text-[10px] font-semibold rounded-full bg-destructive text-destructive-foreground">
+                  <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 text-xs font-semibold rounded-full bg-destructive text-destructive-foreground">
                     {count > 99 ? '99+' : count}
                   </span>
                 )}
@@ -200,7 +200,7 @@ export function NotificationDrawer({
             <div className="py-2">
               {groups.map(group => (
                 <div key={group.label}>
-                  <p className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <p className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {group.label}
                   </p>
                   {group.items.map(n => (
@@ -219,7 +219,7 @@ export function NotificationDrawer({
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-[13px] leading-tight text-foreground truncate ${!n.read ? 'font-semibold' : 'font-medium'}`}>
+                        <p className={`text-xs leading-tight text-foreground truncate ${!n.read ? 'font-semibold' : 'font-medium'}`}>
                           {n.title}
                         </p>
                         {n.preview && (
@@ -227,7 +227,7 @@ export function NotificationDrawer({
                             {n.preview}
                           </p>
                         )}
-                        <p className="text-[11px] text-muted-foreground/70 mt-1">
+                        <p className="text-xs text-muted-foreground/70 mt-1">
                           {timeAgo(n.created_at)}
                         </p>
                       </div>

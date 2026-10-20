@@ -48,7 +48,7 @@ export function ReferenzShowcaseDetailPanel({ item, isAdmin, onClose, onEdit, on
         </div>
 
         <div className="p-6">
-          <h2 className="text-xl font-semibold">{item.title}</h2>
+          <h2 className="text-lg font-semibold font-heading">{item.title}</h2>
           <p className="text-sm text-muted-foreground mt-1">
             {[item.client_name, item.branche, item.ad_platform].filter(Boolean).join(' · ')}
           </p>
@@ -78,7 +78,7 @@ export function ReferenzShowcaseDetailPanel({ item, isAdmin, onClose, onEdit, on
           {item.tags && item.tags.length > 0 && (
             <div className="mt-5 flex flex-wrap gap-1.5">
               {item.tags.map(t => (
-                <span key={t} className="text-[11px] bg-muted text-muted-foreground rounded px-2 py-0.5">{t}</span>
+                <span key={t} className="text-xs bg-muted text-muted-foreground rounded px-2 py-0.5">{t}</span>
               ))}
             </div>
           )}

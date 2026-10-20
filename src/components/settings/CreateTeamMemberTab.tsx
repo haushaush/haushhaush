@@ -235,7 +235,7 @@ export function CreateTeamMemberTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold text-foreground">Mitarbeiter erstellen</h2>
+        <h2 className="text-lg font-semibold font-heading text-foreground">Mitarbeiter erstellen</h2>
         <p className="text-sm text-muted-foreground mt-1">Neue Teammitglieder anlegen und einladen</p>
       </div>
 
@@ -245,7 +245,7 @@ export function CreateTeamMemberTab() {
           <CardContent className="p-6 space-y-6">
             {/* Kontaktdaten */}
             <section className="space-y-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Kontaktdaten</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Kontaktdaten</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="vorname" className="text-xs">Vorname *</Label>
@@ -264,7 +264,7 @@ export function CreateTeamMemberTab() {
                     placeholder="name@viralconnect.de"
                     className={`mt-1 ${emailError ? 'border-destructive' : ''}`}
                   />
-                  {emailError && <p className="text-[11px] text-destructive mt-1">{emailError}</p>}
+                  {emailError && <p className="text-xs text-destructive mt-1">{emailError}</p>}
                 </div>
                 <div className="sm:col-span-2">
                   <Label htmlFor="telefon" className="text-xs">Telefon</Label>
@@ -277,7 +277,7 @@ export function CreateTeamMemberTab() {
 
             {/* Zugangsdaten */}
             <section className="space-y-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Zugangsdaten</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Zugangsdaten</h3>
               <div>
                 <Label htmlFor="password" className="text-xs">Passwort *</Label>
                 <div className="flex gap-2 mt-1">
@@ -306,7 +306,7 @@ export function CreateTeamMemberTab() {
                     <div key={i} className={`h-1 flex-1 rounded-sm ${i < strength.score ? strength.color : 'bg-muted'}`} />
                   ))}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">Stärke: {strength.label}</p>
+                <p className="text-xs text-muted-foreground mt-1">Stärke: {strength.label}</p>
               </div>
               <div>
                 <Label htmlFor="password-confirm" className="text-xs">Passwort bestätigen *</Label>
@@ -316,7 +316,7 @@ export function CreateTeamMemberTab() {
                   className={`mt-1 font-mono text-sm ${passwordConfirm && passwordConfirm !== password ? 'border-destructive' : ''}`}
                 />
                 {passwordConfirm && passwordConfirm !== password && (
-                  <p className="text-[11px] text-destructive mt-1">Passwörter stimmen nicht überein</p>
+                  <p className="text-xs text-destructive mt-1">Passwörter stimmen nicht überein</p>
                 )}
               </div>
             </section>
@@ -325,7 +325,7 @@ export function CreateTeamMemberTab() {
 
             {/* Position & Abteilung */}
             <section className="space-y-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Position & Abteilung</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Position & Abteilung</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Abteilung *</Label>
@@ -367,7 +367,7 @@ export function CreateTeamMemberTab() {
 
             {/* Rolle & Zugriffsrechte */}
             <section className="space-y-3">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                 <Shield className="h-3.5 w-3.5" /> Rolle & Zugriffsrechte
               </h3>
 
@@ -381,28 +381,28 @@ export function CreateTeamMemberTab() {
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">{ROLE_HINTS[rolle]}</p>
+                <p className="text-xs text-muted-foreground mt-1">{ROLE_HINTS[rolle]}</p>
               </div>
 
               {/* Vorschau geerbter Rechte */}
               <div className="rounded-lg border border-border bg-muted/20 p-3">
-                <p className="text-[11px] font-medium text-foreground mb-1.5">
+                <p className="text-xs font-medium text-foreground mb-1.5">
                   Geerbte Rechte aus Rolle „{ROLE_LABELS[rolle]}" ({roleGrantedKeys.size})
                 </p>
                 {permsLoading ? (
-                  <p className="text-[11px] text-muted-foreground">Wird geladen…</p>
+                  <p className="text-xs text-muted-foreground">Wird geladen…</p>
                 ) : roleGrantedKeys.size === 0 ? (
-                  <p className="text-[11px] text-muted-foreground">Keine — nur explizit erlaubte Rechte gelten.</p>
+                  <p className="text-xs text-muted-foreground">Keine — nur explizit erlaubte Rechte gelten.</p>
                 ) : (
                   <div className="flex flex-wrap gap-1">
                     {allPerms
                       .filter(p => roleGrantedKeys.has(p.permission_key))
                       .slice(0, 12)
                       .map(p => (
-                        <Badge key={p.permission_key} variant="secondary" className="text-[10px] rounded-[4px]">{p.label}</Badge>
+                        <Badge key={p.permission_key} variant="secondary" className="text-xs rounded-[4px]">{p.label}</Badge>
                       ))}
                     {roleGrantedKeys.size > 12 && (
-                      <Badge variant="outline" className="text-[10px] rounded-[4px]">+{roleGrantedKeys.size - 12} weitere</Badge>
+                      <Badge variant="outline" className="text-xs rounded-[4px]">+{roleGrantedKeys.size - 12} weitere</Badge>
                     )}
                   </div>
                 )}
@@ -417,7 +417,7 @@ export function CreateTeamMemberTab() {
                 <span className="flex items-center gap-2">
                   Individuelle Rechte anpassen
                   {(Object.keys(overrides).length > 0) && (
-                    <Badge variant="secondary" className="text-[10px] rounded-[4px]">{Object.keys(overrides).length} Override(s)</Badge>
+                    <Badge variant="secondary" className="text-xs rounded-[4px]">{Object.keys(overrides).length} Override(s)</Badge>
                   )}
                 </span>
                 {advancedOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -430,7 +430,7 @@ export function CreateTeamMemberTab() {
                   ) : (
                     Object.entries(grouped).map(([cat, list]) => (
                       <div key={cat}>
-                        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">{cat}</p>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">{cat}</p>
                         <div className="space-y-1">
                           {list.map(p => {
                             const inRole = roleGrantedKeys.has(p.permission_key);
@@ -447,14 +447,14 @@ export function CreateTeamMemberTab() {
                                       ? <Badge className="text-[9px] rounded-[3px] bg-success/20 text-success border-success/30"><Check className="h-2.5 w-2.5 mr-0.5" />aktiv</Badge>
                                       : <Badge variant="outline" className="text-[9px] rounded-[3px] text-muted-foreground"><X className="h-2.5 w-2.5 mr-0.5" />inaktiv</Badge>}
                                   </div>
-                                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">{p.permission_key}</p>
+                                  <p className="text-xs text-muted-foreground font-mono mt-0.5 truncate">{p.permission_key}</p>
                                 </div>
                                 <Select value={mode} onValueChange={(v) => setMode(p.permission_key, v as OverrideMode)}>
-                                  <SelectTrigger className="w-[130px] h-7 text-[11px]"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="w-[130px] h-7 text-xs"><SelectValue /></SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="inherit"><span className="flex items-center gap-1.5 text-[11px]"><Minus className="h-3 w-3" />Rolle erben</span></SelectItem>
-                                    <SelectItem value="allow"><span className="flex items-center gap-1.5 text-[11px] text-success"><Check className="h-3 w-3" />Erlauben</span></SelectItem>
-                                    <SelectItem value="deny"><span className="flex items-center gap-1.5 text-[11px] text-destructive"><X className="h-3 w-3" />Verweigern</span></SelectItem>
+                                    <SelectItem value="inherit"><span className="flex items-center gap-1.5 text-xs"><Minus className="h-3 w-3" />Rolle erben</span></SelectItem>
+                                    <SelectItem value="allow"><span className="flex items-center gap-1.5 text-xs text-success"><Check className="h-3 w-3" />Erlauben</span></SelectItem>
+                                    <SelectItem value="deny"><span className="flex items-center gap-1.5 text-xs text-destructive"><X className="h-3 w-3" />Verweigern</span></SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -469,7 +469,7 @@ export function CreateTeamMemberTab() {
                       Alle Overrides zurücksetzen
                     </Button>
                   )}
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Drive-Datei- und Ordner-Freigaben werden separat im Mitarbeiter-Detail unter „Drive-Freigaben" verwaltet.
                   </p>
                 </div>
@@ -565,14 +565,14 @@ export function CreateTeamMemberTab() {
                 {explicitAllow.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {explicitAllow.map(l => (
-                      <Badge key={l} className="text-[10px] rounded-[4px] bg-success/15 text-success border-success/30">+ {l}</Badge>
+                      <Badge key={l} className="text-xs rounded-[4px] bg-success/15 text-success border-success/30">+ {l}</Badge>
                     ))}
                   </div>
                 )}
                 {explicitDeny.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {explicitDeny.map(l => (
-                      <Badge key={l} variant="outline" className="text-[10px] rounded-[4px] text-destructive border-destructive/30">– {l}</Badge>
+                      <Badge key={l} variant="outline" className="text-xs rounded-[4px] text-destructive border-destructive/30">– {l}</Badge>
                     ))}
                   </div>
                 )}

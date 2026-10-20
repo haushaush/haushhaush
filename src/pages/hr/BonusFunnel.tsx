@@ -88,7 +88,7 @@ export default function BonusFunnel() {
   await load();
  };
  return <div className="space-y-6">
-  <h1 className="text-2xl font-semibold">Bonus – Zufriedenheits-Funnel</h1>
+  <h1 className="text-2xl font-semibold font-heading">Bonus – Zufriedenheits-Funnel</h1>
   <div className="flex flex-wrap items-center gap-3">
    <a className="text-sm text-primary break-all" href={sharedLink} target="_blank" rel="noreferrer">{sharedLink}</a>
    <Button variant="ghost" size="icon" aria-label="Gemeinsamen Link kopieren" onClick={() => { void navigator.clipboard.writeText(sharedLink).then(() => toast.success('Link kopiert')); }}><Copy className="h-4 w-4" /></Button>
@@ -100,13 +100,13 @@ export default function BonusFunnel() {
   </div>
   {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
   {canManage && <section className="space-y-3">
-   <h2 className="text-lg font-semibold">Nicht zugeordnete Einsendungen <span className="text-muted-foreground tabular-nums">({open.length})</span></h2>
+   <h2 className="text-lg font-semibold font-heading">Nicht zugeordnete Einsendungen <span className="text-muted-foreground tabular-nums">({open.length})</span></h2>
    {!loading && !open.length && <p className="text-sm text-muted-foreground py-4">Keine offenen Einsendungen.</p>}
    {open.map(answer => {
     const ranked = uniqueCandidates.map(c => ({ ...c, similarity: companySimilarity(answer.eingegeben_firma || '',c.clients?.name || '') })).sort((a,b) => b.similarity - a.similarity);
     const suggestion = ranked[0];
     return <article key={answer.id} className="border border-border rounded-lg p-4 min-w-0">
-     <div className="flex flex-wrap justify-between gap-2"><div className="min-w-0"><h3 className="font-medium break-words">{answer.eingegeben_firma || '–'}</h3><p className="text-sm text-muted-foreground break-all">{answer.eingegeben_email}</p></div><time className="text-xs text-muted-foreground tabular-nums">{fmt(answer.updated_at)}</time></div>
+     <div className="flex flex-wrap justify-between gap-2"><div className="min-w-0"><h3 className="text-sm font-semibold break-words">{answer.eingegeben_firma || '–'}</h3><p className="text-sm text-muted-foreground break-all">{answer.eingegeben_email}</p></div><time className="text-xs text-muted-foreground tabular-nums">{fmt(answer.updated_at)}</time></div>
      <Answers answer={answer} />
      <div className="flex flex-wrap items-center gap-2 mt-4">
       <Select value={selections[answer.id] || ''} onValueChange={id => setSelections(prev => ({...prev,[answer.id]:id}))}><SelectTrigger className="w-full sm:w-80" aria-label={`Kunde für ${answer.eingegeben_firma}`}><SelectValue placeholder="Kunden auswählen" /></SelectTrigger><SelectContent>{ranked.map(c => <SelectItem key={c.client_id} value={c.client_id}>{c.clients?.name || '–'} · {Math.round(c.similarity * 100)} %</SelectItem>)}</SelectContent></Select>
@@ -123,7 +123,7 @@ export default function BonusFunnel() {
    <div><div className="text-xs text-muted-foreground">Zufriedenheitspunkte</div><div className="text-2xl font-semibold tabular-nums">{points ?? '–'}</div></div>
    <div><div className="text-xs text-muted-foreground">Ø Score Leistung · nicht bonusrelevant</div><div className="text-2xl font-semibold tabular-nums text-muted-foreground">{average('score_leistung')}</div></div>
   </section>
-  <section className="space-y-3"><h2 className="text-lg font-semibold">Zugeordnete Einsendungen</h2>{answers.map(answer => <article key={answer.id} className="border border-border rounded-lg p-4"><div className="flex flex-wrap justify-between gap-2"><h3 className="font-medium">{candidates.find(c => c.client_id===answer.client_id)?.clients?.name || answer.eingegeben_firma || '–'}</h3><span className="text-xs text-muted-foreground">{answer.zuordnung_status} · {fmt(answer.updated_at)}</span></div><Answers answer={answer} /></article>)}{!answers.length && <p className="text-sm text-muted-foreground">Noch keine zugeordneten Einsendungen.</p>}</section>
+  <section className="space-y-3"><h2 className="text-lg font-semibold font-heading">Zugeordnete Einsendungen</h2>{answers.map(answer => <article key={answer.id} className="border border-border rounded-lg p-4"><div className="flex flex-wrap justify-between gap-2"><h3 className="text-sm font-semibold">{candidates.find(c => c.client_id===answer.client_id)?.clients?.name || answer.eingegeben_firma || '–'}</h3><span className="text-xs text-muted-foreground">{answer.zuordnung_status} · {fmt(answer.updated_at)}</span></div><Answers answer={answer} /></article>)}{!answers.length && <p className="text-sm text-muted-foreground">Noch keine zugeordneten Einsendungen.</p>}</section>
   <details className="border-t border-border pt-5"><summary className="font-medium cursor-pointer">Monatliche Versandvorbereitung</summary><div className="mt-4 space-y-4">{canManage && <Button variant="outline" disabled={busy !== null || !maId} onClick={() => void generate()}>{busy==='generate' && <Loader2 className="h-4 w-4 animate-spin" />}Tokens erzeugen</Button>}<div className="overflow-x-auto"><table className="w-full text-sm"><thead className="text-muted-foreground"><tr>{['Kunde','Token-Link','Versendet am','Ausgefüllt am'].map(title => <th key={title} className="text-left p-3 font-medium whitespace-nowrap">{title}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.token} className="border-t border-border"><td className="p-3">{row.client_name}</td><td className="p-3"><Button variant="ghost" size="icon" aria-label={`Token-Link für ${row.client_name} kopieren`} onClick={() => { void navigator.clipboard.writeText(`${sharedLink}?t=${row.token}`).then(() => toast.success('Token-Link kopiert')); }}><Copy className="h-4 w-4" /></Button></td><td className="p-3 tabular-nums whitespace-nowrap">{fmt(row.versendet_am)}</td><td className="p-3 tabular-nums whitespace-nowrap">{fmt(row.ausgefuellt_am)}</td></tr>)}{!rows.length && <tr><td colSpan={4} className="p-4 text-muted-foreground">Noch keine Tokens für diesen Monat.</td></tr>}</tbody></table></div></div></details>
  </div>;
 }

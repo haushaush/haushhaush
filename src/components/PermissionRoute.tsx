@@ -31,7 +31,7 @@ export function PermissionRoute({ children, permissionKey, anyOf }: Props) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
         <UserX className="w-16 h-16 text-destructive mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Zugang deaktiviert</h1>
+        <h1 className="text-2xl font-semibold font-heading mb-2">Zugang deaktiviert</h1>
         <p className="text-muted-foreground mb-6">
           Dein Zugang wurde deaktiviert. Bitte wende dich an einen Administrator.
         </p>
@@ -47,7 +47,7 @@ export function PermissionRoute({ children, permissionKey, anyOf }: Props) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
         <ShieldAlert className="w-16 h-16 text-destructive mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Kein Zugriff</h1>
+        <h1 className="text-2xl font-semibold font-heading mb-2">Kein Zugriff</h1>
         <p className="text-muted-foreground mb-2">
           Du hast keine Berechtigung für diesen Bereich.
         </p>

@@ -177,12 +177,12 @@ export function MetaAdImportModal({ open, onClose, onImported }: Props) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{ad.meta_ad_name}</p>
-                        <p className="text-[11px] text-muted-foreground truncate">
+                        <p className="text-xs text-muted-foreground truncate">
                           {ad.meta_campaign_name ?? "—"}
                           {ad.already_imported && <span className="ml-2 text-amber-600">· Bereits importiert</span>}
                         </p>
                         {ad.metrics && (
-                          <div className="flex gap-3 mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+                          <div className="flex gap-3 mt-0.5 text-xs tabular-nums text-muted-foreground">
                             {m.cpl != null && <span>€{m.cpl} CPL</span>}
                             {m.leads != null && <span>{m.leads} Leads</span>}
                             {m.roas != null && <span>{m.roas}x ROAS</span>}

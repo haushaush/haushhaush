@@ -55,7 +55,7 @@ export function KontoCombobox({ konten, value, onChange, leerText = 'Werbekonto 
               className={cn('px-3 py-1.5 cursor-pointer text-xs', i === aktiv && 'bg-muted', (k?.meta_account_id || '') === value && 'text-primary font-medium')}>
               {k ? <>
                 <p className="truncate">{k.name || k.meta_account_id}</p>
-                <p className="text-[11px] text-muted-foreground truncate tabular-nums">
+                <p className="text-xs text-muted-foreground truncate tabular-nums">
                   {[k.business_name, k.aktive_kampagnen != null && `${k.aktive_kampagnen} aktive Kampagne${k.aktive_kampagnen === 1 ? '' : 'n'}`, k.meta_account_id].filter(Boolean).join(' · ')}
                 </p>
               </> : <p>{alleText}</p>}

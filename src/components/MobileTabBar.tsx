@@ -26,7 +26,7 @@ export function MobileTabBar() {
             className={`flex flex-col items-center justify-center min-h-[44px] min-w-[44px] px-2 py-1 rounded-md transition-colors ${active ? 'text-primary' : 'text-muted-foreground'}`}
             aria-label={tab.title} aria-current={active ? 'page' : undefined}>
             <tab.icon className="h-[22px] w-[22px]" aria-hidden="true" />
-            <span className="text-[10px] mt-0.5 font-medium">{tab.title}</span>
+            <span className="text-xs mt-0.5 font-medium">{tab.title}</span>
           </RouterNavLink>
         );
       })}

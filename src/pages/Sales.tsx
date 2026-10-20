@@ -85,7 +85,7 @@ export default function Sales() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Sales</h1>
+        <h1 className="text-2xl font-semibold font-heading">Sales</h1>
         <p className="text-muted-foreground text-sm">KPIs, Vorquali & Cold Mail</p>
       </div>
 
@@ -99,7 +99,7 @@ export default function Sales() {
 
         <TabsContent value="kpis" className="space-y-4 mt-4">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> Setter Leaderboard</h2>
+            <h2 className="text-lg font-semibold font-heading flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> Setter Leaderboard</h2>
             <Select value={salesFilter} onValueChange={(v) => setSalesFilter(v as TimeFilter)}>
               <SelectTrigger className="w-[160px] text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>

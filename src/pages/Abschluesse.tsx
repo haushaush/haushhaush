@@ -128,7 +128,7 @@ export default function Abschluesse() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div>
-        <h1 className="text-2xl font-heading font-bold">Abschlüsse</h1>
+        <h1 className="text-2xl font-semibold font-heading">Abschlüsse</h1>
         <p className="text-xs text-muted-foreground mt-0.5">Haush-Haush-Close (Pipeline „Sales“) und Viral Connect (Noahs Close, nur gelesen). Steht ein Abschluss bei LeadSharks und Viral Connect, wird er nur einmal gezeigt{stand ? ` · letzter Abgleich ${new Date(stand).toLocaleString('de-DE')}` : ''}</p>
       </div>
       <Tabs defaultValue="abschluesse">
@@ -162,7 +162,7 @@ export default function Abschluesse() {
               <Table>
                 <TableHeader><TableRow><TableHead className="w-6" /><TableHead>Datum</TableHead><TableHead>Kunde</TableHead><TableHead>Status</TableHead><TableHead>Marke</TableHead><TableHead>Kanal</TableHead><TableHead>Deal-Typ</TableHead><TableHead>Leistungen</TableHead><TableHead>Quelle</TableHead><TableHead className="text-right">Abschlusswert</TableHead><TableHead className="text-right">Setup</TableHead><TableHead className="text-right">Retainer</TableHead><TableHead>Laufzeit</TableHead><TableHead>Start</TableHead><TableHead>Closer</TableHead><TableHead>Setter</TableHead><TableHead /></TableRow></TableHeader>
                 <TableBody>
-                  {filtered.map(r => { const auf = offen.has(r.close_opportunity_id); const vc = r.quelle === 'Viral Connect'; const ng = <span className="text-[11px] italic text-muted-foreground">nicht gepflegt</span>; return (
+                  {filtered.map(r => { const auf = offen.has(r.close_opportunity_id); const vc = r.quelle === 'Viral Connect'; const ng = <span className="text-xs italic text-muted-foreground">nicht gepflegt</span>; return (
                     <Fragment key={r.close_opportunity_id}>
                     <TableRow className={`cursor-pointer ${r.dublette_von ? 'opacity-60' : ''}`} onClick={() => umschalten(r.close_opportunity_id)}>
                       <TableCell className="pr-0 text-muted-foreground">{auf ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}</TableCell>

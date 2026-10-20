@@ -123,12 +123,12 @@ export function RollenUndRechteTab({ targetUserId, targetEmail }: Props) {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-medium truncate">{p.label}</p>
-                          {p.role_granted && <Badge variant="secondary" className="text-[10px]">via Rolle</Badge>}
+                          {p.role_granted && <Badge variant="secondary" className="text-xs">via Rolle</Badge>}
                           {p.effective_granted
-                            ? <Badge className="text-[10px] bg-success/20 text-success border-success/30"><Check className="h-3 w-3 mr-0.5" />aktiv</Badge>
-                            : <Badge variant="outline" className="text-[10px] text-muted-foreground"><X className="h-3 w-3 mr-0.5" />inaktiv</Badge>}
+                            ? <Badge className="text-xs bg-success/20 text-success border-success/30"><Check className="h-3 w-3 mr-0.5" />aktiv</Badge>
+                            : <Badge variant="outline" className="text-xs text-muted-foreground"><X className="h-3 w-3 mr-0.5" />inaktiv</Badge>}
                         </div>
-                        <p className="text-[11px] text-muted-foreground font-mono mt-0.5">{p.permission_key}</p>
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">{p.permission_key}</p>
                       </div>
                       <Select value={mode} disabled={saving} onValueChange={(v) => setOverride(p.permission_key, v as any)}>
                         <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>

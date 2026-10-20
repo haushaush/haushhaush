@@ -14,7 +14,7 @@ export function DriveEmptyState({ title = 'Google Drive nicht verbunden' }: Prop
       <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-5">
         <CloudOff className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
       </div>
-      <h2 className="text-lg font-semibold text-foreground mb-2">{title}</h2>
+      <h2 className="text-lg font-semibold font-heading text-foreground mb-2">{title}</h2>
       <p className="text-sm text-muted-foreground max-w-sm mb-6">
         Verbinde dein Google Drive Konto in den Einstellungen, um Dateien direkt im Portal zu verwalten.
       </p>

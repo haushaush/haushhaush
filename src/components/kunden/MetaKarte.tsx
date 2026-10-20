@@ -97,7 +97,7 @@ function Fehler({ text }: { text: string }) {
 function BudgetStand({ budget, fehler, status }: { budget: any[] | null; fehler: string | null; status: WerbebudgetZahlungsstatus | null }) {
   return (
     <div className="space-y-2">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Budgetstand dieses Kunden</p>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">Budgetstand dieses Kunden</p>
       {fehler ? <Fehler text={fehler} /> : <>
         {!budget && <Skeleton className="h-16 rounded-xl" />}
         {budget?.length === 0 && <p className="text-xs text-muted-foreground" title={status === 'verknuepft_ohne_werbebudgetposten' ? OHNE_POSTEN_TOOLTIP : undefined}>
@@ -109,12 +109,12 @@ function BudgetStand({ budget, fehler, status }: { budget: any[] | null; fehler:
               {warn && <p className="flex items-start gap-1.5 text-sm font-medium"><AlertTriangle className="h-4 w-4 mt-0.5 text-warning shrink-0" />
                 {Number(b.rechnungen_offen || 0)} offene Rechnung(en){b.aelteste_ueberfaellig ? ` · überfällig seit ${new Date(b.aelteste_ueberfaellig).toLocaleDateString('de-DE')}` : ''}</p>}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 tabular-nums">
-                <div><p className="text-[11px] text-muted-foreground">Eingezahlt (netto)</p><p>{eur(b.eingezahlt_netto)}</p></div>
-                <div><p className="text-[11px] text-muted-foreground">Offen (netto)</p><p>{eur(b.offen_netto)}</p></div>
-                <div><p className="text-[11px] text-muted-foreground">Offene Rechnungen</p><p>{b.rechnungen_offen ?? '—'}</p></div>
-                <div><p className="text-[11px] text-muted-foreground">Letzte Zahlung</p><p>{b.letzte_zahlung ? new Date(b.letzte_zahlung).toLocaleDateString('de-DE') : '—'}</p></div>
+                <div><p className="text-xs text-muted-foreground">Eingezahlt (netto)</p><p>{eur(b.eingezahlt_netto)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Offen (netto)</p><p>{eur(b.offen_netto)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Offene Rechnungen</p><p>{b.rechnungen_offen ?? '—'}</p></div>
+                <div><p className="text-xs text-muted-foreground">Letzte Zahlung</p><p>{b.letzte_zahlung ? new Date(b.letzte_zahlung).toLocaleDateString('de-DE') : '—'}</p></div>
               </div>
-              {b.quelle && <p className="text-[11px] text-muted-foreground">Quelle: {b.quelle}</p>}
+              {b.quelle && <p className="text-xs text-muted-foreground">Quelle: {b.quelle}</p>}
             </div>
           );
         })}
@@ -175,7 +175,7 @@ function KampagnenSuche({ konten, render }: { konten: Untermarke[] | null; rende
           {treffer.slice(0, MAX_ZEILEN).map(c => <div key={c.id}>{render(c)}</div>)}
         </div>
       )}
-      {treffer.length > MAX_ZEILEN && <p className="text-[11px] text-muted-foreground">{treffer.length - MAX_ZEILEN} weitere – Suche eingrenzen.</p>}
+      {treffer.length > MAX_ZEILEN && <p className="text-xs text-muted-foreground">{treffer.length - MAX_ZEILEN} weitere – Suche eingrenzen.</p>}
     </div>
   );
 }
@@ -253,7 +253,7 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
               <p className="text-xs font-medium mb-1">{marke}</p>
               {zs.map(z => (
                 <div key={z.id} className="flex items-center gap-3 text-sm py-1 pl-3">
-                  <span className="text-[11px] text-muted-foreground w-28 shrink-0">{z.typ === 'konto' ? 'Ganzes Konto' : z.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'}</span>
+                  <span className="text-xs text-muted-foreground w-28 shrink-0">{z.typ === 'konto' ? 'Ganzes Konto' : z.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'}</span>
                   <span className="truncate flex-1 min-w-0">{z.objekt_name || z.objekt_id}</span>
                   <button disabled={wb.busy === z.id} onClick={() => setLoeseZuo(z)} title="Zuordnung lösen" className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
                 </div>
@@ -276,14 +276,14 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-medium">Eigenes Werbekonto des Kunden</p>
-            <p className="text-[11px] text-muted-foreground">Nur für Reporting – der Kunde zahlt Meta direkt, hierüber wird kein Werbebudget abgerechnet.</p>
+            <p className="text-xs text-muted-foreground">Nur für Reporting – der Kunde zahlt Meta direkt, hierüber wird kein Werbebudget abgerechnet.</p>
           </div>
           {!eigenSuche && <Button size="sm" variant="ghost" onClick={() => setEigenSuche(true)}><Plus className="h-3.5 w-3.5 mr-1" />Verknüpfen</Button>}
         </div>
         {eigeneKonten.map(k => (
           <div key={k.meta_account_id} className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-medium">{k.meta_account_name || '(ohne Namen)'}</span>
-            <span className="text-[11px] text-muted-foreground tabular-nums">{k.meta_account_id}</span>
+            <span className="text-xs text-muted-foreground tabular-nums">{k.meta_account_id}</span>
             <a href={actUrl(k.meta_account_id)} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary" title="In Meta öffnen"><ExternalLink className="h-3.5 w-3.5" /></a>
             <Button size="sm" variant="ghost" disabled={busy} className="ml-auto text-muted-foreground hover:text-destructive" onClick={() => setLoeseZiel({ id: k.meta_account_id, name: k.meta_account_name } as Objekt)}>Verknüpfung lösen</Button>
           </div>
@@ -292,7 +292,7 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
           <div className="rounded-lg border border-primary/40 bg-primary/5 p-2.5 text-sm flex flex-wrap items-center gap-2">
             <div className="flex-1 min-w-0">
               <p className="font-medium text-xs">Vorschlag: {meta.vorschlag.name || meta.vorschlag.id}</p>
-              <p className="text-[11px] text-muted-foreground">{meta.vorschlag.grund}</p>
+              <p className="text-xs text-muted-foreground">{meta.vorschlag.grund}</p>
             </div>
             <Button size="sm" disabled={busy} onClick={() => run(() => verknuepfen('meta', kunde.id, meta.vorschlag), 'Eigenes Werbekonto verknüpft')}><Check className="h-3.5 w-3.5 mr-1" />Übernehmen</Button>
             <Button size="sm" variant="ghost" disabled={busy} onClick={() => run(() => verwerfen(meta.vorschlag, kunde.id), 'Vorschlag verworfen')}>Verwerfen</Button>
@@ -383,7 +383,7 @@ function VerknuepfenDialog({ kunde, wb, konten, onClose }: {
         </DialogHeader>
         <KampagnenSuche konten={konten} render={c => (
           <div>
-            <p className="px-3 pt-2 text-[11px] text-muted-foreground">{c.konto.name || c.konto.meta_account_id}</p>
+            <p className="px-3 pt-2 text-xs text-muted-foreground">{c.konto.name || c.konto.meta_account_id}</p>
             <KampagneZeile k={c} kontoId={c.konto.meta_account_id} alle={wb.alle} clientId={kunde.id} busy={wb.busy} callMeta={callMeta}
               zuordnen={(t, o, kid, n) => wb.zuordnen(c.konto.meta_account_id, c.konto.name ?? null, t, o, kid, n)} loesen={wb.loesen} />
           </div>

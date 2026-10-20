@@ -128,7 +128,7 @@ function getInitials(name: string | null) {
 function TagPill({ tag }: { tag: string }) {
   const colors = TAG_COLORS[tag] || TAG_COLORS['System'];
   return (
-    <span className={`inline-flex text-[10px] px-1.5 py-0.5 rounded-full font-medium ${colors.bg} ${colors.text} ${colors.darkBg} ${colors.darkText}`}>
+    <span className={`inline-flex text-xs px-1.5 py-0.5 rounded-full font-medium ${colors.bg} ${colors.text} ${colors.darkBg} ${colors.darkText}`}>
       {tag}
     </span>
   );
@@ -343,7 +343,7 @@ export default function Nachrichten() {
             >
               {tab.label}
               {count > 0 && tab.key !== 'archiv' && (
-                <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 text-[10px] font-semibold rounded-full bg-destructive text-destructive-foreground">
+                <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 text-xs font-semibold rounded-full bg-destructive text-destructive-foreground">
                   {count > 99 ? '99+' : count}
                 </span>
               )}
@@ -467,21 +467,21 @@ function NotificationRow({ n, isSelected, onClick, onArchive, onToggleRead, isAr
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={`text-[13px] truncate ${!n.read ? 'font-medium text-foreground' : 'font-normal text-muted-foreground'}`}>
+          <span className={`text-xs truncate ${!n.read ? 'font-medium text-foreground' : 'font-normal text-muted-foreground'}`}>
             {n.sender_name || n.source_name || 'System'}
           </span>
           {n.tag && <TagPill tag={n.tag} />}
         </div>
-        <p className={`text-[13px] truncate mt-0.5 ${!n.read ? 'font-semibold text-foreground' : 'text-foreground'}`}>{n.title}</p>
+        <p className={`text-xs truncate mt-0.5 ${!n.read ? 'font-semibold text-foreground' : 'text-foreground'}`}>{n.title}</p>
         <p className="text-xs text-muted-foreground truncate mt-0.5">{n.preview}</p>
         {isArchiveTab && n.archived_at && (
-          <p className="text-[10px] text-muted-foreground mt-0.5">Archiviert {timeAgo(n.archived_at)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Archiviert {timeAgo(n.archived_at)}</p>
         )}
       </div>
 
       {/* Right side */}
       <div className="flex flex-col items-end gap-1 shrink-0">
-        <span className="text-[11px] text-muted-foreground">{timeAgo(n.created_at)}</span>
+        <span className="text-xs text-muted-foreground">{timeAgo(n.created_at)}</span>
         {!n.read && !isArchiveTab && <div className="w-2 h-2 rounded-full bg-primary" />}
       </div>
 
@@ -560,8 +560,8 @@ function DetailPanel({ n, onBack, onArchive, onToggleRead, navigate, isArchiveTa
           </div>
 
           {/* Title */}
-          <h2 className="text-lg font-semibold text-foreground mb-2">{n.title}</h2>
-          <p className="text-[11px] text-muted-foreground mb-6">{fullDate(n.created_at)}</p>
+          <h2 className="text-lg font-semibold font-heading text-foreground mb-2">{n.title}</h2>
+          <p className="text-xs text-muted-foreground mb-6">{fullDate(n.created_at)}</p>
 
           {/* Body */}
           <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">

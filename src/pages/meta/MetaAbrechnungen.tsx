@@ -535,7 +535,7 @@ export default function MetaAbrechnungen() {
       {/* Header */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold">Meta Belege</h1>
+          <h1 className="text-2xl font-semibold font-heading">Meta Belege</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Werbekontenübergreifende Übersicht — Werbeausgaben (Meta Insights), Abrechnungskonto-Daten (Meta Ad Accounts) und echte Rechnungen aus <code className="text-xs">/business_invoices</code>.
           </p>
@@ -673,7 +673,7 @@ export default function MetaAbrechnungen() {
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-lg font-semibold">Werbeausgaben — Monatsentwicklung</h2>
+            <h2 className="text-lg font-semibold font-heading">Werbeausgaben — Monatsentwicklung</h2>
             <p className="text-xs text-muted-foreground">Quelle: Meta Insights · {rangeLabel}</p>
           </div>
           {loadingInsights && <span className="text-xs text-muted-foreground">Lade Insights…</span>}
@@ -703,7 +703,7 @@ export default function MetaAbrechnungen() {
       {/* Per-account status */}
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Abrechnungsstatus je Werbekonto</h2>
+          <h2 className="text-lg font-semibold font-heading">Abrechnungsstatus je Werbekonto</h2>
           <span className="text-xs text-muted-foreground">Saldo aus Ad Account · Beträge aus Business Invoices</span>
         </div>
         <div className="overflow-x-auto">
@@ -890,7 +890,7 @@ export default function MetaAbrechnungen() {
                       <TableCell>
                         <Badge variant="outline" className={statusStyle(i.status_mapped)}>{statusLabel(i.status_mapped)}</Badge>
                         {i.status && String(i.status).toLowerCase() !== String(i.status_mapped).toLowerCase() && (
-                          <div className="text-[10px] text-muted-foreground mt-1">Meta: {i.status}</div>
+                          <div className="text-xs text-muted-foreground mt-1">Meta: {i.status}</div>
                         )}
                       </TableCell>
                       <TableCell className="text-xs">{i.payment_method || '–'}</TableCell>
@@ -944,7 +944,7 @@ export default function MetaAbrechnungen() {
       {/* Admin: Data quality summary — only relevant for Business Invoices */}
       {isAdmin && activeTab !== 'zahlungen' && (
         <Card className="p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Datenqualität — Business Invoices</h2>
+          <h2 className="text-lg font-semibold font-heading uppercase tracking-wide text-muted-foreground mb-3">Datenqualität — Business Invoices</h2>
           <DataQualityGrid invoices={invoices} />
         </Card>
       )}
@@ -958,8 +958,8 @@ export default function MetaAbrechnungen() {
 function SectionHeader({ title, source, unavailable }: { title: string; source: string; unavailable?: boolean }) {
   return (
     <div className="flex items-baseline justify-between mb-2">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
-      <span className={`text-[11px] ${unavailable ? 'text-amber-600' : 'text-muted-foreground'}`}>{source}</span>
+      <h2 className="text-lg font-semibold font-heading uppercase tracking-wide text-muted-foreground">{title}</h2>
+      <span className={`text-xs ${unavailable ? 'text-amber-600' : 'text-muted-foreground'}`}>{source}</span>
     </div>
   );
 }
@@ -969,7 +969,7 @@ function KpiCard({ label, value, source }: { label: string; value: string; sourc
     <Card className="p-4">
       <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
       <p className="text-xl font-semibold mt-1 font-mono">{value}</p>
-      <p className="text-[10px] text-muted-foreground mt-2">Quelle: {source}</p>
+      <p className="text-xs text-muted-foreground mt-2">Quelle: {source}</p>
     </Card>
   );
 }
@@ -986,7 +986,7 @@ function UnavailableCard({ kind, diagLoading }: { kind: 'invoices' | 'payments';
       <div className="flex flex-col items-center text-center gap-3 py-6">
         <Info className="h-8 w-8 text-muted-foreground" />
         <div>
-          <h3 className="font-semibold">{diagLoading ? 'Prüfe Verfügbarkeit…' : heading}</h3>
+          <h3 className="text-sm font-semibold">{diagLoading ? 'Prüfe Verfügbarkeit…' : heading}</h3>
           {!diagLoading && <p className="text-sm text-muted-foreground max-w-xl mt-1">{body}</p>}
         </div>
         {!diagLoading && kind === 'invoices' && (

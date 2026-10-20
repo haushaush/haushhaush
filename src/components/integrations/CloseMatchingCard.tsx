@@ -318,7 +318,7 @@ export function CloseMatchingCard() {
                       key={f}
                       onClick={() => setFilter(f)}
                       className={cn(
-                        "px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors border",
+                        "px-2.5 py-1 rounded-md text-xs font-medium transition-colors border",
                         filter === f
                           ? "bg-primary/10 border-primary/30 text-primary"
                           : "bg-muted/40 border-border text-muted-foreground hover:bg-muted/60",
@@ -335,7 +335,7 @@ export function CloseMatchingCard() {
             </div>
             <div className="border border-border rounded-lg overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground/80">
                   <tr>
                     <th className="text-left font-medium px-3 py-2">Kunde</th>
                     <th className="text-left font-medium px-3 py-2">Close Lead</th>
@@ -353,18 +353,18 @@ export function CloseMatchingCard() {
                         <td className="px-3 py-2">
                           <p className="font-medium text-xs">{getKundeDisplayName(row.kunde)}</p>
                           {row.kunde?.unternehmen ? (
-                            <p className="text-[10px] text-muted-foreground">{row.kunde.unternehmen}</p>
+                            <p className="text-xs text-muted-foreground">{row.kunde.unternehmen}</p>
                           ) : null}
                         </td>
                         <td className="px-3 py-2">
                           <p className="font-medium text-xs">{row.close_lead_name || "–"}</p>
-                          <p className="text-[10px] font-mono text-muted-foreground">{row.close_lead_id}</p>
+                          <p className="text-xs font-mono text-muted-foreground">{row.close_lead_id}</p>
                         </td>
                         <td className="px-2 py-2 text-center">
                           <Badge
                             variant="outline"
                             className={cn(
-                              "rounded-[4px] text-[10px] whitespace-nowrap",
+                              "rounded-[4px] text-xs whitespace-nowrap",
                               isUpsell
                                 ? "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300"
                                 : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
@@ -374,12 +374,12 @@ export function CloseMatchingCard() {
                           </Badge>
                         </td>
                         <td className="px-3 py-2 text-right">
-                          <Badge variant="outline" className="rounded-[4px] text-[10px] tabular-nums">
+                          <Badge variant="outline" className="rounded-[4px] text-xs tabular-nums">
                             {Math.round(row.match_confidence)} %
                             {row.match_type === "ai_suggested" && <span className="ml-1">✨</span>}
                           </Badge>
                         </td>
-                        <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[260px]">
+                        <td className="px-3 py-2 text-xs text-muted-foreground max-w-[260px]">
                           {row.ai_reasoning || row.match_reason || "–"}
                         </td>
                         <td className="px-3 py-2">

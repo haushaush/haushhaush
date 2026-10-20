@@ -456,7 +456,7 @@ data = res.json()`;
         className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--bg-app)] transition-colors"
       >
         {open ? <ChevronDown className="h-4 w-4 text-[var(--text-muted)]" /> : <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />}
-        <Badge className={`${METHOD_COLORS[ep.method]} border-0 font-mono text-[10px] font-bold`}>
+        <Badge className={`${METHOD_COLORS[ep.method]} border-0 font-mono text-xs font-bold`}>
           {ep.method}
         </Badge>
         <span className="font-mono text-sm text-[var(--text-primary)]">{ep.path}</span>
@@ -542,7 +542,7 @@ export default function ApiDocs() {
             <ArrowLeft className="h-3.5 w-3.5" />
             Zurück
           </button>
-          <h2 className="text-sm font-bold text-[var(--text-primary)] mb-4">API Dokumentation</h2>
+          <h2 className="text-lg font-semibold font-heading text-[var(--text-primary)] mb-4">API Dokumentation</h2>
           <nav className="space-y-0.5">
             {SECTIONS.map(s => (
               <button
@@ -581,7 +581,7 @@ export default function ApiDocs() {
         {/* Main Content */}
         <main className="flex-1 max-w-4xl mx-auto px-4 sm:px-8 py-8 space-y-12">
           <div>
-            <h1 className="text-3xl font-bold text-[var(--text-primary)]">Agency Hub API</h1>
+            <h1 className="text-2xl font-semibold font-heading text-[var(--text-primary)]">Agency Hub API</h1>
             <p className="text-[var(--text-secondary)] mt-2">
               Verbinde jede App nahtlos mit deinem Dashboard. Nutze unsere REST API um Deals, Aufgaben, Rechnungen, Werbebudgets und mehr zu verwalten.
             </p>
@@ -597,7 +597,7 @@ export default function ApiDocs() {
 
           {SECTIONS.map(section => (
             <section key={section.id} id={`section-${section.id}`} className="space-y-4">
-              <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+              <h2 className="text-lg font-semibold font-heading text-[var(--text-primary)] flex items-center gap-2">
                 <span>{section.icon}</span>
                 {section.title}
               </h2>
@@ -611,7 +611,7 @@ export default function ApiDocs() {
 
           {/* Webhook Events */}
           <section id="section-webhook-events" className="space-y-4">
-            <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+            <h2 className="text-lg font-semibold font-heading text-[var(--text-primary)] flex items-center gap-2">
               <span>📡</span>
               Webhook Events
             </h2>
@@ -651,7 +651,7 @@ export default function ApiDocs() {
                     <Bot className="h-5 w-5 text-[var(--color-teal)]" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-[var(--text-primary)]">Steuere das Portal per ARIA</h3>
+                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">Steuere das Portal per ARIA</h3>
                     <p className="text-xs text-[var(--text-muted)]">ARIA kann alle API-Endpunkte direkt ausführen — kein API Key nötig.</p>
                   </div>
                 </div>
@@ -664,7 +664,7 @@ export default function ApiDocs() {
                   ].map((ex, i) => (
                     <div key={i} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 bg-[var(--bg-app)] rounded-lg px-4 py-2.5">
                       <span className="text-sm text-[var(--text-primary)]">"{ex.prompt}"</span>
-                      <span className="text-[10px] font-mono text-[var(--text-muted)] sm:ml-auto">→ {ex.api}</span>
+                      <span className="text-xs font-mono text-[var(--text-muted)] sm:ml-auto">→ {ex.api}</span>
                     </div>
                   ))}
                 </div>

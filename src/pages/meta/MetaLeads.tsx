@@ -233,7 +233,7 @@ export default function MetaLeads() {
   return (
     <div className="p-6 max-w-full">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-foreground">Meta Leads</h1>
+        <h1 className="text-2xl font-semibold font-heading text-foreground">Meta Leads</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Exportiere Leads aus Meta Lead Ads nach Werbekonto und Zeitraum.
         </p>

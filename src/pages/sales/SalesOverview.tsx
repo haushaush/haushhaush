@@ -75,7 +75,7 @@ function Kachel({ titel, wert, sub, delta, quelle }: { titel: string; wert: stri
         <p className="text-4xl font-semibold tabular-nums tracking-tight mt-1">{wert}</p>
         {sub && <p className="text-sm tabular-nums text-muted-foreground mt-0.5">{sub}</p>}
         {delta && <p className="text-xs tabular-nums mt-2">{delta}</p>}
-        {quelle && <p className="text-[10px] text-muted-foreground mt-1">{quelle}</p>}
+        {quelle && <p className="text-xs text-muted-foreground mt-1">{quelle}</p>}
       </CardContent>
     </Card>
   );
@@ -189,7 +189,7 @@ export default function SalesOverview() {
     <div className="space-y-6 p-4 md:p-6 max-w-full overflow-x-hidden">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-heading font-bold">Übersicht</h1>
+          <h1 className="text-2xl font-semibold font-heading">Übersicht</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Google Sheet des Slack-Reports #s-kpi{hatDaten ? ` · Daten ab ${new Date(tage[0].datum).toLocaleDateString('de-DE')}` : ''}{lauf ? ` · letzter Abgleich ${new Date(lauf.beendet_am ?? lauf.gestartet_am).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}${lauf.status === 'fehler' ? ' (fehlgeschlagen)' : lauf.status === 'laeuft' ? ' (läuft)' : ''}` : ''}</p>
         </div>
         <Button size="sm" variant="outline" className="h-7 rounded-full text-xs gap-1.5" onClick={jetzt} disabled={syncing}><RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />Jetzt aktualisieren</Button>
@@ -237,8 +237,8 @@ export default function SalesOverview() {
                 <Zeile l="Am selben Tag erreicht" title="Leads_erreicht_T0 ÷ Leads_neu" v={`${fmtN(S('Leads_erreicht_T0'))} · ${pct(S('Leads_erreicht_T0'), S('Leads_neu'))}`} />
                 <Zeile l="Speed to Lead Ø" v={S('StL_Anzahl') ? hm(S('StL_Summe_Min') / S('StL_Anzahl')) : '–'} title={`StL_Summe_Min ÷ StL_Anzahl = ${fmtN(S('StL_Summe_Min'))} ÷ ${fmtN(S('StL_Anzahl'))}`} />
                 <Zeile l="Speed to Lead Median" v={stlMedian != null ? hm(stlMedian) : '–'} title={`Median der Tageswerte (StL_Summe_Min ÷ StL_Anzahl je Tag), ${stlTage.length} Tage`} />
-                <p className="text-[11px] text-muted-foreground pt-1">Median über die Tageswerte, da das Sheet keine Einzelwerte je Lead enthält.</p>
-                {S('StL_Anzahl') > 0 && S('StL_Anzahl') === S('Leads_erreicht_T0') && <p className="text-[11px] text-destructive pt-1"><code>StL_Anzahl</code> entspricht <code>Leads_erreicht_T0</code>. Der Mittelwert passt nicht zu einer Erreichbarkeit am selben Tag — Definition im Sheet prüfen.</p>}
+                <p className="text-xs text-muted-foreground pt-1">Median über die Tageswerte, da das Sheet keine Einzelwerte je Lead enthält.</p>
+                {S('StL_Anzahl') > 0 && S('StL_Anzahl') === S('Leads_erreicht_T0') && <p className="text-xs text-destructive pt-1"><code>StL_Anzahl</code> entspricht <code>Leads_erreicht_T0</code>. Der Mittelwert passt nicht zu einer Erreichbarkeit am selben Tag — Definition im Sheet prüfen.</p>}
               </CardContent></Card>
             <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Verluste</CardTitle></CardHeader>
               <CardContent className="space-y-1 text-sm tabular-nums">
@@ -273,7 +273,7 @@ export default function SalesOverview() {
                 <span className="text-xs">nicht gewertet, wie im Slack-Report</span>
                 <span className="text-xs tabular-nums">{fmtN(sum(inboundTage, 'Dials'))} Dials · {fmtN(sum(inboundTage, 'EG_gebucht'))} EG · {fmtN(inboundAbg)} Abgänge</span>
               </div>
-              <p className="text-[11px] text-muted-foreground pt-1">Balken = Erstgespräche gebucht. Inbound zählt in keiner Summe. * Cold Call steht derzeit strukturell bei 0, weil Marcels Anrufe nicht in Close landen. Das ist bekannt und kein Messfehler.</p>
+              <p className="text-xs text-muted-foreground pt-1">Balken = Erstgespräche gebucht. Inbound zählt in keiner Summe. * Cold Call steht derzeit strukturell bei 0, weil Marcels Anrufe nicht in Close landen. Das ist bekannt und kein Messfehler.</p>
             </CardContent>
           </Card>
 
@@ -284,20 +284,20 @@ export default function SalesOverview() {
                 <div title="Dials"><p className="text-xs text-muted-foreground">Dials</p><p className="font-medium">{fmtN(S('Dials'))}</p></div>
                 <div title="Leads_erreicht_T0"><p className="text-xs text-muted-foreground">Leads erreicht</p><p className="font-medium">{fmtN(S('Leads_erreicht_T0'))}</p></div>
                 <div title="Dials ÷ EG_gebucht"><p className="text-xs text-muted-foreground">Dials je gebuchtem EG</p><p className="font-medium">{S('EG_gebucht') ? `${(S('Dials') / S('EG_gebucht')).toFixed(1).replace('.', ',')} : 1` : '–'}</p></div>
-                <p className="col-span-3 text-[11px] text-muted-foreground">Aufwand als Kontext, keine Funnelstufen. Dials je EG ist ein Verhältnis, keine Quote.</p>
+                <p className="col-span-3 text-xs text-muted-foreground">Aufwand als Kontext, keine Funnelstufen. Dials je EG ist ein Verhältnis, keine Quote.</p>
               </div>
               {funnel.map((f, i) => {
                 const vorher = [...funnel.slice(0, i)].reverse().find(x => !x.optional);
                 const quote = i > 0 && !f.optional && !f.keineQuote && vorher ? pct(f.v, vorher.v) : null;
                 return (
                   <div key={f.l} title={f.spalte} className={`grid grid-cols-[120px_1fr_auto] items-center gap-3 ${f.optional ? 'pl-3 border-l-2 border-dashed border-border' : ''}`}>
-                    <span className="text-sm">{f.l}{f.optional && <span className="text-[11px] text-muted-foreground"> optional</span>}</span>
+                    <span className="text-sm">{f.l}{f.optional && <span className="text-xs text-muted-foreground"> optional</span>}</span>
                     <div className={`h-3 rounded-full overflow-hidden ${f.optional ? 'border border-dashed border-border bg-transparent' : 'bg-background'}`}><div className={`h-full rounded-full transition-[width] duration-500 ${f.optional ? 'bg-primary/40' : 'bg-primary'}`} style={{ width: `${funnel[0].v ? Math.min(100, Math.max(f.v ? 1 : 0, (f.v / funnel[0].v) * 100)) : 0}%` }} /></div>
                     <span className="text-xs tabular-nums w-40 text-right">{fmtN(f.v)}{quote && <span className="text-muted-foreground"> · {quote}</span>}{f.hinweis && <span className="text-muted-foreground"> · {f.hinweis}</span>}</span>
                   </div>
                 );
               })}
-              <p className="text-[11px] text-muted-foreground">Quote = Anteil der vorherigen Pflichtstufe. FB gebucht (Folgebesprechung) ist optional und ohne Quote, da viele Abschlüsse direkt im ZG fallen. ² Abschlüsse zählen am Tag des Gewinns, das zugehörige ZG kann Wochen davor liegen. ¹ EG geführt ist abgeleitet: EG_gefuehrt_kein_ZG + ZG_gebucht (wer ein ZG gebucht hat, hatte das EG). Wird das ZG an einem anderen Tag gebucht als das EG stattfand, verschiebt sich der Tageswert; über Zeiträume stimmt die Summe, am einzelnen Tag nicht immer.</p>
+              <p className="text-xs text-muted-foreground">Quote = Anteil der vorherigen Pflichtstufe. FB gebucht (Folgebesprechung) ist optional und ohne Quote, da viele Abschlüsse direkt im ZG fallen. ² Abschlüsse zählen am Tag des Gewinns, das zugehörige ZG kann Wochen davor liegen. ¹ EG geführt ist abgeleitet: EG_gefuehrt_kein_ZG + ZG_gebucht (wer ein ZG gebucht hat, hatte das EG). Wird das ZG an einem anderen Tag gebucht als das EG stattfand, verschiebt sich der Tageswert; über Zeiträume stimmt die Summe, am einzelnen Tag nicht immer.</p>
             </CardContent>
           </Card>
 

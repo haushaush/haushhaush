@@ -138,14 +138,14 @@ export function ARIAHeroBlock({ onSend, input, setInput }: ARIAHeroBlockProps) {
               requestAnimationFrame(() => window.scrollTo(0, y));
             }}
             placeholder="Wie kann ich helfen?"
-            className="w-full bg-transparent border-none outline-none text-[15px] text-foreground placeholder:text-muted-foreground"
+            className="w-full bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground"
             style={{ minWidth: 0, scrollMargin: 0 }}
           />
         )}
       </div>
 
       {!isListening && !input.trim() && !isProcessing && !isSpeaking && (
-        <span className="text-[10px] text-muted-foreground/45 border border-border/50 rounded-[5px] px-[7px] py-[2px] font-mono select-none">{isMac ? '⌘' : 'Ctrl+'}J</span>
+        <span className="text-xs text-muted-foreground/45 border border-border/50 rounded-[5px] px-[7px] py-[2px] font-mono select-none">{isMac ? '⌘' : 'Ctrl+'}J</span>
       )}
 
       <button onClick={btn.onClick} title={btn.title} className={btn.className}>

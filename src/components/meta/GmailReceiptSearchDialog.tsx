@@ -217,7 +217,7 @@ export default function GmailReceiptSearchDialog({
         {/* Search form */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-2">
           <div className="md:col-span-2">
-            <Label className="text-[10px] uppercase text-muted-foreground">Transaktions-ID</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Transaktions-ID</Label>
             <Input
               placeholder="z. B. 27951790884507869-27902250049461958"
               value={txnId}
@@ -226,15 +226,15 @@ export default function GmailReceiptSearchDialog({
             />
           </div>
           <div>
-            <Label className="text-[10px] uppercase text-muted-foreground">Datum von</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Datum von</Label>
             <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 text-xs" />
           </div>
           <div>
-            <Label className="text-[10px] uppercase text-muted-foreground">Datum bis</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Datum bis</Label>
             <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 text-xs" />
           </div>
           <div>
-            <Label className="text-[10px] uppercase text-muted-foreground">Betrag</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Betrag</Label>
             <Input
               inputMode="decimal"
               placeholder="z. B. 10,00"
@@ -244,7 +244,7 @@ export default function GmailReceiptSearchDialog({
             />
           </div>
           <div>
-            <Label className="text-[10px] uppercase text-muted-foreground">Meta Account ID</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Meta Account ID</Label>
             <Input
               placeholder="act_2070598240224366"
               value={metaAccountId}
@@ -253,7 +253,7 @@ export default function GmailReceiptSearchDialog({
             />
           </div>
           <div className="md:col-span-2">
-            <Label className="text-[10px] uppercase text-muted-foreground">Werbekonto-Name</Label>
+            <Label className="text-xs uppercase text-muted-foreground">Werbekonto-Name</Label>
             <Input
               placeholder="z. B. Alexander Stursberg"
               value={accountName}
@@ -269,7 +269,7 @@ export default function GmailReceiptSearchDialog({
             In Gmail suchen
           </Button>
           {results !== null && (
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               {results.length} Treffer · {selectableCount} importierbar · {selected.size} ausgewählt
             </span>
           )}
@@ -319,24 +319,24 @@ export default function GmailReceiptSearchDialog({
                         <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.transaction_date || r.email_received_at)}</TableCell>
                         <TableCell className="text-xs">
                           <div className="font-medium">{r.account_name || '–'}</div>
-                          <div className="text-[10px] text-muted-foreground font-mono">
+                          <div className="text-xs text-muted-foreground font-mono">
                             {r.meta_account_id || (r.meta_account_id_numeric ? `act_${r.meta_account_id_numeric}` : '–')}
                           </div>
                         </TableCell>
-                        <TableCell className="text-[10px] font-mono break-all max-w-[180px]">{r.transaction_id || '–'}</TableCell>
+                        <TableCell className="text-xs font-mono break-all max-w-[180px]">{r.transaction_id || '–'}</TableCell>
                         <TableCell className="text-right text-xs font-mono tabular-nums">
                           {r.amount != null ? formatCurrency(Number(r.amount), r.currency || 'EUR') : '–'}
                         </TableCell>
-                        <TableCell className="text-[11px] text-muted-foreground max-w-[220px] truncate" title={r.email_subject || ''}>
+                        <TableCell className="text-xs text-muted-foreground max-w-[220px] truncate" title={r.email_subject || ''}>
                           {r.email_subject || '–'}
                         </TableCell>
                         <TableCell>
                           {disabled ? (
-                            <Badge variant="outline" className="text-[10px] gap-1">
+                            <Badge variant="outline" className="text-xs gap-1">
                               <CheckCircle2 className="h-2.5 w-2.5" /> Bereits importiert
                             </Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-[10px]">Neu</Badge>
+                            <Badge variant="secondary" className="text-xs">Neu</Badge>
                           )}
                         </TableCell>
                       </TableRow>

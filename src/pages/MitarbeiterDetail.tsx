@@ -151,7 +151,7 @@ export default function MitarbeiterDetail() {
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-heading font-bold">{member.name}</h1>
+                <h1 className="text-2xl font-semibold font-heading">{member.name}</h1>
                 <Badge variant="outline" className={portalRolleColor(member.portal_rolle)}>
                   {PORTAL_ROLLEN.find(r => r.value === member.portal_rolle)?.label || member.portal_rolle}
                 </Badge>

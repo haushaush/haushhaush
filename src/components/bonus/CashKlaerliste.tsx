@@ -90,7 +90,7 @@ export function CashKlaerliste({ rows, onChanged }: { rows: any[]; onChanged: ()
 
   return (
     <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
-      <h3 className="text-sm font-medium mb-2 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Klärliste – nicht zugeordnete Zahlungen ({rows.length})</h3>
+      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-primary" />Klärliste – nicht zugeordnete Zahlungen ({rows.length})</h3>
       {fehler && <p className="text-sm text-destructive mb-2">Vorschläge konnten nicht geladen werden: {fehler}</p>}
       {rows.length === 0 ? <p className="text-sm text-muted-foreground">Keine offenen Zahlungen.</p> : !inv || !kunden ? <p className="text-xs text-muted-foreground">…</p> : (
         <div className="divide-y divide-border">
@@ -103,7 +103,7 @@ export function CashKlaerliste({ rows, onChanged }: { rows: any[]; onChanged: ()
               <div key={g.key} className="py-2.5 space-y-1.5">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
                   <span className="font-medium">{g.name}</span>
-                  <span className="text-[11px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{(g as any).lex ? 'lexoffice' : 'Qonto'}</span>
+                  <span className="text-xs rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{(g as any).lex ? 'lexoffice' : 'Qonto'}</span>
                   <span className="text-xs text-muted-foreground tabular-nums">{g.offen.length} offen · {eur(summe)}</span>
                   {g.eintraege.length > 1 && <span className="ml-auto text-xs text-muted-foreground">{g.eintraege.length} Einträge in Qonto</span>}
                 </div>

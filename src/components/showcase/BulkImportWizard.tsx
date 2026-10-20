@@ -518,7 +518,7 @@ export function BulkImportWizard({ open, onClose, onImported }: Props) {
       <DialogContent persistent className="max-w-6xl h-[88vh] flex flex-col p-0 overflow-hidden gap-0">
         {/* HEADER (Radix Dialog renders its own close button automatically) */}
         <div className="px-6 py-5 pr-14 border-b border-gray-200 dark:border-gray-800 shrink-0">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+          <h2 className="text-lg font-semibold font-heading text-gray-900 dark:text-white tracking-tight">
             Anzeigen aus Meta importieren
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
@@ -682,7 +682,7 @@ function SourceStep({
         <div className="w-14 h-14 mx-auto rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
           <Facebook className="w-6 h-6 text-gray-400" />
         </div>
-        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Kein Meta-Account verbunden</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Kein Meta-Account verbunden</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Verbinde zuerst dein Meta-Werbekonto unter Connections.
         </p>
@@ -927,7 +927,7 @@ function SelectStep({
         <div className="w-14 h-14 mx-auto rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
           <SearchIcon className="w-6 h-6 text-gray-400" />
         </div>
-        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Keine Anzeigen gefunden</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Keine Anzeigen gefunden</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400">Lockere die Filter im vorigen Schritt.</p>
       </div>
     );
@@ -1029,7 +1029,7 @@ function SelectableAdCard({ ad, selected, onToggle }: { ad: ImportableAd; select
         )}
         {(m.cpl != null || m.leads != null) && !disabled && (
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-2 pt-6">
-            <div className="flex items-center justify-between text-[10px] font-bold text-white tabular-nums">
+            <div className="flex items-center justify-between text-xs font-bold text-white tabular-nums">
               {m.cpl != null && <span>€{m.cpl.toFixed(2)} CPL</span>}
               {m.leads != null && m.leads > 0 && <span>{m.leads} Leads</span>}
             </div>
@@ -1038,7 +1038,7 @@ function SelectableAdCard({ ad, selected, onToggle }: { ad: ImportableAd; select
       </div>
       <div className="p-2.5">
         <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{ad.meta_ad_name}</p>
-        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate mt-0.5">{ad.meta_campaign_name ?? "—"}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">{ad.meta_campaign_name ?? "—"}</p>
       </div>
     </button>
   );
@@ -1206,17 +1206,17 @@ function EnrichStep({
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{ad.meta_ad_name}</p>
                     {isAuto && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider">
                         <Zap className="w-2.5 h-2.5" /> Auto
                       </span>
                     )}
                     {isGuessed && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 text-[10px] font-bold uppercase tracking-wider">
+                      <span className="px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">
                         Geraten
                       </span>
                     )}
                     {isUnmatched && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 text-xs font-bold uppercase tracking-wider">
                         <HelpCircle className="w-2.5 h-2.5" /> Manuell
                       </span>
                     )}
@@ -1264,7 +1264,7 @@ function ImportStep({ progress }: { progress: ImportProgress }) {
         <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center mb-4 shadow-lg">
           <Download className="w-8 h-8 text-white animate-bounce" />
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white tracking-tight mb-2">
           Importiere {progress.total} Anzeigen
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 tabular-nums">
@@ -1320,7 +1320,7 @@ function DoneStep({ progress, onClose }: { progress: ImportProgress; onClose: ()
       <div className="w-20 h-20 mx-auto rounded-2xl bg-emerald-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-200 dark:shadow-emerald-900/50">
         <Check className="w-10 h-10 text-white stroke-[3]" />
       </div>
-      <h3 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-2 tabular-nums">
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white tracking-tight mb-2 tabular-nums">
         {success} Anzeigen importiert
       </h3>
       <div className="flex flex-col items-center gap-1 mb-6">

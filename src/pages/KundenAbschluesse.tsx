@@ -54,7 +54,7 @@ export default function KundenAbschluesse() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Abschlüsse</h1>
+          <h1 className="text-2xl font-semibold font-heading">Abschlüsse</h1>
           <p className="text-muted-foreground text-sm">{deals.length} Deals</p>
         </div>
         <Button variant="outline" onClick={() => toast({ title: 'Sync angestoßen' })}>
@@ -97,8 +97,8 @@ export default function KundenAbschluesse() {
                 </TableCell>
                 <TableCell className="text-muted-foreground text-xs">{new Date(d.created_at).toLocaleDateString('de-DE')}</TableCell>
                 <TableCell className="font-medium">{d.client_name}</TableCell>
-                <TableCell><Badge variant="secondary" className={`text-[10px] border-0 ${ART_STYLES[d.art] || 'bg-muted text-muted-foreground'}`}>{d.art}</Badge></TableCell>
-                <TableCell><Badge variant={d.deal_type === 'Neukunde' ? 'default' : 'secondary'} className={`text-[10px] ${d.deal_type === 'Neukunde' ? 'bg-success/20 text-success border-0' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-0'}`}>{d.deal_type}</Badge></TableCell>
+                <TableCell><Badge variant="secondary" className={`text-xs border-0 ${ART_STYLES[d.art] || 'bg-muted text-muted-foreground'}`}>{d.art}</Badge></TableCell>
+                <TableCell><Badge variant={d.deal_type === 'Neukunde' ? 'default' : 'secondary'} className={`text-xs ${d.deal_type === 'Neukunde' ? 'bg-success/20 text-success border-0' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-0'}`}>{d.deal_type}</Badge></TableCell>
                 <TableCell className="font-medium">€{Number(d.wert_eur || 0).toLocaleString('de-DE')}</TableCell>
                 <TableCell className="text-muted-foreground">{d.laufzeit_monate ? `${d.laufzeit_monate} M` : '–'}</TableCell>
                 <TableCell className="hidden sm:table-cell">

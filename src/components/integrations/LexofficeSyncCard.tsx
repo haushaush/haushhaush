@@ -71,9 +71,9 @@ export function LexofficeSyncCard() {
           {configured === null ? 'Verbindung wird geprüft…' : configured ? 'Verbunden' : 'Nicht verbunden — Secret LEXOFFICE_API_KEY fehlt'}
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 tabular-nums">
-          <div><p className="text-[11px] text-muted-foreground">Letzter erfolgreicher Lauf</p><p className="font-medium">{fmt(lastSuccess)}</p></div>
-          <div><p className="text-[11px] text-muted-foreground">Rechnungen</p><p className="font-medium">{counts.inv ? counts.inv.toLocaleString('de-DE') : 'noch keine'}</p></div>
-          <div><p className="text-[11px] text-muted-foreground">Kontakte</p><p className="font-medium">{counts.con ? counts.con.toLocaleString('de-DE') : 'noch keine'}</p></div>
+          <div><p className="text-xs text-muted-foreground">Letzter erfolgreicher Lauf</p><p className="font-medium">{fmt(lastSuccess)}</p></div>
+          <div><p className="text-xs text-muted-foreground">Rechnungen</p><p className="font-medium">{counts.inv ? counts.inv.toLocaleString('de-DE') : 'noch keine'}</p></div>
+          <div><p className="text-xs text-muted-foreground">Kontakte</p><p className="font-medium">{counts.con ? counts.con.toLocaleString('de-DE') : 'noch keine'}</p></div>
         </div>
         {laeuft && (
           <p className="text-xs text-muted-foreground tabular-nums">

@@ -55,10 +55,10 @@ export function ErrorCardOverlay() {
           {/* Top row */}
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-            <span className="text-[11px] font-mono font-semibold text-destructive px-1.5 py-0.5 rounded bg-destructive/10">
+            <span className="text-xs font-mono font-semibold text-destructive px-1.5 py-0.5 rounded bg-destructive/10">
               {card.code}
             </span>
-            <span className="text-[10px] text-muted-foreground ml-auto mr-2">
+            <span className="text-xs text-muted-foreground ml-auto mr-2">
               {card.timestamp.toLocaleTimeString('de-DE')}
             </span>
             <button
@@ -70,7 +70,7 @@ export function ErrorCardOverlay() {
           </div>
 
           {/* Message */}
-          <p className="text-[13px] text-foreground leading-relaxed mb-3">
+          <p className="text-xs text-foreground leading-relaxed mb-3">
             {card.message.slice(0, 200)}
             {card.message.length > 200 && '...'}
           </p>
@@ -79,7 +79,7 @@ export function ErrorCardOverlay() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => copyError(card)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border border-destructive/30 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-all cursor-pointer"
             >
               {copied === card.id
                 ? <><Check className="h-3 w-3" /> Kopiert!</>
@@ -88,7 +88,7 @@ export function ErrorCardOverlay() {
             </button>
             <button
               onClick={() => copyPrompt(card)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all cursor-pointer"
             >
               {copiedPrompt === card.id
                 ? <><Check className="h-3 w-3" /> Kopiert!</>

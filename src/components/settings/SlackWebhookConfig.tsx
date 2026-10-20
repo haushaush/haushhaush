@@ -84,7 +84,7 @@ export function SlackWebhookConfig() {
             placeholder="https://hooks.slack.com/services/..."
             className="mt-1 font-mono text-xs"
           />
-          <p className="text-[11px] text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Slack → Apps → Incoming WebHooks → Channel wählen → URL kopieren
           </p>
         </div>

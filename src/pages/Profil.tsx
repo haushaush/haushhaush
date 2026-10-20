@@ -214,7 +214,7 @@ export default function Profil() {
 
   return (
     <div className="max-w-[600px] mx-auto py-6 sm:py-10 px-4 sm:px-0">
-      <h1 className="text-2xl font-bold text-foreground">Mein Profil</h1>
+      <h1 className="text-2xl font-semibold font-heading text-foreground">Mein Profil</h1>
       <p className="text-sm text-muted-foreground mt-1 mb-8">Verwalte deine persönlichen Informationen</p>
 
       {/* Avatar Section */}
@@ -283,7 +283,7 @@ export default function Profil() {
               maxLength={200}
               rows={3}
             />
-            <p className="text-[10px] text-muted-foreground text-right">{form.ueber_mich.length}/200</p>
+            <p className="text-xs text-muted-foreground text-right">{form.ueber_mich.length}/200</p>
           </div>
         </div>
 

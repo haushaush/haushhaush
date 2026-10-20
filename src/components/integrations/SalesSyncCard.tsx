@@ -69,8 +69,8 @@ export function SalesSyncCard() {
                 <div className="flex items-center gap-2 shrink-0 tabular-nums text-muted-foreground">
                   <span>{l.upserted ?? 0} Zeilen</span>
                   {(l.errors ?? 0) > 0
-                    ? <Badge variant="destructive" className="text-[10px]">{l.errors} Fehler</Badge>
-                    : <Badge variant="outline" className="text-[10px]">OK</Badge>}
+                    ? <Badge variant="destructive" className="text-xs">{l.errors} Fehler</Badge>
+                    : <Badge variant="outline" className="text-xs">OK</Badge>}
                   <span>{Math.round((l.duration_ms ?? 0) / 1000)}s</span>
                   <span>{new Date(l.created_at).toLocaleString('de-DE')}</span>
                 </div>

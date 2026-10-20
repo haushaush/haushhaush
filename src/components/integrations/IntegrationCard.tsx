@@ -362,9 +362,9 @@ export function IntegrationCard({
   };
 
   const metaAccountStatus = (status: number) => {
-    if (status === 1) return <Badge className="bg-success/15 text-success border-0 text-[10px]">Aktiv</Badge>;
-    if (status === 2) return <Badge className="bg-destructive/15 text-destructive border-0 text-[10px]">Deaktiviert</Badge>;
-    return <Badge variant="secondary" className="text-[10px]">Unbekannt</Badge>;
+    if (status === 1) return <Badge className="bg-success/15 text-success border-0 text-xs">Aktiv</Badge>;
+    if (status === 2) return <Badge className="bg-destructive/15 text-destructive border-0 text-xs">Deaktiviert</Badge>;
+    return <Badge variant="secondary" className="text-xs">Unbekannt</Badge>;
   };
 
   const runAiMatch = async () => {
@@ -470,7 +470,7 @@ export function IntegrationCard({
         disabled={provider.comingSoon}
       >
         <div
-          className="w-10 h-10 rounded-[10px] flex items-center justify-center font-bold text-[15px] flex-shrink-0"
+          className="w-10 h-10 rounded-[10px] flex items-center justify-center font-bold text-sm flex-shrink-0"
           style={{
             background: provider.iconBg,
             color: provider.iconColor || '#fff',
@@ -481,8 +481,8 @@ export function IntegrationCard({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[15px] font-semibold text-foreground">{provider.name}</span>
-            <Badge variant="secondary" className="text-[10px] font-medium h-5">{provider.category}</Badge>
+            <span className="text-sm font-semibold text-foreground">{provider.name}</span>
+            <Badge variant="secondary" className="text-xs font-medium h-5">{provider.category}</Badge>
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             {statusDot()}
@@ -570,7 +570,7 @@ export function IntegrationCard({
                       {/* Notification channels */}
                       <div className="space-y-3">
                         <h5 className="text-xs font-medium text-foreground">Benachrichtigungen</h5>
-                        <p className="text-[10px] text-muted-foreground">Wähle für jede Benachrichtigungsart den Ziel-Channel.</p>
+                        <p className="text-xs text-muted-foreground">Wähle für jede Benachrichtigungsart den Ziel-Channel.</p>
                         {[
                           { key: 'notify_abschluesse', label: '🏆 Neue Abschlüsse' },
                           { key: 'notify_laufzeiten', label: '📅 Laufzeit-Erinnerungen' },
@@ -613,9 +613,9 @@ export function IntegrationCard({
                             <Plus className="h-3 w-3 mr-1" /> Hinzufügen
                           </Button>
                         </div>
-                        <p className="text-[10px] text-muted-foreground">Erstelle in Slack unter Apps → Incoming Webhooks einen Webhook pro Channel.</p>
+                        <p className="text-xs text-muted-foreground">Erstelle in Slack unter Apps → Incoming Webhooks einen Webhook pro Channel.</p>
                         {slackWebhooks.length === 0 && (
-                          <p className="text-[10px] text-muted-foreground/60 italic">Noch keine Webhooks hinzugefügt.</p>
+                          <p className="text-xs text-muted-foreground/60 italic">Noch keine Webhooks hinzugefügt.</p>
                         )}
                         {slackWebhooks.map((wh, i) => (
                           <div key={i} className="rounded-lg border border-border p-3 space-y-2 bg-muted/20">
@@ -697,7 +697,7 @@ export function IntegrationCard({
                           <p className="text-xs font-medium text-foreground">📊 Kundenkonten zuordnen</p>
                           <div className="flex items-center gap-2">
                             <button
-                              className="text-[10px] px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors font-medium"
+                              className="text-xs px-2 py-1 rounded-md bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors font-medium"
                               onClick={() => {
                                 const newMappings = { ...accountMappings };
                                 let matched = 0;
@@ -718,7 +718,7 @@ export function IntegrationCard({
                               🤖 Auto-Match alle
                             </button>
                             <button
-                              className="text-[10px] px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium flex items-center gap-1 disabled:opacity-50"
+                              className="text-xs px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium flex items-center gap-1 disabled:opacity-50"
                               onClick={runAiMatch}
                               disabled={aiMatching}
                             >
@@ -729,7 +729,7 @@ export function IntegrationCard({
                             </button>
                             {autoSuggestedCount > 0 && (
                               <button
-                                className="text-[10px] px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                                className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
                                 onClick={() => {
                                   const newMappings = { ...accountMappings };
                                   sorted.filter(x => x.isAutoSuggested).forEach(({ accountId, suggestion }) => {
@@ -741,14 +741,14 @@ export function IntegrationCard({
                                 ✓ {autoSuggestedCount} Vorschläge übernehmen
                               </button>
                             )}
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               {matchedCount}/{metaAccounts.length} zugeordnet
                             </span>
                           </div>
                         </div>
                         {unmatchedCount > 0 && (
                           <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-warning/10 border border-warning/20">
-                            <span className="text-[10px] text-warning font-medium">⚠ {unmatchedCount} Account{unmatchedCount > 1 ? 's' : ''} ohne Zuordnung</span>
+                            <span className="text-xs text-warning font-medium">⚠ {unmatchedCount} Account{unmatchedCount > 1 ? 's' : ''} ohne Zuordnung</span>
                           </div>
                         )}
                         <div className="relative">
@@ -797,23 +797,23 @@ export function IntegrationCard({
                                         )}
                                         <p className="text-xs font-medium text-foreground truncate">{acc.name}</p>
                                       </div>
-                                      <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{accountId}</p>
+                                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{accountId}</p>
                                     </div>
                                     {metaAccountStatus(acc.account_status)}
                                   </div>
                                   {isAutoSuggested && suggestedDeal && (
                                     <div className="flex items-center gap-2">
-                                      <div className="flex-1 text-[11px] text-primary bg-primary/10 rounded-md px-2.5 py-1.5">
+                                      <div className="flex-1 text-xs text-primary bg-primary/10 rounded-md px-2.5 py-1.5">
                                         🤖 Vorschlag: <span className="font-medium">{suggestedDeal.client_name}{suggestedDeal.art ? ` · ${suggestedDeal.art}` : ''}</span>
                                       </div>
                                       <button
-                                        className="shrink-0 text-[10px] px-2 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+                                        className="shrink-0 text-xs px-2 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
                                         onClick={() => setAccountMappings(prev => ({ ...prev, [accountId]: suggestion! }))}
                                       >
                                         ✓
                                       </button>
                                       <button
-                                        className="shrink-0 text-[10px] px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors"
+                                        className="shrink-0 text-xs px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors"
                                         onClick={() => setAccountMappings(prev => ({ ...prev, [accountId]: '__rejected__' }))}
                                       >
                                         ✕
@@ -904,7 +904,7 @@ export function IntegrationCard({
                       {closePipelines.map((p: any) => (
                         <div key={p.id} className="flex items-center gap-2 text-xs p-2 rounded-lg bg-muted/30 border border-border">
                           <span className="font-medium text-foreground">{p.name}</span>
-                          <Badge variant="secondary" className="text-[10px]">{p.statuses?.length || 0} Status</Badge>
+                          <Badge variant="secondary" className="text-xs">{p.statuses?.length || 0} Status</Badge>
                         </div>
                       ))}
                     </div>
@@ -938,7 +938,7 @@ export function IntegrationCard({
                                 {acc.main && <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-semibold">HAUPT</span>}
                                 <p className="text-xs font-medium text-foreground">{acc.name}</p>
                               </div>
-                              <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{acc.iban}</p>
+                              <p className="text-xs text-muted-foreground font-mono mt-0.5">{acc.iban}</p>
                             </div>
                             <p className={`text-sm font-semibold shrink-0 ml-3 ${acc.balance < 100 ? 'text-warning' : 'text-foreground'}`}>
                               €{acc.balance.toLocaleString('de-DE', { minimumFractionDigits: 2 })}
@@ -984,7 +984,7 @@ export function IntegrationCard({
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">{driveConnection.email}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Verbunden seit {new Date(driveConnection.connected_at).toLocaleDateString('de-DE', {
                         day: '2-digit', month: 'short', year: 'numeric',
                       })}
@@ -1008,12 +1008,12 @@ export function IntegrationCard({
 
 
               {lastSyncAt && (
-                <p className="text-[11px] text-muted-foreground pt-1">
+                <p className="text-xs text-muted-foreground pt-1">
                   Zuletzt synchronisiert: {new Date(lastSyncAt).toLocaleString('de-DE')}
                 </p>
               )}
               {dynamicConfig?.loaded_at && (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Daten geladen: {getRelativeTime(dynamicConfig.loaded_at)}
                 </p>
               )}

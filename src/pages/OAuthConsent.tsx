@@ -102,7 +102,7 @@ export default function OAuthConsent() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
         <div className="w-full max-w-[440px] border border-border rounded-2xl p-8 bg-card">
-          <h1 className="text-xl font-semibold mb-2">Autorisierung nicht möglich</h1>
+          <h1 className="text-2xl font-semibold font-heading mb-2">Autorisierung nicht möglich</h1>
           <p className="text-sm text-muted-foreground">{error}</p>
         </div>
       </div>
@@ -122,7 +122,7 @@ export default function OAuthConsent() {
             <ShieldCheck className="w-5 h-5 text-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold leading-tight">{clientName} verbinden</h1>
+            <h1 className="text-2xl font-semibold font-heading leading-tight">{clientName} verbinden</h1>
             <p className="text-xs text-muted-foreground">mit Agency Hub</p>
           </div>
         </div>

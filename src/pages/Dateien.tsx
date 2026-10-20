@@ -267,7 +267,7 @@ export default function Dateien() {
         <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
           <CloudOff className="h-10 w-10 text-primary" aria-hidden="true" />
         </div>
-        <h1 className="text-2xl font-heading font-bold mb-2">Google Drive verbinden</h1>
+        <h1 className="text-2xl font-semibold font-heading mb-2">Google Drive verbinden</h1>
         <p className="text-muted-foreground max-w-md mb-6">
           Verbinde Google Drive, um alle Agentur-Dateien zentral zu verwalten. Ordnerstruktur wird automatisch erstellt.
         </p>
@@ -533,12 +533,12 @@ export default function Dateien() {
                       <p className="text-sm font-medium line-clamp-2 leading-tight">{file.name}</p>
                       {file.type === 'file' && (
                         <div className="flex items-center gap-2 mt-1">
-                          {badge && <Badge className={`text-[10px] ${badge.className}`}>{badge.label}</Badge>}
-                          <span className="text-[10px] text-muted-foreground">{timeAgo(file.modifiedAt)}</span>
+                          {badge && <Badge className={`text-xs ${badge.className}`}>{badge.label}</Badge>}
+                          <span className="text-xs text-muted-foreground">{timeAgo(file.modifiedAt)}</span>
                         </div>
                       )}
                       {file.type === 'file' && file.size && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{formatFileSize(file.size)}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{formatFileSize(file.size)}</p>
                       )}
                     </CardContent>
                   </Card>
@@ -580,7 +580,7 @@ export default function Dateien() {
                           </div>
                         </td>
                         <td className="py-2 px-3 hidden sm:table-cell">
-                          {file.type === 'folder' ? <span className="text-muted-foreground">Ordner</span> : badge && <Badge className={`text-[10px] ${badge.className}`}>{badge.label}</Badge>}
+                          {file.type === 'folder' ? <span className="text-muted-foreground">Ordner</span> : badge && <Badge className={`text-xs ${badge.className}`}>{badge.label}</Badge>}
                         </td>
                         <td className="py-2 px-3 text-muted-foreground hidden md:table-cell">{formatFileSize(file.size)}</td>
                         <td className="py-2 px-3 text-muted-foreground hidden lg:table-cell">{file.modifiedAt ? new Date(file.modifiedAt).toLocaleDateString('de-DE') : ''}</td>

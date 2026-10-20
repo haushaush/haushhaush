@@ -91,7 +91,7 @@ export function ShowcaseGridPage({ type, title }: Props) {
     <div className="p-6">
       <header className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          <h1 className="text-2xl font-semibold font-heading tracking-tight">{title}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {type === 'website' ? 'Landingpages für Sales-Pitches' : 'Erfolgreiche Ad Creatives für Sales-Pitches'}
           </p>
@@ -179,19 +179,19 @@ export function ShowcaseGridPage({ type, title }: Props) {
                     </div>
                   )}
                   {item.ad_platform && (
-                    <div className="absolute top-2 right-2 bg-background/90 backdrop-blur text-[10px] uppercase font-medium rounded px-2 py-0.5">
+                    <div className="absolute top-2 right-2 bg-background/90 backdrop-blur text-xs uppercase font-medium rounded px-2 py-0.5">
                       {item.ad_platform}
                     </div>
                   )}
                 </div>
                 <div className="p-3">
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-1">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                     {displayClient(item) && <span className="truncate">{displayClient(item)}</span>}
                     {displayBranche(item) && <><span>·</span><span className="truncate">{displayBranche(item)}</span></>}
                   </div>
-                  <h3 className="text-sm font-medium truncate">{item.title}</h3>
+                  <h3 className="text-sm font-semibold truncate">{item.title}</h3>
                   {Object.keys(m).length > 0 && (
-                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-[11px] text-muted-foreground tabular-nums">
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-xs text-muted-foreground tabular-nums">
                       {m.leads != null && <span>{m.leads} Leads</span>}
                       {m.cpl != null && <span>{m.cpl}€ CPL</span>}
                       {m.roas != null && <span>{m.roas}x ROAS</span>}

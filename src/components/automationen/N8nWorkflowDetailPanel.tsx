@@ -102,7 +102,7 @@ export function N8nWorkflowDetailPanel({
             {/* Header */}
             <div className="px-6 py-4 border-b border-border flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-semibold text-foreground truncate">{workflow.name}</h2>
+                <h2 className="text-lg font-semibold font-heading text-foreground truncate">{workflow.name}</h2>
                 <div className="flex items-center gap-2 mt-1.5">
                   {statusBadge(workflow.active ? 'success' : undefined)}
                   <Switch checked={workflow.active} disabled={toggling} onCheckedChange={() => onToggle(workflow)} />
@@ -154,21 +154,21 @@ export function N8nWorkflowDetailPanel({
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
                   <div className="rounded border border-border p-3">
-                    <p className="text-[10px] text-muted-foreground uppercase">Runs 7T</p>
+                    <p className="text-xs text-muted-foreground uppercase">Runs 7T</p>
                     <p className="text-xl font-bold text-foreground mt-0.5">{last7d.length}</p>
                   </div>
                   <div className="rounded border border-border p-3">
-                    <p className="text-[10px] text-muted-foreground uppercase">Erfolgsrate</p>
+                    <p className="text-xs text-muted-foreground uppercase">Erfolgsrate</p>
                     <p className="text-xl font-bold text-foreground mt-0.5">{successRate}%</p>
                   </div>
                   <div className="rounded border border-border p-3">
-                    <p className="text-[10px] text-muted-foreground uppercase">Ø Dauer</p>
+                    <p className="text-xs text-muted-foreground uppercase">Ø Dauer</p>
                     <p className="text-xl font-bold text-foreground mt-0.5">
                       {avgDurationMs < 1000 ? `${avgDurationMs}ms` : `${(avgDurationMs / 1000).toFixed(1)}s`}
                     </p>
                   </div>
                   <div className="rounded border border-border p-3">
-                    <p className="text-[10px] text-muted-foreground uppercase">Letzter Fehler</p>
+                    <p className="text-xs text-muted-foreground uppercase">Letzter Fehler</p>
                     <p className="text-xs font-medium text-foreground mt-1">
                       {lastFailed?.startedAt ? new Date(lastFailed.startedAt).toLocaleDateString('de-DE') : '–'}
                     </p>
@@ -271,7 +271,7 @@ export function N8nWorkflowDetailPanel({
                       const url = `${instanceUrl.replace(/\/+$/, '')}/webhook/${path}`;
                       return (
                         <div key={i} className="flex items-center gap-2 rounded border border-border bg-muted/30 px-3 py-2">
-                          <code className="text-[11px] flex-1 truncate text-foreground">{url}</code>
+                          <code className="text-xs flex-1 truncate text-foreground">{url}</code>
                           <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
                             navigator.clipboard.writeText(url);
                             toast.success('Webhook URL kopiert');

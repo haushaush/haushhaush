@@ -194,17 +194,17 @@ export default function AdPerformanceDetail() {
             <div className="flex flex-wrap gap-3 mt-8 justify-center">
               {showRoas && cpl != null && (
                 <div className="bg-white/15 backdrop-blur-sm rounded-lg px-5 py-3 text-center min-w-[110px]">
-                  <div className="text-[10px] uppercase tracking-wider opacity-70">CPL</div>
+                  <div className="text-xs uppercase tracking-wider opacity-70">CPL</div>
                   <div className="text-xl font-bold tabular-nums">€{cpl.toFixed(2)}</div>
                 </div>
               )}
               <div className="bg-white/15 backdrop-blur-sm rounded-lg px-5 py-3 text-center min-w-[110px]">
-                <div className="text-[10px] uppercase tracking-wider opacity-70">Leads</div>
+                <div className="text-xs uppercase tracking-wider opacity-70">Leads</div>
                 <div className="text-xl font-bold tabular-nums">{leads ?? "—"}</div>
               </div>
               {spend != null && (
                 <div className="bg-white/15 backdrop-blur-sm rounded-lg px-5 py-3 text-center min-w-[110px]">
-                  <div className="text-[10px] uppercase tracking-wider opacity-70">Spend</div>
+                  <div className="text-xs uppercase tracking-wider opacity-70">Spend</div>
                   <div className="text-xl font-bold tabular-nums">€{Math.round(spend).toLocaleString("de-DE")}</div>
                 </div>
               )}
@@ -215,8 +215,8 @@ export default function AdPerformanceDetail() {
       infoPanel={
         <DetailInfoPanel>
           <InfoSection>
-            <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] mb-1.5">{eyebrow}</p>
-            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white leading-tight tracking-tight">{readableTitle}</h1>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] mb-1.5">{eyebrow}</p>
+            <h1 className="text-2xl font-semibold font-heading text-gray-900 dark:text-white leading-tight tracking-tight">{readableTitle}</h1>
             {dateRange && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5 tabular-nums">{dateRange}</p>
             )}
@@ -261,25 +261,25 @@ export default function AdPerformanceDetail() {
         <>
           {campaign.custom_setup_notes && (
             <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-3">Strategie</h2>
+              <h2 className="text-lg font-semibold font-heading text-gray-900 dark:text-white mb-3">Strategie</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed italic whitespace-pre-wrap">{campaign.custom_setup_notes}</p>
             </section>
           )}
           {campaign.custom_description && (
             <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Beschreibung</h2>
+              <h2 className="text-lg font-semibold font-heading text-gray-900 dark:text-white mb-4">Beschreibung</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{campaign.custom_description}</p>
             </section>
           )}
           {campaign.custom_results_summary && (
             <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Ergebnisse</h2>
+              <h2 className="text-lg font-semibold font-heading text-gray-900 dark:text-white mb-4">Ergebnisse</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{campaign.custom_results_summary}</p>
             </section>
           )}
           {tags.length > 0 && (
             <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Tags</h2>
+              <h2 className="text-lg font-semibold font-heading text-gray-900 dark:text-white mb-4">Tags</h2>
               <div className="flex flex-wrap gap-1.5">
                 {tags.map(t => {
                   const isAutoTag = t.startsWith("kunde-") || t.startsWith("unternehmen-") || t.startsWith("versicherer-");

@@ -107,7 +107,7 @@ export function ComposeModal({ open, onClose, accounts, defaultAccountId, prefil
             <div className="flex items-center justify-between">
               <Label className="text-xs">An *</Label>
               {!showCcBcc && (
-                <button onClick={() => setShowCcBcc(true)} className="text-[11px] text-primary hover:underline">+ Cc/Bcc</button>
+                <button onClick={() => setShowCcBcc(true)} className="text-xs text-primary hover:underline">+ Cc/Bcc</button>
               )}
             </div>
             <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder="empfaenger@beispiel.de" />

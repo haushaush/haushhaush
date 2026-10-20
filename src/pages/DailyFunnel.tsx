@@ -194,7 +194,7 @@ export default function DailyFunnel() {
           <div className="flex items-center gap-3 mb-6">
             {type === 'checkin' ? <Sun className="h-6 w-6 text-amber-500" /> : <Moon className="h-6 w-6 text-primary" />}
             <div>
-              <h1 className="text-2xl font-bold">{type === 'checkin' ? 'Check-in' : 'Check-out'} für heute ist erledigt ✓</h1>
+              <h1 className="text-2xl font-semibold font-heading">{type === 'checkin' ? 'Check-in' : 'Check-out'} für heute ist erledigt ✓</h1>
               <p className="text-sm text-muted-foreground">Du kannst die Antworten unten anpassen oder weitermachen.</p>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function DailyFunnel() {
               <div><span className="text-muted-foreground">Energie: </span><span className="font-medium">{energieMorgen}/10 {energieEmoji(energieMorgen)}</span></div>
               <div>
                 <p className="text-muted-foreground mb-1">Ziele:</p>
-                <ul className="space-y-1">{ziele.map((z, i) => <li key={i}>• {z.text} <Badge variant="outline" className={cn('ml-1 text-[10px]', PRIO_META[z.prioritaet]?.bg)}>{PRIO_META[z.prioritaet]?.label}</Badge></li>)}</ul>
+                <ul className="space-y-1">{ziele.map((z, i) => <li key={i}>• {z.text} <Badge variant="outline" className={cn('ml-1 text-xs', PRIO_META[z.prioritaet]?.bg)}>{PRIO_META[z.prioritaet]?.label}</Badge></li>)}</ul>
               </div>
               {!!zusagen.length && (
                 <div>
@@ -241,7 +241,7 @@ export default function DailyFunnel() {
         return (
           <div className="space-y-4">
             <div>
-              <h2 className="text-2xl font-bold mb-1">Guten Morgen{firstName ? `, ${firstName}` : ''} ☀️</h2>
+              <h2 className="text-lg font-semibold font-heading mb-1">Guten Morgen{firstName ? `, ${firstName}` : ''} ☀️</h2>
               <p className="text-muted-foreground">{carried.length ? 'Vom Vortag übernommen — was nimmst du mit?' : 'Frischer Tag, keine offenen Punkte. Los geht\'s!'}</p>
             </div>
             {carried.length ? (
@@ -250,7 +250,7 @@ export default function DailyFunnel() {
                   const idx = ziele.indexOf(z);
                   return (
                     <div key={i} className="flex items-center gap-2 bg-muted/40 border border-dashed border-border rounded-lg p-3">
-                      <Badge variant="outline" className="text-[10px]">Vom Vortag</Badge>
+                      <Badge variant="outline" className="text-xs">Vom Vortag</Badge>
                       <span className="flex-1 text-sm">{z.text}</span>
                       <Button variant="ghost" size="icon" onClick={() => setZiele(ziele.filter((_, j) => j !== idx))}><X className="h-4 w-4" /></Button>
                     </div>
@@ -267,7 +267,7 @@ export default function DailyFunnel() {
         return (
           <div className="space-y-4">
             <div>
-              <h2 className="text-2xl font-bold mb-1">Was sind deine 3 Hauptziele heute?</h2>
+              <h2 className="text-lg font-semibold font-heading mb-1">Was sind deine 3 Hauptziele heute?</h2>
               <p className="text-muted-foreground">Fokus auf das, was wirklich zählt.</p>
             </div>
             <div className="space-y-3">
@@ -293,7 +293,7 @@ export default function DailyFunnel() {
       case 2:
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold mb-1">Das EINE Ding</h2>
+            <h2 className="text-lg font-semibold font-heading mb-1">Das EINE Ding</h2>
             <p className="text-muted-foreground">Was macht heute alles andere unwichtig?</p>
             <div className="bg-primary/10 border-2 border-primary/40 rounded-xl p-1">
               <Input value={focusTask} onChange={e => setFocusTask(e.target.value)} placeholder="Focus Task…" className="border-0 bg-transparent text-lg font-medium focus-visible:ring-0" />
@@ -304,7 +304,7 @@ export default function DailyFunnel() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold mb-1">Welche Energie hast du heute?</h2>
+              <h2 className="text-lg font-semibold font-heading mb-1">Welche Energie hast du heute?</h2>
               <p className="text-muted-foreground">Sei ehrlich — das hilft dir, dich besser zu kennen.</p>
             </div>
             <div className="text-center">
@@ -317,7 +317,7 @@ export default function DailyFunnel() {
       case 4:
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold mb-1">Worauf freust du dich heute?</h2>
+            <h2 className="text-lg font-semibold font-heading mb-1">Worauf freust du dich heute?</h2>
             <p className="text-muted-foreground">Ein kleiner Anker für den Tag.</p>
             <Textarea value={vorfreude} onChange={e => setVorfreude(e.target.value)} placeholder="z.B. Kundencall, Mittagessen, Feierabend…" rows={3} />
           </div>
@@ -326,7 +326,7 @@ export default function DailyFunnel() {
         return (
           <div className="space-y-4">
             <div>
-              <h2 className="text-2xl font-bold mb-1">Welche Zusagen hast du heute?</h2>
+              <h2 className="text-lg font-semibold font-heading mb-1">Welche Zusagen hast du heute?</h2>
               <p className="text-muted-foreground">Termine, Versprechen, Deadlines.</p>
             </div>
             <div className="space-y-2">
@@ -349,7 +349,7 @@ export default function DailyFunnel() {
         return (
           <div className="space-y-4">
             <div>
-              <h2 className="text-2xl font-bold mb-1">Wie war dein Tag, {firstName || 'du'}?</h2>
+              <h2 className="text-lg font-semibold font-heading mb-1">Wie war dein Tag, {firstName || 'du'}?</h2>
               <p className="text-muted-foreground">Eine ehrliche Bewertung.</p>
             </div>
             <div className="flex justify-center gap-2 py-4">
@@ -365,7 +365,7 @@ export default function DailyFunnel() {
       case 1:
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold mb-1">Deine Ziele von heute</h2>
+            <h2 className="text-lg font-semibold font-heading mb-1">Deine Ziele von heute</h2>
             <p className="text-muted-foreground">Was hast du erledigt?</p>
             {zieleAbend.length === 0 && <p className="text-sm text-muted-foreground italic">Keine Ziele gesetzt heute Morgen.</p>}
             <div className="space-y-2">
@@ -388,7 +388,7 @@ export default function DailyFunnel() {
       case 2:
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold mb-1">Deine Zusagen von heute</h2>
+            <h2 className="text-lg font-semibold font-heading mb-1">Deine Zusagen von heute</h2>
             <p className="text-muted-foreground">Hast du dein Wort gehalten?</p>
             {zusagenAbend.length === 0 && <p className="text-sm text-muted-foreground italic">Keine Zusagen heute Morgen.</p>}
             <div className="space-y-2">
@@ -412,7 +412,7 @@ export default function DailyFunnel() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold mb-1">Wie war deine Energie heute Abend?</h2>
+              <h2 className="text-lg font-semibold font-heading mb-1">Wie war deine Energie heute Abend?</h2>
               <p className="text-muted-foreground">Wo stehst du gerade?</p>
             </div>
             <div className="text-center">
@@ -425,7 +425,7 @@ export default function DailyFunnel() {
       case 4:
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold mb-1">Was hast du heute gelernt?</h2>
+            <h2 className="text-lg font-semibold font-heading mb-1">Was hast du heute gelernt?</h2>
             <p className="text-muted-foreground">Ein Satz reicht.</p>
             <Textarea value={learnings} onChange={e => setLearnings(e.target.value)} placeholder="Ein Satz reicht…" rows={3} />
           </div>
@@ -433,7 +433,7 @@ export default function DailyFunnel() {
       case 5:
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold mb-1">Notizen / Reflexion</h2>
+            <h2 className="text-lg font-semibold font-heading mb-1">Notizen / Reflexion</h2>
             <p className="text-muted-foreground">Optional — alles, was raus muss.</p>
             <Textarea value={notiz} onChange={e => setNotiz(e.target.value)} placeholder="Gedanken, Erkenntnisse, To-Dos für morgen…" rows={5} />
           </div>

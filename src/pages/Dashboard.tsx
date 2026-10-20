@@ -212,14 +212,14 @@ export default function Dashboard() {
               {avatarUrl ? <AvatarImage src={avatarUrl} alt={firstName} /> : null}
               <AvatarFallback className="bg-primary text-primary-foreground text-[36px] font-semibold">{initials}</AvatarFallback>
             </Avatar>
-            <h1 className="text-[32px] font-bold text-foreground leading-tight tracking-[-0.02em]">
+            <h1 className="text-2xl font-semibold font-heading text-foreground leading-tight tracking-[-0.02em]">
               Herzlich Willkommen, {firstName}! 👋
             </h1>
-            <p className="text-[15px] text-muted-foreground mt-1.5" style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em' }}>{formatDateLong(clock)}</p>
+            <p className="text-sm text-muted-foreground mt-1.5" style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em' }}>{formatDateLong(clock)}</p>
             {!isMobile && JSON.stringify(blockOrder) !== JSON.stringify(DEFAULT_ORDER) && (
               <button
                 onClick={resetLayout}
-                className="inline-flex items-center gap-[5px] mt-2 px-[10px] py-[3px] text-[11px] text-muted-foreground bg-transparent border border-border rounded-md cursor-pointer transition-all duration-150 hover:text-destructive hover:border-destructive hover:bg-destructive/10"
+                className="inline-flex items-center gap-[5px] mt-2 px-[10px] py-[3px] text-xs text-muted-foreground bg-transparent border border-border rounded-md cursor-pointer transition-all duration-150 hover:text-destructive hover:border-destructive hover:bg-destructive/10"
               >
                 <RotateCcw className="h-[11px] w-[11px]" /> Layout zurücksetzen
               </button>
@@ -266,15 +266,15 @@ export default function Dashboard() {
               style={{ height: 44 }}
             >
               <Search className="h-4 w-4 shrink-0" />
-              <span className="text-[15px]">Kunden, Aufgaben, Seiten suchen...</span>
-              <kbd className="ml-auto hidden sm:inline-flex items-center text-[11px] font-medium bg-background border border-border rounded-md px-1.5 py-0.5 tracking-wide">⌘K</kbd>
+              <span className="text-sm">Kunden, Aufgaben, Seiten suchen...</span>
+              <kbd className="ml-auto hidden sm:inline-flex items-center text-xs font-medium bg-background border border-border rounded-md px-1.5 py-0.5 tracking-wide">⌘K</kbd>
             </button>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
               {NAV_TILES.map(tile => (
                 <Card key={tile.href} className="cursor-pointer card-interactive group rounded-xl overflow-hidden min-w-0" onClick={() => navigate(tile.href)}>
                   <CardContent className="px-4 py-5 flex flex-col items-center text-center gap-2">
                     <tile.icon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                    <p className="text-[14px] font-medium text-foreground leading-tight truncate w-full">{tile.label}</p>
+                    <p className="text-sm font-medium text-foreground leading-tight truncate w-full">{tile.label}</p>
                     <p className="text-xs text-muted-foreground hidden sm:block truncate w-full">{tile.sub}</p>
                   </CardContent>
                 </Card>
@@ -286,14 +286,14 @@ export default function Dashboard() {
         if (alerts.length === 0) return null;
         return (
           <div className="bg-card border border-border rounded-[14px] p-5 px-6">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.06em] mb-3 flex items-center gap-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.06em] mb-3 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" /> Handlungsbedarf
             </p>
             <div className="space-y-2">
               {alerts.map((a, i) => (
                 <div key={i} className={`alert-holo ${a.severity === 'red' ? 'alert-holo-red' : a.severity === 'yellow' ? 'alert-holo-orange' : 'alert-holo-teal'}`} onClick={() => navigate(a.link)}>
                   <span className="text-foreground">{a.message}</span>
-                  <span className="text-[13px] text-muted-foreground flex items-center gap-1 shrink-0 ml-3 hover:text-primary transition-colors">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0 ml-3 hover:text-primary transition-colors">
                     Ansehen <ArrowRight className="h-3 w-3" />
                   </span>
                 </div>
@@ -329,14 +329,14 @@ export default function Dashboard() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium text-foreground truncate">{d.client_name}</p>
-                              {d.art && <Badge variant="secondary" className="text-[10px] shrink-0 bg-primary/10 text-primary border-0">{d.art}</Badge>}
+                              {d.art && <Badge variant="secondary" className="text-xs shrink-0 bg-primary/10 text-primary border-0">{d.art}</Badge>}
                             </div>
                             <div className="flex gap-1 mt-1.5 flex-wrap">
                               {leistungen.map((l: string) => (
-                                <span key={l} className="text-[10px] px-1.5 py-0.5 rounded bg-primary/5 text-primary">{LEISTUNG_SHORT[l] || l}</span>
+                                <span key={l} className="text-xs px-1.5 py-0.5 rounded bg-primary/5 text-primary">{LEISTUNG_SHORT[l] || l}</span>
                               ))}
                             </div>
-                            <p className="text-[11px] text-muted-foreground mt-1">Start: {d.start_datum ? formatDate(d.start_datum) : '–'}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Start: {d.start_datum ? formatDate(d.start_datum) : '–'}</p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-sm font-semibold text-primary">€{formatValue(Number(d.wert_eur || 0), 'number')}</p>

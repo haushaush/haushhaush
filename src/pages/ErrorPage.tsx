@@ -247,8 +247,8 @@ export default function ErrorPage({ type, error }: ErrorPageProps) {
         <div key={fix.action} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
           <Wrench className="h-3.5 w-3.5 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-foreground">{fix.label}</p>
-            <p className="text-[11px] text-muted-foreground">{fix.description}</p>
+            <p className="text-xs font-medium text-foreground">{fix.label}</p>
+            <p className="text-xs text-muted-foreground">{fix.description}</p>
           </div>
           <Button
             size="sm"
@@ -305,10 +305,10 @@ export default function ErrorPage({ type, error }: ErrorPageProps) {
         <div className="w-full rounded-lg border-l-[3px] border-l-primary bg-accent p-4 text-left space-y-3">
           {/* Header */}
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${sev.className}`}>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${sev.className}`}>
               {sev.label}
             </span>
-            <span className="text-[13px] text-muted-foreground">KI Diagnose</span>
+            <span className="text-xs text-muted-foreground">KI Diagnose</span>
           </div>
 
           {/* Diagnosis */}
@@ -344,10 +344,10 @@ export default function ErrorPage({ type, error }: ErrorPageProps) {
 
           {/* Footer */}
           <div className="border-t border-border pt-2 flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Problem weiterhin vorhanden?</span>
+            <span className="text-xs text-muted-foreground">Problem weiterhin vorhanden?</span>
             <button
               onClick={() => setSupportOpen(true)}
-              className="text-[11px] text-primary hover:underline bg-transparent border-none cursor-pointer"
+              className="text-xs text-primary hover:underline bg-transparent border-none cursor-pointer"
             >
               Support kontaktieren →
             </button>
@@ -378,14 +378,14 @@ export default function ErrorPage({ type, error }: ErrorPageProps) {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="flex flex-col items-center text-center max-w-sm">
         {c.code && (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-card border border-border text-muted-foreground mb-4">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-card border border-border text-muted-foreground mb-4">
             {c.code}
           </span>
         )}
 
         <div className="mb-6">{icons[type]}</div>
 
-        <h1 className="text-xl font-semibold text-foreground mb-2">{c.heading}</h1>
+        <h1 className="text-2xl font-semibold font-heading text-foreground mb-2">{c.heading}</h1>
         <p className="text-sm text-muted-foreground mb-6">{c.subtext}</p>
 
         {type === 'crash' && error?.message && (
@@ -398,7 +398,7 @@ export default function ErrorPage({ type, error }: ErrorPageProps) {
               {showDetails ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </button>
             {showDetails && (
-              <pre className="mt-2 text-[11px] text-left bg-card border border-border rounded-lg p-3 max-h-[120px] overflow-y-auto text-destructive break-all whitespace-pre-wrap">
+              <pre className="mt-2 text-xs text-left bg-card border border-border rounded-lg p-3 max-h-[120px] overflow-y-auto text-destructive break-all whitespace-pre-wrap">
                 {error.message}
               </pre>
             )}
@@ -428,13 +428,13 @@ export default function ErrorPage({ type, error }: ErrorPageProps) {
 
           <button
             onClick={() => setSupportOpen(true)}
-            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors mt-2 cursor-pointer bg-transparent border-none"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors mt-2 cursor-pointer bg-transparent border-none"
           >
             Support kontaktieren
           </button>
         </div>
 
-        <div className="mt-10 text-[11px] text-muted-foreground/60">
+        <div className="mt-10 text-xs text-muted-foreground/60">
           <p>Agency Hub · Haush Haush × Viral Connect</p>
           {type === 'crash' && <p className="mt-0.5">Fehler aufgetreten: {now}</p>}
         </div>

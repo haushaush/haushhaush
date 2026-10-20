@@ -141,28 +141,28 @@ export default function KundenLaufzeiten() {
     return (
       <div className="space-y-1.5">
         <div className="flex flex-wrap items-end gap-2">
-          <label className="text-[11px] text-muted-foreground">Startdatum<Input type="date" className="h-8 w-36" value={f.startdatum} placeholder={r.startdatum || ''} onChange={e => setF(r.client_id, 'startdatum', e.target.value)} /></label>
-          <label className="text-[11px] text-muted-foreground">Laufzeit (Mon.)<Input type="number" min={1} max={120} step={1} className="h-8 w-24" value={f.laufzeit_monate} placeholder={r.laufzeit_monate?.toString() || ''} onChange={e => setF(r.client_id, 'laufzeit_monate', e.target.value)} /></label>
-          <label className="text-[11px] text-muted-foreground">Abschlusswert €<Input type="number" min={0} className="h-8 w-28" value={f.abschlusswert} placeholder="optional" onChange={e => setF(r.client_id, 'abschlusswert', e.target.value)} /></label>
-          <label className="text-[11px] text-muted-foreground">Retainer/Monat €<Input type="number" min={0} className="h-8 w-28" value={f.retainer_monat} placeholder="optional" onChange={e => setF(r.client_id, 'retainer_monat', e.target.value)} /></label>
+          <label className="text-xs text-muted-foreground">Startdatum<Input type="date" className="h-8 w-36" value={f.startdatum} placeholder={r.startdatum || ''} onChange={e => setF(r.client_id, 'startdatum', e.target.value)} /></label>
+          <label className="text-xs text-muted-foreground">Laufzeit (Mon.)<Input type="number" min={1} max={120} step={1} className="h-8 w-24" value={f.laufzeit_monate} placeholder={r.laufzeit_monate?.toString() || ''} onChange={e => setF(r.client_id, 'laufzeit_monate', e.target.value)} /></label>
+          <label className="text-xs text-muted-foreground">Abschlusswert €<Input type="number" min={0} className="h-8 w-28" value={f.abschlusswert} placeholder="optional" onChange={e => setF(r.client_id, 'abschlusswert', e.target.value)} /></label>
+          <label className="text-xs text-muted-foreground">Retainer/Monat €<Input type="number" min={0} className="h-8 w-28" value={f.retainer_monat} placeholder="optional" onChange={e => setF(r.client_id, 'retainer_monat', e.target.value)} /></label>
           {(() => {
             const cur = r.close_opportunity_id ? opts?.opp[r.close_opportunity_id] : null;
             const curL = cur?.leistungen ? cur.leistungen.split(', ') : [];
             const sel = f.leistungen ?? curL;
             const cash = opts?.cash[r.client_id];
             return <>
-              <label className="text-[11px] text-muted-foreground flex flex-col">Leistungen
+              <label className="text-xs text-muted-foreground flex flex-col">Leistungen
                 <Popover><PopoverTrigger asChild><Button variant="outline" size="sm" className="h-8 w-44 justify-between font-normal" disabled={!opts}><span className="truncate">{sel.length ? `${sel.length} gewählt` : 'auswählen'}</span><ChevronDown className="h-3 w-3" /></Button></PopoverTrigger>
                   <PopoverContent className="w-80 max-h-72 overflow-y-auto p-2">
                     {(opts?.leistungen || []).map(o => (
                       <label key={o} className="flex items-start gap-2 py-1 text-xs cursor-pointer"><Checkbox checked={sel.includes(o)} onCheckedChange={c => setF(r.client_id, 'leistungen', c ? [...sel, o] : sel.filter(x => x !== o))} />{o}</label>
                     ))}
                   </PopoverContent></Popover></label>
-              <label className="text-[11px] text-muted-foreground flex flex-col">Deal-Typ
+              <label className="text-xs text-muted-foreground flex flex-col">Deal-Typ
                 <Select value={f.deal_typ || cur?.deal_typ || (!r.close_opportunity_id ? 'Neukunde' : '')} onValueChange={v => setF(r.client_id, 'deal_typ', v)} disabled={!opts}>
                   <SelectTrigger className="h-8 w-36"><SelectValue placeholder="–" /></SelectTrigger>
                   <SelectContent>{(opts?.deal_typ || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></label>
-              <label className="text-[11px] text-muted-foreground flex flex-col">Paket
+              <label className="text-xs text-muted-foreground flex flex-col">Paket
                 <Select value={f.paket || cash?.paket || ''} onValueChange={v => setF(r.client_id, 'paket', v)} disabled={!cash}>
                   <SelectTrigger className="h-8 w-28"><SelectValue placeholder="–" /></SelectTrigger>
                   <SelectContent>{(opts?.paket || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></label>
@@ -186,17 +186,17 @@ export default function KundenLaufzeiten() {
     const end = bereit ? plusM(s0, mN) : null;
     const cur = r.close_opportunity_id ? opts?.opp[r.close_opportunity_id] : null;
     const curL = cur?.leistungen ? cur.leistungen.split(', ') : []; const sel = f.leistungen ?? curL; const cash = opts?.cash[r.client_id];
-    const lbl = 'text-[11px] text-muted-foreground flex items-center gap-1 mb-1';
+    const lbl = 'text-xs text-muted-foreground flex items-center gap-1 mb-1';
     const v = vorschlaege[r.client_id]; const vb = vorbelegt[r.client_id];
     const vf = (k: keyof Form) => vb?.has(k) ? 'ring-1 ring-primary/40 bg-primary/5 italic' : '';
-    const vTag = (k: keyof Form) => vb?.has(k) ? <span className="text-[10px] text-primary/80">· Vorschlag</span> : null;
+    const vTag = (k: keyof Form) => vb?.has(k) ? <span className="text-xs text-primary/80">· Vorschlag</span> : null;
     return (
       <div key={r.client_id} className={cn('rounded-2xl bg-card p-6 shadow-[0_1px_3px_hsl(var(--foreground)/0.06),0_8px_24px_-12px_hsl(var(--foreground)/0.10)] flex flex-col gap-4 transition-all duration-300', weg.has(r.client_id) && 'opacity-0 scale-95 -translate-y-2')}>
         <div>
-          <h3 className="text-base font-semibold leading-tight">{r.kunde}</h3>
-          <div className="flex flex-wrap gap-1.5 mt-2">{fehltLabels(r).map(l => <span key={l} className="text-[11px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{l}</span>)}
-            {r.quelle === 'Viral Connect' && <span className="text-[11px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground">aus Viral Connect</span>}
-            {v?.abgleich === 'bestaetigt' && <span className="text-[11px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground">aus Slack bestätigt</span>}</div>
+          <h3 className="text-sm font-semibold leading-tight">{r.kunde}</h3>
+          <div className="flex flex-wrap gap-1.5 mt-2">{fehltLabels(r).map(l => <span key={l} className="text-xs rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{l}</span>)}
+            {r.quelle === 'Viral Connect' && <span className="text-xs rounded-full bg-muted px-2 py-0.5 text-muted-foreground">aus Viral Connect</span>}
+            {v?.abgleich === 'bestaetigt' && <span className="text-xs rounded-full bg-muted px-2 py-0.5 text-muted-foreground">aus Slack bestätigt</span>}</div>
         </div>
         {isAdmin ? <>
           {v ? <p className="text-xs text-muted-foreground">Vorschlag aus Slack vom {dt(v.quelle_datum)} · Quelle: {v.quelle_typ === 'upsell' ? 'Upsell' : 'Abschluss'}</p>
@@ -210,7 +210,7 @@ export default function KundenLaufzeiten() {
           <div className="space-y-3">
             <div><span className={lbl}>Startdatum{!r.close_opportunity_id && tip(r.vc_opportunity_id ? 'Abschluss existiert nur bei Viral Connect – beim Speichern wird er in unserem Close angelegt (Marke „Viral Connect“).' : 'Beim Speichern wird in Close ein gewonnener Abschluss angelegt (mit Bestätigung).')}</span>
               <Input type="date" className={feld} value={s0} onChange={e => setF(r.client_id, 'startdatum', e.target.value)} />
-              {v?.start_laut_slack && <p className="text-[11px] text-muted-foreground mt-1">laut Slack {dt(v.start_laut_slack)}</p>}</div>
+              {v?.start_laut_slack && <p className="text-xs text-muted-foreground mt-1">laut Slack {dt(v.start_laut_slack)}</p>}</div>
             <div><span className={lbl}>Laufzeit (Mon.){vTag('laufzeit_monate')}</span>
               <Input type="number" min={1} max={120} step={1} className={cn(feld, vf('laufzeit_monate'))} value={m0} onChange={e => setF(r.client_id, 'laufzeit_monate', e.target.value)} /></div>
           </div>
@@ -245,7 +245,7 @@ export default function KundenLaufzeiten() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div>
-        <h1 className="text-2xl font-heading font-bold">Laufzeiten</h1>
+        <h1 className="text-2xl font-semibold font-heading">Laufzeiten</h1>
         <p className="text-xs text-muted-foreground mt-0.5">Aktive Kunden laut Close („Aktueller Klient“, „Pausiert“). Eingaben werden direkt in Close gespeichert und danach neu aus Close eingelesen.</p>
         {!loading && <p className="text-sm text-muted-foreground mt-2 tabular-nums"><span className="text-foreground font-medium">{aktive.length} aktive Kunden</span> · {klar.length} mit vollständiger Laufzeit · {unklar.length} unvollständig</p>}
       </div>
@@ -263,9 +263,9 @@ export default function KundenLaufzeiten() {
                     <TableCell className="align-top"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditing(null)}><X className="h-4 w-4" /></Button></TableCell></TableRow>
                 ) : (
                   <TableRow key={r.client_id} className={cn('transition-colors duration-700', neu === r.client_id && 'bg-primary/5 animate-in fade-in slide-in-from-bottom-2 duration-500')}>
-                    <TableCell className="font-medium">{r.kunde}{r.quelle === 'Viral Connect' && <Badge variant="outline" className="ml-2 text-[10px]">aus Viral Connect</Badge>}</TableCell>
+                    <TableCell className="font-medium">{r.kunde}{r.quelle === 'Viral Connect' && <Badge variant="outline" className="ml-2 text-xs">aus Viral Connect</Badge>}</TableCell>
                     <TableCell className="tabular-nums">{dt(r.startdatum)}</TableCell>
-                    <TableCell className="tabular-nums whitespace-nowrap">{r.upsell_startdatum && r.upsell_laufzeit ? <>{r.upsell_laufzeit} Mon.<Tooltip><TooltipTrigger asChild><Badge variant="outline" className="ml-2 text-[10px] font-normal text-muted-foreground cursor-default">verlängert</Badge></TooltipTrigger><TooltipContent>1. Laufzeit: {dt(r.startdatum)}, {r.laufzeit_monate} Mon. · Verlängerung ab {dt(r.upsell_startdatum)}</TooltipContent></Tooltip></> : <>{r.laufzeit_monate} Mon.</>}</TableCell>
+                    <TableCell className="tabular-nums whitespace-nowrap">{r.upsell_startdatum && r.upsell_laufzeit ? <>{r.upsell_laufzeit} Mon.<Tooltip><TooltipTrigger asChild><Badge variant="outline" className="ml-2 text-xs font-normal text-muted-foreground cursor-default">verlängert</Badge></TooltipTrigger><TooltipContent>1. Laufzeit: {dt(r.startdatum)}, {r.laufzeit_monate} Mon. · Verlängerung ab {dt(r.upsell_startdatum)}</TooltipContent></Tooltip></> : <>{r.laufzeit_monate} Mon.</>}</TableCell>
                     <TableCell className="tabular-nums">{dt(r.vertragsende)}</TableCell>
                     <TableCell className="text-right tabular-nums">{r.rest} Tage {r.rest < 30 && <Badge variant="destructive" className="ml-2">unter 30 Tage</Badge>}</TableCell>
                     <TableCell className="text-right whitespace-nowrap space-x-1">{isAdmin && <LaufzeitAktionen r={r} onDone={load} />}{isAdmin && <Button size="sm" variant="ghost" className="h-7" onClick={() => setEditing(r.client_id)}><Pencil className="h-3 w-3 mr-1" />Bearbeiten</Button>}{closeLink(r)}</TableCell>
@@ -278,7 +278,7 @@ export default function KundenLaufzeiten() {
         </Card>
         <section className="space-y-4">
           <div>
-            <h2 className="text-sm font-semibold">Laufzeit unklar ({unklar.length})</h2>
+            <h2 className="text-lg font-semibold font-heading">Laufzeit unklar ({unklar.length})</h2>
             <p className="text-xs text-muted-foreground">Hier wird nichts geschätzt. {isAdmin ? 'Startdatum und Laufzeit eintragen und speichern – geschrieben wird nach Close.' : 'Nachtragen können Admins.'}</p>
           </div>
           {unklar.length > 0 && <div className="flex flex-col sm:flex-row gap-2">

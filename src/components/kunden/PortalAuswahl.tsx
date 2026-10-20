@@ -28,9 +28,9 @@ export function SuchFeld({ system, clientId, label, onPick }: { system: SystemKe
         <button key={o.id} disabled={!!o.belegt} onClick={() => !o.belegt && onPick(o)} className="w-full text-left flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted/60 text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">
           <Link2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           <span className="truncate">{o.name || o.id}</span>
-          {o.detail && <span className="text-[11px] text-muted-foreground truncate">{o.detail}</span>}
-          {o.belegt && <span className="text-[11px] text-muted-foreground shrink-0 ml-auto">bereits {o.belegt} zugeordnet</span>}
-          {!o.belegt && auchBeiText(o.auchBei) && <span className="text-[11px] text-muted-foreground shrink-0 ml-auto">{auchBeiText(o.auchBei)}</span>}
+          {o.detail && <span className="text-xs text-muted-foreground truncate">{o.detail}</span>}
+          {o.belegt && <span className="text-xs text-muted-foreground shrink-0 ml-auto">bereits {o.belegt} zugeordnet</span>}
+          {!o.belegt && auchBeiText(o.auchBei) && <span className="text-xs text-muted-foreground shrink-0 ml-auto">{auchBeiText(o.auchBei)}</span>}
         </button>
       ))}
     </div>
@@ -107,7 +107,7 @@ function PortalAnlegen({ kunde, onPick }: { kunde: KundeMin; onPick: (o: Objekt)
 
   const feld = (k: keyof typeof f, label: string, err?: string) => (
     <div className="space-y-1">
-      <label className="text-[11px] text-muted-foreground">{label}</label>
+      <label className="text-xs text-muted-foreground">{label}</label>
       <Input value={f[k]} onChange={e => setF({ ...f, [k]: e.target.value })} className={cn('h-9 bg-muted/50 border-0', err && 'ring-1 ring-destructive')} />
       {err && <p className="text-xs text-destructive">{err}</p>}
     </div>

@@ -84,7 +84,7 @@ export default function Aufgaben() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-heading font-bold">Aufgaben</h1>
+          <h1 className="text-2xl font-semibold font-heading">Aufgaben</h1>
           <p className="text-muted-foreground text-sm">{tasks.length} Aufgaben</p>
         </div>
         {isAdminOrManager && (

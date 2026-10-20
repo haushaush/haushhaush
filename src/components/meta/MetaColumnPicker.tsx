@@ -66,7 +66,7 @@ export function MetaColumnPicker({ columns, visible, onChange, onReset }: Props)
                   />
                   <span className="flex-1 text-foreground">{col.label}</span>
                   {col.alwaysVisible && (
-                    <span className="text-[10px] text-muted-foreground uppercase">Pflicht</span>
+                    <span className="text-xs text-muted-foreground uppercase">Pflicht</span>
                   )}
                 </label>
               );

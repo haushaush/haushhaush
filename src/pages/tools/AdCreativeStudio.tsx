@@ -256,9 +256,9 @@ function ReferenzBibliothek({ onSelectCreative }: { onSelectCreative?: (c: Libra
               <div className="p-3 space-y-2">
                 <p className="text-sm font-medium truncate">{c.name}</p>
                 <div className="flex gap-1 flex-wrap">
-                  {c.branche && <Badge variant="secondary" className="text-[10px]">{c.branche}</Badge>}
-                  {c.format && <Badge variant="outline" className="text-[10px]">{c.format}</Badge>}
-                  {c.typ && <Badge variant="outline" className="text-[10px]">{c.typ}</Badge>}
+                  {c.branche && <Badge variant="secondary" className="text-xs">{c.branche}</Badge>}
+                  {c.format && <Badge variant="outline" className="text-xs">{c.format}</Badge>}
+                  {c.typ && <Badge variant="outline" className="text-xs">{c.typ}</Badge>}
                 </div>
               </div>
               {/* Hover overlay */}
@@ -421,8 +421,8 @@ function CreativeErstellen() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{brief.referenzCreative.name}</p>
                 <div className="flex gap-1 mt-1">
-                  {brief.referenzCreative.branche && <Badge variant="secondary" className="text-[10px]">{brief.referenzCreative.branche}</Badge>}
-                  {brief.referenzCreative.typ && <Badge variant="outline" className="text-[10px]">{brief.referenzCreative.typ}</Badge>}
+                  {brief.referenzCreative.branche && <Badge variant="secondary" className="text-xs">{brief.referenzCreative.branche}</Badge>}
+                  {brief.referenzCreative.typ && <Badge variant="outline" className="text-xs">{brief.referenzCreative.typ}</Badge>}
                 </div>
               </div>
               <Button size="sm" variant="ghost" onClick={() => setBrief((p) => ({ ...p, referenzCreative: null }))}>Andere wählen</Button>
@@ -549,7 +549,7 @@ function CreativeErstellen() {
           <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
             <CheckCircle2 className="h-8 w-8 text-primary" />
           </div>
-          <h3 className="text-lg font-semibold">Creative erstellt!</h3>
+          <h3 className="text-sm font-semibold">Creative erstellt!</h3>
           <p className="text-muted-foreground text-sm">Dein Creative wurde erfolgreich in Figma angelegt.</p>
           <Button variant="outline" onClick={() => { setStep(1); setGenerated(null); }}>Neues Creative erstellen</Button>
         </Card>
@@ -613,8 +613,8 @@ function MeineCreatives() {
           <div className="p-4 space-y-2">
             <p className="font-medium text-sm truncate">{c.headline || "Ohne Headline"}</p>
             <div className="flex gap-1 flex-wrap">
-              {c.branche && <Badge variant="secondary" className="text-[10px]">{c.branche}</Badge>}
-              {c.format && <Badge variant="outline" className="text-[10px]">{c.format}</Badge>}
+              {c.branche && <Badge variant="secondary" className="text-xs">{c.branche}</Badge>}
+              {c.format && <Badge variant="outline" className="text-xs">{c.format}</Badge>}
             </div>
             <p className="text-xs text-muted-foreground">{c.kunde} · {format(new Date(c.created_at), "dd.MM.yyyy")}</p>
             {c.figma_url && (
@@ -634,7 +634,7 @@ export default function AdCreativeStudio() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Ad Creative Studio</h1>
+        <h1 className="text-2xl font-semibold font-heading tracking-tight">Ad Creative Studio</h1>
         <p className="text-muted-foreground text-sm mt-1">Erstelle datengetriebene Ad Creatives mit KI-gestützten Briefs und Figma-Integration.</p>
       </div>
 

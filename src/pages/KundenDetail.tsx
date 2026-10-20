@@ -90,7 +90,7 @@ function QuellFeld({ label, crm, close, verknuepft, type }: { label: string; crm
     <div>
       <InfoField label={label} value={wert} type={type} />
       {quelle && (
-        <p className={`text-[10px] mt-0.5 ${quelle.tip ? 'text-warning' : 'text-muted-foreground/70'}`} title={quelle.tip}>
+        <p className={`text-xs mt-0.5 ${quelle.tip ? 'text-warning' : 'text-muted-foreground/70'}`} title={quelle.tip}>
           {quelle.t}{quelle.tip ? ' ⓘ' : ''}
         </p>
       )}
@@ -608,7 +608,7 @@ export default function KundenDetail() {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-heading font-bold">{client.name}</h1>
+            <h1 className="text-2xl font-semibold font-heading">{client.name}</h1>
             <Badge variant="secondary" className={STATUS_STYLES[client.kundenstatus] || 'bg-muted'}>
               {client.kundenstatus}
             </Badge>
@@ -618,12 +618,12 @@ export default function KundenDetail() {
             </span>
             {!closeLink ? (
               <button type="button" onClick={zuVerknuepfungen}
-                className="inline-flex items-center gap-1.5 text-[11px] rounded-full px-2.5 py-1 border bg-muted/40 border-border text-muted-foreground hover:text-foreground">
+                className="inline-flex items-center gap-1.5 text-xs rounded-full px-2.5 py-1 border bg-muted/40 border-border text-muted-foreground hover:text-foreground">
                 <AlertCircle className="h-3 w-3" /> Close: nicht verknüpft · Jetzt verknüpfen
               </button>
             ) : (<>
             {syncFreshness.color !== 'success' && !closeSyncing && (
-              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={handleResyncClose}>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleResyncClose}>
                 <RefreshCw className="h-3 w-3 mr-1" /> Jetzt synchronisieren
               </Button>
             )}
@@ -633,7 +633,7 @@ export default function KundenDetail() {
                   type="button"
                   disabled={closeSyncing}
                   title="Close-Sync"
-                  className={`inline-flex items-center gap-1.5 text-[11px] rounded-full px-2.5 py-1 border transition-colors disabled:opacity-60 ${
+                  className={`inline-flex items-center gap-1.5 text-xs rounded-full px-2.5 py-1 border transition-colors disabled:opacity-60 ${
                     closeSyncing ? 'bg-muted/40 border-border text-muted-foreground animate-pulse' :
                     syncFreshness.color === 'success' ? 'bg-success/10 border-success/30 text-success hover:bg-success/20' :
                     syncFreshness.color === 'warning' ? 'bg-warning/10 border-warning/30 text-warning hover:bg-warning/20' :
@@ -701,7 +701,7 @@ export default function KundenDetail() {
             </Button>
           )}
           {client.notion_id && (
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-warning/10 border border-warning/30 rounded-full px-2.5 py-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-warning/10 border border-warning/30 rounded-full px-2.5 py-1">
               <AlertTriangle className="h-3 w-3 text-warning" />
               <span>Notion-synct: Edits werden ggf. beim nächsten Sync überschrieben.</span>
             </div>
@@ -1295,7 +1295,7 @@ export default function KundenDetail() {
                               {ad.meta_campaign_name || ad.meta_account_name || '–'}
                             </p>
                             {ad.is_top_performer && (
-                              <span className="inline-block mt-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500">
+                              <span className="inline-block mt-1.5 text-xs font-medium px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500">
                                 TOP
                               </span>
                             )}
@@ -1403,7 +1403,7 @@ export default function KundenDetail() {
                       <p className="text-lg font-semibold tabular-nums">
                         {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(totals.clicks)}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">CTR {ctr.toFixed(2)}%</p>
+                      <p className="text-xs text-muted-foreground">CTR {ctr.toFixed(2)}%</p>
                     </CardContent></Card>
                   </div>
                 );
@@ -1440,7 +1440,7 @@ export default function KundenDetail() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                   <p className="font-medium truncate">{c.name}</p>
-                                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${statusColor}`}>
+                                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded shrink-0 ${statusColor}`}>
                                     {c.status}
                                   </span>
                                 </div>
@@ -1450,25 +1450,25 @@ export default function KundenDetail() {
                               </div>
                               <div className="grid grid-cols-4 gap-4 text-right shrink-0">
                                 <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase">Spend</p>
+                                  <p className="text-xs text-muted-foreground uppercase">Spend</p>
                                   <p className="text-sm font-semibold tabular-nums">
                                     {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(spend)}
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase">Reach</p>
+                                  <p className="text-xs text-muted-foreground uppercase">Reach</p>
                                   <p className="text-sm font-semibold tabular-nums">
                                     {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(reach)}
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase">Impr.</p>
+                                  <p className="text-xs text-muted-foreground uppercase">Impr.</p>
                                   <p className="text-sm font-semibold tabular-nums">
                                     {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(impressions)}
                                   </p>
                                 </div>
                                 <div>
-                                  <p className="text-[10px] text-muted-foreground uppercase">Clicks</p>
+                                  <p className="text-xs text-muted-foreground uppercase">Clicks</p>
                                   <p className="text-sm font-semibold tabular-nums">
                                     {new Intl.NumberFormat('de-DE', { notation: 'compact' }).format(clicks)}
                                   </p>
@@ -1562,7 +1562,7 @@ export default function KundenDetail() {
                 <ul className="divide-y divide-border/50">
                   {closeTasks.map((t: any) => (
                     <li key={t.close_task_id} className="flex items-start gap-3 py-2.5">
-                      <span className={`mt-0.5 h-4 w-4 rounded border flex items-center justify-center text-[10px] ${t.is_complete ? 'bg-success/20 border-success/40 text-success' : 'border-border'}`}>
+                      <span className={`mt-0.5 h-4 w-4 rounded border flex items-center justify-center text-xs ${t.is_complete ? 'bg-success/20 border-success/40 text-success' : 'border-border'}`}>
                         {t.is_complete ? '✓' : ''}
                       </span>
                       <div className="flex-1 min-w-0">

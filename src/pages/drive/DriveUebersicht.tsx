@@ -60,7 +60,7 @@ export default function DriveUebersicht() {
     <div className="px-6 py-8 max-w-7xl mx-auto space-y-6">
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Drive — Übersicht</h1>
+          <h1 className="text-2xl font-semibold font-heading tracking-tight">Drive — Übersicht</h1>
           <p className="text-sm text-muted-foreground">
             Zentrale Ansicht aller verbundenen Drive-Inhalte.
           </p>
@@ -107,7 +107,7 @@ export default function DriveUebersicht() {
           </div>
 
           <section className="space-y-3">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            <h2 className="text-lg font-semibold font-heading text-muted-foreground uppercase tracking-wide">
               Zuletzt geändert
             </h2>
             <DriveFilesTable

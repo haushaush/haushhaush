@@ -155,7 +155,7 @@ export function SalesCloseAbschluesse() {
     <div className="space-y-6 p-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+          <h1 className="text-2xl font-semibold font-heading tracking-tight flex items-center gap-2">
             <TrendingUp className="h-6 w-6 text-primary" />
             Sales Übersicht
           </h1>

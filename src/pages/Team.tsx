@@ -75,7 +75,7 @@ export default function TeamPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Team & HR</h1>
+          <h1 className="text-2xl font-semibold font-heading">Team & HR</h1>
           <p className="text-muted-foreground text-sm">{members.length} Teammitglieder</p>
         </div>
         {isAdmin && (

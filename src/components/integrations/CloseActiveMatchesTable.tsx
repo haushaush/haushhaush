@@ -89,20 +89,20 @@ function MatchTypeBadge({ type }: { type: string | null }) {
   if (!type) return null;
   if (type.startsWith("auto")) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-[4px] bg-teal-500/15 text-teal-600 dark:text-teal-400 px-2 py-0.5 text-[10px] font-medium">
+      <span className="inline-flex items-center gap-1 rounded-[4px] bg-teal-500/15 text-teal-600 dark:text-teal-400 px-2 py-0.5 text-xs font-medium">
         <Bot className="h-3 w-3" /> Auto
       </span>
     );
   }
   if (type === "ai_suggested") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-[4px] bg-purple-500/15 text-purple-600 dark:text-purple-400 px-2 py-0.5 text-[10px] font-medium">
+      <span className="inline-flex items-center gap-1 rounded-[4px] bg-purple-500/15 text-purple-600 dark:text-purple-400 px-2 py-0.5 text-xs font-medium">
         <Sparkles className="h-3 w-3" /> KI
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-[4px] bg-muted text-muted-foreground px-2 py-0.5 text-[10px] font-medium">
+    <span className="inline-flex items-center gap-1 rounded-[4px] bg-muted text-muted-foreground px-2 py-0.5 text-xs font-medium">
       <Check className="h-3 w-3" /> Manuell
     </span>
   );
@@ -111,13 +111,13 @@ function MatchTypeBadge({ type }: { type: string | null }) {
 function StatusBadge({ category }: { category: string | null | undefined }) {
   if (category === "upsell") {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[4px] bg-blue-500/15 text-blue-600 dark:text-blue-400 font-medium">
+      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-[4px] bg-blue-500/15 text-blue-600 dark:text-blue-400 font-medium">
         💡 Upsell
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-[4px] bg-green-500/15 text-green-600 dark:text-green-400 font-medium">
+    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-[4px] bg-green-500/15 text-green-600 dark:text-green-400 font-medium">
       🏆 Won
     </span>
   );
@@ -269,7 +269,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
             {statusChips.map((c) => (
               <button
                 key={c.key} onClick={() => setStatusFilter(statusFilter === c.key ? "all" : c.key)}
-                className={cn("px-2.5 py-1 rounded-[4px] text-[11px] font-medium transition-colors",
+                className={cn("px-2.5 py-1 rounded-[4px] text-xs font-medium transition-colors",
                   statusFilter === c.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
               >{c.label}</button>
             ))}
@@ -278,7 +278,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
             {sourceChips.map((c) => (
               <button
                 key={c.key} onClick={() => setSourceFilter(c.key)}
-                className={cn("px-2.5 py-1 rounded-[4px] text-[11px] font-medium transition-colors",
+                className={cn("px-2.5 py-1 rounded-[4px] text-xs font-medium transition-colors",
                   sourceFilter === c.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
               >{c.label}</button>
             ))}
@@ -308,7 +308,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
           <div className="border border-border rounded-lg overflow-hidden">
             <div className="max-h-[480px] overflow-auto">
               <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground/80 sticky top-0 z-10">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground/80 sticky top-0 z-10">
                   <tr>
                     <SortHeader label="Kunde" sortKey="kunde" active={sortKey} dir={sortDir} onSort={handleSort} />
                     <SortHeader label="Close Lead" sortKey="lead" active={sortKey} dir={sortDir} onSort={handleSort} />
@@ -331,7 +331,7 @@ export function CloseActiveMatchesTable({ matches, loading, onChanged }: Props) 
                       </td>
                       <td className="px-3 py-1.5">
                         <p className="text-xs font-medium leading-tight">{row.close_lead_name || "–"}</p>
-                        <p className="text-[10px] font-mono text-muted-foreground leading-tight">{row.close_lead_id}</p>
+                        <p className="text-xs font-mono text-muted-foreground leading-tight">{row.close_lead_id}</p>
                       </td>
                       <td className="px-3 py-1.5"><StatusBadge category={row.status_category} /></td>
                       <td className="px-3 py-1.5"><MatchTypeBadge type={row.match_type} /></td>

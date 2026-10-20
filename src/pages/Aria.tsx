@@ -195,7 +195,7 @@ export default function Aria() {
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-heading font-bold text-foreground">ARIA</h1>
+            <h1 className="text-2xl font-semibold font-heading text-foreground">ARIA</h1>
             <p className="text-sm text-muted-foreground">Automationen & Gedächtnis</p>
           </div>
         </div>
@@ -217,7 +217,7 @@ export default function Aria() {
         {/* Automations Tab */}
         <TabsContent value="automations" className="mt-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Meine Automationen</h2>
+            <h2 className="text-lg font-semibold font-heading text-foreground">Meine Automationen</h2>
             {isAdminOrManager && (
               <Button size="sm" onClick={() => { setEditingAutomation(null); setBuilderOpen(true); }} className="gap-1.5">
                 <Plus className="h-3.5 w-3.5" /> Neue Automation
@@ -249,7 +249,7 @@ export default function Aria() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-semibold text-foreground">{auto.name}</h3>
+                              <h3 className="text-sm font-semibold text-foreground">{auto.name}</h3>
                               <Badge variant="secondary">{TRIGGER_LABELS[auto.trigger_type] || auto.trigger_type}</Badge>
                               {!auto.active && <Badge variant="outline" className="text-muted-foreground">Inaktiv</Badge>}
                             </div>
@@ -301,7 +301,7 @@ export default function Aria() {
                             <div className="space-y-1.5">
                               {auto.steps.map((step: any, i: number) => (
                                 <div key={i} className="flex items-center gap-2 text-xs bg-muted/50 rounded-md px-3 py-2">
-                                  <span className="w-5 h-5 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-[10px] font-bold shrink-0">{i + 1}</span>
+                                  <span className="w-5 h-5 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-bold shrink-0">{i + 1}</span>
                                   <span className="font-medium">{step.type}</span>
                                   {step.table && <span className="text-muted-foreground">→ {step.table}</span>}
                                   {step.title && <span className="text-muted-foreground">"{step.title}"</span>}

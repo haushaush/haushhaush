@@ -84,7 +84,7 @@ export default function EmailAutomationRules() {
             <Link to="/email-automatisierung"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Automatisierungs-Regeln</h1>
+            <h1 className="text-2xl font-semibold font-heading tracking-tight">Automatisierungs-Regeln</h1>
             <p className="text-sm text-muted-foreground">Regeln für eingehende E-Mails im geteilten Postfach</p>
           </div>
         </div>
@@ -95,7 +95,7 @@ export default function EmailAutomationRules() {
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Regeln</h2>
+        <h2 className="text-lg font-semibold font-heading text-muted-foreground uppercase tracking-wide">Regeln</h2>
         {loading && <p className="text-sm text-muted-foreground">Lädt…</p>}
         {!loading && rules.length === 0 && (
           <Card className="p-6 text-center text-sm text-muted-foreground">
@@ -147,7 +147,7 @@ export default function EmailAutomationRules() {
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+        <h2 className="text-lg font-semibold font-heading text-muted-foreground uppercase tracking-wide">
           Letzte Ausführungen
         </h2>
         {!loading && executions.length === 0 && (
