@@ -253,12 +253,12 @@ export function AppSidebar() {
     if (!item.children) {
       const link = (
         <NavLink to={item.url} end className={cn(
-          'sidebar-nav-item flex items-center gap-3 rounded-lg transition-colors',
-          collapsed ? 'justify-center px-0 py-2.5 min-h-[40px]' : 'px-3 py-[9px] min-h-[40px]',
-          'text-[14px] font-medium',
-          parentActive ? 'bg-sidebar-accent text-primary border-l-[3px] border-primary' : 'text-foreground hover:bg-muted/60'
+          'sidebar-nav-item flex items-center rounded-lg transition-colors',
+          collapsed ? 'justify-center px-0 py-2.5 min-h-[36px]' : 'gap-3 px-3 py-2 min-h-[36px]',
+          'text-sm font-medium',
+          parentActive ? 'text-primary' : 'text-sidebar-foreground hover:bg-muted/60'
         )} aria-current={parentActive ? 'page' : undefined}>
-          <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+          <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
           {!collapsed && <span className="truncate">{item.title}</span>}
         </NavLink>
       );
@@ -281,11 +281,11 @@ export function AppSidebar() {
         <Tooltip key={item.title}>
           <TooltipTrigger asChild>
             <NavLink to={item.url} className={cn(
-              'sidebar-nav-item flex items-center justify-center rounded-lg transition-colors min-h-[40px] px-0 py-2.5',
-              'text-[14px] font-medium',
-              parentActive ? 'text-primary' : 'text-foreground hover:bg-muted/60'
+              'sidebar-nav-item flex items-center justify-center rounded-lg transition-colors min-h-[36px] px-0 py-2.5',
+              'text-sm font-medium',
+              parentActive ? 'text-primary' : 'text-sidebar-foreground hover:bg-muted/60'
             )}>
-              <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+              <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
             </NavLink>
           </TooltipTrigger>
           <TooltipContent side="right" className="text-xs">{item.title}</TooltipContent>
@@ -294,28 +294,28 @@ export function AppSidebar() {
     }
 
     return (
-      <div key={item.title}>
+      <div key={item.title} className="mb-2">
         <button
           onClick={() => toggleGroup(item.title)}
           className={cn(
-            'flex items-center gap-3 px-3 py-[9px] rounded-lg w-full text-left transition-colors min-h-[40px]',
-            'text-[14px] font-medium',
-            parentActive ? 'text-primary' : 'text-foreground hover:bg-muted/60'
+            'flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left transition-colors min-h-[36px]',
+            'text-sm font-medium',
+            (parentActive || isOpen) ? 'text-primary' : 'text-sidebar-foreground hover:bg-muted/60'
           )}
           aria-expanded={isOpen}
         >
-          <item.icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+          <item.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className="flex-1 truncate">{item.title}</span>
           <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200', isOpen && 'rotate-90')} aria-hidden="true" />
         </button>
         <div className={cn('overflow-hidden transition-all duration-200 ease-in-out', isOpen ? 'max-h-[28rem]' : 'max-h-0')}>
-          <div className="ml-7 border-l border-border pl-3 py-1 space-y-0.5">
+          <div className="ml-7 border-l border-border pl-3 py-1">
             {item.children?.filter(childVisible).map(child => {
               const childActive = isActive(child.url);
               return (
                 <NavLink key={child.url} to={child.url} end={child.url === item.url} className={cn(
-                  'block px-3 py-2 rounded-md text-sm transition-colors min-h-[36px] truncate',
-                  childActive ? 'bg-sidebar-accent text-primary font-medium border-l-[3px] border-primary -ml-[calc(0.75rem+1px)] pl-[calc(0.75rem+1px)]' : 'text-muted-foreground hover:bg-muted/60'
+                  'block px-3 py-[6px] rounded-md text-sm transition-colors min-h-[32px] truncate',
+                  childActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium border-l-2 border-primary -ml-0.5' : 'text-muted-foreground hover:bg-muted/60'
                 )} aria-current={childActive ? 'page' : undefined}>
                   {child.title}
                 </NavLink>
@@ -448,7 +448,7 @@ export function AppSidebar() {
         </div>
 
         {/* ─── LEVEL 1: Primary Navigation ─── */}
-        <nav className="flex-1 px-2 py-2 space-y-0.5" aria-label="Hauptnavigation">
+        <nav className="flex-1 px-3 py-2 space-y-0.5" aria-label="Hauptnavigation">
           {navItemsBefore.map(renderNavItem)}
 
           {navItemsAfter.map(renderNavItem)}
@@ -460,7 +460,7 @@ export function AppSidebar() {
         </div>
 
         {/* ─── LEVEL 3: Utility ─── */}
-        <div className="px-2 space-y-[2px]">
+        <div className="px-3 space-y-[2px]">
           {renderLevel3(
             <>
               <Bug className={cn('shrink-0', collapsed ? 'h-[15px] w-[15px] opacity-60' : 'h-[15px] w-[15px]')} aria-hidden="true" />
@@ -493,28 +493,28 @@ export function AppSidebar() {
                   <NavLink
                     to={visibleToolsItems[0].url}
                     className={cn(
-                      'sidebar-nav-item flex items-center justify-center rounded-lg transition-colors min-h-[40px] px-0 py-2.5',
-                      'text-[14px] font-medium',
-                      anyToolActive ? 'text-primary' : 'text-foreground hover:bg-muted/60'
+                      'sidebar-nav-item flex items-center justify-center rounded-lg transition-colors min-h-[36px] px-0 py-2.5',
+                      'text-sm font-medium',
+                      anyToolActive ? 'text-primary' : 'text-sidebar-foreground hover:bg-muted/60'
                     )}
                   >
-                    <Wrench className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+                    <Wrench className="h-4 w-4 shrink-0" aria-hidden="true" />
                   </NavLink>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="text-xs">Integrationen</TooltipContent>
               </Tooltip>
             ) : (
-              <div>
+              <div className="mb-2">
                 <button
                   onClick={() => setOpenGroups(p => ({ ...p, __tools: !toolsOpen }))}
                   className={cn(
-                    'flex items-center gap-3 px-3 py-[9px] rounded-lg w-full text-left transition-colors min-h-[40px]',
-                    'text-[14px] font-medium',
-                    anyToolActive ? 'text-primary' : 'text-foreground hover:bg-muted/60'
+                    'flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left transition-colors min-h-[36px]',
+                    'text-sm font-medium',
+                    anyToolActive ? 'text-primary' : 'text-sidebar-foreground hover:bg-muted/60'
                   )}
                   aria-expanded={toolsOpen}
                 >
-                  <Wrench className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+                  <Wrench className="h-4 w-4 shrink-0" aria-hidden="true" />
                   <span className="flex-1 truncate">Integrationen</span>
                   <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200', toolsOpen && 'rotate-90')} aria-hidden="true" />
                 </button>
