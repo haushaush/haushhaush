@@ -64,8 +64,8 @@ Deno.serve(async (req) => {
       const cash: Record<string, any> = {};
       for (const r of st || []) { const a = acts.get(r.close_lead_id); cash[r.client_id] = a ? { activity_id: a.id, paket: a[`custom.${PAKET_CF}`] ?? null } : null; }
       const opp: Record<string, any> = {};
-      const { data: ab } = await admin.from("close_abschluesse").select("close_opportunity_id, leistungen, deal_typ").in("close_opportunity_id", (await admin.from("kunden_laufzeit_stand").select("close_opportunity_id").not("close_opportunity_id", "is", null)).data?.map((x: any) => x.close_opportunity_id) || ["-"]);
-      (ab || []).forEach((a: any) => opp[a.close_opportunity_id] = { leistungen: a.leistungen, deal_typ: a.deal_typ });
+      const { data: ab } = await admin.from("close_abschluesse").select("close_opportunity_id, leistungen, deal_typ, retainer_monat").in("close_opportunity_id", (await admin.from("kunden_laufzeit_stand").select("close_opportunity_id").not("close_opportunity_id", "is", null)).data?.map((x: any) => x.close_opportunity_id) || ["-"]);
+      (ab || []).forEach((a: any) => opp[a.close_opportunity_id] = { leistungen: a.leistungen, deal_typ: a.deal_typ, retainer_monat: a.retainer_monat });
       return json({ leistungen: ch(fo, CF.leistungen), deal_typ: ch(fo, CF.deal_typ), paket: ch(fa, PAKET_CF), cash, opp,
         mit_cash: Object.values(cash).filter(Boolean).length, ohne_cash: Object.values(cash).filter((x) => !x).length });
     } catch (e) { return json({ error: e instanceof Error ? e.message : String(e) }, 502); }
