@@ -6,6 +6,12 @@ import { ChevronLeft, ChevronRight, TrendingUp, Users, Target, Trophy, Clock, Za
 import { formatValue } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
+import type { Rechnung } from '@/lib/rechnungen';
+import type { EffizienzResult, QuellenZustand, RevenueData } from '@/hooks/useDataSources';
+
+/** Ohne Messwert: statt einer Zahl wird ein Zustandstext gezeigt – nie „0 €“ für „nicht gemessen“. */
+type KartenZustand = { text: string; ton: 'leer' | 'fehler' | 'laedt' };
+
 interface KpiCardData {
   label: string;
   value: string;
@@ -17,6 +23,7 @@ interface KpiCardData {
   badgeColor?: 'destructive' | 'default' | 'secondary';
   trend?: number | null;
   gauge?: number;
+  zustand?: KartenZustand;
 }
 
 interface SlideData {
@@ -27,17 +34,27 @@ interface SlideData {
 
 interface KpiSliderProps {
   deals: any[];
-  invoices: any[];
-  revenue: { mrr: number; recurring: any[] };
+  invoices: Rechnung[];
+  invoicesZustand: QuellenZustand;
+  revenue: RevenueData;
+  cashCollect: { summe: number; anzahl: number; zustand: QuellenZustand };
   salesPerf: any[];
   salesPerfMonth: any[];
   team: any[];
   tasks: any[];
-  effizienz: { score: number; scoreA: number; scoreB: number; scoreC: number; avgDaysOpen: number; loading: boolean };
+  effizienz: EffizienzResult;
   isMobile: boolean;
-  qonto?: { accounts: any[]; total_balance: number; org_name: string };
-  metaTotals?: { spend: number; leads: number; cpl: number; lastSync: string | null };
+  qonto: { accounts: any[]; total_balance: number; zustand: QuellenZustand };
+  metaTotals: { spend: number; leads: number; cpl: number | null; lastSync: string | null; zustand: QuellenZustand };
 }
+
+const LEER_TEXT: Record<Exclude<QuellenZustand, 'ok'>, KartenZustand> = {
+  laedt: { text: 'lädt …', ton: 'laedt' },
+  leer: { text: 'keine Daten', ton: 'leer' },
+  fehler: { text: 'Fehler beim Laden', ton: 'fehler' },
+};
+const kartenZustand = (z: QuellenZustand, leerText?: string): KartenZustand | undefined =>
+  z === 'ok' ? undefined : z === 'leer' && leerText ? { text: leerText, ton: 'leer' } : LEER_TEXT[z];
 
 function getMonthStart() {
   const d = new Date();
