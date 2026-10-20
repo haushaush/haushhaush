@@ -124,59 +124,18 @@ export function ClosePanel({ clientId, namen, fertig }: { clientId: string; name
   </>;
 }
 
-// ---------- Marke in Close ----------
-// Exakt die Auswahlwerte des Close-Felds „Marke". Kein Vorschlag – der Nutzer wählt selbst.
-const MARKEN = ['AttentionX', 'Haush Haush', 'Leadsharks', 'Viral Connect'] as const;
-export function MarkePanel({ clientId, fertig }: { clientId: string; fertig: (e: Erledigt) => void }) {
-  const [wahl, setWahl] = useState<typeof MARKEN[number] | null>(null);
-  const [busy, setBusy] = useState(false);
-  const speichern = async () => {
-    if (!wahl) return;
-    setBusy(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('close-marke-schreiben', { body: { client_id: clientId, marke: wahl } });
-      let r: any = data;
-      if (error) { const ctx: any = (error as any).context; r = ctx?.json ? await ctx.json().catch(() => null) : null; throw new Error(r?.error || error.message); }
-      if (!r?.ok) throw new Error(r?.error || `Close hält jetzt „${r?.marke ?? 'leer'}"`);
-      toast.success(`Marke in Close gesetzt: ${r.marke}`);
-      fertig({ text: `Marke: ${r.marke}` });
-    } catch (e) { toast.error(fehlerText(e)); } finally { setBusy(false); }
-  };
+// ---------- Buchhaltungsquelle: ergibt sich aus der Zahlungsverknüpfung ----------
+/** Zwei Inline-Panels: Qonto-Zahler oder lexoffice-Empfänger zuordnen. Es gibt keinen Knopf, der die Quelle direkt setzt. */
+export function ZahlungPanel({ kunde, fertig }: { kunde: { id: string; name: string | null; vor_nachname?: string | null }; fertig: (e: Erledigt) => void }) {
+  const [sys, setSys] = useState<'qonto' | 'lexoffice' | null>(null);
   return <>
-    <p className="text-xs flex items-center gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 w-fit"><AlertTriangle className="h-3.5 w-3.5 text-warning" />Schreibt direkt in Close (Feld „Marke" am verknüpften Lead).</p>
-    <div className="flex flex-wrap items-center gap-2">
-      {MARKEN.map(m => <Button key={m} size="sm" variant={wahl === m ? 'default' : 'outline'} className="h-7 text-xs" onClick={() => setWahl(m)}>{m}</Button>)}
-      <Button size="sm" className="h-7 text-xs" disabled={!wahl || busy} onClick={speichern}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'In Close speichern'}</Button>
-      <KeinBedarfKnopf text="Keine Marke nötig." onSpeichern={async () => { await keinBedarf(clientId, 'marke'); fertig({ text: 'Keine Marke nötig' }); }} />
+    <div className="flex flex-wrap gap-2">
+      <Button size="sm" variant={sys === 'qonto' ? 'secondary' : 'outline'} className="h-7 text-xs" onClick={() => setSys(s => s === 'qonto' ? null : 'qonto')}>Qonto-Zahler zuordnen</Button>
+      <Button size="sm" variant={sys === 'lexoffice' ? 'secondary' : 'outline'} className="h-7 text-xs" onClick={() => setSys(s => s === 'lexoffice' ? null : 'lexoffice')}>lexoffice-Empfänger zuordnen</Button>
     </div>
-  </>;
-}
-
-// ---------- Buchhaltungsquelle ----------
-export function QuellePanel({ clientId, marke, fertig }: { clientId: string; marke: string | null; fertig: (e: Erledigt) => void }) {
-  const [busy, setBusy] = useState(false);
-  const setzen = async (quelle: 'qonto' | 'lexoffice') => {
-    if (!marke) return;
-    setBusy(true);
-    try {
-      const { data: ex, error: e1 } = await (supabase.from as any)('buchhaltung_quelle').select('marke').ilike('marke', marke.trim()).limit(1);
-      if (e1) throw new Error(e1.message);
-      const r = ex?.length
-        ? await (supabase.from as any)('buchhaltung_quelle').update({ quelle, updated_at: new Date().toISOString() }).eq('marke', ex[0].marke)
-        : await (supabase.from as any)('buchhaltung_quelle').insert({ marke: marke.trim(), quelle });
-      if (r.error) throw new Error(r.error.message);
-      toast.success(`Marke „${marke}" → ${quelle}`);
-      fertig({ text: `Quelle: ${quelle === 'qonto' ? 'Qonto' : 'lexoffice'}` });
-    } catch (e) { toast.error(fehlerText(e)); } finally { setBusy(false); }
-  };
-  return <>
-    {marke ? <p className="text-xs text-muted-foreground">Die Quelle wird für die Marke „{marke}" festgelegt und gilt damit für alle Kunden mit dieser Marke.</p>
-      : <p className="text-xs text-muted-foreground">Ohne Marke lässt sich keine Quelle festlegen – zuerst die Marke in Close setzen.</p>}
-    <div className="flex flex-wrap items-center gap-2">
-      <Button size="sm" variant="outline" className="h-7 text-xs" disabled={!marke || busy} onClick={() => setzen('qonto')}>Qonto</Button>
-      <Button size="sm" variant="outline" className="h-7 text-xs" disabled={!marke || busy} onClick={() => setzen('lexoffice')}>lexoffice</Button>
-      <KeinBedarfKnopf text="Keine Buchhaltungsquelle nötig." onSpeichern={async () => { await keinBedarf(clientId, 'buchhaltung'); fertig({ text: 'Keine Quelle nötig' }); }} />
-    </div>
+    {sys && <div className="rounded-lg border border-border/60 bg-card/50 p-2 space-y-2">
+      <SystemPanel key={sys} system={sys} kunde={kunde} stand={{ zustand: 'offen' }} fertig={e => fertig(e)} />
+    </div>}
   </>;
 }
 

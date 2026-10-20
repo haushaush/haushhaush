@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { ImportOrphanModal } from '@/components/settings/ImportOrphanModal';
 import { SecuritySettingsTab } from '@/components/settings/SecuritySettingsTab';
 import { SlackWebhookConfig } from '@/components/settings/SlackWebhookConfig';
+import { InterneEmpfaenger } from '@/components/settings/InterneEmpfaenger';
 import { usePreferences } from '@/hooks/usePreferences';
 
 function AriaVisibilityCard() {
@@ -184,9 +185,9 @@ export default function Einstellungen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
   const defaultTab = 'branding';
-  const adminOnlyTabs: string[] = ['sicherheit'];
+  const adminOnlyTabs: string[] = ['sicherheit', 'buchhaltung'];
   const allowedTabs = isAdmin
-    ? ['branding', 'benachrichtigungen', 'sicherheit']
+    ? ['branding', 'benachrichtigungen', 'sicherheit', 'buchhaltung']
     : ['branding', 'benachrichtigungen'];
   const activeTab = requestedTab && allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
 
@@ -352,6 +353,7 @@ export default function Einstellungen() {
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="benachrichtigungen">Benachrichtigungen</TabsTrigger>
           {isAdmin && <TabsTrigger value="sicherheit">Sicherheit</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="buchhaltung">Buchhaltung</TabsTrigger>}
         </TabsList>
 
 
@@ -423,6 +425,11 @@ export default function Einstellungen() {
         {isAdmin && (
           <TabsContent value="sicherheit" className="mt-4 space-y-6">
             <SecuritySettingsTab />
+          </TabsContent>
+        )}
+        {isAdmin && (
+          <TabsContent value="buchhaltung" className="mt-4 space-y-6">
+            <InterneEmpfaenger />
           </TabsContent>
         )}
 

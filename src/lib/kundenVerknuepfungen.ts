@@ -159,14 +159,17 @@ async function sucheBuch(sys: 'qonto' | 'lexoffice', q: string, clientId?: strin
     const { data: l } = ids.length ? await supabase.from('qonto_client_links').select('id, qonto_client_id, client_id, is_confirmed').in('qonto_client_id', ids) : { data: [] as any[] };
     links = (l || []).map((r: any) => ({ ext: r.qonto_client_id, ref: r.id, client_id: r.client_id, is_confirmed: r.is_confirmed }));
   } else {
-    const { data, error } = await (supabase.from as any)('lexoffice_contacts').select('contact_id, name, email')
-      .or(`name.ilike.${like},email.ilike.${like}`).limit(15);
+    // lexoffice: Kandidaten sind die Verknüpfungszeilen (Schlüssel = Empfängername aus den Rechnungen), nicht lexoffice_contacts.
+    const { data, error } = await (supabase.from as any)('lexoffice_client_links').select('id, lexoffice_contact_name, client_id, is_confirmed')
+      .ilike('lexoffice_contact_name', like).limit(15);
     if (error) throw new Error(error.message);
-    const ids = (data || []).map((c: any) => c.contact_id);
-    const { data: inv } = ids.length ? await (supabase.from as any)('lexoffice_invoices').select('contact_id, voucher_date').in('contact_id', ids) : { data: [] };
-    kand = [...lexKandidaten(data || [], inv || []).values()];
-    const { data: l } = ids.length ? await (supabase.from as any)('lexoffice_client_links').select('id, lexoffice_contact_id, client_id, is_confirmed').in('lexoffice_contact_id', ids) : { data: [] };
-    links = (l || []).map((r: any) => ({ ext: r.lexoffice_contact_id, ref: r.id, client_id: r.client_id, is_confirmed: r.is_confirmed }));
+    const { data: inv } = await (supabase.from as any)('lexoffice_invoices').select('contact_name, voucher_date').ilike('contact_name', like).limit(2000);
+    kand = (data || []).map((r: any) => {
+      const key = (r.lexoffice_contact_name || '').trim().toLowerCase();
+      const ds = (inv || []).filter((i: any) => (i.contact_name || '').trim().toLowerCase() === key).map((i: any) => i.voucher_date).filter(Boolean).sort();
+      return { id: r.id, name: r.lexoffice_contact_name, email: null, anzahl: ds.length, letzte: ds[ds.length - 1] || null };
+    });
+    links = (data || []).map((r: any) => ({ ext: r.id, ref: r.id, client_id: r.client_id, is_confirmed: r.is_confirmed }));
   }
   const fremd = links.filter(l => l.client_id && l.is_confirmed && l.client_id !== clientId);
   const namen = await belegtNamen(fremd.map(l => l.client_id!));
@@ -182,18 +185,26 @@ async function sucheBuch(sys: 'qonto' | 'lexoffice', q: string, clientId?: strin
 }
 
 async function buchVerknuepfen(sys: 'qonto' | 'lexoffice', clientId: string, o: Objekt) {
-  const t = sys === 'qonto' ? 'qonto_client_links' : 'lexoffice_client_links';
-  const extCol = sys === 'qonto' ? 'qonto_client_id' : 'lexoffice_contact_id';
-  const nameCol = sys === 'qonto' ? 'qonto_client_name' : 'lexoffice_contact_name';
-  const { data: ex } = await (supabase.from as any)(t).select('id, client_id, is_confirmed').eq(extCol, o.id).maybeSingle();
-  if (ex?.client_id && ex.is_confirmed && ex.client_id !== clientId) {
-    const n = (await belegtNamen([ex.client_id])).get(ex.client_id);
-    throw new Error(`Bereits ${n} zugeordnet`);
+  if (sys === 'qonto') {
+    const { data: ex } = await supabase.from('qonto_client_links').select('id, client_id, is_confirmed').eq('qonto_client_id', o.id).maybeSingle();
+    if (ex?.client_id && ex.is_confirmed && ex.client_id !== clientId) throw new Error(`Bereits ${(await belegtNamen([ex.client_id])).get(ex.client_id)} zugeordnet`);
+    return qontoVerknuepfen(o.id, o.name, clientId, 1);
   }
-  const patch = { client_id: clientId, is_confirmed: true, match_type: 'manual', confidence: 1 };
-  if (sys === 'qonto') return qontoVerknuepfen(o.id, o.name, clientId, 1);
-  if (ex) chk(await (supabase.from as any)(t).update(patch).eq('id', ex.id));
-  else chk(await (supabase.from as any)(t).insert({ ...patch, [extCol]: o.id, [nameCol]: o.name }));
+  return lexofficeVerknuepfen(o.ref || o.id, o.name, clientId);
+}
+
+/** lexoffice-Verknüpfung: Schlüssel ist der normalisierte Empfängername. Zeile über id, contact_id oder Namen finden, sonst anlegen. */
+export async function lexofficeVerknuepfen(idOderContact: string, name: string | null, clientId: string) {
+  const t = () => (supabase.from as any)('lexoffice_client_links');
+  const isUuid = /^[0-9a-f-]{36}$/i.test(idOderContact);
+  let ex: any = null;
+  if (isUuid) ex = (await t().select('id, client_id, is_confirmed').eq('id', idOderContact).maybeSingle()).data;
+  if (!ex) ex = (await t().select('id, client_id, is_confirmed').eq('lexoffice_contact_id', idOderContact).limit(1)).data?.[0];
+  if (!ex && name) ex = (await t().select('id, client_id, is_confirmed').ilike('lexoffice_contact_name', name.trim()).limit(1)).data?.[0];
+  if (ex?.client_id && ex.is_confirmed && ex.client_id !== clientId) throw new Error(`Bereits ${(await belegtNamen([ex.client_id])).get(ex.client_id)} zugeordnet`);
+  const patch = { client_id: clientId, is_confirmed: true, match_type: 'manual', confidence: 1, updated_at: new Date().toISOString() };
+  if (ex) chk(await t().update(patch).eq('id', ex.id));
+  else chk(await t().insert({ ...patch, lexoffice_contact_name: name?.trim() || null, lexoffice_contact_id: isUuid ? null : idOderContact }));
 }
 
 /** Qonto-Verknüpfung je Datensatz: immer mit qonto_client_id und Name. Vorhandene Zeile dieser ID wird aktualisiert;

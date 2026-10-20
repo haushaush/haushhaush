@@ -1770,6 +1770,27 @@ export type Database = {
         }
         Relationships: []
       }
+      buchhaltung_intern: {
+        Row: {
+          angelegt_am: string
+          grund: string | null
+          name_anzeige: string
+          name_norm: string
+        }
+        Insert: {
+          angelegt_am?: string
+          grund?: string | null
+          name_anzeige: string
+          name_norm: string
+        }
+        Update: {
+          angelegt_am?: string
+          grund?: string | null
+          name_anzeige?: string
+          name_norm?: string
+        }
+        Relationships: []
+      }
       buchhaltung_quelle: {
         Row: {
           marke: string
@@ -4354,7 +4375,7 @@ export type Database = {
           created_at: string
           id: string
           is_confirmed: boolean
-          lexoffice_contact_id: string
+          lexoffice_contact_id: string | null
           lexoffice_contact_name: string | null
           match_type: string | null
           updated_at: string
@@ -4365,7 +4386,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_confirmed?: boolean
-          lexoffice_contact_id: string
+          lexoffice_contact_id?: string | null
           lexoffice_contact_name?: string | null
           match_type?: string | null
           updated_at?: string
@@ -4376,7 +4397,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_confirmed?: boolean
-          lexoffice_contact_id?: string
+          lexoffice_contact_id?: string | null
           lexoffice_contact_name?: string | null
           match_type?: string | null
           updated_at?: string
@@ -9358,7 +9379,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      kunde_buchhaltungsquelle: {
+        Args: { p_client_id: string }
+        Returns: string
+      }
       kunde_nach_name: { Args: { p_name: string }; Returns: string }
+      lexoffice_auto_link_clients: { Args: never; Returns: Json }
       merge_duplicate_clients: {
         Args: never
         Returns: {
