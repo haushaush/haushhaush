@@ -203,7 +203,7 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
   const eigeneKonten = kontenListe.filter(k => !unsereIds.has(k.meta_account_id) && !zuoKonten.has(k.meta_account_id));
   // Untermarken-Konten ohne Kampagnenzuordnung (Altbestand) – sichtbar, damit sie gelöst oder ergänzt werden können.
   const ohneKampagne = kontenListe.filter(k => unsereIds.has(k.meta_account_id) && !zuoKonten.has(k.meta_account_id));
-  const nK = eigene.filter(z => z.typ === 'kampagne').length, nA = eigene.filter(z => z.typ === 'adset').length;
+  const nKo = eigene.filter(z => z.typ === 'konto').length, nK = eigene.filter(z => z.typ === 'kampagne').length, nA = eigene.filter(z => z.typ === 'adset').length;
 
   const run = async (fn: () => Promise<void>, ok: string) => {
     setBusy(true);
@@ -219,7 +219,7 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
   // Statuszeile Werbebudget ist Ergebnis der Kampagnen-Zuordnung, kein eigener Konfigurationspunkt.
   const budgetZeile = !rechte.budget ? <span className="text-xs text-muted-foreground">Werbebudget-Zuordnung für dein Konto nicht sichtbar</span>
     : wb.fehler ? <Fehler text={wb.fehler} />
-    : eigene.length ? <Status ok text={[nK && `${nK} ${nK === 1 ? 'Kampagne' : 'Kampagnen'}`, nA && `${nA} ${nA === 1 ? 'Anzeigengruppe' : 'Anzeigengruppen'}`].filter(Boolean).join(', ') + ' zugeordnet'} />
+    : eigene.length ? <Status ok text={[nKo && `${nKo} ${nKo === 1 ? 'ganzes Konto' : 'ganze Konten'}`, nK && `${nK} ${nK === 1 ? 'Kampagne' : 'Kampagnen'}`, nA && `${nA} ${nA === 1 ? 'Anzeigengruppe' : 'Anzeigengruppen'}`].filter(Boolean).join(', ') + ' zugeordnet'} />
     : <span className="text-xs text-muted-foreground">Kein Werbebudget zuordenbar — <button className="underline hover:text-primary" onClick={() => setVerknuepfenOffen(true)}>Kampagne verknüpfen</button></span>;
 
   const bs = useBudgetstand(kunde.id, rechte.budget && eigene.length > 0);
@@ -251,7 +251,7 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
               <p className="text-xs font-medium mb-1">{marke}</p>
               {zs.map(z => (
                 <div key={z.id} className="flex items-center gap-3 text-sm py-1 pl-3">
-                  <span className="text-[11px] text-muted-foreground w-28 shrink-0">{z.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'}</span>
+                  <span className="text-[11px] text-muted-foreground w-28 shrink-0">{z.typ === 'konto' ? 'Ganzes Konto' : z.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'}</span>
                   <span className="truncate flex-1 min-w-0">{z.objekt_name || z.objekt_id}</span>
                   <button disabled={wb.busy === z.id} onClick={() => setLoeseZuo(z)} title="Zuordnung lösen" className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
                 </div>
@@ -355,7 +355,7 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Zuordnung lösen?</AlertDialogTitle>
-            <AlertDialogDescription>{loeseZuo?.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'} „{loeseZuo?.objekt_name || loeseZuo?.objekt_id}“ wird diesem Kunden nicht mehr zugerechnet. Ist es die letzte Zuordnung auf {loeseZuo?.untermarke || 'diesem Konto'}, fällt auch die Kontoverknüpfung weg.</AlertDialogDescription>
+            <AlertDialogDescription>{loeseZuo?.typ === 'konto' ? 'Ganzes Konto' : loeseZuo?.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'} „{loeseZuo?.objekt_name || loeseZuo?.objekt_id}“ wird diesem Kunden nicht mehr zugerechnet. Ist es die letzte Zuordnung auf {loeseZuo?.untermarke || 'diesem Konto'}, fällt auch die Kontoverknüpfung weg.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
@@ -382,7 +382,7 @@ function VerknuepfenDialog({ kunde, wb, konten, onClose }: {
         <KampagnenSuche konten={konten} render={c => (
           <div>
             <p className="px-3 pt-2 text-[11px] text-muted-foreground">{c.konto.name || c.konto.meta_account_id}</p>
-            <KampagneZeile k={c} alle={wb.alle} clientId={kunde.id} busy={wb.busy} callMeta={callMeta}
+            <KampagneZeile k={c} kontoId={c.konto.meta_account_id} alle={wb.alle} clientId={kunde.id} busy={wb.busy} callMeta={callMeta}
               zuordnen={(t, o, kid, n) => wb.zuordnen(c.konto.meta_account_id, c.konto.name ?? null, t, o, kid, n)} loesen={wb.loesen} />
           </div>
         )} />

@@ -12,7 +12,7 @@ import { useMetaAds } from '@/contexts/MetaAdsContext';
 const KNAPP_TAGE = 3;
 const AKTIV = new Set(['ACTIVE', 'IN_PROCESS', 'WITH_ISSUES']);
 
-type Zuordnung = { client_id: string; meta_account_id: string; untermarke: string | null; typ: 'kampagne' | 'adset'; objekt_id: string; kampagne_id: string | null; objekt_name: string | null };
+type Zuordnung = { client_id: string; meta_account_id: string; untermarke: string | null; typ: 'konto' | 'kampagne' | 'adset'; objekt_id: string; kampagne_id: string | null; objekt_name: string | null };
 type Eingezahlt = { client_id: string; quelle: string | null; eingezahlt_netto: number | null; uebertrag_frueher_netto: number | null; eingezahlt_gesamt_netto: number | null; zahlungen: number | null; offen_netto: number | null; rechnungen_offen: number | null; letzte_zahlung: string | null; aelteste_ueberfaellig: string | null };
 type Meta = { seit: number | null; d7: number; aktiv: boolean };
 type DetailZeile = { o: Zuordnung; status: string | null; tagesbudget: number | null; seit: number | null };
@@ -52,7 +52,8 @@ export function Werbebudgets() {
     try {
       for (const o of objs) {
         const [info, seit] = await Promise.all([
-          callMeta<any>(`/${o.objekt_id}`, { fields: 'effective_status,daily_budget' }),
+          // Ganzes Konto: Kontostatus (1 = aktiv) statt Kampagnenstatus; Ausgaben über das ganze Konto.
+          callMeta<any>(`/${o.objekt_id}`, { fields: o.typ === 'konto' ? 'account_status' : 'effective_status,daily_budget' }).then((r: any) => o.typ === 'konto' ? { effective_status: r?.account_status === 1 ? 'ACTIVE' : 'PAUSED' } : r),
           seitDatum ? callMeta<any>(`/${o.objekt_id}/insights`, { fields: 'spend', time_range: JSON.stringify({ since: seitDatum, until: heute() }) }) : Promise.resolve(null),
         ]);
         const db = info?.daily_budget != null && info.daily_budget !== '' ? Number(info.daily_budget) / 100 : null;
@@ -81,7 +82,7 @@ export function Werbebudgets() {
       for (const o of zs) {
         const seitDatum = em.get(o.client_id)?.letzte_zahlung?.slice(0, 10);
         const [info, d7, seit] = await Promise.all([
-          callMeta<any>(`/${o.objekt_id}`, { fields: 'effective_status' }),
+          callMeta<any>(`/${o.objekt_id}`, { fields: o.typ === 'konto' ? 'account_status' : 'effective_status' }).then((r: any) => o.typ === 'konto' ? { effective_status: r?.account_status === 1 ? 'ACTIVE' : 'PAUSED' } : r),
           callMeta<any>(`/${o.objekt_id}/insights`, { fields: 'spend', date_preset: 'last_7d' }),
           seitDatum ? callMeta<any>(`/${o.objekt_id}/insights`, { fields: 'spend', time_range: JSON.stringify({ since: seitDatum, until: heute() }) }) : Promise.resolve(null),
         ]);
@@ -238,7 +239,7 @@ function DetailTabelle({ d, hauptwert, ohneZahlung }: { d?: Detail; hauptwert: n
           ...zs.map(z => (
             <TableRow key={z.o.objekt_id} className="hover:bg-transparent">
               <TableCell className="py-2 text-sm">{z.o.objekt_name || z.o.objekt_id}</TableCell>
-              <TableCell className="py-2 text-sm text-muted-foreground">{z.o.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'}</TableCell>
+              <TableCell className="py-2 text-sm text-muted-foreground">{z.o.typ === 'konto' ? 'Ganzes Konto' : z.o.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'}</TableCell>
               <TableCell className="py-2 text-sm text-muted-foreground">{z.status ? (AKTIV.has(z.status) ? 'Aktiv' : z.status === 'PAUSED' ? 'Pausiert' : z.status) : '—'}</TableCell>
               <TableCell className="py-2 text-right tabular-nums text-sm">{z.tagesbudget != null ? eur(z.tagesbudget) : '—'}</TableCell>
               <TableCell className="py-2 text-right tabular-nums text-sm">{z.seit != null ? eur(z.seit) : ohneZahlung ? '— keine Zahlung' : '—'}</TableCell>

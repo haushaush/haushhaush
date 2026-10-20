@@ -8,7 +8,10 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { STATUS_LABEL } from '@/lib/werbebudgetKonten';
 
-export type Zuo = { id: string; client_id: string; meta_account_id: string; untermarke: string | null; typ: 'kampagne' | 'adset'; objekt_id: string; kampagne_id: string; objekt_name: string | null; clients?: { name: string | null } | null };
+export type Zuo = { id: string; client_id: string; meta_account_id: string; untermarke: string | null; typ: ZuoTyp; objekt_id: string; kampagne_id: string | null; objekt_name: string | null; clients?: { name: string | null } | null };
+export type ZuoTyp = 'konto' | 'kampagne' | 'adset';
+/** Zuordnung des ganzen Kontos: alle Kampagnen und Anzeigengruppen darauf gehören diesem Kunden. */
+export const kontoZuo = (alle: Zuo[], konto?: string | null) => konto ? alle.find(z => z.typ === 'konto' && z.meta_account_id === konto) : undefined;
 export type ZuoKampagne = { id: string; name: string; effective_status: string; daily_budget?: string; insights?: { data?: { spend?: string }[] } };
 type Adset = { id: string; name: string; effective_status: string; daily_budget?: string };
 
@@ -17,7 +20,7 @@ const eurR = (v?: string) => v == null ? '—' : `€${Number(v).toLocaleString(
 export const zuoKundenName = (z?: Zuo) => z?.clients?.name || 'anderem Kunden';
 
 /** Legt die Zuordnung an und leitet die Kontoverknüpfung (kunde_meta_accounts) daraus ab, falls noch nicht vorhanden. */
-export async function zuordnungAnlegen(clientId: string, konto: string, untermarke: string | null, typ: 'kampagne' | 'adset', objekt_id: string, kampagne_id: string, objekt_name: string) {
+export async function zuordnungAnlegen(clientId: string, konto: string, untermarke: string | null, typ: ZuoTyp, objekt_id: string, kampagne_id: string | null, objekt_name: string) {
   const uid = (await supabase.auth.getUser()).data.user?.id ?? null;
   const { error } = await (supabase.from as any)('werbebudget_zuordnung').insert({ client_id: clientId, typ, objekt_id, kampagne_id, objekt_name, meta_account_id: konto, untermarke, angelegt_von: uid });
   if (error) throw new Error(error.message);
@@ -42,7 +45,7 @@ export function useWerbebudgetZuordnung(clientId: string) {
   }, []);
   useEffect(() => { ladeZuo(); }, [ladeZuo]);
 
-  const zuordnen = useCallback(async (konto: string, untermarke: string | null, typ: 'kampagne' | 'adset', objekt_id: string, kampagne_id: string, objekt_name: string) => {
+  const zuordnen = useCallback(async (konto: string, untermarke: string | null, typ: ZuoTyp, objekt_id: string, kampagne_id: string | null, objekt_name: string) => {
     setBusy(objekt_id);
     try { await zuordnungAnlegen(clientId, konto, untermarke, typ, objekt_id, kampagne_id, objekt_name); toast.success(`${objekt_name} zugeordnet`); return true; }
     catch (e: any) { toast.error(e.message); return false; }
@@ -68,8 +71,8 @@ export function useWerbebudgetZuordnung(clientId: string) {
   return { alle, busy, fehler, geladen, ladeZuo, zuordnen, loesen };
 }
 
-export function KampagneZeile({ k, alle, clientId, busy, kname = zuoKundenName, callMeta, zuordnen, loesen, ohneAusgaben = false }: {
-  ohneAusgaben?: boolean; k: ZuoKampagne; alle: Zuo[]; clientId: string; busy: string | null; kname?: (z?: Zuo) => string; callMeta: any;
+export function KampagneZeile({ k, kontoId, alle, clientId, busy, kname = zuoKundenName, callMeta, zuordnen, loesen, ohneAusgaben = false }: {
+  ohneAusgaben?: boolean; k: ZuoKampagne; kontoId?: string; alle: Zuo[]; clientId: string; busy: string | null; kname?: (z?: Zuo) => string; callMeta: any;
   zuordnen: (t: 'kampagne' | 'adset', o: string, kid: string, n: string) => Promise<unknown>; loesen: (z: Zuo) => void;
 }) {
   const [offen, setOffen] = useState(false);
@@ -80,9 +83,12 @@ export function KampagneZeile({ k, alle, clientId, busy, kname = zuoKundenName, 
     callMeta(`/${k.id}/adsets`, { fields: 'id,name,effective_status,daily_budget', limit: 200 }).then((r: any) => setSets(r?.data || [])).catch((e: Error) => setErr(e.message));
   }, [offen, sets, k.id, callMeta]);
 
-  const ganz = alle.find(z => z.typ === 'kampagne' && z.objekt_id === k.id);
+  const konto = kontoZuo(alle, kontoId);
+  const ganz = konto || alle.find(z => z.typ === 'kampagne' && z.objekt_id === k.id);
   const adsetZuo = alle.filter(z => z.typ === 'adset' && z.kampagne_id === k.id);
-  const aktion = ganz
+  const aktion = konto
+    ? <span className="text-xs text-muted-foreground">{konto.client_id === clientId ? 'über ganzes Konto zugeordnet' : `ganzes Konto gehört zu ${kname(konto)}`}</span>
+    : ganz
     ? ganz.client_id === clientId
       ? <span className="text-xs text-success flex items-center gap-1.5">Zugeordnet<button onClick={() => loesen(ganz)} className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button></span>
       : <span className="text-xs text-muted-foreground">gehört zu {kname(ganz)}</span>

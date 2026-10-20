@@ -8841,7 +8841,7 @@ export type Database = {
           angelegt_von: string | null
           client_id: string
           id: string
-          kampagne_id: string
+          kampagne_id: string | null
           meta_account_id: string
           objekt_id: string
           objekt_name: string | null
@@ -8853,7 +8853,7 @@ export type Database = {
           angelegt_von?: string | null
           client_id: string
           id?: string
-          kampagne_id: string
+          kampagne_id?: string | null
           meta_account_id: string
           objekt_id: string
           objekt_name?: string | null
@@ -8865,7 +8865,7 @@ export type Database = {
           angelegt_von?: string | null
           client_id?: string
           id?: string
-          kampagne_id?: string
+          kampagne_id?: string | null
           meta_account_id?: string
           objekt_id?: string
           objekt_name?: string | null
