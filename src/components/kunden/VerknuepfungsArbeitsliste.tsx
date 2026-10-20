@@ -126,7 +126,7 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
       alle('clients', 'id, name, vor_nachname, kundenstatus', q => q.is('deleted_at', null)),
       alle('qonto_client_invoices', 'client_id, client_name, status, subtotal_amount, total_amount, vat_amount, paid_at'),
       alle('qonto_client_links', 'id, qonto_client_id, qonto_client_name, client_id, is_confirmed'),
-      alle('werbebudget_zuordnung', 'client_id, typ, objekt_id, kampagne_id'),
+      alle('werbebudget_zuordnung', 'client_id, meta_account_id, typ, objekt_id, kampagne_id'),
       alle('kunde_link_vorschlag_verworfen', 'client_id, system, externe_id'),
     ]);
     if (c.error || i.error || l.error || z.error || v.error) setFehler('Einige Daten konnten nicht geladen werden – Anzahlen können unvollständig sein.');
@@ -197,13 +197,19 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
   const offeneKampagnen = useMemo(() => {
     if (!kampagnen) return null;
     const belegt = new Set(zuo.flatMap((z: any) => [z.objekt_id, z.kampagne_id]));
-    return kampagnen.filter(c => !belegt.has(c.id)).sort((a, b) => b.spend - a.spend);
+    const kontoGanz = new Set(zuo.filter((z: any) => z.typ === 'konto').map((z: any) => z.meta_account_id));
+    return kampagnen.filter(c => !belegt.has(c.id) && !kontoGanz.has(c.konto)).sort((a, b) => b.spend - a.spend);
   }, [kampagnen, zuo]);
 
   const kundenMitQonto = useMemo(() => new Set(links.filter(l => l.is_confirmed && l.client_id).map(l => l.client_id)), [links]);
   const ohneZahler = useMemo(() => aktive.filter(k => !kundenMitQonto.has(k.id)), [aktive, kundenMitQonto]);
   const mitZuo = useMemo(() => new Set(zuo.map((z: any) => z.client_id)), [zuo]);
-  const ohneKampagne = useMemo(() => aktive.filter(k => !mitZuo.has(k.id) && !verworfen.has(`${SYS_OHNE_KAMPAGNE}|eigenes_konto|${k.id}`)), [aktive, mitZuo, verworfen]);
+  // Zeilen in Abschnitt 5 bleiben bis zum nächsten Seitenaufruf stehen; die Anzahl sinkt sofort.
+  const [ohneKampagneStart, setOhneKampagneStart] = useState<Kunde[] | null>(null);
+  const [neuZugeordnet, setNeuZugeordnet] = useState<Map<string, number>>(new Map());
+  const ohneKampagneJetzt = useMemo(() => aktive.filter(k => !mitZuo.has(k.id) && !verworfen.has(`${SYS_OHNE_KAMPAGNE}|eigenes_konto|${k.id}`)), [aktive, mitZuo, verworfen]);
+  useEffect(() => { if (!ohneKampagneStart && kunden) setOhneKampagneStart(ohneKampagneJetzt); }, [ohneKampagneStart, kunden, ohneKampagneJetzt]);
+  const ohneKampagne = useMemo(() => (ohneKampagneStart || []).filter(k => !verworfen.has(`${SYS_OHNE_KAMPAGNE}|eigenes_konto|${k.id}`)), [ohneKampagneStart, verworfen]);
 
   const geladen = !!kunden && !!inv;
   useEffect(() => {
@@ -288,7 +294,7 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
             onUebernehmen={async w => {
               await zuordnungAnlegen(w.id, c.konto, c.untermarke, 'kampagne', c.id, c.id, c.name);
               toast.success(`${c.name} → ${w.name}`);
-              setZuo(z => [...z, { client_id: w.id, typ: 'kampagne', objekt_id: c.id, kampagne_id: c.id }]);
+              setZuo(z => [...z, { client_id: w.id, meta_account_id: c.konto, typ: 'kampagne', objekt_id: c.id, kampagne_id: c.id }]);
             }}
             onVerwerfen={w => verwerfen(SYS_KAMPAGNE, c.id, w.id)} />
         ))}
@@ -307,12 +313,13 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
         })}
       </Abschnitt>
 
-      <Abschnitt nr={5} titel="Kunden ohne Kampagnenzuordnung" anzahl={laedt ? null : ohneKampagne.length} laedt={laedt}
+      <Abschnitt nr={5} titel="Kunden ohne Kampagnenzuordnung" anzahl={laedt ? null : ohneKampagneJetzt.length} laedt={laedt}
         hinweis="Direkt hier über „Zuordnen“ oder im Verknüpfungen-Tab des Kunden. Nicht jeder Kunde braucht eine Kampagne: wer sein eigenes Werbekonto bezahlt, steht hier zu Recht und kann abgehakt werden.">
-        {ohneKampagne.map(k => <KundeOhneKampagneZeile key={k.id} k={k} callMeta={callMeta} onZugeordnet={ladeDaten}>
+        {ohneKampagne.map(k => <KundeOhneKampagneZeile key={k.id} k={k} callMeta={callMeta} onZugeordnet={() => { setNeuZugeordnet(m => new Map(m).set(k.id, (m.get(k.id) || 0) + 1)); ladeDaten(); }}>
           <div className="py-2 flex items-center gap-3 text-sm">
             <Link to={`/kunden/${k.id}?tab=verknuepfungen`} className="font-medium hover:text-primary truncate">{k.name}</Link>
             <span className="text-xs text-muted-foreground">{k.kundenstatus}</span>
+            {!!neuZugeordnet.get(k.id) && <span className="text-[11px] rounded-full bg-success/10 text-success px-2 py-0.5 tabular-nums">{neuZugeordnet.get(k.id)} zugeordnet</span>}
             <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => verwerfen(SYS_OHNE_KAMPAGNE, 'eigenes_konto', k.id).catch(e => toast.error(e.message))}>Abhaken – zahlt selbst</Button>
             <Button size="sm" variant="outline" className="h-7 text-xs" asChild><Link to={`/kunden/${k.id}?tab=verknuepfungen`}>Zum Kunden</Link></Button>
           </div>
@@ -358,10 +365,23 @@ function Schnellzuordnung({ clientId, callMeta, onZugeordnet }: { clientId: stri
         <option value="">Werbekonto wählen …</option>
         {konten?.map(x => <option key={x.meta_account_id} value={x.meta_account_id}>{x.name || x.meta_account_id}</option>)}
       </select>}
+    {konto && (() => {
+      const kz = kontoZuo(zuoAlle, konto);
+      const einzeln = zuoAlle.filter(z => z.typ !== 'konto' && z.meta_account_id === konto);
+      return <div className="rounded-lg bg-card px-3 py-2 flex flex-wrap items-center gap-2 text-xs">
+        <span className="flex-1 min-w-0"><span className="font-medium">Ganzes Konto zuordnen</span> – neue Kampagnen auf diesem Konto gehören dann automatisch dazu.</span>
+        {kz ? kz.client_id === clientId
+            ? <span className="text-success flex items-center gap-1.5">Zugeordnet<button onClick={() => loesen(kz)} className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button></span>
+            : <span className="text-muted-foreground">gehört zu {zuoKundenName(kz)}</span>
+          : einzeln.length
+            ? <span className="text-muted-foreground">nicht möglich – einzelne Kampagnen sind schon vergeben ({[...new Set(einzeln.map(zuoKundenName))].join(', ')})</span>
+            : <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy === konto} onClick={async () => { const ok = await zuordnen(konto, untermarke, 'konto', konto, null, untermarke || konto); if (ok) onZugeordnet(); }}>Ganzes Konto zuordnen</Button>}
+      </div>;
+    })()}
     {konto && !kamp && !err && <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Kampagnen werden geladen …</p>}
     {kamp?.length === 0 && <p className="text-xs text-muted-foreground">Keine Kampagnen auf diesem Konto.</p>}
     {kamp && kamp.length > 0 && <div className="divide-y divide-border/40 rounded-lg bg-card">
-      {kamp.map(c => <KampagneZeile key={c.id} k={c} alle={zuoAlle} clientId={clientId} busy={busy} callMeta={callMeta} loesen={loesen}
+      {kamp.map(c => <KampagneZeile key={c.id} k={c} kontoId={konto} alle={zuoAlle} clientId={clientId} busy={busy} callMeta={callMeta} loesen={loesen}
         zuordnen={async (t, o, kid, n) => { const ok = await zuordnen(konto, untermarke, t, o, kid, n); if (ok) onZugeordnet(); return ok; }} />)}
     </div>}
     <p className="text-[11px] text-muted-foreground">Ohne Auswahl einer Anzeigengruppe wird die ganze Kampagne zugeordnet. Anzeigengruppen nur nötig, wenn sich zwei Kunden eine Kampagne teilen.</p>
