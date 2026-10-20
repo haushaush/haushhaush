@@ -9,15 +9,16 @@ export type ActiveRuntimeRow = {
 };
 export function useActiveCloseCustomers() {
   const [rows, setRows] = useState<ActiveRuntimeRow[]>([]);
+  const [unverknuepft, setUnverknuepft] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const refetch = useCallback(async () => {
     setLoading(true);
     const { data, error: err } = await supabase.functions.invoke('active-close-customers', { body: {} });
     if (err || data?.error) { setError(data?.error || err?.message || 'Aktive Kunden konnten nicht geladen werden.'); }
-    else { setRows(data.rows || []); setError(null); }
+    else { setRows(data.rows || []); setUnverknuepft(data.unverknuepft || []); setError(null); }
     setLoading(false);
   }, []);
   useEffect(() => { void refetch(); }, [refetch]);
-  return { rows, loading, error, refetch };
+  return { rows, unverknuepft, loading, error, refetch };
 }

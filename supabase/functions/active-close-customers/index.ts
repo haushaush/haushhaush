@@ -12,11 +12,10 @@ Deno.serve(async req => {
   try {
     const { call } = await closeForPipeline();
     const active = await loadActiveCustomers(admin, call);
-    const missing = active.filter(l => !l.client);
-    if (missing.length) throw new Error(`Aktive Close-Kunden ohne Kundenverknüpfung: ${missing.map(l => l.display_name).join(", ")}. Bitte zuerst zuordnen.`);
+    const unverknuepft = active.filter(l => !l.client).map(l => l.display_name);
     const { data: runtime, error } = await admin.from("kunden_laufzeit_stand").select("*");
     if (error) throw new Error(error.message);
     const byId = new Map((runtime || []).map((r: any) => [r.client_id, r]));
-    return json({ rows: active.map(l => ({ ...(byId.get(l.client.id) || {}), client_id: l.client.id, kunde: l.client.name || l.display_name, close_lead_id: l.id, close_status_label: l.status_label })) });
+    return json({ unverknuepft, rows: active.filter(l => l.client).map(l => ({ ...(byId.get(l.client.id) || {}), client_id: l.client.id, kunde: l.client.name || l.display_name, close_lead_id: l.id, close_status_label: l.status_label })) });
   } catch (e) { return json({ error: e instanceof Error ? e.message : String(e) }, 502); }
 });
