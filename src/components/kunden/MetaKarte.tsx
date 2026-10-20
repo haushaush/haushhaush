@@ -13,7 +13,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { type SystemKey, type SystemStand, type KundeMin, type Objekt, verknuepfen, verwerfen, loesen, portalMeta } from '@/lib/kundenVerknuepfungen';
-import { ladeUntermarken, STATUS_LABEL, type Untermarke } from '@/lib/werbebudgetKonten';
+import { ladeUntermarken, STATUS_LABEL, suchKey, type Untermarke } from '@/lib/werbebudgetKonten';
+import { KontoCombobox } from '@/components/kunden/KontoCombobox';
 import { KampagneZeile, useWerbebudgetZuordnung, type Zuo, type ZuoKampagne } from './werbebudgetZuordnung';
 import { LeadSharksSteuerung, ZuweisenAssistent, ZuordnungErgebnis, fehlerMeldung, type LeadTyp } from './LeadSharksMeta';
 import { SuchFeld } from './PortalAuswahl';
@@ -153,17 +154,14 @@ function KampagnenSuche({ konten, render }: { konten: Untermarke[] | null; rende
   const [q, setQ] = useState('');
   const [konto, setKonto] = useState('');
   const treffer = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    return (k.liste || []).filter(c => (!konto || c.konto.meta_account_id === konto) && (!s || `${c.name} ${c.id} ${c.konto.name || ''}`.toLowerCase().includes(s)));
+    const s = suchKey(q);
+    return (k.liste || []).filter(c => (!konto || c.konto.meta_account_id === konto) && (!s || suchKey(`${c.name} ${c.id} ${c.konto.name || ''} ${c.konto.meta_account_id}`).includes(s)));
   }, [k.liste, q, konto]);
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row gap-2">
         <Input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Kampagne suchen…" className="h-9 bg-muted/50 border-0" />
-        <select value={konto} onChange={e => setKonto(e.target.value)} className="h-9 rounded-md bg-muted/50 px-2 text-sm sm:w-56" aria-label="Untermarke filtern">
-          <option value="">Alle Untermarken</option>
-          {(konten || []).map(u => <option key={u.meta_account_id} value={u.meta_account_id}>{u.name || u.meta_account_id}</option>)}
-        </select>
+        <KontoCombobox konten={konten || []} value={konto} onChange={setKonto} alleText="Alle Untermarken" className="sm:w-64" />
       </div>
       {k.fehler.length > 0 && <Fehler text={`Kampagnen einzelner Konten konnten nicht geladen werden – ${k.fehler.join(' · ')}`} />}
       {!k.liste && <div className="space-y-2">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-12 rounded-xl" />)}</div>}
