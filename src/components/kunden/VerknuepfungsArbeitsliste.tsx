@@ -167,6 +167,8 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
     const bestaetigt = links.filter(l => l.is_confirmed && l.client_id);
     const linkQid = new Map(bestaetigt.filter(l => l.qonto_client_id).map(l => [l.qonto_client_id, l.client_id]));
     const linkName = new Set(bestaetigt.map(l => key(l.qonto_client_name)));
+    // Namensverknüpfungen (ohne Qonto-ID) gelten für Rechnungen ohne Qonto-ID desselben Namens.
+    const linkNurName = new Map(bestaetigt.filter(l => !l.qonto_client_id).map(l => [key(l.qonto_client_name), l.client_id]));
     const m = new Map<string, Zahler>();
     for (const r of inv || []) {
       if (!r.client_name) continue;
@@ -174,7 +176,7 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
       const z = m.get(k) || { key: k, name: r.client_name.trim(), eintraege: [], bezahlt: 0, netto: 0, letzte: null };
       const qid = r.client_id || `name:${k}`;
       let e = z.eintraege.find(x => x.qid === qid);
-      if (!e) { e = { qid, name: r.client_name.trim(), anzahl: 0, bezahlt: 0, netto: 0, letzte: null, client_id: r.client_id ? linkQid.get(r.client_id) ?? null : null }; z.eintraege.push(e); }
+      if (!e) { e = { qid, name: r.client_name.trim(), anzahl: 0, bezahlt: 0, netto: 0, letzte: null, client_id: r.client_id ? linkQid.get(r.client_id) ?? null : linkNurName.get(k) ?? null }; z.eintraege.push(e); }
       e.anzahl++;
       if (r.status === 'paid') {
         const n = Number(r.subtotal_amount ?? (Number(r.total_amount || 0) - Number(r.vat_amount || 0))) || 0;
@@ -214,7 +216,12 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
       if (e.client_id) continue;
       if (e.qid.startsWith('name:')) {
         // Rechnungen ohne Qonto-ID: Verknüpfung nur über den Namen.
-        const { error } = await supabase.from('qonto_client_links').insert({ qonto_client_name: e.name, qonto_client_id: null, client_id: kunde.id, is_confirmed: true, match_type: 'manual', confidence: 1 } as any);
+        // Eindeutig je Name (ohne Groß/Klein): vorhandene Zeile aktualisieren statt doppelt anlegen.
+        const patch = { client_id: kunde.id, is_confirmed: true, match_type: 'manual', confidence: 1 };
+        const vorhanden = links.find(l => !l.qonto_client_id && key(l.qonto_client_name) === key(e.name));
+        const { error } = vorhanden
+          ? await supabase.from('qonto_client_links').update(patch as any).eq('id', vorhanden.id)
+          : await supabase.from('qonto_client_links').insert({ ...patch, qonto_client_name: e.name, qonto_client_id: null } as any);
         if (error) throw new Error(error.message);
       } else await qontoVerknuepfen(e.qid, e.name, kunde.id, 1);
     }
