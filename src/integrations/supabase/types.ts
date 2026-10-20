@@ -9174,6 +9174,31 @@ export type Database = {
           },
         ]
       }
+      laufzeit_vorschlag: {
+        Row: {
+          abgleich: string | null
+          abschlusswert: number | null
+          client_id: string | null
+          deal_typ: string | null
+          laufzeit_monate: number | null
+          portal_laufzeit: string | null
+          quelle_datum: string | null
+          quelle_typ: string | null
+          slack_ts: string | null
+          sparte: string | null
+          start_laut_slack: string | null
+          weitere_upsells: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_abschluss_import_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onepage_projects_with_stats: {
         Row: {
           client_id: string | null
