@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
-import { useDeals, useRevenue, useInvoices, useSalesPerformance, useTasks, useTeam, useAlerts, useEffizienzScore, useQontoAccounts, useMetaLiveTotals } from '@/hooks/useDataSources';
+import { useDeals, useRevenue, useInvoices, useSalesPerformance, useTasks, useTeam, useAlerts, useEffizienzScore, useQontoAccounts, useMetaLiveTotals, useCashCollect } from '@/hooks/useDataSources';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -51,8 +51,8 @@ function formatDate(d: string) {
 
 const NAV_TILES = [
   { icon: BarChart3, label: 'Sales', sub: 'KPIs & Leaderboard', href: '/sales/kpis' },
-  { icon: Target, label: 'Fulfillment', sub: 'Ad Performance', href: '/fulfillment/ads' },
-  { icon: Users, label: 'Kunden', sub: 'Pipeline & Deals', href: '/kunden/pipeline' },
+  { icon: Target, label: 'Werbebudgets', sub: 'Budgets & Ausgaben', href: '/finanzen/werbebudgets' },
+  { icon: Users, label: 'Kunden', sub: 'Pipeline & Deals', href: '/kunden' },
   { icon: CreditCard, label: 'Finanzen', sub: 'Rechnungen & MRR', href: '/finanzen/rechnungen' },
   { icon: UserCircle, label: 'Team & HR', sub: 'Mitarbeiter', href: '/hr/mitarbeiter' },
   { icon: ListTodo, label: 'Aufgaben', sub: 'Offene Tasks', href: '/projekte/aufgaben' },
@@ -104,6 +104,7 @@ export default function Dashboard() {
   const effizienz = useEffizienzScore();
   const qonto = useQontoAccounts();
   const metaTotals = useMetaLiveTotals();
+  const cashCollect = useCashCollect();
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [searchOpen, setSearchOpen] = useState(false);
   
@@ -304,6 +305,8 @@ export default function Dashboard() {
           <KpiSlider
             deals={deals.data}
             invoices={invoices.data}
+            invoicesZustand={invoices.zustand}
+            cashCollect={cashCollect.data}
             revenue={revenue.data}
             salesPerf={salesPerf.data}
             salesPerfMonth={salesPerfMonth.data}
@@ -382,7 +385,7 @@ export default function Dashboard() {
                   deals.data.slice(0, 5).map((d, i) => {
                     const leistungen: string[] = Array.isArray(d.leistungen) ? d.leistungen : [];
                     return (
-                      <div key={d.id} className={`py-3 cursor-pointer hover:bg-muted/50 transition-colors px-1 -mx-1 rounded ${i < 4 ? 'border-b border-border' : ''}`} onClick={() => navigate(`/kunden/${d.id}`)}>
+                      <div key={d.id} className={`py-3 cursor-pointer hover:bg-muted/50 transition-colors px-1 -mx-1 rounded ${i < 4 ? 'border-b border-border' : ''}`} onClick={() => navigate(d.client_id ? `/kunden/${d.client_id}` : '/kunden/abschluesse')}>
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
