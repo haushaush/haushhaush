@@ -140,7 +140,7 @@ function buchStand(k: KundeMin, sys: 'qonto' | 'lexoffice', kand: Map<string, Bu
 async function belegtNamen(clientIds: string[]): Promise<Map<string, string>> {
   const ids = [...new Set(clientIds.filter(Boolean))];
   if (!ids.length) return new Map();
-  const { data } = await supabase.from('clients').select('id, name').in('id', ids);
+  const { data } = await supabase.from('clients').select('id, name').is('deleted_at', null).in('id', ids);
   return new Map((data || []).map((c: any) => [c.id, c.name || 'anderer Kunde']));
 }
 
@@ -297,6 +297,8 @@ export async function ladeStand(kunden: KundeMin[]): Promise<Map<string, Record<
       : pk ? { zustand: 'verknuepft', objekt: { id: pk.externe_id, name: pk.name, url: pk.url } } : { zustand: 'offen' };
 
     st.superchat = { zustand: 'nicht_angebunden' };
+    // „Nicht zuordnen" gewählt: keine Lücke, solange nichts verknüpft ist.
+    for (const s of SYSTEME) if (st[s.key].zustand !== 'verknuepft' && verworfen.has(`${k.id}:${s.key}:${KEIN_BEDARF}`)) st[s.key] = { zustand: 'nicht_angebunden' };
     out.set(k.id, st);
   }
   return out;
@@ -308,7 +310,7 @@ export function zaehle(st: Record<SystemKey, SystemStand>) {
     verknuepft: vals.filter(v => v.zustand === 'verknuepft').length,
     vorschlaege: vals.filter(v => v.zustand === 'vorschlag').length,
     gesamt: SYSTEME.length,
-    luecken: SYSTEME.filter(s => s.angebunden && st[s.key].zustand !== 'verknuepft').length,
+    luecken: SYSTEME.filter(s => s.angebunden && st[s.key].zustand !== 'verknuepft' && st[s.key].zustand !== 'nicht_angebunden').length,
   };
 }
 
@@ -366,16 +368,25 @@ export async function suche(system: SystemKey, q: string, clientId?: string): Pr
 const uid = async () => (await supabase.auth.getUser()).data.user?.id ?? null;
 const chk = (r: { error: any }) => { if (r.error) throw new Error(r.error.message); };
 
+/** Close-Lead ↔ Kunde: close_link + close_leads.client_id, danach Daten sofort holen (optional). */
+export async function closeLeadVerknuepfen(clientId: string, leadId: string) {
+  chk(await supabase.from('close_link' as any).insert({ client_id: clientId, close_lead_id: leadId, matched_via: 'manual', match_confidence: 1 } as any));
+  chk(await supabase.from('close_leads').update({ client_id: clientId } as any).eq('id', leadId));
+  try {
+    const r = await supabase.functions.invoke('sync-close-lead-full', { body: { client_id: clientId } });
+    if (r.error) console.warn('Close-Sync nach Verknüpfung fehlgeschlagen', r.error.message);
+  } catch { /* Sync ist optional; Verknüpfung bleibt bestehen */ }
+}
+
+/** „Nicht zuordnen": Kunde braucht in diesem System keine Verknüpfung (gespeichert wie ein verworfener Vorschlag). */
+export const KEIN_BEDARF = '__keins__';
+export async function keinBedarf(clientId: string, system: string) {
+  chk(await (supabase.from as any)('kunde_link_vorschlag_verworfen').upsert({ client_id: clientId, system, externe_id: KEIN_BEDARF, verworfen_von: await uid() }, { onConflict: 'client_id,system,externe_id', ignoreDuplicates: true }));
+}
+
 export async function verknuepfen(system: SystemKey, clientId: string, o: Objekt) {
   switch (system) {
-    case 'close':
-      chk(await supabase.from('close_link' as any).insert({ client_id: clientId, close_lead_id: o.id, matched_via: 'manual', match_confidence: 1 } as any));
-      // Daten sofort holen, damit Deals/Stammdaten erscheinen; Fehler hier lässt die Verknüpfung bestehen.
-      try {
-        const r = await supabase.functions.invoke('sync-close-lead-full', { body: { client_id: clientId } });
-        if (r.error) console.warn('Close-Sync nach Verknüpfung fehlgeschlagen', r.error.message);
-      } catch { /* Sync ist optional; Verknüpfung bleibt bestehen */ }
-      return;
+    case 'close': return closeLeadVerknuepfen(clientId, o.id);
     case 'meta': {
       // Ein Werbekonto darf mehreren Kunden gehören (Untermarken); exklusiv ist nur die Kampagne/Anzeigengruppe.
       const { data: ex, error } = await supabase.from('kunde_meta_accounts').select('client_id').eq('meta_account_id', o.id).eq('client_id', clientId).limit(1);

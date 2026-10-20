@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
     const { data: existingLinks } = await supabase.from("close_link").select("client_id");
     const linked = new Set((existingLinks || []).map((l: any) => l.client_id));
 
-    let query = supabase.from("clients").select("id, name, email");
+    let query = supabase.from("clients").select("id, name, email").is("deleted_at", null);
     if (requestedIds?.length) query = query.in("id", requestedIds);
     const { data: clients, error } = await query;
     if (error) throw error;

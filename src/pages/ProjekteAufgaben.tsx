@@ -21,7 +21,7 @@ export default function ProjekteAufgaben() {
   useEffect(() => {
     Promise.all([
       supabase.from('tasks').select('*').order('due_date', { ascending: true }),
-      supabase.from('clients').select('id, name'),
+      supabase.from('clients').select('id, name').is('deleted_at', null),
     ]).then(([t, c]) => {
       setTasks(t.data || []);
       setClients(c.data || []);

@@ -464,7 +464,7 @@ function KundeOhneKampagneZeile({ k, callMeta, onZugeordnet, children }: { k: { 
   </div>;
 }
 
-function Schnellzuordnung({ clientId, callMeta, onZugeordnet }: { clientId: string; callMeta: any; onZugeordnet: () => void }) {
+export function Schnellzuordnung({ clientId, callMeta, onZugeordnet }: { clientId: string; callMeta: any; onZugeordnet: () => void }) {
   const { alle: zuoAlle, busy, fehler: zuoFehler, zuordnen, loesen } = useWerbebudgetZuordnung(clientId);
   const [konten, setKonten] = useState<Untermarke[] | null>(null);
   const [konto, setKonto] = useState<string>('');

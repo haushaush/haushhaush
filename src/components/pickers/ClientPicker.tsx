@@ -25,6 +25,7 @@ export function ClientPicker({ value, onChange, label, placeholder = 'Kunde wäh
       const { data, error } = await supabase
         .from('clients' as any)
         .select('id, name, unternehmen:unternehmen_id(display_name, name)')
+        .is('deleted_at', null)
         .order('name', { ascending: true })
         .limit(1000);
       if (error) throw error;

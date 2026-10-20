@@ -266,7 +266,7 @@ function LinkDialog({ row, onClose, onSaved }:
     if (!row) return;
     const t = setTimeout(async () => {
       if (q.trim().length < 2) { setSearchResults([]); return; }
-      const { data } = await supabase.from('clients').select('id,name').ilike('name', `%${q.trim()}%`).order('name').limit(20);
+      const { data } = await supabase.from('clients').select('id,name').is('deleted_at', null).ilike('name', `%${q.trim()}%`).order('name').limit(20);
       setSearchResults((data as any[]) || []);
     }, 200);
     return () => clearTimeout(t);

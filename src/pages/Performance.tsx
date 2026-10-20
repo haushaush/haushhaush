@@ -58,7 +58,7 @@ export default function Performance() {
   useEffect(() => {
     const load = async () => {
       const [c, s, a, t, p, tk] = await Promise.all([
-        supabase.from('clients').select('*'),
+        supabase.from('clients').select('*').is('deleted_at', null),
         supabase.from('sales_performance').select('*').order('datum', { ascending: false }),
         supabase.from('ad_performance_intern').select('*').order('datum', { ascending: false }),
         supabase.from('team').select('*'),

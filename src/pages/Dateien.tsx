@@ -150,7 +150,7 @@ export default function Dateien() {
   useEffect(() => {
     const fetchData = async () => {
       const [clientsRes, teamRes, driveRes, pinnedRes] = await Promise.all([
-        supabase.from('clients').select('id, name').eq('kundenstatus', 'In Betreuung'),
+        supabase.from('clients').select('id, name').is('deleted_at', null).eq('kundenstatus', 'In Betreuung'),
         supabase.from('team').select('id, name'),
         user ? supabase.from('drive_connection').select('*').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
         user ? supabase.from('drive_pinned_files').select('*').eq('pinned_by', user.id) : Promise.resolve({ data: [] }),

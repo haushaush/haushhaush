@@ -68,7 +68,7 @@ export default function Creatives() {
     const fetchData = async () => {
       const [projRes, clientRes, assetsRes] = await Promise.all([
         supabase.from('creative_projects').select('*').order('created_at', { ascending: false }),
-        supabase.from('clients').select('id, name'),
+        supabase.from('clients').select('id, name').is('deleted_at', null),
         supabase.from('creative_assets').select('id, project_id, status, is_active').eq('is_active', true),
       ]);
       setProjects((projRes.data || []) as unknown as CreativeProject[]);

@@ -1894,6 +1894,7 @@ export type Database = {
           kundenstatus: Database["public"]["Enums"]["kundenstatus"]
           laufzeit: string | null
           laufzeit_in_14t: boolean | null
+          merged_into: string | null
           meta_account_id: string | null
           meta_account_ids: string[] | null
           meta_kosten: number | null
@@ -1933,6 +1934,7 @@ export type Database = {
           kundenstatus?: Database["public"]["Enums"]["kundenstatus"]
           laufzeit?: string | null
           laufzeit_in_14t?: boolean | null
+          merged_into?: string | null
           meta_account_id?: string | null
           meta_account_ids?: string[] | null
           meta_kosten?: number | null
@@ -1972,6 +1974,7 @@ export type Database = {
           kundenstatus?: Database["public"]["Enums"]["kundenstatus"]
           laufzeit?: string | null
           laufzeit_in_14t?: boolean | null
+          merged_into?: string | null
           meta_account_id?: string | null
           meta_account_ids?: string[] | null
           meta_kosten?: number | null
@@ -1993,6 +1996,13 @@ export type Database = {
           zahlstatus?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "clients_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_clients_unternehmen"
             columns: ["unternehmen_id"]
@@ -9348,6 +9358,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      kunde_nach_name: { Args: { p_name: string }; Returns: string }
       merge_duplicate_clients: {
         Args: never
         Returns: {
