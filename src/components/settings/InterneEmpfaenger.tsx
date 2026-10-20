@@ -9,8 +9,6 @@ import { toast } from 'sonner';
 type Art = 'intern' | 'vorlage';
 type Row = { name_norm: string; name_anzeige: string; grund: string | null; art: Art | null; angelegt_am: string };
 
-/** Anzeigetext je Art – identische Begriffe wie die Zeilenaktionen in Finanzen. */
-export const ART_TEXT: Record<Art, string> = { intern: 'intern', vorlage: 'als Vorlage' };
 const ART_GRUND: Record<Art, string> = { intern: 'Intern', vorlage: 'Vorlage- oder Testrechnung' };
 
 const GRUPPEN: Record<Art, { titel: string; hinweis: string; badge: string }> = {

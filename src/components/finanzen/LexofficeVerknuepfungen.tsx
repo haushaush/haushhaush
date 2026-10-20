@@ -27,6 +27,7 @@ type Row = { id: string; name: string; client_id: string | null; client_name: st
 type Kunde = { id: string; name: string | null };
 type Filter = 'all' | 'linked' | 'unlinked' | 'suggested' | 'ambiguous';
 type Art = 'intern' | 'vorlage';
+const ART_TEXT: Record<Art, string> = { intern: 'intern', vorlage: 'als Vorlage' };
 const ART_GRUND: Record<Art, string> = { intern: 'Intern', vorlage: 'Vorlage- oder Testrechnung' };
 
 function MatchBadge({ r }: { r: Row }) {
