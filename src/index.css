@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@100;200;300;400;500;600;700;800&display=swap');
 
 @tailwind base;
@@ -17,55 +18,93 @@
     --z-modal: 400;
     --z-toast: 500;
 
-    --background: 240 5% 96%;
-    --foreground: 0 0% 11%;
+    /* Design-Umstellung Schritt 1: Briefing-Werte, zusammengeführt mit Projekt-Tokens */
+    --background: 210 40% 98%;
+    --background-subtle: 210 40% 96%;
+    --surface: 0 0% 100%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 11%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 11%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 229.306931 86.324786% 54.117647%;
+    --primary: 231 79% 52%;
     --primary-foreground: 0 0% 100%;
+    --primary-hover: 231 79% 44%;
 
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 0 0% 11%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 19% 41%;
+    --tertiary: 215 20% 65%;
 
-    --accent: 229 86% 96%;
-    --accent-foreground: var(--primary);
+    --accent: 231 79% 52%;
+    --accent-foreground: 0 0% 100%;
+    --accent-subtle: 231 79% 52%;
 
-    --destructive: 4 90% 58%;
+    --destructive: 350 89% 60%;
     --destructive-foreground: 0 0% 100%;
+    --destructive-text: 350 89% 48%;
 
+    /* Projekt-eigene Tokens (unverändert) */
     --kanal-ads: 228 85% 54%;
     --kanal-coldcall: 24 90% 52%;
     --kanal-organisch: 152 60% 40%;
     --kanal-attentionx: 280 60% 55%;
     --kanal-direkt: 190 80% 40%;
+
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
+    --success-text: 142 71% 31%;
 
-    --warning: 36 100% 50%;
-    --warning-foreground: 0 0% 0%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-text: 38 92% 33%;
 
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: var(--primary);
+    --info: 217 91% 60%;
 
-    --radius: 0.75rem;
+    --border: 214 32% 91%;
+    --border-hover: 213 27% 84%;
+    --input: 214 32% 91%;
+    --ring: 231 79% 52%;
+
+    --radius: 0.5rem;
+
+    --dark-panel: 222 47% 11%;
+    --dark-panel-foreground: 210 40% 98%;
+    --dark-panel-muted: 215 20% 75%;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 4% 46%;
-    --sidebar-primary: var(--primary);
+    --sidebar-foreground: 215 16% 47%;
+    --sidebar-primary: 231 79% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: var(--accent);
-    --sidebar-accent-foreground: var(--accent-foreground);
-    --sidebar-border: 240 6% 90%;
-    --sidebar-ring: var(--ring);
+    --sidebar-accent: 231 79% 52%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 231 79% 52%;
+
+    --cat-1: 211 72% 45%;  --cat-2: 28 90% 50%;
+    --cat-3: 168 70% 34%;  --cat-4: 268 55% 55%;
+    --cat-5: 330 68% 50%;  --cat-6: 82 55% 36%;
+    --cat-7: 195 85% 40%;  --cat-8: 18 55% 42%;
+
+    --shadow-card: 0 18px 50px -24px rgb(15 23 42 / 0.16);
+    --shadow-elegant: 0 8px 24px rgb(15 23 42 / 0.10);
+
+    --glass-blur: 20px;
+    --glass-sat: 120%;
+    --glass-fill: rgba(255,255,255,0.6);
+    --glass-fill-dense: rgba(255,255,255,0.92);
+    --glass-fill-chrome: rgba(255,255,255,0.45);
+    --glass-edge: rgba(255,255,255,0.55);
+    --glass-border: rgba(255,255,255,0.7);
+    --glass-border-soft: hsl(var(--foreground) / 0.06);
+    --glass-shadow: 0 18px 50px -24px hsl(var(--foreground) / 0.16);
+    --glass-shadow-float: 0 30px 70px -28px hsl(var(--foreground) / 0.28);
+    --glass-grain-opacity: 0.02;
 
     --font-body: 'Inter', sans-serif;
 
