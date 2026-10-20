@@ -1937,6 +1937,7 @@ export type Database = {
           website: string | null
           website_kosten: number | null
           website_url: string | null
+          werbebudget_pflicht: boolean | null
           zahlstatus: string | null
         }
         Insert: {
@@ -1977,6 +1978,7 @@ export type Database = {
           website?: string | null
           website_kosten?: number | null
           website_url?: string | null
+          werbebudget_pflicht?: boolean | null
           zahlstatus?: string | null
         }
         Update: {
@@ -2017,6 +2019,7 @@ export type Database = {
           website?: string | null
           website_kosten?: number | null
           website_url?: string | null
+          werbebudget_pflicht?: boolean | null
           zahlstatus?: string | null
         }
         Relationships: [
@@ -4892,6 +4895,33 @@ export type Database = {
           reach?: number | null
           spend?: number | null
           synced_at?: string | null
+        }
+        Relationships: []
+      }
+      meta_konto_art: {
+        Row: {
+          aktualisiert_am: string
+          art: string
+          bemerkung: string | null
+          konto_name: string | null
+          meta_account_id: string
+          quelle: string
+        }
+        Insert: {
+          aktualisiert_am?: string
+          art: string
+          bemerkung?: string | null
+          konto_name?: string | null
+          meta_account_id: string
+          quelle?: string
+        }
+        Update: {
+          aktualisiert_am?: string
+          art?: string
+          bemerkung?: string | null
+          konto_name?: string | null
+          meta_account_id?: string
+          quelle?: string
         }
         Relationships: []
       }
@@ -9506,6 +9536,14 @@ export type Database = {
           removed_count: number
         }[]
       }
+      meta_konto_art_neu_berechnen: {
+        Args: never
+        Returns: {
+          einordnung: string
+          konto_id: string
+          name: string
+        }[]
+      }
       nkey: { Args: { t: string }; Returns: string }
       projects_reset_execute: {
         Args: { p_actor: string; p_fingerprint: string; p_plan: Json }
@@ -9567,6 +9605,8 @@ export type Database = {
         Returns: boolean
       }
       verify_qonto_cron_secret: { Args: { p_secret: string }; Returns: boolean }
+      werbebudget_erwartung: { Args: { p_client_id: string }; Returns: string }
+      werbebudget_lage: { Args: { p_client_id: string }; Returns: string }
       werbebudget_zahlungsstatus: {
         Args: { p_client_id: string }
         Returns: string
