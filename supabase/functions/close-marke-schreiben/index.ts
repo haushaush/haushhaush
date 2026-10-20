@@ -5,8 +5,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
 import { closeClient, cors, haushKey, json } from "../_shared/bonusClose.ts";
 
-const MARKE_CF = "cf_dEsUZBUAObNZ2yFZZkgSNEefUJWxR2nVJdGq96R9c3W";
-const Body = z.object({ client_id: z.string().uuid(), marke: z.enum(["Leadsharks", "Viral Connect"]) });
+// Close-Feld „Marke" (choices). NICHT cf_dEsUZ… – das ist „Kundengewinnung aktuell" und darf nie beschrieben werden.
+const MARKE_CF = "cf_1aHYMjs2T5cmcIWApGI2MVBUDYVsW41UGhFVMboLoQ7";
+const Body = z.object({ client_id: z.string().uuid(), marke: z.enum(["AttentionX", "Haush Haush", "Leadsharks", "Viral Connect"]) });
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });

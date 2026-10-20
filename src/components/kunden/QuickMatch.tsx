@@ -125,22 +125,11 @@ export function ClosePanel({ clientId, namen, fertig }: { clientId: string; name
 }
 
 // ---------- Marke in Close ----------
-const MARKEN = ['Leadsharks', 'Viral Connect'] as const;
+// Exakt die Auswahlwerte des Close-Felds „Marke". Kein Vorschlag – der Nutzer wählt selbst.
+const MARKEN = ['AttentionX', 'Haush Haush', 'Leadsharks', 'Viral Connect'] as const;
 export function MarkePanel({ clientId, fertig }: { clientId: string; fertig: (e: Erledigt) => void }) {
   const [wahl, setWahl] = useState<typeof MARKEN[number] | null>(null);
-  const [grund, setGrund] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    Promise.all([
-      supabase.from('qonto_client_links').select('id').eq('client_id', clientId).eq('is_confirmed', true).limit(1),
-      (supabase.from as any)('lexoffice_client_links').select('id').eq('client_id', clientId).eq('is_confirmed', true).limit(1),
-    ]).then(([q, l]: any[]) => {
-      const hq = !!q.data?.length, hl = !!l.data?.length;
-      if (hq && !hl) { setWahl('Viral Connect'); setGrund('Vorschlag: Kunde hat eine Qonto-Verknüpfung'); }
-      else if (hl && !hq) { setWahl('Leadsharks'); setGrund('Vorschlag: Kunde hat eine lexoffice-Verknüpfung'); }
-      else if (hq && hl) setGrund('Qonto und lexoffice verknüpft – kein eindeutiger Vorschlag');
-    });
-  }, [clientId]);
   const speichern = async () => {
     if (!wahl) return;
     setBusy(true);
