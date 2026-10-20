@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { AbschlussDetail, LeistungenChips } from '@/components/kunden/AbschlussDetail';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExternalLink, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -16,6 +17,7 @@ type Abschluss = {
   status_geaendert_am: string | null; abschlusswert: number | null; setup_fee: number | null; retainer_monat: number | null;
   laufzeit_monate: number | null; startdatum: string | null; leistungen: string | null; deal_typ: string | null; closer: string | null;
   setter: string | null; marke: string; branche: string | null; quelle: string; dublette_von: string | null;
+  client_id?: string | null; kanal?: string | null; [extra: string]: any;
 };
 type Lead = { close_lead_id: string; name: string | null; status_label: string | null; marke: string | null; branche: string | null; kanal: string | null; status_geaendert_am: string | null; date_updated: string | null };
 
@@ -44,6 +46,8 @@ export default function Abschluesse() {
   const [bis, setBis] = useState('');
   const [leadStatus, setLeadStatus] = useState('alle');
   const [stand, setStand] = useState<string | null>(null);
+  const [offen, setOffen] = useState<Set<string>>(new Set());
+  const umschalten = (id: string) => setOffen(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   useEffect(() => {
     (async () => {
@@ -57,12 +61,15 @@ export default function Abschluesse() {
         }
         return out;
       };
-      const [a, l, s, h] = await Promise.all([
-        alle((f, t) => supabase.from('close_abschluesse_alle').select('quelle, dublette_von, close_opportunity_id, close_lead_id, lead_name, status_label, status_typ, status_geaendert_am, abschlusswert, setup_fee, retainer_monat, laufzeit_monate, startdatum, leistungen, deal_typ, closer, setter, marke, branche').order('status_geaendert_am', { ascending: false }).order('close_opportunity_id').range(f, t)),
+      const [a, l, s, h, voll] = await Promise.all([
+        alle((f, t) => supabase.from('close_abschluesse_alle').select('quelle, dublette_von, client_id, close_opportunity_id, close_lead_id, lead_name, status_label, status_typ, status_geaendert_am, abschlusswert, setup_fee, retainer_monat, laufzeit_monate, startdatum, leistungen, deal_typ, closer, setter, marke, branche').order('status_geaendert_am', { ascending: false }).order('close_opportunity_id').range(f, t)),
         alle((f, t) => supabase.from('close_lead_spiegel').select('close_lead_id, name, status_label, marke, branche, kanal, status_geaendert_am, date_updated').order('date_updated', { ascending: false }).order('close_lead_id').range(f, t)),
         supabase.from('close_sync_stand').select('letzter_lauf').eq('name', 'close_abschluesse').maybeSingle(),
         alle((f, t) => supabase.from('close_abschluss_ausgeblendet').select('close_opportunity_id').range(f, t)),
+        // Full Close row (Haush Haush) for the extra columns and the detail row; Umsetzungszeitraum is left out while the sync does not fill it
+        alle((f, t) => supabase.from('close_abschluesse').select('close_opportunity_id, kanal, wert_periode, cold_caller, close_typ, sub_niche, upsell, upsell_startdatum, upsell_laufzeit, kuendigungsdatum, letzter_vertragstag, abgangsgrund, abgangs_begruendung, angelegt_von, angelegt_am, synced_at').order('close_opportunity_id').range(f, t)),
       ]);
+      const zusatz = new Map((voll as any[]).map(x => [x.close_opportunity_id, x]));
       const weg = new Set((h as any[]).map(x => x.close_opportunity_id));
       const norm = (m: string | null) => {
         const k = (m || '').toLowerCase().replace(/[^a-z]/g, '');
@@ -83,7 +90,7 @@ export default function Abschluesse() {
         gesehenId.add(r.close_opportunity_id); gesehenInhalt.add(k);
         return true;
       });
-      setRows(eindeutig.map(r => ({ ...r, marke: norm(r.marke) || r.marke })));
+      setRows(eindeutig.map(r => ({ ...(r.quelle === 'Haush Haush' ? zusatz.get(r.close_opportunity_id) : null), ...r, marke: norm(r.marke) || r.marke })));
       setLeads((l as Lead[]).map(r => ({ ...r, marke: norm(r.marke) })));
       setStand(s.data?.letzter_lauf ?? null); setLoading(false);
     })();
@@ -153,26 +160,33 @@ export default function Abschluesse() {
           <Card><CardContent className="pt-4 overflow-x-auto">
             {loading ? <Skeleton className="h-40" /> : (
               <Table>
-                <TableHeader><TableRow><TableHead>Datum</TableHead><TableHead>Kunde</TableHead><TableHead>Status</TableHead><TableHead>Marke</TableHead><TableHead>Quelle</TableHead><TableHead className="text-right">Abschlusswert</TableHead><TableHead className="text-right">Setup</TableHead><TableHead className="text-right">Retainer</TableHead><TableHead>Laufzeit</TableHead><TableHead>Start</TableHead><TableHead>Closer</TableHead><TableHead>Setter</TableHead><TableHead /></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead className="w-6" /><TableHead>Datum</TableHead><TableHead>Kunde</TableHead><TableHead>Status</TableHead><TableHead>Marke</TableHead><TableHead>Kanal</TableHead><TableHead>Deal-Typ</TableHead><TableHead>Leistungen</TableHead><TableHead>Quelle</TableHead><TableHead className="text-right">Abschlusswert</TableHead><TableHead className="text-right">Setup</TableHead><TableHead className="text-right">Retainer</TableHead><TableHead>Laufzeit</TableHead><TableHead>Start</TableHead><TableHead>Closer</TableHead><TableHead>Setter</TableHead><TableHead /></TableRow></TableHeader>
                 <TableBody>
-                  {filtered.map(r => (
-                    <TableRow key={r.close_opportunity_id} className={r.dublette_von ? 'opacity-60' : ''}>
+                  {filtered.map(r => { const auf = offen.has(r.close_opportunity_id); const vc = r.quelle === 'Viral Connect'; const ng = <span className="text-[11px] italic text-muted-foreground">nicht gepflegt</span>; return (
+                    <Fragment key={r.close_opportunity_id}>
+                    <TableRow className={`cursor-pointer ${r.dublette_von ? 'opacity-60' : ''}`} onClick={() => umschalten(r.close_opportunity_id)}>
+                      <TableCell className="pr-0 text-muted-foreground">{auf ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}</TableCell>
                       <TableCell className="tabular-nums">{dt(r.status_geaendert_am)}</TableCell>
-                      <TableCell className="font-medium">{r.lead_name}<div className="text-xs text-muted-foreground">{[r.deal_typ, r.leistungen, r.branche].filter(Boolean).join(' · ')}</div></TableCell>
+                      <TableCell className="font-medium">{r.lead_name}{r.branche && <div className="text-xs text-muted-foreground">{r.branche}</div>}</TableCell>
                       <TableCell><Badge variant="outline">{statusText(r)}</Badge></TableCell>
                       <TableCell>{r.marke}</TableCell>
+                      <TableCell>{r.kanal || '–'}</TableCell>
+                      <TableCell>{r.deal_typ || '–'}</TableCell>
+                      <TableCell><LeistungenChips wert={r.leistungen} /></TableCell>
                       <TableCell className="text-xs">{r.quelle}{r.dublette_von && <Badge variant="secondary" className="ml-1">Dublettenverdacht</Badge>}</TableCell>
                       <TableCell className="text-right tabular-nums">{eur(r.abschlusswert)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{eur(r.setup_fee)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{eur(r.retainer_monat)}</TableCell>
-                      <TableCell className="tabular-nums">{r.laufzeit_monate ? `${r.laufzeit_monate} Mon.` : '–'}</TableCell>
-                      <TableCell className="tabular-nums">{dt(r.startdatum)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{r.setup_fee == null && vc ? ng : eur(r.setup_fee)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{r.retainer_monat == null && vc ? ng : eur(r.retainer_monat)}</TableCell>
+                      <TableCell className="tabular-nums">{r.laufzeit_monate ? `${r.laufzeit_monate} Mon.` : vc ? ng : '–'}</TableCell>
+                      <TableCell className="tabular-nums">{r.startdatum ? dt(r.startdatum) : vc ? ng : '–'}</TableCell>
                       <TableCell>{r.closer || '–'}</TableCell>
                       <TableCell>{r.setter || '–'}</TableCell>
-                      <TableCell><div className="flex items-center gap-2">{closeLink(r.close_lead_id) && <a href={closeLink(r.close_lead_id)} target="_blank" rel="noreferrer" className="text-primary inline-flex items-center gap-1 text-xs">Close <ExternalLink className="h-3 w-3" /></a>}
+                      <TableCell onClick={e => e.stopPropagation()}><div className="flex items-center gap-2">{closeLink(r.close_lead_id) && <a href={closeLink(r.close_lead_id)} target="_blank" rel="noreferrer" className="text-primary inline-flex items-center gap-1 text-xs">Close <ExternalLink className="h-3 w-3" /></a>}
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" aria-label="Abschluss löschen" onClick={() => loeschen(r)}><Trash2 className="h-3.5 w-3.5" /></Button></div></TableCell>
                     </TableRow>
-                  ))}
+                    {auf && <TableRow className="bg-muted/30 hover:bg-muted/30"><TableCell /><TableCell colSpan={16}><AbschlussDetail d={r} /></TableCell></TableRow>}
+                    </Fragment>
+                  ); })}
                 </TableBody>
               </Table>
             )}
