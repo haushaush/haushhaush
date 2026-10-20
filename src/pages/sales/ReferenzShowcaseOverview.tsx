@@ -470,7 +470,7 @@ function CategoryTile({
   description: string;
   count: number;
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   /** Kategoriefarbe als Token ohne `--`, z. B. `cat-1`. */
   cat: string;
 }) {
