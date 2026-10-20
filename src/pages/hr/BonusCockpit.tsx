@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -13,10 +12,13 @@ import { toast } from 'sonner';
 import { CashKlaerliste } from '@/components/bonus/CashKlaerliste';
 import { CheckinKandidaten } from '@/components/bonus/CheckinKandidaten';
 import { PerformanceTile, type Basis } from '@/components/bonus/PerformanceTile';
+import { GlassButton } from '@/components/bonus/GlassButton';
 import { monthClock } from '@/components/bonus/presentation';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type KritKey = 'zufriedenheit' | 'cash_niveau' | 'cash_entwicklung' | 'churn' | 'calls';
+type Tab = 'uebersicht' | 'zufriedenheit' | 'cash' | 'churn' | 'calls';
+const KZ_LABEL = 'kz-label !text-[0.6875rem] !font-medium !tracking-[0.08em] text-muted-foreground/80';
 type Krit = { status: 'ok' | 'keine_daten' | 'unvollstaendig'; punkte: number; max: number; wert: any; hinweis?: string; basis_hinweis: string | null };
 type Result = {
   anzeige?: { config: any; calls: any[]; basis: Basis; basis_neu?: Basis }; freigegeben?: boolean;
@@ -46,11 +48,9 @@ export default function BonusCockpit() {
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [detail, setDetail] = useState<KritKey>('calls');
-  const detailRef = useRef<HTMLDivElement>(null);
+  const [tab, setTab] = useState<Tab>('uebersicht');
   const clock = monthClock(monat);
   const provisional = clock.current || clock.future;
-  const showDetail = (key: KritKey) => { setDetail(key); requestAnimationFrame(() => { const target = key === 'calls' ? document.getElementById('bonus-alle-calls') ?? detailRef.current : detailRef.current; target?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }); }); };
   const [monthStatus, setMonthStatus] = useState<string | null>(null);
   const [approval, setApproval] = useState<Result | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -102,11 +102,14 @@ export default function BonusCockpit() {
 
   const maName = mitarbeiter.find(m => m.id === maId)?.name;
 
-  return (
-    <PageShell>
-      <PageHeader title="Bonus-Cockpit" description={canManage ? 'Monatliche Aufstellung je Kriterium (§ 5 Abs. 3 Bonusvereinbarung).' : `Deine monatliche Aufstellung${maName ? ` – ${maName}` : ''}.`} />
+  const tileProps = (key: KritKey) => ({ criterion: key, label: ORDER.find(o => o.key === key)!.label, k: res!.kriterien[key], config: res!.anzeige?.config, month: monat, basis: res!.anzeige?.basis, basisNeu: res!.anzeige?.basis_neu });
+  const detailProps = { monat, maId, res, canManage: !!canManage, onChanged: () => run(!!canManage) };
 
-      <div className="flex flex-wrap gap-3 mb-8">
+  return (
+    <PageShell className="bg-transparent dark:bg-transparent">
+      <PageHeader title="Bonus-Cockpit" titleClassName="text-2xl font-semibold font-heading" descriptionClassName="text-sm" className="mb-6" description={canManage ? 'Monatliche Aufstellung je Kriterium (§ 5 Abs. 3 Bonusvereinbarung).' : `Deine monatliche Aufstellung${maName ? ` – ${maName}` : ''}.`} />
+
+      <div className="flex flex-wrap gap-3 mb-6">
         <Select value={monat} onValueChange={setMonat}>
           <SelectTrigger className="w-44 glass-field"><SelectValue /></SelectTrigger>
           <SelectContent>{months().map(m => <SelectItem key={m} value={m}>{new Date(m).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}</SelectItem>)}</SelectContent>
@@ -119,72 +122,93 @@ export default function BonusCockpit() {
         )}
       </div>
 
-      {canManage !== null && !mitarbeiter.length && (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">Für dich ist kein Bonusmodell hinterlegt.</CardContent></Card>
-      )}
-      {err && <Card className="mb-6"><CardContent className="py-4 text-sm text-destructive-text">{err}</CardContent></Card>}
+      <div className="mb-8 flex flex-wrap items-center gap-3">
+        {canManage && (
+          <GlassButton variant="primary" onClick={() => run(true)} disabled={loading || !maId || monthStatus === 'freigegeben'}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Neu berechnen
+          </GlassButton>
+        )}
+        {canManage && monthStatus !== 'freigegeben' && <GlassButton variant="secondary" onClick={openApproval} disabled={loading || !res}>Monat freigeben</GlassButton>}
+        {monthStatus === 'freigegeben' && <span className="text-sm text-muted-foreground">Freigegeben</span>}
+        <span className="text-xs text-muted-foreground tabular-nums">
+          Zuletzt gespeichert: {lastSaved ? new Date(lastSaved).toLocaleString('de-DE') : 'noch nie'}
+        </span>
+      </div>
 
-      {res && (
-        <div className="space-y-8">
-          <div className="space-y-3">
+      {canManage !== null && !mitarbeiter.length && (
+        <div className="glass-surface p-5 py-12 text-center text-sm text-muted-foreground">Für dich ist kein Bonusmodell hinterlegt.</div>
+      )}
+      {err && <div className="glass-surface p-5 mb-6 text-sm text-destructive-text">{err}</div>}
+
+      {res ? (
+        <Tabs value={tab} onValueChange={v => setTab(v as Tab)}>
+          <TabsList className="flex flex-wrap h-auto gap-1">
+            <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
+            <TabsTrigger value="zufriedenheit">Kundenzufriedenheit</TabsTrigger>
+            <TabsTrigger value="cash">Cash Collect</TabsTrigger>
+            <TabsTrigger value="churn">Anti-Churn</TabsTrigger>
+            <TabsTrigger value="calls">Checkup-Calls</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="uebersicht" className="mt-6 space-y-8">
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="kz-card min-w-0 space-y-3">
-                <div className="kz-label text-muted-foreground">Erreichte Punkte</div>
+                <div className={KZ_LABEL}>Erreichte Punkte</div>
                 <div className="kz-zahl break-words">{num(res.punkte_gesamt)}</div>
                 <div className="text-sm text-muted-foreground tabular-nums">von {res.punkte_max}{provisional && ' · vorläufig'}</div>
               </div>
               <div className="kz-card min-w-0 space-y-3">
-                <div className="kz-label text-muted-foreground">Bonus{provisional && ' · vorläufig'}</div>
+                <div className={KZ_LABEL}>Bonus{provisional && ' · vorläufig'}</div>
                 <div className="kz-zahl break-words">{eur(res.bonus_eur)}</div>
               </div>
               <div className="kz-card min-w-0 space-y-3">
-                <div className="kz-label text-muted-foreground">Upsell-Beteiligung (separat)</div>
+                <div className={KZ_LABEL}>Upsell-Beteiligung (separat)</div>
                 <div className="kz-zahl break-words">{eur(res.upsell_beteiligung_eur)}</div>
               </div>
             </div>
 
-            {res.nicht_bewertbare_kriterien > 0 && (
-              <p className="text-xs text-muted-foreground tabular-nums">
-                {res.nicht_bewertbare_kriterien} von 5 Kriterien haben keine vollständige Datengrundlage — Details je Kachel
-              </p>
-            )}
-          </div>
+            <div className="space-y-4">
+              {ORDER.map(({ key }) => <PerformanceTile key={key} variant="row" {...tileProps(key)} onClick={() => setTab(key === 'cash_niveau' || key === 'cash_entwicklung' ? 'cash' : key)} />)}
+            </div>
 
-          <div className="space-y-4">
             <div className="space-y-2">
-              {clock.current && <p className="text-sm text-muted-foreground tabular-nums">Stand {String(clock.day).padStart(2, '0')}.{monat.slice(5, 7)}. · Tag {clock.day} von {clock.days} · Monat zu {Math.round(clock.fraction * 100)} % vorbei</p>}
-              {clock.future && <p className="text-sm text-muted-foreground">Monat hat noch nicht begonnen · Punkte vorläufig</p>}
-              {!!res.anzeige?.basis?.ohne_startdatum && <p className="text-sm text-muted-foreground"><a href="/kunden/laufzeiten" className="text-primary hover:underline">{res.anzeige.basis.ohne_startdatum} Kunden ohne Startdatum — Zuordnung unsicher</a></p>}
-              {res.freigegeben && <p className="text-sm text-muted-foreground">Freigegebener Monat: gespeicherte Werte{res.anzeige?.basis_neu ? ` · nach neuer Basisregel wären es ${res.anzeige.basis_neu.gesamt} Kunden (nur Hinweis)` : ''}.</p>}
+              {res.nicht_bewertbare_kriterien > 0 && (
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  {res.nicht_bewertbare_kriterien} von 5 Kriterien haben keine vollständige Datengrundlage — Details je Kachel
+                </p>
+              )}
+              {clock.current && <p className="text-xs text-muted-foreground tabular-nums">Stand {String(clock.day).padStart(2, '0')}.{monat.slice(5, 7)}. · Tag {clock.day} von {clock.days} · Monat zu {Math.round(clock.fraction * 100)} % vorbei</p>}
+              {clock.future && <p className="text-xs text-muted-foreground">Monat hat noch nicht begonnen · Punkte vorläufig</p>}
+              {!!res.anzeige?.basis?.ohne_startdatum && <p className="text-xs text-muted-foreground"><a href="/kunden/laufzeiten" className="text-primary hover:underline">{res.anzeige.basis.ohne_startdatum} Kunden ohne Startdatum — Zuordnung unsicher</a></p>}
+              {res.freigegeben && <p className="text-xs text-muted-foreground">Freigegebener Monat: gespeicherte Werte{res.anzeige?.basis_neu ? ` · nach neuer Basisregel wären es ${res.anzeige.basis_neu.gesamt} Kunden (nur Hinweis)` : ''}.</p>}
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {ORDER.map(({ key, label }) => <PerformanceTile key={key} criterion={key} label={label} k={res.kriterien[key]} config={res.anzeige?.config} month={monat} basis={res.anzeige?.basis} basisNeu={res.anzeige?.basis_neu} onClick={() => showDetail(key)} />)}
-            </div>
-          </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="zufriedenheit" className="mt-6 space-y-4">
+            <PerformanceTile {...tileProps('zufriedenheit')} />
+            <section className="glass-surface p-5"><Detail key={`${monat}-${maId}-zufriedenheit`} kind="zufriedenheit" {...detailProps} /></section>
+          </TabsContent>
+
+          <TabsContent value="cash" className="mt-6 space-y-4">
+            <PerformanceTile {...tileProps('cash_niveau')} />
+            <PerformanceTile {...tileProps('cash_entwicklung')} />
+            <section className="glass-surface p-5"><Detail key={`${monat}-${maId}-cash`} kind="cash_entwicklung" title="Zahlungseingänge" {...detailProps} /></section>
+          </TabsContent>
+
+          <TabsContent value="churn" className="mt-6 space-y-4">
+            <PerformanceTile {...tileProps('churn')} />
+            <section className="glass-surface p-5"><Detail key={`${monat}-${maId}-churn`} kind="churn" {...detailProps} /></section>
+          </TabsContent>
+
+          <TabsContent value="calls" className="mt-6 space-y-4">
+            <PerformanceTile {...tileProps('calls')} />
+            {maId && <section className="glass-surface p-5"><CheckinKandidaten monat={monat} maId={maId} canManage={!!canManage} onChanged={() => canManage && run(true)} /></section>}
+            <section className="glass-surface p-5"><Detail key={`${monat}-${maId}-calls`} kind="calls" {...detailProps} /></section>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        maId && <div className="glass-surface p-5"><CheckinKandidaten monat={monat} maId={maId} canManage={!!canManage} onChanged={() => canManage && run(true)} /></div>
       )}
-
-      <div className="mt-8 flex flex-wrap items-center gap-4">
-        {canManage && (
-          <Button onClick={() => run(true)} disabled={loading || !maId || monthStatus === 'freigegeben'}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Neu berechnen
-          </Button>
-        )}
-        {canManage && monthStatus !== 'freigegeben' && <Button variant="outline" onClick={openApproval} disabled={loading || !res}>Monat freigeben</Button>}
-        {monthStatus === 'freigegeben' && <span className="text-sm text-muted-foreground">Freigegeben</span>}
-        <span className="text-sm text-muted-foreground tabular-nums">
-          Zuletzt gespeichert: {lastSaved ? new Date(lastSaved).toLocaleString('de-DE') : 'noch nie'}
-        </span>
-      </div>
-      {maId && <CheckinKandidaten monat={monat} maId={maId} canManage={!!canManage} onChanged={() => canManage && run(true)} />}
-
-
-      {res && <div ref={detailRef} className="mt-10 scroll-mt-24 min-w-0">
-        <div className="mb-5 flex flex-wrap gap-2" aria-label="Kriterium der Liste">
-          {ORDER.map(o => <Button key={o.key} size="sm" variant={detail === o.key ? 'secondary' : 'ghost'} onClick={() => setDetail(o.key)}>{o.label}</Button>)}
-        </div>
-        <Detail key={`${monat}-${maId}-${detail}`} kind={detail} monat={monat} maId={maId} res={res} canManage={!!canManage} onChanged={() => run(!!canManage)} />
-      </div>}
       <AlertDialog open={!!approval} onOpenChange={open => { if (!open && !approving) setApproval(null); }}>
         <AlertDialogContent className="z-[400]">
           <AlertDialogHeader>
@@ -203,7 +227,7 @@ export default function BonusCockpit() {
           </div>}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={approving}>Abbrechen</AlertDialogCancel>
-            <Button onClick={approve} disabled={approving || !approval?.kriterien.churn.wert?.erfassung_bestaetigt || (!!approval?.nicht_bewertbare_kriterien && !acknowledged)}>{approving && <Loader2 className="h-4 w-4 animate-spin" />}Freigeben</Button>
+            <GlassButton variant="primary" onClick={approve} disabled={approving || !approval?.kriterien.churn.wert?.erfassung_bestaetigt || (!!approval?.nicht_bewertbare_kriterien && !acknowledged)}>{approving && <Loader2 className="h-4 w-4 animate-spin" />}Freigeben</GlassButton>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -225,7 +249,7 @@ function Table({ head, rows, empty }: { head: React.ReactNode[]; rows: React.Rea
   );
 }
 
-function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKey; monat: string; maId: string; res: Result | null; canManage: boolean; onChanged: () => void }) {
+function Detail({ kind, title: titleOverride, monat, maId, res, canManage, onChanged }: { kind: KritKey; title?: string; monat: string; maId: string; res: Result | null; canManage: boolean; onChanged: () => void }) {
   const [data, setData] = useState<any>(null);
   const [confirm, setConfirm] = useState<boolean | null>(null);
   const [tick, setTick] = useState(0);
@@ -278,7 +302,7 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
     })();
   }, [kind, monat, maId, tick, res]);
 
-  const title = ORDER.find(o => o.key === kind)?.label;
+  const title = titleOverride ?? ORDER.find(o => o.key === kind)?.label;
   const k = res?.kriterien[kind];
 
   const nichtGeantwortet = useMemo(() => {
@@ -290,7 +314,6 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
   return (
     <>
       <h2 className="text-lg font-semibold font-heading">{title}</h2>
-      {k && k.status !== 'ok' && <p className="mt-2 text-sm text-muted-foreground">{k.hinweis}</p>}
       <div className="mt-4 space-y-6">
         {!data && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
 
@@ -349,9 +372,9 @@ function Detail({ kind, monat, maId, res, canManage, onChanged }: { kind: KritKe
                 {offen.map((r: any) => (
                   <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span>{r.clients?.name || '–'} · <span className="tabular-nums">{dt(r.abgang_datum || r.festgestellt_am)}</span></span>
-                    <span className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => decide(r.id, true)}>Als Sonderfall anerkennen</Button>
-                      <Button size="sm" variant="outline" onClick={() => decide(r.id, false)}>Zählt als Churn</Button>
+                    <span className="flex flex-wrap gap-2">
+                      <GlassButton size="sm" variant="secondary" onClick={() => decide(r.id, true)}>Als Sonderfall anerkennen</GlassButton>
+                      <GlassButton size="sm" variant="secondary" onClick={() => decide(r.id, false)}>Zählt als Churn</GlassButton>
                     </span>
                   </div>
                 ))}
@@ -436,9 +459,9 @@ function CallsDetail({ data, canManage, syncing, onSync, wert }: { data: any; ca
           ) : 'Noch nie synchronisiert.'}
         </div>
         {canManage && (
-          <Button size="sm" variant="outline" onClick={onSync} disabled={syncing}>
+          <GlassButton size="sm" variant="secondary" onClick={onSync} disabled={syncing}>
             {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Jetzt synchronisieren
-          </Button>
+          </GlassButton>
         )}
       </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
+import { GlassButton } from './GlassButton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AlertTriangle, Check } from 'lucide-react';
 import { toast } from 'sonner';
@@ -127,7 +127,7 @@ export function CashKlaerliste({ rows, onChanged }: { rows: any[]; onChanged: ()
                             <option value="">Kunde wählen…</option>
                             {kunden.map(k => <option key={k.id} value={k.id}>{k.name}{v?.kunde.id === k.id ? ` (Vorschlag${v.score < 1 ? ` ${Math.round(v.score * 100)} %` : ''})` : ''}</option>)}
                           </select>
-                          <Button size="sm" variant="outline" className="h-7" disabled={!kunde} onClick={() => kunde && setFrage({ e, kunde, score: v?.kunde.id === kunde.id ? v.score : 1, abweichend: zugeordnet.filter(id => id !== kunde.id).map(id => kundeName.get(id) || 'Kunde') })}>Verknüpfen</Button>
+                          <GlassButton size="sm" variant="secondary" className="h-7" disabled={!kunde} onClick={() => kunde && setFrage({ e, kunde, score: v?.kunde.id === kunde.id ? v.score : 1, abweichend: zugeordnet.filter(id => id !== kunde.id).map(id => kundeName.get(id) || 'Kunde') })}>Verknüpfen</GlassButton>
                         </>}
                       </span>
                     </div>
