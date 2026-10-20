@@ -96,11 +96,11 @@ export function PageHeader({
         )}
       >
         <div className={cn('min-w-0', isCenter && 'max-w-2xl mx-auto')}>
-          <h1 className={cn(titleSize[size], 'text-gray-900 dark:text-white')}>{title}</h1>
+          <h1 className={cn(titleClassName ?? titleSize[size], 'text-gray-900 dark:text-white')}>{title}</h1>
           {description && (
             <p
               className={cn(
-                descSize[size],
+                descriptionClassName ?? descSize[size],
                 'text-gray-500 dark:text-gray-400 mt-2 font-normal',
               )}
             >
