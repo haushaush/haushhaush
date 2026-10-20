@@ -27,6 +27,7 @@ type Wahl = { id: string; name: string | null };
 type Vorschlag = Wahl & { grund: string };
 type QEintrag = { qid: string; name: string; anzahl: number; bezahlt: number; netto: number; letzte: string | null; client_id: string | null };
 type Zahler = { key: string; name: string; eintraege: QEintrag[]; bezahlt: number; netto: number; letzte: string | null };
+type LexKontakt = { cid: string; name: string; bezahlt: number; brutto: number; letzte: string | null };
 type Kampagne = { id: string; name: string; status: string; spend: number; konto: string; untermarke: string | null };
 
 /** Bester Namenstreffer mit Begründung; verworfene Paare werden übersprungen. */
@@ -133,7 +134,7 @@ function NichtZuordnen({ onSpeichern }: { onSpeichern: (grund: string) => Promis
   </div>;
 }
 
-export type ArbeitslisteZahlen = { zahler: number; kampagnen: number; ohneZahler: number; dubletten: number };
+export type ArbeitslisteZahlen = { zahler: number; lexoffice: number; kampagnen: number; ohneZahler: number; dubletten: number };
 
 export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: ArbeitslisteZahlen | null) => void }) {
   const { callMeta } = useMetaAds();
@@ -146,6 +147,8 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
   const [metaFehler, setMetaFehler] = useState<string[]>([]);
   const [fehler, setFehler] = useState<string | null>(null);
   const [ignoriert, setIgnoriert] = useState<any[]>([]);
+  const [lexInv, setLexInv] = useState<any[] | null>(null);
+  const [lexLinks, setLexLinks] = useState<any[]>([]);
   const [ignoriertAuf, setIgnoriertAuf] = useState(false);
   const ladeIgnoriert = useCallback(async () => {
     const r = await alle('bonus_cash_ignorierte_empfaenger', 'id, qonto_client_name, grund, created_at');
@@ -155,14 +158,17 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
   useEffect(() => { ladeIgnoriert(); }, [ladeIgnoriert]);
 
   const ladeDaten = useCallback(async () => {
-    const [c, i, l, z, v] = await Promise.all([
+    const [c, i, l, z, v, li, ll] = await Promise.all([
       alle('clients', 'id, name, vor_nachname, kundenstatus', q => q.is('deleted_at', null)),
       alle('qonto_client_invoices', 'client_id, client_name, status, subtotal_amount, total_amount, vat_amount, paid_at'),
       alle('qonto_client_links', 'id, qonto_client_id, qonto_client_name, client_id, is_confirmed'),
       alle('werbebudget_zuordnung', 'client_id, meta_account_id, typ, objekt_id, kampagne_id'),
       alle('kunde_link_vorschlag_verworfen', 'client_id, system, externe_id'),
+      alle('lexoffice_invoices', 'voucher_id, status, contact_id, contact_name, total_amount, paid_date'),
+      alle('lexoffice_client_links', 'id, lexoffice_contact_id, lexoffice_contact_name, client_id'),
     ]);
-    if (c.error || i.error || l.error || z.error || v.error) setFehler('Einige Daten konnten nicht geladen werden – Anzahlen können unvollständig sein.');
+    setLexInv(li.rows); setLexLinks(ll.rows);
+    if (c.error || i.error || l.error || z.error || v.error || li.error || ll.error) setFehler('Einige Daten konnten nicht geladen werden – Anzahlen können unvollständig sein.');
     setKunden(c.rows); setInv(i.rows); setLinks(l.rows); setZuo(z.rows);
     setVerworfen(new Set(v.rows.map((r: any) => `${r.system}|${r.externe_id}|${r.client_id}`)));
   }, []);
@@ -242,6 +248,36 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
     };
   }, [inv, links, ignoriertKeys]);
 
+  // lexoffice-Kontakte je contact_id; offen = keine Zeile mit Kunde in lexoffice_client_links.
+  const lexVerknuepft = useMemo(() => new Set(lexLinks.filter(l => l.client_id).map(l => l.lexoffice_contact_id)), [lexLinks]);
+  const kundenMitLex = useMemo(() => new Set(lexLinks.filter(l => l.client_id).map(l => l.client_id)), [lexLinks]);
+  const offeneLex = useMemo(() => {
+    const m = new Map<string, LexKontakt>();
+    for (const r of lexInv || []) {
+      if (!r.contact_id) continue;
+      const k = m.get(r.contact_id) || { cid: r.contact_id, name: (r.contact_name || r.contact_id).trim(), bezahlt: 0, brutto: 0, letzte: null };
+      if (r.status === 'paid') {
+        k.bezahlt++; k.brutto += Number(r.total_amount || 0);
+        if (r.paid_date && (!k.letzte || r.paid_date > k.letzte)) k.letzte = r.paid_date;
+      }
+      m.set(r.contact_id, k);
+    }
+    return [...m.values()].filter(k => !lexVerknuepft.has(k.cid) && !ignoriertKeys.has(key(k.name))).sort((a, b) => b.brutto - a.brutto);
+  }, [lexInv, lexVerknuepft, ignoriertKeys]);
+
+  /** Schreibt die lexoffice-Verknüpfung; vorhandene Zeile dieses Kontakts wird aktualisiert. */
+  const lexVerknuepfen = async (k: LexKontakt, kunde: Wahl) => {
+    const vorhanden = lexLinks.find(l => l.lexoffice_contact_id === k.cid);
+    const patch = { client_id: kunde.id, lexoffice_contact_name: k.name, match_type: 'manual', confidence: 1, is_confirmed: true, updated_at: new Date().toISOString() };
+    const { error } = vorhanden
+      ? await (supabase.from as any)('lexoffice_client_links').update(patch).eq('id', vorhanden.id)
+      : await (supabase.from as any)('lexoffice_client_links').insert({ ...patch, lexoffice_contact_id: k.cid });
+    if (error) throw new Error(error.message);
+    toast.success(`${k.name} → ${kunde.name}`);
+    const ll = await alle('lexoffice_client_links', 'id, lexoffice_contact_id, lexoffice_contact_name, client_id');
+    setLexLinks(ll.rows);
+  };
+
   const offeneKampagnen = useMemo(() => {
     if (!kampagnen) return null;
     const belegt = new Set(zuo.flatMap((z: any) => [z.objekt_id, z.kampagne_id]));
@@ -250,7 +286,7 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
   }, [kampagnen, zuo]);
 
   const kundenMitQonto = useMemo(() => new Set(links.filter(l => l.is_confirmed && l.client_id).map(l => l.client_id)), [links]);
-  const ohneZahler = useMemo(() => aktive.filter(k => !kundenMitQonto.has(k.id)), [aktive, kundenMitQonto]);
+  const ohneZahler = useMemo(() => aktive.filter(k => !kundenMitQonto.has(k.id) && !kundenMitLex.has(k.id)), [aktive, kundenMitQonto, kundenMitLex]);
   const mitZuo = useMemo(() => new Set(zuo.map((z: any) => z.client_id)), [zuo]);
   // Zeilen in Abschnitt 5 bleiben bis zum nächsten Seitenaufruf stehen; die Anzahl sinkt sofort.
   const [ohneKampagneStart, setOhneKampagneStart] = useState<Kunde[] | null>(null);
@@ -259,10 +295,10 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
   useEffect(() => { if (!ohneKampagneStart && kunden) setOhneKampagneStart(ohneKampagneJetzt); }, [ohneKampagneStart, kunden, ohneKampagneJetzt]);
   const ohneKampagne = useMemo(() => (ohneKampagneStart || []).filter(k => !verworfen.has(`${SYS_OHNE_KAMPAGNE}|eigenes_konto|${k.id}`)), [ohneKampagneStart, verworfen]);
 
-  const geladen = !!kunden && !!inv;
+  const geladen = !!kunden && !!inv && !!lexInv;
   useEffect(() => {
-    onZahlen?.(geladen && offeneKampagnen ? { zahler: offeneZahler.length, kampagnen: offeneKampagnen.length, ohneZahler: ohneZahler.length, dubletten: dubletten.length } : null);
-  }, [geladen, offeneZahler.length, offeneKampagnen, ohneZahler.length, dubletten.length, onZahlen]);
+    onZahlen?.(geladen && offeneKampagnen ? { zahler: offeneZahler.length, lexoffice: offeneLex.length, kampagnen: offeneKampagnen.length, ohneZahler: ohneZahler.length, dubletten: dubletten.length } : null);
+  }, [geladen, offeneZahler.length, offeneLex.length, offeneKampagnen, ohneZahler.length, dubletten.length, onZahlen]);
 
   /** Verknüpft alle noch freien Qonto-Datensätze eines Zahlers (oder einen einzelnen) mit dem Kunden. */
   const zahlerVerknuepfen = async (eintraege: QEintrag[], kunde: Wahl) => {
@@ -289,7 +325,11 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
     return t ? { id: t.id, name: t.name, grund: t._grund } : null;
   };
 
-  const freieZahler = useMemo(() => offeneZahler.map(z => ({ id: z.key, name: z.name })), [offeneZahler]);
+  // Kandidaten für „Kunden ohne Zahlungsverknüpfung“ aus beiden Quellen, Herkunft im Namen sichtbar.
+  const freieZahler = useMemo(() => [
+    ...offeneZahler.map(z => ({ id: `q:${z.key}`, name: `${z.name} · Qonto · ${z.bezahlt} bezahlt · letzte ${dt(z.letzte)}` })),
+    ...offeneLex.map(k => ({ id: `l:${k.cid}`, name: `${k.name} · lexoffice · ${k.bezahlt} bezahlt · letzte ${dt(k.letzte)}` })),
+  ], [offeneZahler, offeneLex]);
 
   if (fehler && !kunden) return <p className="text-sm text-destructive">{fehler}</p>;
   const laedt = !geladen;
@@ -324,7 +364,16 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
         </div>}
       </Abschnitt>
 
-      <Abschnitt nr={2} titel="Qonto-Dubletten" anzahl={laedt ? null : dubletten.length} laedt={laedt}
+      <Abschnitt nr={2} titel="lexoffice-Kontakte ohne Kundenzuordnung" anzahl={laedt ? null : offeneLex.length} laedt={laedt}
+        hinweis="Rechnungskontakte aus lexoffice ohne Kunden. Sortiert nach bezahlter Summe (brutto – lexoffice liefert in der Rechnungsliste keinen Nettobetrag). „Nicht zuordnen“ landet in derselben Liste wie bei Qonto.">
+        {offeneLex.map(k => <Zeile key={k.cid} titel={k.name}
+          info={<>lexoffice · {k.bezahlt} bezahlt · {eur(k.brutto)} brutto · letzte {dt(k.letzte)}</>}
+          vorschlag={kundeVorschlag(k.name, 'lexoffice', k.cid)} kandidaten={kundenWahl} platzhalter="Kunde suchen…"
+          onUebernehmen={w => lexVerknuepfen(k, w)} onVerwerfen={w => verwerfen('lexoffice', k.cid, w.id)}
+          extra={<NichtZuordnen onSpeichern={g => nichtZuordnen(k.name, g)} />} />)}
+      </Abschnitt>
+
+      <Abschnitt nr={3} titel="Qonto-Dubletten" anzahl={laedt ? null : dubletten.length} laedt={laedt}
         hinweis="Namen mit mehreren Qonto-Datensätzen. Jeder Datensatz einzeln; ist für den Namen schon ein Kunde gesetzt, ist er vorbelegt.">
         {dubletten.map(z => {
           const gesetzt = [...new Set(z.eintraege.map(e => e.client_id).filter(Boolean) as string[])];
@@ -346,7 +395,7 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
         })}
       </Abschnitt>
 
-      <Abschnitt nr={3} titel="Kampagnen ohne Kunde" anzahl={offeneKampagnen ? offeneKampagnen.length : null} laedt={!offeneKampagnen || laedt}
+      <Abschnitt nr={4} titel="Kampagnen ohne Kunde" anzahl={offeneKampagnen ? offeneKampagnen.length : null} laedt={!offeneKampagnen || laedt}
         hinweis="Aktive Kampagnen auf unseren Untermarken-Konten, die weder als Kampagne noch über Anzeigengruppen zugeordnet sind. Sortiert nach Ausgaben der letzten 7 Tage.">
         {metaFehler.length > 0 && <p className="text-xs text-destructive py-2">Kampagnen einzelner Konten konnten nicht geladen werden – {metaFehler.join(' · ')}</p>}
         {(offeneKampagnen || []).map(c => (
@@ -362,20 +411,30 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
         ))}
       </Abschnitt>
 
-      <Abschnitt nr={4} titel="Kunden ohne Qonto-Verknüpfung" anzahl={laedt ? null : ohneZahler.length} laedt={laedt}
-        hinweis="Aktive Kunden ohne bestätigten Zahler. Vorschläge aus den noch freien Qonto-Zahlern.">
+      <Abschnitt nr={5} titel="Kunden ohne Zahlungsverknüpfung" anzahl={laedt ? null : ohneZahler.length} laedt={laedt}
+        hinweis="Aktive Kunden, die weder in Qonto noch in lexoffice verknüpft sind. Vorschläge und Suche über freie Zahler beider Quellen. Ein Kunde darf in beiden Quellen verknüpft sein.">
         {ohneZahler.map(k => {
-          const t = besterTreffer(k.name, offeneZahler, z => [z.name], z => z.eintraege[0]?.qid || z.key, qid => verworfen.has(`qonto|${qid}|${k.id}`))
-            || (k.vor_nachname ? besterTreffer(k.vor_nachname, offeneZahler, z => [z.name], z => z.eintraege[0]?.qid || z.key, qid => verworfen.has(`qonto|${qid}|${k.id}`)) : null);
-          const v: Vorschlag | null = t ? { id: t.key, name: t.name, grund: `${t._grund} · ${t.bezahlt} bezahlt, ${eur(t.netto)}` } : null;
+          const namen = [k.name, k.vor_nachname].filter(Boolean) as string[];
+          const tq = namen.map(n => besterTreffer(n, offeneZahler, z => [z.name], z => z.eintraege[0]?.qid || z.key, qid => verworfen.has(`qonto|${qid}|${k.id}`))).find(Boolean) || null;
+          const tl = namen.map(n => besterTreffer(n, offeneLex, x => [x.name], x => x.cid, cid => verworfen.has(`lexoffice|${cid}|${k.id}`))).find(Boolean) || null;
+          const v: Vorschlag | null = tq && (!tl || tq._score >= tl._score)
+            ? { id: `q:${tq.key}`, name: `${tq.name} · Qonto`, grund: `${tq._grund} · ${tq.bezahlt} bezahlt, letzte ${dt(tq.letzte)}` }
+            : tl ? { id: `l:${tl.cid}`, name: `${tl.name} · lexoffice`, grund: `${tl._grund} · ${tl.bezahlt} bezahlt, letzte ${dt(tl.letzte)}` } : null;
           return <Zeile key={k.id} titel={<Link to={`/kunden/${k.id}?tab=verknuepfungen`} className="hover:text-primary">{k.name}</Link>}
-            info={k.kundenstatus} vorschlag={v} kandidaten={freieZahler} platzhalter="Zahler suchen…"
-            onUebernehmen={async w => { const z = offeneZahler.find(x => x.key === w.id); if (!z) throw new Error('Zahler nicht mehr offen'); await zahlerVerknuepfen(z.eintraege, { id: k.id, name: k.name }); }}
-            onVerwerfen={async w => { const z = offeneZahler.find(x => x.key === w.id); await verwerfen('qonto', z?.eintraege[0]?.qid || w.id, k.id); }} />;
+            info={k.kundenstatus} vorschlag={v} kandidaten={freieZahler} platzhalter="Zahler (Qonto/lexoffice) suchen…"
+            onUebernehmen={async w => {
+              const kunde = { id: k.id, name: k.name };
+              if (w.id.startsWith('l:')) { const x = offeneLex.find(y => y.cid === w.id.slice(2)); if (!x) throw new Error('Kontakt nicht mehr offen'); await lexVerknuepfen(x, kunde); return; }
+              const z = offeneZahler.find(x => x.key === w.id.slice(2)); if (!z) throw new Error('Zahler nicht mehr offen'); await zahlerVerknuepfen(z.eintraege, kunde);
+            }}
+            onVerwerfen={async w => {
+              if (w.id.startsWith('l:')) return verwerfen('lexoffice', w.id.slice(2), k.id);
+              const z = offeneZahler.find(x => x.key === w.id.slice(2)); await verwerfen('qonto', z?.eintraege[0]?.qid || w.id.slice(2), k.id);
+            }} />;
         })}
       </Abschnitt>
 
-      <Abschnitt nr={5} titel="Kunden ohne Kampagnenzuordnung" anzahl={laedt ? null : ohneKampagneJetzt.length} laedt={laedt}
+      <Abschnitt nr={6} titel="Kunden ohne Kampagnenzuordnung" anzahl={laedt ? null : ohneKampagneJetzt.length} laedt={laedt}
         hinweis="Direkt hier über „Zuordnen“ oder im Verknüpfungen-Tab des Kunden. Nicht jeder Kunde braucht eine Kampagne: wer sein eigenes Werbekonto bezahlt, steht hier zu Recht und kann abgehakt werden.">
         {ohneKampagne.map(k => <KundeOhneKampagneZeile key={k.id} k={k} callMeta={callMeta} onZugeordnet={() => { setNeuZugeordnet(m => new Map(m).set(k.id, (m.get(k.id) || 0) + 1)); ladeDaten(); }}>
           <div className="py-2 flex items-center gap-3 text-sm">
