@@ -1773,18 +1773,21 @@ export type Database = {
       buchhaltung_intern: {
         Row: {
           angelegt_am: string
+          art: string
           grund: string | null
           name_anzeige: string
           name_norm: string
         }
         Insert: {
           angelegt_am?: string
+          art?: string
           grund?: string | null
           name_anzeige: string
           name_norm: string
         }
         Update: {
           angelegt_am?: string
+          art?: string
           grund?: string | null
           name_anzeige?: string
           name_norm?: string
