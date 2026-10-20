@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -13,10 +12,13 @@ import { toast } from 'sonner';
 import { CashKlaerliste } from '@/components/bonus/CashKlaerliste';
 import { CheckinKandidaten } from '@/components/bonus/CheckinKandidaten';
 import { PerformanceTile, type Basis } from '@/components/bonus/PerformanceTile';
+import { GlassButton } from '@/components/bonus/GlassButton';
 import { monthClock } from '@/components/bonus/presentation';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type KritKey = 'zufriedenheit' | 'cash_niveau' | 'cash_entwicklung' | 'churn' | 'calls';
+type Tab = 'uebersicht' | 'zufriedenheit' | 'cash' | 'churn' | 'calls';
+const KZ_LABEL = 'kz-label !text-[0.6875rem] !font-medium !tracking-[0.08em] text-muted-foreground/80';
 type Krit = { status: 'ok' | 'keine_daten' | 'unvollstaendig'; punkte: number; max: number; wert: any; hinweis?: string; basis_hinweis: string | null };
 type Result = {
   anzeige?: { config: any; calls: any[]; basis: Basis; basis_neu?: Basis }; freigegeben?: boolean;
@@ -46,11 +48,9 @@ export default function BonusCockpit() {
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [detail, setDetail] = useState<KritKey>('calls');
-  const detailRef = useRef<HTMLDivElement>(null);
+  const [tab, setTab] = useState<Tab>('uebersicht');
   const clock = monthClock(monat);
   const provisional = clock.current || clock.future;
-  const showDetail = (key: KritKey) => { setDetail(key); requestAnimationFrame(() => { const target = key === 'calls' ? document.getElementById('bonus-alle-calls') ?? detailRef.current : detailRef.current; target?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }); }); };
   const [monthStatus, setMonthStatus] = useState<string | null>(null);
   const [approval, setApproval] = useState<Result | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
