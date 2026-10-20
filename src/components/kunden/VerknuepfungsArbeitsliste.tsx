@@ -7,12 +7,12 @@ import { useMetaAds } from '@/contexts/MetaAdsContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Check, ChevronRight, Loader2, Search } from 'lucide-react';
+import { AlertTriangle, Check, ChevronRight, Loader2, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { alle, namensTreffer, qontoVerknuepfen } from '@/lib/kundenVerknuepfungen';
 import { STATUS_LABEL, ladeUntermarken, type Untermarke } from '@/lib/werbebudgetKonten';
-import { zuordnungAnlegen, useWerbebudgetZuordnung, KampagneZeile, type ZuoKampagne } from './werbebudgetZuordnung';
+import { zuordnungAnlegen, useWerbebudgetZuordnung, KampagneZeile, kontoZuo, zuoKundenName, type ZuoKampagne } from './werbebudgetZuordnung';
 
 const key = (s: string | null | undefined) => (s ?? '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[\u200b-\u200d\ufeff]/g, '').replace(/\s+/g, ' ').trim();
 const eur = (n: number) => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
