@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AlertTriangle, Check, ChevronRight, ExternalLink, Plus, X } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
+import { ladeZahlungsstatus, ZAHLUNGSSTATUS_TEXT, OHNE_POSTEN_TOOLTIP, type WerbebudgetZahlungsstatus } from '@/lib/werbebudgetZahlungsstatus';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { type SystemKey, type SystemStand, type KundeMin, type Objekt, verknuepfen, verwerfen, loesen, portalMeta } from '@/lib/kundenVerknuepfungen';
@@ -43,14 +44,16 @@ function useLeadSharks(profileId: string | null) {
 function useBudgetstand(clientId: string, aktiv: boolean) {
   const [budget, setBudget] = useState<any[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
+  const [status, setStatus] = useState<WerbebudgetZahlungsstatus | null>(null);
   useEffect(() => {
-    setBudget(null); setFehler(null);
+    setBudget(null); setFehler(null); setStatus(null);
     if (!aktiv) return;
+    ladeZahlungsstatus([clientId]).then(m => setStatus(m.get(clientId) ?? null));
     (supabase.from as any)('werbebudget_eingezahlt').select('quelle, eingezahlt_netto, offen_netto, rechnungen_offen, aelteste_ueberfaellig, letzte_zahlung').eq('client_id', clientId)
       .then(({ data, error }: any) => { if (error) setFehler(`Budgetstand konnte nicht geladen werden: ${error.message}`); else setBudget(data || []); },
         (e: any) => setFehler(`Budgetstand konnte nicht geladen werden: ${e?.message || 'Verbindung unterbrochen'}`));
   }, [clientId, aktiv]);
-  return { budget, fehler };
+  return { budget, fehler, status };
 }
 
 /** werbebudget_zuordnung nur Admin oder finanzen.view. */
@@ -91,13 +94,14 @@ function Fehler({ text }: { text: string }) {
   return <p className="text-xs text-destructive flex items-start gap-1.5"><AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />{text}</p>;
 }
 
-function BudgetStand({ budget, fehler }: { budget: any[] | null; fehler: string | null }) {
+function BudgetStand({ budget, fehler, status }: { budget: any[] | null; fehler: string | null; status: WerbebudgetZahlungsstatus | null }) {
   return (
     <div className="space-y-2">
       <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Budgetstand dieses Kunden</p>
       {fehler ? <Fehler text={fehler} /> : <>
         {!budget && <Skeleton className="h-16 rounded-xl" />}
-        {budget?.length === 0 && <p className="text-xs text-muted-foreground">Kein Budgetstand vorhanden.</p>}
+        {budget?.length === 0 && <p className="text-xs text-muted-foreground" title={status === 'verknuepft_ohne_werbebudgetposten' ? OHNE_POSTEN_TOOLTIP : undefined}>
+          {status && status !== 'werbebudget_vorhanden' ? ZAHLUNGSSTATUS_TEXT[status] : 'Kein Budgetstand vorhanden.'}</p>}
         {budget?.map((b, i) => {
           const warn = Number(b.rechnungen_offen || 0) > 0 || !!b.aelteste_ueberfaellig;
           return (
@@ -263,7 +267,7 @@ export function MetaKarte({ kunde, stand, onChanged }: { kunde: KundeMin; stand:
               <Button size="sm" variant="ghost" className="h-7 text-muted-foreground hover:text-destructive" disabled={busy} onClick={() => setLoeseZiel({ id: k.meta_account_id, name: k.meta_account_name } as Objekt)}>Lösen</Button>
             </div>
           ))}
-          {eigene.length > 0 && <BudgetStand budget={bs.budget} fehler={bs.fehler} />}
+          {eigene.length > 0 && <BudgetStand budget={bs.budget} fehler={bs.fehler} status={bs.status} />}
         </div>
       )}
 

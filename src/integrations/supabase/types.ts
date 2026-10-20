@@ -7955,6 +7955,116 @@ export type Database = {
         }
         Relationships: []
       }
+      slack_abschluss_import: {
+        Row: {
+          abschlusswert: number | null
+          branche: string | null
+          client_id: string | null
+          close_lead_id: string | null
+          close_typ: string | null
+          closer: string | null
+          deal_typ: string | null
+          format: string | null
+          garantiert_ab_monat_2: string | null
+          gesellschaft: string | null
+          importiert_am: string
+          kanal: string | null
+          kunde_slack: string | null
+          laufzeit_monate: number | null
+          leistungen: string[] | null
+          marke: string | null
+          match_art: string | null
+          nachricht_datum: string | null
+          paket: string | null
+          retainer_monat: number | null
+          rohtext: string | null
+          setter: string | null
+          setup_fee: number | null
+          slack_ts: string
+          sparte: string | null
+          start_slack: string | null
+          typ: string | null
+          uebernommen_am: string | null
+          upfront_faellig: number | null
+          warnung: string | null
+          werbebudget_monat: number | null
+        }
+        Insert: {
+          abschlusswert?: number | null
+          branche?: string | null
+          client_id?: string | null
+          close_lead_id?: string | null
+          close_typ?: string | null
+          closer?: string | null
+          deal_typ?: string | null
+          format?: string | null
+          garantiert_ab_monat_2?: string | null
+          gesellschaft?: string | null
+          importiert_am?: string
+          kanal?: string | null
+          kunde_slack?: string | null
+          laufzeit_monate?: number | null
+          leistungen?: string[] | null
+          marke?: string | null
+          match_art?: string | null
+          nachricht_datum?: string | null
+          paket?: string | null
+          retainer_monat?: number | null
+          rohtext?: string | null
+          setter?: string | null
+          setup_fee?: number | null
+          slack_ts: string
+          sparte?: string | null
+          start_slack?: string | null
+          typ?: string | null
+          uebernommen_am?: string | null
+          upfront_faellig?: number | null
+          warnung?: string | null
+          werbebudget_monat?: number | null
+        }
+        Update: {
+          abschlusswert?: number | null
+          branche?: string | null
+          client_id?: string | null
+          close_lead_id?: string | null
+          close_typ?: string | null
+          closer?: string | null
+          deal_typ?: string | null
+          format?: string | null
+          garantiert_ab_monat_2?: string | null
+          gesellschaft?: string | null
+          importiert_am?: string
+          kanal?: string | null
+          kunde_slack?: string | null
+          laufzeit_monate?: number | null
+          leistungen?: string[] | null
+          marke?: string | null
+          match_art?: string | null
+          nachricht_datum?: string | null
+          paket?: string | null
+          retainer_monat?: number | null
+          rohtext?: string | null
+          setter?: string | null
+          setup_fee?: number | null
+          slack_ts?: string
+          sparte?: string | null
+          start_slack?: string | null
+          typ?: string | null
+          uebernommen_am?: string | null
+          upfront_faellig?: number | null
+          warnung?: string | null
+          werbebudget_monat?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slack_abschluss_import_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       slack_item_meta_account: {
         Row: {
           assigned_at: string
@@ -9457,6 +9567,10 @@ export type Database = {
         Returns: boolean
       }
       verify_qonto_cron_secret: { Args: { p_secret: string }; Returns: boolean }
+      werbebudget_zahlungsstatus: {
+        Args: { p_client_id: string }
+        Returns: string
+      }
     }
     Enums: {
       ampelstatus: "Grün" | "Gelb" | "Rot" | "CC"

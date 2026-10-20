@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatCard } from '@/components/StatCard';
 import { RefreshCw, Users, TrendingDown, AlertTriangle, Receipt, ChevronDown, ChevronRight } from 'lucide-react';
 import { useMetaAds } from '@/contexts/MetaAdsContext';
+import { ladeZahlungsstatus, ZAHLUNGSSTATUS_TEXT, OHNE_POSTEN_TOOLTIP, type WerbebudgetZahlungsstatus } from '@/lib/werbebudgetZahlungsstatus';
 
 /** Unter dieser Reichweite (Tage) gilt ein Kunde als knapp. */
 const KNAPP_TAGE = 3;
@@ -31,6 +32,7 @@ export function Werbebudgets() {
   const [kunden, setKunden] = useState<{ id: string; name: string }[]>([]);
   const [zuo, setZuo] = useState<Zuordnung[]>([]);
   const [ein, setEin] = useState<Map<string, Eingezahlt>>(new Map());
+  const [zst, setZst] = useState<Map<string, WerbebudgetZahlungsstatus>>(new Map());
   const [meta, setMeta] = useState<Map<string, Meta>>(new Map());
   const [stand, setStand] = useState<Date | null>(null);
   const [laedt, setLaedt] = useState(true);
@@ -73,6 +75,7 @@ export function Werbebudgets() {
     const ks = ((c.data || []) as any[]).filter(x => x.name);
     const zs = (z.data || []) as Zuordnung[];
     const em = new Map<string, Eingezahlt>(((e.data || []) as Eingezahlt[]).map(r => [r.client_id, r]));
+    setZst(await ladeZahlungsstatus(ks.map(k => k.id)));
     setKunden(ks); setZuo(zs); setEin(em); setLaedt(false);
 
     // Meta live: je Objekt Status, Ausgaben seit letzter Zahlung und letzte 7 Tage (nur GET).
@@ -184,7 +187,10 @@ export function Werbebudgets() {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{z.untermarke}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {z.eingezahlt != null ? eur(z.eingezahlt) : <span className="text-muted-foreground" title="keine Qonto-Verknüpfung">— <span className="text-xs">keine Qonto-Verknüpfung</span></span>}
+                      {z.eingezahlt != null ? eur(z.eingezahlt)
+                        : zst.get(z.k.id) === 'verknuepft_ohne_werbebudgetposten' ? <span className="text-xs text-muted-foreground" title={OHNE_POSTEN_TOOLTIP}>{ZAHLUNGSSTATUS_TEXT.verknuepft_ohne_werbebudgetposten}</span>
+                        : zst.get(z.k.id) === 'keine_zahlungsverknuepfung' ? <span className="text-muted-foreground">— <span className="text-xs">{ZAHLUNGSSTATUS_TEXT.keine_zahlungsverknuepfung}</span></span>
+                        : <span className="text-muted-foreground">—</span>}
                       {Number(z.e?.zahlungen || 0) > 1 && z.e?.uebertrag_frueher_netto != null && (
                         <div className="text-xs text-muted-foreground">+ {eur(Number(z.e.uebertrag_frueher_netto))} aus früheren Aufladungen</div>
                       )}
