@@ -125,22 +125,11 @@ export function ClosePanel({ clientId, namen, fertig }: { clientId: string; name
 }
 
 // ---------- Marke in Close ----------
-const MARKEN = ['Leadsharks', 'Viral Connect'] as const;
+// Exakt die Auswahlwerte des Close-Felds „Marke". Kein Vorschlag – der Nutzer wählt selbst.
+const MARKEN = ['AttentionX', 'Haush Haush', 'Leadsharks', 'Viral Connect'] as const;
 export function MarkePanel({ clientId, fertig }: { clientId: string; fertig: (e: Erledigt) => void }) {
   const [wahl, setWahl] = useState<typeof MARKEN[number] | null>(null);
-  const [grund, setGrund] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    Promise.all([
-      supabase.from('qonto_client_links').select('id').eq('client_id', clientId).eq('is_confirmed', true).limit(1),
-      (supabase.from as any)('lexoffice_client_links').select('id').eq('client_id', clientId).eq('is_confirmed', true).limit(1),
-    ]).then(([q, l]: any[]) => {
-      const hq = !!q.data?.length, hl = !!l.data?.length;
-      if (hq && !hl) { setWahl('Viral Connect'); setGrund('Vorschlag: Kunde hat eine Qonto-Verknüpfung'); }
-      else if (hl && !hq) { setWahl('Leadsharks'); setGrund('Vorschlag: Kunde hat eine lexoffice-Verknüpfung'); }
-      else if (hq && hl) setGrund('Qonto und lexoffice verknüpft – kein eindeutiger Vorschlag');
-    });
-  }, [clientId]);
   const speichern = async () => {
     if (!wahl) return;
     setBusy(true);
@@ -155,7 +144,6 @@ export function MarkePanel({ clientId, fertig }: { clientId: string; fertig: (e:
   };
   return <>
     <p className="text-xs flex items-center gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-1 w-fit"><AlertTriangle className="h-3.5 w-3.5 text-warning" />Schreibt direkt in Close (Feld „Marke" am verknüpften Lead).</p>
-    {grund && <p className="text-xs text-muted-foreground">{grund}</p>}
     <div className="flex flex-wrap items-center gap-2">
       {MARKEN.map(m => <Button key={m} size="sm" variant={wahl === m ? 'default' : 'outline'} className="h-7 text-xs" onClick={() => setWahl(m)}>{m}</Button>)}
       <Button size="sm" className="h-7 text-xs" disabled={!wahl || busy} onClick={speichern}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'In Close speichern'}</Button>
