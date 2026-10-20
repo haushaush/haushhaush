@@ -26,6 +26,9 @@ const GRUENDE = ['Ehemaliger Kunde', 'Kein Betreuungskunde', 'Zahlungsdienstleis
 type Row = { id: string; name: string; client_id: string | null; client_name: string | null; match_type: string | null; confidence: number | null; is_confirmed: boolean; anzahl: number; summe: number; offen: number };
 type Kunde = { id: string; name: string | null };
 type Filter = 'all' | 'linked' | 'unlinked' | 'suggested' | 'ambiguous';
+type Art = 'intern' | 'vorlage';
+const ART_TEXT: Record<Art, string> = { intern: 'intern', vorlage: 'als Vorlage' };
+const ART_GRUND: Record<Art, string> = { intern: 'Intern', vorlage: 'Vorlage- oder Testrechnung' };
 
 function MatchBadge({ r }: { r: Row }) {
   if (r.client_id && r.is_confirmed) return <Badge variant="secondary">{r.match_type === 'auto_exact' ? 'Automatisch' : 'Manuell'}</Badge>;
@@ -107,7 +110,7 @@ export function LexofficeVerknuepfungen() {
       const errs = data?.errors ?? 0;
       toast({
         title: errs > 0 ? `Abgleich abgeschlossen mit ${errs} Fehlern` : 'Automatischer Abgleich abgeschlossen',
-        description: `${data?.auto_exact ?? 0} auto · ${data?.suggested ?? 0} Vorschläge · ${data?.ambiguous ?? 0} mehrdeutig · ${data?.unlinked ?? 0} offen · ${data?.interne_rechnungen_uebersprungen ?? 0} interne Rechnungen übersprungen`,
+        description: `${data?.auto_exact ?? 0} auto · ${data?.suggested ?? 0} Vorschläge · ${data?.ambiguous ?? 0} mehrdeutig · ${data?.unlinked ?? 0} offen · ${data?.uebersprungen_intern ?? 0} interne · ${data?.uebersprungen_vorlagen ?? 0} Vorlagen-Rechnungen übersprungen`,
         variant: errs > 0 ? 'destructive' : undefined,
       });
       await load();
@@ -116,12 +119,17 @@ export function LexofficeVerknuepfungen() {
     } finally { setRunning(false); }
   };
 
-  const alsIntern = async (r: Row) => {
-    const { error } = await (supabase.from as any)('buchhaltung_intern').upsert({ name_norm: nkey(r.name), name_anzeige: r.name, grund: 'Intern' }, { onConflict: 'name_norm', ignoreDuplicates: true });
-    if (error) { toast({ title: 'Fehler', description: error.message, variant: 'destructive' }); return; }
+  /** Empfänger als intern oder als Vorlage ausnehmen; bestehender Eintrag behält seinen Grund. */
+  const alsAusnehmen = async (r: Row, art: Art) => {
+    const name_norm = nkey(r.name);
+    const { data: alt } = await (supabase.from as any)('buchhaltung_intern').select('art').eq('name_norm', name_norm).limit(1);
+    const a = alt?.length
+      ? await (supabase.from as any)('buchhaltung_intern').update({ art, name_anzeige: r.name }).eq('name_norm', name_norm)
+      : await (supabase.from as any)('buchhaltung_intern').insert({ name_norm, name_anzeige: r.name, art, grund: ART_GRUND[art] });
+    if (a.error) { toast({ title: 'Fehler', description: a.error.message, variant: 'destructive' }); return; }
     const d = await (supabase.from as any)('lexoffice_client_links').delete().eq('id', r.id);
-    if (d.error) { toast({ title: 'Als intern markiert, Verknüpfungszeile blieb', description: d.error.message, variant: 'destructive' }); return; }
-    toast({ title: `„${r.name}" ist jetzt intern` }); load();
+    if (d.error) { toast({ title: `${art === 'intern' ? 'Als intern' : 'Als Vorlage'} markiert, Verknüpfungszeile blieb`, description: d.error.message, variant: 'destructive' }); return; }
+    toast({ title: `„${r.name}" ist ${ART_TEXT[art]} markiert` }); load();
   };
 
   const filtered = useMemo(() => {
@@ -163,7 +171,7 @@ export function LexofficeVerknuepfungen() {
             <TableHeader><TableRow>
               <TableHead>Empfänger (lexoffice)</TableHead><TableHead>Kunde</TableHead><TableHead>Status</TableHead>
               <TableHead className="text-right">Rechnungen</TableHead><TableHead className="text-right">Summe</TableHead><TableHead className="text-right">Offen</TableHead>
-              <TableHead className="text-right w-[340px]">Aktionen</TableHead>
+              <TableHead className="text-right w-[440px]">Aktionen</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">Keine Einträge.</TableCell></TableRow>}
@@ -180,7 +188,8 @@ export function LexofficeVerknuepfungen() {
                       {r.client_id && !r.is_confirmed && <Button size="sm" variant="secondary" onClick={() => upd(r.id, { is_confirmed: true, match_type: 'manual' }, 'Vorschlag bestätigt')}>Bestätigen</Button>}
                       <Button size="sm" variant="outline" onClick={() => setDialog(r)}>{r.client_id ? 'Ändern' : 'Verknüpfen'}</Button>
                       {!r.client_id && !r.is_confirmed && <Button size="sm" variant="ghost" onClick={() => setNicht(r)}>Nicht zuordnen</Button>}
-                      <Button size="sm" variant="ghost" onClick={() => alsIntern(r)}>Als intern markieren</Button>
+                      <Button size="sm" variant="ghost" onClick={() => alsAusnehmen(r, 'intern')}>Als intern markieren</Button>
+                      <Button size="sm" variant="ghost" onClick={() => alsAusnehmen(r, 'vorlage')}>Als Vorlage markieren</Button>
                       {(r.client_id || r.is_confirmed) && <Button size="sm" variant="ghost" title="Verknüpfung lösen" onClick={() => upd(r.id, { client_id: null, match_type: 'unlinked', is_confirmed: false, confidence: null }, 'Verknüpfung gelöst')}><Link2Off className="h-4 w-4" /></Button>}
                     </div>}
                   </TableCell>
