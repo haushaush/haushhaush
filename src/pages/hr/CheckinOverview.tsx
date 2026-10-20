@@ -104,7 +104,7 @@ export default function CheckinOverview() {
     <div className="p-4 md:p-6 lg:p-10 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold">Check-in & Check-out</h1>
+          <h1 className="text-2xl font-semibold font-heading">Check-in & Check-out</h1>
           <p className="text-sm text-muted-foreground">Tägliche Reflexion deines Teams.</p>
         </div>
         <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-auto" />
@@ -259,7 +259,7 @@ export default function CheckinOverview() {
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Häufige Focus Tasks</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {focusTasks.slice(0, 20).map((t, i) => <Badge key={i} variant="outline" className="text-[11px]">{t}</Badge>)}
+                    {focusTasks.slice(0, 20).map((t, i) => <Badge key={i} variant="outline" className="text-xs">{t}</Badge>)}
                     {!focusTasks.length && <p className="text-sm text-muted-foreground italic">Noch keine.</p>}
                   </div>
                 </div>

@@ -66,7 +66,7 @@ function Treffer({ o, vorschlag, grund, busy, onPick }: { o: Objekt; vorschlag?:
   return <div className={cn('flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs', vorschlag ? 'bg-primary/5 border border-primary/20' : 'bg-card')}>
     <div className="min-w-0 flex-1">
       <div className="flex items-center gap-1.5">
-        {vorschlag && <span className="rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-medium">Vorschlag</span>}
+        {vorschlag && <span className="rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-xs font-medium">Vorschlag</span>}
         <span className="font-medium truncate">{o.name || o.id}</span>
         {o.url && <a href={o.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary"><ExternalLink className="h-3 w-3" /></a>}
       </div>

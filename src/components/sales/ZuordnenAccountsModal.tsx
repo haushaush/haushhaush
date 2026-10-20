@@ -324,7 +324,7 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
                             )}
                           </div>
                           {acc.meta_account_id && (
-                            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{acc.meta_account_id}</p>
+                            <p className="text-xs text-muted-foreground font-mono mt-0.5">{acc.meta_account_id}</p>
                           )}
                         </td>
                         <td className="px-2 py-3 align-middle text-right tabular-nums">{acc.total}</td>
@@ -370,7 +370,7 @@ export function ZuordnenAccountsModal({ open, onClose, rows, onSaved }: Props) {
                                   },
                                 }))
                               }
-                              className="mt-1 text-[10px] text-primary hover:underline"
+                              className="mt-1 text-xs text-primary hover:underline"
                             >
                               Vorschlag: {suggested.name}
                             </button>

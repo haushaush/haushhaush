@@ -161,10 +161,10 @@ export default function ReferenzWebsiteDetail() {
       infoPanel={
         <DetailInfoPanel>
           <InfoSection>
-            <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] mb-1.5">
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] mb-1.5">
               {item.client_name || 'Kunde'}
             </p>
-            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white leading-tight tracking-tight">
+            <h1 className="text-2xl font-semibold font-heading text-gray-900 dark:text-white leading-tight tracking-tight">
               {item.title}
             </h1>
             {item.website_url && (
@@ -230,7 +230,7 @@ export default function ReferenzWebsiteDetail() {
         <>
           {item.description && (
             <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Über das Projekt</h2>
+              <h2 className="text-lg font-semibold font-heading text-gray-900 dark:text-white mb-4">Über das Projekt</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                 {item.description}
               </p>
@@ -238,7 +238,7 @@ export default function ReferenzWebsiteDetail() {
           )}
           {item.tags && item.tags.length > 0 && (
             <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
-              <h2 className="text-base font-bold text-gray-900 dark:text-white mb-3">Tags</h2>
+              <h2 className="text-lg font-semibold font-heading text-gray-900 dark:text-white mb-3">Tags</h2>
               <div className="flex flex-wrap gap-2">
                 {item.tags.map((tag) => (
                   <span key={tag} className="px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs rounded-md">

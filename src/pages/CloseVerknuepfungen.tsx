@@ -6,7 +6,7 @@ export default function CloseVerknuepfungen() {
   return (
     <div className="container mx-auto p-6 space-y-8 max-w-7xl">
       <div>
-        <h1 className="text-2xl font-semibold flex items-center gap-2">
+        <h1 className="text-2xl font-semibold font-heading flex items-center gap-2">
           <GitMerge className="h-6 w-6 text-primary" />
           Verknüpfungen
         </h1>

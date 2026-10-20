@@ -26,7 +26,7 @@ export function AdminRoute({ children }: { children: ReactNode }) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
         <ShieldAlert className="w-16 h-16 text-destructive mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Zugriff verweigert</h1>
+        <h1 className="text-2xl font-semibold font-heading mb-2">Zugriff verweigert</h1>
         <p className="text-muted-foreground mb-2">
           Du hast keine Berechtigung für diesen Bereich.
         </p>

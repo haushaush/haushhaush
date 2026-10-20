@@ -157,7 +157,7 @@ export function PipedriveAccountsModal({ open, onClose, onChanged }: AccountsMod
                         <div className="flex items-baseline gap-2 flex-wrap">
                           <h4 className="text-sm font-semibold truncate">{acc.name}</h4>
                           {acc.last_sync_status === 'error' && (
-                            <Badge variant="destructive" className="text-[10px]">Sync-Fehler</Badge>
+                            <Badge variant="destructive" className="text-xs">Sync-Fehler</Badge>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 font-mono">
@@ -178,7 +178,7 @@ export function PipedriveAccountsModal({ open, onClose, onChanged }: AccountsMod
                           {acc.total_deals_synced ?? 0} Deals · {acc.total_persons_synced ?? 0} Personen · zuletzt {timeAgo(acc.last_sync_at)}
                         </p>
                         {acc.last_sync_status === 'error' && acc.last_sync_message && (
-                          <p className="text-[11px] text-destructive mt-1 truncate" title={acc.last_sync_message}>
+                          <p className="text-xs text-destructive mt-1 truncate" title={acc.last_sync_message}>
                             {acc.last_sync_message}
                           </p>
                         )}
@@ -389,7 +389,7 @@ function PipedriveAccountForm({ open, editing, closeDeals, onClose, onSaved }: F
             <div>
               <Label htmlFor="pd-token" className="text-xs">API-Token *</Label>
               <Input id="pd-token" type="password" value={apiToken} onChange={e => setApiToken(e.target.value)} placeholder="••••••••" />
-              <p className="text-[11px] text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 📍 Pipedrive → Persönliche Einstellungen → API
               </p>
             </div>
@@ -470,7 +470,7 @@ function PipedriveAccountForm({ open, editing, closeDeals, onClose, onSaved }: F
               </div>
             </div>
             {editing && (
-              <div className="text-[11px] text-muted-foreground border-t pt-3">
+              <div className="text-xs text-muted-foreground border-t pt-3">
                 Lasse das API-Token-Feld leer, wenn du nur Name, Verknüpfung oder Farbe ändern willst.
                 <Input
                   type="password"

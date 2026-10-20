@@ -157,13 +157,13 @@ export default function KPI() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-heading font-bold">KPI Dashboard</h1>
+        <h1 className="text-2xl font-semibold font-heading">KPI Dashboard</h1>
         <p className="text-muted-foreground text-sm">Alle Performance-Kennzahlen auf einen Blick</p>
       </div>
 
       {/* ═══ SECTION 1: CUSTOMER SUCCESS ═══ */}
       <section className="space-y-4" aria-labelledby="cs-heading">
-        <h2 id="cs-heading" className="text-lg font-heading font-semibold flex items-center gap-2">
+        <h2 id="cs-heading" className="text-lg font-semibold font-heading flex items-center gap-2">
           <Users className="h-5 w-5 text-primary" aria-hidden="true" /> Customer Success
         </h2>
 
@@ -238,7 +238,7 @@ export default function KPI() {
       {/* ═══ SECTION 2: SALES PERFORMANCE ═══ */}
       <section className="space-y-4" aria-labelledby="sales-heading">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h2 id="sales-heading" className="text-lg font-heading font-semibold flex items-center gap-2">
+          <h2 id="sales-heading" className="text-lg font-semibold font-heading flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" aria-hidden="true" /> Sales Performance
           </h2>
           <Select value={salesFilter} onValueChange={(v) => setSalesFilter(v as TimeFilter)}>
@@ -344,7 +344,7 @@ export default function KPI() {
 
       {/* ═══ SECTION 3: FULFILLMENT ═══ */}
       <section className="space-y-4" aria-labelledby="fulfillment-heading">
-        <h2 id="fulfillment-heading" className="text-lg font-heading font-semibold flex items-center gap-2">
+        <h2 id="fulfillment-heading" className="text-lg font-semibold font-heading flex items-center gap-2">
           <Briefcase className="h-5 w-5 text-primary" aria-hidden="true" /> Fulfillment
         </h2>
 
@@ -392,7 +392,7 @@ export default function KPI() {
       {/* ═══ SECTION 4: AD PERFORMANCE ═══ */}
       <section className="space-y-4" aria-labelledby="ad-heading">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h2 id="ad-heading" className="text-lg font-heading font-semibold flex items-center gap-2">
+          <h2 id="ad-heading" className="text-lg font-semibold font-heading flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" aria-hidden="true" /> Ad Performance
           </h2>
           <Select value={adFilter} onValueChange={(v) => setAdFilter(v as TimeFilter)}>

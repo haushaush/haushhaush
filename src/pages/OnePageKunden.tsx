@@ -152,7 +152,7 @@ export default function OnePageKunden() {
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">OnePage Kunden</h1>
+          <h1 className="text-2xl font-semibold font-heading tracking-tight">OnePage Kunden</h1>
           <p className="text-sm text-muted-foreground mt-1">Alle Landingpages und ihre Leads</p>
         </div>
         <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ export default function OnePageKunden() {
         ].map((k) => (
           <Card key={k.label}>
             <CardContent className="p-4">
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">{k.label}</div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{k.label}</div>
               <div className="text-2xl font-semibold mt-1 tabular-nums">{k.value}</div>
             </CardContent>
           </Card>
@@ -284,7 +284,7 @@ export default function OnePageKunden() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className={cn('h-2 w-2 rounded-full shrink-0', activityColor(p.last_lead_at))} />
-                    <h3 className="font-semibold text-base truncate">{p.name}</h3>
+                    <h3 className="text-sm font-semibold truncate">{p.name}</h3>
                   </div>
                   {p.page_url && (
                     <a href={p.page_url} target="_blank" rel="noreferrer"
@@ -295,7 +295,7 @@ export default function OnePageKunden() {
                     </a>
                   )}
                 </div>
-                <Badge variant="outline" className={cn('rounded text-[10px] px-2 py-0.5', STATUS_BADGE[p.status] || STATUS_BADGE.archived)}>
+                <Badge variant="outline" className={cn('rounded text-xs px-2 py-0.5', STATUS_BADGE[p.status] || STATUS_BADGE.archived)}>
                   {STATUS_LABEL[p.status] || p.status}
                 </Badge>
               </div>

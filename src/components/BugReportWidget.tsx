@@ -149,7 +149,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
         {success ? (
           <div className="flex flex-col items-center text-center py-4">
             <CheckCircle2 className="h-12 w-12 text-primary mb-4" strokeWidth={1.5} />
-            <h3 className="text-lg font-semibold text-foreground mb-1">Danke für dein Feedback! ✓</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-1">Danke für dein Feedback! ✓</h3>
             <p className="text-sm text-muted-foreground mb-6">
               Dein Bug Report wurde an das Entwicklungsteam weitergeleitet.
             </p>
@@ -160,7 +160,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
             <div className="flex items-start gap-3 mb-6">
               <Bug className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-lg font-semibold text-foreground">Problem melden</h3>
+                <h3 className="text-sm font-semibold text-foreground">Problem melden</h3>
                 <p className="text-sm text-muted-foreground mt-0.5">
                   Beschreibe was nicht stimmt — wir beheben es so schnell wie möglich.
                 </p>
@@ -168,11 +168,11 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
             </div>
 
             <div className="bg-muted/50 border border-border rounded-lg p-3 mb-4 overflow-hidden">
-              <p className="text-[11px] font-semibold text-muted-foreground mb-2 tracking-wider">
+              <p className="text-xs font-semibold text-muted-foreground mb-2 tracking-wider">
                 AUTOMATISCH ERFASST
               </p>
               <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                <span>Seite: <code className="font-mono text-[11px]">{window.location.pathname}</code></span>
+                <span>Seite: <code className="font-mono text-xs">{window.location.pathname}</code></span>
                 <span>Browser: {shortBrowser()}</span>
                 <span>Zeitpunkt: {now}</span>
                 <span>Nutzer: {displayName || user?.email || 'Unbekannt'}</span>
@@ -203,7 +203,7 @@ export function BugReportModal({ open, onClose }: BugReportModalProps) {
                     placeholder="Was ist passiert? Was hast du erwartet?"
                     className="min-h-[100px] resize-none"
                   />
-                  <span className="absolute bottom-2 right-3 text-[10px] text-muted-foreground">
+                  <span className="absolute bottom-2 right-3 text-xs text-muted-foreground">
                     {description.length}/400
                   </span>
                 </div>

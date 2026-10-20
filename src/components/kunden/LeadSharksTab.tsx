@@ -210,7 +210,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
         <nav aria-label="LeadSharks Abschnitte" className="flex min-w-0 gap-5 overflow-x-auto border-b pb-3 md:w-[220px] md:shrink-0 md:flex-col md:gap-6 md:overflow-visible md:border-b-0 md:border-r md:pb-0 md:pr-4">
           {['Kunde'].map(gruppe => (
             <div key={gruppe} className="shrink-0 space-y-2">
-              <h3 className="px-2 text-xs uppercase tracking-wide text-muted-foreground">{gruppe}</h3>
+              <h3 className="text-sm font-semibold px-2 uppercase tracking-wide text-muted-foreground">{gruppe}</h3>
               <div className="flex gap-1 md:flex-col">
                 {ABSCHNITTE.filter(a => a.gruppe === gruppe).map(a => (
                   <Button key={a.id} variant="ghost" aria-current={abschnitt === a.id ? 'page' : undefined}
@@ -224,7 +224,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
           ))}
         </nav>
         <div className="min-w-0 flex-1 space-y-4">
-          <h2 className="text-lg font-semibold">{ABSCHNITTE.find(a => a.id === abschnitt)?.name}</h2>
+          <h2 className="text-lg font-semibold font-heading">{ABSCHNITTE.find(a => a.id === abschnitt)?.name}</h2>
 
       {abschnitt === 'kundendaten' && <>
       <Card>
@@ -318,7 +318,7 @@ export function LeadSharksTab({ profileId }: { profileId: string }) {
           )}
           <div className="border-t pt-4 space-y-3">
             <div>
-              <h3 className="text-sm font-medium">Ansprechpartner</h3>
+              <h3 className="text-sm font-semibold">Ansprechpartner</h3>
               <p className="text-xs text-muted-foreground">Wird derzeit im Portal gepflegt</p>
             </div>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm [&_dd]:break-words">

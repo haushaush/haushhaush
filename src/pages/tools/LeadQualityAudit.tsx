@@ -250,7 +250,7 @@ export default function LeadQualityAudit() {
       <div className="space-y-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <h1 className="text-2xl font-semibold font-heading tracking-tight text-foreground flex items-center gap-2">
               <ShieldCheck className="h-6 w-6 text-muted-foreground" />
               Lead Quality Audit
             </h1>
@@ -478,7 +478,7 @@ export default function LeadQualityAudit() {
                                 <div className="flex flex-col min-w-0">
                                   <span className="truncate">{c.client_name}</span>
                                   {c.website_url && (
-                                    <span className="text-[10px] text-muted-foreground truncate">
+                                    <span className="text-xs text-muted-foreground truncate">
                                       {c.website_url}
                                     </span>
                                   )}

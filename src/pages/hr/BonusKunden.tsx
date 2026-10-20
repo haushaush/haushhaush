@@ -72,7 +72,7 @@ export default function BonusKunden() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Bonus – Kundensnapshot</h1>
+        <h1 className="text-2xl font-semibold font-heading text-foreground">Bonus – Kundensnapshot</h1>
         <p className="text-sm text-muted-foreground">Betreute Kunden pro Monat und Mitarbeiter (Nenner der Churn-Quote).</p>
       </div>
 
@@ -159,7 +159,7 @@ function StatusProtokoll() {
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold text-foreground">Statusänderungen aus Close</h2>
+        <h2 className="text-lg font-semibold font-heading text-foreground">Statusänderungen aus Close</h2>
         <p className="text-sm text-muted-foreground">{last ? `Letzter Lauf mit Änderungen: ${new Date(last.beendet_am).toLocaleString('de-DE')} · ${last.details.status_geaendert.length} Änderungen` : 'Noch keine Änderungen protokolliert.'}</p>
         <div className="rounded-lg border border-border max-h-96 overflow-auto">
           <table className="w-full text-sm"><tbody>
@@ -170,7 +170,7 @@ function StatusProtokoll() {
         </div>
       </div>
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold text-foreground">Im CRM betreut, in Close kein Klient</h2>
+        <h2 className="text-lg font-semibold font-heading text-foreground">Im CRM betreut, in Close kein Klient</h2>
         <p className="text-sm text-muted-foreground tabular-nums">{ohne.size} Kunden ohne Close-Lead, nicht mehr als betreut gezählt</p>
         <div className="rounded-lg border border-border max-h-96 overflow-auto">
           <ul className="text-sm">{[...ohne.values()].sort().map(n => <li key={n} className="border-t border-border first:border-0 px-4 py-2 text-foreground">{n}</li>)}</ul>
@@ -204,7 +204,7 @@ function LaufendeListe({ snapIds, allClients, onChanged }: { snapIds: Set<string
     <div className="space-y-3">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Laufende Kundenliste aus Close</h2>
+          <h2 className="text-lg font-semibold font-heading text-foreground">Laufende Kundenliste aus Close</h2>
           <p className="text-sm text-muted-foreground tabular-nums">
             {rows.filter(r => r.aktiv && r.zaehlt_fuer_betreuung).length} betreut · {rows.filter(r => !r.zaehlt_fuer_betreuung).length} ausgenommen · {offen} neu angelegt, bitte prüfen · stündlicher Abgleich
           </p>

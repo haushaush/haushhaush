@@ -167,7 +167,7 @@ export function QontoBuchhaltung() {
   if (!connected) {
     return (
       <div className="mt-8">
-        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Qonto — Geschäftskonto</h3>
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Qonto — Geschäftskonto</h3>
         <Card className="border-[var(--border)]">
           <CardContent className="flex flex-col items-center justify-center py-10 text-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-[var(--color-teal-subtle)] flex items-center justify-center text-[var(--color-teal)] font-bold text-xl">Q</div>
@@ -188,7 +188,7 @@ export function QontoBuchhaltung() {
     <div className="mt-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h3 className="text-lg font-semibold text-[var(--text-primary)]">Qonto — Geschäftskonto</h3>
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">Qonto — Geschäftskonto</h3>
         <div className="flex items-center gap-2">
           <Badge className="bg-[var(--color-green-subtle)] text-[var(--color-green-text)] border-0 text-xs">
             Verbunden
@@ -208,7 +208,7 @@ export function QontoBuchhaltung() {
           <p className="text-3xl font-bold text-[var(--color-teal)]">{formatValue(balance, 'currency')}</p>
           <p className="text-xs text-[var(--text-muted)] mt-1">{maskedIban}</p>
           {setting?.last_sync_at && (
-            <p className="text-[11px] text-[var(--text-muted)] mt-2">
+            <p className="text-xs text-[var(--text-muted)] mt-2">
               Zuletzt aktualisiert: {new Date(setting.last_sync_at).toLocaleString('de-DE')}
             </p>
           )}
@@ -280,7 +280,7 @@ export function QontoBuchhaltung() {
                         {isCredit ? '+' : '-'}{formatValue(Math.abs(amt), 'currency')}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <Badge className={`border-0 text-[10px] ${
+                        <Badge className={`border-0 text-xs ${
                           isCredit
                             ? 'bg-[var(--color-green-subtle)] text-[var(--color-green-text)]'
                             : 'bg-[var(--color-red-subtle)] text-[var(--color-red-text)]'
@@ -289,7 +289,7 @@ export function QontoBuchhaltung() {
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-xs">
                           {t.status === 'completed' ? 'Abgeschlossen' : t.status || '–'}
                         </Badge>
                       </TableCell>
@@ -347,7 +347,7 @@ export function QontoBuchhaltung() {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-base font-bold text-[var(--text-primary)]">{formatValue(totalExpenses, 'currency', true)}</span>
-                  <span className="text-[10px] text-[var(--text-muted)]">Ausgaben</span>
+                  <span className="text-xs text-[var(--text-muted)]">Ausgaben</span>
                 </div>
               </div>
               <div className="flex-1 space-y-2">

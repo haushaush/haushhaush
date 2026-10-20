@@ -172,7 +172,7 @@ export default function CreativeDetail() {
         </Button>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-heading font-bold">{project.name}</h1>
+            <h1 className="text-2xl font-semibold font-heading">{project.name}</h1>
             <p className="text-muted-foreground text-sm">{client?.name} · {project.due_date ? `Deadline: ${new Date(project.due_date).toLocaleDateString('de-DE')}` : 'Keine Deadline'}</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -212,7 +212,7 @@ export default function CreativeDetail() {
         {/* TAB: ASSETS */}
         <TabsContent value="assets" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="font-heading text-lg font-semibold">Assets ({assets.length})</h2>
+            <h2 className="text-lg font-semibold font-heading">Assets ({assets.length})</h2>
             <Dialog open={newAssetDialog} onOpenChange={setNewAssetDialog}>
               <DialogTrigger asChild>
                 <Button size="sm" className="min-h-[44px]"><Plus className="h-4 w-4 mr-1" aria-hidden="true" /> Asset hinzufügen</Button>
@@ -263,12 +263,12 @@ export default function CreativeDetail() {
                   <div className="p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium truncate">{asset.file_name}</p>
-                      <Badge variant="outline" className="text-[10px]">v{asset.version_nr}</Badge>
+                      <Badge variant="outline" className="text-xs">v{asset.version_nr}</Badge>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className={`text-[10px] ${ASSET_STATUS_COLORS[asset.status] || ''}`}>{asset.status}</Badge>
+                      <Badge className={`text-xs ${ASSET_STATUS_COLORS[asset.status] || ''}`}>{asset.status}</Badge>
                       {unresolvedCount(asset.id) > 0 && (
-                        <span className="flex items-center gap-1 text-[10px] text-destructive">
+                        <span className="flex items-center gap-1 text-xs text-destructive">
                           <MessageSquare className="h-3 w-3" aria-hidden="true" /> {unresolvedCount(asset.id)}
                         </span>
                       )}
@@ -375,7 +375,7 @@ export default function CreativeDetail() {
                 <h4 className="text-sm font-semibold mb-2">Versionen</h4>
                 {assets.filter(a => a.file_name === selectedAsset.file_name).map(v => (
                   <div key={v.id} className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                    <Badge variant="outline" className="text-[10px]">v{v.version_nr}</Badge>
+                    <Badge variant="outline" className="text-xs">v{v.version_nr}</Badge>
                     <span>{new Date(v.uploaded_at).toLocaleDateString('de-DE')}</span>
                     {v.id === selectedAsset.id && <span className="text-primary font-medium">aktuell</span>}
                   </div>
@@ -390,17 +390,17 @@ export default function CreativeDetail() {
                     <div key={fb.id} className={`p-2 rounded-lg text-sm ${fb.author_type === 'Intern' ? 'bg-secondary' : 'bg-primary/10'}`}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-medium text-xs">{fb.author_name} ({fb.author_type})</span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {new Date(fb.timestamp).toLocaleDateString('de-DE')}
                         </span>
                       </div>
                       <p className="text-xs">{fb.comment}</p>
                       {!fb.resolved && (
-                        <Button size="sm" variant="ghost" onClick={() => resolveComment(fb)} className="mt-1 text-[10px] min-h-[36px]">
+                        <Button size="sm" variant="ghost" onClick={() => resolveComment(fb)} className="mt-1 text-xs min-h-[36px]">
                           <Check className="h-3 w-3 mr-1" aria-hidden="true" /> Erledigt
                         </Button>
                       )}
-                      {fb.resolved && <p className="text-[10px] text-muted-foreground mt-1">✓ Erledigt</p>}
+                      {fb.resolved && <p className="text-xs text-muted-foreground mt-1">✓ Erledigt</p>}
                     </div>
                   ))}
                 </div>

@@ -317,7 +317,7 @@ function DealCard({
             <Badge
               variant="outline"
               className={cn(
-                "rounded-[4px] text-[10px]",
+                "rounded-[4px] text-xs",
                 isUpsell
                   ? "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300"
                   : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
@@ -327,7 +327,7 @@ function DealCard({
             </Badge>
             <MatchTypeBadge match={match} />
             {match.date_won && (
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {fmtDate(match.date_won)}
               </span>
             )}
@@ -345,7 +345,7 @@ function DealCard({
       {!isUpsell && (
         <div className="grid grid-cols-2 gap-3 mt-4">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground/80">
               Deal-Wert
             </p>
             <p className="text-sm font-medium tabular-nums mt-0.5">
@@ -355,7 +355,7 @@ function DealCard({
             </p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground/80">
               Gewonnen am
             </p>
             <p className="text-sm font-medium mt-0.5">
@@ -366,7 +366,7 @@ function DealCard({
       )}
 
       {match.match_reason && (
-        <p className="text-[11px] text-muted-foreground mt-3 border-t border-border/50 pt-2">
+        <p className="text-xs text-muted-foreground mt-3 border-t border-border/50 pt-2">
           {match.match_reason}
         </p>
       )}
@@ -380,7 +380,7 @@ function MatchTypeBadge({ match }: { match: CloseMatch }) {
     return (
       <Badge
         variant="outline"
-        className="rounded-[4px] text-[10px] border-primary/30 bg-primary/10 text-primary"
+        className="rounded-[4px] text-xs border-primary/30 bg-primary/10 text-primary"
       >
         ✓ Manuell
       </Badge>
@@ -389,7 +389,7 @@ function MatchTypeBadge({ match }: { match: CloseMatch }) {
   return (
     <Badge
       variant="outline"
-      className="rounded-[4px] text-[10px] gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      className="rounded-[4px] text-xs gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
     >
       Auto {conf}%
     </Badge>
@@ -399,7 +399,7 @@ function MatchTypeBadge({ match }: { match: CloseMatch }) {
 function KpiCard({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="border border-border rounded-lg p-3 bg-muted/30">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground/80">
         {label}
       </p>
       {value === null ? (
@@ -521,7 +521,7 @@ function ManualLinkModal({
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{opp.lead_name}</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {opp.status_type || opp.status_label || "–"}{" "}
                     {opp.date_won
                       ? new Date(opp.date_won).toLocaleDateString("de-DE")
@@ -534,7 +534,7 @@ function ManualLinkModal({
                 <Badge
                   variant="outline"
                   className={cn(
-                    "rounded-[4px] text-[10px] shrink-0",
+                    "rounded-[4px] text-xs shrink-0",
                     isUpsell
                       ? "border-blue-500/30 bg-blue-500/10 text-blue-700"
                       : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700",

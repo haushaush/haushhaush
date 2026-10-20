@@ -108,8 +108,8 @@ export default function MusicPlayer() {
           <div className="h-full bg-teal-500 rounded-full transition-[width] duration-700 ease-linear" style={{ width: `${progress}%` }} />
         </div>
         <div className="flex justify-between mt-0.5">
-          <span className="text-[10px] text-muted-foreground tabular-nums">{formatTime(currentTime)}</span>
-          <span className="text-[10px] text-muted-foreground tabular-nums">{formatTime(duration)}</span>
+          <span className="text-xs text-muted-foreground tabular-nums">{formatTime(currentTime)}</span>
+          <span className="text-xs text-muted-foreground tabular-nums">{formatTime(duration)}</span>
         </div>
       </div>
 
@@ -191,7 +191,7 @@ export default function MusicPlayer() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm truncate">{r.title}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{r.channel}</p>
+                      <p className="text-xs text-muted-foreground truncate">{r.channel}</p>
                     </div>
                     <Play className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   </button>

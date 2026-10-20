@@ -563,7 +563,7 @@ export default function ReferenzWerbeanzeigenPage() {
             <SecondaryActionButton onClick={() => setKampagnenOpen(true)}>
               <Layers className="w-4 h-4" /> Kampagnen-Zuordnung
               {campaignsWithoutBranche > 0 && (
-                <span className="ml-1 inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 tabular-nums">
+                <span className="ml-1 inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 tabular-nums">
                   {campaignsWithoutBranche} ohne Branche
                 </span>
               )}
@@ -711,7 +711,7 @@ export default function ReferenzWerbeanzeigenPage() {
 
       {searchParams.get('debug') === 'true' && (
         <div className="mb-6 p-4 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 font-mono text-xs">
-          <h3 className="font-bold mb-2 text-gray-900 dark:text-white">Debug · Ad-Status-Distribution</h3>
+          <h3 className="text-sm font-semibold mb-2 text-gray-900 dark:text-white">Debug · Ad-Status-Distribution</h3>
           <pre className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{JSON.stringify(
             rows.reduce<Record<string, number>>((acc, ad) => {
               const key = (ad as any).effective_status || (ad as any).status || 'null';

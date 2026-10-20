@@ -90,7 +90,7 @@ function Zeile({ system, st, busy, kunde, onLink, onDiscard, onUnlink }: {
       <div className="grid grid-cols-1 sm:grid-cols-[140px_130px_1fr_auto] gap-2 sm:gap-4 sm:items-center">
         <div>
           <p className="text-sm font-medium">{system.label}</p>
-          <p className="text-[11px] text-muted-foreground">{system.objekt}</p>
+          <p className="text-xs text-muted-foreground">{system.objekt}</p>
         </div>
         <p className={cn('text-xs font-medium flex items-center gap-1.5', status.c)}>
           <span className={cn('h-1.5 w-1.5 rounded-full bg-current')} />{status.t}
@@ -100,7 +100,7 @@ function Zeile({ system, st, busy, kunde, onLink, onDiscard, onUnlink }: {
           {st.zustand === 'vorschlag' && (
             <div className="min-w-0">
               <ObjektZeile o={st.vorschlag} />
-              <p className="text-[11px] text-muted-foreground mt-0.5">{st.vorschlag.grund}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{st.vorschlag.grund}</p>
             </div>
           )}
           {st.zustand === 'offen' && <span className="text-xs text-muted-foreground">Kein {system.objekt} zugeordnet</span>}
@@ -131,8 +131,8 @@ function ObjektZeile({ o }: { o: Objekt }) {
   return (
     <div className="flex items-center gap-2 min-w-0">
       <span className="truncate font-medium">{o.name || '(ohne Namen)'}</span>
-      <span className="text-[11px] text-muted-foreground tabular-nums truncate hidden md:inline">{o.id}</span>
-      {o.detail && <span className="text-[11px] text-muted-foreground shrink-0">· {o.detail}</span>}
+      <span className="text-xs text-muted-foreground tabular-nums truncate hidden md:inline">{o.id}</span>
+      {o.detail && <span className="text-xs text-muted-foreground shrink-0">· {o.detail}</span>}
       {o.url && <a href={o.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary shrink-0" title="Im Zielsystem öffnen"><ExternalLink className="h-3.5 w-3.5" /></a>}
     </div>
   );

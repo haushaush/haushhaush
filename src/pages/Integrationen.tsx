@@ -408,7 +408,7 @@ export default function Integrationen() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Integrationen</h1>
+        <h1 className="text-2xl font-semibold font-heading text-foreground">Integrationen</h1>
         <p className="text-sm text-muted-foreground mt-1">Verbinde externe Dienste mit dem Agency Hub</p>
       </div>
 
@@ -417,7 +417,7 @@ export default function Integrationen() {
           <span className="text-warning text-lg shrink-0">⚠</span>
           <div className="min-w-0">
             <p className="font-medium text-foreground text-xs">Du befindest dich in der Lovable Preview</p>
-            <p className="text-muted-foreground text-[11px] mt-0.5">
+            <p className="text-muted-foreground text-xs mt-0.5">
               Einstellungen und Verbindungen hier nicht speichern — nutze die{' '}
               <a
                 href="https://haushhaush.lovable.app/integrationen"

@@ -213,7 +213,7 @@ export function DropdownPill({
                 >
                   <span className="truncate text-left">{opt.label}</span>
                   {opt.count !== undefined && (
-                    <span className="text-[11px] text-gray-400 tabular-nums shrink-0">{opt.count}</span>
+                    <span className="text-xs text-gray-400 tabular-nums shrink-0">{opt.count}</span>
                   )}
                 </button>
               );
@@ -248,7 +248,7 @@ export function ShowcaseEmptyState({
   return (
     <SurfaceCard padding="none" className="text-center py-20">
       <Inbox className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{title}</h3>
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{title}</h3>
       <p className="text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
       {action && <div className="mt-5">{action}</div>}
     </SurfaceCard>
@@ -354,12 +354,12 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
       <div className="p-5 flex flex-col flex-1">
         <div className="space-y-1.5">
           {eyebrow && (
-            <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] truncate">
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] truncate">
               {eyebrow}
             </p>
           )}
 
-          <h3 className="text-lg font-extrabold text-gray-900 dark:text-white leading-tight line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
             {title}
           </h3>
 
@@ -517,13 +517,13 @@ function PerformanceHero({ campaign }: { campaign: AnyItem }) {
       </div>
       <div className="relative z-10 grid grid-cols-2 gap-3 mt-6 w-full max-w-[240px]">
         <div className="text-center bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2">
-          <p className="text-[10px] uppercase tracking-wider opacity-80 font-medium">CPL</p>
+          <p className="text-xs uppercase tracking-wider opacity-80 font-medium">CPL</p>
           <p className="font-semibold text-base mt-0.5 tabular-nums">
             {cpl != null && !isNaN(cpl) ? `€${cpl.toFixed(2)}` : '—'}
           </p>
         </div>
         <div className="text-center bg-white/15 backdrop-blur-sm rounded-lg px-3 py-2">
-          <p className="text-[10px] uppercase tracking-wider opacity-80 font-medium">Leads</p>
+          <p className="text-xs uppercase tracking-wider opacity-80 font-medium">Leads</p>
           <p className="font-semibold text-base mt-0.5 tabular-nums">
             {leads != null && !isNaN(leads) ? leads.toLocaleString('de-DE') : '—'}
           </p>
@@ -545,7 +545,7 @@ function TypeIndicator({ item }: { item: AnyItem }) {
   if (!config) return null;
   const { Icon } = config;
   return (
-    <div className={`absolute top-3 right-3 ${config.color} backdrop-blur-md text-white text-[11px] px-2 py-1 rounded-md flex items-center gap-1 font-medium shadow-sm`}>
+    <div className={`absolute top-3 right-3 ${config.color} backdrop-blur-md text-white text-xs px-2 py-1 rounded-md flex items-center gap-1 font-medium shadow-sm`}>
       <Icon className="w-2.5 h-2.5" />
       {config.label}
     </div>
@@ -604,7 +604,7 @@ function MetricMini({
     'text-gray-900 dark:text-white';
   return (
     <div className="text-center min-w-0">
-      <div className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 mb-0.5">
+      <div className="text-xs uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400 mb-0.5">
         {label}
       </div>
       <div className={`text-sm font-extrabold tabular-nums truncate ${valueClass}`}>
@@ -623,7 +623,7 @@ function LiveStatusBadge({ ad }: { ad: any }) {
     offline: { label: 'Offline',  bg: 'bg-gray-700/95',    pulse: false },
   }[status];
   return (
-    <div className={`absolute top-3 left-3 z-10 inline-flex items-center gap-1 ${config.bg} backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm`}>
+    <div className={`absolute top-3 left-3 z-10 inline-flex items-center gap-1 ${config.bg} backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm`}>
       <span className={`w-1.5 h-1.5 rounded-full bg-white ${config.pulse ? 'animate-pulse' : ''}`} />
       {config.label}
     </div>
@@ -705,12 +705,12 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
         {/* Top-RIGHT: Top OR Format */}
         <div className="absolute top-3 right-3">
           {isWinning ? (
-            <span className="inline-flex items-center gap-1 bg-emerald-500/95 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm">
+            <span className="inline-flex items-center gap-1 bg-emerald-500/95 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm">
               <Flame className="w-2.5 h-2.5" />
               Top
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 bg-gray-900/85 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm">
+            <span className="inline-flex items-center gap-1 bg-gray-900/85 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-md shadow-sm">
               <FormatIcon className="w-2.5 h-2.5" />
               {formatLabel}
             </span>
@@ -725,10 +725,10 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
       <div className="p-5 flex flex-col flex-1">
         {/* SECTION 1: Identity */}
         <div className="space-y-1.5">
-          <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] truncate">
+          <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] truncate">
             {eyebrowText}
           </p>
-          <h3 className="text-base font-extrabold text-gray-900 dark:text-white leading-tight line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
             {titleText}
           </h3>
         </div>
@@ -737,13 +737,13 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
         {(branche || item.linked_kunde?.unternehmen) && (
           <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
             {branche && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-[11px] font-semibold rounded-md">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded-md">
                 <Tag className="w-2.5 h-2.5 text-gray-400" />
                 <span className="capitalize truncate max-w-[100px]">{branche}</span>
               </span>
             )}
             {item.linked_kunde?.unternehmen && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-[11px] font-semibold rounded-md">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded-md">
                 <Building2 className="w-2.5 h-2.5 text-gray-400" />
                 <span className="truncate max-w-[100px]">{item.linked_kunde.unternehmen}</span>
               </span>
@@ -773,12 +773,12 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
             Ansehen →
           </span>
           {spend != null ? (
-            <span className="text-[11px] text-gray-400 dark:text-gray-500 flex items-center gap-1 tabular-nums">
+            <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1 tabular-nums">
               <Euro className="w-3 h-3" />
               {Math.round(spend).toLocaleString('de-DE')} Spend
             </span>
           ) : item.created_at ? (
-            <span className="text-[11px] text-gray-400 dark:text-gray-500">
+            <span className="text-xs text-gray-400 dark:text-gray-500">
               {new Date(item.created_at).toLocaleDateString('de-DE', { month: 'short', year: 'numeric' })}
             </span>
           ) : null}

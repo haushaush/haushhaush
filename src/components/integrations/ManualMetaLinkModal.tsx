@@ -219,7 +219,7 @@ export function ManualMetaLinkModal({ open, onOpenChange, onSaved }: Props) {
                       >
                         <div className="font-medium truncate">{getKundeDisplayName(k)}</div>
                         {k.unternehmen && (
-                          <div className="text-[11px] text-muted-foreground truncate">
+                          <div className="text-xs text-muted-foreground truncate">
                             {k.unternehmen}
                           </div>
                         )}
@@ -265,12 +265,12 @@ export function ManualMetaLinkModal({ open, onOpenChange, onSaved }: Props) {
                               <div className="font-medium truncate">
                                 {a.name || a.meta_account_id}
                               </div>
-                              <div className="text-[11px] font-mono text-muted-foreground truncate">
+                              <div className="text-xs font-mono text-muted-foreground truncate">
                                 {a.meta_account_id}
                               </div>
                             </div>
                             {isLinked && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 whitespace-nowrap">
                                 bereits verknüpft
                               </span>
                             )}

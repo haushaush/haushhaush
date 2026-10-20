@@ -91,7 +91,7 @@ export default function BonusZuordnung() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Bonus – Zahlungs-Zuordnung</h1>
+        <h1 className="text-2xl font-semibold font-heading text-foreground">Bonus – Zahlungs-Zuordnung</h1>
         <p className="text-sm text-muted-foreground">Qonto-Rechnungsempfänger einmalig den CRM-Kunden zuordnen. Vorschläge werden nie automatisch bestätigt.</p>
       </div>
 
@@ -147,7 +147,7 @@ export default function BonusZuordnung() {
 
       {ign.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-sm font-medium">Dauerhaft ignoriert ({ign.length})</h2>
+          <h2 className="text-lg font-semibold font-heading">Dauerhaft ignoriert ({ign.length})</h2>
           <div className="flex flex-wrap gap-2">
             {ign.map(i => <span key={i.id} className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs">{i.qonto_client_name}<button aria-label="Wieder aufnehmen" onClick={() => reaktivieren(i.id)}><Trash2 className="h-3 w-3 text-muted-foreground" /></button></span>)}
           </div>
@@ -174,7 +174,7 @@ function Ausschluesse() {
   return (
     <div className="space-y-3">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Werbebudget-Begriffe</h2>
+        <h2 className="text-lg font-semibold font-heading text-foreground">Werbebudget-Begriffe</h2>
         <p className="text-sm text-muted-foreground">Rechnungspositionen, deren Titel einen dieser Begriffe enthält, werden vom Netto-Betrag abgezogen. Groß-/Kleinschreibung, Leerzeichen und Bindestriche werden ignoriert.</p>
       </div>
       <div className="flex gap-2 max-w-md"><Input placeholder="Neuer Begriff" value={neu} onChange={e => setNeu(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} /><Button onClick={add}>Hinzufügen</Button></div>

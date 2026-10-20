@@ -165,14 +165,14 @@ export default function KundenCardView({ deals, onSelect, onDelete }: KundenCard
                 {ampel && (
                   <span className="flex items-center gap-1 shrink-0 mt-0.5">
                     <span className={`h-2 w-2 rounded-full ${ampel.dot}`} />
-                    <span className="text-[10px] font-medium text-muted-foreground">{ampel.label}</span>
+                    <span className="text-xs font-medium text-muted-foreground">{ampel.label}</span>
                   </span>
                 )}
               </div>
 
               {/* Status + Saldo row */}
               <div className="flex items-center justify-between gap-2">
-                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-[4px] ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-[4px] ${STATUS_STYLES[ks] || 'bg-muted text-muted-foreground'}`}>
                   {ks}
                 </span>
                 <span className="font-bold text-sm tabular-nums font-mono">{fmt(saldo)}</span>
@@ -180,7 +180,7 @@ export default function KundenCardView({ deals, onSelect, onDelete }: KundenCard
 
               {/* Date */}
               {dateRange && (
-                <p className="text-[11px] text-muted-foreground/70">{dateRange}</p>
+                <p className="text-xs text-muted-foreground/70">{dateRange}</p>
               )}
             </div>
           </div>

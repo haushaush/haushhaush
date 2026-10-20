@@ -65,7 +65,7 @@ export default function CloseSync() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-heading font-bold">Close-Sync · Unmatched Kunden</h1>
+          <h1 className="text-2xl font-semibold font-heading">Close-Sync · Unmatched Kunden</h1>
           <p className="text-sm text-muted-foreground">Kunden ohne Verknüpfung zu einem Close-Lead.</p>
         </div>
         <div className="flex gap-2">

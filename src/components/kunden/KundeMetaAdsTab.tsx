@@ -210,20 +210,20 @@ export function KundeMetaAdsTab({
   const matchTypeBadge = (m: MatchRow) => {
     if (m.match_type === "auto") {
       return (
-        <Badge variant="outline" className="rounded-[4px] text-[10px] gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+        <Badge variant="outline" className="rounded-[4px] text-xs gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
           <Wand2 className="h-3 w-3" /> Auto {Math.round(m.match_confidence ?? 0)}%
         </Badge>
       );
     }
     if (m.match_type === "ai") {
       return (
-        <Badge variant="outline" className="rounded-[4px] text-[10px] gap-1 border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300">
+        <Badge variant="outline" className="rounded-[4px] text-xs gap-1 border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300">
           <Sparkles className="h-3 w-3" /> KI {Math.round(m.match_confidence ?? 0)}%
         </Badge>
       );
     }
     return (
-      <Badge variant="outline" className="rounded-[4px] text-[10px] border-primary/30 bg-primary/10 text-primary">
+      <Badge variant="outline" className="rounded-[4px] text-xs border-primary/30 bg-primary/10 text-primary">
         ✓ Manuell
       </Badge>
     );
@@ -276,14 +276,14 @@ export function KundeMetaAdsTab({
                   <p className="font-semibold text-sm truncate">
                     {meta?.name || m.meta_account_name || m.meta_account_id}
                   </p>
-                  <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                  <p className="text-xs text-muted-foreground font-mono mt-0.5">
                     {m.meta_account_id}
                   </p>
                   <div className="flex flex-wrap items-center gap-1.5 mt-2">
                     <Badge
                       variant="outline"
                       className={cn(
-                        "rounded-[4px] text-[10px]",
+                        "rounded-[4px] text-xs",
                         isActive
                           ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                           : "border-muted-foreground/20 bg-muted text-muted-foreground",
@@ -293,7 +293,7 @@ export function KundeMetaAdsTab({
                     </Badge>
                     {matchTypeBadge(m)}
                     {ins?.currency && (
-                      <span className="text-[10px] text-muted-foreground">{ins.currency}</span>
+                      <span className="text-xs text-muted-foreground">{ins.currency}</span>
                     )}
                   </div>
                 </div>
@@ -328,7 +328,7 @@ export function KundeMetaAdsTab({
                 <div className="mt-3 -mx-2">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                      <tr className="text-xs uppercase tracking-wider text-muted-foreground/70">
                         <th className="text-left font-medium px-2 py-1.5">Name</th>
                         <th className="text-left font-medium px-2 py-1.5">Status</th>
                         <th className="text-right font-medium px-2 py-1.5">Spend</th>
@@ -347,7 +347,7 @@ export function KundeMetaAdsTab({
                             <Badge
                               variant="outline"
                               className={cn(
-                                "rounded-[4px] text-[10px]",
+                                "rounded-[4px] text-xs",
                                 c.status === "ACTIVE"
                                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                                   : "border-muted-foreground/20 bg-muted text-muted-foreground",
@@ -423,7 +423,7 @@ export function KundeMetaAdsTab({
 function KpiCard({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="border border-border rounded-lg p-3 bg-muted/30">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">{label}</p>
+      <p className="text-xs uppercase tracking-wider text-muted-foreground/80">{label}</p>
       {value === null ? (
         <Skeleton className="h-6 w-20 mt-1" />
       ) : (
@@ -436,7 +436,7 @@ function KpiCard({ label, value }: { label: string; value: string | null }) {
 function Stat({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">{label}</p>
+      <p className="text-xs uppercase tracking-wider text-muted-foreground/80">{label}</p>
       {value === null ? (
         <Skeleton className="h-4 w-16 mt-1" />
       ) : (
@@ -536,9 +536,9 @@ function ManualLinkModal({
             >
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate">{a.name}</p>
-                <p className="text-[11px] font-mono text-muted-foreground">{a.id}</p>
+                <p className="text-xs font-mono text-muted-foreground">{a.id}</p>
               </div>
-              <span className="text-[11px] text-muted-foreground shrink-0">{a.currency || ""}</span>
+              <span className="text-xs text-muted-foreground shrink-0">{a.currency || ""}</span>
             </button>
           ))}
         </div>

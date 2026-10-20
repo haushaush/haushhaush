@@ -430,7 +430,7 @@ export default function MetaReportings() {
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Meta Reportings</h1>
+          <h1 className="text-2xl font-semibold font-heading tracking-tight">Meta Reportings</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Steuere pro Werbekonto, ob Reportings, Slack-Benachrichtigungen und Kundenmails aktiv sind.
           </p>

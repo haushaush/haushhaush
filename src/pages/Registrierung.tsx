@@ -123,7 +123,7 @@ export default function Registrierung() {
             <circle cx="40" cy="40" r="36" stroke="hsl(var(--primary))" strokeWidth="2" fill="none" className="check-circle" />
             <path d="M24 40 L35 51 L56 30" stroke="hsl(var(--primary))" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" className="check-circle" />
           </svg>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Anfrage gesendet! 🎉</h2>
+          <h2 className="text-lg font-semibold font-heading text-foreground mb-2">Anfrage gesendet! 🎉</h2>
           <p className="text-sm text-muted-foreground mb-6">
             Dein Profil wurde erstellt. Ein Admin wird deine Anfrage in Kürze überprüfen.
             Du erhältst eine E-Mail sobald dein Zugang freigeschaltet wurde.
@@ -157,7 +157,7 @@ export default function Registrierung() {
           {step === 1 && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-xl font-semibold text-foreground">Profil anlegen</h2>
+                <h2 className="text-lg font-semibold font-heading text-foreground">Profil anlegen</h2>
                 <p className="text-sm text-muted-foreground mt-1">Schritt 1 von 3 — Deine Infos</p>
               </div>
 
@@ -199,7 +199,7 @@ export default function Registrierung() {
           {step === 2 && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-xl font-semibold text-foreground">Deine Rolle</h2>
+                <h2 className="text-lg font-semibold font-heading text-foreground">Deine Rolle</h2>
                 <p className="text-sm text-muted-foreground mt-1">Schritt 2 von 3 — Berufliche Infos</p>
               </div>
 
@@ -249,7 +249,7 @@ export default function Registrierung() {
           {step === 3 && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-xl font-semibold text-foreground">Letzte Details</h2>
+                <h2 className="text-lg font-semibold font-heading text-foreground">Letzte Details</h2>
                 <p className="text-sm text-muted-foreground mt-1">Schritt 3 von 3 — Diese Infos sind nur intern sichtbar.</p>
               </div>
 

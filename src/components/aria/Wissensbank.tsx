@@ -64,9 +64,9 @@ const SORT_OPTIONS = [
 ];
 
 function PriorityBadge({ priority }: { priority: number }) {
-  if (priority >= 7) return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 text-[10px]">🔴 Hoch</Badge>;
-  if (priority >= 4) return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20 text-[10px]">🟡 Mittel</Badge>;
-  return <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px]">🟢 Niedrig</Badge>;
+  if (priority >= 7) return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 text-xs">🔴 Hoch</Badge>;
+  if (priority >= 4) return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20 text-xs">🟡 Mittel</Badge>;
+  return <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs">🟢 Niedrig</Badge>;
 }
 
 export default function Wissensbank() {
@@ -206,7 +206,7 @@ export default function Wissensbank() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-heading font-bold text-foreground flex items-center gap-2">📚 Wissensbank</h2>
+          <h2 className="text-lg font-semibold font-heading text-foreground flex items-center gap-2">📚 Wissensbank</h2>
           <p className="text-sm text-muted-foreground">ARIA lernt aus diesen Quellen</p>
         </div>
         {isAdminOrManager && (
@@ -298,7 +298,7 @@ export default function Wissensbank() {
                 <CardContent className="p-4">
                   {/* Top row */}
                   <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="text-[10px] gap-1">
+                    <Badge variant="outline" className="text-xs gap-1">
                       <span>{src.icon}</span> {src.label}
                     </Badge>
                     <PriorityBadge priority={entry.priority} />
@@ -316,16 +316,16 @@ export default function Wissensbank() {
                   {visibleTags.length > 0 && (
                     <div className="flex gap-1.5 mt-2 flex-wrap">
                       {visibleTags.map(tag => (
-                        <span key={tag} className="text-[10px] px-2 py-0.5 rounded border border-primary/25 text-primary bg-primary/5">{tag}</span>
+                        <span key={tag} className="text-xs px-2 py-0.5 rounded border border-primary/25 text-primary bg-primary/5">{tag}</span>
                       ))}
-                      {extraTags > 0 && <span className="text-[10px] text-muted-foreground">+{extraTags} mehr</span>}
+                      {extraTags > 0 && <span className="text-xs text-muted-foreground">+{extraTags} mehr</span>}
                     </div>
                   )}
 
                   {/* Bottom row */}
                   <div className="flex items-center justify-between mt-3 pt-2 border-t border-border">
                     <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-[10px]">{entry.category}</Badge>
+                      <Badge variant="secondary" className="text-xs">{entry.category}</Badge>
                       {isAdminOrManager && (
                         <Switch
                           checked={entry.is_active}
@@ -333,7 +333,7 @@ export default function Wissensbank() {
                           className="scale-75 origin-left"
                         />
                       )}
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {formatDistanceToNow(new Date(entry.updated_at), { addSuffix: true, locale: de })}
                       </span>
                     </div>
@@ -387,7 +387,7 @@ export default function Wissensbank() {
                 >
                   <span className="text-2xl">{s.icon}</span>
                   <span className="text-sm font-medium text-foreground">{s.label}</span>
-                  <span className="text-[10px] text-muted-foreground">{s.sub}</span>
+                  <span className="text-xs text-muted-foreground">{s.sub}</span>
                 </button>
               ))}
             </div>

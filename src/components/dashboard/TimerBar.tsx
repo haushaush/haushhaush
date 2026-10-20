@@ -121,14 +121,14 @@ export function TimerBar() {
     >
       <Clock className="h-3.5 w-3.5 opacity-80 shrink-0" />
 
-      <span className="font-mono text-[15px] font-bold tracking-wider">
+      <span className="font-mono text-sm font-bold tracking-wider">
         {formatTimer(elapsed)}
       </span>
 
       <div className="h-5 w-px bg-white/30 shrink-0" />
 
       {!isMobile && (
-        <span className="text-[13px] opacity-90 truncate max-w-[300px]">
+        <span className="text-xs opacity-90 truncate max-w-[300px]">
           {timer.taskLabel || 'Zeiterfassung läuft...'}
         </span>
       )}

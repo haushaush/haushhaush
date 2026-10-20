@@ -78,7 +78,7 @@ function SelectEditor({ field, column, slackListId, onSave, onCancel }: Props) {
           return (
             <SelectItem key={c.id} value={c.id}>
               <span className={cn(
-                'inline-flex items-center rounded-full border px-2 h-5 text-[11px] font-medium',
+                'inline-flex items-center rounded-full border px-2 h-5 text-xs font-medium',
                 colorPillClass(disp.color),
               )}>
                 {disp.label}
@@ -125,7 +125,7 @@ function MultiSelectEditor({ field, column, slackListId, onSave, onCancel }: Pro
                 }}
               />
               <span className={cn(
-                'inline-flex items-center rounded-full border px-2 h-5 text-[11px] font-medium',
+                'inline-flex items-center rounded-full border px-2 h-5 text-xs font-medium',
                 colorPillClass(disp.color),
               )}>
                 {disp.label}

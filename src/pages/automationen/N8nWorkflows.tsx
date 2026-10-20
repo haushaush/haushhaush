@@ -242,14 +242,14 @@ export default function N8nWorkflowsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-heading font-bold text-foreground">n8n Workflows</h1>
+          <h1 className="text-2xl font-semibold font-heading text-foreground">n8n Workflows</h1>
           <p className="text-sm text-muted-foreground">Alle Automationen im Überblick</p>
         </div>
         <Card className="p-12 text-center">
           <div className="mx-auto w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-4">
             <Zap className="h-6 w-6 text-muted-foreground" />
           </div>
-          <h2 className="text-lg font-semibold text-foreground">n8n nicht verbunden</h2>
+          <h2 className="text-lg font-semibold font-heading text-foreground">n8n nicht verbunden</h2>
           <p className="text-sm text-muted-foreground mt-1 mb-4">
             Verbinde deine n8n Instanz, um alle Workflows hier zu verwalten.
           </p>
@@ -268,7 +268,7 @@ export default function N8nWorkflowsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-heading font-bold text-foreground">n8n Workflows</h1>
+          <h1 className="text-2xl font-semibold font-heading text-foreground">n8n Workflows</h1>
           <p className="text-sm text-muted-foreground">Alle Automationen im Überblick</p>
         </div>
         <div className="flex items-center gap-2">
@@ -310,7 +310,7 @@ export default function N8nWorkflowsPage() {
       </div>
 
       {lastUpdated && (
-        <p className="text-[11px] text-muted-foreground -mt-3">
+        <p className="text-xs text-muted-foreground -mt-3">
           Zuletzt aktualisiert: {lastUpdated.toLocaleTimeString('de-DE')}
         </p>
       )}
@@ -402,7 +402,7 @@ export default function N8nWorkflowsPage() {
                       {wf.tags && wf.tags.length > 0 && (
                         <div className="flex gap-1 mt-1 flex-wrap">
                           {wf.tags.slice(0, 4).map((t, i) => (
-                            <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                            <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                               {tagName(t)}
                             </span>
                           ))}
@@ -410,7 +410,7 @@ export default function N8nWorkflowsPage() {
                       )}
                     </td>
                     <td className="px-2 py-3 hidden md:table-cell">
-                      <Badge variant="secondary" className="text-[10px] rounded">{triggerLabel(wf.nodes)}</Badge>
+                      <Badge variant="secondary" className="text-xs rounded">{triggerLabel(wf.nodes)}</Badge>
                     </td>
                     <td className="px-2 py-3 hidden md:table-cell text-muted-foreground">{wf.nodes?.length ?? 0}</td>
                     <td className="px-2 py-3 hidden lg:table-cell text-muted-foreground">

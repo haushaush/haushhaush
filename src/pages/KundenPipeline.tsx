@@ -35,7 +35,7 @@ export default function KundenPipeline() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Pipeline</h1>
+        <h1 className="text-2xl font-semibold font-heading">Pipeline</h1>
         <p className="text-muted-foreground text-sm">Kunden-Pipeline nach Status</p>
       </div>
       <div className="flex gap-4 overflow-x-auto pb-4">
@@ -43,7 +43,7 @@ export default function KundenPipeline() {
           <div key={col} className="min-w-[260px] flex-shrink-0">
             <div className="flex items-center gap-2 mb-3">
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{col}</p>
-              <Badge variant="secondary" className="text-[10px]">{grouped[col].length}</Badge>
+              <Badge variant="secondary" className="text-xs">{grouped[col].length}</Badge>
             </div>
             <div className="space-y-2">
               {grouped[col].map(d => (
@@ -51,7 +51,7 @@ export default function KundenPipeline() {
                   <CardContent className="p-3">
                     <p className="text-sm font-medium truncate">{d.client_name}</p>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <Badge variant="outline" className="text-[10px]">{d.art}</Badge>
+                      <Badge variant="outline" className="text-xs">{d.art}</Badge>
                       <span className="text-xs text-muted-foreground">€{Number(d.wert_eur || 0).toLocaleString('de-DE')}</span>
                       <span className={`h-2 w-2 rounded-full ${AMPEL_DOT[d.ampelstatus] || 'bg-muted'}`} aria-label={`Ampel: ${d.ampelstatus}`} />
                     </div>

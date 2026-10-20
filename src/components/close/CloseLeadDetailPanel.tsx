@@ -198,7 +198,7 @@ export function CloseLeadDetailPanel({ leadId, open, onOpenChange, onCreateKunde
 
               <details className="text-xs">
                 <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Raw JSON</summary>
-                <pre className="mt-2 p-3 bg-muted rounded text-[10px] overflow-auto max-h-96">{JSON.stringify(lead, null, 2)}</pre>
+                <pre className="mt-2 p-3 bg-muted rounded text-xs overflow-auto max-h-96">{JSON.stringify(lead, null, 2)}</pre>
               </details>
             </div>
           </>

@@ -342,7 +342,7 @@ export function SlackListsModule() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <List className="h-4 w-4 text-primary" />
-          <h2 className="text-lg font-semibold">Slack-Listen</h2>
+          <h2 className="text-lg font-semibold font-heading">Slack-Listen</h2>
         </div>
         <Button size="sm" onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4 mr-1.5" /> Liste hinzufügen
@@ -362,7 +362,7 @@ export function SlackListsModule() {
               {lists.map((l) => (
                 <TabsTrigger key={l.slack_list_id} value={l.slack_list_id} className="gap-2">
                   {l.list_name || l.slack_list_id}
-                  <Badge variant="outline" className="text-[10px] h-4 px-1">{l.item_count ?? 0}</Badge>
+                  <Badge variant="outline" className="text-xs h-4 px-1">{l.item_count ?? 0}</Badge>
                 </TabsTrigger>
               ))}
             </TabsList>

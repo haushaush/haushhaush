@@ -94,7 +94,7 @@ function resolveBrancheWriteValue(picked: string): string {
 }
 
 const MissingPill = ({ children }: { children: React.ReactNode }) => (
-  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30">
     {children}
   </span>
 );
@@ -437,7 +437,7 @@ export function KampagnenZuordnungModal({ open, onClose, rows, onSaved }: Props)
                                     {camp.name}
                                     {missingBranche && <MissingPill>Branche fehlt</MissingPill>}
                                   </div>
-                                  <div className="text-[11px] text-muted-foreground tabular-nums">
+                                  <div className="text-xs text-muted-foreground tabular-nums">
                                     {camp.ads.length} Ads ·{" "}
                                     <span
                                       className={

@@ -28,10 +28,10 @@ async function lade(q: Quelle): Promise<Row[]> {
 function Kachel({ title, value, sub, hint }: { title: string; value: string; sub?: string; hint?: string }) {
   return (
     <Card><CardContent className="p-4 space-y-1">
-      <p className="text-[11px] text-muted-foreground">{title}</p>
+      <p className="text-xs text-muted-foreground">{title}</p>
       <p className="text-xl font-semibold tabular-nums">{value}</p>
-      {sub && <p className="text-[11px] text-muted-foreground tabular-nums">{sub}</p>}
-      {hint && <p className="text-[11px] text-warning">{hint}</p>}
+      {sub && <p className="text-xs text-muted-foreground tabular-nums">{sub}</p>}
+      {hint && <p className="text-xs text-warning">{hint}</p>}
     </CardContent></Card>
   );
 }
@@ -97,7 +97,7 @@ export function RechnungsAuswertung({ quellen, quelleText }: { quellen: Quelle[]
       <div>
         <div className="mb-3">
           <h3 className="text-sm font-semibold">C · Rechnungen & Cash Collected</h3>
-          <p className="text-[11px] text-muted-foreground">{quelleText} · alle Rechnungen ohne stornierte</p>
+          <p className="text-xs text-muted-foreground">{quelleText} · alle Rechnungen ohne stornierte</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-3">
           <Kachel title="Rechnungen gesamt" value={m.count.toLocaleString('de-DE')} sub={m.sonstigeCount ? `davon ${m.sonstigeCount.toLocaleString('de-DE')} sonstige (Status unbekannt)` : undefined} hint={hint} />
@@ -112,7 +112,7 @@ export function RechnungsAuswertung({ quellen, quelleText }: { quellen: Quelle[]
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Monatsentwicklung (letzte 12 Monate)</CardTitle>
-          <p className="text-[11px] text-muted-foreground">Ausgestellt nach Rechnungsdatum, bezahlt nach Zahldatum{hint ? ` · ${hint}` : ''}</p>
+          <p className="text-xs text-muted-foreground">Ausgestellt nach Rechnungsdatum, bezahlt nach Zahldatum{hint ? ` · ${hint}` : ''}</p>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={260}>
@@ -131,7 +131,7 @@ export function RechnungsAuswertung({ quellen, quelleText }: { quellen: Quelle[]
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">H · Forderungsalter</CardTitle>
-          <p className="text-[11px] text-muted-foreground">Tage nach Fälligkeit, offene Rechnungen{hint ? ` · ${hint}` : ''}</p>
+          <p className="text-xs text-muted-foreground">Tage nach Fälligkeit, offene Rechnungen{hint ? ` · ${hint}` : ''}</p>
         </CardHeader>
         <CardContent>
           {m.openCount === 0 ? <p className="text-xs text-muted-foreground py-6 text-center">Keine offenen Forderungen.</p> : (
@@ -146,7 +146,7 @@ export function RechnungsAuswertung({ quellen, quelleText }: { quellen: Quelle[]
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-              <div className="grid grid-cols-5 gap-1 mt-2 text-[10px] text-center tabular-nums">
+              <div className="grid grid-cols-5 gap-1 mt-2 text-xs text-center tabular-nums">
                 {m.aging.map(a => (
                   <div key={a.bucket}>
                     <p className="text-muted-foreground">{a.bucket}T</p>

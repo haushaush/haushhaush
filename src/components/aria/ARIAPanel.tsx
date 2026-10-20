@@ -643,7 +643,7 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
       {/* Header */}
       <div className={embedded ? 'aria-hero-chat-header' : 'aria-jarvis-panel-header'}>
         <ARIAAvatar size={embedded ? 24 : 32} />
-        <span className={`font-bold ${embedded ? 'text-[13px] text-foreground' : 'text-[15px]'}`} style={{ letterSpacing: '-0.02em', ...(!embedded ? { color: 'var(--foreground)' } : {}) }}>ARIA</span>
+        <span className={`font-bold ${embedded ? 'text-xs text-foreground' : 'text-sm'}`} style={{ letterSpacing: '-0.02em', ...(!embedded ? { color: 'var(--foreground)' } : {}) }}>ARIA</span>
         {statusDot()}
         <div className="flex-1" />
 
@@ -781,7 +781,7 @@ export function ARIAPanel({ embedded, onClose }: { embedded?: boolean; onClose?:
                   {avatarUrl ? (
                     <img src={avatarUrl} alt={displayName} className="w-7 h-7 rounded-full object-cover" />
                   ) : (
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#0A9396] to-[#0BC2C6] flex items-center justify-center text-[10px] font-semibold text-white">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#0A9396] to-[#0BC2C6] flex items-center justify-center text-xs font-semibold text-white">
                       {initials}
                     </div>
                   )}

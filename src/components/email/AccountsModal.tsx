@@ -121,7 +121,7 @@ export function AccountsModal({ open, onClose, accounts, onAddNew, onRepair, onC
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm truncate">{a.email_address}</span>
                       {a.is_default && (
-                        <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                        <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                           <Star className="h-3 w-3 fill-current" /> Standard
                         </span>
                       )}

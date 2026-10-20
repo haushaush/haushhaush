@@ -63,7 +63,7 @@ export function CheckinKandidaten({ monat, maId, canManage, onChanged }: { monat
       {rows.length > 0 && (
         <div className="rounded-lg border border-border">
           <div className="px-4 py-3 border-b border-border">
-            <h2 className="text-sm font-medium text-foreground">Checkins ohne Klienten-Status ({rows.length})</h2>
+            <h2 className="text-lg font-semibold font-heading text-foreground">Checkins ohne Klienten-Status ({rows.length})</h2>
             <p className="text-xs text-muted-foreground">Zählen nicht für die Punkte, bis der Lead in Close als Klient geführt wird.</p>
           </div>
           <table className="w-full text-sm">

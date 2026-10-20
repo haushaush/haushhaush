@@ -96,7 +96,7 @@ export function WebsiteEmbed({
         style={{ height: typeof height === 'number' ? `${height}px` : height }}
       >
         <ImageIcon className="w-10 h-10 text-gray-400 dark:text-gray-600 mb-3" />
-        <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
           Vorschau nicht verfügbar
         </h3>
         <p className="text-xs text-muted-foreground mb-4 max-w-xs">

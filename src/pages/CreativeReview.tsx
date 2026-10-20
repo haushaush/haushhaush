@@ -113,7 +113,7 @@ export default function CreativeReview() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Link ungültig</h1>
+          <h1 className="text-2xl font-semibold font-heading text-gray-900 mb-2">Link ungültig</h1>
           <p className="text-gray-600">{error}</p>
         </div>
       </div>
@@ -127,7 +127,7 @@ export default function CreativeReview() {
           <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
             <Check className="h-8 w-8 text-green-600" aria-hidden="true" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Vielen Dank!</h1>
+          <h1 className="text-2xl font-semibold font-heading text-gray-900 mb-2">Vielen Dank!</h1>
           <p className="text-gray-600">Dein Feedback wurde übermittelt. Wir melden uns bei dir.</p>
         </div>
       </div>
@@ -148,7 +148,7 @@ export default function CreativeReview() {
               <p className="text-sm font-medium text-gray-700">{client?.name}</p>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Creative Review</h1>
+          <h1 className="text-2xl font-semibold font-heading text-gray-900 mb-1">Creative Review</h1>
           <p className="text-gray-600">
             Bitte überprüfe die folgenden Ad Creatives für <strong>{project?.name}</strong>
           </p>

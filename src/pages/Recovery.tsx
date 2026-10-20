@@ -61,7 +61,7 @@ export default function Recovery() {
             <ShieldAlert className="h-6 w-6 text-destructive" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold">Admin Recovery</h1>
+            <h1 className="text-2xl font-semibold font-heading">Admin Recovery</h1>
             <p className="text-sm text-muted-foreground">
               Notfall-Wiederherstellung für gesperrte Admin-Accounts.
             </p>

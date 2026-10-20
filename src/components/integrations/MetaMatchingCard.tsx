@@ -281,7 +281,7 @@ export function MetaMatchingCard() {
             </div>
             <div className="border border-border rounded-lg overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground/80">
                   <tr>
                     <th className="text-left font-medium px-3 py-2">Kunde</th>
                     <th className="text-left font-medium px-3 py-2">Meta Account</th>
@@ -296,20 +296,20 @@ export function MetaMatchingCard() {
                       <td className="px-3 py-2">
                         <p className="font-medium text-xs">{getKundeDisplayName(row.kunde)}</p>
                         {row.kunde?.unternehmen ? (
-                          <p className="text-[10px] text-muted-foreground">{row.kunde.unternehmen}</p>
+                          <p className="text-xs text-muted-foreground">{row.kunde.unternehmen}</p>
                         ) : null}
                       </td>
                       <td className="px-3 py-2">
                         <p className="font-medium text-xs">{row.meta_account_name}</p>
-                        <p className="text-[10px] font-mono text-muted-foreground">{row.meta_account_id}</p>
+                        <p className="text-xs font-mono text-muted-foreground">{row.meta_account_id}</p>
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <Badge variant="outline" className="rounded-[4px] text-[10px] tabular-nums">
+                        <Badge variant="outline" className="rounded-[4px] text-xs tabular-nums">
                           {Math.round(row.confidence)} %
                           {row.source === "ai" && <span className="ml-1">✨</span>}
                         </Badge>
                       </td>
-                      <td className="px-3 py-2 text-[11px] text-muted-foreground max-w-[260px]">
+                      <td className="px-3 py-2 text-xs text-muted-foreground max-w-[260px]">
                         {row.reasoning || "–"}
                       </td>
                       <td className="px-3 py-2">

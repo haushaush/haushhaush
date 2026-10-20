@@ -83,20 +83,20 @@ function fullDate(iso: string): string {
 function MatchTypeBadge({ type }: { type: string }) {
   if (type === "auto") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-[4px] bg-teal-500/15 text-teal-600 dark:text-teal-400 px-2 py-0.5 text-[10px] font-medium">
+      <span className="inline-flex items-center gap-1 rounded-[4px] bg-teal-500/15 text-teal-600 dark:text-teal-400 px-2 py-0.5 text-xs font-medium">
         <Bot className="h-3 w-3" /> Auto
       </span>
     );
   }
   if (type === "ai") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-[4px] bg-purple-500/15 text-purple-600 dark:text-purple-400 px-2 py-0.5 text-[10px] font-medium">
+      <span className="inline-flex items-center gap-1 rounded-[4px] bg-purple-500/15 text-purple-600 dark:text-purple-400 px-2 py-0.5 text-xs font-medium">
         <Sparkles className="h-3 w-3" /> KI
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-[4px] bg-muted text-muted-foreground px-2 py-0.5 text-[10px] font-medium">
+    <span className="inline-flex items-center gap-1 rounded-[4px] bg-muted text-muted-foreground px-2 py-0.5 text-xs font-medium">
       <Check className="h-3 w-3" /> Manuell
     </span>
   );
@@ -304,7 +304,7 @@ export function MetaActiveMatchesTable({ matches, loading, onChanged }: Props) {
                 key={c.key}
                 onClick={() => setFilter(c.key)}
                 className={cn(
-                  "px-2.5 py-1 rounded-[4px] text-[11px] font-medium transition-colors",
+                  "px-2.5 py-1 rounded-[4px] text-xs font-medium transition-colors",
                   filter === c.key
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
@@ -341,7 +341,7 @@ export function MetaActiveMatchesTable({ matches, loading, onChanged }: Props) {
           <div className="border border-border rounded-lg overflow-hidden">
             <div className="max-h-[480px] overflow-auto">
               <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground/80 sticky top-0 z-10">
+                <thead className="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground/80 sticky top-0 z-10">
                   <tr>
                     <SortHeader label="Kunde" sortKey="kunde" active={sortKey} dir={sortDir} onSort={handleSort} />
                     <SortHeader
@@ -391,7 +391,7 @@ export function MetaActiveMatchesTable({ matches, loading, onChanged }: Props) {
                       </td>
                       <td className="px-3 py-1.5">
                         <p className="text-xs font-medium leading-tight">{row.meta_account_name || "–"}</p>
-                        <p className="text-[10px] font-mono text-muted-foreground leading-tight">
+                        <p className="text-xs font-mono text-muted-foreground leading-tight">
                           {row.meta_account_id}
                         </p>
                       </td>

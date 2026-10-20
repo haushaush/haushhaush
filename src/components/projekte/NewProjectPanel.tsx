@@ -46,7 +46,7 @@ interface Props {
 function FieldRow({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] text-muted-foreground uppercase tracking-wide">
+      <span className="text-xs text-muted-foreground uppercase tracking-wide">
         {label}{required && <span className="text-destructive ml-0.5">*</span>}
       </span>
       {children}
@@ -311,7 +311,7 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Plus className="h-4 w-4 text-primary" />
-            <h2 className="text-lg font-heading font-bold">Neues Projekt</h2>
+            <h2 className="text-lg font-semibold font-heading">Neues Projekt</h2>
           </div>
           <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-muted flex items-center justify-center transition-colors">
             <X className="h-4 w-4" />
@@ -322,7 +322,7 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5" onClick={e => e.stopPropagation()}>
           {/* DETAILS */}
           <div>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Details</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Details</h3>
             <div className="space-y-3">
               <FieldRow label="Projektname" required>
                 <Input value={form.projektname} onChange={e => set('projektname', e.target.value)} placeholder="Projektname eingeben…" className="h-[34px] text-sm" />
@@ -361,7 +361,7 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
 
           {/* MITARBEITER */}
           <div>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Mitarbeiter</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Mitarbeiter</h3>
             <MitarbeiterSelect
               selected={form.mitarbeiter}
               allMembers={allTeamMembers}
@@ -371,7 +371,7 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
 
           {/* ZEITRAUM */}
           <div>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Zeitraum</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Zeitraum</h3>
             <div className="space-y-3">
               <FieldRow label="Startdatum"><DatePickerField value={form.startdatum} onChange={v => set('startdatum', v)} /></FieldRow>
               <FieldRow label="Enddatum"><DatePickerField value={form.enddatum} onChange={v => set('enddatum', v)} /></FieldRow>
@@ -381,7 +381,7 @@ export default function NewProjectPanel({ onClose, onCreated }: Props) {
 
           {/* FINANZEN */}
           <div>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Finanzen</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Finanzen</h3>
             <div className="space-y-3">
               <FieldRow label="Ads Budget (€)">
                 <Input type="number" value={form.ads_budget} onChange={e => set('ads_budget', e.target.value)} placeholder="0" className="h-[34px] text-sm" />

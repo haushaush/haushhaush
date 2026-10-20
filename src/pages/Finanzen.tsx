@@ -87,7 +87,7 @@ function Kpi({
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground truncate">{title}</p>
             <p className="text-2xl font-semibold tabular-nums mt-0.5">{value}</p>
-            {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
           </div>
           {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
         </div>
@@ -108,7 +108,7 @@ function Kpi({
             )}
           </div>
           {delta && delta.pct != null && (
-            <span className={`text-[11px] font-medium flex items-center gap-0.5 ${delta.pct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+            <span className={`text-xs font-medium flex items-center gap-0.5 ${delta.pct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               {delta.pct >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
               {Math.abs(delta.pct * 100).toFixed(1)}%
             </span>
@@ -122,8 +122,8 @@ function Kpi({
 function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="flex items-baseline justify-between mt-2 mb-3">
-      <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
-      {subtitle && <span className="text-[11px] text-muted-foreground">{subtitle}</span>}
+      <h2 className="text-lg font-semibold font-heading tracking-tight">{title}</h2>
+      {subtitle && <span className="text-xs text-muted-foreground">{subtitle}</span>}
     </div>
   );
 }
@@ -369,7 +369,7 @@ export default function Finanzen() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Finanzen</h1>
+          <h1 className="text-2xl font-semibold font-heading">Finanzen</h1>
           <p className="text-xs text-muted-foreground">
             Qonto Finanzübersicht
             {lastAnySync && <> · Letzter Sync: <span className="font-medium text-foreground">{fmtDT(lastAnySync)}</span></>}
@@ -441,14 +441,14 @@ export default function Finanzen() {
         {/* ============ ÜBERSICHT ============ */}
         <TabsContent value="uebersicht" className="space-y-6 mt-4">
           <RechnungsAuswertung quellen={['qonto', 'lexoffice']} quelleText="Qonto + lexoffice zusammengerechnet" />
-          <p className="text-[11px] text-muted-foreground">Kontostand, Bankeingänge und Bankausgänge gibt es nur bei Qonto — sie stehen im Tab Qonto und werden hier nicht summiert.</p>
+          <p className="text-xs text-muted-foreground">Kontostand, Bankeingänge und Bankausgänge gibt es nur bei Qonto — sie stehen im Tab Qonto und werden hier nicht summiert.</p>
         </TabsContent>
 
         {/* ============ LEXWARE ============ */}
         <TabsContent value="lexware" className="space-y-6 mt-4">
           {isAdmin && <LexofficeSyncCard />}
           <RechnungsAuswertung quellen={['lexoffice']} quelleText="lexoffice Rechnungen" />
-          <p className="text-[11px] text-muted-foreground">Liquidität und Cashflow gibt es nur bei Qonto — lexoffice führt kein Bankkonto.</p>
+          <p className="text-xs text-muted-foreground">Liquidität und Cashflow gibt es nur bei Qonto — lexoffice führt kein Bankkonto.</p>
         </TabsContent>
 
         {/* ============ QONTO ============ */}
@@ -481,7 +481,7 @@ export default function Finanzen() {
                 <CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Gesamt-Guthaben</p>
                   <p className="text-3xl font-semibold tabular-nums mt-1">{eur(totalBalance)}</p>
-                  <p className="text-[11px] text-muted-foreground mt-1">{accounts.length} Konten</p>
+                  <p className="text-xs text-muted-foreground mt-1">{accounts.length} Konten</p>
                   <div className="mt-4 space-y-2 border-t pt-3">
                     {netLiquidity != null && (
                       <div className="flex justify-between text-xs">
@@ -523,7 +523,7 @@ export default function Finanzen() {
                             {a.is_main && <Badge variant="secondary" className="text-[9px] h-4">HAUPT</Badge>}
                             <UiTooltip>
                               <TooltipTrigger asChild>
-                                <span className="text-[10px] text-muted-foreground font-mono truncate">
+                                <span className="text-xs text-muted-foreground font-mono truncate">
                                   {a.iban ? '…' + a.iban.slice(-6) : ''}
                                 </span>
                               </TooltipTrigger>
@@ -563,7 +563,7 @@ export default function Finanzen() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <div>
                 <CardTitle className="text-sm">Monatsentwicklung (letzte 12 Monate)</CardTitle>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {highMonth && lowMonth ? `Hoch: ${highMonth.month} · Tief: ${lowMonth.month}` : ''}
                 </p>
               </div>
@@ -596,7 +596,7 @@ export default function Finanzen() {
                   </ComposedChart>
                 </ResponsiveContainer>
               )}
-              <div className="grid grid-cols-4 gap-3 mt-3 text-[11px]">
+              <div className="grid grid-cols-4 gap-3 mt-3 text-xs">
                 <div><span className="text-muted-foreground">Ø Monatsumsatz:</span> <span className="font-medium">{eur(avgMonthlyRev)}</span></div>
                 <div><span className="text-muted-foreground">Positive Monate:</span> <span className="font-medium">{posMonths}</span></div>
                 <div><span className="text-muted-foreground">Negative Monate:</span> <span className="font-medium">{negMonths}</span></div>
@@ -650,7 +650,7 @@ export default function Finanzen() {
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
-                    <div className="grid grid-cols-5 gap-1 mt-2 text-[10px] text-center">
+                    <div className="grid grid-cols-5 gap-1 mt-2 text-xs text-center">
                       {aging.map(a => (
                         <div key={a.bucket}>
                           <p className="text-muted-foreground">{a.bucket}T</p>
@@ -668,7 +668,7 @@ export default function Finanzen() {
               <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4" />Top 10 Kunden</CardTitle>
                 {top3Share != null && (
-                  <span className="text-[11px] text-muted-foreground">Top-3-Anteil: <strong>{pct(top3Share)}</strong></span>
+                  <span className="text-xs text-muted-foreground">Top-3-Anteil: <strong>{pct(top3Share)}</strong></span>
                 )}
               </CardHeader>
               <CardContent className="p-0">
@@ -773,7 +773,7 @@ export default function Finanzen() {
                         ['Mögliche Duplikate', dq.possible_duplicate_tx],
                       ].map(([label, v]) => (
                         <div key={String(label)} className="border rounded p-2">
-                          <p className="text-muted-foreground text-[10px]">{label}</p>
+                          <p className="text-muted-foreground text-xs">{label}</p>
                           <p className="font-semibold tabular-nums">{num(Number(v))}</p>
                         </div>
                       ))}
@@ -792,26 +792,26 @@ export default function Finanzen() {
                               <div className="flex items-center gap-2">
                                 <span className={`h-2 w-2 rounded-full ${dot}`} />
                                 <span className="font-medium">{s.resource}</span>
-                                {s.mode && <Badge variant="outline" className="text-[10px] py-0 h-4">{s.mode}</Badge>}
+                                {s.mode && <Badge variant="outline" className="text-xs py-0 h-4">{s.mode}</Badge>}
                                 {s.triggered_by && (
-                                  <Badge variant="outline" className="text-[10px] py-0 h-4">
+                                  <Badge variant="outline" className="text-xs py-0 h-4">
                                     {s.triggered_by === 'cron' ? 'automatisch' : 'manuell'}
                                   </Badge>
                                 )}
-                                {isDone && <span className="text-[10px] text-emerald-700">✓ vollständig</span>}
-                                {isRunning && <span className="text-[10px] text-amber-700">läuft…</span>}
-                                {s.completed === false && !isRunning && s.last_error && <span className="text-[10px] text-destructive">✗ unvollständig</span>}
+                                {isDone && <span className="text-xs text-emerald-700">✓ vollständig</span>}
+                                {isRunning && <span className="text-xs text-amber-700">läuft…</span>}
+                                {s.completed === false && !isRunning && s.last_error && <span className="text-xs text-destructive">✗ unvollständig</span>}
                               </div>
                               <span className="text-muted-foreground">
                                 {s.last_success_at ? new Date(s.last_success_at).toLocaleString('de-DE') : '—'}
                               </span>
                             </div>
-                            <div className="flex flex-wrap gap-3 mt-1 text-[10px] text-muted-foreground pl-4">
+                            <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground pl-4">
                               {s.pages_loaded != null && <span>Seiten: <strong className="text-foreground tabular-nums">{s.pages_loaded}{s.total_pages ? ` / ${s.total_pages}` : ''}</strong></span>}
                               {s.fetched_count != null && <span>Datensätze: <strong className="text-foreground tabular-nums">{num(s.fetched_count)}</strong></span>}
                             </div>
                             {s.last_error && (
-                              <p className="text-[10px] text-destructive mt-1 pl-4 break-all">✗ {s.last_error.slice(0, 200)}</p>
+                              <p className="text-xs text-destructive mt-1 pl-4 break-all">✗ {s.last_error.slice(0, 200)}</p>
                             )}
                           </div>
                         );
@@ -823,36 +823,36 @@ export default function Finanzen() {
                     <div className="border-t pt-2">
                       <p className="font-medium mb-2">Sync-Historie (letzte 20 Läufe)</p>
                       {syncRuns.length === 0 ? (
-                        <p className="text-muted-foreground text-[11px]">Noch keine Sync-Läufe protokolliert.</p>
+                        <p className="text-muted-foreground text-xs">Noch keine Sync-Läufe protokolliert.</p>
                       ) : (
                         <div className="overflow-x-auto">
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead className="h-7 text-[10px]">Start</TableHead>
-                                <TableHead className="h-7 text-[10px]">Ende</TableHead>
-                                <TableHead className="h-7 text-[10px]">Typ</TableHead>
-                                <TableHead className="h-7 text-[10px]">Status</TableHead>
-                                <TableHead className="h-7 text-[10px] text-right">Rechn.</TableHead>
-                                <TableHead className="h-7 text-[10px] text-right">Trans.</TableHead>
-                                <TableHead className="h-7 text-[10px] text-right">Konten</TableHead>
-                                <TableHead className="h-7 text-[10px]">Fehler</TableHead>
+                                <TableHead className="h-7 text-xs">Start</TableHead>
+                                <TableHead className="h-7 text-xs">Ende</TableHead>
+                                <TableHead className="h-7 text-xs">Typ</TableHead>
+                                <TableHead className="h-7 text-xs">Status</TableHead>
+                                <TableHead className="h-7 text-xs text-right">Rechn.</TableHead>
+                                <TableHead className="h-7 text-xs text-right">Trans.</TableHead>
+                                <TableHead className="h-7 text-xs text-right">Konten</TableHead>
+                                <TableHead className="h-7 text-xs">Fehler</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {syncRuns.map(r => (
                                 <TableRow key={r.id}>
-                                  <TableCell className="py-1 text-[11px] whitespace-nowrap">{fmtDT(r.started_at)}</TableCell>
-                                  <TableCell className="py-1 text-[11px] whitespace-nowrap">{r.finished_at ? fmtDT(r.finished_at) : '—'}</TableCell>
+                                  <TableCell className="py-1 text-xs whitespace-nowrap">{fmtDT(r.started_at)}</TableCell>
+                                  <TableCell className="py-1 text-xs whitespace-nowrap">{r.finished_at ? fmtDT(r.finished_at) : '—'}</TableCell>
                                   <TableCell className="py-1">
-                                    <Badge variant="outline" className="text-[10px] py-0 h-4">
+                                    <Badge variant="outline" className="text-xs py-0 h-4">
                                       {r.trigger_type === 'auto_cron' ? 'automatisch' : r.trigger_type === 'backfill' ? 'Backfill' : 'manuell'}
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="py-1">
                                     <Badge
                                       variant="outline"
-                                      className={`text-[10px] py-0 h-4 ${
+                                      className={`text-xs py-0 h-4 ${
                                         r.status === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                         : r.status === 'failed' ? 'bg-red-50 text-red-700 border-red-200'
                                         : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -861,10 +861,10 @@ export default function Finanzen() {
                                       {r.status === 'success' ? '✓ ok' : r.status === 'failed' ? '✗ fehlgeschlagen' : 'läuft'}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell className="py-1 text-[11px] text-right tabular-nums">{num(r.records_invoices || 0)}</TableCell>
-                                  <TableCell className="py-1 text-[11px] text-right tabular-nums">{num(r.records_transactions || 0)}</TableCell>
-                                  <TableCell className="py-1 text-[11px] text-right tabular-nums">{num(r.records_bank_accounts || 0)}</TableCell>
-                                  <TableCell className="py-1 text-[10px] text-destructive max-w-[240px] truncate" title={r.error_message || ''}>
+                                  <TableCell className="py-1 text-xs text-right tabular-nums">{num(r.records_invoices || 0)}</TableCell>
+                                  <TableCell className="py-1 text-xs text-right tabular-nums">{num(r.records_transactions || 0)}</TableCell>
+                                  <TableCell className="py-1 text-xs text-right tabular-nums">{num(r.records_bank_accounts || 0)}</TableCell>
+                                  <TableCell className="py-1 text-xs text-destructive max-w-[240px] truncate" title={r.error_message || ''}>
                                     {r.error_message ? r.error_message.slice(0, 80) : ''}
                                   </TableCell>
                                 </TableRow>

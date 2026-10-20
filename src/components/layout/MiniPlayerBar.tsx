@@ -63,7 +63,7 @@ export function MiniPlayerBar() {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium truncate">{currentTrack.title}</p>
-            <p className="text-[11px] text-muted-foreground truncate">{currentTrack.artist}</p>
+            <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
           </div>
         </div>
 
@@ -81,7 +81,7 @@ export function MiniPlayerBar() {
         </div>
 
         {/* Time */}
-        <span className="text-[10px] text-muted-foreground tabular-nums flex-shrink-0 hidden sm:block" onClick={e => e.stopPropagation()}>
+        <span className="text-xs text-muted-foreground tabular-nums flex-shrink-0 hidden sm:block" onClick={e => e.stopPropagation()}>
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
 

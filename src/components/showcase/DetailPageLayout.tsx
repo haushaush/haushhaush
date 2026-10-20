@@ -195,7 +195,7 @@ export function InfoSectionTitle({
   return (
     <div className="flex items-center gap-2 mb-3">
       {Icon && <Icon className="w-4 h-4 text-gray-400 dark:text-gray-500" />}
-      <h3 className="text-xs uppercase tracking-[0.08em] font-bold text-gray-500 dark:text-gray-400">{children}</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">{children}</h3>
     </div>
   );
 }
@@ -213,7 +213,7 @@ export function MetricLarge({
 }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-[0.08em] font-bold text-gray-500 dark:text-gray-400 mb-1">{label}</div>
+      <div className="text-xs uppercase tracking-[0.08em] font-bold text-gray-500 dark:text-gray-400 mb-1">{label}</div>
       <div
         className={cn(
           'text-2xl font-extrabold tabular-nums leading-none',

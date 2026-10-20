@@ -117,7 +117,7 @@ export function MfaEnrollScreen({ onComplete, required }: Props) {
       <div className="w-full max-w-md mx-auto">
         <div className="text-center mb-6">
           <ShieldCheck className="w-12 h-12 mx-auto text-primary mb-2" />
-          <h1 className="text-2xl font-bold">2FA eingerichtet</h1>
+          <h1 className="text-2xl font-semibold font-heading">2FA eingerichtet</h1>
         </div>
         <div className="rounded-xl border border-warning/30 p-4 mb-4" style={{ backgroundColor: 'rgba(255,159,10,0.10)' }}>
           <p className="font-semibold text-foreground mb-1 text-sm">⚠️ Recovery-Codes speichern</p>
@@ -154,7 +154,7 @@ export function MfaEnrollScreen({ onComplete, required }: Props) {
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-1">Zwei-Faktor-Authentifizierung einrichten</h1>
+        <h1 className="text-2xl font-semibold font-heading mb-1">Zwei-Faktor-Authentifizierung einrichten</h1>
         <p className="text-sm text-muted-foreground">
           {required
             ? 'Dein Konto erfordert 2FA. Verbinde eine Authenticator-App.'

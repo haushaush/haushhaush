@@ -184,7 +184,7 @@ export default function Mitarbeiter() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-heading font-bold">Mitarbeiter</h1>
+          <h1 className="text-2xl font-semibold font-heading">Mitarbeiter</h1>
           <p className="text-muted-foreground text-sm">{filteredMembers.length} Teammitglieder</p>
         </div>
         {isAdmin && (
@@ -235,7 +235,7 @@ export default function Mitarbeiter() {
 
       {grouped.map((group) => (
         <div key={group.label} className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+          <h2 className="text-lg font-semibold font-heading text-foreground flex items-center gap-2">
             {group.label}
             <Badge variant="secondary" className="text-xs font-normal">{group.members.length}</Badge>
           </h2>
@@ -265,11 +265,11 @@ export default function Mitarbeiter() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{m.name}</p>
-                    <Badge variant="secondary" className="mt-1 text-[11px] font-normal truncate max-w-full">
+                    <Badge variant="secondary" className="mt-1 text-xs font-normal truncate max-w-full">
                       {POSITION_MAP[m.email] || m.position || '–'}
                     </Badge>
-                    <p className="text-[11px] text-muted-foreground/70 mt-1">{DEPT_DISPLAY[m.department] || m.department || '–'}</p>
-                    <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground/70 mt-1">{DEPT_DISPLAY[m.department] || m.department || '–'}</p>
+                    <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
                       <span className="truncate">{m.email}</span>
                       <span className="flex items-center gap-1 shrink-0"><Calendar className="h-3 w-3" />{getSeit(m)}</span>
                     </div>

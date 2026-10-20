@@ -103,11 +103,11 @@ export function MetaAdDetailPanel({ open, onOpenChange, ad, currency = 'EUR', on
           </div>
 
           <section className="mb-5">
-            <h3 className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-2">Metriken</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Metriken</h3>
             <div className="grid grid-cols-2 gap-2">
               {metrics.map((m) => (
                 <div key={m.label} className="rounded-md border border-border p-2.5">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{m.label}</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">{m.label}</p>
                   <p className="text-sm font-mono font-medium text-foreground mt-0.5">{m.value}</p>
                 </div>
               ))}
@@ -115,7 +115,7 @@ export function MetaAdDetailPanel({ open, onOpenChange, ad, currency = 'EUR', on
           </section>
 
           <section className="mb-5">
-            <h3 className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-2">Creative</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Creative</h3>
             <div className="space-y-2 text-sm">
               <DetailRow label="Headline" value={creative.title} />
               <DetailRow label="Body" value={creative.body} multiline />
@@ -125,7 +125,7 @@ export function MetaAdDetailPanel({ open, onOpenChange, ad, currency = 'EUR', on
           </section>
 
           <section className="mb-5">
-            <h3 className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-2">Info</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">Info</h3>
             <div className="space-y-2 text-sm">
               <DetailRow label="Ad ID" value={ad.id} mono />
               <DetailRow label="Adset ID" value={ad.adset_id} mono />

@@ -81,7 +81,7 @@ export function MfaChallengeScreen({ factorId, userId, onSuccess, onRecoverySucc
     <div className="w-full max-w-md mx-auto">
       <div className="text-center mb-6">
         <ShieldCheck className="w-12 h-12 mx-auto text-primary mb-2" />
-        <h1 className="text-2xl font-bold">Zwei-Faktor-Authentifizierung</h1>
+        <h1 className="text-2xl font-semibold font-heading">Zwei-Faktor-Authentifizierung</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {showRecovery
             ? 'Gib einen deiner 8 Recovery-Codes ein.'

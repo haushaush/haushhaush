@@ -193,12 +193,12 @@ export default function ReferenzWerbeanzeigeDetail() {
   const cpl = m.cpl != null ? Number(m.cpl) : null;
   const isWinning = !!(cpl != null && cpl > 0 && cpl < 5);
 
-  // Local upsized metric (+15% vs MetricLarge: text-2xl -> text-[28px])
+  // Local upsized metric (+15% vs MetricLarge: text-2xl -> text-2xl)
   const BigMetric = ({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: boolean }) => (
     <div>
-      <div className="text-[11px] uppercase tracking-[0.08em] font-bold text-gray-500 dark:text-gray-400 mb-1">{label}</div>
+      <div className="text-xs uppercase tracking-[0.08em] font-bold text-gray-500 dark:text-gray-400 mb-1">{label}</div>
       <div className={cn(
-        "text-[28px] font-extrabold tabular-nums leading-none",
+        "text-2xl font-extrabold tabular-nums leading-none",
         highlight ? "text-emerald-600 dark:text-emerald-400" : "text-gray-900 dark:text-white",
       )}>{value}</div>
     </div>
@@ -244,12 +244,12 @@ export default function ReferenzWerbeanzeigeDetail() {
               {isVideo ? <Video className="w-12 h-12 text-gray-300 dark:text-gray-600" /> : <ImageIcon className="w-12 h-12 text-gray-300 dark:text-gray-600" />}
             </div>
           )}
-          <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-purple-600/95 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-md">
+          <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-purple-600/95 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-md">
             {isVideo ? <Video className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
             {formatLabel}
           </div>
           {isWinning && (
-            <div className="absolute top-4 left-4 flex items-center gap-1 bg-emerald-500/95 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-md">
+            <div className="absolute top-4 left-4 flex items-center gap-1 bg-emerald-500/95 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-md">
               <Flame className="w-3 h-3" /> Top
             </div>
           )}
@@ -258,10 +258,10 @@ export default function ReferenzWerbeanzeigeDetail() {
       infoPanel={
         <DetailInfoPanel>
           <InfoSection>
-            <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] mb-1.5">
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] mb-1.5">
               {eyebrow}
             </p>
-            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white leading-tight tracking-tight">
+            <h1 className="text-2xl font-semibold font-heading text-gray-900 dark:text-white leading-tight tracking-tight">
               {title}
             </h1>
           </InfoSection>
@@ -348,19 +348,19 @@ export default function ReferenzWerbeanzeigeDetail() {
         <>
           {ad.custom_description && (
             <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Beschreibung</h2>
+              <h2 className="text-lg font-semibold font-heading text-gray-900 dark:text-white mb-4">Beschreibung</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{ad.custom_description}</p>
             </section>
           )}
           {(ad as any).custom_performance_notes && (
             <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-3">Insights</h2>
+              <h2 className="text-lg font-semibold font-heading text-gray-900 dark:text-white mb-3">Insights</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed italic whitespace-pre-wrap">{(ad as any).custom_performance_notes}</p>
             </section>
           )}
           {tags.length > 0 && (
             <section className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-8 shadow-sm">
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-4">Tags</h2>
+              <h2 className="text-lg font-semibold font-heading text-gray-900 dark:text-white mb-4">Tags</h2>
               <div className="flex flex-wrap gap-1.5">
                 {tags.map(t => {
                   const isAutoTag = t.startsWith("kunde-") || t.startsWith("unternehmen-") || t.startsWith("versicherer-");
@@ -417,7 +417,7 @@ export default function ReferenzWerbeanzeigeDetail() {
 
             <div>
               <Label>Tags</Label>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 <Sparkles className="w-3 h-3 inline -mt-0.5" /> Auto-Tags werden bei jedem Sync neu generiert.
               </p>
               <div className="flex flex-wrap gap-1.5 mt-1.5">

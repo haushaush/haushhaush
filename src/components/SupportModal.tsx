@@ -157,7 +157,7 @@ export default function SupportModal({ open, onClose, errorType, error, errorDet
             <div className="mb-4">
               <CheckCircle2 className="h-12 w-12 text-[#0A9396]" strokeWidth={1.5} />
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-1">Ticket erstellt! ✓</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-1">Ticket erstellt! ✓</h3>
             <p className="text-sm font-mono text-muted-foreground mb-3">Ticket-Nr: {success}</p>
             <p className="text-sm text-muted-foreground mb-6">
               Wir haben dein Ticket erhalten und melden uns bald bei dir.
@@ -169,7 +169,7 @@ export default function SupportModal({ open, onClose, errorType, error, errorDet
             <div className="flex items-start gap-3 mb-6">
               <LifeBuoy className="h-6 w-6 text-[#0A9396] flex-shrink-0 mt-0.5" />
               <div>
-                <h3 id="support-modal-title" className="text-lg font-semibold text-foreground">
+                <h3 id="support-modal-title" className="text-sm font-semibold text-foreground">
                   Support kontaktieren
                 </h3>
                 <p className="text-sm text-muted-foreground mt-0.5">
@@ -180,7 +180,7 @@ export default function SupportModal({ open, onClose, errorType, error, errorDet
 
             {/* Auto-captured error details — always visible */}
             <div className="bg-muted/50 border border-border rounded-lg p-3 mb-4 overflow-hidden w-full">
-              <p className="text-[11px] font-semibold text-muted-foreground mb-2 tracking-wider">
+              <p className="text-xs font-semibold text-muted-foreground mb-2 tracking-wider">
                 WIRD AUTOMATISCH MITGESENDET
               </p>
               <div className="flex flex-col gap-1 w-full min-w-0">
@@ -190,13 +190,13 @@ export default function SupportModal({ open, onClose, errorType, error, errorDet
                   </span>
                 )}
                 <span className="text-xs text-muted-foreground break-all" style={{ overflowWrap: 'anywhere' }}>
-                  Seite: <code className="font-mono text-[11px]">{(() => { try { return new URL(errorDetails.page_url).pathname; } catch { return errorDetails.page_url?.slice(0, 60) + '...' || 'Unbekannt'; } })()}</code>
+                  Seite: <code className="font-mono text-xs">{(() => { try { return new URL(errorDetails.page_url).pathname; } catch { return errorDetails.page_url?.slice(0, 60) + '...' || 'Unbekannt'; } })()}</code>
                 </span>
                 <span className="text-xs text-muted-foreground">
                   Zeitpunkt: {new Date(errorDetails.timestamp).toLocaleString('de-DE')}
                 </span>
                 {errorDetails.message && (
-                  <div className="mt-2 bg-card border border-destructive/20 rounded-md p-2 font-mono text-[11px] text-destructive max-h-[100px] overflow-y-auto w-full box-border" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
+                  <div className="mt-2 bg-card border border-destructive/20 rounded-md p-2 font-mono text-xs text-destructive max-h-[100px] overflow-y-auto w-full box-border" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
                     {errorDetails.message}
                   </div>
                 )}
@@ -222,7 +222,7 @@ export default function SupportModal({ open, onClose, errorType, error, errorDet
                     placeholder="Was ist passiert? Was hast du gemacht, bevor der Fehler aufgetreten ist?"
                     className="min-h-[120px] resize-none"
                   />
-                  <span className="absolute bottom-2 right-3 text-[10px] text-muted-foreground">
+                  <span className="absolute bottom-2 right-3 text-xs text-muted-foreground">
                     {message.length}/500
                   </span>
                 </div>

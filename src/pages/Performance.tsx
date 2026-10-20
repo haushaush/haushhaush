@@ -162,7 +162,7 @@ export default function Performance() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-heading font-bold">Performance</h1>
+        <h1 className="text-2xl font-semibold font-heading">Performance</h1>
         <p className="text-muted-foreground text-sm">Alle KPIs und Performance-Daten</p>
       </div>
 
@@ -178,7 +178,7 @@ export default function Performance() {
         {/* ═══ TAB 1: SALES KPIs ═══ */}
         <TabsContent value="sales" className="space-y-4 mt-4">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-lg font-heading font-semibold flex items-center gap-2">
+            <h2 className="text-lg font-semibold font-heading flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" aria-hidden="true" /> Setter Leaderboard
             </h2>
             <Select value={salesFilter} onValueChange={(v) => setSalesFilter(v as TimeFilter)}>
@@ -276,7 +276,7 @@ export default function Performance() {
         {/* ═══ TAB 2: AD PERFORMANCE ═══ */}
         <TabsContent value="ads" className="space-y-4 mt-4">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <h2 className="text-lg font-heading font-semibold flex items-center gap-2">
+            <h2 className="text-lg font-semibold font-heading flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" aria-hidden="true" /> Ad Performance
             </h2>
             <div className="flex items-center gap-2 flex-wrap">
@@ -338,7 +338,7 @@ export default function Performance() {
           </div>
 
           {lastSyncedAt && adSource === 'meta' && (
-            <p className="text-[11px] text-muted-foreground">Letzte Synchronisierung: {new Date(lastSyncedAt).toLocaleString('de-DE')}</p>
+            <p className="text-xs text-muted-foreground">Letzte Synchronisierung: {new Date(lastSyncedAt).toLocaleString('de-DE')}</p>
           )}
 
           {adSource === 'meta' ? (
@@ -492,7 +492,7 @@ export default function Performance() {
 
         {/* ═══ TAB 3: META KAI ═══ */}
         <TabsContent value="metakai" className="space-y-4 mt-4">
-          <h2 className="text-lg font-heading font-semibold flex items-center gap-2">
+          <h2 className="text-lg font-semibold font-heading flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" aria-hidden="true" /> Meta KAI – KI-Analyse
           </h2>
           <Card><CardContent className="py-12 text-center text-muted-foreground">
@@ -504,7 +504,7 @@ export default function Performance() {
 
         {/* ═══ TAB 4: VORQUALI ═══ */}
         <TabsContent value="vorquali" className="space-y-4 mt-4">
-          <h2 className="text-lg font-heading font-semibold flex items-center gap-2">
+          <h2 className="text-lg font-semibold font-heading flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" aria-hidden="true" /> Vorqualifikation
           </h2>
           <Card><CardContent className="py-12 text-center text-muted-foreground">
@@ -515,7 +515,7 @@ export default function Performance() {
 
         {/* ═══ TAB 4: FULFILLMENT ═══ */}
         <TabsContent value="fulfillment" className="space-y-4 mt-4">
-          <h2 className="text-lg font-heading font-semibold flex items-center gap-2">
+          <h2 className="text-lg font-semibold font-heading flex items-center gap-2">
             <Briefcase className="h-5 w-5 text-primary" aria-hidden="true" /> Fulfillment
           </h2>
 

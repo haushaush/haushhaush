@@ -73,7 +73,7 @@ function KpiCard({ title, value, sub, hint }: { title: string; value: React.Reac
       <CardContent>
         <div className="text-2xl font-semibold tabular-nums">{value}</div>
         {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
-        {hint && <div className="text-[10px] text-muted-foreground/70 mt-2 italic">{hint}</div>}
+        {hint && <div className="text-xs text-muted-foreground/70 mt-2 italic">{hint}</div>}
       </CardContent>
     </Card>
   );
@@ -357,7 +357,7 @@ export default function CloseKpiTest() {
         <div>
           <div className="flex items-center gap-2">
             <FlaskConical className="h-5 w-5 text-muted-foreground" />
-            <h1 className="text-2xl font-semibold">Close KPI Test</h1>
+            <h1 className="text-2xl font-semibold font-heading">Close KPI Test</h1>
             <Badge variant="outline" className="text-xs">Diagnose</Badge>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
@@ -392,7 +392,7 @@ export default function CloseKpiTest() {
 
       {/* ===== ABGLEICH ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Abgleich mit Sales-Übersicht</h2>
+        <h2 className="text-lg font-semibold font-heading text-muted-foreground uppercase tracking-wide">Abgleich mit Sales-Übersicht</h2>
         <Card className={matches ? 'border-emerald-500/40' : 'border-amber-500/50'}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -463,7 +463,7 @@ export default function CloseKpiTest() {
                   ) : (
                     <ul className="space-y-0.5">
                       {onlyInOverview.slice(0, 10).map(o => (
-                        <li key={o.id} className="font-mono text-[10px] flex justify-between gap-2">
+                        <li key={o.id} className="font-mono text-xs flex justify-between gap-2">
                           <span className="truncate">{o.lead_name || o.id}</span>
                           <span className="text-muted-foreground">{eur(Number(o.abschlusswert || 0))}</span>
                         </li>
@@ -478,7 +478,7 @@ export default function CloseKpiTest() {
                   ) : (
                     <ul className="space-y-0.5">
                       {onlyInKpi.slice(0, 10).map(o => (
-                        <li key={o.id} className="font-mono text-[10px] flex justify-between gap-2">
+                        <li key={o.id} className="font-mono text-xs flex justify-between gap-2">
                           <span className="truncate">{o.lead_name || o.id}</span>
                           <span className="text-muted-foreground">{eur(Number(o.abschlusswert || 0))}</span>
                         </li>
@@ -494,7 +494,7 @@ export default function CloseKpiTest() {
 
       {/* ===== Won-Logik transparent ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Won-Logik transparent</h2>
+        <h2 className="text-lg font-semibold font-heading text-muted-foreground uppercase tracking-wide">Won-Logik transparent</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <KpiCard title="Won Deals gesamt (Zeitraum)" value={wonOppsInRange.length} sub="vor Dedup, inkl. Fallback-Datum" />
           <KpiCard title="Eindeutige Won-IDs" value={countDeals} sub="nach Dedup nach Opportunity-ID" />
@@ -535,7 +535,7 @@ export default function CloseKpiTest() {
 
       {/* ===== Umsatz-Debug ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Umsatz-Debug</h2>
+        <h2 className="text-lg font-semibold font-heading text-muted-foreground uppercase tracking-wide">Umsatz-Debug</h2>
         <Card>
           <CardContent className="text-xs space-y-1 font-mono pt-4">
             <div>Quelle: <span className="text-foreground">close_opportunities</span></div>
@@ -555,7 +555,7 @@ export default function CloseKpiTest() {
 
       {/* ===== Detail-Tabelle Won Deals ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Won Deals im Zeitraum (Rohbasis)</h2>
+        <h2 className="text-lg font-semibold font-heading text-muted-foreground uppercase tracking-wide">Won Deals im Zeitraum (Rohbasis)</h2>
         <Card>
           <CardContent className="overflow-x-auto pt-4">
             {detailRows.length === 0 ? (
@@ -589,17 +589,17 @@ export default function CloseKpiTest() {
                       : 'nur KPI-Test';
                     return (
                       <TableRow key={o.id}>
-                        <TableCell className="font-mono text-[10px] text-muted-foreground">{String(o.id).slice(0, 8)}…</TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">{String(o.id).slice(0, 8)}…</TableCell>
                         <TableCell className="font-medium text-xs">{o.lead_name || '–'}</TableCell>
                         <TableCell className="text-xs">{o.user_name || '–'}</TableCell>
                         <TableCell className="text-xs">{o.date_won ? new Date(o.date_won).toLocaleDateString('de-DE') : <span className="text-amber-600">–</span>}</TableCell>
                         <TableCell className="text-right tabular-nums text-xs">{o.abschlusswert == null ? <span className="text-amber-600">NULL</span> : eur(Number(o.abschlusswert))}</TableCell>
                         <TableCell className="text-right tabular-nums text-xs text-muted-foreground">{o.value == null ? '–' : eur(Number(o.value))}</TableCell>
                         <TableCell className="text-right tabular-nums text-xs text-muted-foreground">{o.value_cents == null ? '–' : eur(Number(o.value_cents) / 100)}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-[10px]">{o.status_label || o.status_type || '–'}</Badge></TableCell>
-                        <TableCell><Badge variant={source === 'Beide' ? 'secondary' : 'outline'} className="text-[10px]">{source}</Badge></TableCell>
+                        <TableCell><Badge variant="outline" className="text-xs">{o.status_label || o.status_type || '–'}</Badge></TableCell>
+                        <TableCell><Badge variant={source === 'Beide' ? 'secondary' : 'outline'} className="text-xs">{source}</Badge></TableCell>
                         <TableCell>
-                          {flags.length === 0 ? <span className="text-[10px] text-muted-foreground">–</span> : (
+                          {flags.length === 0 ? <span className="text-xs text-muted-foreground">–</span> : (
                             <div className="flex flex-wrap gap-1">
                               {flags.map(f => <Badge key={f} variant="outline" className="text-[9px] border-amber-500/40 text-amber-600 dark:text-amber-400">{f}</Badge>)}
                             </div>
@@ -617,7 +617,7 @@ export default function CloseKpiTest() {
 
       {/* ===== Pipeline ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Pipeline & Funnel (offen vs. abgeschlossen)</h2>
+        <h2 className="text-lg font-semibold font-heading text-muted-foreground uppercase tracking-wide">Pipeline & Funnel (offen vs. abgeschlossen)</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <KpiCard
             title="Pipeline-Wert (nur offen)"
@@ -709,7 +709,7 @@ export default function CloseKpiTest() {
 
       {/* ===== Aktivitäten ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Aktivitäts-KPIs</h2>
+        <h2 className="text-lg font-semibold font-heading text-muted-foreground uppercase tracking-wide">Aktivitäts-KPIs</h2>
         {acts.length === 0 ? (
           <NotComputable reason="close_activities ist leer." />
         ) : (
@@ -734,7 +734,7 @@ export default function CloseKpiTest() {
 
       {/* ===== Team ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Team-Auswertung</h2>
+        <h2 className="text-lg font-semibold font-heading text-muted-foreground uppercase tracking-wide">Team-Auswertung</h2>
         <Card>
           <CardHeader><CardTitle className="text-sm">Activity je User</CardTitle></CardHeader>
           <CardContent className="overflow-x-auto">
@@ -800,7 +800,7 @@ export default function CloseKpiTest() {
 
       {/* ===== Warnungen / Datenqualität ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Warnungen / Datenqualität</h2>
+        <h2 className="text-lg font-semibold font-heading text-muted-foreground uppercase tracking-wide">Warnungen / Datenqualität</h2>
         <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
@@ -836,7 +836,7 @@ export default function CloseKpiTest() {
 
       {/* ===== Cash bewusst nicht berechenbar ===== */}
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Cash / Zahlungs-KPIs</h2>
+        <h2 className="text-lg font-semibold font-heading text-muted-foreground uppercase tracking-wide">Cash / Zahlungs-KPIs</h2>
         <Card>
           <CardHeader><CardTitle className="text-sm">Nicht aus Close allein berechenbar</CardTitle></CardHeader>
           <CardContent className="space-y-3 text-sm">

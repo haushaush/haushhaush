@@ -287,7 +287,7 @@ export default function OnePageKundeDetail() {
         </Button>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight truncate">{project.name}</h1>
+            <h1 className="text-2xl font-semibold font-heading tracking-tight truncate">{project.name}</h1>
             <div className="flex items-center gap-3 mt-2 flex-wrap">
               {project.page_url && (
                 <a href={project.page_url} target="_blank" rel="noreferrer"
@@ -296,7 +296,7 @@ export default function OnePageKundeDetail() {
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               )}
-              <Badge variant="outline" className="rounded text-[10px]">
+              <Badge variant="outline" className="rounded text-xs">
                 {STATUS_LABEL[project.status] || project.status}
               </Badge>
               <span className="text-xs text-muted-foreground">
@@ -381,7 +381,7 @@ export default function OnePageKundeDetail() {
                       </td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">{l.utm_source || '–'}</td>
                       <td className="px-3 py-2 text-xs">
-                        <Badge variant="outline" className="rounded text-[10px]">
+                        <Badge variant="outline" className="rounded text-xs">
                           {l.imported_via === 'csv' ? 'CSV' : (l.source || 'webhook')}
                         </Badge>
                       </td>
@@ -398,7 +398,7 @@ export default function OnePageKundeDetail() {
           <Card>
             <CardContent className="p-6 space-y-4">
               <div>
-                <h3 className="font-semibold mb-1">So richtest du den Webhook ein</h3>
+                <h3 className="text-sm font-semibold mb-1">So richtest du den Webhook ein</h3>
                 <p className="text-sm text-muted-foreground">
                   Schicke Leads direkt aus deinem OnePage-Dashboard an dieses Projekt.
                 </p>
@@ -535,7 +535,7 @@ export default function OnePageKundeDetail() {
               <Field label="Empfangen" value={new Date(openLead.received_at).toLocaleString('de-DE')} />
               <div>
                 <div className="text-xs text-muted-foreground mb-1">Raw payload</div>
-                <pre className="bg-muted/50 border rounded p-2 text-[10px] overflow-auto max-h-64">
+                <pre className="bg-muted/50 border rounded p-2 text-xs overflow-auto max-h-64">
                   {JSON.stringify(openLead.payload || {}, null, 2)}
                 </pre>
               </div>
@@ -990,7 +990,7 @@ function WebhookStatusBadge({ status }: { status: string }) {
   };
   const cfg = map[status] || { className: 'bg-muted text-muted-foreground border-border', label: status };
   return (
-    <Badge variant="outline" className={cn('rounded text-[10px] font-medium', cfg.className)}>
+    <Badge variant="outline" className={cn('rounded text-xs font-medium', cfg.className)}>
       {cfg.label}
     </Badge>
   );
@@ -1213,7 +1213,7 @@ function WebhookLogsTab({ projectId, webhookToken }: { projectId: string; webhoo
                       <div className="text-xs font-medium text-teal-700">
                         Smart-Extraction Vorschau
                       </div>
-                      <Badge variant="outline" className="text-[10px] rounded">
+                      <Badge variant="outline" className="text-xs rounded">
                         {found}/{fields.length} Felder erkannt
                       </Badge>
                     </div>
@@ -1246,7 +1246,7 @@ function WebhookLogsTab({ projectId, webhookToken }: { projectId: string; webhoo
 
               <div>
                 <div className="text-xs text-muted-foreground mb-1.5">Payload</div>
-                <pre className="bg-muted/50 border rounded p-2 text-[10px] overflow-auto max-h-72">
+                <pre className="bg-muted/50 border rounded p-2 text-xs overflow-auto max-h-72">
                   {JSON.stringify(selected.payload || {}, null, 2)}
                 </pre>
               </div>
@@ -1254,7 +1254,7 @@ function WebhookLogsTab({ projectId, webhookToken }: { projectId: string; webhoo
               {selected.raw_body && (
                 <div>
                   <div className="text-xs text-muted-foreground mb-1.5">Raw Body</div>
-                  <pre className="bg-muted/50 border rounded p-2 text-[10px] overflow-auto max-h-48 whitespace-pre-wrap break-all">
+                  <pre className="bg-muted/50 border rounded p-2 text-xs overflow-auto max-h-48 whitespace-pre-wrap break-all">
                     {selected.raw_body}
                   </pre>
                 </div>

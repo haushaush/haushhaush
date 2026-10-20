@@ -146,7 +146,7 @@ export default function MetaDiagnosticPanel() {
           <AccordionTrigger className="px-4 py-3 hover:no-underline">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Meta API Diagnose</span>
-              <Badge variant="outline" className="text-[10px]">Admin</Badge>
+              <Badge variant="outline" className="text-xs">Admin</Badge>
               {overall && (
                 <Badge variant="outline" className={overall.cls}>
                   <overall.Icon className="h-3 w-3 mr-1" />{overall.label}
@@ -300,7 +300,7 @@ export default function MetaDiagnosticPanel() {
                             ))}
                           </TableBody>
                         </Table>
-                        <p className="text-[10px] text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           Zeigt max. 20 Beispiele von insgesamt {t.accounts.total}.
                         </p>
                       </div>
@@ -312,7 +312,7 @@ export default function MetaDiagnosticPanel() {
                 {t.fields?.rows?.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold mb-2">Account-Felder</h3>
-                    <p className="text-[10px] text-muted-foreground mb-2">Getestet auf: <span className="font-mono">{t.fields.account_id}</span></p>
+                    <p className="text-xs text-muted-foreground mb-2">Getestet auf: <span className="font-mono">{t.fields.account_id}</span></p>
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -416,7 +416,7 @@ export default function MetaDiagnosticPanel() {
                         <TableCell className="text-xs">
                           <div className="flex flex-wrap gap-1">
                             {(inv.detected_fields ?? []).map((f: string) => (
-                              <Badge key={f} variant="outline" className="font-mono text-[10px]">{f}</Badge>
+                              <Badge key={f} variant="outline" className="font-mono text-xs">{f}</Badge>
                             ))}
                           </div>
                         </TableCell>
@@ -431,7 +431,7 @@ export default function MetaDiagnosticPanel() {
                         <TableCell className="text-xs">
                           <div className="flex flex-wrap gap-1">
                             {(inv.statuses ?? []).map((s: string) => (
-                              <Badge key={s} variant="outline" className="text-[10px]">{s}</Badge>
+                              <Badge key={s} variant="outline" className="text-xs">{s}</Badge>
                             ))}
                           </div>
                         </TableCell>
@@ -471,7 +471,7 @@ export default function MetaDiagnosticPanel() {
                       </TableRow>
                     </TableBody>
                   </Table>
-                  <p className="text-[10px] text-muted-foreground mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                     Aufruf: <span className="font-mono">GET /{'{BUSINESS_ID}'}/business_invoices</span> · start_date = heute − 12 Monate · limit = 100 · Pagination via <span className="font-mono">paging.next</span>.
                   </p>
                 </div>
@@ -487,7 +487,7 @@ export default function MetaDiagnosticPanel() {
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="border rounded px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="font-mono text-xs mt-0.5 break-all">{value}</div>
     </div>
   );

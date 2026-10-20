@@ -62,7 +62,7 @@ export default function KundenVerknuepfungen() {
     <div className="container mx-auto p-6 space-y-6 max-w-7xl">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2"><GitMerge className="h-6 w-6 text-primary" />Verknüpfungen</h1>
+          <h1 className="text-2xl font-semibold font-heading flex items-center gap-2"><GitMerge className="h-6 w-6 text-primary" />Verknüpfungen</h1>
           <p className="text-sm mt-1 tabular-nums font-medium">
             {zahlen ? `${zahlen.zahler} Qonto-Zahler · ${zahlen.lexoffice} lexoffice-Kontakte · ${zahlen.kampagnen} Kampagnen · ${zahlen.ohneZahler} Kunden ohne Zahler · ${zahlen.dubletten} Dubletten` : 'Lade offene Posten …'}
           </p>
@@ -78,11 +78,11 @@ export default function KundenVerknuepfungen() {
 
       <VerknuepfungsArbeitsliste onZahlen={setZahlen} />
       <BuchhaltungUngeklaert />
-      <h2 className="text-sm font-medium pt-2">Übersicht je Kunde</h2>
+      <h2 className="text-lg font-semibold font-heading pt-2">Übersicht je Kunde</h2>
       <div className="rounded-2xl bg-card shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-[11px] uppercase tracking-wide text-muted-foreground border-b border-border/60">
+            <tr className="text-xs uppercase tracking-wide text-muted-foreground border-b border-border/60">
               <th className="text-left font-medium px-4 py-3">Kunde</th>
               <th className="text-right font-medium px-2 py-3">Lücken</th>
               {SYSTEME.map(s => <th key={s.key} className={cn('font-medium px-2 py-3 text-center', !s.angebunden && 'opacity-50')}>{s.label}</th>)}

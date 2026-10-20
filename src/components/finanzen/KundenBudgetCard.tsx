@@ -115,7 +115,7 @@ export function KundenBudgetCard({ dealId, clientName }: KundenBudgetCardProps) 
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2 flex flex-wrap gap-1">
                     {campaigns.map((cid: string, i: number) => (
-                      <Badge key={i} variant="outline" className="font-mono text-[10px]">{cid}</Badge>
+                      <Badge key={i} variant="outline" className="font-mono text-xs">{cid}</Badge>
                     ))}
                   </CollapsibleContent>
                 </Collapsible>

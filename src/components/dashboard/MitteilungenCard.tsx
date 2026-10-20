@@ -84,16 +84,16 @@ export function MitteilungenCard() {
       <div className="flex items-center justify-between px-[18px] py-[14px]">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4 text-muted-foreground" />
-          <span className="text-[13px] font-semibold text-foreground">Neueste Mitteilungen</span>
+          <span className="text-xs font-semibold text-foreground">Neueste Mitteilungen</span>
           {unreadCount > 0 && (
-            <span className="text-[10px] font-semibold text-primary-foreground bg-primary rounded-[10px] px-[7px] py-[1px]">
+            <span className="text-xs font-semibold text-primary-foreground bg-primary rounded-[10px] px-[7px] py-[1px]">
               {unreadCount} neu
             </span>
           )}
         </div>
         <Button variant="ghost" size="sm"
           onClick={() => navigate('/nachrichten')}
-          className="text-[12px] text-primary hover:underline cursor-pointer flex items-center gap-1 bg-transparent border-none"
+          className="text-xs text-primary hover:underline cursor-pointer flex items-center gap-1 bg-transparent border-none"
         >
           Alle ansehen <ArrowRight className="h-3 w-3" />
         </Button>
@@ -105,7 +105,7 @@ export function MitteilungenCard() {
       {notifications.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-6 gap-2">
           <Bell className="h-6 w-6 text-muted-foreground" />
-          <span className="text-[13px] text-muted-foreground">Keine neuen internen Mitteilungen</span>
+          <span className="text-xs text-muted-foreground">Keine neuen internen Mitteilungen</span>
         </div>
       ) : (
         notifications.map((n, i) => {
@@ -126,21 +126,21 @@ export function MitteilungenCard() {
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
-                  <span className="text-[12px] font-semibold text-foreground truncate">
+                  <span className="text-xs font-semibold text-foreground truncate">
                     {n.sender_name || n.title}
                   </span>
                   {n.tag && (
-                    <span className="text-[10px] text-muted-foreground"> · #{n.tag}</span>
+                    <span className="text-xs text-muted-foreground"> · #{n.tag}</span>
                   )}
                 </div>
-                <p className="text-[13px] text-muted-foreground truncate mt-0.5">
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
                   {n.preview || n.title}
                 </p>
               </div>
 
               {/* Right */}
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
                   {relativeTime(n.created_at)}
                 </span>
                 {!n.read && (

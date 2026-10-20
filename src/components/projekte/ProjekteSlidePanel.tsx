@@ -55,7 +55,7 @@ interface Props { project: any; onClose: () => void; onChanged?: () => Promise<v
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</span>
+      <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
       {children}
     </div>
   );
@@ -294,13 +294,13 @@ export default function ProjekteSlidePanel({ project: p, onClose, onChanged }: P
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-border">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-[4px] ${STATUS_STYLES[status] || 'bg-muted text-muted-foreground'}`}>{status}</span>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-[4px] ${STATUS_STYLES[status] || 'bg-muted text-muted-foreground'}`}>{status}</span>
               {editData.prioritaet && (
-                <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground">{editData.prioritaet}</span>
+                <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground">{editData.prioritaet}</span>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-heading font-bold truncate">{name}</h2>
+              <h2 className="text-lg font-semibold font-heading truncate">{name}</h2>
               {/* Stacked mitarbeiter avatars in header */}
               {(() => {
                 const members: { id: string; name: string; avatar_url?: string | null }[] = Array.isArray(editData.mitarbeiter) ? editData.mitarbeiter : [];
@@ -338,7 +338,7 @@ export default function ProjekteSlidePanel({ project: p, onClose, onChanged }: P
           {/* HAUPTKUNDE */}
           {directClient && (
             <section className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <Users className="h-3.5 w-3.5" /> Hauptkunde
               </h3>
               <button
@@ -354,7 +354,7 @@ export default function ProjekteSlidePanel({ project: p, onClose, onChanged }: P
           {/* VERKNÜPFTE KUNDEN */}
           {linkedKunden.length > 0 && (
             <section className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <Users className="h-3.5 w-3.5" /> Verknüpfte Kunden
               </h3>
               <div className="flex flex-wrap gap-1.5">
@@ -364,7 +364,7 @@ export default function ProjekteSlidePanel({ project: p, onClose, onChanged }: P
                     if (k.client_id) navigate(`/kunden/${k.client_id}`);
                     else navigate(`/kunden?kunde=${k.id}`);
                   }}
-                    className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer">
+                    className="text-xs font-medium px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer">
                     {k.client_name}
                   </button>
                 ))}
@@ -374,7 +374,7 @@ export default function ProjekteSlidePanel({ project: p, onClose, onChanged }: P
 
           {/* DETAILS */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Details</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Details</h3>
             <div className="grid grid-cols-2 gap-3">
               <FieldRow label="Projektname">
                 <Input className="h-[34px] text-sm" value={editData.projektname || ''} onChange={e => upd('projektname', e.target.value)} />
@@ -403,7 +403,7 @@ export default function ProjekteSlidePanel({ project: p, onClose, onChanged }: P
 
           {/* MITARBEITER */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <Users className="h-3.5 w-3.5" /> Mitarbeiter
             </h3>
             <TeamMemberMultiSelect
@@ -415,7 +415,7 @@ export default function ProjekteSlidePanel({ project: p, onClose, onChanged }: P
 
           {/* ZEITRAUM */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Zeitraum</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Zeitraum</h3>
             <div className="grid grid-cols-2 gap-3">
               <FieldRow label="Startdatum">
                 <DatePickerField value={editData.startdatum || null} onChange={v => upd('startdatum', v)} />
@@ -437,7 +437,7 @@ export default function ProjekteSlidePanel({ project: p, onClose, onChanged }: P
 
           {/* FINANZEN */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Finanzen</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Finanzen</h3>
             <div className="bg-muted/30 rounded-lg px-4 py-2">
               {([
                 ['Ads-Budget', 'ads_budget'],
@@ -460,7 +460,7 @@ export default function ProjekteSlidePanel({ project: p, onClose, onChanged }: P
 
           {/* SONSTIGES */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sonstiges</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Sonstiges</h3>
             <div className="grid grid-cols-2 gap-3">
               <FieldRow label="Aktueller Monat">
                 <Input className="h-[34px] text-sm" value={editData.aktueller_monat || ''} onChange={e => upd('aktueller_monat', e.target.value)} />
@@ -486,7 +486,7 @@ export default function ProjekteSlidePanel({ project: p, onClose, onChanged }: P
 
 
           {editData.letztes_update && (
-            <p className="text-[11px] text-muted-foreground/60">
+            <p className="text-xs text-muted-foreground/60">
               Letztes Update: {editData.letztes_update ? (() => { try { return new Date(editData.letztes_update).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); } catch { return editData.letztes_update; } })() : '–'}
             </p>
           )}

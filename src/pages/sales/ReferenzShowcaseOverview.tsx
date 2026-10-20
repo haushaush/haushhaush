@@ -484,7 +484,7 @@ function CategoryTile({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="text-base font-bold text-gray-900 dark:text-white tracking-tight">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white tracking-tight">
             {label}
           </h3>
           <span className="text-sm font-semibold text-gray-400 dark:text-gray-500 tabular-nums">
@@ -550,7 +550,7 @@ function OnboardingHint({ isPublic }: { isPublic: boolean }) {
           <Lightbulb className="w-6 h-6 text-white" />
         </div>
         <div className="flex-1">
-          <h3 className="font-bold text-gray-900 dark:text-white tracking-tight mb-1">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white tracking-tight mb-1">
             So funktioniert dein Showcase
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-5">

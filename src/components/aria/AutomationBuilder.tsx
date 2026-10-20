@@ -455,7 +455,7 @@ export default function AutomationBuilder({ automation, onClose, onSaved }: Auto
             <div className="p-2 space-y-3">
               {filteredCatalog.map(cat => (
                 <div key={cat.category}>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-2 mb-1.5">{cat.category}</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-2 mb-1.5">{cat.category}</p>
                   <div className="space-y-0.5">
                     {cat.items.map(item => {
                       const Icon = item.icon;
@@ -477,7 +477,7 @@ export default function AutomationBuilder({ automation, onClose, onSaved }: Auto
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-medium text-foreground truncate">{item.label}</p>
-                            <p className="text-[10px] text-muted-foreground truncate">{item.description}</p>
+                            <p className="text-xs text-muted-foreground truncate">{item.description}</p>
                           </div>
                           <Plus className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </button>
@@ -513,7 +513,7 @@ export default function AutomationBuilder({ automation, onClose, onSaved }: Auto
               </p>
               <button
                 onClick={() => setSelectedStep('trigger')}
-                className="text-[10px] text-primary hover:underline mt-0.5"
+                className="text-xs text-primary hover:underline mt-0.5"
               >
                 Konfigurieren
               </button>
@@ -564,11 +564,11 @@ export default function AutomationBuilder({ automation, onClose, onSaved }: Auto
                       style={{ background: `${color}12` }}
                     >
                       <Icon className="h-4 w-4" style={{ color }} />
-                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color }}>
+                      <span className="text-xs font-bold uppercase tracking-wider" style={{ color }}>
                         {getStepLabel(step.type)}
                       </span>
                       <span className="flex-1" />
-                      <Badge variant="outline" className="text-[10px] h-5 px-1.5">Schritt {index + 1}</Badge>
+                      <Badge variant="outline" className="text-xs h-5 px-1.5">Schritt {index + 1}</Badge>
                       <button
                         onClick={(e) => { e.stopPropagation(); removeStep(step.id); }}
                         className="text-muted-foreground hover:text-destructive transition-colors"
@@ -579,7 +579,7 @@ export default function AutomationBuilder({ automation, onClose, onSaved }: Auto
                     {/* Step body */}
                     <div className="px-3 py-2.5">
                       <p className="text-sm font-medium text-foreground">{step.label}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                         {step.config.table ? `Tabelle: ${step.config.table}` : ''}
                         {step.config.message ? step.config.message.slice(0, 60) : ''}
                         {step.config.title ? `"${step.config.title}"` : ''}
@@ -588,7 +588,7 @@ export default function AutomationBuilder({ automation, onClose, onSaved }: Auto
                     </div>
                     {/* Test result indicator */}
                     {testResult && (
-                      <div className={`px-3 py-1.5 text-[11px] border-t flex items-center gap-1.5 rounded-b-xl ${
+                      <div className={`px-3 py-1.5 text-xs border-t flex items-center gap-1.5 rounded-b-xl ${
                         testResult.status === 'success' ? 'bg-emerald-500/5 text-emerald-600 border-emerald-500/20' :
                         testResult.status === 'error' ? 'bg-destructive/5 text-destructive border-destructive/20' :
                         testResult.status === 'running' ? 'bg-primary/5 text-primary border-primary/20' :
@@ -622,7 +622,7 @@ export default function AutomationBuilder({ automation, onClose, onSaved }: Auto
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                 <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1.5">Ende</p>
+              <p className="text-xs text-muted-foreground mt-1.5">Ende</p>
             </div>
 
             {/* Empty state */}
@@ -687,7 +687,7 @@ export default function AutomationBuilder({ automation, onClose, onSaved }: Auto
             onClick={e => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between z-10">
-              <h3 className="font-semibold text-foreground">Vorlagen</h3>
+              <h3 className="text-sm font-semibold text-foreground">Vorlagen</h3>
               <Button variant="ghost" size="sm" onClick={() => setShowTemplates(false)}>
                 <X className="h-4 w-4" />
               </Button>
@@ -697,15 +697,15 @@ export default function AutomationBuilder({ automation, onClose, onSaved }: Auto
                 <div key={i} className="border border-border rounded-xl p-4 hover:bg-accent/30 transition-colors">
                   <h4 className="font-semibold text-sm text-foreground">{tmpl.name}</h4>
                   <p className="text-xs text-muted-foreground mt-1">{tmpl.description}</p>
-                  <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground">
-                    <Badge variant="secondary" className="text-[10px]">{tmpl.trigger_type}</Badge>
+                  <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                    <Badge variant="secondary" className="text-xs">{tmpl.trigger_type}</Badge>
                     <span>{tmpl.steps.length} Schritte</span>
                   </div>
                   <div className="mt-2 space-y-1">
                     {tmpl.steps.map((s, j) => {
                       const Icon = getStepIcon(s.type);
                       return (
-                        <div key={j} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <div key={j} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Icon className="h-3 w-3" />
                           <span>{s.label}</span>
                         </div>
@@ -738,7 +738,7 @@ function TriggerConfig({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-semibold text-foreground flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <Zap className="h-4 w-4 text-primary" /> Trigger konfigurieren
         </h3>
         <p className="text-xs text-muted-foreground mt-1">Wann soll die Automation starten?</p>
@@ -850,7 +850,7 @@ function StepConfig({
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">{getStepLabel(step.type)}</p>
-            <p className="text-[10px] text-muted-foreground">Schritt {stepIndex + 1} von {totalSteps}</p>
+            <p className="text-xs text-muted-foreground">Schritt {stepIndex + 1} von {totalSteps}</p>
           </div>
         </div>
         <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive hover:text-destructive">
@@ -923,7 +923,7 @@ function StepConfig({
           <div className="space-y-2">
             <Label className="text-xs">Nachricht</Label>
             <Textarea value={step.config.message || ''} onChange={e => onConfigChange({ message: e.target.value })} placeholder="Nachricht mit {{variablen}}..." className="min-h-[100px] text-sm" />
-            <p className="text-[10px] text-muted-foreground">Nutze {'{{variable}}'} für dynamische Werte</p>
+            <p className="text-xs text-muted-foreground">Nutze {'{{variable}}'} für dynamische Werte</p>
           </div>
         </>
       )}
@@ -1122,15 +1122,15 @@ function StepConfig({
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
-              <Label className="text-[10px]">Calls</Label>
+              <Label className="text-xs">Calls</Label>
               <Input type="number" value={step.config.calls || 0} onChange={e => onConfigChange({ calls: parseInt(e.target.value) || 0 })} className="h-8 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px]">Termine</Label>
+              <Label className="text-xs">Termine</Label>
               <Input type="number" value={step.config.appointments || 0} onChange={e => onConfigChange({ appointments: parseInt(e.target.value) || 0 })} className="h-8 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px]">Closes</Label>
+              <Label className="text-xs">Closes</Label>
               <Input type="number" value={step.config.closes || 0} onChange={e => onConfigChange({ closes: parseInt(e.target.value) || 0 })} className="h-8 text-xs" />
             </div>
           </div>
@@ -1141,7 +1141,7 @@ function StepConfig({
         <div className="space-y-2">
           <Label className="text-xs">Über Variable iterieren</Label>
           <Input value={step.config.source || ''} onChange={e => onConfigChange({ source: e.target.value })} placeholder="{{step0.results}}" className="h-9 text-sm font-mono" />
-          <p className="text-[10px] text-muted-foreground">Aktuelles Element: {'{{item}}'}</p>
+          <p className="text-xs text-muted-foreground">Aktuelles Element: {'{{item}}'}</p>
         </div>
       )}
 

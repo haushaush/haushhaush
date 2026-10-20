@@ -488,7 +488,7 @@ export function SlackListsTab() {
               <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
             </Button>
             <div>
-              <h3 className="text-lg font-heading font-semibold">
+              <h3 className="text-sm font-semibold">
                 {activeList.list_name || activeList.slack_list_id}
               </h3>
               <p className="text-xs text-muted-foreground">
@@ -709,7 +709,7 @@ export function SlackListsTab() {
                                 <TooltipProvider delayDuration={150}>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-1.5 h-5 text-[10px] text-muted-foreground">
+                                      <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-1.5 h-5 text-xs text-muted-foreground">
                                         <RefreshCw className="h-2.5 w-2.5" />
                                         {formatDistanceToNow(new Date(itemLastUpdate[it.slack_item_id].created_at), { locale: de, addSuffix: true })}
                                       </span>

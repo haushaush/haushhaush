@@ -126,7 +126,7 @@ export function KampagneZeile({ k, kontoId, alle, clientId, busy, kname = zuoKun
                 : <Button size="sm" variant="ghost" className="h-6 text-xs" disabled={busy === a.id} onClick={() => zuordnen('adset', a.id, k.id, a.name)}>Zuordnen</Button>}</span>
             </div>;
           })}
-          {sets && sets.length > 0 && <p className="text-[11px] text-muted-foreground">Teilen sich zwei Kunden eine Anzeigengruppe, wird nichts aufgeteilt.</p>}
+          {sets && sets.length > 0 && <p className="text-xs text-muted-foreground">Teilen sich zwei Kunden eine Anzeigengruppe, wird nichts aufgeteilt.</p>}
         </div>
       )}
     </div>

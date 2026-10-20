@@ -44,7 +44,7 @@ export function IntegrationStatusBar({ integrations, onTestAll, testing }: Integ
       {/* Header row */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-xl font-bold text-foreground">Integrationen</h2>
+          <h2 className="text-lg font-semibold font-heading text-foreground">Integrationen</h2>
           <p className="text-sm text-muted-foreground mt-0.5">Verbinde externe Dienste mit dem Agency Hub</p>
         </div>
         <div className="flex items-center gap-3">
@@ -80,7 +80,7 @@ export function IntegrationStatusBar({ integrations, onTestAll, testing }: Integ
           return (
             <div
               key={cat}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium border transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                 isConnected
                   ? 'border-primary/30 text-primary bg-primary/5'
                   : 'border-border text-muted-foreground bg-card'

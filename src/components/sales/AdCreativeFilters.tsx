@@ -127,7 +127,7 @@ function RangeFilter({
         <div className="min-w-0">
           <p className="text-sm font-bold text-gray-900 dark:text-white">{label}</p>
           {description && (
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
           )}
         </div>
         <span className="text-sm font-bold text-teal-600 dark:text-teal-400 tabular-nums whitespace-nowrap">
@@ -141,7 +141,7 @@ function RangeFilter({
       }} />
       <div className="grid grid-cols-2 gap-2 pt-1">
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase tracking-wider text-gray-400 pointer-events-none">Min</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold uppercase tracking-wider text-gray-400 pointer-events-none">Min</span>
           <input type="number" value={inMin} min={min} max={max} step={step}
             onChange={e => setInMin(e.target.value)}
             onBlur={commit}
@@ -150,7 +150,7 @@ function RangeFilter({
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">{prefix || suffix}</span>
         </div>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase tracking-wider text-gray-400 pointer-events-none">Max</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold uppercase tracking-wider text-gray-400 pointer-events-none">Max</span>
           <input type="number" value={inMax} min={min} max={max} step={step}
             onChange={e => setInMax(e.target.value)}
             onBlur={commit}
@@ -180,7 +180,7 @@ function NumberFilter({
       <div>
         <p className="text-sm font-bold text-gray-900 dark:text-white">{label}</p>
         {description && (
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
         )}
       </div>
       <div className="relative">

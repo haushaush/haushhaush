@@ -216,7 +216,7 @@ export default function Onboarding() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-3">
             <ShieldCheck className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-2xl font-semibold font-heading tracking-tight">
             Willkommen, {vorname}!
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -243,7 +243,7 @@ export default function Onboarding() {
           {step === 1 && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-lg font-semibold">Neues Passwort festlegen</h2>
+                <h2 className="text-lg font-semibold font-heading">Neues Passwort festlegen</h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   Dein temporäres Passwort wurde von einem Administrator gesetzt.
                   Bitte lege jetzt ein eigenes Passwort fest.
@@ -364,7 +364,7 @@ export default function Onboarding() {
           {step === 2 && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-lg font-semibold">Persönliche Daten</h2>
+                <h2 className="text-lg font-semibold font-heading">Persönliche Daten</h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   Diese Infos helfen der Buchhaltung. Du kannst sie auch später im Profil ergänzen.
                 </p>
@@ -415,7 +415,7 @@ export default function Onboarding() {
               </div>
 
               <div className="pt-2">
-                <h3 className="text-sm font-medium mb-2">Adresse</h3>
+                <h3 className="text-sm font-semibold mb-2">Adresse</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <Label>Straße & Hausnummer</Label>
@@ -437,7 +437,7 @@ export default function Onboarding() {
               </div>
 
               <div className="pt-2">
-                <h3 className="text-sm font-medium mb-2">Notfallkontakt</h3>
+                <h3 className="text-sm font-semibold mb-2">Notfallkontakt</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Name</Label>
@@ -464,14 +464,14 @@ export default function Onboarding() {
           {step === 3 && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-lg font-semibold">Bankdaten & Steuer</h2>
+                <h2 className="text-lg font-semibold font-heading">Bankdaten & Steuer</h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   Nötig für Gehaltszahlungen und Lohnsteuer. Alles optional — kannst du später ergänzen.
                 </p>
               </div>
 
               <div className="pt-1">
-                <h3 className="text-sm font-medium mb-2">Bankverbindung</h3>
+                <h3 className="text-sm font-semibold mb-2">Bankverbindung</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <Label>IBAN</Label>
@@ -489,7 +489,7 @@ export default function Onboarding() {
               </div>
 
               <div className="pt-1">
-                <h3 className="text-sm font-medium mb-2">Steuer & Versicherung</h3>
+                <h3 className="text-sm font-semibold mb-2">Steuer & Versicherung</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Steuer-ID</Label>
@@ -556,7 +556,7 @@ export default function Onboarding() {
               <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4">
                 <CheckCircle2 className="h-10 w-10 text-emerald-500" />
               </div>
-              <h2 className="text-xl font-semibold">Dein Konto ist bereit!</h2>
+              <h2 className="text-lg font-semibold font-heading">Dein Konto ist bereit!</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Du wirst jetzt zum Dashboard weitergeleitet…
               </p>

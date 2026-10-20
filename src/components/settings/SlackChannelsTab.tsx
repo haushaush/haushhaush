@@ -222,10 +222,10 @@ export function SlackChannelsTab() {
                       )}
                       <span className="font-medium text-sm truncate">{c.name}</span>
                       {c.is_private && (
-                        <Badge variant="outline" className="text-[10px] h-5">Private</Badge>
+                        <Badge variant="outline" className="text-xs h-5">Private</Badge>
                       )}
                       {c.is_member && (
-                        <Badge variant="outline" className="text-[10px] h-5 bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                        <Badge variant="outline" className="text-xs h-5 bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
                           <Check className="h-2.5 w-2.5 mr-0.5" /> Member
                         </Badge>
                       )}

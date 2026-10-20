@@ -440,7 +440,7 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
           <div className="py-2 flex items-center gap-3 text-sm">
             <Link to={`/kunden/${k.id}?tab=verknuepfungen`} className="font-medium hover:text-primary truncate">{k.name}</Link>
             <span className="text-xs text-muted-foreground">{k.kundenstatus}</span>
-            {!!neuZugeordnet.get(k.id) && <span className="text-[11px] rounded-full bg-success/10 text-success px-2 py-0.5 tabular-nums">{neuZugeordnet.get(k.id)} zugeordnet</span>}
+            {!!neuZugeordnet.get(k.id) && <span className="text-xs rounded-full bg-success/10 text-success px-2 py-0.5 tabular-nums">{neuZugeordnet.get(k.id)} zugeordnet</span>}
             <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => verwerfen(SYS_OHNE_KAMPAGNE, 'eigenes_konto', k.id).catch(e => toast.error(e.message))}>Abhaken – zahlt Werbebudget selbst bei Meta</Button>
             <Button size="sm" variant="outline" className="h-7 text-xs" asChild><Link to={`/kunden/${k.id}?tab=verknuepfungen`}>Zum Kunden</Link></Button>
           </div>
@@ -506,6 +506,6 @@ export function Schnellzuordnung({ clientId, callMeta, onZugeordnet }: { clientI
       {kampTreffer.map(c => <KampagneZeile key={c.id} k={c} kontoId={konto} alle={zuoAlle} clientId={clientId} busy={busy} callMeta={callMeta} loesen={loesen}
         zuordnen={async (t, o, kid, n) => { const ok = await zuordnen(konto, untermarke, t, o, kid, n); if (ok) onZugeordnet(); return ok; }} />)}
     </div>}
-    <p className="text-[11px] text-muted-foreground">Ohne Auswahl einer Anzeigengruppe wird die ganze Kampagne zugeordnet. Anzeigengruppen nur nötig, wenn sich zwei Kunden eine Kampagne teilen.</p>
+    <p className="text-xs text-muted-foreground">Ohne Auswahl einer Anzeigengruppe wird die ganze Kampagne zugeordnet. Anzeigengruppen nur nötig, wenn sich zwei Kunden eine Kampagne teilen.</p>
   </div>;
 }

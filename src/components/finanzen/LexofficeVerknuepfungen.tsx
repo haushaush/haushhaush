@@ -146,7 +146,7 @@ export function LexofficeVerknuepfungen() {
   return (
     <Card><CardContent className="p-4 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-medium mr-2">lexoffice-Empfänger</h3>
+        <h3 className="text-sm font-semibold mr-2">lexoffice-Empfänger</h3>
         <span className="text-xs text-muted-foreground tabular-nums">{rows.length} Empfänger · {rows.filter(r => r.client_id && r.is_confirmed).length} verknüpft</span>
         <div className="relative flex-1 min-w-[220px]">
           <Search className="h-4 w-4 absolute left-2 top-2.5 text-muted-foreground" />

@@ -163,7 +163,7 @@ export function ApiPlatform() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-bold text-[var(--text-primary)]">Agency Hub API</h2>
+        <h2 className="text-lg font-semibold font-heading text-[var(--text-primary)]">Agency Hub API</h2>
         <p className="text-sm text-[var(--text-secondary)] mt-1">Verbinde jede App nahtlos mit deinem Dashboard</p>
       </div>
 
@@ -172,7 +172,7 @@ export function ApiPlatform() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
                 <Key className="h-4 w-4 text-[var(--color-teal)]" />
                 API Tokens
               </h3>
@@ -209,7 +209,7 @@ export function ApiPlatform() {
                         <TableCell>
                           <div>
                             <p className="text-sm font-medium text-[var(--text-primary)]">{t.name}</p>
-                            <p className="text-[11px] font-mono text-[var(--text-muted)]">{t.token_preview}</p>
+                            <p className="text-xs font-mono text-[var(--text-muted)]">{t.token_preview}</p>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -227,7 +227,7 @@ export function ApiPlatform() {
                         </TableCell>
                         <TableCell className="text-right">
                           {t.revoked ? (
-                            <Badge className="bg-[var(--color-red-subtle)] text-[var(--color-red-text)] border-0 text-[10px]">Widerrufen</Badge>
+                            <Badge className="bg-[var(--color-red-subtle)] text-[var(--color-red-text)] border-0 text-xs">Widerrufen</Badge>
                           ) : (
                             <Button
                               variant="outline"
@@ -250,7 +250,7 @@ export function ApiPlatform() {
 
         {/* RIGHT — API Docs Preview */}
         <div className="space-y-4">
-          <h3 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-[var(--color-teal)]" />
             API Referenz
           </h3>
@@ -258,15 +258,15 @@ export function ApiPlatform() {
           <Card className="border-[var(--border)] bg-[#1D1D1F] dark:bg-[#111] text-white overflow-hidden">
             <CardContent className="p-5 space-y-4 font-mono text-xs">
               <div>
-                <p className="text-[var(--color-teal)] text-[10px] uppercase tracking-wider mb-1">Base URL</p>
+                <p className="text-[var(--color-teal)] text-xs uppercase tracking-wider mb-1">Base URL</p>
                 <p className="text-gray-300">{BASE_URL}</p>
               </div>
               <div>
-                <p className="text-[var(--color-teal)] text-[10px] uppercase tracking-wider mb-1">Authentication</p>
+                <p className="text-[var(--color-teal)] text-xs uppercase tracking-wider mb-1">Authentication</p>
                 <p className="text-gray-400">Authorization: Bearer <span className="text-orange-400">ahd_your_token_here</span></p>
               </div>
               <div className="border-t border-gray-700 pt-3 space-y-2">
-                <p className="text-[var(--color-teal)] text-[10px] uppercase tracking-wider mb-2">Quick Reference</p>
+                <p className="text-[var(--color-teal)] text-xs uppercase tracking-wider mb-2">Quick Reference</p>
                 {[
                   { method: 'GET', path: '/deals', desc: 'Alle Deals abrufen', color: 'text-blue-400' },
                   { method: 'POST', path: '/deals', desc: 'Deal erstellen', color: 'text-green-400' },
@@ -281,13 +281,13 @@ export function ApiPlatform() {
                   <div key={i} className="flex items-center gap-3">
                     <span className={`${ep.color} font-bold w-12 text-right`}>{ep.method}</span>
                     <span className="text-gray-300">{ep.path}</span>
-                    <span className="text-gray-500 text-[10px]">— {ep.desc}</span>
+                    <span className="text-gray-500 text-xs">— {ep.desc}</span>
                   </div>
                 ))}
               </div>
               <a
                 href="/api-docs"
-                className="block text-center text-[var(--color-teal)] text-[11px] hover:underline pt-2 border-t border-gray-700"
+                className="block text-center text-[var(--color-teal)] text-xs hover:underline pt-2 border-t border-gray-700"
               >
                 Vollständige Dokumentation →
               </a>
@@ -298,7 +298,7 @@ export function ApiPlatform() {
 
       {/* API Usage Stats */}
       <div className="space-y-4">
-        <h3 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
           <Activity className="h-4 w-4 text-[var(--color-teal)]" />
           API Nutzung (letzte 30 Tage)
         </h3>
@@ -312,7 +312,7 @@ export function ApiPlatform() {
           ].map(s => (
             <Card key={s.label} className="border-[var(--border)] bg-[var(--bg-surface)]">
               <CardContent className="p-4">
-                <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-medium">{s.label}</p>
+                <p className="text-xs uppercase tracking-wider text-[var(--text-muted)] font-medium">{s.label}</p>
                 <p className="text-xl font-bold text-[var(--text-primary)] mt-1">{s.value}</p>
               </CardContent>
             </Card>
@@ -340,7 +340,7 @@ export function ApiPlatform() {
                           {new Date(l.created_at).toLocaleString('de-DE')}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary" className="font-mono text-[10px]">{l.method}</Badge>
+                          <Badge variant="secondary" className="font-mono text-xs">{l.method}</Badge>
                         </TableCell>
                         <TableCell className="text-xs font-mono text-[var(--text-secondary)]">{l.endpoint}</TableCell>
                         <TableCell className={`text-xs font-bold ${statusColor(l.status_code)}`}>
@@ -403,7 +403,7 @@ export function ApiPlatform() {
                 onChange={e => setExpiresAt(e.target.value)}
                 className="mt-1"
               />
-              <p className="text-[11px] text-[var(--text-muted)] mt-1">Leer lassen für keinen Ablauf</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Leer lassen für keinen Ablauf</p>
             </div>
           </div>
           <DialogFooter>

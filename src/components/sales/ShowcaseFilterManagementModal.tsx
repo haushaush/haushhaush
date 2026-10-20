@@ -155,13 +155,13 @@ export function ShowcaseFilterManagementModal({ open, onClose, onChanged, applie
                         className="h-8 w-48 font-medium"
                         onBlur={(e) => { if (e.target.value !== cat.label) renameCategory(cat.id, e.target.value); }}
                       />
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      <span className="text-xs uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                         {cat.applies_to}
                       </span>
                       {isAuto && (
                         <span
                           title={`Auto-synct aus ${cat.synced_from_field ?? "Notion"}`}
-                          className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded"
+                          className="inline-flex items-center gap-1 text-xs uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded"
                         >
                           <Sparkles className="w-3 h-3" /> Auto-Sync
                         </span>
@@ -191,7 +191,7 @@ export function ShowcaseFilterManagementModal({ open, onClose, onChanged, applie
                             onBlur={(e) => { if (e.target.value !== o.label) updateOption(o.id, { label: e.target.value }); }}
                           />
                           {!o.is_active && (
-                            <span className="text-[10px] uppercase text-muted-foreground bg-muted px-1.5 py-0.5 rounded">inaktiv</span>
+                            <span className="text-xs uppercase text-muted-foreground bg-muted px-1.5 py-0.5 rounded">inaktiv</span>
                           )}
                           {optAuto ? (
                             <span title="Aus Notion synchronisiert – nicht löschbar" className="w-7 h-7 inline-flex items-center justify-center text-muted-foreground">
@@ -207,7 +207,7 @@ export function ShowcaseFilterManagementModal({ open, onClose, onChanged, applie
                     })}
 
                     {isAuto ? (
-                      <p className="text-[11px] text-muted-foreground pt-1">
+                      <p className="text-xs text-muted-foreground pt-1">
                         🔒 Optionen werden automatisch aus <code className="bg-muted px-1 rounded">{cat.synced_from_field}</code> synchronisiert.
                       </p>
                     ) : newOptForCat === cat.id ? (

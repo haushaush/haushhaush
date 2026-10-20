@@ -204,14 +204,14 @@ export function MetaCampaignImportModal({ open, onClose, onImported }: Props) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{c.meta_campaign_name}</p>
-                        <p className="text-[11px] text-muted-foreground truncate">
+                        <p className="text-xs text-muted-foreground truncate">
                           {c.meta_account_name ?? c.meta_account_id}
                           {c.meta_objective && <> · {c.meta_objective.replace("OUTCOME_", "")}</>}
                           {c.meta_status && <> · {c.meta_status}</>}
                           {c.already_imported && <span className="ml-2 text-amber-600">· Bereits importiert</span>}
                         </p>
                         {c.metrics && (
-                          <div className="flex flex-wrap gap-3 mt-1 text-[11px] tabular-nums text-muted-foreground">
+                          <div className="flex flex-wrap gap-3 mt-1 text-xs tabular-nums text-muted-foreground">
                             {m.cpl != null && <span>€{m.cpl} CPL</span>}
                             {m.leads != null && <span>{m.leads} Leads</span>}
                             {m.roas != null && <span className="font-medium text-foreground">{m.roas}x ROAS</span>}
