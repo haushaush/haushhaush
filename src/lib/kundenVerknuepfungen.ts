@@ -159,14 +159,17 @@ async function sucheBuch(sys: 'qonto' | 'lexoffice', q: string, clientId?: strin
     const { data: l } = ids.length ? await supabase.from('qonto_client_links').select('id, qonto_client_id, client_id, is_confirmed').in('qonto_client_id', ids) : { data: [] as any[] };
     links = (l || []).map((r: any) => ({ ext: r.qonto_client_id, ref: r.id, client_id: r.client_id, is_confirmed: r.is_confirmed }));
   } else {
-    const { data, error } = await (supabase.from as any)('lexoffice_contacts').select('contact_id, name, email')
-      .or(`name.ilike.${like},email.ilike.${like}`).limit(15);
+    // lexoffice: Kandidaten sind die Verknüpfungszeilen (Schlüssel = Empfängername aus den Rechnungen), nicht lexoffice_contacts.
+    const { data, error } = await (supabase.from as any)('lexoffice_client_links').select('id, lexoffice_contact_name, client_id, is_confirmed')
+      .ilike('lexoffice_contact_name', like).limit(15);
     if (error) throw new Error(error.message);
-    const ids = (data || []).map((c: any) => c.contact_id);
-    const { data: inv } = ids.length ? await (supabase.from as any)('lexoffice_invoices').select('contact_id, voucher_date').in('contact_id', ids) : { data: [] };
-    kand = [...lexKandidaten(data || [], inv || []).values()];
-    const { data: l } = ids.length ? await (supabase.from as any)('lexoffice_client_links').select('id, lexoffice_contact_id, client_id, is_confirmed').in('lexoffice_contact_id', ids) : { data: [] };
-    links = (l || []).map((r: any) => ({ ext: r.lexoffice_contact_id, ref: r.id, client_id: r.client_id, is_confirmed: r.is_confirmed }));
+    const { data: inv } = await (supabase.from as any)('lexoffice_invoices').select('contact_name, voucher_date').ilike('contact_name', like).limit(2000);
+    kand = (data || []).map((r: any) => {
+      const key = (r.lexoffice_contact_name || '').trim().toLowerCase();
+      const ds = (inv || []).filter((i: any) => (i.contact_name || '').trim().toLowerCase() === key).map((i: any) => i.voucher_date).filter(Boolean).sort();
+      return { id: r.id, name: r.lexoffice_contact_name, email: null, rechnungen: ds.length, letzte: ds[ds.length - 1] || null } as any;
+    });
+    links = (data || []).map((r: any) => ({ ext: r.id, ref: r.id, client_id: r.client_id, is_confirmed: r.is_confirmed }));
   }
   const fremd = links.filter(l => l.client_id && l.is_confirmed && l.client_id !== clientId);
   const namen = await belegtNamen(fremd.map(l => l.client_id!));
