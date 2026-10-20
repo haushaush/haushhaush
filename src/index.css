@@ -1107,6 +1107,13 @@ body::before {
     border-radius: 4px;
   }
 
+  /* Fläche ohne Unschärfe – für Karten in langen Listen (kein backdrop-filter) */
+  .glass-surface-flat {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: hsl(var(--card) / 0.97);
+  }
+
   .glass-btn-primary, .glass-btn-secondary, .glass-btn-ghost, .glass-btn-destructive {
     border-radius: 4px;
     border: 1px solid transparent;

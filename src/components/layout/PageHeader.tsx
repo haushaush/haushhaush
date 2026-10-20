@@ -9,7 +9,6 @@ interface BreadcrumbProp {
 }
 
 interface PageHeaderProps {
-  /** Single breadcrumb back-link. Max one. */
   breadcrumb?: BreadcrumbProp;
   title: string;
   description?: string;
@@ -17,6 +16,10 @@ interface PageHeaderProps {
   /** `xl` = main page (Hauptseite), `lg` = sub-page. */
   size?: 'lg' | 'xl';
   className?: string;
+  /** Optional: replaces the size preset for the title (per-page styling). */
+  titleClassName?: string;
+  /** Optional: replaces the size preset for the description. */
+  descriptionClassName?: string;
   /** Centered hero variant (used by main showcase page). */
   centered?: boolean;
   /** Alignment for sub-pages. `center` mirrors hero with breadcrumb + actions. */
@@ -43,16 +46,18 @@ export function PageHeader({
   description,
   actions,
   size = 'lg',
+  className,
+  titleClassName,
+  descriptionClassName,
   centered = false,
   align = 'left',
-  className,
 }: PageHeaderProps) {
   if (centered) {
     return (
       <header className={cn('text-center max-w-3xl mx-auto mb-16 pt-8', className)}>
-        <h1 className={cn(titleSize[size], 'text-gray-900 dark:text-white')}>{title}</h1>
+        <h1 className={cn(titleClassName ?? titleSize[size], 'text-gray-900 dark:text-white')}>{title}</h1>
         {description && (
-          <p className={cn(descSize[size], 'text-gray-500 dark:text-gray-400 mt-5 font-normal')}>
+          <p className={cn(descriptionClassName ?? descSize[size], 'text-gray-500 dark:text-gray-400 mt-5 font-normal')}>
             {description}
           </p>
         )}
@@ -91,11 +96,11 @@ export function PageHeader({
         )}
       >
         <div className={cn('min-w-0', isCenter && 'max-w-2xl mx-auto')}>
-          <h1 className={cn(titleSize[size], 'text-gray-900 dark:text-white')}>{title}</h1>
+          <h1 className={cn(titleClassName ?? titleSize[size], 'text-gray-900 dark:text-white')}>{title}</h1>
           {description && (
             <p
               className={cn(
-                descSize[size],
+                descriptionClassName ?? descSize[size],
                 'text-gray-500 dark:text-gray-400 mt-2 font-normal',
               )}
             >

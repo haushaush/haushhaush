@@ -360,6 +360,8 @@ export default function ReferenzShowcaseOverview() {
         description={SHOWCASE_COPY.overview.description}
         size="xl"
         centered
+        titleClassName="text-5xl font-semibold font-heading tracking-tight"
+        descriptionClassName="text-lg text-muted-foreground"
       />
 
       {/* Compact horizontal category tiles — Apple-Settings pattern */}
@@ -370,7 +372,7 @@ export default function ReferenzShowcaseOverview() {
           count={counts.websites}
           href={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/websites`}
           icon={Globe}
-          gradient="from-teal-500 to-cyan-600"
+          cat="cat-1"
         />
         <CategoryTile
           label={SHOWCASE_COPY.categories.werbeanzeigen.label}
@@ -378,7 +380,7 @@ export default function ReferenzShowcaseOverview() {
           count={counts.ads}
           href={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/werbeanzeigen`}
           icon={Sparkles}
-          gradient="from-purple-500 to-pink-600"
+          cat="cat-5"
         />
         <CategoryTile
           label={SHOWCASE_COPY.categories.adPerformance.label}
@@ -386,7 +388,7 @@ export default function ReferenzShowcaseOverview() {
           count={counts.performance}
           href={`${isPublic ? '/showcase' : '/sales/referenz-showcase'}/ad-performance`}
           icon={TrendingUp}
-          gradient="from-blue-500 to-indigo-600"
+          cat="cat-7"
         />
       </div>
 
@@ -396,13 +398,13 @@ export default function ReferenzShowcaseOverview() {
       <div className="mb-8 space-y-3">
         {/* Row 1: Search full-width */}
         <div className="relative w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="search"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Suchen nach Titel, Kunde, Tag..."
-            className="w-full pl-11 pr-4 py-3 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 placeholder:font-normal font-semibold border border-gray-200 dark:border-gray-800 focus:border-teal-400 focus:ring-1 focus:ring-teal-100 dark:focus:ring-teal-900 focus:outline-none hover:border-gray-300 dark:hover:border-gray-700 rounded-xl transition-all duration-150"
+            className="glass-field w-full pl-11 pr-4 py-3 text-sm font-semibold text-foreground placeholder:text-muted-foreground placeholder:font-normal outline-none transition-colors"
           />
         </div>
 
@@ -438,7 +440,7 @@ export default function ReferenzShowcaseOverview() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-4 text-sm text-gray-500 dark:text-gray-400 tabular-nums">
+      <div className="flex items-center justify-between mb-4 text-sm text-muted-foreground tabular-nums">
         <span>
           {hasActiveFilters
             ? `${filteredItems.length} von ${allItems.length}`
@@ -451,7 +453,7 @@ export default function ReferenzShowcaseOverview() {
           <p className="text-sm text-gray-500 dark:text-gray-400">Keine Referenzen gefunden.</p>
         </SurfaceCard>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
           {filteredItems.map(item => (
             <ShowcaseCard key={`${item._type}-${item.id}`} item={item as any} />
           ))}
@@ -462,40 +464,45 @@ export default function ReferenzShowcaseOverview() {
 }
 
 function CategoryTile({
-  label, description, count, href, icon: Icon, gradient,
+  label, description, count, href, icon: Icon, cat,
 }: {
   label: string;
   description: string;
   count: number;
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  gradient: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  /** Kategoriefarbe als Token ohne `--`, z. B. `cat-1`. */
+  cat: string;
 }) {
   return (
     <SurfaceCard
       as={Link}
       to={href}
       interactive
+      glass
       padding="none"
-      className="group flex items-center gap-4 px-5 py-4"
+      className="group flex items-center gap-4 p-5"
     >
-      <div className={`shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-sm`}>
-        <Icon className="w-5 h-5 text-white" />
+      <div
+        className="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
+        style={{ backgroundColor: `hsl(var(--${cat}) / 0.12)` }}
+      >
+        <Icon className="w-5 h-5" style={{ color: `hsl(var(--${cat}))` }} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white tracking-tight">
+          <h3 className="text-sm font-semibold text-foreground tracking-tight">
             {label}
           </h3>
-          <span className="text-sm font-semibold text-gray-400 dark:text-gray-500 tabular-nums">
+          <span className="text-sm text-muted-foreground tabular-nums">
             {count}
           </span>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+        <p className="text-xs text-muted-foreground truncate">
           {description}
         </p>
       </div>
-      <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-gray-700 dark:group-hover:text-gray-300 group-hover:translate-x-0.5 transition-all" />
+      <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
     </SurfaceCard>
   );
 }
@@ -510,17 +517,14 @@ function DropdownPill({
         value={value}
         onChange={e => onChange(e.target.value)}
         className={`
+          glass-field
           appearance-none cursor-pointer
           px-5 py-3 pr-11
           text-sm
-          rounded-xl border
-          transition-all duration-150
+          transition-colors duration-150
           min-w-[180px]
           outline-none
-          ${isActive
-            ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white shadow-sm font-bold'
-            : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-sm font-semibold'
-          }
+          ${isActive ? 'font-bold text-foreground' : 'font-medium text-foreground'}
         `}
       >
         <option value="">{label}: Alle</option>
@@ -530,8 +534,8 @@ function DropdownPill({
       </select>
       <svg
         viewBox="0 0 20 20" fill="none"
-        className={`absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors ${
-          isActive ? 'text-white dark:text-gray-900' : 'text-gray-400 dark:text-gray-500'
+          className={`absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors ${
+          isActive ? 'text-foreground' : 'text-muted-foreground'
         }`}
       >
         <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

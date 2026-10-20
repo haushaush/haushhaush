@@ -340,8 +340,9 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
       as={Link}
       to={detailHref}
       interactive
+      glass
       padding="none"
-      className="group h-full flex flex-col overflow-hidden"
+      className="group h-full flex flex-col overflow-hidden glass-surface-flat"
     >
       <div className="relative bg-gray-50 dark:bg-gray-800 overflow-hidden shrink-0" style={{ aspectRatio: '16 / 9' }}>
         {item._type === 'campaign'
@@ -354,12 +355,12 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
       <div className="p-5 flex flex-col flex-1">
         <div className="space-y-1.5">
           {eyebrow && (
-            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] truncate">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.08em] truncate">
               {eyebrow}
             </p>
           )}
 
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
+          <h3 className="text-sm font-semibold text-foreground leading-tight line-clamp-2 group-hover:text-primary transition-colors">
             {title}
           </h3>
 
@@ -375,22 +376,22 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
             {item.key_features.slice(0, 3).map((feat: string, i: number) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-muted text-muted-foreground text-xs font-medium rounded-md"
               >
-                <Check className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
+                <Check className="w-3 h-3 text-primary shrink-0" />
                 <span className="truncate max-w-[140px]">{feat}</span>
               </span>
             ))}
             {item.key_features.length > 3 && (
-              <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium text-gray-400 dark:text-gray-500 rounded-lg">
+              <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium text-muted-foreground rounded-md">
                 +{item.key_features.length - 3}
               </span>
             )}
           </div>
         )}
 
-        <div className="border-t border-gray-100 dark:border-gray-800 mt-4 pt-3 flex items-center justify-between">
-          <span className="text-sm font-bold text-teal-600 dark:text-teal-400 group-hover:translate-x-0.5 transition-transform">
+        <div className="border-t border-border mt-4 pt-3 flex items-center justify-between">
+          <span className="text-sm font-semibold text-primary group-hover:translate-x-0.5 transition-transform">
             Ansehen →
           </span>
           {externalLink ? (
@@ -399,13 +400,13 @@ export function ShowcaseCard({ item }: { item: AnyItem }) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center gap-1 transition-colors"
+              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
             >
               <ExternalLink className="w-3 h-3" />
               <span>Original</span>
             </a>
           ) : item.created_at ? (
-            <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
+            <span className="text-xs text-muted-foreground font-medium">
               {formatRelativeDate(item.created_at)}
             </span>
           ) : null}
@@ -674,8 +675,9 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
       as={Link}
       to={detailHref}
       interactive
+      glass
       padding="none"
-      className="group h-full flex flex-col overflow-hidden"
+      className="group h-full flex flex-col overflow-hidden glass-surface-flat"
     >
       <div className="relative aspect-square bg-gray-50 dark:bg-gray-800 shrink-0 overflow-hidden">
         {isVideo && item.video_url ? (
@@ -725,26 +727,26 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
       <div className="p-5 flex flex-col flex-1">
         {/* SECTION 1: Identity */}
         <div className="space-y-1.5">
-          <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-[0.08em] truncate">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.08em] truncate">
             {eyebrowText}
           </p>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight line-clamp-2 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
+          <h3 className="text-sm font-semibold text-foreground leading-tight line-clamp-2 group-hover:text-primary transition-colors">
             {titleText}
           </h3>
         </div>
 
         {/* SECTION 2: Meta-Pills (Branche + Unternehmen) */}
         {(branche || item.linked_kunde?.unternehmen) && (
-          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border">
             {branche && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded-md">
-                <Tag className="w-2.5 h-2.5 text-gray-400" />
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted text-muted-foreground text-xs font-semibold rounded-md">
+                <Tag className="w-2.5 h-2.5 text-muted-foreground" />
                 <span className="capitalize truncate max-w-[100px]">{branche}</span>
               </span>
             )}
             {item.linked_kunde?.unternehmen && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-semibold rounded-md">
-                <Building2 className="w-2.5 h-2.5 text-gray-400" />
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted text-muted-foreground text-xs font-semibold rounded-md">
+                <Building2 className="w-2.5 h-2.5 text-muted-foreground" />
                 <span className="truncate max-w-[100px]">{item.linked_kunde.unternehmen}</span>
               </span>
             )}
@@ -768,17 +770,17 @@ export function AdCreativeCard({ item }: { item: AnyItem }) {
           </div>
         )}
 
-        <div className="border-t border-gray-100 dark:border-gray-800 mt-4 pt-3 flex items-center justify-between">
-          <span className="text-sm font-bold text-teal-600 dark:text-teal-400 group-hover:translate-x-0.5 transition-transform">
+        <div className="border-t border-border mt-4 pt-3 flex items-center justify-between">
+          <span className="text-sm font-semibold text-primary group-hover:translate-x-0.5 transition-transform">
             Ansehen →
           </span>
           {spend != null ? (
-            <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1 tabular-nums">
+            <span className="text-xs text-muted-foreground flex items-center gap-1 tabular-nums">
               <Euro className="w-3 h-3" />
               {Math.round(spend).toLocaleString('de-DE')} Spend
             </span>
           ) : item.created_at ? (
-            <span className="text-xs text-gray-400 dark:text-gray-500">
+            <span className="text-xs text-muted-foreground">
               {new Date(item.created_at).toLocaleDateString('de-DE', { month: 'short', year: 'numeric' })}
             </span>
           ) : null}
