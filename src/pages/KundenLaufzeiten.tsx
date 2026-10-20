@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ExternalLink, ChevronDown, Pencil, Loader2, X, Info, Search } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { formatValue } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -75,6 +75,7 @@ export default function KundenLaufzeiten() {
       setForms(p => { const n = { ...p }; Object.entries(fs).forEach(([id, f]) => { if (!p[id]) n[id] = { ...empty, ...f }; }); return n; });
     });
   }, []);
+  const [aendern, setAendern] = useState<Set<string>>(new Set());
   const [confirm, setConfirm] = useState<Row | null>(null);
 
   const load = useCallback(async () => {
@@ -188,8 +189,31 @@ export default function KundenLaufzeiten() {
     const curL = cur?.leistungen ? cur.leistungen.split(', ') : []; const sel = f.leistungen ?? curL; const cash = opts?.cash[r.client_id];
     const lbl = 'text-xs text-muted-foreground flex items-center gap-1 mb-1';
     const v = vorschlaege[r.client_id]; const vb = vorbelegt[r.client_id];
-    const vf = (k: keyof Form) => vb?.has(k) ? 'ring-1 ring-primary/40 bg-primary/5 italic' : '';
-    const vTag = (k: keyof Form) => vb?.has(k) ? <span className="text-xs text-primary/80">· Vorschlag</span> : null;
+    const slackLz = !!v && v.abgleich !== 'widerspruch' && v.laufzeit_monate != null;
+    const slackAw = v?.abschlusswert != null; const slackDt = !!v?.deal_typ;
+    const fehlt: Record<string, boolean> = {
+      laufzeit_monate: !r.laufzeit_monate && !slackLz, abschlusswert: !slackAw, retainer_monat: true,
+      leistungen: curL.length === 0, deal_typ: !slackDt && !cur?.deal_typ, paket: !!cash && !cash.paket,
+    };
+    const offen = aendern.has(r.client_id);
+    const slackTeile = [slackLz && `Laufzeit ${v!.laufzeit_monate} Mon.`, slackAw && `Abschlusswert ${formatValue(Number(v!.abschlusswert), 'currency')}`, slackDt && v!.deal_typ].filter(Boolean) as string[];
+    const vorhanden = [!fehlt.laufzeit_monate && !slackLz && `Laufzeit ${m0} Mon.`, curL.length > 0 && `Leistungen ${curL.length}`, !slackDt && cur?.deal_typ, cash?.paket && `Paket ${cash.paket}`].filter(Boolean) as string[];
+    const feldEl: Record<string, JSX.Element> = {
+      laufzeit_monate: <div key="lz"><span className={lbl}>Laufzeit (Mon.)</span><Input type="number" min={1} max={120} step={1} className={feld} value={m0} onChange={e => setF(r.client_id, 'laufzeit_monate', e.target.value)} /></div>,
+      abschlusswert: <div key="aw"><span className={lbl}>Abschlusswert €</span><Input type="number" min={0} className={feld} value={f.abschlusswert} placeholder="optional" onChange={e => setF(r.client_id, 'abschlusswert', e.target.value)} /></div>,
+      retainer_monat: <div key="rt"><span className={lbl}>Retainer/Monat €</span><Input type="number" min={0} className={feld} value={f.retainer_monat} placeholder="optional" onChange={e => setF(r.client_id, 'retainer_monat', e.target.value)} /></div>,
+      leistungen: <div key="ls"><span className={lbl}>Leistungen{optsErr && tip(`Auswahlwerte aus Close nicht geladen: ${optsErr}`)}</span>
+        <Popover><PopoverTrigger asChild><Button variant="ghost" className={cn(feld, 'w-full justify-between font-normal')} disabled={!opts}><span className="truncate">{sel.length ? `${sel.length} gewählt` : 'auswählen'}</span><ChevronDown className="h-3 w-3" /></Button></PopoverTrigger>
+          <PopoverContent className="w-80 max-h-72 overflow-y-auto p-2">{(opts?.leistungen || []).map(o => <label key={o} className="flex items-start gap-2 py-1 text-xs cursor-pointer"><Checkbox checked={sel.includes(o)} onCheckedChange={c => setF(r.client_id, 'leistungen', c ? [...sel, o] : sel.filter(x => x !== o))} />{o}</label>)}</PopoverContent></Popover></div>,
+      deal_typ: <div key="dt"><span className={lbl}>Deal-Typ</span>
+        <Select value={f.deal_typ || cur?.deal_typ || (!r.close_opportunity_id ? 'Neukunde' : '')} onValueChange={x => setF(r.client_id, 'deal_typ', x)} disabled={!opts}>
+          <SelectTrigger className={feld}><SelectValue placeholder="–" /></SelectTrigger><SelectContent>{(opts?.deal_typ || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>,
+      paket: <div key="pk"><span className={lbl}>Paket{opts && !cash && tip(`Für ${r.kunde} existiert keine Cash-Collect-Aktivität — Paket kann nicht gesetzt werden.`)}</span>
+        <Select value={f.paket || cash?.paket || ''} onValueChange={x => setF(r.client_id, 'paket', x)} disabled={!cash}>
+          <SelectTrigger className={feld}><SelectValue placeholder="–" /></SelectTrigger><SelectContent>{(opts?.paket || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>,
+    };
+    const reihenfolge = ['laufzeit_monate', 'abschlusswert', 'retainer_monat', 'leistungen', 'deal_typ', 'paket'];
+    const toggle = () => setAendern(p => { const n = new Set(p); n.has(r.client_id) ? n.delete(r.client_id) : n.add(r.client_id); return n; });
     return (
       <div key={r.client_id} className={cn('rounded-2xl bg-card p-6 shadow-[0_1px_3px_hsl(var(--foreground)/0.06),0_8px_24px_-12px_hsl(var(--foreground)/0.10)] flex flex-col gap-4 transition-all duration-300', weg.has(r.client_id) && 'opacity-0 scale-95 -translate-y-2')}>
         <div>
@@ -201,6 +225,16 @@ export default function KundenLaufzeiten() {
         {isAdmin ? <>
           {v ? <p className="text-xs text-muted-foreground">Vorschlag aus Slack vom {dt(v.quelle_datum)} · Quelle: {v.quelle_typ === 'upsell' ? 'Upsell' : 'Abschluss'}</p>
             : <p className="text-xs text-muted-foreground">kein Slack-Vorschlag vorhanden</p>}
+          {(slackTeile.length > 0 || vorhanden.length > 0) && <div className="rounded-xl bg-muted/40 px-4 py-3 text-xs space-y-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1 min-w-0">
+                {slackTeile.length > 0 && <p><span className="text-muted-foreground">Übernommen aus Slack: </span><span className="tabular-nums">{slackTeile.join(' · ')}</span></p>}
+                {vorhanden.length > 0 && <p><span className="text-muted-foreground">Bereits vorhanden: </span><span className="tabular-nums">{vorhanden.join(' · ')}</span></p>}
+              </div>
+              <button type="button" className="shrink-0 text-muted-foreground hover:text-primary underline-offset-2 hover:underline" onClick={toggle}>{offen ? 'Fertig' : 'Ändern'}</button>
+            </div>
+            {offen && <div className="space-y-3 pt-2">{reihenfolge.filter(k => !fehlt[k] && (k !== 'paket' || !!cash)).map(k => feldEl[k])}</div>}
+          </div>}
           {v?.abgleich === 'widerspruch' && <div className="rounded-xl bg-muted/60 px-4 py-3 text-xs space-y-2">
             <p>Portal: {v.portal_laufzeit ?? '–'} Mon. · Slack: {v.laufzeit_monate ?? '–'} Mon.{(v.weitere_upsells ?? 0) > 0 && ` · ${v.weitere_upsells} Upsell(s) vorhanden`}</p>
             <div className="flex gap-2">
@@ -208,29 +242,14 @@ export default function KundenLaufzeiten() {
               {v.laufzeit_monate != null && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setF(r.client_id, 'laufzeit_monate', String(v.laufzeit_monate))}>Slack übernehmen</Button>}
             </div></div>}
           <div className="space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground">Fehlt noch</p>
             <div><span className={lbl}>Startdatum{!r.close_opportunity_id && tip(r.vc_opportunity_id ? 'Abschluss existiert nur bei Viral Connect – beim Speichern wird er in unserem Close angelegt (Marke „Viral Connect“).' : 'Beim Speichern wird in Close ein gewonnener Abschluss angelegt (mit Bestätigung).')}</span>
               <Input type="date" className={feld} value={s0} onChange={e => setF(r.client_id, 'startdatum', e.target.value)} />
               {v?.start_laut_slack && <p className="text-xs text-muted-foreground mt-1">laut Slack {dt(v.start_laut_slack)}</p>}</div>
-            <div><span className={lbl}>Laufzeit (Mon.){vTag('laufzeit_monate')}</span>
-              <Input type="number" min={1} max={120} step={1} className={cn(feld, vf('laufzeit_monate'))} value={m0} onChange={e => setF(r.client_id, 'laufzeit_monate', e.target.value)} /></div>
+            {reihenfolge.filter(k => fehlt[k]).map(k => feldEl[k])}
+            {opts && !cash && <p className="text-xs text-muted-foreground">Für {r.kunde} existiert keine Cash-Collect-Aktivität — Paket kann nicht gesetzt werden.</p>}
           </div>
           {end && <div className="rounded-xl bg-primary/5 px-4 py-3 text-sm tabular-nums"><span className="text-muted-foreground">Vertragsende:</span> <span className="font-semibold text-primary">{dt(end)}</span> <span className="text-muted-foreground">· Restlaufzeit {restTage(end)} Tage</span></div>}
-          <Collapsible>
-            <CollapsibleTrigger className="group text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">Weitere Angaben <ChevronDown className="h-3 w-3 transition-transform group-data-[state=open]:rotate-180" /></CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 pt-3">
-              <div><span className={lbl}>Abschlusswert €{vTag('abschlusswert')}</span><Input type="number" min={0} className={cn(feld, vf('abschlusswert'))} value={f.abschlusswert} placeholder="optional" onChange={e => setF(r.client_id, 'abschlusswert', e.target.value)} /></div>
-              <div><span className={lbl}>Retainer/Monat €</span><Input type="number" min={0} className={feld} value={f.retainer_monat} placeholder="optional" onChange={e => setF(r.client_id, 'retainer_monat', e.target.value)} /></div>
-              <div><span className={lbl}>Leistungen{optsErr && tip(`Auswahlwerte aus Close nicht geladen: ${optsErr}`)}</span>
-                <Popover><PopoverTrigger asChild><Button variant="ghost" className={cn(feld, 'w-full justify-between font-normal')} disabled={!opts}><span className="truncate">{sel.length ? `${sel.length} gewählt` : 'auswählen'}</span><ChevronDown className="h-3 w-3" /></Button></PopoverTrigger>
-                  <PopoverContent className="w-80 max-h-72 overflow-y-auto p-2">{(opts?.leistungen || []).map(o => <label key={o} className="flex items-start gap-2 py-1 text-xs cursor-pointer"><Checkbox checked={sel.includes(o)} onCheckedChange={c => setF(r.client_id, 'leistungen', c ? [...sel, o] : sel.filter(x => x !== o))} />{o}</label>)}</PopoverContent></Popover></div>
-              <div><span className={lbl}>Deal-Typ{vTag('deal_typ')}</span>
-                <Select value={f.deal_typ || cur?.deal_typ || (!r.close_opportunity_id ? 'Neukunde' : '')} onValueChange={x => setF(r.client_id, 'deal_typ', x)} disabled={!opts}>
-                  <SelectTrigger className={cn(feld, vf('deal_typ'))}><SelectValue placeholder="–" /></SelectTrigger><SelectContent>{(opts?.deal_typ || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
-              <div><span className={lbl}>Paket{opts && !cash && tip(`Für ${r.kunde} existiert keine Cash-Collect-Aktivität — Paket kann nicht gesetzt werden.`)}</span>
-                <Select value={f.paket || cash?.paket || ''} onValueChange={v => setF(r.client_id, 'paket', v)} disabled={!cash}>
-                  <SelectTrigger className={feld}><SelectValue placeholder="–" /></SelectTrigger><SelectContent>{(opts?.paket || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
-            </CollapsibleContent>
-          </Collapsible>
           {errors[r.client_id] && <p className="text-xs text-destructive">{errors[r.client_id]}</p>}
         </> : <p className="text-xs text-muted-foreground">Nachtragen können Admins.</p>}
         <div className="mt-auto flex items-center justify-between pt-1">
