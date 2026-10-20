@@ -372,8 +372,8 @@ function Detail({ kind, title: titleOverride, monat, maId, res, canManage, onCha
                 {offen.map((r: any) => (
                   <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span>{r.clients?.name || '–'} · <span className="tabular-nums">{dt(r.abgang_datum || r.festgestellt_am)}</span></span>
-                    <span className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => decide(r.id, true)}>Als Sonderfall anerkennen</Button>
+                    <span className="flex flex-wrap gap-2">
+                      <GlassButton size="sm" variant="secondary" onClick={() => decide(r.id, true)}>Als Sonderfall anerkennen</GlassButton>
                       <GlassButton size="sm" variant="secondary" onClick={() => decide(r.id, false)}>Zählt als Churn</GlassButton>
                     </span>
                   </div>
@@ -459,9 +459,9 @@ function CallsDetail({ data, canManage, syncing, onSync, wert }: { data: any; ca
           ) : 'Noch nie synchronisiert.'}
         </div>
         {canManage && (
-          <Button size="sm" variant="outline" onClick={onSync} disabled={syncing}>
+          <GlassButton size="sm" variant="secondary" onClick={onSync} disabled={syncing}>
             {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Jetzt synchronisieren
-          </Button>
+          </GlassButton>
         )}
       </div>
 
