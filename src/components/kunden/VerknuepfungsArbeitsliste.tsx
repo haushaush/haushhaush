@@ -380,8 +380,10 @@ function Schnellzuordnung({ clientId, callMeta, onZugeordnet }: { clientId: stri
     })()}
     {konto && !kamp && !err && <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Kampagnen werden geladen …</p>}
     {kamp?.length === 0 && <p className="text-xs text-muted-foreground">Keine Kampagnen auf diesem Konto.</p>}
-    {kamp && kamp.length > 0 && <div className="divide-y divide-border/40 rounded-lg bg-card">
-      {kamp.map(c => <KampagneZeile key={c.id} k={c} kontoId={konto} alle={zuoAlle} clientId={clientId} busy={busy} callMeta={callMeta} loesen={loesen}
+    {kamp && kamp.length > 0 && <Input value={kq} onChange={e => setKq(e.target.value)} placeholder="Kampagne suchen (Name oder ID) …" className="h-8 max-w-sm text-xs" />}
+    {kamp && kamp.length > 0 && kampTreffer.length === 0 && <p className="text-xs text-muted-foreground">Keine Kampagne passt zur Suche.</p>}
+    {kamp && kampTreffer.length > 0 && <div className="divide-y divide-border/40 rounded-lg bg-card">
+      {kampTreffer.map(c => <KampagneZeile key={c.id} k={c} kontoId={konto} alle={zuoAlle} clientId={clientId} busy={busy} callMeta={callMeta} loesen={loesen}
         zuordnen={async (t, o, kid, n) => { const ok = await zuordnen(konto, untermarke, t, o, kid, n); if (ok) onZugeordnet(); return ok; }} />)}
     </div>}
     <p className="text-[11px] text-muted-foreground">Ohne Auswahl einer Anzeigengruppe wird die ganze Kampagne zugeordnet. Anzeigengruppen nur nötig, wenn sich zwei Kunden eine Kampagne teilen.</p>
