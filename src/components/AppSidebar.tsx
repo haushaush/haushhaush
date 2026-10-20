@@ -32,7 +32,7 @@ const navItems: NavItem[] = [
       { title: 'Übersicht', url: '/kunden', permissionKey: 'clients.view' },
       { title: 'Abschlüsse', url: '/abschluesse', permissionKey: 'clients.abschluesse.view' },
       { title: 'Laufzeiten', url: '/kunden/laufzeiten', permissionKey: 'clients.laufzeiten.view' },
-      { title: 'Verknüpfungen prüfen', url: '/kunden/verknuepfungen', permissionKey: 'clients.view' },
+      { title: 'Verknüpfungen', url: '/kunden/verknuepfungen', permissionKey: 'clients.view' },
     ],
   },
   {

@@ -48,7 +48,7 @@ export default function KundenVerknuepfungen() {
     <div className="container mx-auto p-6 space-y-6 max-w-7xl">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2"><GitMerge className="h-6 w-6 text-primary" />Verknüpfungen prüfen</h1>
+          <h1 className="text-2xl font-semibold flex items-center gap-2"><GitMerge className="h-6 w-6 text-primary" />Verknüpfungen</h1>
           <p className="text-sm mt-1 tabular-nums font-medium">
             {zahlen ? `${zahlen.zahler} Qonto-Zahler · ${zahlen.lexoffice} lexoffice-Kontakte · ${zahlen.kampagnen} Kampagnen · ${zahlen.ohneZahler} Kunden ohne Zahler · ${zahlen.dubletten} Dubletten` : 'Lade offene Posten …'}
           </p>

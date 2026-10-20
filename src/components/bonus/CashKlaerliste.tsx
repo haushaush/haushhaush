@@ -112,7 +112,7 @@ export function CashKlaerliste({ rows, onChanged }: { rows: any[]; onChanged: ()
                   <p className="text-xs flex items-start gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-1"><AlertTriangle className="h-3.5 w-3.5 mt-0.5 text-warning shrink-0" />
                     Gleicher Name, verschiedene Kunden: {zugeordnet.map(id => kundeName.get(id)).join(', ')}. Bitte prüfen, ob das gewollt ist.</p>
                 )}
-                {(g as any).lex && <p className="text-xs text-muted-foreground pl-3">lexoffice-Kontakt – zuordnen unter Kunden → Verknüpfungen prüfen, Abschnitt „lexoffice-Kontakte ohne Kundenzuordnung“.</p>}
+                {(g as any).lex && <p className="text-xs text-muted-foreground pl-3">lexoffice-Kontakt – zuordnen unter Kunden → Verknüpfungen, Abschnitt „lexoffice-Kontakte ohne Kundenzuordnung“.</p>}
                 {!(g as any).lex && g.eintraege.length === 0 && <p className="text-xs text-muted-foreground pl-3">Kein Qonto-Datensatz zu diesem Namen gefunden – über „Zahlungs-Zuordnung“ zuordnen.</p>}
                 {g.eintraege.map(e => {
                   const verkn = e.link?.is_confirmed && e.link.client_id ? e.link.client_id : null;
