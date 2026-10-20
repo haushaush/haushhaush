@@ -1,4 +1,4 @@
-// Cash Collect (criteria 2/3) from paid Qonto invoices: full NET amount (subtotal, else total − VAT); no ad-budget deduction.
+// Cash Collect (criteria 2/3) from paid Qonto and lexoffice invoices: full NET amount (subtotal, else total − VAT); no ad-budget deduction.
 // Invoices without a confirmed customer link, or of customers outside the month snapshot, go to the clarification list.
 // Dedupe key is source-independent (invoice number) so a later lexoffice source cannot double-count the same payment.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -64,13 +64,60 @@ async function syncMonth(admin: any, monat: string, mitarbeiter_id: string, snap
   const stale = (ex || []).filter((e: any) => !keep.has(e.zahlung_schluessel)).map((e: any) => e.id);
   if (stale.length) await admin.from("bonus_cash_collect").delete().in("id", stale);
 
-  const zu = write.filter((r) => r.zugeordnet), kl = write.filter((r) => !r.zugeordnet);
+  const lex = await syncLexoffice(admin, monat, mitarbeiter_id, inSnap, ignored, new Set(write.map((r) => r.zahlung_schluessel)));
+  ignoriert += lex.ignoriert;
+  const alleRows = [...write, ...lex.write];
+  const zu = alleRows.filter((r) => r.zugeordnet), kl = alleRows.filter((r) => !r.zugeordnet);
   return {
-    monat, rechnungen: write.length, zugeordnet: zu.length, netto_summe: r2(zu.reduce((s, r) => s + r.betrag, 0)),
+    monat, rechnungen: alleRows.length, lexoffice_rechnungen: lex.write.length, doppelt_qonto: lex.doppelt, zugeordnet: zu.length, netto_summe: r2(zu.reduce((s, r) => s + r.betrag, 0)),
     netto_voll_summe: r2(zu.reduce((s, r) => s + r.netto_voll, 0)), werbebudget_abgezogen: 0,
     klaerliste_anzahl: kl.length, klaerliste_eur: r2(kl.reduce((s, r) => s + r.betrag, 0)), ignoriert, doppelt_andere_quelle: taken.size,
-    klaerliste: kl.map((r) => ({ empfaenger: r.empfaenger_name, betrag: r.betrag, grund: r.klaer_grund })),
+    klaerliste: kl.map((r) => ({ quelle: r.quelle, empfaenger: r.empfaenger_name, betrag: r.betrag, grund: r.klaer_grund })),
   };
+}
+
+// lexoffice (Haush Haush): paid invoices by paid_date; linked via lexoffice_client_links on contact_id.
+// The voucher list has no net amount, so net = gross / 1.19 (19 % VAT); the gross stays stored in brutto.
+// Payments whose invoice-number key already came from Qonto are skipped (same payment, two sources).
+async function syncLexoffice(admin: any, monat: string, mitarbeiter_id: string, inSnap: Set<string>, ignored: Set<string>, qontoKeys: Set<string>) {
+  const [{ data: inv, error }, { data: links, error: lErr }] = await Promise.all([
+    admin.from("lexoffice_invoices").select("voucher_id, number, contact_id, contact_name, total_amount, paid_date").eq("status", "paid").gte("paid_date", monat).lt("paid_date", nextMonth(monat)),
+    admin.from("lexoffice_client_links").select("lexoffice_contact_id, client_id").not("client_id", "is", null),
+  ]);
+  if (error) throw new Error("lexoffice-Rechnungen: " + error.message);
+  if (lErr) throw new Error("lexoffice-Verknüpfungen: " + lErr.message);
+  const byCid = new Map((links || []).map((l: any) => [l.lexoffice_contact_id, l.client_id]));
+  const rows: any[] = [];
+  let ignoriert = 0;
+  for (const i of inv || []) {
+    const name = (i.contact_name || "").trim();
+    if (ignored.has(norm(name))) { ignoriert++; continue; }
+    const brutto = num(i.total_amount) ?? 0;
+    const netto = r2(brutto / 1.19);
+    const clientId = (i.contact_id && byCid.get(i.contact_id)) || null;
+    const ok = !!clientId && inSnap.has(clientId);
+    rows.push({
+      monat, client_id: clientId, mitarbeiter_id: ok ? mitarbeiter_id : null, betrag: netto,
+      eingang_am: i.paid_date, quelle: "lexoffice", quelle_id: i.voucher_id,
+      zahlung_schluessel: i.number ? `rechnung:${squash(i.number)}` : `lexoffice:${i.voucher_id}`,
+      rechnungsnummer: i.number, empfaenger_name: name || null, brutto: r2(brutto), netto_voll: netto, werbebudget_abzug: 0, abzug_positionen: [],
+      zugeordnet: ok, klaer_grund: ok ? null : !i.contact_id ? "lexoffice: Rechnung ohne Kontakt" : !clientId ? "lexoffice-Kontakt keinem Kunden zugeordnet" : "Kunde nicht im Kundensnapshot dieses Monats",
+      updated_at: new Date().toISOString(),
+    });
+  }
+  const uniq = [...new Map(rows.map((r) => [r.zahlung_schluessel, r])).values()];
+  const { data: other } = await admin.from("bonus_cash_collect").select("zahlung_schluessel").neq("quelle", "lexoffice").in("zahlung_schluessel", uniq.length ? uniq.map((r) => r.zahlung_schluessel) : ["-"]);
+  const taken = new Set([...qontoKeys, ...(other || []).map((o: any) => o.zahlung_schluessel)]);
+  const write = uniq.filter((r) => !taken.has(r.zahlung_schluessel));
+  if (write.length) {
+    const { error: wErr } = await admin.from("bonus_cash_collect").upsert(write, { onConflict: "zahlung_schluessel" });
+    if (wErr) throw new Error("lexoffice schreiben fehlgeschlagen: " + wErr.message);
+  }
+  const { data: ex } = await admin.from("bonus_cash_collect").select("id, zahlung_schluessel").eq("monat", monat).eq("quelle", "lexoffice");
+  const keep = new Set(write.map((r) => r.zahlung_schluessel));
+  const stale = (ex || []).filter((e: any) => !keep.has(e.zahlung_schluessel)).map((e: any) => e.id);
+  if (stale.length) await admin.from("bonus_cash_collect").delete().in("id", stale);
+  return { write, ignoriert, doppelt: uniq.length - write.length };
 }
 
 async function runLogged(admin: any, monat: string, mitarbeiter_id: string, ausloeser: string) {

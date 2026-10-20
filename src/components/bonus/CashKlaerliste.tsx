@@ -46,11 +46,13 @@ export function CashKlaerliste({ rows, onChanged }: { rows: any[]; onChanged: ()
     const invById = new Map((inv || []).map(x => [x.qonto_invoice_id, x]));
     const m = new Map<string, Gruppe>();
     for (const r of rows) {
-      const k = key(r.empfaenger_name);
-      const g = m.get(k) || { key: k, name: r.empfaenger_name || '–', eintraege: [], offen: [] };
+      const lex = r.quelle === 'lexoffice';
+      const k = (lex ? 'lexoffice|' : '') + key(r.empfaenger_name);
+      const g = m.get(k) || { key: k, name: r.empfaenger_name || '–', eintraege: [], offen: [], lex } as Gruppe;
       g.offen.push(r); m.set(k, g);
     }
     for (const g of m.values()) {
+      if ((g as any).lex) continue;
       const byQid = new Map<string, Eintrag>();
       for (const x of inv || []) {
         if (!x.client_id || key(x.client_name) !== g.key) continue;
@@ -101,6 +103,7 @@ export function CashKlaerliste({ rows, onChanged }: { rows: any[]; onChanged: ()
               <div key={g.key} className="py-2.5 space-y-1.5">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
                   <span className="font-medium">{g.name}</span>
+                  <span className="text-[11px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{(g as any).lex ? 'lexoffice' : 'Qonto'}</span>
                   <span className="text-xs text-muted-foreground tabular-nums">{g.offen.length} offen · {eur(summe)}</span>
                   {g.eintraege.length > 1 && <span className="ml-auto text-xs text-muted-foreground">{g.eintraege.length} Einträge in Qonto</span>}
                 </div>
@@ -109,7 +112,8 @@ export function CashKlaerliste({ rows, onChanged }: { rows: any[]; onChanged: ()
                   <p className="text-xs flex items-start gap-1.5 rounded-md border border-warning/40 bg-warning/10 px-2 py-1"><AlertTriangle className="h-3.5 w-3.5 mt-0.5 text-warning shrink-0" />
                     Gleicher Name, verschiedene Kunden: {zugeordnet.map(id => kundeName.get(id)).join(', ')}. Bitte prüfen, ob das gewollt ist.</p>
                 )}
-                {g.eintraege.length === 0 && <p className="text-xs text-muted-foreground pl-3">Kein Qonto-Datensatz zu diesem Namen gefunden – über „Zahlungs-Zuordnung“ zuordnen.</p>}
+                {(g as any).lex && <p className="text-xs text-muted-foreground pl-3">lexoffice-Kontakt – zuordnen unter Kunden → Verknüpfungen prüfen, Abschnitt „lexoffice-Kontakte ohne Kundenzuordnung“.</p>}
+                {!(g as any).lex && g.eintraege.length === 0 && <p className="text-xs text-muted-foreground pl-3">Kein Qonto-Datensatz zu diesem Namen gefunden – über „Zahlungs-Zuordnung“ zuordnen.</p>}
                 {g.eintraege.map(e => {
                   const verkn = e.link?.is_confirmed && e.link.client_id ? e.link.client_id : null;
                   const gewaehlt = wahl[e.qid] ?? v?.kunde.id ?? '';

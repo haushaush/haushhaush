@@ -50,7 +50,7 @@ export default function KundenVerknuepfungen() {
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2"><GitMerge className="h-6 w-6 text-primary" />Verknüpfungen prüfen</h1>
           <p className="text-sm mt-1 tabular-nums font-medium">
-            {zahlen ? `${zahlen.zahler} Zahler · ${zahlen.kampagnen} Kampagnen · ${zahlen.ohneZahler} Kunden ohne Zahler · ${zahlen.dubletten} Dubletten` : 'Lade offene Posten …'}
+            {zahlen ? `${zahlen.zahler} Qonto-Zahler · ${zahlen.lexoffice} lexoffice-Kontakte · ${zahlen.kampagnen} Kampagnen · ${zahlen.ohneZahler} Kunden ohne Zahler · ${zahlen.dubletten} Dubletten` : 'Lade offene Posten …'}
           </p>
           <p className="text-xs text-muted-foreground tabular-nums">
             {loading ? '…' : `${zeilen.length} aktive Kunden · ${mitLuecken} mit Lücken · ${vorschlaege.length} Vorschläge offen`}
