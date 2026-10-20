@@ -77,7 +77,7 @@ export default function KundenVerknuepfungen() {
       </div>
 
       <VerknuepfungsArbeitsliste onZahlen={setZahlen} />
-      <BuchhaltungUngeklaert onCloseVerknuepft={(id, kein) => setzeStand(id, 'close', kein ? null : { id: '', name: 'Close' })} />
+      <BuchhaltungUngeklaert />
       <h2 className="text-sm font-medium pt-2">Übersicht je Kunde</h2>
       <div className="rounded-2xl bg-card shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
