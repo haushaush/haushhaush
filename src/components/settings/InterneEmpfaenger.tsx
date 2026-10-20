@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 type Art = 'intern' | 'vorlage';
 type Row = { name_norm: string; name_anzeige: string; grund: string | null; art: Art | null; angelegt_am: string };
 
-const ART_GRUND: Record<Art, string> = { intern: 'Intern', vorlage: 'Vorlage- oder Testrechnung' };
 
 const GRUPPEN: Record<Art, { titel: string; hinweis: string; badge: string }> = {
   intern: { titel: 'Konzernintern', hinweis: 'Rechnungen zwischen unseren eigenen Gesellschaften.', badge: 'intern' },
