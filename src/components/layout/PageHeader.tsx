@@ -9,7 +9,6 @@ interface BreadcrumbProp {
 }
 
 interface PageHeaderProps {
-  /** Single breadcrumb back-link. Max one. */
   breadcrumb?: BreadcrumbProp;
   title: string;
   description?: string;
@@ -17,6 +16,10 @@ interface PageHeaderProps {
   /** `xl` = main page (Hauptseite), `lg` = sub-page. */
   size?: 'lg' | 'xl';
   className?: string;
+  /** Optional: replaces the size preset for the title (per-page styling). */
+  titleClassName?: string;
+  /** Optional: replaces the size preset for the description. */
+  descriptionClassName?: string;
   /** Centered hero variant (used by main showcase page). */
   centered?: boolean;
   /** Alignment for sub-pages. `center` mirrors hero with breadcrumb + actions. */
