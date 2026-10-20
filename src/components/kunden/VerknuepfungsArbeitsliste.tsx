@@ -83,8 +83,8 @@ function Wahlfeld({ kandidaten, onPick, platzhalter }: { kandidaten: Wahl[]; onP
 }
 
 /** Eine erledigbare Zeile: Vorschlag + Übernehmen/Verwerfen, alternativ manuelle Wahl. */
-function Zeile({ titel, info, vorschlag, kandidaten, platzhalter, onUebernehmen, onVerwerfen }: {
-  titel: React.ReactNode; info: React.ReactNode; vorschlag: Vorschlag | null; kandidaten: Wahl[]; platzhalter: string;
+function Zeile({ titel, info, vorschlag, kandidaten, platzhalter, onUebernehmen, onVerwerfen, extra }: {
+  extra?: React.ReactNode; titel: React.ReactNode; info: React.ReactNode; vorschlag: Vorschlag | null; kandidaten: Wahl[]; platzhalter: string;
   onUebernehmen: (w: Wahl) => Promise<void>; onVerwerfen?: (w: Wahl) => Promise<void>;
 }) {
   const [manuell, setManuell] = useState<Wahl | null>(null);
@@ -104,9 +104,33 @@ function Zeile({ titel, info, vorschlag, kandidaten, platzhalter, onUebernehmen,
         {ziel && <Button size="sm" className="h-8" disabled={busy} onClick={() => tu(() => onUebernehmen(ziel))}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Übernehmen'}</Button>}
         {manuell ? <Button size="sm" variant="ghost" className="h-8" disabled={busy} onClick={() => setManuell(null)}>Zurück</Button>
           : vorschlag && onVerwerfen && <Button size="sm" variant="ghost" className="h-8" disabled={busy} onClick={() => tu(() => onVerwerfen(vorschlag))}>Verwerfen</Button>}
+        {extra}
       </div>
     </div>
   );
+}
+
+const IGNORIER_GRUENDE = ['Ehemaliger Kunde', 'Kein Betreuungskunde', 'Zahlungsdienstleister', 'Sonstiges'];
+
+/** „Nicht zuordnen": Zahler zählt nie für das Cash Collect. Grund ist Pflicht. */
+function NichtZuordnen({ onSpeichern }: { onSpeichern: (grund: string) => Promise<void> }) {
+  const [offen, setOffen] = useState(false);
+  const [wahl, setWahl] = useState('');
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const grund = wahl === 'Sonstiges' ? (text.trim() ? `Sonstiges: ${text.trim()}` : '') : wahl;
+  if (!offen) return <Button size="sm" variant="ghost" className="h-8" onClick={() => setOffen(true)}>Nicht zuordnen</Button>;
+  return <div className="flex flex-wrap items-center gap-1.5 w-full lg:w-auto">
+    <select value={wahl} onChange={e => setWahl(e.target.value)} className="h-8 rounded-md border border-input bg-background px-2 text-xs" aria-label="Grund">
+      <option value="">Grund wählen …</option>
+      {IGNORIER_GRUENDE.map(g => <option key={g} value={g}>{g}</option>)}
+    </select>
+    {wahl === 'Sonstiges' && <Input value={text} onChange={e => setText(e.target.value)} placeholder="Grund eingeben" className="h-8 w-40 text-xs" maxLength={200} />}
+    <Button size="sm" variant="outline" className="h-8" disabled={!grund || busy}
+      onClick={async () => { setBusy(true); try { await onSpeichern(grund); } catch (e: any) { toast.error(e?.message || 'Fehlgeschlagen'); setBusy(false); } }}>
+      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Speichern'}</Button>
+    <Button size="sm" variant="ghost" className="h-8" disabled={busy} onClick={() => { setOffen(false); setWahl(''); setText(''); }}>Abbrechen</Button>
+  </div>;
 }
 
 export type ArbeitslisteZahlen = { zahler: number; kampagnen: number; ohneZahler: number; dubletten: number };
@@ -121,6 +145,14 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
   const [kampagnen, setKampagnen] = useState<Kampagne[] | null>(null);
   const [metaFehler, setMetaFehler] = useState<string[]>([]);
   const [fehler, setFehler] = useState<string | null>(null);
+  const [ignoriert, setIgnoriert] = useState<any[]>([]);
+  const [ignoriertAuf, setIgnoriertAuf] = useState(false);
+  const ladeIgnoriert = useCallback(async () => {
+    const r = await alle('bonus_cash_ignorierte_empfaenger', 'id, qonto_client_name, grund, created_at');
+    if (r.error) console.error('Nicht zugeordnete Zahler nicht geladen:', r.error);
+    setIgnoriert([...r.rows].sort((a: any, b: any) => (b.created_at || '').localeCompare(a.created_at || '')));
+  }, []);
+  useEffect(() => { ladeIgnoriert(); }, [ladeIgnoriert]);
 
   const ladeDaten = useCallback(async () => {
     const [c, i, l, z, v] = await Promise.all([
@@ -163,6 +195,21 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
   const kundenWahl = useMemo(() => (kunden || []).map(k => ({ id: k.id, name: k.name })).sort((a, b) => (a.name || '').localeCompare(b.name || '')), [kunden]);
   const aktive = useMemo(() => (kunden || []).filter(k => AKTIV.includes(k.kundenstatus || '')), [kunden]);
 
+  const ignoriertKeys = useMemo(() => new Set(ignoriert.map((r: any) => key(r.qonto_client_name))), [ignoriert]);
+  const nichtZuordnen = async (name: string, grund: string) => {
+    const uid = (await supabase.auth.getUser()).data.user?.id ?? null;
+    const { error } = await (supabase.from as any)('bonus_cash_ignorierte_empfaenger').insert({ qonto_client_name: name, grund, angelegt_von: uid });
+    if (error) throw new Error(error.message);
+    toast.success(`${name}: zählt nicht mehr für das Cash Collect`);
+    await ladeIgnoriert();
+  };
+  const dochZuordnen = async (r: any) => {
+    const { error } = await (supabase.from as any)('bonus_cash_ignorierte_empfaenger').delete().eq('id', r.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${r.qonto_client_name} steht wieder in der Arbeitsliste`);
+    await ladeIgnoriert();
+  };
+
   // Qonto-Zahler je normalisiertem Namen, darunter die einzelnen Qonto-Datensätze.
   const { offeneZahler, dubletten } = useMemo(() => {
     const bestaetigt = links.filter(l => l.is_confirmed && l.client_id);
@@ -190,10 +237,10 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
     const alleZ = [...m.values()];
     for (const z of alleZ) z.eintraege.sort((a, b) => b.anzahl - a.anzahl);
     return {
-      offeneZahler: alleZ.filter(z => !linkName.has(z.key) && z.eintraege.every(e => !e.client_id)).sort((a, b) => b.netto - a.netto),
+      offeneZahler: alleZ.filter(z => !ignoriertKeys.has(z.key) && !linkName.has(z.key) && z.eintraege.every(e => !e.client_id)).sort((a, b) => b.netto - a.netto),
       dubletten: alleZ.filter(z => z.eintraege.filter(e => !e.qid.startsWith('name:')).length > 1 && z.eintraege.some(e => !e.client_id)),
     };
-  }, [inv, links]);
+  }, [inv, links, ignoriertKeys]);
 
   const offeneKampagnen = useMemo(() => {
     if (!kampagnen) return null;
@@ -259,8 +306,22 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
           return <Zeile key={z.key} titel={z.name}
             info={<>{z.bezahlt} bezahlt · {eur(z.netto)} netto · letzte {dt(z.letzte)}{echte > 1 ? ` · ${echte} Einträge in Qonto (werden alle zugeordnet)` : ''}</>}
             vorschlag={kundeVorschlag(z.name, 'qonto', ext)} kandidaten={kundenWahl} platzhalter="Kunde suchen…"
-            onUebernehmen={w => zahlerVerknuepfen(z.eintraege, w)} onVerwerfen={w => verwerfen('qonto', ext, w.id)} />;
+            onUebernehmen={w => zahlerVerknuepfen(z.eintraege, w)} onVerwerfen={w => verwerfen('qonto', ext, w.id)}
+            extra={<NichtZuordnen onSpeichern={g => nichtZuordnen(z.eintraege[0]?.name || z.name, g)} />} />;
         })}
+        {ignoriert.length > 0 && <div className="pt-2">
+          <button onClick={() => setIgnoriertAuf(v => !v)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+            <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', ignoriertAuf && 'rotate-90')} />Nicht zugeordnet ({ignoriert.length}) – zählen nie für das Cash Collect
+          </button>
+          {ignoriertAuf && <div className="mt-1 divide-y divide-border/40">
+            {ignoriert.map((r: any) => <div key={r.id} className="py-2 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-3 items-center text-xs">
+              <span className="font-medium break-words">{r.qonto_client_name}</span>
+              <span className="text-muted-foreground break-words">{r.grund || '—'}</span>
+              <span className="text-muted-foreground tabular-nums">{dt(r.created_at)}</span>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => dochZuordnen(r)}>Doch zuordnen</Button>
+            </div>)}
+          </div>}
+        </div>}
       </Abschnitt>
 
       <Abschnitt nr={2} titel="Qonto-Dubletten" anzahl={laedt ? null : dubletten.length} laedt={laedt}
