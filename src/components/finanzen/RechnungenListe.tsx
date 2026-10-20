@@ -23,7 +23,7 @@ function StatusBadge({ r }: { r: Rechnung }) {
 function Kachel({ title, value, sub }: { title: string; value: string; sub?: string }) {
   return <Card><CardContent className="p-4 space-y-1">
     <p className="text-xs text-muted-foreground">{title}</p>
-    <p className="text-xl font-semibold tabular-nums">{value}</p>
+    <p className="text-2xl font-semibold tabular-nums">{value}</p>
     {sub && <p className="text-xs text-muted-foreground tabular-nums">{sub}</p>}
   </CardContent></Card>;
 }

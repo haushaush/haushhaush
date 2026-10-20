@@ -480,7 +480,7 @@ export default function Finanzen() {
               <Card className="lg:col-span-1">
                 <CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Gesamt-Guthaben</p>
-                  <p className="text-3xl font-semibold tabular-nums mt-1">{eur(totalBalance)}</p>
+                  <p className="text-2xl font-semibold tabular-nums mt-1">{eur(totalBalance)}</p>
                   <p className="text-xs text-muted-foreground mt-1">{accounts.length} Konten</p>
                   <div className="mt-4 space-y-2 border-t pt-3">
                     {netLiquidity != null && (
