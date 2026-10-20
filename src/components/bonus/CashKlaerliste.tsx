@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
+import { GlassButton } from './GlassButton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AlertTriangle, Check } from 'lucide-react';
 import { toast } from 'sonner';
