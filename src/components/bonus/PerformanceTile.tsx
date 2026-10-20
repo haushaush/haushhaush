@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Info } from 'lucide-react';
 import { boundaries, callProgress, forecastPoints, monthClock, type Tier } from './presentation';
@@ -61,23 +60,25 @@ export function PerformanceTile({ criterion: key, label, k, config, month, basis
     if (clock.current && w.betreute_kunden) { const limit = tiers.find(t => t.bis !== undefined && Number(t.bis) > 0)?.bis; forecast = `Kein Verlust-Soll. Anteilig bis heute: ${n((limit || 0) / 100 * w.betreute_kunden * clock.fraction)} Abgänge an der ${n(limit || 0)}-%-Grenze. Keine belastbare Churn-Prognose.`; }
   }
   const ratio = pacing && pacing.target > 0 ? pacing.actual / pacing.target : 1;
-  return <Card className="min-w-0 h-full cursor-pointer" onClick={event => { if (!(event.target instanceof Element) || !event.target.closest('button, [role="button"]')) onClick(); }}>
-    <CardContent className="p-5 flex flex-col gap-3 h-full">
-      <Button variant="ghost" onClick={onClick} aria-label={`${label}: Liste anzeigen`} className="p-0 h-auto w-full items-start flex-col text-left text-foreground whitespace-normal hover:bg-transparent gap-3">
-        <span className="text-sm font-medium">{label}</span>
-        <span className="text-3xl font-semibold tabular-nums break-words">{headline}</span>
-        <span className="text-xs text-muted-foreground font-normal tabular-nums">{sub}</span>
+  return <div className="glass-surface p-5 min-w-0 h-full cursor-pointer" onClick={event => { if (!(event.target instanceof Element) || !event.target.closest('button, [role="button"]')) onClick(); }}>
+    <div className="flex flex-col space-y-4 h-full">
+      <Button variant="ghost" onClick={onClick} aria-label={`${label}: Liste anzeigen`} className="p-0 h-auto w-full items-start flex-col text-left text-foreground whitespace-normal hover:bg-transparent gap-2">
+        <span className="text-sm font-semibold">{label}</span>
+        <span className="text-2xl font-semibold tabular-nums break-words">{headline}</span>
+        <span className="text-sm text-muted-foreground font-normal tabular-nums">{sub}</span>
       </Button>
-      <p className="text-sm tabular-nums">{outcome}</p>
-      {(w.zielwert !== undefined || w.betreute_kunden !== undefined) && <div className="flex items-center gap-1 text-xs text-muted-foreground">{key === 'calls' ? 'Zielzahl' : 'Monatsbasis'}: {w.zielwert ?? w.betreute_kunden}<Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Monatsbasis erklären"><Info className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent className="max-w-80 font-normal">{basis?.regel === 'aktiv_im_monat' ? `Basis: Kunden, die im ${new Date(month).toLocaleDateString('de-DE', { month: 'long' })} mindestens einen Tag aktiv waren. ${basis.gesamt} Kunden · davon ${basis.abgegangen ?? 0} abgegangen · ${basis.neu ?? 0} neu dazugekommen.` : <>Basis: {basis?.gesamt ?? w.zielwert ?? w.betreute_kunden} Kunden im {new Date(month).toLocaleDateString('de-DE', { month: 'long' })} (gespeicherter Stand).</>}{basisNeu && ` Nach neuer Regel wären es ${basisNeu.gesamt} Kunden — der freigegebene Monat bleibt unverändert.`}</TooltipContent></Tooltip>{basisNeu && basisNeu.gesamt !== (basis?.gesamt ?? w.zielwert) && <span className="text-muted-foreground/70">· neue Regel: {basisNeu.gesamt}</span>}</div>}
-      <div className="relative h-2 rounded-full bg-muted my-1" role="progressbar" aria-label={`${label}: Fortschritt`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.max(0, progress))}>
+      <p className="text-sm text-muted-foreground tabular-nums">{outcome}</p>
+      <div className="relative h-1.5 rounded-full bg-muted" role="progressbar" aria-label={`${label}: Fortschritt`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.max(0, progress))}>
         <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
-        {marks.filter(m => m <= 100 && m > 0).map(m => <span key={m} title={`Stufe ab ${n(m)} %`} className="absolute top-[-3px] h-3.5 w-px bg-muted-foreground" style={{ left: `${Math.min(99.5, m)}%` }} />)}
+        {marks.filter(m => m <= 100 && m > 0).map(m => <span key={m} title={`Stufe ab ${n(m)} %`} className="absolute top-[-4px] h-3.5 w-px bg-muted-foreground" style={{ left: `${Math.min(99.5, m)}%` }} />)}
       </div>
-      <p className="text-sm font-medium leading-relaxed">{next}</p>
-      {pacing && <p className="text-xs tabular-nums flex gap-2 items-start"><span aria-hidden className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${ratio >= 1 ? 'bg-success' : ratio >= .8 ? 'bg-warning' : 'bg-destructive'}`} /><span>{key === 'calls' && Number(w.gewichtete_summe) === Number(w.anzahl_calls) ? `${w.anzahl_calls} von ${n(pacing.target, 0)} Calls` : `${n(pacing.actual)} von ${n(pacing.target, 0)} ${pacing.unit}`} im Zeitplan · {ratio >= 1 ? 'im Plan' : ratio >= .8 ? 'knapp dahinter' : 'deutlich dahinter'}{key === 'cash_niveau' ? ' · Soll zur nächsten Stufe' : key === 'cash_entwicklung' ? ' · Soll zum Referenzmonat' : ''}</span></p>}
+      <p className="text-xs text-muted-foreground leading-relaxed">{next}</p>
+      {pacing && <p className="text-xs text-muted-foreground tabular-nums flex gap-2 items-start"><span aria-hidden className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${ratio >= 1 ? 'bg-success' : ratio >= .8 ? 'bg-warning' : 'bg-destructive'}`} /><span>{key === 'calls' && Number(w.gewichtete_summe) === Number(w.anzahl_calls) ? `${w.anzahl_calls} von ${n(pacing.target, 0)} Calls` : `${n(pacing.actual)} von ${n(pacing.target, 0)} ${pacing.unit}`} im Zeitplan · {ratio >= 1 ? 'im Plan' : ratio >= .8 ? 'knapp dahinter' : 'deutlich dahinter'}{key === 'cash_niveau' ? ' · Soll zur nächsten Stufe' : key === 'cash_entwicklung' ? ' · Soll zum Referenzmonat' : ''}</span></p>}
       {forecast && <p className="text-xs text-muted-foreground leading-relaxed tabular-nums"><span className="font-medium">{key === 'churn' ? 'Einordnung' : 'Prognose'}: </span>{forecast}</p>}
-      {k.basis_hinweis && <p title={k.basis_hinweis} className="text-xs text-muted-foreground mt-auto">{k.basis_hinweis}</p>}
-    </CardContent>
-  </Card>;
+      <div className="mt-auto pt-2 space-y-1">
+      {(w.zielwert !== undefined || w.betreute_kunden !== undefined) && <div className="flex items-center gap-1 text-xs text-muted-foreground">{key === 'calls' ? 'Zielzahl' : 'Monatsbasis'}: {w.zielwert ?? w.betreute_kunden}<Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Monatsbasis erklären"><Info className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent className="max-w-80 font-normal">{basis?.regel === 'aktiv_im_monat' ? `Basis: Kunden, die im ${new Date(month).toLocaleDateString('de-DE', { month: 'long' })} mindestens einen Tag aktiv waren. ${basis.gesamt} Kunden · davon ${basis.abgegangen ?? 0} abgegangen · ${basis.neu ?? 0} neu dazugekommen.` : <>Basis: {basis?.gesamt ?? w.zielwert ?? w.betreute_kunden} Kunden im {new Date(month).toLocaleDateString('de-DE', { month: 'long' })} (gespeicherter Stand).</>}{basisNeu && ` Nach neuer Regel wären es ${basisNeu.gesamt} Kunden — der freigegebene Monat bleibt unverändert.`}</TooltipContent></Tooltip>{basisNeu && basisNeu.gesamt !== (basis?.gesamt ?? w.zielwert) && <span className="text-muted-foreground/70">· neue Regel: {basisNeu.gesamt}</span>}</div>}
+      {k.basis_hinweis && <p title={k.basis_hinweis} className="text-xs text-muted-foreground">{k.basis_hinweis}</p>}
+      </div>
+    </div>
+  </div>;
 }

@@ -106,14 +106,14 @@ export default function BonusCockpit() {
     <PageShell>
       <PageHeader title="Bonus-Cockpit" description={canManage ? 'Monatliche Aufstellung je Kriterium (§ 5 Abs. 3 Bonusvereinbarung).' : `Deine monatliche Aufstellung${maName ? ` – ${maName}` : ''}.`} />
 
-      <div className="flex flex-wrap gap-3 mb-6">
+      <div className="flex flex-wrap gap-3 mb-8">
         <Select value={monat} onValueChange={setMonat}>
-          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-44 glass-field"><SelectValue /></SelectTrigger>
           <SelectContent>{months().map(m => <SelectItem key={m} value={m}>{new Date(m).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}</SelectItem>)}</SelectContent>
         </Select>
         {canManage && (
           <Select value={maId} onValueChange={setMaId}>
-            <SelectTrigger className="w-56"><SelectValue placeholder="Mitarbeiter" /></SelectTrigger>
+            <SelectTrigger className="w-56 glass-field"><SelectValue placeholder="Mitarbeiter" /></SelectTrigger>
             <SelectContent>{mitarbeiter.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
           </Select>
         )}
@@ -122,39 +122,46 @@ export default function BonusCockpit() {
       {canManage !== null && !mitarbeiter.length && (
         <Card><CardContent className="py-12 text-center text-muted-foreground">Für dich ist kein Bonusmodell hinterlegt.</CardContent></Card>
       )}
-      {err && <Card className="mb-6"><CardContent className="py-4 text-sm text-destructive">{err}</CardContent></Card>}
+      {err && <Card className="mb-6"><CardContent className="py-4 text-sm text-destructive-text">{err}</CardContent></Card>}
 
       {res && (
-        <>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card><CardContent className="p-5">
-              <div className="text-xs text-muted-foreground">Erreichte Punkte</div>
-              <div className="text-3xl font-semibold tabular-nums">{num(res.punkte_gesamt)} <span className="text-base text-muted-foreground">von {res.punkte_max}{provisional && ' · vorläufig'}</span></div>
-            </CardContent></Card>
-            <Card><CardContent className="p-5">
-              <div className="text-xs text-muted-foreground">Bonus{provisional && ' · vorläufig'}</div>
-              <div className="text-3xl font-semibold tabular-nums">{eur(res.bonus_eur)}</div>
-            </CardContent></Card>
-            <Card><CardContent className="p-5">
-              <div className="text-xs text-muted-foreground">Upsell-Beteiligung (separat)</div>
-              <div className="text-3xl font-semibold tabular-nums">{eur(res.upsell_beteiligung_eur)}</div>
-            </CardContent></Card>
+        <div className="space-y-8">
+          <div className="space-y-3">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="kz-card min-w-0 space-y-3">
+                <div className="kz-label text-muted-foreground">Erreichte Punkte</div>
+                <div className="kz-zahl break-words">{num(res.punkte_gesamt)}</div>
+                <div className="text-sm text-muted-foreground tabular-nums">von {res.punkte_max}{provisional && ' · vorläufig'}</div>
+              </div>
+              <div className="kz-card min-w-0 space-y-3">
+                <div className="kz-label text-muted-foreground">Bonus{provisional && ' · vorläufig'}</div>
+                <div className="kz-zahl break-words">{eur(res.bonus_eur)}</div>
+              </div>
+              <div className="kz-card min-w-0 space-y-3">
+                <div className="kz-label text-muted-foreground">Upsell-Beteiligung (separat)</div>
+                <div className="kz-zahl break-words">{eur(res.upsell_beteiligung_eur)}</div>
+              </div>
+            </div>
+
+            {res.nicht_bewertbare_kriterien > 0 && (
+              <p className="text-xs text-muted-foreground tabular-nums">
+                {res.nicht_bewertbare_kriterien} von 5 Kriterien haben keine vollständige Datengrundlage — Details je Kachel
+              </p>
+            )}
           </div>
 
-          {res.nicht_bewertbare_kriterien > 0 && (
-            <p className="mt-3 text-xs text-muted-foreground tabular-nums">
-              {res.nicht_bewertbare_kriterien} von 5 Kriterien haben keine vollständige Datengrundlage — Details je Kachel
-            </p>
-          )}
-
-          {clock.current && <p className="mt-6 mb-3 text-sm text-muted-foreground tabular-nums">Stand {String(clock.day).padStart(2, '0')}.{monat.slice(5, 7)}. · Tag {clock.day} von {clock.days} · Monat zu {Math.round(clock.fraction * 100)} % vorbei</p>}
-          {clock.future && <p className="mt-6 text-sm text-muted-foreground">Monat hat noch nicht begonnen · Punkte vorläufig</p>}
-          {!!res.anzeige?.basis?.ohne_startdatum && <p className="mt-3 text-sm text-muted-foreground"><a href="/kunden/laufzeiten" className="text-primary hover:underline">{res.anzeige.basis.ohne_startdatum} Kunden ohne Startdatum — Zuordnung unsicher</a></p>}
-          {res.freigegeben && <p className="mt-3 text-sm text-muted-foreground">Freigegebener Monat: gespeicherte Werte{res.anzeige?.basis_neu ? ` · nach neuer Basisregel wären es ${res.anzeige.basis_neu.gesamt} Kunden (nur Hinweis)` : ''}.</p>}
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {ORDER.map(({ key, label }) => <PerformanceTile key={key} criterion={key} label={label} k={res.kriterien[key]} config={res.anzeige?.config} month={monat} basis={res.anzeige?.basis} basisNeu={res.anzeige?.basis_neu} onClick={() => showDetail(key)} />)}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              {clock.current && <p className="text-sm text-muted-foreground tabular-nums">Stand {String(clock.day).padStart(2, '0')}.{monat.slice(5, 7)}. · Tag {clock.day} von {clock.days} · Monat zu {Math.round(clock.fraction * 100)} % vorbei</p>}
+              {clock.future && <p className="text-sm text-muted-foreground">Monat hat noch nicht begonnen · Punkte vorläufig</p>}
+              {!!res.anzeige?.basis?.ohne_startdatum && <p className="text-sm text-muted-foreground"><a href="/kunden/laufzeiten" className="text-primary hover:underline">{res.anzeige.basis.ohne_startdatum} Kunden ohne Startdatum — Zuordnung unsicher</a></p>}
+              {res.freigegeben && <p className="text-sm text-muted-foreground">Freigegebener Monat: gespeicherte Werte{res.anzeige?.basis_neu ? ` · nach neuer Basisregel wären es ${res.anzeige.basis_neu.gesamt} Kunden (nur Hinweis)` : ''}.</p>}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {ORDER.map(({ key, label }) => <PerformanceTile key={key} criterion={key} label={label} k={res.kriterien[key]} config={res.anzeige?.config} month={monat} basis={res.anzeige?.basis} basisNeu={res.anzeige?.basis_neu} onClick={() => showDetail(key)} />)}
+            </div>
           </div>
-        </>
+        </div>
       )}
 
       <div className="mt-8 flex flex-wrap items-center gap-4">
