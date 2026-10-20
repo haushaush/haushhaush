@@ -11,8 +11,8 @@ import { AlertTriangle, Check, ChevronRight, Loader2, Search } from 'lucide-reac
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { alle, namensTreffer, qontoVerknuepfen } from '@/lib/kundenVerknuepfungen';
-import { STATUS_LABEL } from '@/lib/werbebudgetKonten';
-import { zuordnungAnlegen } from './werbebudgetZuordnung';
+import { STATUS_LABEL, ladeUntermarken, type Untermarke } from '@/lib/werbebudgetKonten';
+import { zuordnungAnlegen, useWerbebudgetZuordnung, KampagneZeile, type ZuoKampagne } from './werbebudgetZuordnung';
 
 const key = (s: string | null | undefined) => (s ?? '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[\u200b-\u200d\ufeff]/g, '').replace(/\s+/g, ' ').trim();
 const eur = (n: number) => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -308,16 +308,62 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
       </Abschnitt>
 
       <Abschnitt nr={5} titel="Kunden ohne Kampagnenzuordnung" anzahl={laedt ? null : ohneKampagne.length} laedt={laedt}
-        hinweis="Zuordnen im Verknüpfungen-Tab des Kunden. Nicht jeder Kunde braucht eine Kampagne: wer sein eigenes Werbekonto bezahlt, steht hier zu Recht und kann abgehakt werden.">
-        {ohneKampagne.map(k => (
-          <div key={k.id} className="py-2 flex items-center gap-3 text-sm">
+        hinweis="Direkt hier über „Zuordnen“ oder im Verknüpfungen-Tab des Kunden. Nicht jeder Kunde braucht eine Kampagne: wer sein eigenes Werbekonto bezahlt, steht hier zu Recht und kann abgehakt werden.">
+        {ohneKampagne.map(k => <KundeOhneKampagneZeile key={k.id} k={k} callMeta={callMeta} onZugeordnet={ladeDaten}>
+          <div className="py-2 flex items-center gap-3 text-sm">
             <Link to={`/kunden/${k.id}?tab=verknuepfungen`} className="font-medium hover:text-primary truncate">{k.name}</Link>
             <span className="text-xs text-muted-foreground">{k.kundenstatus}</span>
             <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => verwerfen(SYS_OHNE_KAMPAGNE, 'eigenes_konto', k.id).catch(e => toast.error(e.message))}>Abhaken – zahlt selbst</Button>
             <Button size="sm" variant="outline" className="h-7 text-xs" asChild><Link to={`/kunden/${k.id}?tab=verknuepfungen`}>Zum Kunden</Link></Button>
           </div>
-        ))}
+        </KundeOhneKampagneZeile>)}
       </Abschnitt>
     </div>
   );
+}
+
+/** Zeile mit aufklappbarer Schnellzuordnung; lädt Konten/Kampagnen erst beim Aufklappen. */
+function KundeOhneKampagneZeile({ k, callMeta, onZugeordnet, children }: { k: { id: string }; callMeta: any; onZugeordnet: () => void; children: React.ReactElement }) {
+  const [offen, setOffen] = useState(false);
+  return <div>
+    <div className="flex items-center gap-2">
+      <div className="flex-1 min-w-0">{children}</div>
+      <Button size="sm" variant={offen ? 'secondary' : 'ghost'} className="h-7 text-xs" onClick={() => setOffen(v => !v)}>
+        <ChevronRight className={cn('h-3.5 w-3.5 mr-1 transition-transform', offen && 'rotate-90')} />Zuordnen
+      </Button>
+    </div>
+    {offen && <Schnellzuordnung clientId={k.id} callMeta={callMeta} onZugeordnet={onZugeordnet} />}
+  </div>;
+}
+
+function Schnellzuordnung({ clientId, callMeta, onZugeordnet }: { clientId: string; callMeta: any; onZugeordnet: () => void }) {
+  const { alle: zuoAlle, busy, fehler: zuoFehler, zuordnen, loesen } = useWerbebudgetZuordnung(clientId);
+  const [konten, setKonten] = useState<Untermarke[] | null>(null);
+  const [konto, setKonto] = useState<string>('');
+  const [kamp, setKamp] = useState<ZuoKampagne[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { ladeUntermarken().then(setKonten).catch((e: Error) => setErr(e.message)); }, []);
+  useEffect(() => {
+    if (!konto) return;
+    setKamp(null); setErr(null);
+    callMeta(`/${konto}/campaigns`, { fields: 'id,name,effective_status,daily_budget,insights.date_preset(last_7d){spend}', limit: 200 })
+      .then((r: any) => setKamp(r?.data || [])).catch((e: Error) => setErr(e.message));
+  }, [konto, callMeta]);
+  const untermarke = konten?.find(x => x.meta_account_id === konto)?.name ?? null;
+  return <div className="ml-2 mb-2 rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
+    {zuoFehler && <p className="text-xs text-destructive">{zuoFehler}</p>}
+    {err && <p className="text-xs text-destructive">{err}</p>}
+    {!konten && !err ? <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Werbekonten werden geladen …</p> :
+      <select value={konto} onChange={e => setKonto(e.target.value)} className="h-8 w-full max-w-sm rounded-md border border-input bg-background px-2 text-xs">
+        <option value="">Werbekonto wählen …</option>
+        {konten?.map(x => <option key={x.meta_account_id} value={x.meta_account_id}>{x.name || x.meta_account_id}</option>)}
+      </select>}
+    {konto && !kamp && !err && <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Kampagnen werden geladen …</p>}
+    {kamp?.length === 0 && <p className="text-xs text-muted-foreground">Keine Kampagnen auf diesem Konto.</p>}
+    {kamp && kamp.length > 0 && <div className="divide-y divide-border/40 rounded-lg bg-card">
+      {kamp.map(c => <KampagneZeile key={c.id} k={c} alle={zuoAlle} clientId={clientId} busy={busy} callMeta={callMeta} loesen={loesen}
+        zuordnen={async (t, o, kid, n) => { const ok = await zuordnen(konto, untermarke, t, o, kid, n); if (ok) onZugeordnet(); return ok; }} />)}
+    </div>}
+    <p className="text-[11px] text-muted-foreground">Ohne Auswahl einer Anzeigengruppe wird die ganze Kampagne zugeordnet. Anzeigengruppen nur nötig, wenn sich zwei Kunden eine Kampagne teilen.</p>
+  </div>;
 }
