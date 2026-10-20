@@ -43,6 +43,7 @@ function fehltLabels(r: { startdatum: string | null; laufzeit_monate: number | n
   return l;
 }
 const FEHLT_OPTIONEN = ['Startdatum fehlt', 'Laufzeit fehlt', 'kein Abschluss verknüpft'];
+type Vorschlag = { client_id: string; laufzeit_monate: number | null; abschlusswert: number | null; sparte: string | null; deal_typ: string | null; quelle_datum: string | null; quelle_typ: string | null; start_laut_slack: string | null; weitere_upsells: number | null; portal_laufzeit: number | null; abgleich: 'bestaetigt' | 'portal_leer' | 'widerspruch' | null };
 const toNum = (v: string) => v.trim() === '' ? null : Number(v.replace(',', '.'));
 
 export default function KundenLaufzeiten() {
@@ -56,6 +57,24 @@ export default function KundenLaufzeiten() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [opts, setOpts] = useState<Opts | null>(null);
   const [optsErr, setOptsErr] = useState<string | null>(null);
+  const [vorschlaege, setVorschlaege] = useState<Record<string, Vorschlag>>({});
+  const [vorbelegt, setVorbelegt] = useState<Record<string, Set<keyof Form>>>({});
+  useEffect(() => {
+    (supabase as any).from('laufzeit_vorschlag').select('*').then(({ data, error }: { data: Vorschlag[] | null; error: any }) => {
+      if (error) { console.error('laufzeit_vorschlag', error); return; }
+      const m: Record<string, Vorschlag> = {}; (data || []).forEach(v => { m[v.client_id] = v; }); setVorschlaege(m);
+      const vb: Record<string, Set<keyof Form>> = {}; const fs: Record<string, Partial<Form>> = {};
+      Object.values(m).forEach(v => {
+        const keys = new Set<keyof Form>(); const f: Partial<Form> = {};
+        if (v.abgleich !== 'widerspruch' && v.laufzeit_monate != null) { f.laufzeit_monate = String(v.laufzeit_monate); keys.add('laufzeit_monate'); }
+        if (v.abschlusswert != null) { f.abschlusswert = String(v.abschlusswert); keys.add('abschlusswert'); }
+        if (v.deal_typ) { f.deal_typ = v.deal_typ; keys.add('deal_typ'); }
+        if (keys.size) { vb[v.client_id] = keys; fs[v.client_id] = f; }
+      });
+      setVorbelegt(vb);
+      setForms(p => { const n = { ...p }; Object.entries(fs).forEach(([id, f]) => { if (!p[id]) n[id] = { ...empty, ...f }; }); return n; });
+    });
+  }, []);
   const [confirm, setConfirm] = useState<Row | null>(null);
 
   const load = useCallback(async () => {
@@ -81,10 +100,10 @@ export default function KundenLaufzeiten() {
   const unklar = useMemo(() => aktive.filter(r => !vollstaendig(r)).sort((a, b) => (a.kunde || '').localeCompare(b.kunde || '')), [aktive]);
   const [suche, setSuche] = useState(''); const [fehltFilter, setFehltFilter] = useState('alle'); const [anzahl, setAnzahl] = useState(12);
   const [weg, setWeg] = useState<Set<string>>(new Set()); const [neu, setNeu] = useState<string | null>(null);
-  const unklarGefiltert = unklar.filter(r => (!suche || (r.kunde || '').toLowerCase().includes(suche.toLowerCase())) && (fehltFilter === 'alle' || fehltLabels(r).includes(fehltFilter)));
+  const unklarGefiltert = unklar.filter(r => (!suche || (r.kunde || '').toLowerCase().includes(suche.toLowerCase())) && (fehltFilter === 'alle' || (fehltFilter === '__slack' ? !!vorschlaege[r.client_id] : fehltFilter === '__widerspruch' ? vorschlaege[r.client_id]?.abgleich === 'widerspruch' : fehltFilter === '__ohne' ? !vorschlaege[r.client_id] : fehltLabels(r).includes(fehltFilter))));
 
   const form = (id: string) => forms[id] || empty;
-  const setF = (id: string, k: keyof Form, v: string | string[]) => setForms(p => ({ ...p, [id]: { ...form(id), [k]: v } }));
+  const setF = (id: string, k: keyof Form, v: string | string[]) => { setVorbelegt(p => { if (!p[id]?.has(k)) return p; const s2 = new Set(p[id]); s2.delete(k); return { ...p, [id]: s2 }; }); setForms(p => ({ ...p, [id]: { ...form(id), [k]: v } })); };
 
   async function save(r: Row, bestaetigt = false, ueber?: Partial<Form>) {
     const f = { ...form(r.client_id), ...(ueber || {}) };
@@ -168,32 +187,45 @@ export default function KundenLaufzeiten() {
     const cur = r.close_opportunity_id ? opts?.opp[r.close_opportunity_id] : null;
     const curL = cur?.leistungen ? cur.leistungen.split(', ') : []; const sel = f.leistungen ?? curL; const cash = opts?.cash[r.client_id];
     const lbl = 'text-[11px] text-muted-foreground flex items-center gap-1 mb-1';
+    const v = vorschlaege[r.client_id]; const vb = vorbelegt[r.client_id];
+    const vf = (k: keyof Form) => vb?.has(k) ? 'ring-1 ring-dashed ring-primary/40 bg-primary/5 italic' : '';
+    const vTag = (k: keyof Form) => vb?.has(k) ? <span className="text-[10px] text-primary/80">· Vorschlag</span> : null;
     return (
       <div key={r.client_id} className={cn('rounded-2xl bg-card p-6 shadow-[0_1px_3px_hsl(var(--foreground)/0.06),0_8px_24px_-12px_hsl(var(--foreground)/0.10)] flex flex-col gap-4 transition-all duration-300', weg.has(r.client_id) && 'opacity-0 scale-95 -translate-y-2')}>
         <div>
           <h3 className="text-base font-semibold leading-tight">{r.kunde}</h3>
           <div className="flex flex-wrap gap-1.5 mt-2">{fehltLabels(r).map(l => <span key={l} className="text-[11px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{l}</span>)}
-            {r.quelle === 'Viral Connect' && <span className="text-[11px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground">aus Viral Connect</span>}</div>
+            {r.quelle === 'Viral Connect' && <span className="text-[11px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground">aus Viral Connect</span>}
+            {v?.abgleich === 'bestaetigt' && <span className="text-[11px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground">aus Slack bestätigt</span>}</div>
         </div>
         {isAdmin ? <>
+          {v ? <p className="text-xs text-muted-foreground">Vorschlag aus Slack vom {dt(v.quelle_datum)} · Quelle: {v.quelle_typ === 'upsell' ? 'Upsell' : 'Abschluss'}</p>
+            : <p className="text-xs text-muted-foreground">kein Slack-Vorschlag vorhanden</p>}
+          {v?.abgleich === 'widerspruch' && <div className="rounded-xl bg-muted/60 px-4 py-3 text-xs space-y-2">
+            <p>Portal: {v.portal_laufzeit ?? '–'} Mon. · Slack: {v.laufzeit_monate ?? '–'} Mon.{(v.weitere_upsells ?? 0) > 0 && ` · ${v.weitere_upsells} Upsell(s) vorhanden`}</p>
+            <div className="flex gap-2">
+              {v.portal_laufzeit != null && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setF(r.client_id, 'laufzeit_monate', String(v.portal_laufzeit))}>Portal übernehmen</Button>}
+              {v.laufzeit_monate != null && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setF(r.client_id, 'laufzeit_monate', String(v.laufzeit_monate))}>Slack übernehmen</Button>}
+            </div></div>}
           <div className="space-y-3">
             <div><span className={lbl}>Startdatum{!r.close_opportunity_id && tip(r.vc_opportunity_id ? 'Abschluss existiert nur bei Viral Connect – beim Speichern wird er in unserem Close angelegt (Marke „Viral Connect“).' : 'Beim Speichern wird in Close ein gewonnener Abschluss angelegt (mit Bestätigung).')}</span>
-              <Input type="date" className={feld} value={s0} onChange={e => setF(r.client_id, 'startdatum', e.target.value)} /></div>
-            <div><span className={lbl}>Laufzeit (Mon.)</span>
-              <Input type="number" min={1} max={120} step={1} className={feld} value={m0} onChange={e => setF(r.client_id, 'laufzeit_monate', e.target.value)} /></div>
+              <Input type="date" className={feld} value={s0} onChange={e => setF(r.client_id, 'startdatum', e.target.value)} />
+              {v?.start_laut_slack && <p className="text-[11px] text-muted-foreground mt-1">laut Slack {dt(v.start_laut_slack)}</p>}</div>
+            <div><span className={lbl}>Laufzeit (Mon.){vTag('laufzeit_monate')}</span>
+              <Input type="number" min={1} max={120} step={1} className={cn(feld, vf('laufzeit_monate'))} value={m0} onChange={e => setF(r.client_id, 'laufzeit_monate', e.target.value)} /></div>
           </div>
           {end && <div className="rounded-xl bg-primary/5 px-4 py-3 text-sm tabular-nums"><span className="text-muted-foreground">Vertragsende:</span> <span className="font-semibold text-primary">{dt(end)}</span> <span className="text-muted-foreground">· Restlaufzeit {restTage(end)} Tage</span></div>}
           <Collapsible>
             <CollapsibleTrigger className="group text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">Weitere Angaben <ChevronDown className="h-3 w-3 transition-transform group-data-[state=open]:rotate-180" /></CollapsibleTrigger>
             <CollapsibleContent className="space-y-3 pt-3">
-              <div><span className={lbl}>Abschlusswert €</span><Input type="number" min={0} className={feld} value={f.abschlusswert} placeholder="optional" onChange={e => setF(r.client_id, 'abschlusswert', e.target.value)} /></div>
+              <div><span className={lbl}>Abschlusswert €{vTag('abschlusswert')}</span><Input type="number" min={0} className={cn(feld, vf('abschlusswert'))} value={f.abschlusswert} placeholder="optional" onChange={e => setF(r.client_id, 'abschlusswert', e.target.value)} /></div>
               <div><span className={lbl}>Retainer/Monat €</span><Input type="number" min={0} className={feld} value={f.retainer_monat} placeholder="optional" onChange={e => setF(r.client_id, 'retainer_monat', e.target.value)} /></div>
               <div><span className={lbl}>Leistungen{optsErr && tip(`Auswahlwerte aus Close nicht geladen: ${optsErr}`)}</span>
                 <Popover><PopoverTrigger asChild><Button variant="ghost" className={cn(feld, 'w-full justify-between font-normal')} disabled={!opts}><span className="truncate">{sel.length ? `${sel.length} gewählt` : 'auswählen'}</span><ChevronDown className="h-3 w-3" /></Button></PopoverTrigger>
                   <PopoverContent className="w-80 max-h-72 overflow-y-auto p-2">{(opts?.leistungen || []).map(o => <label key={o} className="flex items-start gap-2 py-1 text-xs cursor-pointer"><Checkbox checked={sel.includes(o)} onCheckedChange={c => setF(r.client_id, 'leistungen', c ? [...sel, o] : sel.filter(x => x !== o))} />{o}</label>)}</PopoverContent></Popover></div>
-              <div><span className={lbl}>Deal-Typ</span>
-                <Select value={f.deal_typ || cur?.deal_typ || (!r.close_opportunity_id ? 'Neukunde' : '')} onValueChange={v => setF(r.client_id, 'deal_typ', v)} disabled={!opts}>
-                  <SelectTrigger className={feld}><SelectValue placeholder="–" /></SelectTrigger><SelectContent>{(opts?.deal_typ || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
+              <div><span className={lbl}>Deal-Typ{vTag('deal_typ')}</span>
+                <Select value={f.deal_typ || cur?.deal_typ || (!r.close_opportunity_id ? 'Neukunde' : '')} onValueChange={x => setF(r.client_id, 'deal_typ', x)} disabled={!opts}>
+                  <SelectTrigger className={cn(feld, vf('deal_typ'))}><SelectValue placeholder="–" /></SelectTrigger><SelectContent>{(opts?.deal_typ || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
               <div><span className={lbl}>Paket{opts && !cash && tip(`Für ${r.kunde} existiert keine Cash-Collect-Aktivität — Paket kann nicht gesetzt werden.`)}</span>
                 <Select value={f.paket || cash?.paket || ''} onValueChange={v => setF(r.client_id, 'paket', v)} disabled={!cash}>
                   <SelectTrigger className={feld}><SelectValue placeholder="–" /></SelectTrigger><SelectContent>{(opts?.paket || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select></div>
@@ -254,7 +286,7 @@ export default function KundenLaufzeiten() {
               <Input className="h-9 pl-9 rounded-xl border-0 bg-muted/60 shadow-none" placeholder="Kunde suchen" value={suche} onChange={e => { setSuche(e.target.value); setAnzahl(12); }} /></div>
             <Select value={fehltFilter} onValueChange={v => { setFehltFilter(v); setAnzahl(12); }}>
               <SelectTrigger className="h-9 sm:w-56 rounded-xl border-0 bg-muted/60 shadow-none"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="alle">Alles, was fehlt</SelectItem>{FEHLT_OPTIONEN.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+              <SelectContent><SelectItem value="alle">Alles, was fehlt</SelectItem>{FEHLT_OPTIONEN.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}<SelectItem value="__slack">nur mit Slack-Vorschlag</SelectItem><SelectItem value="__widerspruch">nur Widersprüche</SelectItem><SelectItem value="__ohne">ohne Vorschlag</SelectItem></SelectContent>
             </Select>
           </div>}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
