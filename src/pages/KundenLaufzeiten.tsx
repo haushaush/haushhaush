@@ -48,7 +48,7 @@ const toNum = (v: string) => v.trim() === '' ? null : Number(v.replace(',', '.')
 export default function KundenLaufzeiten() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
-  const { rows, loading, error: kundenFehler, refetch: loadCustomers } = useActiveCloseCustomers();
+  const { rows, unverknuepft, loading, error: kundenFehler, refetch: loadCustomers } = useActiveCloseCustomers();
   const [logs, setLogs] = useState<Log[]>([]);
   const [forms, setForms] = useState<Record<string, Form>>({});
   const [editing, setEditing] = useState<string | null>(null);
@@ -218,6 +218,7 @@ export default function KundenLaufzeiten() {
         {!loading && <p className="text-sm text-muted-foreground mt-2 tabular-nums"><span className="text-foreground font-medium">{aktive.length} aktive Kunden</span> · {klar.length} mit vollständiger Laufzeit · {unklar.length} unvollständig</p>}
       </div>
       {kundenFehler && <p role="alert" className="text-sm text-destructive">{kundenFehler}</p>}
+      {!kundenFehler && unverknuepft.length > 0 && <p className="text-sm text-muted-foreground rounded-xl border border-border/60 px-4 py-2">Nicht angezeigt, weil kein Kunde zugeordnet ist: {unverknuepft.join(', ')}. Bitte unter „Verknüpfungen prüfen“ zuordnen.</p>}
       {loading ? <Skeleton className="h-40" /> : !kundenFehler && <>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Aktive Kunden mit Laufzeit ({klar.length})</CardTitle></CardHeader>
