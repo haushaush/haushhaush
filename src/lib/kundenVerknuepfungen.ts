@@ -167,7 +167,7 @@ async function sucheBuch(sys: 'qonto' | 'lexoffice', q: string, clientId?: strin
     kand = (data || []).map((r: any) => {
       const key = (r.lexoffice_contact_name || '').trim().toLowerCase();
       const ds = (inv || []).filter((i: any) => (i.contact_name || '').trim().toLowerCase() === key).map((i: any) => i.voucher_date).filter(Boolean).sort();
-      return { id: r.id, name: r.lexoffice_contact_name, email: null, rechnungen: ds.length, letzte: ds[ds.length - 1] || null } as any;
+      return { id: r.id, name: r.lexoffice_contact_name, email: null, anzahl: ds.length, letzte: ds[ds.length - 1] || null };
     });
     links = (data || []).map((r: any) => ({ ext: r.id, ref: r.id, client_id: r.client_id, is_confirmed: r.is_confirmed }));
   }
