@@ -18,3 +18,4 @@ Subdirectories may have their own `AGENTS.md` (e.g. `supabase/functions/`); read
 - Credentials: secrets only.
 - Bookkeeping: a customer's source follows from confirmed payment links (`kunde_buchhaltungsquelle`); lexoffice links key on normalized recipient name like Qonto, and `buchhaltung_intern` holds recipients skipped by matching in two arts (`intern` = own companies, `vorlage` = template/test invoices); nothing is written to Close or lexoffice. Why: two companies, real payments decide.
 - Finance invoices: `src/lib/rechnungen.ts` alone maps Qonto/lexoffice invoice fields and statuses (unknown → "sonstige", shown raw). Why: consistency.
+- Employee removal: only `mitarbeiter-entfernen` (admin from JWT) revokes access (ban + `user_access_status`) or deletes; when time entries, check-ins or bonus rows exist it anonymizes team/auth instead of deleting, because FKs cascade. Why: keep history, drop personal reference.
