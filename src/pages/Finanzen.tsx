@@ -445,7 +445,7 @@ export default function Finanzen() {
             <SectionTitle title="Nur in lexoffice" />
             {isAdmin && <LexofficeSyncCard />}
             <RechnungsAuswertung quellen={['lexoffice']} quelleText="lexoffice Rechnungen" nurZusatz
-              verlaufHinweis="lexoffice liefert kein Zahldatum, darum bleibt „Bezahlt" im Verlauf leer" />
+              verlaufHinweis={"lexoffice liefert kein Zahldatum, darum bleibt „Bezahlt“ im Verlauf leer"} />
             <p className="text-xs text-muted-foreground">Liquidität und Cashflow gibt es nur bei Qonto — lexoffice führt kein Bankkonto.</p>
           </div>
         </TabsContent>
