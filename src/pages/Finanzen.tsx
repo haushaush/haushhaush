@@ -434,7 +434,7 @@ export default function Finanzen() {
         {/* Navigation läuft über das linke Menü (Routen /finanzen/:tab) – keine eigene Tab-Leiste. */}
 
         {/* ============ ÜBERSICHT ============ */}
-        <TabsContent value="uebersicht" className="space-y-6 mt-4">
+        <TabsContent value="uebersicht" className="space-y-8 mt-4 rounded-3xl bg-muted/40 p-4 sm:p-6">
           <RechnungsAuswertung quellen={['qonto', 'lexoffice']} quelleText="Qonto + lexoffice zusammengerechnet" />
           <p className="text-xs text-muted-foreground">Kontostand, Bankeingänge und Bankausgänge gibt es nur bei Qonto — sie stehen im Tab Qonto und werden hier nicht summiert.</p>
         </TabsContent>
