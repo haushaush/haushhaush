@@ -69,18 +69,22 @@ export function PerformanceTile({ criterion: key, label, k, config, month, basis
   );
 
   if (variant === 'row') {
+    // Row dot: share of possible points (<1/3 red, ≤2/3 yellow, above green).
+    const share = k.max ? Number(k.punkte || 0) / k.max : 0;
+    const rowDot = share > 2 / 3 ? 'bg-success' : share >= 1 / 3 ? 'bg-warning' : 'bg-destructive';
+    const rowDotLabel = share > 2 / 3 ? 'über zwei Drittel der Punkte' : share >= 1 / 3 ? 'ein bis zwei Drittel der Punkte' : 'unter einem Drittel der Punkte';
     return (
       <button type="button" onClick={onClick} aria-label={`${label}: Details anzeigen`} className="glass-surface p-5 w-full min-w-0 text-left transition-colors hover:border-[hsl(var(--border-hover))] active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <div className="grid gap-x-6 gap-y-3 items-center sm:grid-cols-[minmax(0,1fr)_auto_minmax(8rem,1.4fr)]">
+        <div className="grid gap-x-6 gap-y-3 items-center min-h-[3.5rem] grid-cols-1 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_minmax(0,16rem)]">
           <div className="flex items-center gap-2 min-w-0">
-            {pacing && <span aria-label={ratio >= 1 ? 'im Plan' : ratio >= .8 ? 'knapp dahinter' : 'deutlich dahinter'} className={`h-2 w-2 rounded-full shrink-0 ${dotClass}`} />}
-            <span className="text-sm font-semibold text-foreground min-w-0">{label}</span>
+            <span role="img" aria-label={rowDotLabel} className={`h-2 w-2 rounded-full shrink-0 ${rowDot}`} />
+            <span title={label} className="text-sm font-semibold text-foreground min-w-0 truncate">{label}</span>
           </div>
-          <div className="min-w-0">
-            <div className="text-2xl font-semibold tabular-nums text-foreground whitespace-nowrap">{headline}</div>
-            <div className="text-xs text-muted-foreground tabular-nums sm:whitespace-nowrap">{outcome}</div>
+          <div className="min-w-0 text-left">
+            <div className="text-2xl font-semibold tabular-nums text-foreground whitespace-nowrap truncate" title={headline}>{headline}</div>
+            <div className="text-xs text-muted-foreground tabular-nums whitespace-nowrap truncate" title={outcome}>{outcome}</div>
           </div>
-          {bar}
+          <div className="w-full min-w-0">{bar}</div>
         </div>
       </button>
     );
