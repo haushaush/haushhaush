@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { MitarbeiterEntfernenDialog } from '@/components/team/MitarbeiterEntfernenDialog';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -73,12 +76,61 @@ export default function TeamPage() {
     return months;
   };
 
+  const aktive = members.filter(m => !gesperrt.has(m.id));
+  const ehemalige = members.filter(m => gesperrt.has(m.id));
   const grouped = DEPT_GROUPS.map(group => ({
     label: group.label,
-    members: members.filter(m => group.departments.includes(m.department || '')),
+    members: aktive.filter(m => group.departments.includes(m.department || '')),
   })).filter(g => g.members.length > 0);
-  const ungrouped = members.filter(m => !ALL_DEPTS.includes(m.department || ''));
+  const ungrouped = aktive.filter(m => !ALL_DEPTS.includes(m.department || ''));
   if (ungrouped.length > 0) grouped.push({ label: 'SONSTIGE', members: ungrouped });
+
+  const sperrGrund = (m: any): string | null => {
+    if (m.id === user?.id) return 'Der eigene Account lässt sich nicht löschen.';
+    const aktiveAdmins = [...adminIds].filter(id => !gesperrt.has(id));
+    if (adminIds.has(m.id) && aktiveAdmins.length <= 1) return 'Der letzte verbleibende Admin lässt sich nicht löschen.';
+    return null;
+  };
+
+  const kachel = (m: any) => {
+    const months = monthsSince(m.startdatum);
+    const grund = sperrGrund(m);
+    return (
+      <Card key={m.id} className="relative hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/hr/mitarbeiter/${m.id}`)}>
+        {isAdmin && (
+          <div className="absolute top-2 right-2" onClick={e => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label={`Aktionen für ${m.name}`}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => navigate(`/hr/mitarbeiter/${m.id}`)}><Pencil className="h-3.5 w-3.5 mr-2" />Bearbeiten</DropdownMenuItem>
+                <div title={grund ?? undefined}>
+                  <DropdownMenuItem disabled={!!grund} className="text-destructive focus:text-destructive" onClick={() => setEntfernen({ id: m.id, name: m.name })}>
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />Mitarbeiter löschen
+                  </DropdownMenuItem>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+        <CardContent className="p-5 flex items-start gap-4">
+          <Avatar className="h-12 w-12">
+            <AvatarFallback className="bg-[hsl(174,40%,95%)] text-primary font-semibold">{getInitials(m.name)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 pr-6">
+            <p className="font-medium truncate">{m.name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{m.position || '–'}</p>
+            <Badge variant="secondary" className="text-xs mt-1">{m.rolle}</Badge>
+            <p className="text-xs text-muted-foreground mt-1">{m.email}</p>
+            {months !== null && <p className="text-xs text-muted-foreground">Seit {months} Monaten</p>}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (loading) return <div className="space-y-6"><Skeleton className="h-8 w-48" /><Skeleton className="h-64" /></div>;
 
@@ -131,28 +183,25 @@ export default function TeamPage() {
             <div key={g.label}>
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">{g.label}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {g.members.map(m => {
-                  const months = monthsSince(m.startdatum);
-                  return (
-                    <Card key={m.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/hr/mitarbeiter/${m.id}`)}>
-                      <CardContent className="p-5 flex items-start gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarFallback className="bg-[hsl(174,40%,95%)] text-primary font-semibold">{getInitials(m.name)}</AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{m.name}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{m.position || '–'}</p>
-                          <Badge variant="secondary" className="text-xs mt-1">{m.rolle}</Badge>
-                          <p className="text-xs text-muted-foreground mt-1">{m.email}</p>
-                          {months !== null && <p className="text-xs text-muted-foreground">Seit {months} Monaten</p>}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                {g.members.map(m => kachel(m))}
               </div>
             </div>
           ))}
+          {ehemalige.length > 0 && (
+            <div>
+              <button type="button" onClick={() => setEhemaligeOffen(o => !o)} aria-expanded={ehemaligeOffen}
+                className="flex items-center gap-1 text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3 hover:text-foreground">
+                {ehemaligeOffen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                EHEMALIGE · {ehemalige.length}
+              </button>
+              {ehemaligeOffen && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 opacity-70">
+                  {ehemalige.map(m => kachel(m))}
+                </div>
+              )}
+            </div>
+          )}
+          <MitarbeiterEntfernenDialog person={entfernen} onClose={() => setEntfernen(null)} onDone={() => { setEntfernen(null); ladeAlles(); }} />
         </TabsContent>
 
         {isAdmin && (
