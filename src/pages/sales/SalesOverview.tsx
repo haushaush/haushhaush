@@ -325,7 +325,7 @@ export default function SalesOverview() {
                 return (
                   <div key={f.l} title={f.spalte} className={`grid grid-cols-[120px_1fr_auto] items-center gap-3 ${f.optional ? 'pl-3 border-l-2 border-dashed border-border' : ''}`}>
                     <span className="text-sm">{f.l}{f.optional && <span className="text-xs text-muted-foreground"> optional</span>}</span>
-                    <div className={`h-3 rounded-full overflow-hidden ${f.optional ? 'border border-dashed border-border bg-transparent' : 'bg-background'}`}><div className={`h-full rounded-full transition-[width] duration-500 ${f.optional ? 'bg-primary/40' : 'bg-primary'}`} style={{ width: `${funnel[0].v ? Math.min(100, Math.max(f.v ? 1 : 0, (f.v / funnel[0].v) * 100)) : 0}%` }} /></div>
+                    <div className={`h-3 rounded-full overflow-hidden ${f.optional ? 'border border-dashed border-border bg-transparent' : 'bg-muted'}`}><div className={`h-full rounded-full transition-[width] duration-500 ${f.optional ? 'bg-primary/40' : 'bg-primary'}`} style={{ width: `${funnel[0].v ? Math.min(100, Math.max(f.v ? 1 : 0, (f.v / funnel[0].v) * 100)) : 0}%` }} /></div>
                     <span className="text-xs tabular-nums w-40 text-right">{fmtN(f.v)}{quote && <span className="text-muted-foreground"> · {quote}</span>}{f.hinweis && <span className="text-muted-foreground"> · {f.hinweis}</span>}</span>
                   </div>
                 );
