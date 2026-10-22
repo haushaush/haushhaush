@@ -231,6 +231,7 @@ const App = () => (
                 <Route path="/sales/:tab" element={<PermissionRoute permissionKey="sales.view" anyOf={["sales.uebersicht.view","sales.kpi.view"]}><DL><Sales /></DL></PermissionRoute>} />
                 <Route path="/finanzen" element={<PermissionRoute permissionKey="finanzen.view"><DL><Finanzen /></DL></PermissionRoute>} />
                 <Route path="/finanzen/kpi" element={<PermissionRoute permissionKey="finanzen.view"><DL><Placeholder title="Finanzen KPI" /></DL></PermissionRoute>} />
+                <Route path="/finanzen/verknuepfungen" element={<Navigate to="/kunden/verknuepfungen" replace />} />
                 <Route path="/finanzen/:tab" element={<PermissionRoute permissionKey="finanzen.view"><DL><Finanzen /></DL></PermissionRoute>} />
                 <Route path="/funnel" element={<DailyFunnel />} />
                 <Route path="/hr" element={<Navigate to="/hr/mitarbeiter" replace />} />

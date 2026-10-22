@@ -11,6 +11,8 @@ import { VerknuepfungsArbeitsliste, type ArbeitslisteZahlen } from '@/components
 import { cn } from '@/lib/utils';
 import { SYSTEME, ladeStand, zaehle, type KundeMin, type Objekt, type SystemKey, type SystemStand, type Vorschlag } from '@/lib/kundenVerknuepfungen';
 import { SystemPanel } from '@/components/kunden/QuickMatch';
+import { QontoVerknuepfungen } from '@/components/finanzen/QontoVerknuepfungen';
+import { LexofficeVerknuepfungen } from '@/components/finanzen/LexofficeVerknuepfungen';
 
 type Stand = Record<SystemKey, SystemStand>;
 
@@ -123,6 +125,12 @@ export default function KundenVerknuepfungen() {
         </table>
       </div>
       <p className="text-xs text-muted-foreground">✓ verknüpft · • Vorschlag offen · ✕ fehlt (anklicken zum Zuordnen) · – nicht nötig, nicht angebunden oder nicht sichtbar</p>
+
+      <section className="space-y-4 pt-4" id="qonto">
+        <h2 className="text-lg font-semibold font-heading">Qonto- und lexoffice-Abgleich</h2>
+        <QontoVerknuepfungen />
+        <LexofficeVerknuepfungen />
+      </section>
 
       <VorschlagPruefung open={pruefen} onClose={() => setPruefen(false)} liste={vorschlaege} />
     </div>

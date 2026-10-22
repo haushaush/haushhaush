@@ -52,7 +52,6 @@ const navItems: NavItem[] = [
       { title: 'Qonto', url: '/finanzen/qonto', permissionKey: 'finanzen.view' },
       { title: 'Rechnungen', url: '/finanzen/rechnungen', permissionKey: 'finanzen.rechnungen.view' },
       { title: 'Werbebudgets', url: '/finanzen/werbebudgets', permissionKey: 'finanzen.werbebudgets.view' },
-      { title: 'Verknüpfungen', url: '/finanzen/verknuepfungen', permissionKey: 'finanzen.view' },
       { title: 'Meta Belege', url: '/finanzen/abrechnungen', permissionKey: 'meta.billing.view' },
     ],
   },

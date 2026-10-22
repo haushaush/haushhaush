@@ -32,7 +32,7 @@ import {
   Database, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
-const ALLOWED_TABS = ['uebersicht', 'lexware', 'qonto', 'rechnungen', 'werbebudgets', 'verknuepfungen'];
+const ALLOWED_TABS = ['uebersicht', 'lexware', 'qonto', 'rechnungen', 'werbebudgets'];
 type Range = 'this_month' | 'last_month' | 'this_year' | 'last_12m' | 'all' | 'custom';
 
 const tooltipStyle = { backgroundColor: '#fff', border: '1px solid #E5E5E7', borderRadius: '8px', color: '#1D1D1F', fontSize: 12 };
@@ -865,10 +865,6 @@ export default function Finanzen() {
           <Werbebudgets />
         </TabsContent>
 
-        <TabsContent value="verknuepfungen" className="space-y-4 mt-4">
-          <QontoVerknuepfungen />
-          <LexofficeVerknuepfungen />
-        </TabsContent>
       </Tabs>
     </div>
   );
