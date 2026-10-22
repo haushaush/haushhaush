@@ -1,31 +1,37 @@
 import { describe, it, expect } from 'vitest';
-import { matchSurvey, companySimilarity, normalizeCompany, isFreemail } from '../../supabase/functions/_shared/survey-matching';
+import { matchSurveyDetailed, normalizeEmail, normalizeCompany, isFreemail } from '../../supabase/functions/_shared/survey-matching';
 
-const alpha = { client_id: 'alpha', mitarbeiter_id: 'csm', name: 'Alpha Versicherung GmbH', emails: ['office@alpha.de'] };
-const beta = { client_id: 'beta', mitarbeiter_id: 'csm', name: 'Beta Versicherung', emails: ['office@beta.de'] };
+const stursberg = { client_id: 'st', mitarbeiter_id: 'csm', name: 'Alexander Stursberg', vor_nachname: 'Alexander Stursberg', emails: ['alexander.stursberg@allianz.de'] };
+const other = { client_id: 'ot', mitarbeiter_id: 'csm', name: 'Maria Muster', vor_nachname: 'Maria Muster', emails: ['maria.muster@allianz.de'] };
 
-describe('survey identification', () => {
-  it('prefers an exact email over the entered company', () => {
-    expect(matchSurvey(' OFFICE@ALPHA.DE ', beta.name, [alpha, beta])?.client_id).toBe('alpha');
+describe('survey matching', () => {
+  it('normalizes dots and plus suffix in the local part', () => {
+    expect(normalizeEmail(' Alexander.Stursberg+x@Allianz.de ')).toBe('alexanderstursberg@allianz.de');
   });
-  it('matches a unique non-freemail domain', () => {
-    expect(matchSurvey('new@alpha.de', 'unrelated', [alpha, beta])?.client_id).toBe('alpha');
+  it('matches by email without the dot', () => {
+    const m = matchSurveyDetailed('alexanderstursberg@allianz.de', '', 'Allianz', [stursberg, other]);
+    expect(m.hit?.client_id).toBe('st'); expect(m.grund).toBe('email');
   });
-  it('does not rescue ambiguous exact email or domain through company matching', () => {
-    expect(matchSurvey('office@alpha.de', alpha.name, [alpha, { ...beta, emails: alpha.emails }])).toBeNull();
-    expect(matchSurvey('new@alpha.de', alpha.name, [alpha, { ...beta, emails: ['other@alpha.de'] }])).toBeNull();
+  it('treats an email shared by several customers as ambiguous', () => {
+    const m = matchSurveyDetailed('alexander.stursberg@allianz.de', 'Alexander Stursberg', 'Allianz', [stursberg, { ...other, emails: stursberg.emails }]);
+    expect(m.hit).toBeNull(); expect(m.grund).toBe('mehrdeutig'); expect(m.kandidaten).toEqual(['st', 'ot']);
   });
-  it.each(['gmail.com', 'gmx.de', 'gmx.net', 'web.de', 't-online.de', 'outlook.com', 'hotmail.de', 'yahoo.co.uk', 'icloud.com'])('excludes %s from domain matching', domain => {
-    expect(isFreemail(domain)).toBe(true);
-    expect(matchSurvey(`unknown@${domain}`, 'unrelated', [{ ...alpha, emails: [`known@${domain}`] }])).toBeNull();
+  it('matches by contact name when email is unknown', () => {
+    const m = matchSurveyDetailed('neu@example.invalid', 'Alexander Stursberg', 'Allianz', [stursberg, other]);
+    expect(m.hit?.client_id).toBe('st'); expect(m.grund).toBe('name');
   });
-  it('normalizes names and accepts exactly one high-similarity candidate', () => {
+  it('never matches on company alone', () => {
+    const m = matchSurveyDetailed('neu@example.invalid', 'Unbekannt Person', 'Alexander Stursberg', [stursberg, other]);
+    expect(m.hit).toBeNull(); expect(m.grund).toBe('kein_treffer');
+  });
+  it('uses company only to break a name tie', () => {
+    const a = { ...stursberg, name: 'Stursberg Finanz', vor_nachname: 'Alexander Stursberg' };
+    const b = { ...other, name: 'Andere Agentur', vor_nachname: 'Alexander Stursberg' };
+    expect(matchSurveyDetailed('x@example.invalid', 'Alexander Stursberg', 'Stursberg Finanz', [a, b]).grund).toBe('name+firma');
+    expect(matchSurveyDetailed('x@example.invalid', 'Alexander Stursberg', 'Allianz', [a, b]).grund).toBe('mehrdeutig');
+  });
+  it('keeps existing helpers', () => {
     expect(normalizeCompany(' Selena Höge & Yenin GmbH  ')).toBe('selena hoge yenin');
-    expect(companySimilarity('Alpha Versicherung GmbH', 'Alpha Versicherung AG')).toBe(1);
-    expect(matchSurvey('new@example.invalid', 'Alpha Versicherung AG', [alpha, beta])?.client_id).toBe('alpha');
-    expect(matchSurvey('new@example.invalid', alpha.name, [alpha, { ...beta, name: alpha.name }])).toBeNull();
-  });
-  it('leaves an empty managed-customer list unresolved', () => {
-    expect(matchSurvey('office@alpha.de', alpha.name, [])).toBeNull();
+    expect(isFreemail('gmx.de')).toBe(true);
   });
 });

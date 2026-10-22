@@ -1432,6 +1432,8 @@ export type Database = {
           updated_at: string
           zugeordnet_am: string | null
           zugeordnet_von: string | null
+          zuordnung_grund: string | null
+          zuordnung_kandidaten: string[] | null
           zuordnung_status: string
         }
         Insert: {
@@ -1463,6 +1465,8 @@ export type Database = {
           updated_at?: string
           zugeordnet_am?: string | null
           zugeordnet_von?: string | null
+          zuordnung_grund?: string | null
+          zuordnung_kandidaten?: string[] | null
           zuordnung_status?: string
         }
         Update: {
@@ -1494,6 +1498,8 @@ export type Database = {
           updated_at?: string
           zugeordnet_am?: string | null
           zugeordnet_von?: string | null
+          zuordnung_grund?: string | null
+          zuordnung_kandidaten?: string[] | null
           zuordnung_status?: string
         }
         Relationships: [
