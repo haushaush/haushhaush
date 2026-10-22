@@ -32,18 +32,29 @@ export default function TeamPage() {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const isAdmin = hasRole('admin');
   const currentTab = requestedTab === 'erstellen' && !isAdmin ? 'mitarbeiter' : requestedTab;
   const { toast } = useToast();
   const [form, setForm] = useState({ name: '', email: '', rolle: 'Setter', department: 'Sales', startdatum: '' });
+  const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
+  const [gesperrt, setGesperrt] = useState<Set<string>>(new Set());
+  const [entfernen, setEntfernen] = useState<{ id: string; name: string } | null>(null);
+  const [ehemaligeOffen, setEhemaligeOffen] = useState(false);
 
-  useEffect(() => {
-    supabase.from('team').select('*').order('name').then(t => {
-      setMembers(t.data || []);
-      setLoading(false);
-    });
+  const ladeAlles = useCallback(async () => {
+    const [t, r, s] = await Promise.all([
+      supabase.from('team').select('*').order('name'),
+      supabase.from('user_roles').select('user_id').eq('role', 'admin'),
+      (supabase.from as any)('user_access_status').select('user_id, is_active').eq('is_active', false),
+    ]);
+    setMembers(t.data || []);
+    setAdminIds(new Set((r.data || []).map((x: any) => x.user_id)));
+    setGesperrt(new Set(((s.data || []) as any[]).map(x => x.user_id)));
+    setLoading(false);
   }, []);
+
+  useEffect(() => { ladeAlles(); }, [ladeAlles]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
