@@ -218,6 +218,13 @@
       "when": 1792142471424,
       "tag": "0030_close_abschluss_ausgeblendet",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1792658894176,
+      "tag": "0031_survey_zuordnung_grund",
+      "breakpoints": true
     }
   ]
 }
