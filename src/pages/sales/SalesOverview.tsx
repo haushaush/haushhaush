@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, RefreshCw } from 'lucide-react';
+import { ChevronDown, Info, RefreshCw } from 'lucide-react';
+import { Tooltip as UiTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -58,18 +59,20 @@ function ranges(z: Zeitraum, first: string | null) {
 const sum = (rows: Tag[], m: Metric) => rows.reduce((a, r) => a + (r[m] || 0), 0);
 const NICHT_GEWERTET = /^inbound$/i;
 
-function Delta({ cur, prev, steigtGut = true, show }: { cur: number; prev: number; steigtGut?: boolean; show: boolean }) {
+function Delta({ cur, prev, steigtGut = true, show, satz }: { cur: number; prev: number; steigtGut?: boolean; show: boolean; satz?: boolean }) {
   if (!show) return <span className="text-muted-foreground">kein Vorzeitraum</span>;
   if (prev > 0 && prev < 5) return <span className="text-muted-foreground">zu wenig Daten für einen Vergleich</span>;
   if (!prev) return <span className="text-muted-foreground">{cur ? 'Vorzeitraum ohne Werte – kein Vergleich' : 'unverändert'}</span>;
   const p = ((cur - prev) / prev) * 100; const up = p > 0;
   const gut = p === 0 ? null : up === steigtGut;
-  return <span className={gut == null ? 'text-muted-foreground' : gut ? 'text-success' : 'text-destructive'}>{up ? '+' : ''}{p.toFixed(1).replace('.', ',')} % zum Vorzeitraum</span>;
+  const cls = gut == null ? 'text-muted-foreground' : gut ? 'text-success' : 'text-destructive';
+  if (satz) return <span className={cls}>{p === 0 ? 'gleich wie im Vorzeitraum' : `${Math.abs(p).toFixed(1).replace('.', ',')} % ${up ? 'mehr' : 'weniger'} als im Vorzeitraum`}</span>;
+  return <span className={cls}>{up ? '+' : ''}{p.toFixed(1).replace('.', ',')} % zum Vorzeitraum</span>;
 }
 
 function Kachel({ titel, wert, sub, delta, quelle }: { titel: string; wert: string; sub?: React.ReactNode; delta?: React.ReactNode; quelle?: string }) {
   return (
-    <Card className="border-0 shadow-none bg-muted/40">
+    <Card className="border-0 rounded-3xl bg-card shadow-[0_1px_2px_hsl(var(--foreground)/0.04),0_8px_24px_-12px_hsl(var(--foreground)/0.12)]">
       <CardContent className="p-5">
         <p className="text-xs font-medium text-muted-foreground">{titel}</p>
         <p className="text-4xl font-semibold tabular-nums tracking-tight mt-1">{wert}</p>
@@ -81,6 +84,36 @@ function Kachel({ titel, wert, sub, delta, quelle }: { titel: string; wert: stri
   );
 }
 
+// Health-style card: coloured dot + small caps title, one big number, one plain sentence, then content.
+const KARTE = 'rounded-3xl bg-card p-6 shadow-[0_1px_2px_hsl(var(--foreground)/0.04),0_8px_24px_-12px_hsl(var(--foreground)/0.12)]';
+function HKopf({ titel, farbe, info }: { titel: string; farbe: string; info?: string }) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.12em] font-semibold" style={{ color: farbe }}><span className="h-2 w-2 rounded-full shrink-0" style={{ background: farbe }} />{titel}</p>
+      {info && <UiTooltip><UiTooltipTriggerInfo /><TooltipContent className="max-w-xs text-xs">{info}</TooltipContent></UiTooltip>}
+    </div>
+  );
+}
+function UiTooltipTriggerInfo() {
+  return <TooltipTrigger asChild><button type="button" aria-label="Erklärung" className="text-muted-foreground hover:text-foreground -mt-0.5"><Info className="h-4 w-4" /></button></TooltipTrigger>;
+}
+function GrosseZahl({ text, klein }: { text: string; klein?: boolean }) {
+  const m = text.match(/^(.*?)\s([%€])$/);
+  return <p className={`${klein ? 'text-3xl' : 'text-5xl'} font-semibold tabular-nums leading-none mt-4 text-foreground`}>{m ? m[1] : text}{m && <span className="ml-1 text-[0.45em] font-medium text-muted-foreground">{m[2]}</span>}</p>;
+}
+function HKarte({ titel, farbe, wert, satz, info, klein, children, className = '' }: { titel: string; farbe: string; wert?: string; satz?: React.ReactNode; info?: string; klein?: boolean; children?: React.ReactNode; className?: string }) {
+  return (
+    <div className={`${KARTE} ${className}`}>
+      <HKopf titel={titel} farbe={farbe} info={info} />
+      {wert != null && <GrosseZahl text={wert} klein={klein} />}
+      {satz && <p className="text-sm tabular-nums mt-2">{satz}</p>}
+      {children && <div className={wert != null || satz ? 'mt-4' : 'mt-3'}>{children}</div>}
+    </div>
+  );
+}
+const FARBE = { dials: 'hsl(var(--cat-1))', eg: 'hsl(var(--cat-3))', zg: 'hsl(var(--cat-4))', won: 'hsl(var(--akzent-bernstein))', neutral: 'hsl(var(--muted-foreground))', verlust: 'hsl(var(--destructive))' };
+
+const EG_INFO = 'EG geführt ist abgeleitet: EG_gefuehrt_kein_ZG + ZG_gebucht (wer ein ZG gebucht hat, hatte das EG). Wird das ZG an einem anderen Tag gebucht als das EG stattfand, verschiebt sich der Tageswert; über Zeiträume stimmt die Summe, am einzelnen Tag nicht immer.';
 const tooltip = { contentStyle: { background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 12, fontSize: 12, color: 'hsl(var(--popover-foreground))' }, cursor: { stroke: 'hsl(var(--border))' } };
 
 function Verlauf({ data, color, id, euro }: { data: { datum: string; v: number }[]; color: string; id: string; euro?: boolean }) {
@@ -89,10 +122,10 @@ function Verlauf({ data, color, id, euro }: { data: { datum: string; v: number }
   return (
     <ResponsiveContainer width="100%" height={160}>
       <AreaChart data={data} margin={{ top: 8, right: 4, left: -16, bottom: 0 }}>
-        <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity={0.35} /><stop offset="100%" stopColor={color} stopOpacity={0} /></linearGradient></defs>
-        <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.6} />
-        <XAxis dataKey="datum" tickFormatter={fmtD} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} minTickGap={28} />
-        <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={44} allowDecimals={false} tickFormatter={v => euro ? `${Math.round(v / 1000)}k` : fmtN(v)} />
+        <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity={0.22} /><stop offset="100%" stopColor={color} stopOpacity={0} /></linearGradient></defs>
+        <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.35} />
+        <XAxis dataKey="datum" tickFormatter={fmtD} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} minTickGap={28} />
+        <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={44} allowDecimals={false} tickFormatter={v => euro ? `${Math.round(v / 1000)}k` : fmtN(v)} />
         <Tooltip {...tooltip} labelFormatter={l => new Date(l + 'T00:00:00').toLocaleDateString('de-DE')} formatter={(v: number) => [euro ? fmtE(v) : fmtN(v), '']} separator="" />
         <Area type={data.length < 21 ? 'linear' : 'monotone'} dataKey="v" stroke={color} strokeWidth={2} strokeLinecap="round" fill={`url(#${id})`} dot={wenig ? { r: 2.5, fill: color, strokeWidth: 0 } : false} activeDot={{ r: 3 }} animationDuration={500} />
       </AreaChart>
@@ -101,7 +134,7 @@ function Verlauf({ data, color, id, euro }: { data: { datum: string; v: number }
 }
 
 function Zeile({ l, v, title }: { l: string; v: string; title?: string }) {
-  return <div className="flex justify-between gap-3" title={title}><span className={`text-muted-foreground ${title ? 'underline decoration-dotted underline-offset-2 cursor-help' : ''}`}>{l}</span><span className="text-right">{v}</span></div>;
+  return <div className="flex justify-between gap-3 py-2" title={title}><span className={`text-muted-foreground ${title ? 'underline decoration-dotted underline-offset-2 cursor-help' : ''}`}>{l}</span><span className="text-right">{v}</span></div>;
 }
 
 export default function SalesOverview() {
@@ -186,7 +219,7 @@ export default function SalesOverview() {
   const pct = (a: number, b: number) => b ? `${((a / b) * 100).toFixed(1).replace('.', ',')} %` : '–';
 
   return (
-    <div className="space-y-6 p-4 md:p-6 max-w-full overflow-x-hidden">
+    <TooltipProvider delayDuration={150}><div className="space-y-8 p-4 md:p-6 max-w-full overflow-x-hidden bg-muted/40 min-h-full">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold font-heading">Übersicht</h1>
@@ -209,61 +242,61 @@ export default function SalesOverview() {
           </CardContent></Card>
         ) : <>
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-            <Kachel titel="Dials" wert={fmtN(S('Dials'))} delta={<Delta cur={S('Dials')} prev={P('Dials')} show={r.vergleich} />} />
-            <Kachel titel="Erstgespräche gebucht" wert={fmtN(S('EG_gebucht'))} sub={`davon geführt ${fmtN(S('EG_gefuehrt'))}¹`} delta={<Delta cur={S('EG_gebucht')} prev={P('EG_gebucht')} show={r.vergleich} />} />
-            <Kachel titel="Zweitgespräche gebucht" wert={fmtN(S('ZG_gebucht'))} sub={`davon geführt ${fmtN(S('ZG_gefuehrt'))}`} delta={<Delta cur={S('ZG_gebucht')} prev={P('ZG_gebucht')} show={r.vergleich} />} />
-            <Kachel titel="Abschlüsse" wert={fmtN(S('Won'))} sub={`Umsatz geschrieben ${fmtE(umsatz)}²`} delta={<Delta cur={S('Won')} prev={P('Won')} show={r.vergleich} />} quelle="Abschlüsse: Sheet (Won) · ² Umsatz: Close, gewonnene Abschlüsse beider Accounts nach Gewinndatum, ohne Dubletten" />
+            <HKarte titel="Dials" farbe={FARBE.dials} wert={fmtN(S('Dials'))} satz={<Delta satz cur={S('Dials')} prev={P('Dials')} show={r.vergleich} />} />
+            <HKarte titel="Erstgespräche gebucht" farbe={FARBE.eg} wert={fmtN(S('EG_gebucht'))} info={EG_INFO} satz={<><span className="text-muted-foreground">{fmtN(S('EG_gefuehrt'))} davon geführt · </span><Delta satz cur={S('EG_gebucht')} prev={P('EG_gebucht')} show={r.vergleich} /></>} />
+            <HKarte titel="Zweitgespräche gebucht" farbe={FARBE.zg} wert={fmtN(S('ZG_gebucht'))} satz={<><span className="text-muted-foreground">{fmtN(S('ZG_gefuehrt'))} davon geführt · </span><Delta satz cur={S('ZG_gebucht')} prev={P('ZG_gebucht')} show={r.vergleich} /></>} />
+            <HKarte titel="Abschlüsse" farbe={FARBE.won} wert={fmtN(S('Won'))} info="Abschlüsse: Sheet (Won) · Umsatz: Close, gewonnene Abschlüsse beider Accounts nach Gewinndatum, ohne Dubletten" satz={<><span className="text-muted-foreground">Umsatz geschrieben {fmtE(umsatz)} · </span><Delta satz cur={S('Won')} prev={P('Won')} show={r.vergleich} /></>} />
           </div>
 
-          <p className="text-xs font-medium text-muted-foreground pt-2">Qualität im Setting</p>
-          <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
-            <Kachel titel="EG No-Show-Quote" wert={pct(S('EG_noshow'), S('EG_gebucht'))} sub={`${fmtN(S('EG_noshow'))} von ${fmtN(S('EG_gebucht'))} gebucht`} />
-            <Kachel titel="EG Absage-Quote" wert={pct(S('EG_abgesagt'), S('EG_gebucht'))} sub={`${fmtN(S('EG_abgesagt'))} von ${fmtN(S('EG_gebucht'))} gebucht`} />
-            <Kachel titel="ZG No-Show-Quote" wert={pct(S('ZG_noshow'), S('ZG_gebucht'))} sub={`${fmtN(S('ZG_noshow'))} von ${fmtN(S('ZG_gebucht'))} gebucht`} />
-            <Kachel titel="ZG Absage-Quote" wert={pct(S('ZG_abgesagt'), S('ZG_gebucht'))} sub={`${fmtN(S('ZG_abgesagt'))} von ${fmtN(S('ZG_gebucht'))} gebucht`} />
+          <section className="space-y-4">
+          <p className="text-[11px] uppercase tracking-[0.12em] font-semibold text-muted-foreground">Qualität im Setting</p>
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+            <HKarte klein titel="EG No-Show-Quote" farbe={FARBE.neutral} wert={pct(S('EG_noshow'), S('EG_gebucht'))} satz={<span className="text-muted-foreground">{fmtN(S('EG_noshow'))} von {fmtN(S('EG_gebucht'))} gebucht</span>} />
+            <HKarte klein titel="EG Absage-Quote" farbe={FARBE.neutral} wert={pct(S('EG_abgesagt'), S('EG_gebucht'))} satz={<span className="text-muted-foreground">{fmtN(S('EG_abgesagt'))} von {fmtN(S('EG_gebucht'))} gebucht</span>} />
+            <HKarte klein titel="ZG No-Show-Quote" farbe={FARBE.neutral} wert={pct(S('ZG_noshow'), S('ZG_gebucht'))} satz={<span className="text-muted-foreground">{fmtN(S('ZG_noshow'))} von {fmtN(S('ZG_gebucht'))} gebucht</span>} />
+            <HKarte klein titel="ZG Absage-Quote" farbe={FARBE.neutral} wert={pct(S('ZG_abgesagt'), S('ZG_gebucht'))} satz={<span className="text-muted-foreground">{fmtN(S('ZG_abgesagt'))} von {fmtN(S('ZG_gebucht'))} gebucht</span>} />
           </div>
+          </section>
 
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-3">
-            <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Gesprächszeit</CardTitle></CardHeader>
-              <CardContent className="space-y-1 text-sm tabular-nums">
+            <HKarte titel="Gesprächszeit" farbe={FARBE.dials}>
+              <div className="divide-y divide-border/50 text-sm tabular-nums">
                 <Zeile l="Gesprächszeit gesamt" v={`${fmtN(S('Gespraechszeit_Min'))} Min`} />
                 <Zeile l="Gespräche > 30 Sek." v={`${fmtN(S('Gespraeche_30'))} · ${pct(S('Gespraeche_30'), S('Dials'))} der Dials`} />
                 <Zeile l="Gespräche > 60 Sek." v={`${fmtN(S('Gespraeche_60'))} · ${pct(S('Gespraeche_60'), S('Dials'))} der Dials`} />
                 <Zeile l="Ø Gesprächszeit je Dial" v={S('Dials') ? `${(S('Gespraechszeit_Min') / S('Dials') * 60).toFixed(0)} Sek.` : '–'} />
-              </CardContent></Card>
-            <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Leads & Reaktion</CardTitle></CardHeader>
-              <CardContent className="space-y-1 text-sm tabular-nums">
+              </div></HKarte>
+            <HKarte titel="Leads & Reaktion" farbe={FARBE.eg}>
+              <div className="divide-y divide-border/50 text-sm tabular-nums">
                 <Zeile l="Neue Leads" v={fmtN(S('Leads_neu'))} title="Leads_neu" />
                 <Zeile l="Am selben Tag erreicht" title="Leads_erreicht_T0 ÷ Leads_neu" v={`${fmtN(S('Leads_erreicht_T0'))} · ${pct(S('Leads_erreicht_T0'), S('Leads_neu'))}`} />
                 <Zeile l="Speed to Lead Ø" v={S('StL_Anzahl') ? hm(S('StL_Summe_Min') / S('StL_Anzahl')) : '–'} title={`StL_Summe_Min ÷ StL_Anzahl = ${fmtN(S('StL_Summe_Min'))} ÷ ${fmtN(S('StL_Anzahl'))}`} />
                 <Zeile l="Speed to Lead Median" v={stlMedian != null ? hm(stlMedian) : '–'} title={`Median der Tageswerte (StL_Summe_Min ÷ StL_Anzahl je Tag), ${stlTage.length} Tage`} />
                 <p className="text-xs text-muted-foreground pt-1">Median über die Tageswerte, da das Sheet keine Einzelwerte je Lead enthält.</p>
                 {S('StL_Anzahl') > 0 && S('StL_Anzahl') === S('Leads_erreicht_T0') && <p className="text-xs text-destructive pt-1"><code>StL_Anzahl</code> entspricht <code>Leads_erreicht_T0</code>. Der Mittelwert passt nicht zu einer Erreichbarkeit am selben Tag — Definition im Sheet prüfen.</p>}
-              </CardContent></Card>
-            <Card className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-1"><CardTitle className="text-sm font-medium">Verluste</CardTitle></CardHeader>
-              <CardContent className="space-y-1 text-sm tabular-nums">
+              </div></HKarte>
+            <HKarte titel="Verluste" farbe={FARBE.verlust}>
+              <div className="divide-y divide-border/50 text-sm tabular-nums">
                 <Zeile l="Lost" v={fmtN(S('Lost'))} />
                 <Zeile l="Unqualifiziert" v={fmtN(S('Unqualifiziert'))} />
 
-              </CardContent></Card>
+              </div></HKarte>
           </div>
 
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-            {([['Dials', 'Dials'], ['EG_gebucht', 'Erstgespräche gebucht'], ['ZG_gebucht', 'Zweitgespräche gebucht'], ['Won', 'Abschlüsse']] as [Metric, string][]).map(([m, l]) => (
-              <Card key={m} className="border-0 shadow-none bg-muted/40"><CardHeader className="pb-0"><CardTitle className="text-sm font-medium">{l}</CardTitle></CardHeader>
-                <CardContent className="pt-2"><Verlauf id={`g-${m}`} data={serie(m)} color="hsl(var(--primary))" /></CardContent></Card>
+            {([['Dials', 'Dials', FARBE.dials], ['EG_gebucht', 'Erstgespräche gebucht', FARBE.eg], ['ZG_gebucht', 'Zweitgespräche gebucht', FARBE.zg], ['Won', 'Abschlüsse', FARBE.won]] as [Metric, string, string][]).map(([m, l, f]) => (
+              <HKarte key={m} titel={l} farbe={f} wert={fmtN(S(m))}><Verlauf id={`g-${m}`} data={serie(m)} color={f} /></HKarte>
             ))}
           </div>
 
-          <Card className="border-0 shadow-none bg-muted/40">
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Kanäle im Vergleich</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
+          <HKarte titel="Kanäle im Vergleich" farbe={FARBE.neutral}>
+            <div className="space-y-3">
               {kanalRows.map(k => {
                 const max = Math.max(1, ...kanalRows.map(x => x.eg));
                 return (
                   <div key={k.key} className="grid grid-cols-[1fr] sm:grid-cols-[180px_1fr_auto] items-center gap-x-4 gap-y-1">
                     <span className="text-sm flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: k.color }} />{k.label}{k.key === 'coldcall' && <sup className="text-muted-foreground">*</sup>}</span>
-                    <div className="h-2.5 rounded-full bg-background overflow-hidden"><div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${(k.eg / max) * 100}%`, background: k.color }} /></div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${(k.eg / max) * 100}%`, background: k.color }} /></div>
                     <span className="text-xs tabular-nums text-muted-foreground">{fmtN(k.dials)} Dials · {fmtN(k.eg)} EG · {fmtN(k.zg)} ZG · {fmtN(k.won)} Won · {fmtN(k.abg)} Abgänge</span>
                   </div>
                 );
@@ -273,11 +306,11 @@ export default function SalesOverview() {
                 <span className="text-xs">nicht gewertet, wie im Slack-Report</span>
                 <span className="text-xs tabular-nums">{fmtN(sum(inboundTage, 'Dials'))} Dials · {fmtN(sum(inboundTage, 'EG_gebucht'))} EG · {fmtN(inboundAbg)} Abgänge</span>
               </div>
-              <p className="text-xs text-muted-foreground pt-1">Balken = Erstgespräche gebucht. Inbound zählt in keiner Summe. * Cold Call steht derzeit strukturell bei 0, weil Marcels Anrufe nicht in Close landen. Das ist bekannt und kein Messfehler.</p>
-            </CardContent>
-          </Card>
+              <p className="text-[11px] text-muted-foreground pt-1">Balken = Erstgespräche gebucht. Inbound zählt in keiner Summe. * Cold Call steht derzeit strukturell bei 0, weil Marcels Anrufe nicht in Close landen. Das ist bekannt und kein Messfehler.</p>
+            </div>
+          </HKarte>
 
-          <Card className="border-0 shadow-none bg-muted/40">
+          <Card className="border-0 rounded-3xl bg-card shadow-[0_1px_2px_hsl(var(--foreground)/0.04),0_8px_24px_-12px_hsl(var(--foreground)/0.12)]">
             <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Funnel</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               <div className="grid grid-cols-3 gap-3 pb-3 mb-1 border-b border-border/60 text-sm tabular-nums">
@@ -292,7 +325,7 @@ export default function SalesOverview() {
                 return (
                   <div key={f.l} title={f.spalte} className={`grid grid-cols-[120px_1fr_auto] items-center gap-3 ${f.optional ? 'pl-3 border-l-2 border-dashed border-border' : ''}`}>
                     <span className="text-sm">{f.l}{f.optional && <span className="text-xs text-muted-foreground"> optional</span>}</span>
-                    <div className={`h-3 rounded-full overflow-hidden ${f.optional ? 'border border-dashed border-border bg-transparent' : 'bg-background'}`}><div className={`h-full rounded-full transition-[width] duration-500 ${f.optional ? 'bg-primary/40' : 'bg-primary'}`} style={{ width: `${funnel[0].v ? Math.min(100, Math.max(f.v ? 1 : 0, (f.v / funnel[0].v) * 100)) : 0}%` }} /></div>
+                    <div className={`h-3 rounded-full overflow-hidden ${f.optional ? 'border border-dashed border-border bg-transparent' : 'bg-muted'}`}><div className={`h-full rounded-full transition-[width] duration-500 ${f.optional ? 'bg-primary/40' : 'bg-primary'}`} style={{ width: `${funnel[0].v ? Math.min(100, Math.max(f.v ? 1 : 0, (f.v / funnel[0].v) * 100)) : 0}%` }} /></div>
                     <span className="text-xs tabular-nums w-40 text-right">{fmtN(f.v)}{quote && <span className="text-muted-foreground"> · {quote}</span>}{f.hinweis && <span className="text-muted-foreground"> · {f.hinweis}</span>}</span>
                   </div>
                 );
@@ -302,7 +335,7 @@ export default function SalesOverview() {
           </Card>
 
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-            <Card className="border-0 shadow-none bg-muted/40">
+            <Card className="border-0 rounded-3xl bg-card shadow-[0_1px_2px_hsl(var(--foreground)/0.04),0_8px_24px_-12px_hsl(var(--foreground)/0.12)]">
               <CardHeader className="pb-0"><CardTitle className="text-sm font-medium">Abgänge nach Grund</CardTitle>
                 <p className="text-xs tabular-nums text-muted-foreground">{fmtN(abgCur.length)} Abgänge · Erfassungsquote {pct(mitGrund, abgCur.length)} · <Delta cur={abgCur.length} prev={abgPrev.length} steigtGut={false} show={r.vergleich} />{abgAlle.length > abgCur.length && ` · ${fmtN(abgAlle.length - abgCur.length)} Inbound nicht gewertet`}</p></CardHeader>
               <CardContent className="pt-3">
@@ -319,7 +352,7 @@ export default function SalesOverview() {
                 )}
               </CardContent>
             </Card>
-            <Card className="border-0 shadow-none bg-muted/40">
+            <Card className="border-0 rounded-3xl bg-card shadow-[0_1px_2px_hsl(var(--foreground)/0.04),0_8px_24px_-12px_hsl(var(--foreground)/0.12)]">
               <CardHeader className="pb-0"><CardTitle className="text-sm font-medium">Bestand</CardTitle>
                 {bestandSerie.length > 0 && <p className="text-xs tabular-nums text-muted-foreground">aktuell {fmtN(bestandSerie[bestandSerie.length - 1].v)} offene Leads (alle Kanäle, ohne Won/Upsell/Lost/Unqualifiziert/Ehemalig)</p>}</CardHeader>
               <CardContent className="pt-2">{bestandSerie.length ? <Verlauf id="g-bestand" data={bestandSerie} color="hsl(var(--kanal-organisch))" /> : <p className="text-sm text-muted-foreground py-6 text-center">Noch keine Daten</p>}</CardContent>
@@ -335,6 +368,6 @@ export default function SalesOverview() {
           <SalesKPI />
         </CollapsibleContent>
       </Collapsible>
-    </div>
+    </div></TooltipProvider>
   );
 }

@@ -206,6 +206,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ad_performance_intern_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       ad_performance_kunden: {
@@ -781,6 +788,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bonus_cash_collect_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "bonus_cash_collect_mitarbeiter_id_fkey"
             columns: ["mitarbeiter_id"]
             isOneToOne: false
@@ -939,6 +953,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bonus_checkins_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "bonus_checkins_mitarbeiter_id_fkey"
             columns: ["mitarbeiter_id"]
             isOneToOne: false
@@ -1033,6 +1054,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_churn_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "bonus_churn_events_mitarbeiter_id_fkey"
@@ -1160,6 +1188,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bonus_kunden_aktuell_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "bonus_kunden_aktuell_mitarbeiter_id_fkey"
             columns: ["mitarbeiter_id"]
             isOneToOne: false
@@ -1197,6 +1232,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_kunden_snapshot_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "bonus_kunden_snapshot_mitarbeiter_id_fkey"
@@ -1463,6 +1505,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bonus_survey_antworten_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "bonus_survey_antworten_mitarbeiter_id_fkey"
             columns: ["mitarbeiter_id"]
             isOneToOne: false
@@ -1537,6 +1586,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_survey_tokens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "bonus_survey_tokens_mitarbeiter_id_fkey"
@@ -1703,6 +1759,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_upsells_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "bonus_upsells_mitarbeiter_id_fkey"
@@ -2031,6 +2094,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "clients_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "fk_clients_unternehmen"
             columns: ["unternehmen_id"]
             isOneToOne: false
@@ -2168,6 +2238,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "close_abschluesse_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       close_abschluss_ausgeblendet: {
@@ -2280,6 +2357,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "close_activities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -2489,6 +2573,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "close_deals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "close_deals_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -2678,6 +2769,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "close_link_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       close_opportunities: {
@@ -2763,6 +2861,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "close_opportunities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -3210,6 +3315,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -3846,6 +3958,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "finance_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       google_drive_connections: {
@@ -4111,6 +4230,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "kunde_aenderungsprotokoll_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       kunde_close_deals: {
@@ -4174,6 +4300,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "kunde_close_deals_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "kunde_close_deals_kunde_id_fkey"
             columns: ["kunde_id"]
             isOneToOne: false
@@ -4221,6 +4354,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "kunde_externe_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       kunde_link_vorschlag_verworfen: {
@@ -4255,6 +4395,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kunde_link_vorschlag_verworfen_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -4299,6 +4446,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kunde_meta_accounts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "kunde_meta_accounts_kunde_id_fkey"
@@ -4372,6 +4526,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "kunden_laufzeit_stand_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       lexoffice_client_links: {
@@ -4415,6 +4576,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lexoffice_client_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -5453,6 +5621,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "onepage_projects_client_id_fk_fkey"
+            columns: ["client_id_fk"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "onepage_projects_unternehmen_id_fkey"
             columns: ["unternehmen_id"]
             isOneToOne: false
@@ -6072,6 +6247,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       qonto_bank_accounts: {
@@ -6247,6 +6429,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qonto_client_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -6667,6 +6856,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "referenz_meta_ads_linked_client_id_fkey"
+            columns: ["linked_client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
+          {
             foreignKeyName: "referenz_meta_ads_linked_kunde_id_fkey"
             columns: ["linked_kunde_id"]
             isOneToOne: false
@@ -6786,6 +6982,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referenz_meta_campaigns_linked_client_id_fkey"
+            columns: ["linked_client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "referenz_meta_campaigns_linked_kunde_id_fkey"
@@ -6913,6 +7116,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referenz_showcase_linked_client_id_fkey"
+            columns: ["linked_client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "referenz_showcase_linked_kunde_id_fkey"
@@ -8093,6 +8303,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "slack_abschluss_import_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       slack_item_meta_account: {
@@ -8136,6 +8353,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slack_item_meta_account_matched_client_id_fkey"
+            columns: ["matched_client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -8371,6 +8595,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
           {
             foreignKeyName: "tasks_project_id_fkey"
@@ -9007,6 +9238,13 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "werbebudget_vorschlag_verworfen_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
         ]
       }
       werbebudget_zuordnung: {
@@ -9053,6 +9291,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "werbebudget_zuordnung_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -9172,7 +9417,50 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "close_opportunities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
         ]
+      }
+      kunde_kennzahlen: {
+        Row: {
+          abschlusswert: number | null
+          ampelstatus: Database["public"]["Enums"]["ampelstatus"] | null
+          bezahlt: number | null
+          buchhaltungsquelle: string | null
+          cash_collect_quote: number | null
+          checkins: number | null
+          client_id: string | null
+          deals: number | null
+          enddatum: string | null
+          fakturiert: number | null
+          kampagnen: number | null
+          kampagnen_aktiv: number | null
+          kundenstatus: Database["public"]["Enums"]["kundenstatus"] | null
+          letzte_rechnung: string | null
+          letzte_zahlung: string | null
+          letzter_checkin: string | null
+          meta_ausgaben: number | null
+          meta_letzte_zahlung: string | null
+          monate_dabei: number | null
+          name: string | null
+          offen: number | null
+          rechnungen: number | null
+          resttage: number | null
+          startdatum: string | null
+          tage_seit_checkin: number | null
+          tagesbudget_aktiv: number | null
+          ueberfaellig: number | null
+          werbebudget_eingezahlt: number | null
+          werbebudget_lage: string | null
+          werbebudget_rest: number | null
+          wert_quelle: string | null
+        }
+        Relationships: []
       }
       laufzeit_vorschlag: {
         Row: {
@@ -9196,6 +9484,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slack_abschluss_import_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
         ]
       }
@@ -9328,6 +9623,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qonto_client_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
           },
         ]
       }

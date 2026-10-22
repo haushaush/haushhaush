@@ -259,6 +259,7 @@ export default function KundenLaufzeiten() {
       </div>
     );
   };
+  const closeLinkIcon = (r: Row) => r.close_lead_id && <a href={`https://app.close.com/lead/${r.close_lead_id}/`} target="_blank" rel="noreferrer" title="In Close öffnen" aria-label="In Close öffnen" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-primary hover:bg-accent"><ExternalLink className="h-3.5 w-3.5" /></a>;
   const closeLink = (r: Row) => r.close_lead_id && <a href={`https://app.close.com/lead/${r.close_lead_id}/`} target="_blank" rel="noreferrer" className="text-primary inline-flex items-center gap-1 text-xs">Close <ExternalLink className="h-3 w-3" /></a>;
 
   return (
@@ -274,20 +275,20 @@ export default function KundenLaufzeiten() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Aktive Kunden mit Laufzeit ({klar.length})</CardTitle></CardHeader>
           <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader><TableRow><TableHead>Kunde</TableHead><TableHead>Start</TableHead><TableHead>Laufzeit</TableHead><TableHead>Vertragsende</TableHead><TableHead className="text-right">Restlaufzeit</TableHead><TableHead /></TableRow></TableHeader>
+            <Table className="table-fixed min-w-[1180px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
+              <TableHeader><TableRow><TableHead className="min-w-0">Kunde</TableHead><TableHead className="w-[110px]">Start</TableHead><TableHead className="w-[160px]">Laufzeit</TableHead><TableHead className="w-[120px]">Vertragsende</TableHead><TableHead className="w-[210px] text-right">Restlaufzeit</TableHead><TableHead className="w-[300px] text-right"><span className="sr-only">Aktionen</span></TableHead></TableRow></TableHeader>
               <TableBody>
                 {klar.map(r => editing === r.client_id ? (
-                  <TableRow key={r.client_id}><TableCell className="font-medium align-top pt-4">{r.kunde}</TableCell><TableCell colSpan={4}>{fields(r)}</TableCell>
-                    <TableCell className="align-top"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditing(null)}><X className="h-4 w-4" /></Button></TableCell></TableRow>
+                  <TableRow key={r.client_id}><TableCell className="font-medium align-top pt-4 !whitespace-normal">{r.kunde}</TableCell><TableCell colSpan={4} className="!whitespace-normal">{fields(r)}</TableCell>
+                    <TableCell className="align-top text-right"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditing(null)}><X className="h-4 w-4" /></Button></TableCell></TableRow>
                 ) : (
-                  <TableRow key={r.client_id} className={cn('transition-colors duration-700', neu === r.client_id && 'bg-primary/5 animate-in fade-in slide-in-from-bottom-2 duration-500')}>
-                    <TableCell className="font-medium">{r.kunde}{r.quelle === 'Viral Connect' && <Badge variant="outline" className="ml-2 text-xs">aus Viral Connect</Badge>}</TableCell>
-                    <TableCell className="tabular-nums">{dt(r.startdatum)}</TableCell>
-                    <TableCell className="tabular-nums whitespace-nowrap">{r.upsell_startdatum && r.upsell_laufzeit ? <>{r.upsell_laufzeit} Mon.<Tooltip><TooltipTrigger asChild><Badge variant="outline" className="ml-2 text-xs font-normal text-muted-foreground cursor-default">verlängert</Badge></TooltipTrigger><TooltipContent>1. Laufzeit: {dt(r.startdatum)}, {r.laufzeit_monate} Mon. · Verlängerung ab {dt(r.upsell_startdatum)}</TooltipContent></Tooltip></> : <>{r.laufzeit_monate} Mon.</>}</TableCell>
-                    <TableCell className="tabular-nums">{dt(r.vertragsende)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r.rest} Tage {r.rest < 30 && <Badge variant="destructive" className="ml-2">unter 30 Tage</Badge>}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap space-x-1">{isAdmin && <LaufzeitAktionen r={r} onDone={load} />}{isAdmin && <Button size="sm" variant="ghost" className="h-7" onClick={() => setEditing(r.client_id)}><Pencil className="h-3 w-3 mr-1" />Bearbeiten</Button>}{closeLink(r)}</TableCell>
+                  <TableRow key={r.client_id} className={cn('h-[54px] transition-colors duration-700', neu === r.client_id && 'bg-primary/5 animate-in fade-in slide-in-from-bottom-2 duration-500')}>
+                    <TableCell className="font-medium py-2"><div className="flex items-center gap-2 min-w-0"><span className="truncate" title={r.kunde ?? undefined}>{r.kunde}</span>{r.quelle === 'Viral Connect' && <Badge variant="outline" className="shrink-0 text-[11px] leading-4 px-1.5 py-0 font-normal">Viral Connect</Badge>}</div></TableCell>
+                    <TableCell className="tabular-nums py-2">{dt(r.startdatum)}</TableCell>
+                    <TableCell className="tabular-nums py-2">{r.upsell_startdatum && r.upsell_laufzeit ? <>{r.upsell_laufzeit} Mon.<Tooltip><TooltipTrigger asChild><Badge variant="outline" className="ml-2 text-[11px] leading-4 px-1.5 py-0 font-normal text-muted-foreground cursor-default">verlängert</Badge></TooltipTrigger><TooltipContent>1. Laufzeit: {dt(r.startdatum)}, {r.laufzeit_monate} Mon. · Verlängerung ab {dt(r.upsell_startdatum)}</TooltipContent></Tooltip></> : <>{r.laufzeit_monate} Mon.</>}</TableCell>
+                    <TableCell className="tabular-nums py-2">{dt(r.vertragsende)}</TableCell>
+                    <TableCell className="text-right tabular-nums py-2"><span className="inline-flex items-center justify-end gap-2">{r.rest < 0 ? `${-r.rest} Tage über` : `${r.rest} Tage`}{r.rest < 30 && <span className="inline-flex items-center gap-1 text-[11px] leading-4 whitespace-nowrap text-destructive"><span className="h-1.5 w-1.5 rounded-full bg-destructive" aria-hidden />unter 30 Tage</span>}</span></TableCell>
+                    <TableCell className="text-right py-2"><div className="inline-flex items-center justify-end gap-1.5 shrink-0 whitespace-nowrap">{isAdmin && <LaufzeitAktionen r={r} onDone={load} />}{isAdmin && <Button size="icon" variant="ghost" className="h-8 w-8" title="Bearbeiten" aria-label="Bearbeiten" onClick={() => setEditing(r.client_id)}><Pencil className="h-3.5 w-3.5" /></Button>}{closeLinkIcon(r)}</div></TableCell>
                   </TableRow>
                 ))}
                 {!klar.length && <TableRow><TableCell colSpan={6} className="text-sm text-muted-foreground">Noch kein aktiver Kunde mit vollständiger Laufzeit.</TableCell></TableRow>}
