@@ -6,6 +6,7 @@ import { LexofficeSyncCard } from '@/components/integrations/LexofficeSyncCard';
 import { RechnungenListe } from '@/components/finanzen/RechnungenListe';
 import { RechnungsAuswertung } from '@/components/finanzen/RechnungsAuswertung';
 import { GemeinsameKennzahlen } from '@/components/finanzen/GemeinsameKennzahlen';
+import { HealthKarte, FARBE } from '@/components/finanzen/HealthKarte';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -470,71 +471,55 @@ export default function Finanzen() {
           {/* A. LIQUIDITÄT */}
           <div>
             <SectionTitle title="A · Liquidität" subtitle="Qonto Konten" />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <Card className="lg:col-span-1">
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground">Gesamt-Guthaben</p>
-                  <p className="text-2xl font-semibold tabular-nums mt-1">{eur(totalBalance)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{accounts.length} Konten</p>
-                  <div className="mt-4 space-y-2 border-t pt-3">
-                    {netLiquidity != null && (
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Netto-Liquidität (ohne Rücklagen)</span>
-                        <span className="font-medium tabular-nums">{eur(netLiquidity)}</span>
-                      </div>
-                    )}
-                    {reserveShare != null && (
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Rücklagen-Anteil</span>
-                        <span className="font-medium">{pct(reserveShare)}</span>
-                      </div>
-                    )}
-                    {adsAcc && (
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Werbebudget-Konto</span>
-                        <span className="font-medium tabular-nums">{eur(adsAcc.balance)}</span>
-                      </div>
-                    )}
-                    {taxAcc && (
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Umsatzsteuer-Konto</span>
-                        <span className="font-medium tabular-nums">{eur(taxAcc.balance)}</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="lg:col-span-2">
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground mb-2">Konten</p>
-                  <div className="divide-y">
-                    {accounts.map(a => (
-                      <TooltipProvider key={a.id}>
-                        <div className="flex items-center justify-between py-2 text-sm">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Landmark className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="truncate font-medium">{a.name || 'Konto'}</span>
-                            {a.is_main && <Badge variant="secondary" className="text-[9px] h-4">HAUPT</Badge>}
-                            <UiTooltip>
-                              <TooltipTrigger asChild>
-                                <span className="text-xs text-muted-foreground font-mono truncate">
-                                  {a.iban ? '…' + a.iban.slice(-6) : ''}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent className="font-mono text-xs">{a.iban}</TooltipContent>
-                            </UiTooltip>
-                          </div>
-                          <span className={`tabular-nums font-medium ${Number(a.balance) < 100 ? 'text-amber-600' : ''}`}>
-                            {eur2(a.balance)}
-                          </span>
-                        </div>
-                      </TooltipProvider>
-                    ))}
-                    {accounts.length === 0 && <p className="text-xs text-muted-foreground py-3">Keine Konten synchronisiert.</p>}
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <HealthKarte titel="Gesamt-Guthaben" farbe={FARBE.primaer} wert={eur(totalBalance)}
+                satz={`Summe über ${accounts.length} Konten.`} />
+              <HealthKarte titel="Netto-Liquidität" farbe={FARBE.gruen} wert={netLiquidity != null ? eur(netLiquidity) : '—'}
+                satz={netLiquidity != null ? 'Guthaben ohne Rücklagen-Konto.' : 'Kein Rücklagen-Konto erkannt — nicht berechenbar.'} />
+              <HealthKarte titel="Rücklagen-Anteil" farbe={FARBE.grau} wert={reserveShare != null ? pct(reserveShare) : '—'}
+                satz={reserveShare != null ? 'Anteil des Rücklagen-Kontos am Gesamt-Guthaben.' : 'Kein Rücklagen-Konto erkannt — nicht berechenbar.'} />
             </div>
+            <HealthKarte titel="Konten" farbe={FARBE.primaer}
+              satz={[adsAcc ? `Werbebudget-Konto ${eur(adsAcc.balance)}` : null, taxAcc ? `Umsatzsteuer-Konto ${eur(taxAcc.balance)}` : null].filter(Boolean).join(' · ') || 'Nach Kontostand sortiert, größtes oben.'}>
+              <div className="mt-4 divide-y">
+                {[...accounts].sort((a, b) => {
+                  const x = Number(a.balance || 0), y = Number(b.balance || 0);
+                  if ((x === 0) !== (y === 0)) return x === 0 ? 1 : -1;
+                  return y - x;
+                }).map(a => {
+                  const bal = Number(a.balance || 0);
+                  const leer = bal === 0;
+                  const zweck = a === reserveAcc ? 'Rücklagen' : a === taxAcc ? 'Umsatzsteuer' : a === adsAcc ? 'Werbebudget' : a.is_main ? 'Haupt' : null;
+                  const anteil = totalBalance > 0 && bal > 0 ? Math.min(100, (bal / totalBalance) * 100) : 0;
+                  return (
+                    <TooltipProvider key={a.id}>
+                      <div className={`py-3 ${leer ? 'pl-6 opacity-60' : ''}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="truncate font-medium text-sm">{a.name || 'Konto'}</span>
+                              {a.is_main && <Badge variant="secondary" className="text-[9px] h-4">HAUPT</Badge>}
+                              <UiTooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-xs text-muted-foreground font-mono truncate">{a.iban ? '…' + a.iban.slice(-6) : ''}</span>
+                                </TooltipTrigger>
+                                <TooltipContent className="font-mono text-xs">{a.iban}</TooltipContent>
+                              </UiTooltip>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{zweck ?? 'Verwendungszweck nicht erkannt'}</p>
+                          </div>
+                          <span className={`tabular-nums font-medium shrink-0 ${bal < 100 && !leer ? 'text-amber-600' : ''}`}>{eur2(a.balance)}</span>
+                        </div>
+                        <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full bg-primary" style={{ width: `${anteil}%` }} />
+                        </div>
+                      </div>
+                    </TooltipProvider>
+                  );
+                })}
+                {accounts.length === 0 && <p className="text-xs text-muted-foreground py-3">Keine Konten synchronisiert.</p>}
+              </div>
+            </HealthKarte>
           </div>
 
           {/* B. CASHFLOW */}
