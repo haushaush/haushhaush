@@ -36,7 +36,7 @@ function Kachel({ title, value, sub, hint }: { title: string; value: string; sub
   );
 }
 
-export function RechnungsAuswertung({ quellen, quelleText }: { quellen: Quelle[]; quelleText: string }) {
+export function RechnungsAuswertung({ quellen, quelleText, nurZusatz = false, verlaufHinweis }: { quellen: Quelle[]; quelleText: string; nurZusatz?: boolean; verlaufHinweis?: string }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const key = quellen.join(',');
@@ -94,6 +94,11 @@ export function RechnungsAuswertung({ quellen, quelleText }: { quellen: Quelle[]
 
   return (
     <div className="space-y-6">
+      {nurZusatz ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Kachel title="Größte offene Forderung" value={m.openCount ? eur(m.largest) : 'keine offenen'} hint={hint} />
+        </div>
+      ) : (
       <div>
         <div className="mb-3">
           <h3 className="text-sm font-semibold">C · Rechnungen & Cash Collected</h3>
@@ -108,11 +113,12 @@ export function RechnungsAuswertung({ quellen, quelleText }: { quellen: Quelle[]
           <Kachel title="Größte offene Forderung" value={m.openCount ? eur(m.largest) : 'keine offenen'} hint={hint} />
         </div>
       </div>
+      )}
 
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Monatsentwicklung (letzte 12 Monate)</CardTitle>
-          <p className="text-xs text-muted-foreground">Ausgestellt nach Rechnungsdatum, bezahlt nach Zahldatum{hint ? ` · ${hint}` : ''}</p>
+          <p className="text-xs text-muted-foreground">Ausgestellt nach Rechnungsdatum, bezahlt nach Zahldatum{hint ? ` · ${hint}` : ''}{verlaufHinweis ? ` · ${verlaufHinweis}` : ''}</p>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={260}>
