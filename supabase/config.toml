@@ -72,3 +72,6 @@ verify_jwt = false
 
 [functions.bonus-cash-sync]
 verify_jwt = false
+
+[functions.bonus-survey-submit]
+verify_jwt = false

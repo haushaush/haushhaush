@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
   const have = new Set((existing || []).map((r) => r.client_id));
 
   const inserts = (snap || []).filter((s) => !have.has(s.client_id))
-    .map((s) => ({ token: newToken(), monat, client_id: s.client_id, mitarbeiter_id, kanal: "automatisch" }));
+    .map((s) => ({ token: newToken(), monat, client_id: s.client_id, mitarbeiter_id, kanal: "automatisch", versendet_am: new Date().toISOString() }));
   if (inserts.length) {
     const { error: iErr } = await admin.from("bonus_survey_tokens").upsert(inserts, { onConflict: "monat,client_id", ignoreDuplicates: true });
     if (iErr) return json({ error: iErr.message }, 500);

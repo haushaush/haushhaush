@@ -71,14 +71,14 @@ export function PerformanceTile({ criterion: key, label, k, config, month, basis
   if (variant === 'row') {
     return (
       <button type="button" onClick={onClick} aria-label={`${label}: Details anzeigen`} className="glass-surface p-5 w-full min-w-0 text-left transition-colors hover:border-[hsl(var(--border-hover))] active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <div className="grid gap-x-6 gap-y-3 items-center sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.6fr)]">
+        <div className="grid gap-x-6 gap-y-3 items-center sm:grid-cols-[minmax(0,1fr)_auto_minmax(8rem,1.4fr)]">
           <div className="flex items-center gap-2 min-w-0">
             {pacing && <span aria-label={ratio >= 1 ? 'im Plan' : ratio >= .8 ? 'knapp dahinter' : 'deutlich dahinter'} className={`h-2 w-2 rounded-full shrink-0 ${dotClass}`} />}
-            <span className="text-sm font-semibold text-foreground">{label}</span>
+            <span className="text-sm font-semibold text-foreground min-w-0">{label}</span>
           </div>
           <div className="min-w-0">
-            <div className="text-2xl font-semibold tabular-nums text-foreground break-words">{headline}</div>
-            <div className="text-xs text-muted-foreground tabular-nums">{outcome}</div>
+            <div className="text-2xl font-semibold tabular-nums text-foreground whitespace-nowrap">{headline}</div>
+            <div className="text-xs text-muted-foreground tabular-nums sm:whitespace-nowrap">{outcome}</div>
           </div>
           {bar}
         </div>
@@ -89,7 +89,7 @@ export function PerformanceTile({ criterion: key, label, k, config, month, basis
   return <div className="glass-surface p-5 min-w-0 space-y-4">
     <div className="space-y-1">
       <h3 className="text-sm font-semibold text-foreground">{label}</h3>
-      <div className="text-2xl font-semibold tabular-nums text-foreground break-words">{headline}</div>
+      <div className="text-2xl font-semibold tabular-nums text-foreground whitespace-nowrap">{headline}</div>
       <p className="text-sm text-muted-foreground tabular-nums">{sub}</p>
     </div>
     <p className="text-sm text-muted-foreground tabular-nums">{outcome}</p>
