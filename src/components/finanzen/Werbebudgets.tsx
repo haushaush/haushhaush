@@ -292,7 +292,7 @@ const LAGE_TEXT: Record<string, string> = {
 /** Begründung, warum kein eingezahlter Betrag vorliegt — nie geschätzt. */
 function OhneBetrag({ zst, quelle }: { zst?: WerbebudgetZahlungsstatus; quelle?: string | null }) {
   if (quelle === 'lexoffice') return <span className="text-xs text-muted-foreground">lexoffice liefert keine Rechnungspositionen — Werbebudget hier nicht ermittelbar</span>;
-  if (zst === 'keine_zahlungsverknuepfung' || quelle === null) return <Link to="/finanzen/verknuepfungen" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">keine Buchhaltungsverknüpfung</Link>;
+  if (zst === 'keine_zahlungsverknuepfung' || quelle === null) return <Link to="/kunden/verknuepfungen" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">keine Buchhaltungsverknüpfung</Link>;
   if (zst === 'verknuepft_ohne_werbebudgetposten') return <span className="text-xs text-muted-foreground" title={OHNE_POSTEN_TOOLTIP}>kein Werbebudget-Posten auf den Rechnungen</span>;
   return <span className="text-muted-foreground">—</span>;
 }
