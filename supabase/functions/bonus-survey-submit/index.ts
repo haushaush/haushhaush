@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { z } from 'npm:zod@3';
-import { matchSurvey, type SurveyCandidate } from '../_shared/survey-matching.ts';
+import { matchSurveyDetailed, type SurveyCandidate } from '../_shared/survey-matching.ts';
 
 const cors = { 'Access-Control-Allow-Origin': 'https://leadsharks.de', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'content-type', 'Vary': 'Origin' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
@@ -41,7 +41,7 @@ Deno.serve(async req => {
   const email = token ? null : (p.eingegeben_email || p.email || '').toLowerCase();
   if (!token && (!company || !z.string().email().safeParse(email).success)) return json({ error: 'identification_required', message: 'Firma / Name und eine gültige E-Mail-Adresse sind erforderlich.' }, 400);
   const month = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date()).slice(0, 7) + '-01';
-  let clientId: string | null = null, employeeId: string | null = null;
+  let clientId: string | null = null, employeeId: string | null = null, grund: string | null = null, kandidaten: string[] = [];
   if (token) {
    const result = await sb.from('bonus_survey_tokens').select('client_id,mitarbeiter_id,monat').eq('token', token).maybeSingle();
    if (result.error) throw result.error;
@@ -58,7 +58,7 @@ Deno.serve(async req => {
      rows.push(...(result.data || [])); if ((result.data || []).length < 1000) return rows;
     }
    };
-   const [active, contacts, links, clients] = await Promise.all([all('bonus_kunden_aktuell', 'client_id,mitarbeiter_id,close_lead_id'), all('close_contacts', 'client_id,close_lead_id,emails'), all('close_link', 'client_id,close_lead_id'), all('clients', 'id,name')]);
+   const [active, contacts, links, clients] = await Promise.all([all('bonus_kunden_aktuell', 'client_id,mitarbeiter_id,close_lead_id'), all('close_contacts', 'client_id,close_lead_id,emails'), all('close_link', 'client_id,close_lead_id'), all('clients', 'id,name,email,vor_nachname')]);
    const ids = [...new Set(active.map(r => r.client_id).filter(Boolean))];
    const candidates: SurveyCandidate[] = ids.flatMap(id => {
     const records = active.filter(r => r.client_id === id);
@@ -66,13 +66,16 @@ Deno.serve(async req => {
     if (employees.length !== 1) return [];
     const leadIds = new Set([...records.map(r => r.close_lead_id), ...links.filter(r => r.client_id === id).map(r => r.close_lead_id)]);
     const emails = contacts.filter(c => c.client_id === id || leadIds.has(c.close_lead_id)).flatMap(c => Array.isArray(c.emails) ? c.emails.map((e: any) => typeof e === 'string' ? e : e.email).filter((e: unknown) => typeof e === 'string') : []);
-    return [{ client_id: id as string, mitarbeiter_id: employees[0] as string, name: clients.find(c => c.id === id)?.name || '', emails }];
+    const client = clients.find(c => c.id === id);
+    if (typeof client?.email === 'string' && client.email.trim()) emails.push(client.email);
+    return [{ client_id: id as string, mitarbeiter_id: employees[0] as string, name: client?.name || '', vor_nachname: client?.vor_nachname || null, emails }];
    });
-   const hit = matchSurvey(email || '', company || '', candidates);
-   clientId = hit?.client_id || null; employeeId = hit?.mitarbeiter_id || null;
+   const match = matchSurveyDetailed(email || '', p.kontaktname || '', company || '', candidates);
+   clientId = match.hit?.client_id || null; employeeId = match.hit?.mitarbeiter_id || null;
+   grund = match.grund; kandidaten = match.kandidaten;
   }
   const r1 = (n: number) => Math.round(n * 10) / 10;
-  const saved = await sb.rpc('bonus_survey_save', { _payload: { ...p, token, client_id: clientId, mitarbeiter_id: employeeId, monat: month, eingegeben_firma: company, eingegeben_email: email, kontaktname: p.kontaktname || company || 'Token-Einsendung', score_betreuung: r1((p.b1_reaktionszeit + p.b2_umgang + p.b3_verbindlichkeit + p.b4_eigeninitiative - 4) / 16 * 100), score_leistung: r1((p.l1_anfragemenge + p.l2_anfragequalitaet + p.l3_weiterempfehlung - 3) / 12 * 100) } });
+  const saved = await sb.rpc('bonus_survey_save', { _payload: { ...p, token, client_id: clientId, mitarbeiter_id: employeeId, monat: month, zuordnung_grund: grund, zuordnung_kandidaten: kandidaten, eingegeben_firma: company, eingegeben_email: email, kontaktname: p.kontaktname || company || 'Token-Einsendung', score_betreuung: r1((p.b1_reaktionszeit + p.b2_umgang + p.b3_verbindlichkeit + p.b4_eigeninitiative - 4) / 16 * 100), score_leistung: r1((p.l1_anfragemenge + p.l2_anfragequalitaet + p.l3_weiterempfehlung - 3) / 12 * 100) } });
   if (saved.error) throw saved.error;
   // Do not expose customer identity or whether a supplied email exists.
   return json({ ok: true });
