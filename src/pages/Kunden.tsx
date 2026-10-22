@@ -65,7 +65,10 @@ interface ClientRow {
   notion_url?: string | null;
   deal_count?: number;
   deal_total?: number;
+  kz?: { abschlusswert: number | null; offen: number | null; cash_collect_quote: number | null; resttage: number | null; rechnungen: number | null } | null;
 }
+
+const eurKz = (v: number | null) => v == null ? '—' : new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(Number(v));
 
 export default function Kunden() {
   const navigate = useNavigate();
@@ -86,7 +89,7 @@ export default function Kunden() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: cs }, { data: ds }] = await Promise.all([
+    const [{ data: cs }, { data: ds }, kzRes] = await Promise.all([
       supabase.from('clients').select(`
         id, name, vor_nachname, email, phone, website_url,
         branche_id, branche, unternehmen_id, meta_account_id,
@@ -98,7 +101,10 @@ export default function Kunden() {
         unternehmen:unternehmen_id(display_name)
       `).is('deleted_at', null).order('name'),
       supabase.from('close_deals').select('client_id, wert_eur'),
+      supabase.from('kunde_kennzahlen').select('client_id, abschlusswert, offen, cash_collect_quote, resttage, rechnungen'),
     ]);
+    if (kzRes.error) console.error('kunde_kennzahlen', kzRes.error);
+    const kzMap = new Map<string, any>(((kzRes.data as any[]) || []).map(k => [k.client_id, k]));
     const aggMap = new Map<string, { count: number; total: number }>();
     (ds || []).forEach((d: any) => {
       if (!d.client_id) return;
@@ -111,6 +117,7 @@ export default function Kunden() {
       ...c,
       deal_count: aggMap.get(c.id)?.count || 0,
       deal_total: aggMap.get(c.id)?.total || 0,
+      kz: kzMap.get(c.id) || null,
     }));
     setClients(rows);
     setLoading(false);
@@ -413,6 +420,12 @@ export default function Kunden() {
               <span className="text-muted-foreground tabular-nums">
                 {c.deal_count} Deals · €{(c.deal_total || 0).toLocaleString('de-DE', { maximumFractionDigits: 0 })}
               </span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs tabular-nums">
+              <span className="text-muted-foreground">Abschluss <span className="text-foreground">{c.kz?.abschlusswert != null ? eurKz(c.kz.abschlusswert) : '—'}</span></span>
+              <span className="text-muted-foreground text-right">Offen <span className="text-foreground">{c.kz?.rechnungen ? eurKz(c.kz.offen) : 'keine Rechnung'}</span></span>
+              <span className="text-muted-foreground">Cash Collect <span className="text-foreground">{c.kz?.cash_collect_quote != null ? `${c.kz.cash_collect_quote} %` : '—'}</span></span>
+              <span className="text-muted-foreground text-right">Rest <span className={c.kz?.resttage != null && c.kz.resttage < 0 ? 'text-destructive' : 'text-foreground'}>{c.kz?.resttage == null ? '—' : c.kz.resttage < 0 ? `${-c.kz.resttage} Tage über` : `${c.kz.resttage} Tage`}</span></span>
             </div>
           </div>
         ))}
