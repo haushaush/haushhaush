@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { ladeRechnungen, type Quelle } from '@/lib/rechnungen';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, Legend } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, Legend, CartesianGrid } from 'recharts';
+import { HealthKarte, FARBE } from './HealthKarte';
 
 /**
  * Rechnungs-Auswertung aus den gespiegelten Rechnungstabellen (Qonto, lexoffice).
@@ -92,79 +93,91 @@ export function RechnungsAuswertung({ quellen, quelleText, nurZusatz = false, ve
     return <Card className="border-dashed"><CardContent className="p-6 text-center text-sm text-muted-foreground">Noch keine Rechnungen aus {quelleText} synchronisiert.</CardContent></Card>;
   }
 
+  const zusammen = quellen.includes('qonto') && quellen.includes('lexoffice');
+  const verlaufText = zusammen
+    ? 'Ausgestellt nach Rechnungsdatum · bezahlt nach Zahldatum, daher nur Qonto — lexoffice liefert kein Zahldatum'
+    : 'Ausgestellt nach Rechnungsdatum, bezahlt nach Zahldatum';
+  const achse = { stroke: 'hsl(var(--muted-foreground))', fontSize: 11, tickLine: false, axisLine: false } as const;
+  const bucketFarbe = (b: string) => (b === '60+' ? FARBE.rot : b === '31-60' ? 'hsl(var(--warning))' : FARBE.gruen);
+  const alt = m.aging[4];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {nurZusatz ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Kachel title="Größte offene Forderung" value={m.openCount ? eur(m.largest) : 'keine offenen'} hint={hint} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <HealthKarte titel="Größte offene Forderung" farbe={FARBE.rot} wert={m.openCount ? eur(m.largest) : 'keine offenen'} satz={hint} />
         </div>
       ) : (
       <div>
         <div className="mb-3">
-          <h3 className="text-sm font-semibold">C · Rechnungen & Cash Collected</h3>
+          <h3 className="text-[11px] uppercase tracking-[0.12em] font-semibold text-muted-foreground">C · Rechnungen & Cash Collected</h3>
           <p className="text-xs text-muted-foreground">{quelleText} · alle Rechnungen ohne stornierte</p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-3">
-          <Kachel title="Rechnungen gesamt" value={m.count.toLocaleString('de-DE')} sub={m.sonstigeCount ? `davon ${m.sonstigeCount.toLocaleString('de-DE')} sonstige (Status unbekannt)` : undefined} hint={hint} />
-          <Kachel title="Bezahlt" value={eur(m.paidSum)} sub={`${m.paidCount.toLocaleString('de-DE')} Stück`} hint={hint} />
-          <Kachel title="Offen" value={eur(m.openSum)} sub={`${m.openCount.toLocaleString('de-DE')} Stück`} hint={hint} />
-          <Kachel title="Überfällig" value={eur(m.overdueSum)} sub={`${m.overdueCount.toLocaleString('de-DE')} Stück`} hint={hint} />
-          <Kachel title="Collection Rate" value={pct(m.rate)} sub="bezahlt ÷ ausgestellt" hint={hint} />
-          <Kachel title="Größte offene Forderung" value={m.openCount ? eur(m.largest) : 'keine offenen'} hint={hint} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <HealthKarte titel="Rechnungen gesamt" farbe={FARBE.primaer} wert={m.count.toLocaleString('de-DE')} satz={<>{m.sonstigeCount ? `davon ${m.sonstigeCount.toLocaleString('de-DE')} sonstige (Status unbekannt)` : null}{hint && <span className="block text-warning">{hint}</span>}</>} />
+          <HealthKarte titel="Bezahlt" farbe={FARBE.gruen} wert={eur(m.paidSum)} satz={<>{`${m.paidCount.toLocaleString('de-DE')} Stück`}{hint && <span className="block text-warning">{hint}</span>}</>} />
+          <HealthKarte titel="Offen" farbe="hsl(var(--warning))" wert={eur(m.openSum)} satz={<>{`${m.openCount.toLocaleString('de-DE')} Stück`}{hint && <span className="block text-warning">{hint}</span>}</>} />
+          <HealthKarte titel="Überfällig" farbe={FARBE.rot} wert={eur(m.overdueSum)} satz={<>{`${m.overdueCount.toLocaleString('de-DE')} Stück`}{hint && <span className="block text-warning">{hint}</span>}</>} />
+          <HealthKarte titel="Collection Rate" farbe={FARBE.grau} wert={pct(m.rate)} satz={<>bezahlt ÷ ausgestellt{hint && <span className="block text-warning">{hint}</span>}</>} />
+          <HealthKarte titel="Größte offene Forderung" farbe={FARBE.rot} wert={m.openCount ? eur(m.largest) : 'keine offenen'} satz={hint && <span className="text-warning">{hint}</span>} />
         </div>
       </div>
       )}
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Monatsentwicklung (letzte 12 Monate)</CardTitle>
-          <p className="text-xs text-muted-foreground">Ausgestellt nach Rechnungsdatum, bezahlt nach Zahldatum{hint ? ` · ${hint}` : ''}{verlaufHinweis ? ` · ${verlaufHinweis}` : ''}</p>
-        </CardHeader>
-        <CardContent>
+      <HealthKarte titel="Monatsentwicklung (letzte 12 Monate)" farbe={FARBE.primaer}
+        satz={`${verlaufText}${hint ? ` · ${hint}` : ''}${verlaufHinweis ? ` · ${verlaufHinweis}` : ''}`}>
+        <div className="mt-4">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={m.monthly}>
-              <XAxis dataKey="month" stroke="#AEAEB2" fontSize={11} />
-              <YAxis stroke="#AEAEB2" fontSize={11} tickFormatter={v => `€${(v / 1000).toFixed(0)}k`} />
+              <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+              <XAxis dataKey="month" {...achse} />
+              <YAxis {...achse} tickFormatter={v => `€${(v / 1000).toFixed(0)}k`} />
               <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => eur(Number(v))} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="ausgestellt" name="Ausgestellt" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="bezahlt" name="Bezahlt" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="ausgestellt" name="Ausgestellt" fill="hsl(var(--muted-foreground))" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="bezahlt" name="Bezahlt" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </CardContent>
-      </Card>
+        </div>
+      </HealthKarte>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">H · Forderungsalter</CardTitle>
-          <p className="text-xs text-muted-foreground">Tage nach Fälligkeit, offene Rechnungen{hint ? ` · ${hint}` : ''}</p>
-        </CardHeader>
-        <CardContent>
-          {m.openCount === 0 ? <p className="text-xs text-muted-foreground py-6 text-center">Keine offenen Forderungen.</p> : (
-            <>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={m.aging}>
-                  <XAxis dataKey="bucket" stroke="#AEAEB2" fontSize={11} />
-                  <YAxis stroke="#AEAEB2" fontSize={11} tickFormatter={v => `€${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => eur(Number(v))} />
-                  <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                    {m.aging.map((a, i) => <Cell key={i} fill={a.bucket === '60+' ? '#dc2626' : a.bucket === '31-60' ? '#f59e0b' : 'hsl(174, 90%, 31%)'} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              <div className="grid grid-cols-5 gap-1 mt-2 text-xs text-center tabular-nums">
-                {m.aging.map(a => (
-                  <div key={a.bucket}>
-                    <p className="text-muted-foreground">{a.bucket}T</p>
-                    <p className="font-medium">{a.count ? eur(a.total) : '–'}</p>
-                    <p className="text-muted-foreground">{a.count ? `${a.count} Stück` : ''}</p>
+      <HealthKarte titel="H · Forderungsalter" farbe={FARBE.rot}
+        satz={`Tage nach Fälligkeit, offene Rechnungen${hint ? ` · ${hint}` : ''}`}>
+        {m.openCount === 0 ? <p className="text-xs text-muted-foreground py-6 text-center">Keine offenen Forderungen.</p> : (
+          <div className="mt-4">
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={m.aging}>
+                <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                <XAxis dataKey="bucket" {...achse} />
+                <YAxis {...achse} tickFormatter={v => `€${(v / 1000).toFixed(0)}k`} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => eur(Number(v))} />
+                <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                  {m.aging.map((a, i) => <Cell key={i} fill={bucketFarbe(a.bucket)} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            {alt.count > 0 && (
+              <p className="mt-2 text-sm text-muted-foreground tabular-nums">
+                <span className="font-semibold text-destructive">{eur(alt.total)}</span> in 60+ Tagen überfällig — {alt.count.toLocaleString('de-DE')} von {m.openCount.toLocaleString('de-DE')} offenen Rechnungen
+              </p>
+            )}
+            <div className="grid grid-cols-5 gap-2 mt-4">
+              {m.aging.map(a => {
+                const gross = a.bucket === '60+';
+                return (
+                  <div key={a.bucket} className={`rounded-2xl p-2 sm:p-3 text-center ${gross ? 'bg-destructive/10 ring-1 ring-destructive/30' : 'bg-muted/50'}`}>
+                    <p className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
+                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: bucketFarbe(a.bucket) }} />{a.bucket}T
+                    </p>
+                    <p className={`mt-1 tabular-nums ${gross ? 'text-base font-semibold' : 'text-sm font-medium'}`}>{a.count ? eur(a.total) : '–'}</p>
+                    <p className="text-[11px] text-muted-foreground tabular-nums">{a.count ? `${a.count} Stück` : ''}</p>
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </HealthKarte>
     </div>
   );
 }
