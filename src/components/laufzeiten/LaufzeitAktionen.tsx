@@ -87,13 +87,13 @@ export function LaufzeitAktionen({ r, onDone }: { r: AktionRow; onDone: () => Pr
   const teilErfolg = !!err && err.startsWith('Opportunity wurde') || !!err && err.startsWith('Verlängerung wurde');
 
   return <>
-    <span className="hidden md:inline-flex gap-1">
-      <Button size="sm" variant={hervor ? 'default' : 'outline'} className="h-7" disabled={busy} onClick={openV}><RotateCw className="h-3 w-3 mr-1" />Verlängern</Button>
-      <Button size="sm" variant="outline" className="h-7 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={busy} onClick={openB}><LogOut className="h-3 w-3 mr-1" />Beenden</Button>
+    <span className="hidden md:inline-flex gap-1.5 shrink-0 whitespace-nowrap">
+      <Button size="sm" variant={hervor ? 'default' : 'outline'} className="h-8 px-2.5 gap-1.5" disabled={busy} onClick={openV}><RotateCw className="h-3.5 w-3.5" />Verlängern</Button>
+      <Button size="sm" variant="outline" className="h-8 px-2.5 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={busy} onClick={openB}><LogOut className="h-3.5 w-3.5" />Beenden</Button>
     </span>
     <span className="md:hidden">
       <DropdownMenu>
-        <DropdownMenuTrigger asChild><Button size="icon" variant={hervor ? 'default' : 'ghost'} className="h-7 w-7" aria-label="Weitere Aktionen"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild><Button size="icon" variant={hervor ? 'default' : 'ghost'} className="h-8 w-8" aria-label="Weitere Aktionen"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem disabled={busy} onClick={openV}><RotateCw className="h-3 w-3 mr-2" />Verlängern</DropdownMenuItem>
           <DropdownMenuItem className="text-destructive" onClick={openB}><LogOut className="h-3 w-3 mr-2" />Beenden</DropdownMenuItem>
