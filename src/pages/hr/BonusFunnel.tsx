@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { companySimilarity } from '../../../supabase/functions/_shared/survey-matching';
 
 interface Answer {
- id: string; client_id: string | null; eingegeben_firma: string | null; eingegeben_email: string | null; zuordnung_status: string; created_at: string; updated_at: string; score_betreuung: number | null; score_leistung: number | null; freitext: string | null;
+ id: string; client_id: string | null; eingegeben_firma: string | null; eingegeben_email: string | null; zuordnung_status: string; zuordnung_grund?: string | null; zuordnung_kandidaten?: string[] | null; kontaktname?: string | null; created_at: string; updated_at: string; score_betreuung: number | null; score_leistung: number | null; freitext: string | null;
  b1_reaktionszeit: number | null; b2_umgang: number | null; b3_verbindlichkeit: number | null; b4_eigeninitiative: number | null; l1_anfragemenge: number | null; l2_anfragequalitaet: number | null; l3_weiterempfehlung: number | null;
 }
 interface Candidate { client_id: string; mitarbeiter_id: string; clients: { name: string } | null }
@@ -65,14 +65,16 @@ export default function BonusFunnel() {
  const quote = snapshotIds.size ? counted.length / snapshotIds.size * 100 : 0;
  const average = (key: 'score_betreuung' | 'score_leistung') => counted.length ? (counted.reduce((sum,a) => sum + Number(a[key]),0) / counted.length).toFixed(1) : '–';
  const uniqueCandidates = useMemo(() => candidates.filter(c => candidates.filter(other => other.client_id === c.client_id).length === 1), [candidates]);
+ const GRUND: Record<string, string> = { email: 'über E-Mail', name: 'über Namen', 'name+firma': 'über Namen, Firma entschied', mehrdeutig: 'mehrdeutig — mehrere Kunden passen', kein_treffer: 'kein Treffer über E-Mail oder Namen' };
+ const grundText = (a: Answer) => a.zuordnung_grund ? `Automatische Zuordnung: ${GRUND[a.zuordnung_grund] || a.zuordnung_grund}` : null;
  const generate = async () => {
   setBusy('generate');
   const result = await supabase.functions.invoke('bonus-survey-tokens-generate', { body: { monat, mitarbeiter_id: maId } });
   setBusy(null); if (result.error) return toast.error('Tokens konnten nicht erzeugt werden');
   toast.success(`${result.data?.created || 0} neue Tokens erzeugt`); void load();
  };
- const assign = async (answer: Answer, noCustomer: boolean) => {
-  const clientId = selections[answer.id];
+ const assign = async (answer: Answer, noCustomer: boolean, pick?: string) => {
+  const clientId = pick || selections[answer.id];
   if (!noCustomer && !uniqueCandidates.some(c => c.client_id === clientId)) return toast.error('Bitte einen Kunden auswählen');
   setBusy(answer.id);
   const result = await supabase.rpc('bonus_survey_assign', { _antwort_id: answer.id, _client_id: noCustomer ? undefined : clientId, _kein_kunde: noCustomer });
@@ -106,8 +108,9 @@ export default function BonusFunnel() {
     const ranked = uniqueCandidates.map(c => ({ ...c, similarity: companySimilarity(answer.eingegeben_firma || '',c.clients?.name || '') })).sort((a,b) => b.similarity - a.similarity);
     const suggestion = ranked[0];
     return <article key={answer.id} className="border border-border rounded-lg p-4 min-w-0">
-     <div className="flex flex-wrap justify-between gap-2"><div className="min-w-0"><h3 className="text-sm font-semibold break-words">{answer.eingegeben_firma || '–'}</h3><p className="text-sm text-muted-foreground break-all">{answer.eingegeben_email}</p></div><time className="text-xs text-muted-foreground tabular-nums">{fmt(answer.updated_at)}</time></div>
+     <div className="flex flex-wrap justify-between gap-2"><div className="min-w-0"><h3 className="text-sm font-semibold break-words">{answer.eingegeben_firma || '–'}</h3><p className="text-sm text-muted-foreground break-all">{answer.eingegeben_email}</p>{answer.kontaktname && answer.kontaktname !== answer.eingegeben_firma && <p className="text-xs text-muted-foreground break-words">Name: {answer.kontaktname}</p>}{grundText(answer) && <p className="text-xs text-muted-foreground">{grundText(answer)}</p>}</div><time className="text-xs text-muted-foreground tabular-nums">{fmt(answer.updated_at)}</time></div>
      <Answers answer={answer} />
+     {answer.zuordnung_grund === 'mehrdeutig' && !!answer.zuordnung_kandidaten?.length && <div className="mt-4 space-y-2"><p className="text-xs text-muted-foreground">Gefundene Kandidaten:</p><div className="flex flex-wrap gap-2">{answer.zuordnung_kandidaten.map(id => { const c = uniqueCandidates.find(x => x.client_id === id); return c ? <Button key={id} size="sm" variant="outline" disabled={busy !== null} onClick={() => void assign(answer,false,id)}><Check className="h-4 w-4" />{c.clients?.name || '–'} zuordnen</Button> : <span key={id} className="text-xs text-muted-foreground">Kandidat nicht im Kundenstamm dieses Monats</span>; })}</div></div>}
      <div className="flex flex-wrap items-center gap-2 mt-4">
       <Select value={selections[answer.id] || ''} onValueChange={id => setSelections(prev => ({...prev,[answer.id]:id}))}><SelectTrigger className="w-full sm:w-80" aria-label={`Kunde für ${answer.eingegeben_firma}`}><SelectValue placeholder="Kunden auswählen" /></SelectTrigger><SelectContent>{ranked.map(c => <SelectItem key={c.client_id} value={c.client_id}>{c.clients?.name || '–'} · {Math.round(c.similarity * 100)} %</SelectItem>)}</SelectContent></Select>
       <Button disabled={busy !== null || !selections[answer.id]} onClick={() => void assign(answer,false)}>{busy===answer.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}Zuordnen</Button>
@@ -123,7 +126,7 @@ export default function BonusFunnel() {
    <div><div className="text-xs text-muted-foreground">Zufriedenheitspunkte</div><div className="text-2xl font-semibold tabular-nums">{points ?? '–'}</div></div>
    <div><div className="text-xs text-muted-foreground">Ø Score Leistung · nicht bonusrelevant</div><div className="text-2xl font-semibold tabular-nums text-muted-foreground">{average('score_leistung')}</div></div>
   </section>
-  <section className="space-y-3"><h2 className="text-lg font-semibold font-heading">Zugeordnete Einsendungen</h2>{answers.map(answer => <article key={answer.id} className="border border-border rounded-lg p-4"><div className="flex flex-wrap justify-between gap-2"><h3 className="text-sm font-semibold">{candidates.find(c => c.client_id===answer.client_id)?.clients?.name || answer.eingegeben_firma || '–'}</h3><span className="text-xs text-muted-foreground">{answer.zuordnung_status} · {fmt(answer.updated_at)}</span></div><Answers answer={answer} /></article>)}{!answers.length && <p className="text-sm text-muted-foreground">Noch keine zugeordneten Einsendungen.</p>}</section>
+  <section className="space-y-3"><h2 className="text-lg font-semibold font-heading">Zugeordnete Einsendungen</h2>{answers.map(answer => <article key={answer.id} className="border border-border rounded-lg p-4"><div className="flex flex-wrap justify-between gap-2"><h3 className="text-sm font-semibold">{candidates.find(c => c.client_id===answer.client_id)?.clients?.name || answer.eingegeben_firma || '–'}</h3><span className="text-xs text-muted-foreground">{answer.zuordnung_status}{answer.zuordnung_status === 'automatisch' && answer.zuordnung_grund ? ` (${GRUND[answer.zuordnung_grund] || answer.zuordnung_grund})` : ''} · {fmt(answer.updated_at)}</span></div><Answers answer={answer} /></article>)}{!answers.length && <p className="text-sm text-muted-foreground">Noch keine zugeordneten Einsendungen.</p>}</section>
   <details className="border-t border-border pt-5"><summary className="font-medium cursor-pointer">Monatliche Versandvorbereitung</summary><div className="mt-4 space-y-4"><p className="text-sm text-muted-foreground">Tokens erzeugen, Links kopieren und selbst an die Kunden schicken. Einen automatischen Versand gibt es nicht.</p>{canManage && <Button variant="outline" disabled={busy !== null || !maId} onClick={() => void generate()}>{busy==='generate' && <Loader2 className="h-4 w-4 animate-spin" />}Tokens erzeugen</Button>}<div className="overflow-x-auto"><table className="w-full text-sm"><thead className="text-muted-foreground"><tr>{['Kunde','Token-Link','Versendet am','Ausgefüllt am'].map(title => <th key={title} className="text-left p-3 font-medium whitespace-nowrap">{title}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.token} className="border-t border-border"><td className="p-3">{row.client_name}</td><td className="p-3"><Button variant="ghost" size="icon" aria-label={`Token-Link für ${row.client_name} kopieren`} onClick={() => { void navigator.clipboard.writeText(`${sharedLink}?t=${row.token}`).then(() => toast.success('Token-Link kopiert')); }}><Copy className="h-4 w-4" /></Button></td><td className="p-3 tabular-nums whitespace-nowrap">{fmt(row.versendet_am)}</td><td className="p-3 tabular-nums whitespace-nowrap">{fmt(row.ausgefuellt_am)}</td></tr>)}{!rows.length && <tr><td colSpan={4} className="p-4 text-muted-foreground">Noch keine Tokens für diesen Monat.</td></tr>}</tbody></table></div></div></details>
  </div>;
 }
