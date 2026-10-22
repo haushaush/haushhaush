@@ -66,12 +66,12 @@ export function GemeinsameKennzahlen({ quelle, from, to }: { quelle: Quelle; fro
         <Karte name="Bezahlt" punkt="bg-success" wert={eur(m.bezahlt)} satz={stk(m.bezahltN)} />
         <Karte name="Offen" punkt="bg-warning" wert={eur(m.offen)} satz={stk(m.offenN)} />
         <Karte name="Überfällig" punkt="bg-destructive" wert={eur(m.ueber)} satz={stk(m.ueberN)}
-          hinweis={quelle === 'lexoffice' ? "lexoffice kennt keinen Status ‚offen, aber noch nicht fällig‘ — jede unbezahlte Rechnung gilt hier als überfällig." : undefined} />
+          hinweis={quelle === 'lexoffice' ? `lexoffice kennt keinen Status „offen, aber noch nicht fällig” — jede unbezahlte Rechnung gilt hier als überfällig.` : undefined} />
         <Karte name="Collection Rate" punkt="bg-muted-foreground" wert={rate} satz="bezahlt ÷ fakturiert" />
       </div>
       <p className="text-xs text-muted-foreground tabular-nums">
         {m.stornoN.toLocaleString('de-DE')} stornierte Rechnungen über {eur(m.storno)} nicht mitgezählt.
-        {m.sonstigeN > 0 && ` Außerdem ${m.sonstigeN.toLocaleString('de-DE')} Rechnung${m.sonstigeN === 1 ? '' : 'en'} mit Status „${m.sonstigeRaw}" nicht mitgezählt.`}
+        {m.sonstigeN > 0 && ` Außerdem ${m.sonstigeN.toLocaleString('de-DE')} Rechnung${m.sonstigeN === 1 ? '' : 'en'} mit Status „${m.sonstigeRaw}” nicht mitgezählt.`}
       </p>
     </div>
   );

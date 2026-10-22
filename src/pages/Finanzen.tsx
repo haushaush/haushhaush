@@ -276,7 +276,7 @@ export default function Finanzen() {
       if (data?.error) throw new Error(data.error);
       toast({
         title: mode === 'backfill' ? 'Vollständiger Backfill gestartet' : 'Qonto Sync gestartet',
-        description: 'Läuft im Hintergrund – Fortschritt siehe „Sync & Datenqualität".',
+        description: 'Läuft im Hintergrund – Fortschritt siehe „Sync & Datenqualität”.',
       });
       let attempts = 0;
       const poll = setInterval(async () => {
@@ -445,7 +445,7 @@ export default function Finanzen() {
             <SectionTitle title="Nur in lexoffice" />
             {isAdmin && <LexofficeSyncCard />}
             <RechnungsAuswertung quellen={['lexoffice']} quelleText="lexoffice Rechnungen" nurZusatz
-              verlaufHinweis={"lexoffice liefert kein Zahldatum, darum bleibt „Bezahlt“ im Verlauf leer"} />
+              verlaufHinweis={`lexoffice liefert kein Zahldatum, darum bleibt „Bezahlt” im Verlauf leer`} />
             <p className="text-xs text-muted-foreground">Liquidität und Cashflow gibt es nur bei Qonto — lexoffice führt kein Bankkonto.</p>
           </div>
         </TabsContent>
