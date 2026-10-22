@@ -1,7 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Werbebudgets } from '@/components/finanzen/Werbebudgets';
-import { QontoVerknuepfungen } from '@/components/finanzen/QontoVerknuepfungen';
-import { LexofficeVerknuepfungen } from '@/components/finanzen/LexofficeVerknuepfungen';
 import { LexofficeSyncCard } from '@/components/integrations/LexofficeSyncCard';
 import { RechnungenListe } from '@/components/finanzen/RechnungenListe';
 import { RechnungsAuswertung } from '@/components/finanzen/RechnungsAuswertung';
