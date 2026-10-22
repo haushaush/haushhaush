@@ -9513,6 +9513,25 @@ export type Database = {
         }
         Relationships: []
       }
+      untermarke_werbebudget: {
+        Row: {
+          art: string | null
+          ausgegeben: number | null
+          belege: number | null
+          differenz: number | null
+          differenz_betrag: number | null
+          eingezahlt: number | null
+          kampagnen_aktiv: number | null
+          kontoname: string | null
+          kunden: number | null
+          kunden_mit_zahlung: number | null
+          letzte_aufladung: string | null
+          letzte_meta_zahlung: string | null
+          meta_account_id: string | null
+          tagesbudget: number | null
+        }
+        Relationships: []
+      }
       v_sales_deals: {
         Row: {
           churn_datum: string | null

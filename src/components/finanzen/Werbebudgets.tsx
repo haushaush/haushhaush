@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatCard } from '@/components/StatCard';
 import { RefreshCw, Users, TrendingDown, AlertTriangle, Receipt, ChevronDown, ChevronRight } from 'lucide-react';
 import { useMetaAds } from '@/contexts/MetaAdsContext';
+import { Link } from 'react-router-dom';
+import { UntermarkenKonten } from './UntermarkenKonten';
 import { ladeZahlungsstatus, ZAHLUNGSSTATUS_TEXT, OHNE_POSTEN_TOOLTIP, type WerbebudgetZahlungsstatus } from '@/lib/werbebudgetZahlungsstatus';
 
 /** Unter dieser Reichweite (Tage) gilt ein Kunde als knapp. */
@@ -33,6 +35,8 @@ export function Werbebudgets() {
   const [zuo, setZuo] = useState<Zuordnung[]>([]);
   const [ein, setEin] = useState<Map<string, Eingezahlt>>(new Map());
   const [zst, setZst] = useState<Map<string, WerbebudgetZahlungsstatus>>(new Map());
+  const [bq, setBq] = useState<Map<string, string | null>>(new Map());
+  const [lage, setLage] = useState<Map<string, string>>(new Map());
   const [meta, setMeta] = useState<Map<string, Meta>>(new Map());
   const [stand, setStand] = useState<Date | null>(null);
   const [laedt, setLaedt] = useState(true);
@@ -75,7 +79,20 @@ export function Werbebudgets() {
     const ks = ((c.data || []) as any[]).filter(x => x.name);
     const zs = (z.data || []) as Zuordnung[];
     const em = new Map<string, Eingezahlt>(((e.data || []) as Eingezahlt[]).map(r => [r.client_id, r]));
-    setZst(await ladeZahlungsstatus(ks.map(k => k.id)));
+    const ids = ks.map(k => k.id);
+    const bqm = new Map<string, string | null>(); const lm = new Map<string, string>();
+    const [zs0] = await Promise.all([
+      ladeZahlungsstatus(ids),
+      ...ids.map(async id => {
+        const [q, l] = await Promise.all([
+          (supabase.rpc as any)('kunde_buchhaltungsquelle', { p_client_id: id }),
+          (supabase.rpc as any)('werbebudget_lage', { p_client_id: id }),
+        ]);
+        if (q.error) console.error('kunde_buchhaltungsquelle', id, q.error.message); else bqm.set(id, q.data ?? null);
+        if (l.error) console.error('werbebudget_lage', id, l.error.message); else if (l.data) lm.set(id, l.data);
+      }),
+    ]);
+    setZst(zs0 as Map<string, WerbebudgetZahlungsstatus>); setBq(bqm); setLage(lm);
     setKunden(ks); setZuo(zs); setEin(em); setLaedt(false);
 
     // Meta live: je Objekt Status, Ausgaben seit letzter Zahlung und letzte 7 Tage (nur GET).
@@ -142,6 +159,9 @@ export function Werbebudgets() {
         </Button>
       </div>
 
+      <UntermarkenKonten />
+
+      <h2 className="text-lg font-semibold font-heading pt-2">Je Kunde</h2>
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard title="Kunden gesamt" value={zeilen.length} icon={Users} />
         <StatCard title="Davon knapp" value={anz('Knapp')} icon={TrendingDown} subtitle={`reicht unter ${KNAPP_TAGE} Tage`} />
@@ -187,10 +207,7 @@ export function Werbebudgets() {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{z.untermarke}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {z.eingezahlt != null ? eur(z.eingezahlt)
-                        : zst.get(z.k.id) === 'verknuepft_ohne_werbebudgetposten' ? <span className="text-xs text-muted-foreground" title={OHNE_POSTEN_TOOLTIP}>{ZAHLUNGSSTATUS_TEXT.verknuepft_ohne_werbebudgetposten}</span>
-                        : zst.get(z.k.id) === 'keine_zahlungsverknuepfung' ? <span className="text-muted-foreground">— <span className="text-xs">{ZAHLUNGSSTATUS_TEXT.keine_zahlungsverknuepfung}</span></span>
-                        : <span className="text-muted-foreground">—</span>}
+                      {z.eingezahlt != null ? eur(z.eingezahlt) : <OhneBetrag zst={zst.get(z.k.id)} quelle={bq.has(z.k.id) ? bq.get(z.k.id)! : undefined} />}
                       {Number(z.e?.zahlungen || 0) > 1 && z.e?.uebertrag_frueher_netto != null && (
                         <div className="text-xs text-muted-foreground">+ {eur(Number(z.e.uebertrag_frueher_netto))} aus früheren Aufladungen</div>
                       )}
@@ -203,7 +220,9 @@ export function Werbebudgets() {
                         : z.e?.letzte_zahlung ? `zuletzt ${datum(z.e.letzte_zahlung)}` : '—'}
                       {!!z.e?.rechnungen_offen && <div>{z.e.rechnungen_offen} offen · {eur(Number(z.e.offen_netto || 0))}</div>}
                     </TableCell>
-                    <TableCell className={`text-sm ${statusFarbe(z.status)}`}>{z.status === 'Unklar' ? '—' : z.status}</TableCell>
+                    <TableCell className={`text-sm ${statusFarbe(z.status)}`}>{z.status === 'Unklar' ? '—' : z.status}
+                      {lage.get(z.k.id) && <div className={`text-xs ${lage.get(z.k.id) === 'fehlt_obwohl_pflicht' ? 'text-destructive' : 'text-muted-foreground'}`}>{LAGE_TEXT[lage.get(z.k.id)!] || lage.get(z.k.id)}</div>}
+                    </TableCell>
                   </TableRow>];
                   if (istOffen) out.push(
                     <TableRow key={`${z.k.id}-d`} className="hover:bg-transparent">
@@ -261,4 +280,19 @@ function DetailTabelle({ d, hauptwert, ohneZahlung }: { d?: Detail; hauptwert: n
       </TableBody>
     </Table>
   );
+}
+
+const LAGE_TEXT: Record<string, string> = {
+  bezahlt: 'bezahlt',
+  zahlt_meta_direkt: 'zahlt Meta direkt',
+  fehlt_obwohl_pflicht: 'fehlt obwohl Pflicht',
+  unbekannt: 'keine Zuordnung',
+};
+
+/** Begründung, warum kein eingezahlter Betrag vorliegt — nie geschätzt. */
+function OhneBetrag({ zst, quelle }: { zst?: WerbebudgetZahlungsstatus; quelle?: string | null }) {
+  if (quelle === 'lexoffice') return <span className="text-xs text-muted-foreground">lexoffice liefert keine Rechnungspositionen — Werbebudget hier nicht ermittelbar</span>;
+  if (zst === 'keine_zahlungsverknuepfung' || quelle === null) return <Link to="/finanzen/verknuepfungen" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">keine Buchhaltungsverknüpfung</Link>;
+  if (zst === 'verknuepft_ohne_werbebudgetposten') return <span className="text-xs text-muted-foreground" title={OHNE_POSTEN_TOOLTIP}>kein Werbebudget-Posten auf den Rechnungen</span>;
+  return <span className="text-muted-foreground">—</span>;
 }
