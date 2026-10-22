@@ -5,6 +5,7 @@ import { LexofficeVerknuepfungen } from '@/components/finanzen/LexofficeVerknuep
 import { LexofficeSyncCard } from '@/components/integrations/LexofficeSyncCard';
 import { RechnungenListe } from '@/components/finanzen/RechnungenListe';
 import { RechnungsAuswertung } from '@/components/finanzen/RechnungsAuswertung';
+import { GemeinsameKennzahlen } from '@/components/finanzen/GemeinsameKennzahlen';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -428,15 +429,8 @@ export default function Finanzen() {
         </CardContent></Card>
       )}
 
-      <Tabs value={currentTab} onValueChange={v => navigate(v === 'uebersicht' ? '/finanzen' : `/finanzen/${v}`)}>
-        <TabsList className="flex flex-wrap h-auto gap-1">
-          <TabsTrigger value="uebersicht">Übersicht</TabsTrigger>
-          <TabsTrigger value="lexware">Lexware</TabsTrigger>
-          <TabsTrigger value="qonto">Qonto</TabsTrigger>
-          <TabsTrigger value="rechnungen">Rechnungen</TabsTrigger>
-          <TabsTrigger value="werbebudgets">Werbebudgets</TabsTrigger>
-          <TabsTrigger value="verknuepfungen">Verknüpfungen</TabsTrigger>
-        </TabsList>
+      <Tabs value={currentTab}>
+        {/* Navigation läuft über das linke Menü (Routen /finanzen/:tab) – keine eigene Tab-Leiste. */}
 
         {/* ============ ÜBERSICHT ============ */}
         <TabsContent value="uebersicht" className="space-y-6 mt-4">
@@ -445,29 +439,29 @@ export default function Finanzen() {
         </TabsContent>
 
         {/* ============ LEXWARE ============ */}
-        <TabsContent value="lexware" className="space-y-6 mt-4">
-          {isAdmin && <LexofficeSyncCard />}
-          <RechnungsAuswertung quellen={['lexoffice']} quelleText="lexoffice Rechnungen" />
-          <p className="text-xs text-muted-foreground">Liquidität und Cashflow gibt es nur bei Qonto — lexoffice führt kein Bankkonto.</p>
+        <TabsContent value="lexware" className="space-y-8 mt-4">
+          <GemeinsameKennzahlen quelle="lexoffice" from={range === 'all' ? null : fromISO} to={range === 'all' ? null : toISOd} />
+          <div className="space-y-4">
+            <SectionTitle title="Nur in lexoffice" />
+            {isAdmin && <LexofficeSyncCard />}
+            <RechnungsAuswertung quellen={['lexoffice']} quelleText="lexoffice Rechnungen" nurZusatz
+              verlaufHinweis="lexoffice liefert kein Zahldatum, darum bleibt „Bezahlt" im Verlauf leer" />
+            <p className="text-xs text-muted-foreground">Liquidität und Cashflow gibt es nur bei Qonto — lexoffice führt kein Bankkonto.</p>
+          </div>
         </TabsContent>
 
         {/* ============ QONTO ============ */}
         <TabsContent value="qonto" className="space-y-6 mt-4">
 
-          {/* HERO KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+          <GemeinsameKennzahlen quelle="qonto" from={range === 'all' ? null : fromISO} to={range === 'all' ? null : toISOd} />
+
+          <SectionTitle title="Nur in Qonto" />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Kpi title="Kontostand gesamt" value={eur(totalBalance)} icon={Wallet} source="Qonto Konten"
               subtitle={mainAccount?.name ? `Haupt: ${mainAccount.name}` : undefined} />
             <Kpi title="Netto-Cashflow" value={eur(cf.net)} icon={cf.net >= 0 ? TrendingUp : TrendingDown} source="Qonto Bank"
               delta={cashflowDelta != null ? { pct: cashflowDelta } : undefined}
               subtitle={`Zeitraum · ${num(cf.inflow_count)} ein / ${num(cf.outflow_count)} aus`} />
-            <Kpi title="Cash Collected" value={eur(inv.paid_sum)} icon={CheckCircle2} source="Qonto Rechnungen"
-              subtitle={`${num(inv.paid_count)} bezahlte Rechnungen`}
-              delta={revenueDelta != null ? { pct: revenueDelta } : undefined} />
-            <Kpi title="Offene Forderungen" value={eur(recv.open_sum)} icon={Receipt} source="Qonto Rechnungen"
-              subtitle={`${num(recv.open_n)} offen`} />
-            <Kpi title="Überfällig" value={eur(recv.overdue_sum)} icon={AlertTriangle} source="Qonto Rechnungen"
-              subtitle={`${num(recv.overdue_n)} Rechnungen · ${pct(overdueRate)}`} />
             <Kpi title="Cash-Ergebnis" value={eur(cf.net)} icon={PiggyBank} source="Qonto Bank"
               subtitle="Einnahmen − Ausgaben"
               warn="Cash-basiertes Ergebnis, keine Buchhaltungs-/Steuergröße." />
@@ -609,13 +603,9 @@ export default function Finanzen() {
           <div>
             <SectionTitle title="C · Rechnungen & Cash Collected" subtitle="Qonto Rechnungen" />
             <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
-              <Kpi title="Bezahlt (Rechnungen)" value={eur(inv.paid_sum)} source="Qonto Rechnungen" subtitle={`${num(inv.paid_count)} Stück`} />
               <Kpi title="Bank-Eingänge" value={eur(cf.inflow)} source="Qonto Bank" subtitle="Vergleichsbasis" />
               <Kpi title="Δ Bank − Rechnungen" value={eur(deltaBank)} source="Qonto"
                 warn="Differenz zwischen Bankeingängen und bezahlten Rechnungen kann auf nicht-Rechnungsumsatz oder fehlende Zuordnung hindeuten." />
-              <Kpi title="Collection Rate" value={pct(collectionRate)} source="Qonto Rechnungen"
-                subtitle="bezahlt ÷ ausgestellt"
-                reliability={inv.issued_sum ? 'reliable' : 'na'} />
               <Kpi title="Ø Rechnungsbetrag" value={eur(inv.issued_count ? (inv.issued_sum || 0) / inv.issued_count : 0)}
                 source="Qonto Rechnungen" reliability={inv.issued_count ? 'reliable' : 'na'} />
               <Kpi title="Ø Zahlungsdauer"
