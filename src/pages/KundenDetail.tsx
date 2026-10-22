@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VerknuepfungenTab } from '@/components/kunden/VerknuepfungenTab';
 import { LeadSharksTab } from '@/components/kunden/LeadSharksTab';
+import { KundeKennzahlenKarten, ManuellGepflegt, useKundeKennzahlen } from '@/components/kunden/KundeKennzahlen';
 import { ladeStand, zaehle, type SystemKey, type SystemStand } from '@/lib/kundenVerknuepfungen';
 import { DriveBrowser } from '@/components/DriveBrowser';
 import { CloseDealDetailPanel } from '@/components/close/CloseDealDetailPanel';
@@ -149,6 +150,7 @@ export default function KundenDetail() {
 
   const [loading, setLoading] = useState(true);
   const [client, setClient] = useState<any>(null);
+  const kz = useKundeKennzahlen(id);
   const [deals, setDeals] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [onepageProjects, setOnepageProjects] = useState<any[]>([]);
@@ -873,63 +875,10 @@ export default function KundenDetail() {
 
         {/* ÜBERSICHT */}
         <TabsContent value="uebersicht" className="mt-4 space-y-4">
-          {/* KPI-Karten */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KpiCard label="CLV" value={fmtEur(client.clv)} />
-            <KpiCard label="Gesamt-Saldo" value={fmtEur(client.gesamt_saldo)} />
-            {client.ads_budget == null || client.ads_budget === '' ? (
-              <KpiCard label="Ads-Budget" value="—" footer={
-                linkStand?.meta.zustand === 'verknuepft'
-                  ? <span>Verknüpft, kein Budget hinterlegt</span>
-                  : <Leer klein text="Kein Meta-Werbekonto verknüpft" aktion={zuVerknuepfungen} />
-              } />
-            ) : <KpiCard label="Ads-Budget" value={fmtEur(client.ads_budget)} />}
-            {(() => {
-              if (qontoForbidden) {
-                return <KpiCard label="Cash Collect offen" value={fmtEur(client.cash_collect_offen)} hint="Keine Finanzen-Berechtigung – zeige Hub-Wert" />;
-              }
-              if (qontoSummary && !qontoSummary.quelle) {
-                return <KpiCard label="Cash Collect offen" value="—" hint="Buchhaltungsquelle ungeklärt"
-                  footer={<span>{qontoSummary.marke ? `Marke „${qontoSummary.marke}“ ist keiner Buchhaltung zugeordnet` : 'Keine Marke in Close – Quelle ungeklärt'}</span>} />;
-              }
-              const qName = qontoSummary?.quelle === 'lexoffice' ? 'lexoffice' : 'Qonto';
-              if (!qontoSummary || !qontoSummary.has_link) {
-                return (
-                  <KpiCard
-                    label="Cash Collect offen"
-                    value="—"
-                    hint={`Keine ${qName}-Verknüpfung vorhanden`}
-                    footer={
-                      <Link to={`/kunden/${id}?tab=verknuepfungen`} onClick={(e) => { e.preventDefault(); zuVerknuepfungen(); }} className="text-primary hover:underline">
-                        {qName}-Verknüpfung erstellen
-                      </Link>
-                    }
-                  />
-                );
-              }
-              const s = qontoSummary;
-              const hint =
-                `Offen: ${fmtEur(s.open_invoice_amount)} (${s.open_invoice_count})` +
-                ` · Überfällig: ${fmtEur(s.overdue_invoice_amount)} (${s.overdue_invoice_count})` +
-                ` · Bezahlt: ${fmtEur(s.paid_invoice_amount)} (${s.paid_invoice_count})`;
-              return (
-                <KpiCard
-                  label="Cash Collect offen"
-                  value={fmtEur(s.open_invoice_amount)}
-                  hint={`Quelle: ${qName} · ${hint}`}
-                  footer={
-                    s.overdue_invoice_count > 0 ? (
-                      <span className="text-destructive">
-                        {s.overdue_invoice_count} überfällig · {fmtEur(s.overdue_invoice_amount)}
-                      </span>
-                    ) : (
-                      <span>{s.open_invoice_count} offene Rechnung{s.open_invoice_count === 1 ? '' : 'en'}</span>
-                    )
-                  }
-                />
-              );
-            })()}
-          </div>
+          {/* Kennzahlen aus der View kunde_kennzahlen */}
+          <KundeKennzahlenKarten kz={kz.kz} loading={kz.loading} fehler={kz.fehler} />
+          {kz.kz && !kz.kz.buchhaltungsquelle && <p className="text-xs text-muted-foreground">Keine Buchhaltungsquelle verknüpft. <Link to={`/kunden/${id}?tab=verknuepfungen`} onClick={(e) => { e.preventDefault(); zuVerknuepfungen(); }} className="text-primary hover:underline">Qonto- oder lexoffice-Verknüpfung erstellen</Link></p>}
+          <ManuellGepflegt client={client} kz={kz.kz} />
 
           {/* Offene Qonto-Rechnungen */}
           {qontoSummary?.has_link && qontoOpenInvoices.length > 0 && (
