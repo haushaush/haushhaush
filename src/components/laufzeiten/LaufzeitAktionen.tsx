@@ -57,7 +57,14 @@ export function LaufzeitAktionen({ r, onDone }: { r: AktionRow; onDone: () => Pr
   const hatVerl = !!(r.upsell_startdatum && r.upsell_laufzeit);
   const hervor = r.rest < 30;
 
-  const openV = () => { setErr(null); setMonate(''); setStart(r.vertragsende || ''); setNotiz(''); setOk2(false); setArt('v'); };
+  const openV = async () => {
+    setErr(null); setMonate(''); setStart(r.vertragsende || ''); setNotiz(''); setOk2(false); setOpp(r.close_opportunity_id || ''); setOpps(null); setArt('v');
+    if (r.close_opportunity_id) return;
+    const d = await rufen({ aktion: 'opps', client_id: r.client_id });
+    if ('error' in d && d.error) { setErr(`Opportunities aus Close nicht geladen: ${d.error}`); setOpps([]); return; }
+    const l = (d as { opps?: Opp[] }).opps || []; setOpps(l);
+    if (l.length === 1) setOpp(l[0].id);
+  };
   const openB = async () => {
     setErr(null); setStatus(''); setKd(heute()); setLv(r.vertragsende || ''); setGrund(''); setOpps(null); setOpp(''); setArt('b');
     const d = await rufen({ aktion: 'opps', client_id: r.client_id });
