@@ -75,13 +75,13 @@ export function LaufzeitAktionen({ r, onDone }: { r: AktionRow; onDone: () => Pr
 
   const m = Number(monate); const mOk = Number.isInteger(m) && m >= 1 && m <= 120;
   const ende = mOk && start ? plusMonate(start, m) : null;
-  const vOk = mOk && !!start && (!hatVerl || ok2);
+  const vOk = mOk && !!start && !!opp && (!hatVerl || ok2);
   const bOk = !!opp && !!status && !!kd && !!lv && grund.trim().length > 0;
 
   async function speichern() {
     setBusy(true); setErr(null);
     const d = art === 'v'
-      ? await rufen({ aktion: 'verlaengern', client_id: r.client_id, close_opportunity_id: r.close_opportunity_id, startdatum: start, monate: m, notiz: notiz || null, ueberschreiben_bestaetigt: hatVerl && ok2 })
+      ? await rufen({ aktion: 'verlaengern', client_id: r.client_id, close_opportunity_id: opp, startdatum: start, monate: m, notiz: notiz || null, ueberschreiben_bestaetigt: hatVerl && ok2 })
       : await rufen({ aktion: 'beenden', client_id: r.client_id, close_opportunity_id: opp, status_id: status, kuendigungsdatum: kd, letzter_vertragstag: lv, begruendung: grund.trim() });
     setBusy(false);
     if ('error' in d && d.error) { setErr(`Close hat nicht gespeichert: ${d.error}`); return; } // dialog stays open with inputs
@@ -114,6 +114,12 @@ export function LaufzeitAktionen({ r, onDone }: { r: AktionRow; onDone: () => Pr
           <DialogHeader><DialogTitle>{r.kunde}: Laufzeit verlängern</DialogTitle>
             <DialogDescription>Bisher: {dtDe(hatVerl ? r.upsell_startdatum : r.startdatum)} – {dtDe(r.vertragsende)} ({hatVerl ? r.upsell_laufzeit : r.laufzeit_monate} Mon.)</DialogDescription></DialogHeader>
           <div className="space-y-4">
+            {!r.close_opportunity_id && <label className="block text-xs text-muted-foreground">Opportunity in Close
+              {opps === null ? <p className="text-sm mt-1 flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />lädt aus Close …</p> :
+                <Select value={opp} onValueChange={setOpp} disabled={opps.length <= 1}>
+                  <SelectTrigger className="mt-1 h-auto min-h-9"><SelectValue placeholder={opps.length ? 'auswählen' : 'keine Opportunity in Close gefunden'} /></SelectTrigger>
+                  <SelectContent>{opps.map(o => <SelectItem key={o.id} value={o.id}><span className="tabular-nums">{o.name} · Start {dtDe(o.startdatum)} · {eur(o.wert)}</span></SelectItem>)}</SelectContent>
+                </Select>}</label>}
             <label className="block text-xs text-muted-foreground">Neue Laufzeit in Monaten
               <div className="flex gap-2 mt-1">
                 <Input type="number" min={1} max={120} step={1} className="h-9 w-24" value={monate} onChange={e => setMonate(e.target.value)} />
