@@ -9,23 +9,25 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Trash2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { RefreshCw, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { HealthKarte, HEALTH_KARTE, FARBE } from './HealthKarte';
 import { ladeZahlungsstatus, OHNE_POSTEN_TOOLTIP, type WerbebudgetZahlungsstatus } from '@/lib/werbebudgetZahlungsstatus';
-import { ladeKontenJeKunde, wirksamerBudgetTraeger, type KontoInfo } from '@/lib/budgetTraeger';
+import { ladeKontenJeKunde, type KontoInfo } from '@/lib/budgetTraeger';
 
-type Zuordnung = { client_id: string; meta_account_id: string; untermarke: string | null; typ: 'konto' | 'kampagne' | 'adset'; objekt_id: string; kampagne_id: string | null; objekt_name: string | null };
+type Modus = 'ueber_uns' | 'kunde_zahlt' | 'leadkauf';
+type Zuordnung = { id: string; modus: Modus; client_id: string; meta_account_id: string; untermarke: string | null; typ: 'konto' | 'kampagne' | 'adset'; objekt_id: string; kampagne_id: string | null; objekt_name: string | null };
 type Eingezahlt = { client_id: string; quelle: string | null; eingezahlt_netto: number | null; uebertrag_frueher_netto: number | null; eingezahlt_gesamt_netto: number | null; zahlungen: number | null; offen_netto: number | null; rechnungen_offen: number | null; letzte_zahlung: string | null; aelteste_ueberfaellig: string | null };
 type Spend = { meta_account_id: string; campaign_id: string | null; campaign_name: string | null; adset_id: string; adset_name: string | null; datum: string; spend: number };
 type KontoView = { meta_account_id: string; kontoname: string | null; art: string | null; eingezahlt: number | null; ausgegeben: number | null; letzte_aufladung: string | null; letzte_meta_zahlung: string | null; belege: number | null; kampagnen_aktiv: number | null; tagesbudget: number | null };
 type Snap = { campaign_id: string; campaign_name: string | null; account_id: string; status: string | null; daily_budget: number | null };
-type Kunde = { id: string; name: string; kundenstatus: string | null; ads_budget: number | null; werbebudget_pflicht: boolean | null; auto_stopp: boolean };
+type Kunde = { id: string; name: string; kundenstatus: string | null; ads_budget: number | null; auto_stopp: boolean };
+type Manuell = { id: string; client_id: string; datum: string; betrag_netto: number; quelle: string | null; beleg: string | null; notiz: string | null };
 type Zahlung = { datum: string; betrag: number; nummer: string | null };
 
-type Zeitraum = 'monat' | 'insgesamt';
 type Filter = 'alle' | 'uns' | 'kunde' | 'ueber';
 
 const eur = (n: number) => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -35,15 +37,9 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 const ART_TEXT: Record<string, string> = { untermarke: 'Untermarke', kunde_eigen: 'Kundeneigenes Konto', unbekannt: 'Art unbekannt' };
 const LAGE_TEXT: Record<string, string> = { bezahlt: 'bezahlt', zahlt_meta_direkt: 'zahlt Meta direkt', fehlt_obwohl_pflicht: 'fehlt obwohl Pflicht', unbekannt: 'keine Zuordnung' };
 const WB_REGEX = /(werbebudget|anzeigenbudget|mediabudget|media[ -]budget|ad[ -]?spend|werbekampagnen[ -]budget)/i;
-const ZEITRAUM_TEXT: Record<Zeitraum, string> = { monat: 'Aktuell', insgesamt: 'Insgesamt' };
-const ZEITRAUM_SPALTE: Record<Zeitraum, string> = { monat: 'dieser Monat', insgesamt: 'insgesamt' };
-const GRID = 'md:grid-cols-[minmax(0,1fr)_7.5rem_9rem_8rem_8rem_8rem_9rem_5.5rem]';
-
-function zeitraumStart(z: Zeitraum): string | null {
-  const d = new Date();
-  if (z === 'monat') return iso(new Date(d.getFullYear(), d.getMonth(), 1));
-  return null;
-}
+const MODUS_TEXT: Record<Modus, string> = { ueber_uns: 'Über uns', kunde_zahlt: 'Kunde zahlt', leadkauf: 'Leadkauf' };
+const GRID = 'md:grid-cols-[minmax(0,1fr)_9rem_8rem_8rem_8rem_8.5rem_8rem_5.5rem]';
+const monatsErster = () => { const d = new Date(); return iso(new Date(d.getFullYear(), d.getMonth(), 1)); };
 
 async function ladeSpend(): Promise<Spend[]> {
   const out: Spend[] = [];
@@ -89,29 +85,30 @@ export function Werbebudgets() {
   const [zst, setZst] = useState<Map<string, WerbebudgetZahlungsstatus>>(new Map());
   const [details, setDetails] = useState<Map<string, { quelle?: string | null; lage?: string; zahlungen?: Zahlung[] }>>(new Map());
   const [offen, setOffen] = useState<Set<string>>(new Set());
-  const [zeitraum, setZeitraum] = useState<Zeitraum>('monat');
+  const [manuell, setManuell] = useState<Manuell[]>([]);
   const [filter, setFilter] = useState<Filter>('alle');
   const [nurAktiv, setNurAktiv] = useState(true);
 
   const laden = useCallback(async () => {
     setLaedt(true); setFehler(null);
     try {
-      const [c, z, e, v, s, km, sp] = await Promise.all([
-        supabase.from('clients').select('id, name, kundenstatus, ads_budget, werbebudget_pflicht, auto_stopp').is('deleted_at', null),
-        (supabase.from as any)('werbebudget_zuordnung').select('client_id, meta_account_id, untermarke, typ, objekt_id, kampagne_id, objekt_name'),
+      const [c, z, e, v, s, km, sp, mz] = await Promise.all([
+        supabase.from('clients').select('id, name, kundenstatus, ads_budget, auto_stopp').is('deleted_at', null),
+        (supabase.from as any)('werbebudget_zuordnung').select('id, modus, client_id, meta_account_id, untermarke, typ, objekt_id, kampagne_id, objekt_name'),
         (supabase.from as any)('werbebudget_eingezahlt').select('*'),
         (supabase.from as any)('untermarke_werbebudget').select('meta_account_id, kontoname, art, eingezahlt, ausgegeben, letzte_aufladung, letzte_meta_zahlung, belege, kampagnen_aktiv, tagesbudget'),
         supabase.from('meta_campaign_snapshot').select('campaign_id, campaign_name, account_id, status, daily_budget'),
         ladeKontenJeKunde(),
         ladeSpend(),
+        supabase.from('werbebudget_zahlung').select('id, client_id, datum, betrag_netto, quelle, beleg, notiz').order('datum', { ascending: false }),
       ]);
-      for (const [n, r] of [['clients', c], ['werbebudget_zuordnung', z], ['werbebudget_eingezahlt', e], ['untermarke_werbebudget', v], ['meta_campaign_snapshot', s]] as const)
+      for (const [n, r] of [['werbebudget_zahlung', mz], ['clients', c], ['werbebudget_zuordnung', z], ['werbebudget_eingezahlt', e], ['untermarke_werbebudget', v], ['meta_campaign_snapshot', s]] as const)
         if ((r as any).error) console.error(n, (r as any).error.message);
       const ks = ((c.data || []) as any[]).filter(k => k.name) as Kunde[];
       const zs0 = await ladeZahlungsstatus(ks.map(k => k.id));
       setKunden(ks); setKonten(km); setZuo((z.data || []) as Zuordnung[]);
       setEin(new Map(((e.data || []) as Eingezahlt[]).map(r => [r.client_id, r])));
-      setView((v.data || []) as KontoView[]); setSnap((s.data || []) as Snap[]); setSpend(sp);
+      setManuell((mz.data || []) as Manuell[]); setView((v.data || []) as KontoView[]); setSnap((s.data || []) as Snap[]); setSpend(sp);
       setZst(zs0 as Map<string, WerbebudgetZahlungsstatus>);
     } catch (err) { setFehler((err as Error).message); }
     setLaedt(false);
@@ -132,7 +129,7 @@ export function Werbebudgets() {
   }, [details]);
 
   /** Felder eines Kunden sofort speichern; optimistisch, bei Fehler zurück. */
-  const speichern = useCallback(async (id: string, patch: Partial<Pick<Kunde, 'ads_budget' | 'werbebudget_pflicht' | 'auto_stopp'>>) => {
+  const speichern = useCallback(async (id: string, patch: Partial<Pick<Kunde, 'ads_budget' | 'auto_stopp'>>) => {
     const vorher = kunden.find(k => k.id === id);
     if (!vorher) return;
     setKunden(p => p.map(k => k.id === id ? { ...k, ...patch } : k));
@@ -143,35 +140,65 @@ export function Werbebudgets() {
     }
   }, [kunden]);
 
-  const monatStart = zeitraumStart('monat')!;
-  const zStart = zeitraumStart(zeitraum);
+  /** Modus einer Zuordnung sofort speichern; optimistisch, bei Fehler zurück. */
+  const modusSetzen = useCallback(async (id: string, modus: Modus) => {
+    const vorher = zuo.find(z => z.id === id);
+    if (!vorher || vorher.modus === modus) return;
+    setZuo(p => p.map(z => z.id === id ? { ...z, modus } : z));
+    const { error } = await (supabase.from as any)('werbebudget_zuordnung').update({ modus }).eq('id', id);
+    if (error) { setZuo(p => p.map(z => z.id === id ? vorher : z)); toast.error(`Speichern fehlgeschlagen: ${error.message}`); }
+  }, [zuo]);
 
-  /** Spend je zugeordnetem Objekt (Kampagne: alle ihre Adsets; Adset: nur dieses; ganzes Konto: alles). Auslastung immer laufender Monat. */
+  const zahlungAnlegen = useCallback(async (row: Omit<Manuell, 'id'>) => {
+    const { data: u } = await supabase.auth.getUser();
+    const { data, error } = await supabase.from('werbebudget_zahlung').insert({ ...row, erfasst_von: u.user?.id ?? null }).select('id, client_id, datum, betrag_netto, quelle, beleg, notiz').single();
+    if (error) { toast.error(`Speichern fehlgeschlagen: ${error.message}`); return false; }
+    setManuell(p => [data as Manuell, ...p].sort((x, y) => y.datum.localeCompare(x.datum)));
+    return true;
+  }, []);
+
+  const zahlungLoeschen = useCallback(async (id: string) => {
+    const vorher = manuell;
+    setManuell(p => p.filter(m => m.id !== id));
+    const { error } = await supabase.from('werbebudget_zahlung').delete().eq('id', id);
+    if (error) { setManuell(vorher); toast.error(`Löschen fehlgeschlagen: ${error.message}`); }
+  }, [manuell]);
+
+  const monatStart = monatsErster();
+
+  /** Kontokorrent je Kunde: Verbrauch nur über Zuordnungen mit Modus „Über uns“ (Kampagne: alle Adsets; Adset: nur dieses; Konto: alles). */
   const zeilen = useMemo(() => kunden.map(k => {
     const objs = zuo.filter(z => z.client_id === k.id);
-    const kontoArten = (konten.get(k.id) || []).map(x => x.art || '');
-    const untermarke = kontoArten.includes('untermarke');
-    const traeger = wirksamerBudgetTraeger(kontoArten, k.werbebudget_pflicht);
     const gezaehlt = new Set<string>();
     let verbraucht = 0, monat = 0;
+    const jeModus: Record<Modus, number> = { ueber_uns: 0, kunde_zahlt: 0, leadkauf: 0 };
     const objekte = objs.map(o => {
       const treffer = spend.filter(r => o.typ === 'adset' ? r.adset_id === o.objekt_id : o.typ === 'kampagne' ? r.campaign_id === o.objekt_id : norm(r.meta_account_id) === norm(o.objekt_id || o.meta_account_id));
-      let summe = 0;
+      let gesamt = 0, imMonat = 0;
       for (const r of treffer) {
-        const imZ = !zStart || r.datum >= zStart;
-        if (imZ) summe += Number(r.spend || 0);
+        const b = Number(r.spend || 0);
+        gesamt += b; if (r.datum >= monatStart) imMonat += b;
+        if (o.modus !== 'ueber_uns') continue;
         const key = `${r.adset_id}|${r.datum}`;
         if (gezaehlt.has(key)) continue;
         gezaehlt.add(key);
-        if (imZ) verbraucht += Number(r.spend || 0);
-        if (r.datum >= monatStart) monat += Number(r.spend || 0);
+        verbraucht += b;
+        if (r.datum >= monatStart) monat += b;
       }
-      return { o, summe };
+      jeModus[o.modus] = (jeModus[o.modus] || 0) + gesamt;
+      return { o, gesamt, imMonat };
     });
+    const anzahl: Record<Modus, number> = { ueber_uns: 0, kunde_zahlt: 0, leadkauf: 0 };
+    objs.forEach(o => { anzahl[o.modus] = (anzahl[o.modus] || 0) + 1; });
+    const autoEin = Number(ein.get(k.id)?.eingezahlt_gesamt_netto) || 0;
+    const manEin = manuell.filter(m => m.client_id === k.id).reduce((s, m) => s + Number(m.betrag_netto || 0), 0);
+    const eingezahlt = autoEin + manEin;
+    const saldo = eingezahlt - verbraucht;
     const budget = k.ads_budget != null && Number(k.ads_budget) > 0 ? Number(k.ads_budget) : null;
     const quote = budget ? monat / budget : null;
-    return { k, objekte, verbraucht, monat, budget, quote, rest: budget != null ? budget - monat : null, traeger, untermarke };
-  }).sort((a, b) => (a.quote == null ? 1 : 0) - (b.quote == null ? 1 : 0) || (b.quote ?? 0) - (a.quote ?? 0) || a.k.name.localeCompare(b.k.name)), [kunden, zuo, spend, konten, zStart, monatStart]);
+    const traeger: 'uns' | 'kunde' | null = anzahl.ueber_uns > 0 ? 'uns' : objs.length ? 'kunde' : null;
+    return { k, objekte, verbraucht, monat, budget, quote, traeger, anzahl, jeModus, eingezahlt, saldo };
+  }).sort((a, b) => (a.traeger === 'uns' ? 0 : 1) - (b.traeger === 'uns' ? 0 : 1) || a.saldo - b.saldo || a.k.name.localeCompare(b.k.name)), [kunden, zuo, spend, ein, manuell, monatStart]);
 
   const sichtbar = useMemo(() => zeilen
     .filter(z => !nurAktiv || z.k.kundenstatus === 'In Betreuung')
@@ -214,8 +241,8 @@ export function Werbebudgets() {
 
   const viewJe = new Map(view.map(v => [norm(v.meta_account_id), v]));
   const snapJe = new Map(snap.map(s => [s.campaign_id, s]));
-  const ampel = (q: number | null) => q == null ? FARBE.grau : q >= 1 ? FARBE.rot : q >= 0.8 ? 'hsl(var(--warning))' : FARBE.gruen;
-  const vLabel = `Verbraucht · ${ZEITRAUM_SPALTE[zeitraum]}`;
+  /** Ampel nach Saldo: rot ≤ 0, gelb unter einem Monatsbudget, sonst grün; ohne Budget nur am Vorzeichen. */
+  const ampel = (saldo: number, budget: number | null) => saldo <= 0 ? FARBE.rot : budget != null && saldo < budget ? 'hsl(var(--warning))' : FARBE.gruen;
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -223,16 +250,10 @@ export function Werbebudgets() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold font-heading">Werbebudgets</h1>
-          <p className="text-sm text-muted-foreground">Monatsbudget gegen Meta-Ausgaben, Auslastung immer für den laufenden Monat</p>
+          <p className="text-sm text-muted-foreground">Kontokorrent je Kunde: Eingezahlt gegen Verbrauch über uns, Monatsauslastung zur Orientierung</p>
         </div>
         <Button variant="outline" size="sm" onClick={laden} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" /> Aktualisieren</Button>
       </div>
-
-      <Tabs value={zeitraum} onValueChange={v => setZeitraum(v as Zeitraum)}>
-        <TabsList className="flex-wrap h-auto">
-          {(Object.keys(ZEITRAUM_TEXT) as Zeitraum[]).map(z => <TabsTrigger key={z} value={z}>{ZEITRAUM_TEXT[z]}</TabsTrigger>)}
-        </TabsList>
-      </Tabs>
 
       {fehler && <p className="text-sm text-destructive">Fehler beim Laden: {fehler}</p>}
 
@@ -278,13 +299,13 @@ export function Werbebudgets() {
 
         <div className={`${HEALTH_KARTE} p-0 sm:p-0 overflow-hidden`}>
           <div className={`hidden md:grid ${GRID} gap-4 px-6 py-3 text-[11px] uppercase tracking-[0.12em] text-muted-foreground items-end`}>
-            <span>Kunde</span><span>Zahler</span><span className="text-right">Monatsbudget</span><Tooltip><TooltipTrigger asChild><span className="text-right cursor-help">Eingezahlt gesamt</span></TooltipTrigger><TooltipContent>Alle bezahlten Werbebudget-Posten aus den Rechnungen, unabhängig vom gewählten Zeitraum.</TooltipContent></Tooltip><span className="text-right">{vLabel}</span><span className="text-right">Rest Monat</span><span className="text-right">Auslastung Monat</span><span className="text-right">Stoppen</span>
+            <span>Kunde</span><span>Modus</span><Tooltip><TooltipTrigger asChild><span className="text-right cursor-help">Eingezahlt gesamt</span></TooltipTrigger><TooltipContent>Bezahlte Werbebudget-Posten aus den Rechnungen plus manuell erfasste Zahlungen.</TooltipContent></Tooltip><Tooltip><TooltipTrigger asChild><span className="text-right cursor-help">Verbraucht gesamt</span></TooltipTrigger><TooltipContent>Meta-Ausgaben aller Zeiten, nur über Zuordnungen „Über uns“.</TooltipContent></Tooltip><span className="text-right">Saldo</span><span className="text-right">Monatsbudget</span><span className="text-right">Auslastung Monat</span><span className="text-right">Stoppen</span>
           </div>
           {sichtbar.length === 0 && <p className="px-6 py-8 text-center text-sm text-muted-foreground">Keine Kunden für diesen Filter.</p>}
           {sichtbar.map(z => {
             const auf = offen.has(z.k.id);
             const umschalten = () => { setOffen(p => { const n = new Set(p); auf ? n.delete(z.k.id) : n.add(z.k.id); return n; }); if (!auf) ladeDetails(z.k.id); };
-            const stoppGrund = z.budget == null ? 'Erst ein Monatsbudget hinterlegen' : z.traeger !== 'uns' ? 'Nur möglich, wenn das Budget über uns läuft' : null;
+            const stoppGrund = z.anzahl.ueber_uns === 0 ? 'Nur möglich mit mindestens einer Zuordnung „Über uns“' : null;
             return (
               <div key={z.k.id} className="border-t border-border/60">
                 <div className={`grid grid-cols-2 ${GRID} gap-x-4 gap-y-2 px-6 py-3 items-center hover:bg-muted/30 transition-colors`}>
@@ -292,25 +313,21 @@ export function Werbebudgets() {
                     {auf ? <ChevronDown className="h-3.5 w-3.5 mt-1 text-muted-foreground shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 mt-1 text-muted-foreground shrink-0" />}
                     <span className="break-words">{z.k.name}</span>
                   </button>
-                  <ZahlerSchalter wir={z.traeger === 'uns'} gesperrt={z.untermarke} onChange={wir => speichern(z.k.id, { werbebudget_pflicht: wir })} />
-                  <BudgetFeld wert={z.k.ads_budget} onSave={n => speichern(z.k.id, { ads_budget: n })} />
-                  {(() => {
-                    const n = Number(ein.get(z.k.id)?.eingezahlt_gesamt_netto) || 0;
-                    const kunde = z.traeger === 'kunde';
-                    const inhalt = <span className={`md:text-right text-sm tabular-nums ${kunde ? 'text-muted-foreground' : ''}`}><span className="md:hidden text-xs text-muted-foreground mr-1">Eingezahlt</span>{n ? eur(n) : '—'}</span>;
-                    return kunde ? <Tooltip><TooltipTrigger asChild>{inhalt}</TooltipTrigger><TooltipContent>Läuft über den Kunden — Zahlung an uns liegt in der Vergangenheit.</TooltipContent></Tooltip> : inhalt;
-                  })()}
-                  <span className="md:text-right text-sm">
-                    {z.objekte.length === 0 ? (
-                      <Link to="/kunden/verknuepfungen" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">keine Kampagne zugeordnet</Link>
-                    ) : (<>
-                      <span className="md:hidden text-xs text-muted-foreground mr-1">Verbraucht</span>
-                      <span className="tabular-nums">{eur(z.verbraucht)}</span>
-                    </>)}
+                  <span className="text-xs text-muted-foreground">
+                    {z.objekte.length === 0
+                      ? <Link to="/kunden/verknuepfungen" className="underline underline-offset-2 hover:text-foreground">keine Kampagne zugeordnet</Link>
+                      : (Object.keys(MODUS_TEXT) as Modus[]).filter(m => z.anzahl[m]).map(m => `${z.anzahl[m]} ${MODUS_TEXT[m].toLowerCase().replace('über uns', 'über uns')}`).join(' · ')}
                   </span>
-                  <span className={`md:text-right tabular-nums text-sm ${z.rest != null && z.rest < 0 ? 'text-destructive' : ''}`}><span className="md:hidden text-xs text-muted-foreground mr-1">Rest</span>{z.rest != null ? eur(z.rest) : '—'}</span>
-                  <span className="flex items-center md:justify-end gap-2 text-sm tabular-nums">
-                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: ampel(z.quote) }} />
+                  <span className="md:text-right text-sm tabular-nums"><span className="md:hidden text-xs text-muted-foreground mr-1">Eingezahlt</span>{z.eingezahlt ? eur(z.eingezahlt) : '—'}</span>
+                  <span className="md:text-right text-sm tabular-nums"><span className="md:hidden text-xs text-muted-foreground mr-1">Verbraucht</span>{eur(z.verbraucht)}</span>
+                  <span className={`flex items-center md:justify-end gap-2 text-sm tabular-nums ${z.saldo < 0 ? 'text-destructive' : ''}`}>
+                    <span className="md:hidden text-xs text-muted-foreground">Saldo</span>
+                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: ampel(z.saldo, z.budget) }} />
+                    {eur(z.saldo)}
+                  </span>
+                  <BudgetFeld wert={z.k.ads_budget} onSave={n => speichern(z.k.id, { ads_budget: n })} />
+                  <span className="md:text-right text-sm tabular-nums">
+                    <span className="md:hidden text-xs text-muted-foreground mr-1">Auslastung</span>
                     {z.quote != null ? `${Math.round(z.quote * 100)} %` : <span className="text-xs text-muted-foreground">kein Budget hinterlegt</span>}
                   </span>
                   <span className="flex md:justify-end items-center gap-2">
@@ -337,11 +354,11 @@ export function Werbebudgets() {
                         ) : (
                           <Table>
                             <TableHeader><TableRow>
-                              <TableHead>Name</TableHead><TableHead>Ebene</TableHead><TableHead>Status</TableHead>
-                              <TableHead className="text-right">{vLabel}</TableHead><TableHead className="text-right">Tagesbudget</TableHead>
+                              <TableHead>Name</TableHead><TableHead>Ebene</TableHead><TableHead>Status</TableHead><TableHead>Modus</TableHead>
+                              <TableHead className="text-right">Dieser Monat</TableHead><TableHead className="text-right">Gesamt</TableHead><TableHead className="text-right">Tagesbudget</TableHead>
                             </TableRow></TableHeader>
                             <TableBody>
-                              {z.objekte.map(({ o, summe }) => {
+                              {z.objekte.map(({ o, gesamt, imMonat }) => {
                                 const camp = o.typ === 'kampagne' ? snapJe.get(o.objekt_id) : o.typ === 'adset' && o.kampagne_id ? snapJe.get(o.kampagne_id) : undefined;
                                 const kontoCamps = o.typ === 'konto' ? snap.filter(s => norm(s.account_id) === norm(o.objekt_id || o.meta_account_id)) : [];
                                 const status = o.typ === 'konto' ? (kontoCamps.some(s => s.status === 'ACTIVE') ? 'ACTIVE' : kontoCamps.length ? 'PAUSED' : null) : camp?.status ?? null;
@@ -356,7 +373,9 @@ export function Werbebudgets() {
                                         : status === 'ACTIVE' ? <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15" variant="outline" title={o.typ === 'adset' ? 'Status der Kampagne' : undefined}>aktiv</Badge>
                                         : <Badge variant="secondary" title={o.typ === 'adset' ? 'Status der Kampagne' : undefined}>pausiert</Badge>}
                                     </TableCell>
-                                    <TableCell className="text-right tabular-nums">{eur(summe)}</TableCell>
+                                    <TableCell><ModusSchalter wert={o.modus} onChange={m => modusSetzen(o.id, m)} /></TableCell>
+                                    <TableCell className="text-right tabular-nums">{eur(imMonat)}</TableCell>
+                                    <TableCell className="text-right tabular-nums">{eur(gesamt)}</TableCell>
                                     <TableCell className="text-right tabular-nums">{tb != null ? eur(tb) : '—'}</TableCell>
                                   </TableRow>
                                 );
@@ -364,9 +383,14 @@ export function Werbebudgets() {
                             </TableBody>
                           </Table>
                         )}
+                        {z.objekte.length > 0 && (
+                          <p className="mt-3 text-xs text-muted-foreground tabular-nums">
+                            Über uns {eur(z.jeModus.ueber_uns)} · Kunde zahlt {eur(z.jeModus.kunde_zahlt)} · Leadkauf {eur(z.jeModus.leadkauf)}
+                          </p>
+                        )}
                       </CardContent>
                     </Card>
-                    <ZahlungenBlock e={ein.get(z.k.id)} d={details.get(z.k.id)} zst={zst.get(z.k.id)} ks={konten.get(z.k.id) || []} viewJe={viewJe} />
+                    <ZahlungenBlock clientId={z.k.id} manuell={manuell.filter(m => m.client_id === z.k.id)} onAdd={zahlungAnlegen} onDelete={zahlungLoeschen} e={ein.get(z.k.id)} d={details.get(z.k.id)} zst={zst.get(z.k.id)} ks={konten.get(z.k.id) || []} viewJe={viewJe} />
                   </div>
                 )}
               </div>
@@ -379,18 +403,15 @@ export function Werbebudgets() {
   );
 }
 
-function ZahlerSchalter({ wir, gesperrt, onChange }: { wir: boolean; gesperrt: boolean; onChange: (wir: boolean) => void }) {
-  const knopf = (aktiv: boolean, text: string, wert: boolean) => (
-    <button type="button" disabled={gesperrt} aria-pressed={aktiv} onClick={() => !aktiv && onChange(wert)}
-      className={`px-2.5 py-1 text-xs rounded-md transition-colors disabled:cursor-not-allowed ${aktiv ? 'bg-background shadow-sm font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>{text}</button>
-  );
-  const el = (
-    <span className={`inline-flex rounded-lg bg-muted p-0.5 w-fit ${gesperrt ? 'opacity-60' : ''}`}>
-      {knopf(wir, 'Wir', true)}{knopf(!wir, 'Kunde', false)}
+function ModusSchalter({ wert, onChange }: { wert: Modus; onChange: (m: Modus) => void }) {
+  return (
+    <span className="inline-flex rounded-lg bg-muted p-0.5 w-fit">
+      {(Object.keys(MODUS_TEXT) as Modus[]).map(m => (
+        <button key={m} type="button" aria-pressed={wert === m} onClick={() => wert !== m && onChange(m)}
+          className={`px-2.5 py-1 text-xs rounded-md whitespace-nowrap transition-colors ${wert === m ? 'bg-background shadow-sm font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>{MODUS_TEXT[m]}</button>
+      ))}
     </span>
   );
-  if (!gesperrt) return el;
-  return <Tooltip><TooltipTrigger asChild>{el}</TooltipTrigger><TooltipContent>Untermarken-Konto — läuft immer über uns</TooltipContent></Tooltip>;
 }
 
 function BudgetFeld({ wert, onSave }: { wert: number | null; onSave: (n: number | null) => void }) {
@@ -442,7 +463,7 @@ function KontoBlock({ ks, viewJe }: { ks: KontoInfo[]; viewJe: Map<string, Konto
   );
 }
 
-function ZahlungenBlock({ e, d, zst, ks, viewJe }: { e?: Eingezahlt; d?: { quelle?: string | null; lage?: string; zahlungen?: Zahlung[] }; zst?: WerbebudgetZahlungsstatus; ks: KontoInfo[]; viewJe: Map<string, KontoView> }) {
+function ZahlungenBlock({ clientId, manuell, onAdd, onDelete, e, d, zst, ks, viewJe }: { clientId: string; manuell: Manuell[]; onAdd: (r: Omit<Manuell, 'id'>) => Promise<boolean>; onDelete: (id: string) => void; e?: Eingezahlt; d?: { quelle?: string | null; lage?: string; zahlungen?: Zahlung[] }; zst?: WerbebudgetZahlungsstatus; ks: KontoInfo[]; viewJe: Map<string, KontoView> }) {
   const zahlungen = d?.zahlungen;
   const summe = (zahlungen || []).reduce((s, z) => s + z.betrag, 0);
   const vs = ks.map(k => viewJe.get(norm(k.meta_account_id))).filter(Boolean) as KontoView[];
@@ -465,6 +486,20 @@ function ZahlungenBlock({ e, d, zst, ks, viewJe }: { e?: Eingezahlt; d?: { quell
             <TableFooter><TableRow><TableCell colSpan={2}>Summe</TableCell><TableCell className="text-right tabular-nums">{eur(summe)}</TableCell></TableRow></TableFooter>
           </Table>
         ) : <div className="rounded-lg border border-dashed p-4"><OhneBetrag zst={zst} quelle={d.quelle} /></div>}
+
+        <ManuellAbschnitt clientId={clientId} rows={manuell} onAdd={onAdd} onDelete={onDelete} />
+
+        {(() => {
+          const auto = Number(e?.eingezahlt_gesamt_netto) || 0;
+          const man = manuell.reduce((s, m) => s + Number(m.betrag_netto || 0), 0);
+          return (
+            <div className="grid grid-cols-3 gap-4 rounded-lg bg-muted/40 p-3">
+              <Feld label="Automatisch erkannt"><span className="tabular-nums">{eur(auto)}</span></Feld>
+              <Feld label="Manuell erfasst"><span className="tabular-nums">{eur(man)}</span></Feld>
+              <Feld label="Eingezahlt gesamt"><span className="tabular-nums font-medium">{eur(auto + man)}</span></Feld>
+            </div>
+          );
+        })()}
 
         {(e?.aelteste_ueberfaellig || !!e?.rechnungen_offen || d?.lage) && (
           <div className="flex flex-wrap gap-2">
@@ -496,4 +531,54 @@ function OhneBetrag({ zst, quelle }: { zst?: WerbebudgetZahlungsstatus; quelle?:
   if (zst === 'keine_zahlungsverknuepfung' || quelle === null) return <Link to="/kunden/verknuepfungen" className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground">keine Buchhaltungsverknüpfung</Link>;
   if (zst === 'verknuepft_ohne_werbebudgetposten') return <span className="text-sm text-muted-foreground" title={OHNE_POSTEN_TOOLTIP}>kein Werbebudget-Posten auf den Rechnungen</span>;
   return <span className="text-sm text-muted-foreground">Keine bezahlten Werbebudget-Zahlungen gefunden.</span>;
+}
+
+
+function ManuellAbschnitt({ clientId, rows, onAdd, onDelete }: { clientId: string; rows: Manuell[]; onAdd: (r: Omit<Manuell, 'id'>) => Promise<boolean>; onDelete: (id: string) => void }) {
+  const leer = { datum: iso(new Date()), betrag: '', quelle: '', beleg: '', notiz: '' };
+  const [f, setF] = useState(leer);
+  const [sendet, setSendet] = useState(false);
+  const listId = `wb-quellen-${clientId}`;
+  const absenden = async () => {
+    const n = Number(f.betrag.replace(/\s|€/g, '').replace(/\./g, '').replace(',', '.'));
+    if (!f.datum) { toast.error('Bitte ein Datum angeben'); return; }
+    if (!f.betrag.trim() || !Number.isFinite(n) || n <= 0) { toast.error('Bitte einen gültigen Betrag eingeben'); return; }
+    setSendet(true);
+    const ok = await onAdd({ client_id: clientId, datum: f.datum, betrag_netto: n, quelle: f.quelle.trim() || null, beleg: f.beleg.trim() || null, notiz: f.notiz.trim() || null });
+    setSendet(false);
+    if (ok) setF(leer);
+  };
+  return (
+    <div className="space-y-3 border-t border-border/60 pt-4">
+      <div>
+        <p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Manuell erfasst</p>
+        <p className="text-xs text-muted-foreground mt-1">Für Zahlungen, die nicht über Qonto-Rechnungspositionen erkannt werden — etwa lexoffice oder Zahlungen an Viral Connect.</p>
+      </div>
+      {rows.length > 0 && (
+        <Table>
+          <TableHeader><TableRow><TableHead>Datum</TableHead><TableHead>Quelle</TableHead><TableHead>Beleg</TableHead><TableHead className="text-right">Betrag (netto)</TableHead><TableHead className="w-10" /></TableRow></TableHeader>
+          <TableBody>
+            {rows.map(m => (
+              <TableRow key={m.id}>
+                <TableCell className="tabular-nums">{datum(m.datum)}</TableCell>
+                <TableCell className="text-muted-foreground" title={m.notiz || undefined}>{m.quelle || '—'}</TableCell>
+                <TableCell className="text-muted-foreground break-words">{m.beleg || '—'}</TableCell>
+                <TableCell className="text-right tabular-nums">{eur(Number(m.betrag_netto))}</TableCell>
+                <TableCell><Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Zahlung löschen" onClick={() => { if (confirm('Diese Zahlung löschen?')) onDelete(m.id); }}><Trash2 className="h-3.5 w-3.5" /></Button></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+      <div className="grid grid-cols-2 md:grid-cols-[9rem_8rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-end">
+        <Input type="date" aria-label="Datum" value={f.datum} onChange={e => setF({ ...f, datum: e.target.value })} className="h-8 text-sm" />
+        <Input aria-label="Betrag netto" inputMode="decimal" placeholder="Betrag netto" value={f.betrag} onChange={e => setF({ ...f, betrag: e.target.value })} className="h-8 text-sm text-right tabular-nums" />
+        <Input aria-label="Quelle" list={listId} placeholder="Quelle" value={f.quelle} onChange={e => setF({ ...f, quelle: e.target.value })} className="h-8 text-sm" />
+        <datalist id={listId}><option value="lexoffice" /><option value="Viral Connect" /><option value="Überweisung" /></datalist>
+        <Input aria-label="Beleg" placeholder="Beleg" value={f.beleg} onChange={e => setF({ ...f, beleg: e.target.value })} className="h-8 text-sm" />
+        <Input aria-label="Notiz" placeholder="Notiz" value={f.notiz} onChange={e => setF({ ...f, notiz: e.target.value })} className="h-8 text-sm" />
+        <Button size="sm" className="h-8" disabled={sendet} onClick={absenden}>Erfassen</Button>
+      </div>
+    </div>
+  );
 }
