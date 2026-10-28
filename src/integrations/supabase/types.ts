@@ -5291,6 +5291,45 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_spend_taeglich: {
+        Row: {
+          adset_id: string
+          adset_name: string | null
+          campaign_id: string | null
+          campaign_name: string | null
+          datum: string
+          impressions: number
+          leads: number
+          meta_account_id: string
+          spend: number
+          synced_at: string
+        }
+        Insert: {
+          adset_id: string
+          adset_name?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          datum: string
+          impressions?: number
+          leads?: number
+          meta_account_id: string
+          spend?: number
+          synced_at?: string
+        }
+        Update: {
+          adset_id?: string
+          adset_name?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          datum?: string
+          impressions?: number
+          leads?: number
+          meta_account_id?: string
+          spend?: number
+          synced_at?: string
+        }
+        Relationships: []
+      }
       mfa_recovery_codes: {
         Row: {
           code_hash: string

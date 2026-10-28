@@ -225,6 +225,13 @@
       "when": 1792658894176,
       "tag": "0031_survey_zuordnung_grund",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793190782033,
+      "tag": "0032_meta_spend_taeglich",
+      "breakpoints": true
     }
   ]
 }
