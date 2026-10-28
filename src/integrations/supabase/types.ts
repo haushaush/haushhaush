@@ -1971,6 +1971,7 @@ export type Database = {
         Row: {
           ads_budget: number | null
           ampelstatus: Database["public"]["Enums"]["ampelstatus"]
+          auto_stopp: boolean
           branche: string | null
           branche_id: string | null
           cash_collect_offen: number | null
@@ -2012,6 +2013,7 @@ export type Database = {
         Insert: {
           ads_budget?: number | null
           ampelstatus?: Database["public"]["Enums"]["ampelstatus"]
+          auto_stopp?: boolean
           branche?: string | null
           branche_id?: string | null
           cash_collect_offen?: number | null
@@ -2053,6 +2055,7 @@ export type Database = {
         Update: {
           ads_budget?: number | null
           ampelstatus?: Database["public"]["Enums"]["ampelstatus"]
+          auto_stopp?: boolean
           branche?: string | null
           branche_id?: string | null
           cash_collect_offen?: number | null
