@@ -38,19 +38,29 @@ Deno.serve(async (req) => {
   let token: string;
   try { token = await requireMetaToken(); } catch (e) { return json({ error: (e as Error).message }, 500); }
 
-  const { count } = await admin.from("meta_spend_taeglich").select("adset_id", { count: "exact", head: true });
-  const tage = (count ?? 0) === 0 ? 90 : 7;
   const until = new Date().toISOString().slice(0, 10);
-  const since = new Date(Date.now() - (tage - 1) * 86400000).toISOString().slice(0, 10);
+  const sinceFuer = (tage: number) => new Date(Date.now() - (tage - 1) * 86400000).toISOString().slice(0, 10);
+  const norm = (s: unknown) => String(s ?? "").trim().replace(/^act_/, "");
 
-  const { data: konten, error: kErr } = await admin.from("meta_konto_art").select("meta_account_id");
-  if (kErr) return json({ error: kErr.message }, 500);
+  // Konten: Vereinigung aus meta_konto_art, kunde_meta_accounts (mit Kunde) und werbebudget_zuordnung, ohne act_-Präfix.
+  const [ka, kma, wz] = await Promise.all([
+    admin.from("meta_konto_art").select("meta_account_id"),
+    admin.from("kunde_meta_accounts").select("meta_account_id").not("client_id", "is", null),
+    admin.from("werbebudget_zuordnung").select("meta_account_id"),
+  ]);
+  for (const [n, r] of [["meta_konto_art", ka], ["kunde_meta_accounts", kma], ["werbebudget_zuordnung", wz]] as const)
+    if (r.error) return json({ error: `${n}: ${r.error.message}` }, 500);
+  const konten = [...new Set([...(ka.data || []), ...(kma.data || []), ...(wz.data || [])].map((r: any) => norm(r.meta_account_id)).filter(Boolean))];
 
-  const ergebnis: { konto: string; zeilen: number; fehler?: string }[] = [];
-  for (const k of konten || []) {
-    const id = String(k.meta_account_id);
-    const act = id.startsWith("act_") ? id : `act_${id}`;
+  const ergebnis: { konto: string; zeilen: number; tage?: number; fehler?: string }[] = [];
+  for (const id of konten) {
+    const act = `act_${id}`;
     try {
+      // Erstlauf je Konto: noch keine Zeile (in beiden Schreibweisen) → 90 Tage, sonst 7.
+      const { count, error: cErr } = await admin.from("meta_spend_taeglich").select("adset_id", { count: "exact", head: true }).in("meta_account_id", [id, act]);
+      if (cErr) throw new Error(cErr.message);
+      const tage = (count ?? 0) === 0 ? 90 : 7;
+      const since = sinceFuer(tage);
       const rows: any[] = [];
       const p = new URLSearchParams({
         level: "adset", time_increment: "1", limit: "500",
@@ -76,13 +86,14 @@ Deno.serve(async (req) => {
         const { error } = await admin.from("meta_spend_taeglich").upsert(up.slice(i, i + 500), { onConflict: "adset_id,datum" });
         if (error) throw new Error(error.message);
       }
-      ergebnis.push({ konto: id, zeilen: up.length });
+      ergebnis.push({ konto: id, zeilen: up.length, tage });
     } catch (e) {
       console.error(`[meta-spend-sync] Konto ${id} fehlgeschlagen:`, (e as Error).message);
       ergebnis.push({ konto: id, zeilen: 0, fehler: (e as Error).message });
     }
   }
   const fehler = ergebnis.filter((e) => e.fehler).length;
-  console.log(`[meta-spend-sync] ${since}–${until}: ${ergebnis.length} Konten, ${fehler} Fehler`);
-  return json({ since, until, tage, konten: ergebnis.length, fehler, ergebnis });
+  const erstlaeufe = ergebnis.filter((e) => e.tage === 90).length;
+  console.log(`[meta-spend-sync] bis ${until}: ${ergebnis.length} Konten (${erstlaeufe} Erstläufe 90 Tage), ${fehler} Fehler`);
+  return json({ until, konten: ergebnis.length, erstlaeufe, fehler, ergebnis });
 });
