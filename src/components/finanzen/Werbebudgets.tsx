@@ -228,7 +228,7 @@ export function Werbebudgets() {
       {fehler && <p className="text-sm text-destructive">Fehler beim Laden: {fehler}</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <HealthKarte titel="Kunden über Budget" farbe={ueberBudget ? FARBE.rot : FARBE.gruen} wert={String(ueberBudget)} satz={`von ${zeilen.length} Kunden haben ihr Monatsbudget im laufenden Monat erreicht oder überschritten.`} />
+        <HealthKarte titel="Kunden über Budget" farbe={ueberBudget ? FARBE.rot : FARBE.gruen} wert={String(ueberBudget)} satz={`von ${sichtbar.length} Kunden haben ihr Monatsbudget im laufenden Monat erreicht oder überschritten.`} />
         <HealthKarte titel="Eingezahlt gesamt" farbe={FARBE.primaer} wert={eur(summen.eingezahlt)} satz={`Werbebudget-Zahlungen auf den ${summen.konten} Konten dieser Kunden.`} />
         <HealthKarte titel="Bei Meta ausgegeben gesamt" farbe={FARBE.grau} wert={eur(summen.ausgegeben)} satz="Tatsächlich an Meta gezahlt laut Zahlungsbelegen dieser Konten." />
       </div>
@@ -244,14 +244,20 @@ export function Werbebudgets() {
       {spend.length === 0 && <p className="text-xs text-muted-foreground">Es liegen noch keine Meta-Ausgaben vor — der Spend-Sync hat noch nicht geliefert. „Verbraucht" bleibt bis dahin 0 €.</p>}
 
       <div className="space-y-3">
-        <Tabs value={filter} onValueChange={v => setFilter(v as Filter)}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="alle">Alle</TabsTrigger>
-            <TabsTrigger value="uns">Läuft über uns</TabsTrigger>
-            <TabsTrigger value="kunde">Zahlt selbst</TabsTrigger>
-            <TabsTrigger value="ueber">Über Budget</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Tabs value={filter} onValueChange={v => setFilter(v as Filter)}>
+            <TabsList className="flex-wrap h-auto">
+              <TabsTrigger value="alle">Alle</TabsTrigger>
+              <TabsTrigger value="uns">Läuft über uns</TabsTrigger>
+              <TabsTrigger value="kunde">Zahlt selbst</TabsTrigger>
+              <TabsTrigger value="ueber">Über Budget</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+            <Switch checked={nurAktiv} onCheckedChange={setNurAktiv} aria-label="Nur aktive Kunden" />
+            Nur aktive Kunden
+          </label>
+        </div>
 
         <div className={`${HEALTH_KARTE} p-0 sm:p-0 overflow-hidden`}>
           <div className={`hidden md:grid ${GRID} gap-4 px-6 py-3 text-[11px] uppercase tracking-[0.12em] text-muted-foreground items-end`}>
@@ -271,7 +277,14 @@ export function Werbebudgets() {
                   </button>
                   <ZahlerSchalter wir={z.traeger === 'uns'} gesperrt={z.untermarke} onChange={wir => speichern(z.k.id, { werbebudget_pflicht: wir })} />
                   <BudgetFeld wert={z.k.ads_budget} onSave={n => speichern(z.k.id, { ads_budget: n })} />
-                  <span className="md:text-right tabular-nums text-sm"><span className="md:hidden text-xs text-muted-foreground mr-1">Verbraucht</span>{eur(z.verbraucht)}</span>
+                  <span className="md:text-right text-sm">
+                    {z.objekte.length === 0 ? (
+                      <Link to="/kunden/verknuepfungen" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">keine Kampagne zugeordnet</Link>
+                    ) : (<>
+                      <span className="md:hidden text-xs text-muted-foreground mr-1">Verbraucht</span>
+                      <span className="tabular-nums">{eur(z.verbraucht)}</span>
+                    </>)}
+                  </span>
                   <span className={`md:text-right tabular-nums text-sm ${z.rest != null && z.rest < 0 ? 'text-destructive' : ''}`}><span className="md:hidden text-xs text-muted-foreground mr-1">Rest</span>{z.rest != null ? eur(z.rest) : '—'}</span>
                   <span className="flex items-center md:justify-end gap-2 text-sm tabular-nums">
                     <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: ampel(z.quote) }} />
