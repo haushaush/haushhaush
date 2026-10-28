@@ -37,7 +37,7 @@ const LAGE_TEXT: Record<string, string> = { bezahlt: 'bezahlt', zahlt_meta_direk
 const WB_REGEX = /(werbebudget|anzeigenbudget|mediabudget|media[ -]budget|ad[ -]?spend|werbekampagnen[ -]budget)/i;
 const ZEITRAUM_TEXT: Record<Zeitraum, string> = { monat: 'Aktuell', insgesamt: 'Insgesamt' };
 const ZEITRAUM_SPALTE: Record<Zeitraum, string> = { monat: 'dieser Monat', insgesamt: 'insgesamt' };
-const GRID = 'md:grid-cols-[minmax(0,1fr)_7.5rem_9rem_8rem_8rem_9rem_5.5rem]';
+const GRID = 'md:grid-cols-[minmax(0,1fr)_7.5rem_9rem_8rem_8rem_8rem_9rem_5.5rem]';
 
 function zeitraumStart(z: Zeitraum): string | null {
   const d = new Date();
@@ -278,7 +278,7 @@ export function Werbebudgets() {
 
         <div className={`${HEALTH_KARTE} p-0 sm:p-0 overflow-hidden`}>
           <div className={`hidden md:grid ${GRID} gap-4 px-6 py-3 text-[11px] uppercase tracking-[0.12em] text-muted-foreground items-end`}>
-            <span>Kunde</span><span>Zahler</span><span className="text-right">Monatsbudget</span><span className="text-right">{vLabel}</span><span className="text-right">Rest Monat</span><span className="text-right">Auslastung Monat</span><span className="text-right">Stoppen</span>
+            <span>Kunde</span><span>Zahler</span><span className="text-right">Monatsbudget</span><Tooltip><TooltipTrigger asChild><span className="text-right cursor-help">Eingezahlt gesamt</span></TooltipTrigger><TooltipContent>Alle bezahlten Werbebudget-Posten aus den Rechnungen, unabhängig vom gewählten Zeitraum.</TooltipContent></Tooltip><span className="text-right">{vLabel}</span><span className="text-right">Rest Monat</span><span className="text-right">Auslastung Monat</span><span className="text-right">Stoppen</span>
           </div>
           {sichtbar.length === 0 && <p className="px-6 py-8 text-center text-sm text-muted-foreground">Keine Kunden für diesen Filter.</p>}
           {sichtbar.map(z => {
@@ -294,6 +294,12 @@ export function Werbebudgets() {
                   </button>
                   <ZahlerSchalter wir={z.traeger === 'uns'} gesperrt={z.untermarke} onChange={wir => speichern(z.k.id, { werbebudget_pflicht: wir })} />
                   <BudgetFeld wert={z.k.ads_budget} onSave={n => speichern(z.k.id, { ads_budget: n })} />
+                  {(() => {
+                    const n = Number(ein.get(z.k.id)?.eingezahlt_gesamt_netto) || 0;
+                    const kunde = z.traeger === 'kunde';
+                    const inhalt = <span className={`md:text-right text-sm tabular-nums ${kunde ? 'text-muted-foreground' : ''}`}><span className="md:hidden text-xs text-muted-foreground mr-1">Eingezahlt</span>{n ? eur(n) : '—'}</span>;
+                    return kunde ? <Tooltip><TooltipTrigger asChild>{inhalt}</TooltipTrigger><TooltipContent>Läuft über den Kunden — Zahlung an uns liegt in der Vergangenheit.</TooltipContent></Tooltip> : inhalt;
+                  })()}
                   <span className="md:text-right text-sm">
                     {z.objekte.length === 0 ? (
                       <Link to="/kunden/verknuepfungen" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">keine Kampagne zugeordnet</Link>
