@@ -323,6 +323,8 @@ export function KpiSlider({ deals, invoices, invoicesZustand, revenue, cashColle
   const SLIDE_LABELS = slides.map(s => s.label);
   const totalSlides = slides.length;
 
+  useEffect(() => { if (activeSlide >= totalSlides) setActiveSlide(0); }, [activeSlide, totalSlides]);
+
   const startAutoAdvance = useCallback(() => {
     if (autoAdvanceRef.current) clearInterval(autoAdvanceRef.current);
     autoAdvanceRef.current = setInterval(() => {
