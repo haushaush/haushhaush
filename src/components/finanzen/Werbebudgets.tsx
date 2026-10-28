@@ -22,7 +22,7 @@ type Eingezahlt = { client_id: string; quelle: string | null; eingezahlt_netto: 
 type Spend = { meta_account_id: string; campaign_id: string | null; campaign_name: string | null; adset_id: string; adset_name: string | null; datum: string; spend: number };
 type KontoView = { meta_account_id: string; kontoname: string | null; art: string | null; eingezahlt: number | null; ausgegeben: number | null; letzte_aufladung: string | null; letzte_meta_zahlung: string | null; belege: number | null; kampagnen_aktiv: number | null; tagesbudget: number | null };
 type Snap = { campaign_id: string; campaign_name: string | null; account_id: string; status: string | null; daily_budget: number | null };
-type Kunde = { id: string; name: string; ads_budget: number | null; werbebudget_pflicht: boolean | null; auto_stopp: boolean };
+type Kunde = { id: string; name: string; kundenstatus: string | null; ads_budget: number | null; werbebudget_pflicht: boolean | null; auto_stopp: boolean };
 type Zahlung = { datum: string; betrag: number; nummer: string | null };
 
 type Zeitraum = 'heute' | 'woche' | 'monat' | 'jahr' | 'insgesamt';
@@ -93,12 +93,13 @@ export function Werbebudgets() {
   const [offen, setOffen] = useState<Set<string>>(new Set());
   const [zeitraum, setZeitraum] = useState<Zeitraum>('monat');
   const [filter, setFilter] = useState<Filter>('alle');
+  const [nurAktiv, setNurAktiv] = useState(true);
 
   const laden = useCallback(async () => {
     setLaedt(true); setFehler(null);
     try {
       const [c, z, e, v, s, km, sp] = await Promise.all([
-        supabase.from('clients').select('id, name, ads_budget, werbebudget_pflicht, auto_stopp').is('deleted_at', null),
+        supabase.from('clients').select('id, name, kundenstatus, ads_budget, werbebudget_pflicht, auto_stopp').is('deleted_at', null),
         (supabase.from as any)('werbebudget_zuordnung').select('client_id, meta_account_id, untermarke, typ, objekt_id, kampagne_id, objekt_name'),
         (supabase.from as any)('werbebudget_eingezahlt').select('*'),
         (supabase.from as any)('untermarke_werbebudget').select('meta_account_id, kontoname, art, eingezahlt, ausgegeben, letzte_aufladung, letzte_meta_zahlung, belege, kampagnen_aktiv, tagesbudget'),
@@ -174,24 +175,31 @@ export function Werbebudgets() {
     return { k, objekte, verbraucht, monat, budget, quote, rest: budget != null ? budget - monat : null, traeger, untermarke };
   }).sort((a, b) => (a.quote == null ? 1 : 0) - (b.quote == null ? 1 : 0) || (b.quote ?? 0) - (a.quote ?? 0) || a.k.name.localeCompare(b.k.name)), [kunden, zuo, spend, konten, zStart, monatStart]);
 
-  const sichtbar = useMemo(() => zeilen.filter(z => filter === 'alle' ? true : filter === 'uns' ? z.traeger === 'uns' : filter === 'kunde' ? z.traeger === 'kunde' : z.quote != null && z.quote >= 1), [zeilen, filter]);
+  const sichtbar = useMemo(() => zeilen
+    .filter(z => !nurAktiv || z.k.kundenstatus === 'In Betreuung')
+    .filter(z => filter === 'alle' ? true : filter === 'uns' ? z.traeger === 'uns' : filter === 'kunde' ? z.traeger === 'kunde' : z.quote != null && z.quote >= 1), [zeilen, filter, nurAktiv]);
 
-  const kontoIds = useMemo(() => new Set(kunden.flatMap(k => (konten.get(k.id) || []).map(x => norm(x.meta_account_id)))), [kunden, konten]);
+  const kontoIds = useMemo(() => new Set(sichtbar.flatMap(z => (konten.get(z.k.id) || []).map(x => norm(x.meta_account_id)))), [sichtbar, konten]);
   const summen = useMemo(() => {
     const vs = view.filter(v => kontoIds.has(norm(v.meta_account_id)));
     return { eingezahlt: vs.reduce((s, v) => s + Number(v.eingezahlt || 0), 0), ausgegeben: vs.reduce((s, v) => s + Number(v.ausgegeben || 0), 0), konten: vs.length };
   }, [view, kontoIds]);
-  const ueberBudget = zeilen.filter(z => z.quote != null && z.quote >= 1).length;
+  const ueberBudget = sichtbar.filter(z => z.quote != null && z.quote >= 1).length;
 
-  /** Aktive Kampagnen auf Untermarken-Konten ohne jede Kundenzuordnung (live berechnet). */
+  /** Aktive Kampagnen auf Untermarken-Konten der angezeigten Kunden ohne jede Kundenzuordnung (live berechnet). */
   const ohneZuordnung = useMemo(() => {
-    const unter = new Set(view.filter(v => v.art === 'untermarke').map(v => norm(v.meta_account_id)));
+    const artVon = new Map(view.map(v => [norm(v.meta_account_id), v.art]));
+    const unter = new Set<string>();
+    for (const z of sichtbar) for (const ki of konten.get(z.k.id) || []) {
+      const id = norm(ki.meta_account_id);
+      if ((ki.art || artVon.get(id)) === 'untermarke') unter.add(id);
+    }
     const ganzeKonten = new Set(zuo.filter(z => z.typ === 'konto').map(z => norm(z.objekt_id || z.meta_account_id)));
     const kampagnen = new Set(zuo.filter(z => z.typ === 'kampagne').map(z => z.objekt_id));
     zuo.filter(z => z.typ === 'adset' && z.kampagne_id).forEach(z => kampagnen.add(z.kampagne_id!));
     const offene = snap.filter(s => s.status === 'ACTIVE' && unter.has(norm(s.account_id)) && !ganzeKonten.has(norm(s.account_id)) && !kampagnen.has(s.campaign_id));
     return { kampagnen: offene.length, konten: new Set(offene.map(s => norm(s.account_id))).size };
-  }, [view, zuo, snap]);
+  }, [sichtbar, konten, view, zuo, snap]);
 
   if (laedt) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>;
 
@@ -206,7 +214,7 @@ export function Werbebudgets() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold font-heading">Werbebudgets</h1>
-          <p className="text-sm text-muted-foreground">Alle aktiven Kunden — Monatsbudget gegen Meta-Ausgaben, Auslastung immer für den laufenden Monat</p>
+          <p className="text-sm text-muted-foreground">Monatsbudget gegen Meta-Ausgaben, Auslastung immer für den laufenden Monat</p>
         </div>
         <Button variant="outline" size="sm" onClick={laden} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" /> Aktualisieren</Button>
       </div>
@@ -220,7 +228,7 @@ export function Werbebudgets() {
       {fehler && <p className="text-sm text-destructive">Fehler beim Laden: {fehler}</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <HealthKarte titel="Kunden über Budget" farbe={ueberBudget ? FARBE.rot : FARBE.gruen} wert={String(ueberBudget)} satz={`von ${zeilen.length} Kunden haben ihr Monatsbudget im laufenden Monat erreicht oder überschritten.`} />
+        <HealthKarte titel="Kunden über Budget" farbe={ueberBudget ? FARBE.rot : FARBE.gruen} wert={String(ueberBudget)} satz={`von ${sichtbar.length} Kunden haben ihr Monatsbudget im laufenden Monat erreicht oder überschritten.`} />
         <HealthKarte titel="Eingezahlt gesamt" farbe={FARBE.primaer} wert={eur(summen.eingezahlt)} satz={`Werbebudget-Zahlungen auf den ${summen.konten} Konten dieser Kunden.`} />
         <HealthKarte titel="Bei Meta ausgegeben gesamt" farbe={FARBE.grau} wert={eur(summen.ausgegeben)} satz="Tatsächlich an Meta gezahlt laut Zahlungsbelegen dieser Konten." />
       </div>
@@ -236,14 +244,20 @@ export function Werbebudgets() {
       {spend.length === 0 && <p className="text-xs text-muted-foreground">Es liegen noch keine Meta-Ausgaben vor — der Spend-Sync hat noch nicht geliefert. „Verbraucht" bleibt bis dahin 0 €.</p>}
 
       <div className="space-y-3">
-        <Tabs value={filter} onValueChange={v => setFilter(v as Filter)}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="alle">Alle</TabsTrigger>
-            <TabsTrigger value="uns">Läuft über uns</TabsTrigger>
-            <TabsTrigger value="kunde">Zahlt selbst</TabsTrigger>
-            <TabsTrigger value="ueber">Über Budget</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Tabs value={filter} onValueChange={v => setFilter(v as Filter)}>
+            <TabsList className="flex-wrap h-auto">
+              <TabsTrigger value="alle">Alle</TabsTrigger>
+              <TabsTrigger value="uns">Läuft über uns</TabsTrigger>
+              <TabsTrigger value="kunde">Zahlt selbst</TabsTrigger>
+              <TabsTrigger value="ueber">Über Budget</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+            <Switch checked={nurAktiv} onCheckedChange={setNurAktiv} aria-label="Nur aktive Kunden" />
+            Nur aktive Kunden
+          </label>
+        </div>
 
         <div className={`${HEALTH_KARTE} p-0 sm:p-0 overflow-hidden`}>
           <div className={`hidden md:grid ${GRID} gap-4 px-6 py-3 text-[11px] uppercase tracking-[0.12em] text-muted-foreground items-end`}>
@@ -263,7 +277,14 @@ export function Werbebudgets() {
                   </button>
                   <ZahlerSchalter wir={z.traeger === 'uns'} gesperrt={z.untermarke} onChange={wir => speichern(z.k.id, { werbebudget_pflicht: wir })} />
                   <BudgetFeld wert={z.k.ads_budget} onSave={n => speichern(z.k.id, { ads_budget: n })} />
-                  <span className="md:text-right tabular-nums text-sm"><span className="md:hidden text-xs text-muted-foreground mr-1">Verbraucht</span>{eur(z.verbraucht)}</span>
+                  <span className="md:text-right text-sm">
+                    {z.objekte.length === 0 ? (
+                      <Link to="/kunden/verknuepfungen" className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">keine Kampagne zugeordnet</Link>
+                    ) : (<>
+                      <span className="md:hidden text-xs text-muted-foreground mr-1">Verbraucht</span>
+                      <span className="tabular-nums">{eur(z.verbraucht)}</span>
+                    </>)}
+                  </span>
                   <span className={`md:text-right tabular-nums text-sm ${z.rest != null && z.rest < 0 ? 'text-destructive' : ''}`}><span className="md:hidden text-xs text-muted-foreground mr-1">Rest</span>{z.rest != null ? eur(z.rest) : '—'}</span>
                   <span className="flex items-center md:justify-end gap-2 text-sm tabular-nums">
                     <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: ampel(z.quote) }} />
