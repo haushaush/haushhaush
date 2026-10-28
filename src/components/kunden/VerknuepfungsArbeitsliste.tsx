@@ -20,7 +20,6 @@ const eur = (n: number) => n.toLocaleString('de-DE', { style: 'currency', curren
 const dt = (s: string | null) => (s ? new Date(s).toLocaleDateString('de-DE') : '–');
 const AKTIV = ['In Betreuung', 'Pausiert'];
 const SYS_KAMPAGNE = 'meta_kampagne';
-const SYS_OHNE_KAMPAGNE = 'ohne_kampagne';
 
 type Kunde = { id: string; name: string | null; vor_nachname: string | null; kundenstatus: string | null };
 type Wahl = { id: string; name: string | null };
@@ -288,12 +287,12 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
   const kundenMitQonto = useMemo(() => new Set(links.filter(l => l.is_confirmed && l.client_id).map(l => l.client_id)), [links]);
   const ohneZahler = useMemo(() => aktive.filter(k => !kundenMitQonto.has(k.id) && !kundenMitLex.has(k.id)), [aktive, kundenMitQonto, kundenMitLex]);
   const mitZuo = useMemo(() => new Set(zuo.map((z: any) => z.client_id)), [zuo]);
-  // Zeilen in Abschnitt 5 bleiben bis zum nächsten Seitenaufruf stehen; die Anzahl sinkt sofort.
+  // Zeilen in Abschnitt 6 bleiben bis zum nächsten Seitenaufruf stehen; die Anzahl sinkt sofort.
   const [ohneKampagneStart, setOhneKampagneStart] = useState<Kunde[] | null>(null);
   const [neuZugeordnet, setNeuZugeordnet] = useState<Map<string, number>>(new Map());
-  const ohneKampagneJetzt = useMemo(() => aktive.filter(k => !mitZuo.has(k.id) && !verworfen.has(`${SYS_OHNE_KAMPAGNE}|eigenes_konto|${k.id}`)), [aktive, mitZuo, verworfen]);
+  const ohneKampagneJetzt = useMemo(() => aktive.filter(k => !mitZuo.has(k.id)), [aktive, mitZuo]);
   useEffect(() => { if (!ohneKampagneStart && kunden) setOhneKampagneStart(ohneKampagneJetzt); }, [ohneKampagneStart, kunden, ohneKampagneJetzt]);
-  const ohneKampagne = useMemo(() => (ohneKampagneStart || []).filter(k => !verworfen.has(`${SYS_OHNE_KAMPAGNE}|eigenes_konto|${k.id}`)), [ohneKampagneStart, verworfen]);
+  const ohneKampagne = useMemo(() => ohneKampagneStart || [], [ohneKampagneStart]);
 
   const geladen = !!kunden && !!inv && !!lexInv;
   useEffect(() => {
