@@ -186,7 +186,7 @@ export function Werbebudgets() {
   }, [view, kontoIds]);
   const ueberBudget = sichtbar.filter(z => z.quote != null && z.quote >= 1).length;
 
-  /** Aktive Kampagnen auf Untermarken-Konten der angezeigten Kunden ohne jede Kundenzuordnung (live berechnet). */
+  /** Zeile 1: Aktive Kampagnen auf Untermarken-Konten der angezeigten Kunden ohne jede Kundenzuordnung (live berechnet). */
   const ohneZuordnung = useMemo(() => {
     const artVon = new Map(view.map(v => [norm(v.meta_account_id), v.art]));
     const unter = new Set<string>();
@@ -200,6 +200,17 @@ export function Werbebudgets() {
     const offene = snap.filter(s => s.status === 'ACTIVE' && unter.has(norm(s.account_id)) && !ganzeKonten.has(norm(s.account_id)) && !kampagnen.has(s.campaign_id));
     return { kampagnen: offene.length, konten: new Set(offene.map(s => norm(s.account_id))).size };
   }, [sichtbar, konten, view, zuo, snap]);
+
+  /** Zeile 2: Aktive Kampagnen auf Untermarken-Konten, die keinem einzigen Kunden zugeordnet oder verknüpft sind. */
+  const herrenlos = useMemo(() => {
+    const verknuepft = new Set<string>();
+    for (const liste of konten.values()) for (const ki of liste) verknuepft.add(norm(ki.meta_account_id));
+    zuo.forEach(z => verknuepft.add(norm(z.meta_account_id)));
+    const ids = view.filter(v => v.art === 'untermarke').map(v => norm(v.meta_account_id)).filter(id => !verknuepft.has(id));
+    const idSet = new Set(ids);
+    const offene = snap.filter(s => s.status === 'ACTIVE' && idSet.has(norm(s.account_id)));
+    return { kampagnen: offene.length, konten: new Set(offene.map(s => norm(s.account_id))).size };
+  }, [konten, zuo, view, snap]);
 
   if (laedt) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>;
 
@@ -233,11 +244,19 @@ export function Werbebudgets() {
         <HealthKarte titel="Bei Meta ausgegeben gesamt" farbe={FARBE.grau} wert={eur(summen.ausgegeben)} satz="Tatsächlich an Meta gezahlt laut Zahlungsbelegen dieser Konten." />
       </div>
 
-      {ohneZuordnung.kampagnen > 0 && (
+      {(ohneZuordnung.kampagnen > 0 || herrenlos.kampagnen > 0) && (
         <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
           <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-          <p>{ohneZuordnung.kampagnen} aktive Kampagnen auf {ohneZuordnung.konten} Konten sind keinem Kunden zugeordnet — deren Ausgaben fehlen in der Auswertung.{' '}
-            <Link to="/kunden/verknuepfungen" className="underline underline-offset-2 font-medium">Zur Zuordnung</Link></p>
+          <div className="space-y-1">
+            {ohneZuordnung.kampagnen > 0 && (
+              <p>{ohneZuordnung.kampagnen} aktive Kampagnen auf {ohneZuordnung.konten} Konten sind keinem Kunden zugeordnet — deren Ausgaben fehlen in der Auswertung.{' '}
+                <Link to="/kunden/verknuepfungen" className="underline underline-offset-2 font-medium">Zur Zuordnung</Link></p>
+            )}
+            {herrenlos.kampagnen > 0 && (
+              <p>{herrenlos.kampagnen} aktive Kampagnen auf {herrenlos.konten} Konten gehören zu keinem Kunden im CRM.{' '}
+                <Link to="/kunden/verknuepfungen" className="underline underline-offset-2 font-medium">Zur Zuordnung</Link></p>
+            )}
+          </div>
         </div>
       )}
 
