@@ -99,7 +99,7 @@ export function KampagnenKopf({ monat = true }: { monat?: boolean }) {
     <span className="pl-5">Kampagne</span><span>Status</span><span className="text-right">Tagesbudget</span><span className="text-right">7 Tage</span>{monat && <span className="text-right">Dieser Monat</span>}<span />
   </div>;
 }
-const monatWert = (m: Map<string, number> | undefined, id: string) => m && m.has(id) ? eurR(m.get(id)) : '—';
+const monatWert = (m: Map<string, number> | undefined, id: string) => m && m.has(id) ? eurR(String(m.get(id))) : '—';
 
 export function KampagneZeile({ k, kontoId, alle, clientId, busy, kname = zuoKundenName, callMeta, zuordnen, loesen, ohneAusgaben = false, monat }: {
   monat?: MonatSpend; ohneAusgaben?: boolean; k: ZuoKampagne; kontoId?: string; alle: Zuo[]; clientId: string; busy: string | null; kname?: (z?: Zuo) => string; callMeta: any;
