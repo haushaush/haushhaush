@@ -453,8 +453,8 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
   );
 }
 
-/** Zeile mit aufklappbarer Schnellzuordnung; lädt Konten/Kampagnen erst beim Aufklappen. */
-function KundeOhneKampagneZeile({ k, callMeta, onZugeordnet, children }: { k: { id: string }; callMeta: any; onZugeordnet: () => void; children: React.ReactElement }) {
+/** Zeile mit aufklappbarer Schnellzuordnung; lädt Konten/Kampagnen erst beim Aufklappen. Erledigte Zeilen stehen unten und sind gedämpft. */
+function KundeOhneKampagneZeile({ k, erledigt, callMeta, onZugeordnet, children }: { k: { id: string }; erledigt?: boolean; callMeta: any; onZugeordnet: () => void; children: React.ReactElement }) {
   const [offen, setOffen] = useState(false);
   return <div>
     <div className="flex items-center gap-2">
