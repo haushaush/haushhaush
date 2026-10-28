@@ -22,7 +22,7 @@ type Eingezahlt = { client_id: string; quelle: string | null; eingezahlt_netto: 
 type Spend = { meta_account_id: string; campaign_id: string | null; campaign_name: string | null; adset_id: string; adset_name: string | null; datum: string; spend: number };
 type KontoView = { meta_account_id: string; kontoname: string | null; art: string | null; eingezahlt: number | null; ausgegeben: number | null; letzte_aufladung: string | null; letzte_meta_zahlung: string | null; belege: number | null; kampagnen_aktiv: number | null; tagesbudget: number | null };
 type Snap = { campaign_id: string; campaign_name: string | null; account_id: string; status: string | null; daily_budget: number | null };
-type Kunde = { id: string; name: string; ads_budget: number | null; werbebudget_pflicht: boolean | null; auto_stopp: boolean };
+type Kunde = { id: string; name: string; kundenstatus: string | null; ads_budget: number | null; werbebudget_pflicht: boolean | null; auto_stopp: boolean };
 type Zahlung = { datum: string; betrag: number; nummer: string | null };
 
 type Zeitraum = 'heute' | 'woche' | 'monat' | 'jahr' | 'insgesamt';
@@ -93,12 +93,13 @@ export function Werbebudgets() {
   const [offen, setOffen] = useState<Set<string>>(new Set());
   const [zeitraum, setZeitraum] = useState<Zeitraum>('monat');
   const [filter, setFilter] = useState<Filter>('alle');
+  const [nurAktiv, setNurAktiv] = useState(true);
 
   const laden = useCallback(async () => {
     setLaedt(true); setFehler(null);
     try {
       const [c, z, e, v, s, km, sp] = await Promise.all([
-        supabase.from('clients').select('id, name, ads_budget, werbebudget_pflicht, auto_stopp').is('deleted_at', null),
+        supabase.from('clients').select('id, name, kundenstatus, ads_budget, werbebudget_pflicht, auto_stopp').is('deleted_at', null),
         (supabase.from as any)('werbebudget_zuordnung').select('client_id, meta_account_id, untermarke, typ, objekt_id, kampagne_id, objekt_name'),
         (supabase.from as any)('werbebudget_eingezahlt').select('*'),
         (supabase.from as any)('untermarke_werbebudget').select('meta_account_id, kontoname, art, eingezahlt, ausgegeben, letzte_aufladung, letzte_meta_zahlung, belege, kampagnen_aktiv, tagesbudget'),
