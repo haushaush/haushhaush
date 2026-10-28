@@ -1,5 +1,5 @@
-// Stündliche Prüfung: Kunden mit auto_stopp = true, deren Monatsverbrauch (meta_spend_taeglich seit Monatsersten)
-// den Cap (clients.ads_budget) erreicht hat → Eintrag in werbebudget_stopp_log.
+// Stündliche Prüfung: Kunden mit auto_stopp = true, deren Saldo (eingezahlt gesamt − Verbrauch gesamt über
+// Zuordnungen mit modus = 'ueber_uns') ≤ 0 ist → Eintrag in werbebudget_stopp_log.
 // Solange app_settings.werbebudget_auto_stopp_scharf nicht true ist: nur Probelauf, nichts wird pausiert.
 // Scharf: zugeordnete Kampagnen/Anzeigengruppen über die Meta-API pausieren, nur wenn alle Vorbedingungen erfüllt sind.
 // Auslöser: Admin-JWT oder x-cron-secret (Token in bonus_cron_tokens 'werbebudget_stopp_pruefung').
@@ -15,7 +15,7 @@ const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: 
 const GRAPH = "https://graph.facebook.com/v21.0";
 const norm = (s: unknown) => String(s ?? "").replace(/^act_/, "");
 
-type Zuo = { client_id: string; meta_account_id: string; typ: "konto" | "kampagne" | "adset"; objekt_id: string; kampagne_id: string | null; objekt_name: string | null };
+type Zuo = { client_id: string; modus: string; meta_account_id: string; typ: "konto" | "kampagne" | "adset"; objekt_id: string; kampagne_id: string | null; objekt_name: string | null };
 
 async function alle<T>(q: (von: number) => any): Promise<T[]> {
   const out: T[] = [];
@@ -49,20 +49,22 @@ Deno.serve(async (req) => {
     const scharf = s?.value === true || s?.value === "true";
 
     const { data: kunden, error: cErr } = await admin.from("clients")
-      .select("id, name, ads_budget, werbebudget_pflicht").eq("auto_stopp", true).is("deleted_at", null);
+      .select("id, name, ads_budget").eq("auto_stopp", true).is("deleted_at", null);
     if (cErr) throw new Error(cErr.message);
     if (!kunden?.length) return json({ scharf, geprueft: 0, protokolliert: 0 });
 
     const ids = kunden.map((k) => k.id);
-    const d = new Date();
-    const monatsErster = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
-
-    const [zAlle, kma, arten, snap] = await Promise.all([
-      alle<Zuo>(() => admin.from("werbebudget_zuordnung").select("client_id, meta_account_id, typ, objekt_id, kampagne_id, objekt_name")),
+    const [zAlle, kma, arten, snap, einV, manuell] = await Promise.all([
+      alle<Zuo>(() => admin.from("werbebudget_zuordnung").select("client_id, modus, meta_account_id, typ, objekt_id, kampagne_id, objekt_name")),
       alle<{ client_id: string; meta_account_id: string }>(() => admin.from("kunde_meta_accounts").select("client_id, meta_account_id").in("client_id", ids)),
       alle<{ meta_account_id: string; art: string | null }>(() => admin.from("meta_konto_art").select("meta_account_id, art")),
       alle<{ campaign_id: string; account_id: string; status: string | null }>(() => admin.from("meta_campaign_snapshot").select("campaign_id, account_id, status")),
+      alle<{ client_id: string; eingezahlt_gesamt_netto: number | null }>(() => admin.from("werbebudget_eingezahlt").select("client_id, eingezahlt_gesamt_netto").in("client_id", ids)),
+      alle<{ client_id: string; betrag_netto: number }>(() => admin.from("werbebudget_zahlung").select("client_id, betrag_netto").in("client_id", ids)),
     ]);
+    const eingezahltJe = new Map<string, number>();
+    for (const r of [...einV.map((e) => ({ c: e.client_id, b: e.eingezahlt_gesamt_netto })), ...manuell.map((m) => ({ c: m.client_id, b: m.betrag_netto }))])
+      eingezahltJe.set(r.c, (eingezahltJe.get(r.c) || 0) + (Number(r.b) || 0));
     const artJe = new Map(arten.map((a) => [norm(a.meta_account_id), a.art]));
 
     const kontenJe = new Map<string, Set<string>>();
@@ -75,7 +77,7 @@ Deno.serve(async (req) => {
     const kontoVarianten = alleKonten.flatMap((k) => [k, `act_${k}`]);
 
     const spend = alleKonten.length ? await alle<{ meta_account_id: string; campaign_id: string | null; adset_id: string; datum: string; spend: number }>(() =>
-      admin.from("meta_spend_taeglich").select("meta_account_id, campaign_id, adset_id, datum, spend").gte("datum", monatsErster).in("meta_account_id", kontoVarianten)) : [];
+      admin.from("meta_spend_taeglich").select("meta_account_id, campaign_id, adset_id, datum, spend").in("meta_account_id", kontoVarianten)) : [];
 
     // Frische je Konto: neuester synced_at
     const frische = new Map<string, string | null>();
@@ -91,9 +93,10 @@ Deno.serve(async (req) => {
     for (const k of kunden) {
       const budget = k.ads_budget != null && Number(k.ads_budget) > 0 ? Number(k.ads_budget) : null;
       const objs = zAlle.filter((z) => z.client_id === k.id);
+      const unsObjs = objs.filter((o) => o.modus === "ueber_uns");
       const gezaehlt = new Set<string>();
       let verbrauch = 0;
-      for (const o of objs) {
+      for (const o of unsObjs) {
         for (const r of spend) {
           const t = o.typ === "adset" ? r.adset_id === o.objekt_id : o.typ === "kampagne" ? r.campaign_id === o.objekt_id : norm(r.meta_account_id) === norm(o.objekt_id || o.meta_account_id);
           if (!t) continue;
@@ -101,13 +104,12 @@ Deno.serve(async (req) => {
           if (!gezaehlt.has(key)) { gezaehlt.add(key); verbrauch += Number(r.spend || 0); }
         }
       }
-      if (budget == null || verbrauch < budget) continue;
+      const saldo = (eingezahltJe.get(k.id) || 0) - verbrauch;
+      if (saldo > 0) continue;
 
-      const konten = [...(kontenJe.get(k.id) || [])];
-      const traegerUns = konten.some((a) => artJe.get(a) === "untermarke") || k.werbebudget_pflicht === true;
       // Zu pausierende Objekte: Kampagnen/Adsets direkt; ganzes Konto → alle aktiven Kampagnen dieses Kontos.
       const ziele: { ebene: "kampagne" | "adset"; id: string; name: string | null; konto: string }[] = [];
-      for (const o of objs) {
+      for (const o of unsObjs) {
         if (o.typ === "konto") {
           for (const c of snap.filter((c) => c.status === "ACTIVE" && norm(c.account_id) === norm(o.objekt_id || o.meta_account_id)))
             ziele.push({ ebene: "kampagne", id: c.campaign_id, name: null, konto: norm(c.account_id) });
@@ -119,7 +121,7 @@ Deno.serve(async (req) => {
 
       // Vorbedingungen
       const gruende: string[] = [];
-      if (!traegerUns) gruende.push("Zahler ist nicht „Wir“");
+      if (!unsObjs.length) gruende.push("keine Zuordnung mit Modus „Über uns“");
       const objKonten = [...new Set(objs.map((o) => norm(o.meta_account_id)))];
       if (!objKonten.length) gruende.push("keine Objekte zugeordnet");
       for (const a of objKonten) {
@@ -147,7 +149,7 @@ Deno.serve(async (req) => {
         } catch (e) { ergebnisse.push({ ...z, pausiert: false, fehler: (e as Error).message }); }
       }
       const fehl = ergebnisse.filter((e) => !e.pausiert);
-      logs.push({ ...basis, objekte: ergebnisse, ausgefuehrt: fehl.length < ergebnisse.length, grund: "Cap erreicht",
+      logs.push({ ...basis, objekte: ergebnisse, ausgefuehrt: fehl.length < ergebnisse.length, grund: `Saldo ≤ 0 (${Math.round(saldo * 100) / 100} €)`,
         fehler: fehl.length ? fehl.map((e) => `${e.id}: ${e.fehler}`).join("; ") : null });
     }
 
