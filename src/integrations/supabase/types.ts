@@ -1971,6 +1971,7 @@ export type Database = {
         Row: {
           ads_budget: number | null
           ampelstatus: Database["public"]["Enums"]["ampelstatus"]
+          auto_stopp: boolean
           branche: string | null
           branche_id: string | null
           cash_collect_offen: number | null
@@ -2012,6 +2013,7 @@ export type Database = {
         Insert: {
           ads_budget?: number | null
           ampelstatus?: Database["public"]["Enums"]["ampelstatus"]
+          auto_stopp?: boolean
           branche?: string | null
           branche_id?: string | null
           cash_collect_offen?: number | null
@@ -2053,6 +2055,7 @@ export type Database = {
         Update: {
           ads_budget?: number | null
           ampelstatus?: Database["public"]["Enums"]["ampelstatus"]
+          auto_stopp?: boolean
           branche?: string | null
           branche_id?: string | null
           cash_collect_offen?: number | null
@@ -9252,6 +9255,60 @@ export type Database = {
           usage_count?: number
         }
         Relationships: []
+      }
+      werbebudget_stopp_log: {
+        Row: {
+          ausgefuehrt: boolean
+          client_id: string | null
+          fehler: string | null
+          geprueft_am: string
+          grund: string | null
+          id: string
+          kunde_name: string | null
+          monatsbudget: number | null
+          objekte: Json
+          verbrauch: number | null
+        }
+        Insert: {
+          ausgefuehrt?: boolean
+          client_id?: string | null
+          fehler?: string | null
+          geprueft_am?: string
+          grund?: string | null
+          id?: string
+          kunde_name?: string | null
+          monatsbudget?: number | null
+          objekte?: Json
+          verbrauch?: number | null
+        }
+        Update: {
+          ausgefuehrt?: boolean
+          client_id?: string | null
+          fehler?: string | null
+          geprueft_am?: string
+          grund?: string | null
+          id?: string
+          kunde_name?: string | null
+          monatsbudget?: number | null
+          objekte?: Json
+          verbrauch?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "werbebudget_stopp_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "werbebudget_stopp_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
+        ]
       }
       werbebudget_vorschlag_verworfen: {
         Row: {

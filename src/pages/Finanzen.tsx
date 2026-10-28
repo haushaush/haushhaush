@@ -366,7 +366,8 @@ export default function Finanzen() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header (auf Werbebudgets ausgeblendet — dort eigener Kopf) */}
+      {currentTab !== 'werbebudgets' && <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold font-heading">Finanzen</h1>
@@ -427,6 +428,8 @@ export default function Finanzen() {
           Noch keine Qonto-Daten. {isAdmin ? 'Starte oben den Sync.' : 'Bitte einen Admin, den Sync auszulösen.'}
         </CardContent></Card>
       )}
+      </>}
+
 
       <Tabs value={currentTab}>
         {/* Navigation läuft über das linke Menü (Routen /finanzen/:tab) – keine eigene Tab-Leiste. */}
