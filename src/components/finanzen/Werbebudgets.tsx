@@ -25,7 +25,7 @@ type Snap = { campaign_id: string; campaign_name: string | null; account_id: str
 type Kunde = { id: string; name: string; kundenstatus: string | null; ads_budget: number | null; werbebudget_pflicht: boolean | null; auto_stopp: boolean };
 type Zahlung = { datum: string; betrag: number; nummer: string | null };
 
-type Zeitraum = 'heute' | 'woche' | 'monat' | 'jahr' | 'insgesamt';
+type Zeitraum = 'monat' | 'insgesamt';
 type Filter = 'alle' | 'uns' | 'kunde' | 'ueber';
 
 const eur = (n: number) => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -35,15 +35,13 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 const ART_TEXT: Record<string, string> = { untermarke: 'Untermarke', kunde_eigen: 'Kundeneigenes Konto', unbekannt: 'Art unbekannt' };
 const LAGE_TEXT: Record<string, string> = { bezahlt: 'bezahlt', zahlt_meta_direkt: 'zahlt Meta direkt', fehlt_obwohl_pflicht: 'fehlt obwohl Pflicht', unbekannt: 'keine Zuordnung' };
 const WB_REGEX = /(werbebudget|anzeigenbudget|mediabudget|media[ -]budget|ad[ -]?spend|werbekampagnen[ -]budget)/i;
-const ZEITRAUM_TEXT: Record<Zeitraum, string> = { heute: 'Heute', woche: 'Diese Woche', monat: 'Dieser Monat', jahr: 'Dieses Jahr', insgesamt: 'Insgesamt' };
+const ZEITRAUM_TEXT: Record<Zeitraum, string> = { monat: 'Aktuell', insgesamt: 'Insgesamt' };
+const ZEITRAUM_SPALTE: Record<Zeitraum, string> = { monat: 'dieser Monat', insgesamt: 'insgesamt' };
 const GRID = 'md:grid-cols-[minmax(0,1fr)_7.5rem_9rem_8rem_8rem_9rem_5.5rem]';
 
 function zeitraumStart(z: Zeitraum): string | null {
   const d = new Date();
-  if (z === 'heute') return iso(d);
-  if (z === 'woche') { const t = (d.getDay() + 6) % 7; d.setDate(d.getDate() - t); return iso(d); }
   if (z === 'monat') return iso(new Date(d.getFullYear(), d.getMonth(), 1));
-  if (z === 'jahr') return iso(new Date(d.getFullYear(), 0, 1));
   return null;
 }
 
@@ -217,7 +215,7 @@ export function Werbebudgets() {
   const viewJe = new Map(view.map(v => [norm(v.meta_account_id), v]));
   const snapJe = new Map(snap.map(s => [s.campaign_id, s]));
   const ampel = (q: number | null) => q == null ? FARBE.grau : q >= 1 ? FARBE.rot : q >= 0.8 ? 'hsl(var(--warning))' : FARBE.gruen;
-  const vLabel = `Verbraucht · ${ZEITRAUM_TEXT[zeitraum]}`;
+  const vLabel = `Verbraucht · ${ZEITRAUM_SPALTE[zeitraum]}`;
 
   return (
     <TooltipProvider delayDuration={200}>
