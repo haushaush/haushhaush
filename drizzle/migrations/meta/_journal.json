@@ -232,6 +232,13 @@
       "when": 1793190782033,
       "tag": "0032_meta_spend_taeglich",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793191446472,
+      "tag": "0033_werbebudget_stopp_log",
+      "breakpoints": true
     }
   ]
 }
