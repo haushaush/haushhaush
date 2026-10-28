@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { alle, namensTreffer, qontoVerknuepfen } from '@/lib/kundenVerknuepfungen';
 import { STATUS_LABEL, ladeUntermarken, suchKey, type Untermarke } from '@/lib/werbebudgetKonten';
 import { KontoCombobox } from '@/components/kunden/KontoCombobox';
-import { zuordnungAnlegen, useWerbebudgetZuordnung, KampagneZeile, kontoZuo, zuoKundenName, type ZuoKampagne } from './werbebudgetZuordnung';
+import { zuordnungAnlegen, useWerbebudgetZuordnung, KampagneZeile, KampagnenKopf, ladeMonatSpend, type MonatSpend, kontoZuo, zuoKundenName, type ZuoKampagne } from './werbebudgetZuordnung';
 
 const key = (s: string | null | undefined) => (s ?? '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[\u200b-\u200d\ufeff]/g, '').replace(/\s+/g, ' ').trim();
 const eur = (n: number) => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -473,6 +473,13 @@ export function Schnellzuordnung({ clientId, callMeta, onZugeordnet }: { clientI
   const [konto, setKonto] = useState<string>('');
   const [kamp, setKamp] = useState<ZuoKampagne[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [monat, setMonat] = useState<MonatSpend | undefined>(undefined);
+  useEffect(() => {
+    setMonat(undefined); if (!konto) return;
+    let aktiv = true;
+    ladeMonatSpend(konto).then(m => { if (aktiv) setMonat(m); }).catch((e: Error) => { if (aktiv) setErr(e.message); });
+    return () => { aktiv = false; };
+  }, [konto]);
   useEffect(() => { ladeUntermarken().then(setKonten).catch((e: Error) => setErr(e.message)); }, []);
   useEffect(() => {
     if (!konto) return;
@@ -506,7 +513,8 @@ export function Schnellzuordnung({ clientId, callMeta, onZugeordnet }: { clientI
     {kamp && kamp.length > 0 && <Input value={kq} onChange={e => setKq(e.target.value)} placeholder="Kampagne suchen (Name oder ID) …" className="h-8 max-w-sm text-xs" />}
     {kamp && kamp.length > 0 && kampTreffer.length === 0 && <p className="text-xs text-muted-foreground">Keine Kampagne passt zur Suche.</p>}
     {kamp && kampTreffer.length > 0 && <div className="divide-y divide-border/40 rounded-lg bg-card">
-      {kampTreffer.map(c => <KampagneZeile key={c.id} k={c} kontoId={konto} alle={zuoAlle} clientId={clientId} busy={busy} callMeta={callMeta} loesen={loesen}
+      <KampagnenKopf />
+      {kampTreffer.map(c => <KampagneZeile key={c.id} k={c} kontoId={konto} alle={zuoAlle} clientId={clientId} busy={busy} callMeta={callMeta} loesen={loesen} monat={monat ?? { kamp: new Map(), adset: new Map() }}
         zuordnen={async (t, o, kid, n) => { const ok = await zuordnen(konto, untermarke, t, o, kid, n); if (ok) onZugeordnet(); return ok; }} />)}
     </div>}
     <p className="text-xs text-muted-foreground">Ohne Auswahl einer Anzeigengruppe wird die ganze Kampagne zugeordnet. Anzeigengruppen nur nötig, wenn sich zwei Kunden eine Kampagne teilen.</p>
