@@ -175,24 +175,31 @@ export function Werbebudgets() {
     return { k, objekte, verbraucht, monat, budget, quote, rest: budget != null ? budget - monat : null, traeger, untermarke };
   }).sort((a, b) => (a.quote == null ? 1 : 0) - (b.quote == null ? 1 : 0) || (b.quote ?? 0) - (a.quote ?? 0) || a.k.name.localeCompare(b.k.name)), [kunden, zuo, spend, konten, zStart, monatStart]);
 
-  const sichtbar = useMemo(() => zeilen.filter(z => filter === 'alle' ? true : filter === 'uns' ? z.traeger === 'uns' : filter === 'kunde' ? z.traeger === 'kunde' : z.quote != null && z.quote >= 1), [zeilen, filter]);
+  const sichtbar = useMemo(() => zeilen
+    .filter(z => !nurAktiv || z.k.kundenstatus === 'In Betreuung')
+    .filter(z => filter === 'alle' ? true : filter === 'uns' ? z.traeger === 'uns' : filter === 'kunde' ? z.traeger === 'kunde' : z.quote != null && z.quote >= 1), [zeilen, filter, nurAktiv]);
 
-  const kontoIds = useMemo(() => new Set(kunden.flatMap(k => (konten.get(k.id) || []).map(x => norm(x.meta_account_id)))), [kunden, konten]);
+  const kontoIds = useMemo(() => new Set(sichtbar.flatMap(z => (konten.get(z.k.id) || []).map(x => norm(x.meta_account_id)))), [sichtbar, konten]);
   const summen = useMemo(() => {
     const vs = view.filter(v => kontoIds.has(norm(v.meta_account_id)));
     return { eingezahlt: vs.reduce((s, v) => s + Number(v.eingezahlt || 0), 0), ausgegeben: vs.reduce((s, v) => s + Number(v.ausgegeben || 0), 0), konten: vs.length };
   }, [view, kontoIds]);
-  const ueberBudget = zeilen.filter(z => z.quote != null && z.quote >= 1).length;
+  const ueberBudget = sichtbar.filter(z => z.quote != null && z.quote >= 1).length;
 
-  /** Aktive Kampagnen auf Untermarken-Konten ohne jede Kundenzuordnung (live berechnet). */
+  /** Aktive Kampagnen auf Untermarken-Konten der angezeigten Kunden ohne jede Kundenzuordnung (live berechnet). */
   const ohneZuordnung = useMemo(() => {
-    const unter = new Set(view.filter(v => v.art === 'untermarke').map(v => norm(v.meta_account_id)));
+    const artVon = new Map(view.map(v => [norm(v.meta_account_id), v.art]));
+    const unter = new Set<string>();
+    for (const z of sichtbar) for (const ki of konten.get(z.k.id) || []) {
+      const id = norm(ki.meta_account_id);
+      if ((ki.art || artVon.get(id)) === 'untermarke') unter.add(id);
+    }
     const ganzeKonten = new Set(zuo.filter(z => z.typ === 'konto').map(z => norm(z.objekt_id || z.meta_account_id)));
     const kampagnen = new Set(zuo.filter(z => z.typ === 'kampagne').map(z => z.objekt_id));
     zuo.filter(z => z.typ === 'adset' && z.kampagne_id).forEach(z => kampagnen.add(z.kampagne_id!));
     const offene = snap.filter(s => s.status === 'ACTIVE' && unter.has(norm(s.account_id)) && !ganzeKonten.has(norm(s.account_id)) && !kampagnen.has(s.campaign_id));
     return { kampagnen: offene.length, konten: new Set(offene.map(s => norm(s.account_id))).size };
-  }, [view, zuo, snap]);
+  }, [sichtbar, konten, view, zuo, snap]);
 
   if (laedt) return <div className="space-y-4"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>;
 
@@ -207,7 +214,7 @@ export function Werbebudgets() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold font-heading">Werbebudgets</h1>
-          <p className="text-sm text-muted-foreground">Alle aktiven Kunden — Monatsbudget gegen Meta-Ausgaben, Auslastung immer für den laufenden Monat</p>
+          <p className="text-sm text-muted-foreground">Monatsbudget gegen Meta-Ausgaben, Auslastung immer für den laufenden Monat</p>
         </div>
         <Button variant="outline" size="sm" onClick={laden} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" /> Aktualisieren</Button>
       </div>
