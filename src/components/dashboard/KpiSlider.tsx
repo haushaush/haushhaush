@@ -46,6 +46,7 @@ interface KpiSliderProps {
   isMobile: boolean;
   qonto: { accounts: any[]; total_balance: number; zustand: QuellenZustand };
   metaTotals: { spend: number; leads: number; cpl: number | null; lastSync: string | null; zustand: QuellenZustand };
+  isAdmin: boolean;
 }
 
 const LEER_TEXT: Record<Exclude<QuellenZustand, 'ok'>, KartenZustand> = {
@@ -133,7 +134,7 @@ function KpiCard({ card, isMobile }: { card: KpiCardData; isMobile: boolean }) {
   );
 }
 
-export function KpiSlider({ deals, invoices, invoicesZustand, revenue, cashCollect, salesPerf, salesPerfMonth, team, tasks, effizienz, isMobile, qonto, metaTotals }: KpiSliderProps) {
+export function KpiSlider({ deals, invoices, invoicesZustand, revenue, cashCollect, salesPerf, salesPerfMonth, team, tasks, effizienz, isMobile, qonto, metaTotals, isAdmin }: KpiSliderProps) {
   const [activeSlide, setActiveSlide] = useState(0);
   const autoAdvanceRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [progressKey, setProgressKey] = useState(0);
@@ -195,8 +196,7 @@ export function KpiSlider({ deals, invoices, invoicesZustand, revenue, cashColle
 
     const mrrZ = kartenZustand(revenue.zustand);
     const qZ = kartenZustand(qonto.zustand);
-    const metaZ = kartenZustand(metaTotals.zustand, 'Sync nicht eingerichtet');
-
+    
     const openTasks = tasks.filter(t => t.status === 'Offen').length;
     const overdueTasks = tasks.filter(t => t.due_date && t.due_date < today && t.status !== 'Erledigt').length;
 
@@ -212,24 +212,6 @@ export function KpiSlider({ deals, invoices, invoicesZustand, revenue, cashColle
           href: '/finanzen/qonto',
           color: qonto.total_balance > 5000 ? 'green' : qonto.total_balance > 1000 ? 'orange' : 'red',
           zustand: qZ,
-        },
-        {
-          label: 'Meta Spend (30d)',
-          value: `€${metaTotals.spend.toLocaleString('de-DE', { maximumFractionDigits: 0 })}`,
-          subtext: `${metaTotals.leads} Leads generiert`,
-          icon: Target,
-          href: '/finanzen/werbebudgets',
-          color: 'default',
-          zustand: metaZ,
-        },
-        {
-          label: 'Ø CPL (30d)',
-          value: metaTotals.cpl === null ? '–' : `€${metaTotals.cpl.toFixed(2)}`,
-          subtext: metaTotals.cpl === null ? 'Keine Leads im Zeitraum' : 'Cost per Lead Meta',
-          icon: TrendingUp,
-          href: '/finanzen/werbebudgets',
-          color: metaTotals.cpl === null ? 'default' : metaTotals.cpl < 20 ? 'green' : metaTotals.cpl < 40 ? 'orange' : 'red',
-          zustand: metaZ,
         },
         { label: 'UMSATZ', value: fmtC(umsatzThisMonth), subtext: `Bezahlt im ${monthName}`, icon: TrendingUp, href: '/finanzen/rechnungen', trend: umsatzTrend, zustand: rz },
         { label: 'OFFENE RECHNUNGEN', value: fmtC(openTotal), subtext: `${openInvs.length} Rechnungen offen`, icon: Clock, href: '/finanzen/rechnungen', badge: overdueCount > 0 ? `⚠ ${overdueCount} überfällig` : undefined, badgeColor: 'destructive', zustand: rz },
@@ -329,18 +311,14 @@ export function KpiSlider({ deals, invoices, invoicesZustand, revenue, cashColle
       id: 'team', label: 'Team & HR',
       cards: [
         { label: 'TEAM GESAMT', value: String(teamCount), subtext: `${departments} Abteilungen`, icon: UserCircle, href: '/hr/mitarbeiter' },
-        { label: 'AKADEMIE', value: '–', subtext: 'Vertriebsakademie', icon: GraduationCap, href: '/hr/mitarbeiter' },
-        { label: 'HR-ANFRAGEN', value: '–', subtext: 'Mitarbeiter-Anfragen', icon: UserPlus, href: '/einstellungen' },
-        { label: 'PROBEWOCHEN', value: '–', subtext: 'Aktuelle Probewochen', icon: Calendar, href: '/hr/mitarbeiter' },
-        { label: 'COACHING', value: '–', subtext: 'Diesen Monat', icon: Phone, href: '/hr/mitarbeiter' },
-        { label: 'Ø COACHING SCORE', value: '–', subtext: 'Aus 0 Sessions', icon: Star, href: '/hr/mitarbeiter' },
-        { label: 'WIKI SEITEN', value: '–', subtext: 'SOPs & Prozesse', icon: BookOpen, href: '/hr/mitarbeiter' },
         { label: 'ZEIT HEUTE', value: '–', subtext: 'Deine Zeit heute', icon: Timer, href: '/hr/time-tracking' },
       ],
     };
 
-    return [slideLive, slide1, slide2, slide3, slide4, slide5];
-  }, [deals, invoices, invoicesZustand, cashCollect, revenue, salesPerf, salesPerfMonth, team, tasks, effizienz, isMobile, currentMonth, currentYear, qonto, metaTotals]);
+    // Sales-Reiter entfernt: alle Kacheln lasen nur aus sales_performance (leer).
+    // Finanz-Reiter nur für Admins (Rolle aus user_roles).
+    return isAdmin ? [slideLive, slide1, slide3, slide4, slide5] : [slide1, slide3, slide5];
+  }, [isAdmin, deals, invoices, invoicesZustand, cashCollect, revenue, salesPerf, salesPerfMonth, team, tasks, effizienz, isMobile, currentMonth, currentYear, qonto, metaTotals]);
 
   const SLIDE_LABELS = slides.map(s => s.label);
   const totalSlides = slides.length;

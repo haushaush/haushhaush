@@ -73,7 +73,7 @@ const BLOCK_LABELS: Record<string, string> = {
 };
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const { firstName, initials, avatarUrl } = useProfile();
   const navigate = useNavigate();
   const { isOpen, messages, clearMessages, openARIA } = useARIA();
@@ -242,6 +242,7 @@ export default function Dashboard() {
       case 'kpi-slider':
         return (
           <KpiSlider
+            isAdmin={hasRole('admin')}
             deals={deals.data}
             invoices={invoices.data}
             invoicesZustand={invoices.zustand}
@@ -322,27 +323,18 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   deals.data.slice(0, 5).map((d, i) => {
-                    const leistungen: string[] = Array.isArray(d.leistungen) ? d.leistungen : [];
-                    return (
+                                        return (
                       <div key={d.id} className={`py-3 cursor-pointer hover:bg-muted/50 transition-colors px-1 -mx-1 rounded ${i < 4 ? 'border-b border-border' : ''}`} onClick={() => navigate(d.client_id ? `/kunden/${d.client_id}` : '/kunden/abschluesse')}>
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium text-foreground truncate">{d.client_name}</p>
-                              {d.art && <Badge variant="secondary" className="text-xs shrink-0 bg-primary/10 text-primary border-0">{d.art}</Badge>}
-                            </div>
-                            <div className="flex gap-1 mt-1.5 flex-wrap">
-                              {leistungen.map((l: string) => (
-                                <span key={l} className="text-xs px-1.5 py-0.5 rounded bg-primary/5 text-primary">{LEISTUNG_SHORT[l] || l}</span>
-                              ))}
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <p className="text-sm font-medium text-foreground break-words">{d.client_name}</p>
+                              {d.art && <Badge variant="secondary" className="text-xs min-w-0 max-w-full truncate bg-primary/10 text-primary border-0">{d.art}</Badge>}
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">Start: {d.start_datum ? formatDate(d.start_datum) : '–'}</p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-sm font-semibold text-primary">€{formatValue(Number(d.wert_eur || 0), 'number')}</p>
-                            <Badge variant={d.deal_type === 'Neukunde' ? 'default' : 'secondary'} className={`text-[9px] mt-1 ${d.deal_type === 'Neukunde' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-0' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-0'}`}>
-                              {d.deal_type}
-                            </Badge>
                           </div>
                         </div>
                       </div>
