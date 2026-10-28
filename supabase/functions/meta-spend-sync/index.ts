@@ -86,13 +86,14 @@ Deno.serve(async (req) => {
         const { error } = await admin.from("meta_spend_taeglich").upsert(up.slice(i, i + 500), { onConflict: "adset_id,datum" });
         if (error) throw new Error(error.message);
       }
-      ergebnis.push({ konto: id, zeilen: up.length });
+      ergebnis.push({ konto: id, zeilen: up.length, tage });
     } catch (e) {
       console.error(`[meta-spend-sync] Konto ${id} fehlgeschlagen:`, (e as Error).message);
       ergebnis.push({ konto: id, zeilen: 0, fehler: (e as Error).message });
     }
   }
   const fehler = ergebnis.filter((e) => e.fehler).length;
-  console.log(`[meta-spend-sync] ${since}–${until}: ${ergebnis.length} Konten, ${fehler} Fehler`);
-  return json({ since, until, tage, konten: ergebnis.length, fehler, ergebnis });
+  const erstlaeufe = ergebnis.filter((e) => e.tage === 90).length;
+  console.log(`[meta-spend-sync] bis ${until}: ${ergebnis.length} Konten (${erstlaeufe} Erstläufe 90 Tage), ${fehler} Fehler`);
+  return json({ until, konten: ergebnis.length, erstlaeufe, fehler, ergebnis });
 });
