@@ -20,7 +20,6 @@ const eur = (n: number) => n.toLocaleString('de-DE', { style: 'currency', curren
 const dt = (s: string | null) => (s ? new Date(s).toLocaleDateString('de-DE') : '–');
 const AKTIV = ['In Betreuung', 'Pausiert'];
 const SYS_KAMPAGNE = 'meta_kampagne';
-const SYS_OHNE_KAMPAGNE = 'ohne_kampagne';
 
 type Kunde = { id: string; name: string | null; vor_nachname: string | null; kundenstatus: string | null };
 type Wahl = { id: string; name: string | null };
@@ -288,12 +287,12 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
   const kundenMitQonto = useMemo(() => new Set(links.filter(l => l.is_confirmed && l.client_id).map(l => l.client_id)), [links]);
   const ohneZahler = useMemo(() => aktive.filter(k => !kundenMitQonto.has(k.id) && !kundenMitLex.has(k.id)), [aktive, kundenMitQonto, kundenMitLex]);
   const mitZuo = useMemo(() => new Set(zuo.map((z: any) => z.client_id)), [zuo]);
-  // Zeilen in Abschnitt 5 bleiben bis zum nächsten Seitenaufruf stehen; die Anzahl sinkt sofort.
+  // Zeilen in Abschnitt 6 bleiben bis zum nächsten Seitenaufruf stehen; die Anzahl sinkt sofort.
   const [ohneKampagneStart, setOhneKampagneStart] = useState<Kunde[] | null>(null);
   const [neuZugeordnet, setNeuZugeordnet] = useState<Map<string, number>>(new Map());
-  const ohneKampagneJetzt = useMemo(() => aktive.filter(k => !mitZuo.has(k.id) && !verworfen.has(`${SYS_OHNE_KAMPAGNE}|eigenes_konto|${k.id}`)), [aktive, mitZuo, verworfen]);
+  const ohneKampagneJetzt = useMemo(() => aktive.filter(k => !mitZuo.has(k.id)), [aktive, mitZuo]);
   useEffect(() => { if (!ohneKampagneStart && kunden) setOhneKampagneStart(ohneKampagneJetzt); }, [ohneKampagneStart, kunden, ohneKampagneJetzt]);
-  const ohneKampagne = useMemo(() => (ohneKampagneStart || []).filter(k => !verworfen.has(`${SYS_OHNE_KAMPAGNE}|eigenes_konto|${k.id}`)), [ohneKampagneStart, verworfen]);
+  const ohneKampagne = useMemo(() => ohneKampagneStart || [], [ohneKampagneStart]);
 
   const geladen = !!kunden && !!inv && !!lexInv;
   useEffect(() => {
@@ -435,23 +434,27 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
       </Abschnitt>
 
       <Abschnitt nr={6} titel="Kunden ohne Kampagnenzuordnung" anzahl={laedt ? null : ohneKampagneJetzt.length} laedt={laedt}
-        hinweis="Direkt hier über „Zuordnen“ oder im Verknüpfungen-Tab des Kunden. Nicht jeder Kunde braucht eine Kampagne: wer sein eigenes Werbekonto bezahlt, steht hier zu Recht und kann abgehakt werden.">
-        {ohneKampagne.map(k => <KundeOhneKampagneZeile key={k.id} k={k} callMeta={callMeta} onZugeordnet={() => { setNeuZugeordnet(m => new Map(m).set(k.id, (m.get(k.id) || 0) + 1)); ladeDaten(); }}>
+        hinweis="Jeder aktive Kunde muss einer Kampagne oder Anzeigengruppe zugeordnet sein — über „Zuordnen“ hier oder im Verknüpfungen-Tab des Kunden. Ohne Zuordnung tauchen seine Werbeausgaben in keiner Auswertung auf.">
+        {[...ohneKampagne.filter(k => !mitZuo.has(k.id)), ...ohneKampagne.filter(k => mitZuo.has(k.id))].map(k => {
+          const erledigt = mitZuo.has(k.id);
+          return <KundeOhneKampagneZeile key={k.id} k={k} erledigt={erledigt} callMeta={callMeta} onZugeordnet={() => { setNeuZugeordnet(m => new Map(m).set(k.id, (m.get(k.id) || 0) + 1)); ladeDaten(); }}>
           <div className="py-2 flex items-center gap-3 text-sm">
-            <Link to={`/kunden/${k.id}?tab=verknuepfungen`} className="font-medium hover:text-primary truncate">{k.name}</Link>
+            <Link to={`/kunden/${k.id}?tab=verknuepfungen`} className={cn('font-medium hover:text-primary truncate', erledigt && 'text-muted-foreground')}>{k.name}</Link>
             <span className="text-xs text-muted-foreground">{k.kundenstatus}</span>
-            {!!neuZugeordnet.get(k.id) && <span className="text-xs rounded-full bg-success/10 text-success px-2 py-0.5 tabular-nums">{neuZugeordnet.get(k.id)} zugeordnet</span>}
-            <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => verwerfen(SYS_OHNE_KAMPAGNE, 'eigenes_konto', k.id).catch(e => toast.error(e.message))}>Abhaken – zahlt Werbebudget selbst bei Meta</Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs" asChild><Link to={`/kunden/${k.id}?tab=verknuepfungen`}>Zum Kunden</Link></Button>
+            {erledigt
+              ? <span className="text-xs text-success flex items-center gap-1"><Check className="h-3.5 w-3.5" />zugeordnet</span>
+              : !!neuZugeordnet.get(k.id) && <span className="text-xs rounded-full bg-success/10 text-success px-2 py-0.5 tabular-nums">{neuZugeordnet.get(k.id)} zugeordnet</span>}
+            <Button size="sm" variant="outline" className="ml-auto h-7 text-xs" asChild><Link to={`/kunden/${k.id}?tab=verknuepfungen`}>Zum Kunden</Link></Button>
           </div>
-        </KundeOhneKampagneZeile>)}
+        </KundeOhneKampagneZeile>;
+        })}
       </Abschnitt>
     </div>
   );
 }
 
-/** Zeile mit aufklappbarer Schnellzuordnung; lädt Konten/Kampagnen erst beim Aufklappen. */
-function KundeOhneKampagneZeile({ k, callMeta, onZugeordnet, children }: { k: { id: string }; callMeta: any; onZugeordnet: () => void; children: React.ReactElement }) {
+/** Zeile mit aufklappbarer Schnellzuordnung; lädt Konten/Kampagnen erst beim Aufklappen. Erledigte Zeilen stehen unten und sind gedämpft. */
+function KundeOhneKampagneZeile({ k, erledigt, callMeta, onZugeordnet, children }: { k: { id: string }; erledigt?: boolean; callMeta: any; onZugeordnet: () => void; children: React.ReactElement }) {
   const [offen, setOffen] = useState(false);
   return <div>
     <div className="flex items-center gap-2">
