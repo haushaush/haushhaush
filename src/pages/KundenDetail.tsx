@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BudgetTraegerAuswahl } from '@/components/kunden/BudgetTraegerAuswahl';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -875,6 +876,7 @@ export default function KundenDetail() {
 
         {/* ÜBERSICHT */}
         <TabsContent value="uebersicht" className="mt-4 space-y-4">
+          {client?.id && <BudgetTraegerAuswahl clientId={client.id} pflicht={client.werbebudget_pflicht ?? null} adsBudget={client.ads_budget ?? null} onSaved={p => setClient((c: any) => ({ ...c, ...p }))} />}
           {/* Kennzahlen aus der View kunde_kennzahlen */}
           <KundeKennzahlenKarten kz={kz.kz} loading={kz.loading} fehler={kz.fehler} />
           {kz.kz && !kz.kz.buchhaltungsquelle && <p className="text-xs text-muted-foreground">Keine Buchhaltungsquelle verknüpft. <Link to={`/kunden/${id}?tab=verknuepfungen`} onClick={(e) => { e.preventDefault(); zuVerknuepfungen(); }} className="text-primary hover:underline">Qonto- oder lexoffice-Verknüpfung erstellen</Link></p>}

@@ -273,11 +273,8 @@ export function KpiSlider({ deals, invoices, invoicesZustand, revenue, cashColle
         { label: 'AKTIVE PROJEKTE', value: String(activeProjects), subtext: `${activeClients} Kunden in Betreuung`, icon: FolderOpen, href: '/projekte' },
         { label: 'OFFENE AUFGABEN', value: String(openTasks), subtext: overdueTasks > 0 ? `${overdueTasks} überfällig` : 'Alle im Plan', icon: ListTodo, href: '/projekte/aufgaben', color: overdueTasks > 0 ? 'red' : 'green' },
         { label: 'Ø EFFIZIENZ', value: `${effScore}%`, subtext: 'Deadlines, Aufgaben, Laufzeitstart', icon: Activity, href: '/projekte', color: effColor, zustand: effZ },
-        { label: 'CPL INTERN', value: '–', subtext: 'Cost per Lead intern', icon: DollarSign, href: '/finanzen/werbebudgets' },
-        { label: 'AD SPEND KUNDEN', value: '–', subtext: '€ in Kundenaccounts', icon: Wallet, href: '/finanzen/werbebudgets' },
         { label: 'AMPEL ROT', value: String(redAmpel), subtext: 'Kunden mit Handlungsbedarf', icon: AlertTriangle, href: '/kunden', color: redAmpel > 0 ? 'red' : 'green' },
         { label: 'ÜBERFÄLLIGE AUFGABEN', value: String(overdueTasks), subtext: overdueTasks > 0 ? 'Sofort handeln' : 'Keine überfällig', icon: AlertCircle, href: '/projekte/aufgaben', color: overdueTasks > 0 ? 'red' : 'green' },
-        { label: 'MEETINGS WOCHE', value: '–', subtext: 'Kundenmeetings', icon: Calendar, href: '/kunden' },
       ],
     };
 
@@ -358,26 +355,8 @@ export function KpiSlider({ deals, invoices, invoicesZustand, revenue, cashColle
 
   return (
     <div className="relative w-full" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      {/* Card Grid — full width */}
-      <div className="overflow-hidden w-full">
-        <div
-          className="flex transition-transform duration-250 ease-in-out"
-          style={{ transform: `translateX(-${activeSlide * 100}%)` }}
-        >
-          {slides.map((slide) => (
-            <div key={slide.id} className="w-full shrink-0">
-              <div className="kpi-grid" style={{ gridTemplateRows: '140px 140px' }}>
-                {slide.cards.map((card, ci) => (
-                  <KpiCard key={ci} card={card} isMobile={isMobile} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Navigation: Prev + Tab Pills + Next */}
-      <div className="flex items-center justify-center gap-2.5 mt-4 flex-wrap">
+      <div className="flex items-center justify-center gap-2.5 mb-4 flex-wrap">
         {/* Prev */}
         <button
           onClick={prevSlide}
@@ -425,6 +404,24 @@ export function KpiSlider({ deals, invoices, invoicesZustand, revenue, cashColle
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </div>
+      {/* Card Grid — full width */}
+      <div className="overflow-hidden w-full">
+        <div
+          className="flex transition-transform duration-250 ease-in-out"
+          style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+        >
+          {slides.map((slide) => (
+            <div key={slide.id} className="w-full shrink-0">
+              <div className="kpi-grid" style={{ gridTemplateRows: '140px 140px' }}>
+                {slide.cards.map((card, ci) => (
+                  <KpiCard key={ci} card={card} isMobile={isMobile} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
   );
 }
