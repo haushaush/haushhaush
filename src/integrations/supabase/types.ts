@@ -9349,6 +9349,42 @@ export type Database = {
           },
         ]
       }
+      werbebudget_zahlung: {
+        Row: {
+          beleg: string | null
+          betrag_netto: number
+          client_id: string
+          datum: string
+          erfasst_am: string
+          erfasst_von: string | null
+          id: string
+          notiz: string | null
+          quelle: string | null
+        }
+        Insert: {
+          beleg?: string | null
+          betrag_netto: number
+          client_id: string
+          datum: string
+          erfasst_am?: string
+          erfasst_von?: string | null
+          id?: string
+          notiz?: string | null
+          quelle?: string | null
+        }
+        Update: {
+          beleg?: string | null
+          betrag_netto?: number
+          client_id?: string
+          datum?: string
+          erfasst_am?: string
+          erfasst_von?: string | null
+          id?: string
+          notiz?: string | null
+          quelle?: string | null
+        }
+        Relationships: []
+      }
       werbebudget_zuordnung: {
         Row: {
           angelegt_am: string
@@ -9357,6 +9393,7 @@ export type Database = {
           id: string
           kampagne_id: string | null
           meta_account_id: string
+          modus: string
           objekt_id: string
           objekt_name: string | null
           typ: string
@@ -9369,6 +9406,7 @@ export type Database = {
           id?: string
           kampagne_id?: string | null
           meta_account_id: string
+          modus?: string
           objekt_id: string
           objekt_name?: string | null
           typ: string
@@ -9381,6 +9419,7 @@ export type Database = {
           id?: string
           kampagne_id?: string | null
           meta_account_id?: string
+          modus?: string
           objekt_id?: string
           objekt_name?: string | null
           typ?: string
