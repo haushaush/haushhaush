@@ -1,0 +1,1 @@
+ALTER TABLE public.werbebudget_stopp_log ADD COLUMN IF NOT EXISTS eingezahlt numeric, ADD COLUMN IF NOT EXISTS saldo numeric;

@@ -9260,6 +9260,7 @@ export type Database = {
         Row: {
           ausgefuehrt: boolean
           client_id: string | null
+          eingezahlt: number | null
           fehler: string | null
           geprueft_am: string
           grund: string | null
@@ -9267,11 +9268,13 @@ export type Database = {
           kunde_name: string | null
           monatsbudget: number | null
           objekte: Json
+          saldo: number | null
           verbrauch: number | null
         }
         Insert: {
           ausgefuehrt?: boolean
           client_id?: string | null
+          eingezahlt?: number | null
           fehler?: string | null
           geprueft_am?: string
           grund?: string | null
@@ -9279,11 +9282,13 @@ export type Database = {
           kunde_name?: string | null
           monatsbudget?: number | null
           objekte?: Json
+          saldo?: number | null
           verbrauch?: number | null
         }
         Update: {
           ausgefuehrt?: boolean
           client_id?: string | null
+          eingezahlt?: number | null
           fehler?: string | null
           geprueft_am?: string
           grund?: string | null
@@ -9291,6 +9296,7 @@ export type Database = {
           kunde_name?: string | null
           monatsbudget?: number | null
           objekte?: Json
+          saldo?: number | null
           verbrauch?: number | null
         }
         Relationships: [
