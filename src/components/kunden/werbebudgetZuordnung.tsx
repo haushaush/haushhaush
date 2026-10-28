@@ -71,8 +71,38 @@ export function useWerbebudgetZuordnung(clientId: string) {
   return { alle, busy, fehler, geladen, ladeZuo, zuordnen, loesen };
 }
 
-export function KampagneZeile({ k, kontoId, alle, clientId, busy, kname = zuoKundenName, callMeta, zuordnen, loesen, ohneAusgaben = false }: {
-  ohneAusgaben?: boolean; k: ZuoKampagne; kontoId?: string; alle: Zuo[]; clientId: string; busy: string | null; kname?: (z?: Zuo) => string; callMeta: any;
+export type MonatSpend = { kamp: Map<string, number>; adset: Map<string, number> };
+
+/** Verbrauch laufender Monat je Kampagne/Anzeigengruppe eines Kontos aus meta_spend_taeglich (eine gesammelte Abfrage). */
+export async function ladeMonatSpend(kontoId: string): Promise<MonatSpend> {
+  const d = new Date();
+  const start = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  const acc = String(kontoId).replace(/^act_/, '');
+  const kamp = new Map<string, number>(); const adset = new Map<string, number>();
+  for (let von = 0; ; von += 1000) {
+    const { data, error } = await (supabase.from as any)('meta_spend_taeglich').select('campaign_id,adset_id,spend')
+      .eq('meta_account_id', acc).gte('datum', start).order('adset_id').order('datum').range(von, von + 999);
+    if (error) throw new Error(error.message);
+    for (const r of data || []) {
+      const v = Number(r.spend) || 0;
+      if (r.campaign_id) kamp.set(r.campaign_id, (kamp.get(r.campaign_id) || 0) + v);
+      if (r.adset_id) adset.set(r.adset_id, (adset.get(r.adset_id) || 0) + v);
+    }
+    if (!data || data.length < 1000) break;
+  }
+  return { kamp, adset };
+}
+
+const GRID_MONAT = 'grid-cols-[1fr_110px_80px_80px_80px_auto]';
+export function KampagnenKopf({ monat = true }: { monat?: boolean }) {
+  return <div className={cn('grid gap-3 px-3 pt-2 pb-1 text-[11px] text-muted-foreground', monat ? GRID_MONAT : 'grid-cols-[1fr_110px_80px_80px_auto]')}>
+    <span className="pl-5">Kampagne</span><span>Status</span><span className="text-right">Tagesbudget</span><span className="text-right">7 Tage</span>{monat && <span className="text-right">Dieser Monat</span>}<span />
+  </div>;
+}
+const monatWert = (m: Map<string, number> | undefined, id: string) => m && m.has(id) ? eurR(m.get(id)) : '—';
+
+export function KampagneZeile({ k, kontoId, alle, clientId, busy, kname = zuoKundenName, callMeta, zuordnen, loesen, ohneAusgaben = false, monat }: {
+  monat?: MonatSpend; ohneAusgaben?: boolean; k: ZuoKampagne; kontoId?: string; alle: Zuo[]; clientId: string; busy: string | null; kname?: (z?: Zuo) => string; callMeta: any;
   zuordnen: (t: 'kampagne' | 'adset', o: string, kid: string, n: string) => Promise<unknown>; loesen: (z: Zuo) => void;
 }) {
   const [offen, setOffen] = useState(false);
@@ -98,7 +128,7 @@ export function KampagneZeile({ k, kontoId, alle, clientId, busy, kname = zuoKun
 
   return (
     <div className="px-3 py-2.5">
-      <div className={cn('grid gap-3 items-center text-sm', ohneAusgaben ? 'grid-cols-[1fr_110px_80px_auto]' : 'grid-cols-[1fr_110px_80px_80px_auto]')}>
+      <div className={cn('grid gap-3 items-center text-sm', ohneAusgaben ? 'grid-cols-[1fr_110px_80px_auto]' : monat ? GRID_MONAT : 'grid-cols-[1fr_110px_80px_80px_auto]')}>
         <button onClick={() => !ganz && setOffen(v => !v)} disabled={!!ganz} className={cn('flex items-start gap-1 text-left min-w-0', !ganz && 'hover:text-primary')}>
           <ChevronRight className={cn('h-4 w-4 mt-0.5 shrink-0 transition-transform', offen && 'rotate-90', ganz && 'opacity-0')} />
           <span className="break-words">{k.name}</span>
@@ -106,6 +136,7 @@ export function KampagneZeile({ k, kontoId, alle, clientId, busy, kname = zuoKun
         <span className="text-xs text-muted-foreground">{STATUS_LABEL[k.effective_status] || k.effective_status}</span>
         <span className="text-right tabular-nums text-xs">{k.daily_budget ? eurC(k.daily_budget) : '—'}</span>
         {!ohneAusgaben && <span className="text-right tabular-nums text-xs" title="Ausgaben 7 Tage">{eurR(k.insights?.data?.[0]?.spend)}</span>}
+        {!ohneAusgaben && monat && <span className="text-right tabular-nums text-xs" title="Verbrauch laufender Monat">{monatWert(monat.kamp, k.id)}</span>}
         <div className="justify-self-end">{aktion}</div>
       </div>
       {offen && !ganz && (
@@ -115,10 +146,11 @@ export function KampagneZeile({ k, kontoId, alle, clientId, busy, kname = zuoKun
           {sets?.length === 0 && <p className="text-xs text-muted-foreground">Keine Anzeigengruppen.</p>}
           {sets?.map(a => {
             const z = adsetZuo.find(x => x.objekt_id === a.id);
-            return <div key={a.id} className="grid grid-cols-[1fr_110px_80px_auto] gap-3 items-center text-xs">
+            return <div key={a.id} className={cn('grid gap-3 items-center text-xs', !ohneAusgaben && monat ? 'grid-cols-[1fr_110px_80px_80px_80px_auto]' : 'grid-cols-[1fr_110px_80px_auto]')}>
               <span className="break-words">{a.name}</span>
               <span className="text-muted-foreground">{STATUS_LABEL[a.effective_status] || a.effective_status}</span>
               <span className="text-right tabular-nums">{eurC(a.daily_budget)}</span>
+              {!ohneAusgaben && monat && <><span className="text-right text-muted-foreground">—</span><span className="text-right tabular-nums">{monatWert(monat.adset, a.id)}</span></>}
               <span className="justify-self-end">{z
                 ? z.client_id === clientId
                   ? <span className="text-success flex items-center gap-1.5">Zugeordnet<button onClick={() => loesen(z)} className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button></span>
