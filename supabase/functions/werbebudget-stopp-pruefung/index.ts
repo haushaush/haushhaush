@@ -104,7 +104,8 @@ Deno.serve(async (req) => {
           if (!gezaehlt.has(key)) { gezaehlt.add(key); verbrauch += Number(r.spend || 0); }
         }
       }
-      const saldo = (eingezahltJe.get(k.id) || 0) - verbrauch;
+      const eingezahlt = eingezahltJe.get(k.id) || 0;
+      const saldo = eingezahlt - verbrauch;
       if (saldo > 0) continue;
 
       // Zu pausierende Objekte: Kampagnen/Adsets direkt; ganzes Konto → alle aktiven Kampagnen dieses Kontos.
@@ -115,7 +116,7 @@ Deno.serve(async (req) => {
             ziele.push({ ebene: "kampagne", id: c.campaign_id, name: null, konto: norm(c.account_id) });
         } else ziele.push({ ebene: o.typ, id: o.objekt_id, name: o.objekt_name, konto: norm(o.meta_account_id) });
       }
-      const basis = { client_id: k.id, kunde_name: k.name, geprueft_am: jetzt, monatsbudget: budget, verbrauch: Math.round(verbrauch * 100) / 100 };
+      const basis = { client_id: k.id, kunde_name: k.name, geprueft_am: jetzt, monatsbudget: budget, verbrauch: Math.round(verbrauch * 100) / 100, eingezahlt: Math.round(eingezahlt * 100) / 100, saldo: Math.round(saldo * 100) / 100 };
 
       if (!scharf) { logs.push({ ...basis, objekte: ziele, ausgefuehrt: false, grund: "Probelauf" }); continue; }
 
@@ -136,6 +137,10 @@ Deno.serve(async (req) => {
         const f = frische.get(a);
         if (!f || Date.now() - new Date(f).getTime() > 24 * 3600 * 1000) gruende.push(`Konto ${a}: Spend-Daten älter als 24 Stunden`);
       }
+      // Ein Saldo ohne jede erfasste Einzahlung ist eine Datenlücke, kein Zahlungsrückstand: Zahlungen über
+      // lexoffice oder an Viral Connect sind hier evtl. nicht sichtbar. Wer nachweislich gezahlt und sein Guthaben
+      // aufgebraucht hat, wird weiterhin gestoppt — übersprungen wird nur der Fall „gar nichts bekannt“.
+      if (eingezahlt === 0) gruende.push("keine Zahlung erfasst — Saldo nicht belastbar");
       if (gruende.length) { logs.push({ ...basis, objekte: ziele, ausgefuehrt: false, grund: `Übersprungen: ${gruende.join("; ")}` }); continue; }
 
       if (!token) token = await requireMetaToken();
