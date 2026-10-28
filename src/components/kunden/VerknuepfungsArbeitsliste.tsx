@@ -434,16 +434,20 @@ export function VerknuepfungsArbeitsliste({ onZahlen }: { onZahlen?: (z: Arbeits
       </Abschnitt>
 
       <Abschnitt nr={6} titel="Kunden ohne Kampagnenzuordnung" anzahl={laedt ? null : ohneKampagneJetzt.length} laedt={laedt}
-        hinweis="Direkt hier über „Zuordnen“ oder im Verknüpfungen-Tab des Kunden. Nicht jeder Kunde braucht eine Kampagne: wer sein eigenes Werbekonto bezahlt, steht hier zu Recht und kann abgehakt werden.">
-        {ohneKampagne.map(k => <KundeOhneKampagneZeile key={k.id} k={k} callMeta={callMeta} onZugeordnet={() => { setNeuZugeordnet(m => new Map(m).set(k.id, (m.get(k.id) || 0) + 1)); ladeDaten(); }}>
+        hinweis="Jeder aktive Kunde muss einer Kampagne oder Anzeigengruppe zugeordnet sein — über „Zuordnen“ hier oder im Verknüpfungen-Tab des Kunden. Ohne Zuordnung tauchen seine Werbeausgaben in keiner Auswertung auf.">
+        {[...ohneKampagne.filter(k => !mitZuo.has(k.id)), ...ohneKampagne.filter(k => mitZuo.has(k.id))].map(k => {
+          const erledigt = mitZuo.has(k.id);
+          return <KundeOhneKampagneZeile key={k.id} k={k} erledigt={erledigt} callMeta={callMeta} onZugeordnet={() => { setNeuZugeordnet(m => new Map(m).set(k.id, (m.get(k.id) || 0) + 1)); ladeDaten(); }}>
           <div className="py-2 flex items-center gap-3 text-sm">
-            <Link to={`/kunden/${k.id}?tab=verknuepfungen`} className="font-medium hover:text-primary truncate">{k.name}</Link>
+            <Link to={`/kunden/${k.id}?tab=verknuepfungen`} className={cn('font-medium hover:text-primary truncate', erledigt && 'text-muted-foreground')}>{k.name}</Link>
             <span className="text-xs text-muted-foreground">{k.kundenstatus}</span>
-            {!!neuZugeordnet.get(k.id) && <span className="text-xs rounded-full bg-success/10 text-success px-2 py-0.5 tabular-nums">{neuZugeordnet.get(k.id)} zugeordnet</span>}
-            <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => verwerfen(SYS_OHNE_KAMPAGNE, 'eigenes_konto', k.id).catch(e => toast.error(e.message))}>Abhaken – zahlt Werbebudget selbst bei Meta</Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs" asChild><Link to={`/kunden/${k.id}?tab=verknuepfungen`}>Zum Kunden</Link></Button>
+            {erledigt
+              ? <span className="text-xs text-success flex items-center gap-1"><Check className="h-3.5 w-3.5" />zugeordnet</span>
+              : !!neuZugeordnet.get(k.id) && <span className="text-xs rounded-full bg-success/10 text-success px-2 py-0.5 tabular-nums">{neuZugeordnet.get(k.id)} zugeordnet</span>}
+            <Button size="sm" variant="outline" className="ml-auto h-7 text-xs" asChild><Link to={`/kunden/${k.id}?tab=verknuepfungen`}>Zum Kunden</Link></Button>
           </div>
-        </KundeOhneKampagneZeile>)}
+        </KundeOhneKampagneZeile>;
+        })}
       </Abschnitt>
     </div>
   );
