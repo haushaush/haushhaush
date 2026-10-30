@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,13 +19,13 @@ import { ladeZahlungsstatus, OHNE_POSTEN_TOOLTIP, type WerbebudgetZahlungsstatus
 import { ladeKontenJeKunde, type KontoInfo } from '@/lib/budgetTraeger';
 
 type Modus = 'ueber_uns' | 'kunde_zahlt' | 'leadkauf';
-type Zuordnung = { id: string; modus: Modus; client_id: string; meta_account_id: string; untermarke: string | null; typ: 'konto' | 'kampagne' | 'adset'; objekt_id: string; kampagne_id: string | null; objekt_name: string | null };
+type Zuordnung = { id: string; modus: Modus; client_id: string; meta_account_id: string; untermarke: string | null; typ: 'konto' | 'kampagne' | 'adset'; objekt_id: string; kampagne_id: string | null; objekt_name: string | null; leads_anzahl: number | null; lead_preis: number | null };
 type Eingezahlt = { client_id: string; quelle: string | null; eingezahlt_netto: number | null; uebertrag_frueher_netto: number | null; eingezahlt_gesamt_netto: number | null; zahlungen: number | null; offen_netto: number | null; rechnungen_offen: number | null; letzte_zahlung: string | null; aelteste_ueberfaellig: string | null };
 type Spend = { meta_account_id: string; campaign_id: string | null; campaign_name: string | null; adset_id: string; adset_name: string | null; datum: string; spend: number };
 type KontoView = { meta_account_id: string; kontoname: string | null; art: string | null; eingezahlt: number | null; ausgegeben: number | null; letzte_aufladung: string | null; letzte_meta_zahlung: string | null; belege: number | null; kampagnen_aktiv: number | null; tagesbudget: number | null };
 type Snap = { campaign_id: string; campaign_name: string | null; account_id: string; status: string | null; daily_budget: number | null };
 type Kunde = { id: string; name: string; kundenstatus: string | null; ads_budget: number | null; auto_stopp: boolean };
-type Manuell = { id: string; client_id: string; datum: string; betrag_netto: number; quelle: string | null; beleg: string | null; notiz: string | null };
+type Manuell = { id: string; client_id: string; meta_account_id?: string | null; datum: string; betrag_netto: number; quelle: string | null; beleg: string | null; notiz: string | null };
 type Zahlung = { datum: string; betrag: number; nummer: string | null };
 
 type Filter = 'alle' | 'uns' | 'kunde' | 'ueber';
@@ -114,13 +113,13 @@ export function Werbebudgets() {
     try {
       const [c, z, e, v, s, km, sp, mz] = await Promise.all([
         supabase.from('clients').select('id, name, kundenstatus, ads_budget, auto_stopp').is('deleted_at', null),
-        (supabase.from as any)('werbebudget_zuordnung').select('id, modus, client_id, meta_account_id, untermarke, typ, objekt_id, kampagne_id, objekt_name'),
+        (supabase.from as any)('werbebudget_zuordnung').select('id, modus, client_id, meta_account_id, untermarke, typ, objekt_id, kampagne_id, objekt_name, leads_anzahl, lead_preis'),
         (supabase.from as any)('werbebudget_eingezahlt').select('*'),
         (supabase.from as any)('untermarke_werbebudget').select('meta_account_id, kontoname, art, eingezahlt, ausgegeben, letzte_aufladung, letzte_meta_zahlung, belege, kampagnen_aktiv, tagesbudget'),
         supabase.from('meta_campaign_snapshot').select('campaign_id, campaign_name, account_id, status, daily_budget'),
         ladeKontenJeKunde(),
         ladeSpend(),
-        supabase.from('werbebudget_zahlung').select('id, client_id, datum, betrag_netto, quelle, beleg, notiz').order('datum', { ascending: false }),
+        supabase.from('werbebudget_zahlung').select('id, client_id, meta_account_id, datum, betrag_netto, quelle, beleg, notiz').order('datum', { ascending: false }),
       ]);
       for (const [n, r] of [['werbebudget_zahlung', mz], ['clients', c], ['werbebudget_zuordnung', z], ['werbebudget_eingezahlt', e], ['untermarke_werbebudget', v], ['meta_campaign_snapshot', s]] as const)
         if ((r as any).error) console.error(n, (r as any).error.message);
@@ -193,9 +192,18 @@ export function Werbebudgets() {
     if (error) { setZuo(vorher); toast.error(`Umstellen fehlgeschlagen: ${error.message}`); }
   }, [zuo]);
 
+  /** Leadkauf-Felder einer Zuordnung sofort speichern; optimistisch, bei Fehler zurück. */
+  const leadSetzen = useCallback(async (id: string, patch: Partial<Pick<Zuordnung, 'leads_anzahl' | 'lead_preis'>>) => {
+    const vorher = zuo.find(z => z.id === id);
+    if (!vorher) return;
+    setZuo(p => p.map(z => z.id === id ? { ...z, ...patch } : z));
+    const { error } = await (supabase.from as any)('werbebudget_zuordnung').update(patch).eq('id', id);
+    if (error) { setZuo(p => p.map(z => z.id === id ? vorher : z)); toast.error(`Speichern fehlgeschlagen: ${error.message}`); }
+  }, [zuo]);
+
   const zahlungAnlegen = useCallback(async (row: Omit<Manuell, 'id'>) => {
     const { data: u } = await supabase.auth.getUser();
-    const { data, error } = await supabase.from('werbebudget_zahlung').insert({ ...row, erfasst_von: u.user?.id ?? null }).select('id, client_id, datum, betrag_netto, quelle, beleg, notiz').single();
+    const { data, error } = await supabase.from('werbebudget_zahlung').insert({ ...row, erfasst_von: u.user?.id ?? null }).select('id, client_id, meta_account_id, datum, betrag_netto, quelle, beleg, notiz').single();
     if (error) { toast.error(`Speichern fehlgeschlagen: ${error.message}`); return false; }
     setManuell(p => [data as Manuell, ...p].sort((x, y) => y.datum.localeCompare(x.datum)));
     return true;
@@ -387,7 +395,7 @@ export function Werbebudgets() {
                 </div>
                 {auf && (
                   <div className="bg-muted/20 px-4 sm:px-6 py-4 space-y-4">
-                    <KontoBlock ks={konten.get(z.k.id) || []} viewJe={viewJe} zuo={zuo} darf={darfPflegen} onArt={artSetzen} onModi={modiSetzen} />
+                    <KontoBlock clientId={z.k.id} ks={konten.get(z.k.id) || []} viewJe={viewJe} zuo={zuo.filter(x => x.client_id === z.k.id)} darf={darfPflegen} onArt={artSetzen} onModi={modiSetzen} manuell={manuell.filter(m => m.client_id === z.k.id)} onAdd={zahlungAnlegen} onDelete={zahlungLoeschen} />
                     <Card>
                       <CardHeader className="pb-2"><CardTitle className="text-sm">Zugeordnete Kampagnen und Anzeigengruppen</CardTitle></CardHeader>
                       <CardContent>
@@ -400,7 +408,7 @@ export function Werbebudgets() {
                           <Table>
                             <TableHeader><TableRow>
                               <TableHead>Name</TableHead><TableHead>Ebene</TableHead><TableHead>Status</TableHead><TableHead>Modus</TableHead>
-                              <TableHead className="text-right">Dieser Monat</TableHead><TableHead className="text-right">Gesamt</TableHead><TableHead className="text-right">Tagesbudget</TableHead>
+                              <TableHead className="text-right">Dieser Monat</TableHead><TableHead className="text-right">Gesamt</TableHead><TableHead className="text-right">Tagesbudget</TableHead><TableHead className="text-right">Leads</TableHead><TableHead className="text-right">€ je Lead</TableHead>
                             </TableRow></TableHeader>
                             <TableBody>
                               {z.objekte.map(({ o, gesamt, imMonat }) => {
@@ -410,7 +418,7 @@ export function Werbebudgets() {
                                 const tb = o.typ === 'kampagne' ? (camp?.daily_budget != null ? camp.daily_budget / 100 : null)
                                   : o.typ === 'konto' ? (kontoCamps.some(s => s.status === 'ACTIVE' && s.daily_budget != null) ? kontoCamps.filter(s => s.status === 'ACTIVE').reduce((s, c) => s + Number(c.daily_budget || 0), 0) / 100 : null) : null;
                                 return (
-                                  <TableRow key={`${o.typ}-${o.objekt_id}`}>
+                                  <Fragment key={`${o.typ}-${o.objekt_id}`}><TableRow>
                                     <TableCell className="break-words">{o.objekt_name || camp?.campaign_name || o.objekt_id}</TableCell>
                                     <TableCell><Badge variant="outline">{o.typ === 'konto' ? 'Ganzes Konto' : o.typ === 'kampagne' ? 'Kampagne' : 'Anzeigengruppe'}</Badge></TableCell>
                                     <TableCell>
@@ -422,7 +430,17 @@ export function Werbebudgets() {
                                     <TableCell className="text-right tabular-nums">{eur(imMonat)}</TableCell>
                                     <TableCell className="text-right tabular-nums">{eur(gesamt)}</TableCell>
                                     <TableCell className="text-right tabular-nums">{tb != null ? eur(tb) : '—'}</TableCell>
+                                    <TableCell className="text-right"><ZahlFeld ganz aktiv={o.modus === 'leadkauf'} wert={o.leads_anzahl} label="Leads" onSave={n => leadSetzen(o.id, { leads_anzahl: n })} /></TableCell>
+                                    <TableCell className="text-right"><ZahlFeld aktiv={o.modus === 'leadkauf'} wert={o.lead_preis} label="€ je Lead" onSave={n => leadSetzen(o.id, { lead_preis: n })} /></TableCell>
                                   </TableRow>
+                                  {(() => { const r = leadRechnung(o, gesamt); return r && (
+                                    <TableRow className="hover:bg-transparent">
+                                      <TableCell colSpan={9} className="pt-0 text-xs tabular-nums text-muted-foreground">
+                                        Erlös {eur(r.erloes)} · Kosten {eur(r.kosten)} · <span className={`font-medium ${r.marge < 0 ? 'text-destructive' : 'text-success'}`}>Marge {eur(r.marge)}</span>
+                                        {' · '}<span className={r.istJeLead <= r.preis ? 'text-success' : 'text-destructive'}>{eur(r.istJeLead)} statt {eur(r.preis)} · {r.preis - r.istJeLead >= 0 ? '+' : '−'}{eur(Math.abs(r.preis - r.istJeLead))} je Lead</span>
+                                      </TableCell>
+                                    </TableRow>
+                                  ); })()}</Fragment>
                                 );
                               })}
                             </TableBody>
@@ -431,6 +449,7 @@ export function Werbebudgets() {
                         {z.objekte.length > 0 && (
                           <p className="mt-3 text-xs text-muted-foreground tabular-nums">
                             Über uns {eur(z.jeModus.ueber_uns)} · Kunde zahlt {eur(z.jeModus.kunde_zahlt)} · Leadkauf {eur(z.jeModus.leadkauf)}
+                            {(() => { const rs = z.objekte.map(({ o, gesamt }) => leadRechnung(o, gesamt)).filter(Boolean) as LeadR[]; if (!rs.length) return null; const m = rs.reduce((s, r) => s + r.marge, 0); return <> · <span className={`font-medium ${m < 0 ? 'text-destructive' : 'text-success'}`}>Leadkauf-Marge {eur(m)}</span></>; })()}
                           </p>
                         )}
                       </CardContent>
@@ -485,7 +504,7 @@ function Feld({ label, children }: { label: string; children: React.ReactNode })
 }
 
 
-function KontoBlock({ ks, viewJe, zuo, darf, onArt, onModi }: { ks: KontoInfo[]; viewJe: Map<string, KontoView>; zuo: Zuordnung[]; darf: boolean; onArt: (id: string, art: 'untermarke' | 'kunde_eigen', name: string | null) => void; onModi: (ids: string[], m: Modus) => void }) {
+function KontoBlock({ clientId, ks, viewJe, zuo, darf, onArt, onModi, manuell, onAdd, onDelete }: { clientId: string; ks: KontoInfo[]; viewJe: Map<string, KontoView>; zuo: Zuordnung[]; darf: boolean; onArt: (id: string, art: 'untermarke' | 'kunde_eigen', name: string | null) => void; onModi: (ids: string[], m: Modus) => void; manuell: Manuell[]; onAdd: (r: Omit<Manuell, 'id'>) => Promise<boolean>; onDelete: (id: string) => void }) {
   return (
     <Card>
       <CardHeader className="pb-2"><CardTitle className="text-sm">Konto</CardTitle></CardHeader>
@@ -493,47 +512,80 @@ function KontoBlock({ ks, viewJe, zuo, darf, onArt, onModi }: { ks: KontoInfo[];
         {ks.length === 0 ? <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Kein Meta-Konto verknüpft.</div> : ks.map((k, i) => {
           const v = viewJe.get(norm(k.meta_account_id));
           const art = k.art || v?.art || 'unbekannt';
+          const id = norm(k.meta_account_id);
+          // Leadkauf-Zuordnungen bleiben beim Umschalten immer unangetastet.
+          const eigene = zuo.filter(x => norm(x.meta_account_id) === id && x.modus !== 'leadkauf');
+          const klick = () => {
+            const neu: 'untermarke' | 'kunde_eigen' = art === 'kunde_eigen' ? 'untermarke' : art === 'untermarke' ? 'kunde_eigen' : 'kunde_eigen';
+            onArt(k.meta_account_id, neu, k.konto_name || v?.kontoname || null);
+            const ziel: Modus = neu === 'untermarke' ? 'ueber_uns' : 'kunde_zahlt';
+            onModi(eigene.filter(x => x.modus !== ziel).map(x => x.id), ziel);
+          };
           return (
             <div key={k.meta_account_id} className="space-y-4">
               {i > 0 && <Separator />}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Feld label="Kontoname">{k.konto_name || v?.kontoname || '—'}</Feld>
                 <Feld label="Konto-Art">
-                  {(() => {
-                    const badge = <Badge variant={art === 'untermarke' ? 'default' : 'outline'}>{ART_TEXT[art] || art}</Badge>;
-                    if (!darf) return badge;
-                    const falsch: Modus | null = art === 'kunde_eigen' ? 'ueber_uns' : art === 'untermarke' ? 'kunde_zahlt' : null;
-                    const ziel: Modus = art === 'kunde_eigen' ? 'kunde_zahlt' : 'ueber_uns';
-                    const betroffen = falsch ? zuo.filter(x => norm(x.meta_account_id) === norm(k.meta_account_id) && x.modus === falsch) : [];
-                    return (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {badge}
-                          <Select value={art === 'untermarke' || art === 'kunde_eigen' ? art : undefined} onValueChange={val => onArt(k.meta_account_id, val as 'untermarke' | 'kunde_eigen', k.konto_name || v?.kontoname || null)}>
-                            <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Art unbekannt" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="untermarke">Untermarke</SelectItem>
-                              <SelectItem value="kunde_eigen">Kundeneigenes Konto</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {falsch && betroffen.length > 0 && (
-                          <div className="rounded-lg border bg-muted/30 p-2 text-xs text-muted-foreground space-y-2">
-                            <p>{betroffen.length} {betroffen.length === 1 ? 'Zuordnung' : 'Zuordnungen'} auf diesem Konto {betroffen.length === 1 ? 'steht' : 'stehen'} auf Modus ‚{MODUS_TEXT[falsch]}‘. Das passt nicht zur Konto-Art ‚{ART_TEXT[art] || art}‘.</p>
-                            <Button size="sm" variant="outline" className="h-7" onClick={() => onModi(betroffen.map(x => x.id), ziel)}>Alle auf ‚{MODUS_TEXT[ziel]}‘ umstellen</Button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  {darf ? (
+                    <KontoArtMitAusnahme art={art} onKlick={klick} eigene={eigene} onModi={onModi} clientId={clientId} kontoId={id}
+                      rows={manuell.filter(m => m.quelle === AUSNAHME_QUELLE && norm(m.meta_account_id) === id)} onAdd={onAdd} onDelete={onDelete} />
+                  ) : <Badge variant={art === 'untermarke' ? 'default' : 'outline'}>{ART_TEXT[art] || art}</Badge>}
                 </Feld>
-                <Feld label="Kontonummer"><span className="tabular-nums">{norm(k.meta_account_id)}</span></Feld>
+                <Feld label="Kontonummer"><span className="tabular-nums">{id}</span></Feld>
               </div>
             </div>
           );
         })}
       </CardContent>
     </Card>
+  );
+}
+
+function KontoArtMitAusnahme({ art, onKlick, eigene, onModi, clientId, kontoId, rows, onAdd, onDelete }: { art: string; onKlick: () => void; eigene: Zuordnung[]; onModi: (ids: string[], m: Modus) => void; clientId: string; kontoId: string; rows: Manuell[]; onAdd: (r: Omit<Manuell, 'id'>) => Promise<boolean>; onDelete: (id: string) => void }) {
+  const [auf, setAuf] = useState(false);
+  const [betrag, setBetrag] = useState('');
+  const [sendet, setSendet] = useState(false);
+  const mitzaehlen = eigene.length > 0 && eigene.every(x => x.modus === 'ueber_uns');
+  const schalten = (an: boolean) => { const ziel: Modus = an ? 'ueber_uns' : 'kunde_zahlt'; onModi(eigene.filter(x => x.modus !== ziel).map(x => x.id), ziel); };
+  const erfassen = async () => {
+    const n = parseBetrag(betrag);
+    if (n == null || n <= 0) { toast.error('Bitte einen gültigen Betrag eingeben'); return; }
+    setSendet(true);
+    const ok = await onAdd({ client_id: clientId, meta_account_id: kontoId, datum: iso(new Date()), betrag_netto: n, quelle: AUSNAHME_QUELLE, beleg: null, notiz: null });
+    setSendet(false);
+    if (ok) setBetrag('');
+  };
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3 flex-wrap">
+        <button type="button" onClick={onKlick} title="Klicken zum Umschalten" className="rounded-full transition-opacity hover:opacity-80 cursor-pointer">
+          <Badge variant={art === 'untermarke' ? 'default' : 'outline'} className="cursor-pointer hover:bg-muted/60">{ART_TEXT[art] || art}</Badge>
+        </button>
+        <button type="button" aria-expanded={auf} onClick={() => setAuf(a => !a)} className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">Ausnahme</button>
+      </div>
+      {auf && (
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-3 text-xs">
+          <label className="flex items-center gap-2">
+            <Switch checked={mitzaehlen} disabled={eigene.length === 0} onCheckedChange={schalten} aria-label="Verbrauch dieses Kontos trotzdem mitzählen" />
+            <span>Verbrauch dieses Kontos trotzdem mitzählen</span>
+          </label>
+          <div className="space-y-1.5">
+            <p className="text-muted-foreground">Zahlt uns dafür (netto)</p>
+            <div className="flex gap-2">
+              <Input aria-label="Zahlt uns dafür (netto)" inputMode="decimal" placeholder="Betrag" value={betrag} onChange={e => setBetrag(e.target.value)} className="h-7 w-28 text-sm text-right tabular-nums" />
+              <Button size="sm" variant="outline" className="h-7" disabled={sendet} onClick={erfassen}>Erfassen</Button>
+            </div>
+            {rows.map(m => (
+              <div key={m.id} className="flex items-center gap-2 tabular-nums">
+                <span className="text-muted-foreground">{datum(m.datum)}</span><span>{eur(Number(m.betrag_netto))}</span>
+                <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Betrag löschen" onClick={() => { if (confirm('Diesen Betrag löschen?')) onDelete(m.id); }}><Trash2 className="h-3 w-3" /></Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -561,7 +613,7 @@ function ZahlungenBlock({ clientId, manuell, onAdd, onDelete, e, d, zst, ks, vie
           </Table>
         ) : <div className="rounded-lg border border-dashed p-4"><OhneBetrag zst={zst} quelle={d.quelle} /></div>}
 
-        <ManuellAbschnitt clientId={clientId} rows={manuell} onAdd={onAdd} onDelete={onDelete} />
+        <ManuellAbschnitt clientId={clientId} rows={manuell.filter(m => m.quelle !== AUSNAHME_QUELLE)} onAdd={onAdd} onDelete={onDelete} />
 
         {(() => {
           const auto = Number(e?.eingezahlt_gesamt_netto) || 0;
@@ -575,11 +627,10 @@ function ZahlungenBlock({ clientId, manuell, onAdd, onDelete, e, d, zst, ks, vie
           );
         })()}
 
-        {(e?.aelteste_ueberfaellig || !!e?.rechnungen_offen || d?.lage) && (
+        {(e?.aelteste_ueberfaellig || !!e?.rechnungen_offen) && (
           <div className="flex flex-wrap gap-2">
             {!!e?.rechnungen_offen && <Badge variant="outline" className="tabular-nums">{e.rechnungen_offen} Rechnungen offen · {eur(Number(e.offen_netto || 0))}</Badge>}
             {e?.aelteste_ueberfaellig && <Badge variant="destructive" className="tabular-nums">überfällig seit {datum(e.aelteste_ueberfaellig)}</Badge>}
-            {d?.lage && <Badge variant={d.lage === 'fehlt_obwohl_pflicht' ? 'destructive' : 'secondary'}>Einordnung: {LAGE_TEXT[d.lage] || d.lage}</Badge>}
           </div>
         )}
 
@@ -609,18 +660,16 @@ function OhneBetrag({ zst, quelle }: { zst?: WerbebudgetZahlungsstatus; quelle?:
 
 
 function ManuellAbschnitt({ clientId, rows, onAdd, onDelete }: { clientId: string; rows: Manuell[]; onAdd: (r: Omit<Manuell, 'id'>) => Promise<boolean>; onDelete: (id: string) => void }) {
-  const leer = { datum: iso(new Date()), betrag: '', quelle: '', beleg: '', notiz: '' };
-  const [f, setF] = useState(leer);
+  const [betrag, setBetrag] = useState('');
+  const [notiz, setNotiz] = useState('');
   const [sendet, setSendet] = useState(false);
-  const listId = `wb-quellen-${clientId}`;
   const absenden = async () => {
-    const n = Number(f.betrag.replace(/\s|€/g, '').replace(/\./g, '').replace(',', '.'));
-    if (!f.datum) { toast.error('Bitte ein Datum angeben'); return; }
-    if (!f.betrag.trim() || !Number.isFinite(n) || n <= 0) { toast.error('Bitte einen gültigen Betrag eingeben'); return; }
+    const n = parseBetrag(betrag);
+    if (n == null || n <= 0) { toast.error('Bitte einen gültigen Betrag eingeben'); return; }
     setSendet(true);
-    const ok = await onAdd({ client_id: clientId, datum: f.datum, betrag_netto: n, quelle: f.quelle.trim() || null, beleg: f.beleg.trim() || null, notiz: f.notiz.trim() || null });
+    const ok = await onAdd({ client_id: clientId, datum: iso(new Date()), betrag_netto: n, quelle: null, beleg: null, notiz: notiz.trim() || null });
     setSendet(false);
-    if (ok) setF(leer);
+    if (ok) { setBetrag(''); setNotiz(''); }
   };
   return (
     <div className="space-y-3 border-t border-border/60 pt-4">
@@ -630,13 +679,12 @@ function ManuellAbschnitt({ clientId, rows, onAdd, onDelete }: { clientId: strin
       </div>
       {rows.length > 0 && (
         <Table>
-          <TableHeader><TableRow><TableHead>Datum</TableHead><TableHead>Quelle</TableHead><TableHead>Beleg</TableHead><TableHead className="text-right">Betrag (netto)</TableHead><TableHead className="w-10" /></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Datum</TableHead><TableHead>Notiz</TableHead><TableHead className="text-right">Betrag (netto)</TableHead><TableHead className="w-10" /></TableRow></TableHeader>
           <TableBody>
             {rows.map(m => (
               <TableRow key={m.id}>
                 <TableCell className="tabular-nums">{datum(m.datum)}</TableCell>
-                <TableCell className="text-muted-foreground" title={m.notiz || undefined}>{m.quelle || '—'}</TableCell>
-                <TableCell className="text-muted-foreground break-words">{m.beleg || '—'}</TableCell>
+                <TableCell className="text-muted-foreground break-words">{m.notiz || m.quelle || '—'}</TableCell>
                 <TableCell className="text-right tabular-nums">{eur(Number(m.betrag_netto))}</TableCell>
                 <TableCell><Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Zahlung löschen" onClick={() => { if (confirm('Diese Zahlung löschen?')) onDelete(m.id); }}><Trash2 className="h-3.5 w-3.5" /></Button></TableCell>
               </TableRow>
@@ -644,15 +692,40 @@ function ManuellAbschnitt({ clientId, rows, onAdd, onDelete }: { clientId: strin
           </TableBody>
         </Table>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-[9rem_8rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-end">
-        <Input type="date" aria-label="Datum" value={f.datum} onChange={e => setF({ ...f, datum: e.target.value })} className="h-8 text-sm" />
-        <Input aria-label="Betrag netto" inputMode="decimal" placeholder="Betrag netto" value={f.betrag} onChange={e => setF({ ...f, betrag: e.target.value })} className="h-8 text-sm text-right tabular-nums" />
-        <Input aria-label="Quelle" list={listId} placeholder="Quelle" value={f.quelle} onChange={e => setF({ ...f, quelle: e.target.value })} className="h-8 text-sm" />
-        <datalist id={listId}><option value="lexoffice" /><option value="Viral Connect" /><option value="Überweisung" /></datalist>
-        <Input aria-label="Beleg" placeholder="Beleg" value={f.beleg} onChange={e => setF({ ...f, beleg: e.target.value })} className="h-8 text-sm" />
-        <Input aria-label="Notiz" placeholder="Notiz" value={f.notiz} onChange={e => setF({ ...f, notiz: e.target.value })} className="h-8 text-sm" />
+      <div className="grid grid-cols-[8rem_minmax(0,1fr)_auto] gap-2 items-end">
+        <Input aria-label="Betrag netto" inputMode="decimal" placeholder="Betrag netto" value={betrag} onChange={e => setBetrag(e.target.value)} className="h-8 text-sm text-right tabular-nums" />
+        <Input aria-label="Notiz" placeholder="Notiz (optional)" maxLength={200} value={notiz} onChange={e => setNotiz(e.target.value)} className="h-8 text-sm" />
         <Button size="sm" className="h-8" disabled={sendet} onClick={absenden}>Erfassen</Button>
       </div>
     </div>
   );
+}
+
+const AUSNAHME_QUELLE = 'Konto-Ausnahme';
+const parseBetrag = (t: string): number | null => {
+  const x = t.trim(); if (!x) return null;
+  const n = Number(x.replace(/\s|€/g, '').replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+};
+
+type LeadR = { erloes: number; kosten: number; marge: number; istJeLead: number; preis: number };
+/** Leadkauf-Rechnung je Zuordnung; nur bei Modus leadkauf mit beiden Werten. Fließt nicht in Saldo/Ampel. */
+function leadRechnung(o: Zuordnung, kosten: number): LeadR | null {
+  if (o.modus !== 'leadkauf' || o.leads_anzahl == null || o.lead_preis == null || Number(o.leads_anzahl) <= 0) return null;
+  const n = Number(o.leads_anzahl), preis = Number(o.lead_preis), erloes = n * preis;
+  return { erloes, kosten, marge: erloes - kosten, istJeLead: kosten / n, preis };
+}
+
+function ZahlFeld({ wert, aktiv, ganz, label, onSave }: { wert: number | null; aktiv: boolean; ganz?: boolean; label: string; onSave: (n: number | null) => void }) {
+  const zuText = (n: number | null) => n != null ? Number(n).toLocaleString('de-DE', { maximumFractionDigits: ganz ? 0 : 2 }) : '';
+  const [text, setText] = useState(zuText(wert));
+  useEffect(() => { setText(zuText(wert)); }, [wert]);
+  if (!aktiv) return <Input disabled aria-label={label} value="" className="h-7 w-20 ml-auto text-sm opacity-50" />;
+  const sichern = () => {
+    const n = parseBetrag(text);
+    if (text.trim() && (n == null || n < 0 || (ganz && !Number.isInteger(n)))) { toast.error(ganz ? 'Bitte eine ganze Zahl eingeben' : 'Bitte einen gültigen Betrag eingeben'); setText(zuText(wert)); return; }
+    if ((n ?? null) === (wert != null ? Number(wert) : null)) return;
+    onSave(n);
+  };
+  return <Input aria-label={label} inputMode={ganz ? 'numeric' : 'decimal'} value={text} onChange={e => setText(e.target.value)} onBlur={sichern} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} className="h-7 w-20 ml-auto text-sm text-right tabular-nums" />;
 }
