@@ -9364,6 +9364,7 @@ export type Database = {
           erfasst_am: string
           erfasst_von: string | null
           id: string
+          meta_account_id: string | null
           notiz: string | null
           quelle: string | null
         }
@@ -9375,6 +9376,7 @@ export type Database = {
           erfasst_am?: string
           erfasst_von?: string | null
           id?: string
+          meta_account_id?: string | null
           notiz?: string | null
           quelle?: string | null
         }
@@ -9386,6 +9388,7 @@ export type Database = {
           erfasst_am?: string
           erfasst_von?: string | null
           id?: string
+          meta_account_id?: string | null
           notiz?: string | null
           quelle?: string | null
         }
@@ -9398,6 +9401,8 @@ export type Database = {
           client_id: string
           id: string
           kampagne_id: string | null
+          lead_preis: number | null
+          leads_anzahl: number | null
           meta_account_id: string
           modus: string
           objekt_id: string
@@ -9411,6 +9416,8 @@ export type Database = {
           client_id: string
           id?: string
           kampagne_id?: string | null
+          lead_preis?: number | null
+          leads_anzahl?: number | null
           meta_account_id: string
           modus?: string
           objekt_id: string
@@ -9424,6 +9431,8 @@ export type Database = {
           client_id?: string
           id?: string
           kampagne_id?: string | null
+          lead_preis?: number | null
+          leads_anzahl?: number | null
           meta_account_id?: string
           modus?: string
           objekt_id?: string
