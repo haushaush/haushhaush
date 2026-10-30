@@ -90,6 +90,12 @@ export function Werbebudgets() {
   const [filter, setFilter] = useState<Filter>('alle');
   const [nurAktiv, setNurAktiv] = useState(true);
   const [darfPflegen, setDarfPflegen] = useState(false);
+  const [spendAb, setSpendAb] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.from('meta_spend_taeglich').select('datum').order('datum', { ascending: true }).limit(1).maybeSingle()
+      .then(({ data, error }) => { if (error) console.error('meta_spend_taeglich min(datum)', error.message); else setSpendAb((data as any)?.datum ?? null); });
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -300,6 +306,7 @@ export function Werbebudgets() {
         <HealthKarte titel="Eingezahlt gesamt" farbe={FARBE.primaer} wert={eur(summen.eingezahlt)} satz={`Werbebudget-Zahlungen auf den ${summen.konten} Konten dieser Kunden.`} />
         <HealthKarte titel="Bei Meta ausgegeben gesamt" farbe={FARBE.grau} wert={eur(summen.ausgegeben)} satz="Tatsächlich an Meta gezahlt laut Zahlungsbelegen dieser Konten." />
       </div>
+      {spendAb && <p className="text-xs text-muted-foreground -mt-2">Verbrauchsdaten ab {datum(spendAb)}</p>}
 
       {(ohneZuordnung.kampagnen > 0 || herrenlos.kampagnen > 0) && (
         <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
