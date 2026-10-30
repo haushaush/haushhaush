@@ -66,6 +66,7 @@ export function MetaAdsProvider({ children }: { children: ReactNode }) {
       if (!err) return false;
       const code = typeof err === 'object' ? err.code : undefined;
       const msg = (typeof err === 'string' ? err : err?.message || '').toLowerCase();
+      if (err?.is_transient === true || code === 1 || code === 2) return true;
       return code === 80004 || code === 17 || code === 32 || code === 4 || msg.includes('too many calls') || msg.includes('rate limit');
     };
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -89,7 +90,7 @@ export function MetaAdsProvider({ children }: { children: ReactNode }) {
           await sleep(4000 * attempt);
           continue;
         }
-        if (isRateLimit(data)) throw new Error('Meta: gerade zu viele Anfragen – bitte in ein paar Minuten erneut laden.');
+        if (isRateLimit(data)) throw new Error(data?.error?.is_transient ? 'Meta ist gerade kurz nicht erreichbar – bitte gleich erneut laden.' : 'Meta: gerade zu viele Anfragen – bitte in ein paar Minuten erneut laden.');
         const msg = typeof data.error === 'string' ? data.error : data.error.message || 'Meta API error';
         throw new Error(msg);
       }
