@@ -4766,6 +4766,51 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_ad_spend_taeglich: {
+        Row: {
+          ad_id: string
+          ad_name: string | null
+          adset_id: string | null
+          campaign_id: string | null
+          campaign_name: string | null
+          clicks: number
+          datum: string
+          impressions: number
+          leads: number
+          meta_account_id: string
+          spend: number
+          synced_at: string
+        }
+        Insert: {
+          ad_id: string
+          ad_name?: string | null
+          adset_id?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          clicks?: number
+          datum: string
+          impressions?: number
+          leads?: number
+          meta_account_id: string
+          spend?: number
+          synced_at?: string
+        }
+        Update: {
+          ad_id?: string
+          ad_name?: string | null
+          adset_id?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          clicks?: number
+          datum?: string
+          impressions?: number
+          leads?: number
+          meta_account_id?: string
+          spend?: number
+          synced_at?: string
+        }
+        Relationships: []
+      }
       meta_billing_account_snapshots: {
         Row: {
           account_name: string | null
