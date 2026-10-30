@@ -477,7 +477,6 @@ function Feld({ label, children }: { label: string; children: React.ReactNode })
   return <div className="min-w-0"><p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground mb-1">{label}</p><div className="text-sm break-words">{children}</div></div>;
 }
 
-const MODUS_TEXT: Record<Modus, string> = { ueber_uns: 'Über uns', kunde_zahlt: 'Kunde zahlt', leadkauf: 'Leadkauf' };
 
 function KontoBlock({ ks, viewJe, zuo, darf, onArt, onModi }: { ks: KontoInfo[]; viewJe: Map<string, KontoView>; zuo: Zuordnung[]; darf: boolean; onArt: (id: string, art: 'untermarke' | 'kunde_eigen', name: string | null) => void; onModi: (ids: string[], m: Modus) => void }) {
   return (
@@ -513,8 +512,8 @@ function KontoBlock({ ks, viewJe, zuo, darf, onArt, onModi }: { ks: KontoInfo[];
                         </div>
                         {falsch && betroffen.length > 0 && (
                           <div className="rounded-lg border bg-muted/30 p-2 text-xs text-muted-foreground space-y-2">
-                            <p>{betroffen.length} {betroffen.length === 1 ? 'Zuordnung' : 'Zuordnungen'} auf diesem Konto {betroffen.length === 1 ? 'steht' : 'stehen'} auf Modus ‚{MODUS_TEXT[falsch]}'. Das passt nicht zur Konto-Art ‚{ART_TEXT[art] || art}'.</p>
-                            <Button size="sm" variant="outline" className="h-7" onClick={() => onModi(betroffen.map(x => x.id), ziel)}>Alle auf ‚{MODUS_TEXT[ziel]}' umstellen</Button>
+                            <p>{betroffen.length} {betroffen.length === 1 ? 'Zuordnung' : 'Zuordnungen'} auf diesem Konto {betroffen.length === 1 ? 'steht' : 'stehen'} auf Modus ‚{MODUS_TEXT[falsch]}‘. Das passt nicht zur Konto-Art ‚{ART_TEXT[art] || art}‘.</p>
+                            <Button size="sm" variant="outline" className="h-7" onClick={() => onModi(betroffen.map(x => x.id), ziel)}>Alle auf ‚{MODUS_TEXT[ziel]}‘ umstellen</Button>
                           </div>
                         )}
                       </div>
