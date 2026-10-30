@@ -33,6 +33,7 @@ type Zahlung = { datum: string; betrag: number; nummer: string | null };
 type Filter = 'alle' | 'uns' | 'kunde' | 'ueber';
 
 const eur = (n: number) => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+const eur2 = (n: number) => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const datum = (s: string) => new Date(s).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const norm = (s: string | null | undefined) => String(s ?? '').replace(/^act_/, '');
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -778,11 +779,11 @@ function LeadLieferungen({ zuordnungId, perioden, darf, onAdd, onDelete }: { zuo
             <div key={p.l.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
               <span className="font-medium">{datum(p.l.von)}–{datum(p.l.bis)}</span>
               <span>{Number(p.l.anzahl).toLocaleString('de-DE')} Leads</span>
-              <span>{eur(p.preis)} je Lead</span>
+              <span>{eur2(p.preis)} je Lead</span>
               <span>Erlös {eur(p.erloes)}</span>
               <span>Kosten {eur(p.kosten)}</span>
               <span className={p.marge < 0 ? 'text-destructive' : 'text-success'}>Marge {eur(p.marge)}</span>
-              <span className={p.istJeLead != null && p.istJeLead <= p.preis ? 'text-success' : 'text-destructive'}>Ist {p.istJeLead != null ? eur(p.istJeLead) : '—'} je Lead</span>
+              <span className={p.istJeLead != null && p.istJeLead <= p.preis ? 'text-success' : 'text-destructive'}>Ist {p.istJeLead != null ? eur2(p.istJeLead) : '—'} je Lead</span>
               {darf && <button type="button" aria-label="Leadlieferung löschen" onClick={() => onDelete(p.l.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>}
             </div>
           ))}
