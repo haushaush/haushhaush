@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -88,6 +89,19 @@ export function Werbebudgets() {
   const [manuell, setManuell] = useState<Manuell[]>([]);
   const [filter, setFilter] = useState<Filter>('alle');
   const [nurAktiv, setNurAktiv] = useState(true);
+  const [darfPflegen, setDarfPflegen] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return;
+      const [a, f] = await Promise.all([
+        supabase.rpc('has_role', { _user_id: u.user.id, _role: 'admin' }),
+        (supabase.rpc as any)('user_has_permission', { target_user_id: u.user.id, requested_permission_key: 'finanzen.manage' }),
+      ]);
+      setDarfPflegen(!!a.data || !!f.data);
+    })();
+  }, []);
 
   const laden = useCallback(async () => {
     setLaedt(true); setFehler(null);
@@ -147,6 +161,30 @@ export function Werbebudgets() {
     setZuo(p => p.map(z => z.id === id ? { ...z, modus } : z));
     const { error } = await (supabase.from as any)('werbebudget_zuordnung').update({ modus }).eq('id', id);
     if (error) { setZuo(p => p.map(z => z.id === id ? vorher : z)); toast.error(`Speichern fehlgeschlagen: ${error.message}`); }
+  }, [zuo]);
+
+  /** Konto-Art sofort speichern (quelle='manuell'); optimistisch, bei Fehler zurück. Modi der Zuordnungen bleiben unberührt. */
+  const artSetzen = useCallback(async (kontoId: string, art: 'untermarke' | 'kunde_eigen', kontoName: string | null) => {
+    const id = norm(kontoId);
+    const vorKonten = konten, vorView = view;
+    const setArt = (a: string | null) => {
+      setKonten(p => { const m = new Map<string, KontoInfo[]>(); p.forEach((l, k) => m.set(k, l.map(x => norm(x.meta_account_id) === id ? { ...x, art: a } : x))); return m; });
+      setView(p => p.map(v => norm(v.meta_account_id) === id ? { ...v, art: a } : v));
+    };
+    setArt(art);
+    const { error } = await (supabase.from as any)('meta_konto_art').upsert(
+      { meta_account_id: id, konto_name: kontoName, art, quelle: 'manuell', aktualisiert_am: new Date().toISOString() },
+      { onConflict: 'meta_account_id' });
+    if (error) { setKonten(vorKonten); setView(vorView); toast.error(`Konto-Art nicht gespeichert: ${error.message}`); }
+  }, [konten, view]);
+
+  /** Mehrere Zuordnungen gezielt auf einen Modus setzen (nur per Knopf ausgelöst). */
+  const modiSetzen = useCallback(async (ids: string[], modus: Modus) => {
+    if (!ids.length) return;
+    const vorher = zuo;
+    setZuo(p => p.map(z => ids.includes(z.id) ? { ...z, modus } : z));
+    const { error } = await (supabase.from as any)('werbebudget_zuordnung').update({ modus }).in('id', ids);
+    if (error) { setZuo(vorher); toast.error(`Umstellen fehlgeschlagen: ${error.message}`); }
   }, [zuo]);
 
   const zahlungAnlegen = useCallback(async (row: Omit<Manuell, 'id'>) => {
@@ -342,7 +380,7 @@ export function Werbebudgets() {
                 </div>
                 {auf && (
                   <div className="bg-muted/20 px-4 sm:px-6 py-4 space-y-4">
-                    <KontoBlock ks={konten.get(z.k.id) || []} viewJe={viewJe} />
+                    <KontoBlock ks={konten.get(z.k.id) || []} viewJe={viewJe} zuo={zuo} darf={darfPflegen} onArt={artSetzen} onModi={modiSetzen} />
                     <Card>
                       <CardHeader className="pb-2"><CardTitle className="text-sm">Zugeordnete Kampagnen und Anzeigengruppen</CardTitle></CardHeader>
                       <CardContent>
@@ -439,7 +477,8 @@ function Feld({ label, children }: { label: string; children: React.ReactNode })
   return <div className="min-w-0"><p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground mb-1">{label}</p><div className="text-sm break-words">{children}</div></div>;
 }
 
-function KontoBlock({ ks, viewJe }: { ks: KontoInfo[]; viewJe: Map<string, KontoView> }) {
+
+function KontoBlock({ ks, viewJe, zuo, darf, onArt, onModi }: { ks: KontoInfo[]; viewJe: Map<string, KontoView>; zuo: Zuordnung[]; darf: boolean; onArt: (id: string, art: 'untermarke' | 'kunde_eigen', name: string | null) => void; onModi: (ids: string[], m: Modus) => void }) {
   return (
     <Card>
       <CardHeader className="pb-2"><CardTitle className="text-sm">Konto</CardTitle></CardHeader>
@@ -452,7 +491,35 @@ function KontoBlock({ ks, viewJe }: { ks: KontoInfo[]; viewJe: Map<string, Konto
               {i > 0 && <Separator />}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Feld label="Kontoname">{k.konto_name || v?.kontoname || '—'}</Feld>
-                <Feld label="Konto-Art"><Badge variant={art === 'untermarke' ? 'default' : 'outline'}>{ART_TEXT[art] || art}</Badge></Feld>
+                <Feld label="Konto-Art">
+                  {(() => {
+                    const badge = <Badge variant={art === 'untermarke' ? 'default' : 'outline'}>{ART_TEXT[art] || art}</Badge>;
+                    if (!darf) return badge;
+                    const falsch: Modus | null = art === 'kunde_eigen' ? 'ueber_uns' : art === 'untermarke' ? 'kunde_zahlt' : null;
+                    const ziel: Modus = art === 'kunde_eigen' ? 'kunde_zahlt' : 'ueber_uns';
+                    const betroffen = falsch ? zuo.filter(x => norm(x.meta_account_id) === norm(k.meta_account_id) && x.modus === falsch) : [];
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {badge}
+                          <Select value={art === 'untermarke' || art === 'kunde_eigen' ? art : undefined} onValueChange={val => onArt(k.meta_account_id, val as 'untermarke' | 'kunde_eigen', k.konto_name || v?.kontoname || null)}>
+                            <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Art unbekannt" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="untermarke">Untermarke</SelectItem>
+                              <SelectItem value="kunde_eigen">Kundeneigenes Konto</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {falsch && betroffen.length > 0 && (
+                          <div className="rounded-lg border bg-muted/30 p-2 text-xs text-muted-foreground space-y-2">
+                            <p>{betroffen.length} {betroffen.length === 1 ? 'Zuordnung' : 'Zuordnungen'} auf diesem Konto {betroffen.length === 1 ? 'steht' : 'stehen'} auf Modus ‚{MODUS_TEXT[falsch]}‘. Das passt nicht zur Konto-Art ‚{ART_TEXT[art] || art}‘.</p>
+                            <Button size="sm" variant="outline" className="h-7" onClick={() => onModi(betroffen.map(x => x.id), ziel)}>Alle auf ‚{MODUS_TEXT[ziel]}‘ umstellen</Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </Feld>
                 <Feld label="Kontonummer"><span className="tabular-nums">{norm(k.meta_account_id)}</span></Feld>
               </div>
             </div>

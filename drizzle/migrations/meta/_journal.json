@@ -246,6 +246,13 @@
       "when": 1793201920531,
       "tag": "0034_stopp_log_eingezahlt_saldo",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793346057647,
+      "tag": "0035_meta_konto_art_schreibrechte",
+      "breakpoints": true
     }
   ]
 }
