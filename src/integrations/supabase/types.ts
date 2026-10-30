@@ -9256,6 +9256,50 @@ export type Database = {
         }
         Relationships: []
       }
+      werbebudget_leads: {
+        Row: {
+          anzahl: number
+          bis: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notiz: string | null
+          preis: number
+          von: string
+          zuordnung_id: string
+        }
+        Insert: {
+          anzahl: number
+          bis: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notiz?: string | null
+          preis: number
+          von: string
+          zuordnung_id: string
+        }
+        Update: {
+          anzahl?: number
+          bis?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notiz?: string | null
+          preis?: number
+          von?: string
+          zuordnung_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "werbebudget_leads_zuordnung_id_fkey"
+            columns: ["zuordnung_id"]
+            isOneToOne: false
+            referencedRelation: "werbebudget_zuordnung"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       werbebudget_stopp_log: {
         Row: {
           ausgefuehrt: boolean
@@ -9643,6 +9687,62 @@ export type Database = {
           },
           {
             foreignKeyName: "slack_abschluss_import_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      leadkauf_erloes: {
+        Row: {
+          aelteste_ueberfaellig: string | null
+          client_id: string | null
+          erloes_bezahlt_netto: number | null
+          erloes_offen_netto: number | null
+          letzte_zahlung: string | null
+          rechnungen_bezahlt: number | null
+          rechnungen_offen: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qonto_client_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qonto_client_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "kunde_kennzahlen"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
+      leadkauf_posten: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          due_date: string | null
+          issue_date: string | null
+          netto: number | null
+          number: string | null
+          paid_at: string | null
+          status: string | null
+          titel: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qonto_client_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qonto_client_links_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "kunde_kennzahlen"
