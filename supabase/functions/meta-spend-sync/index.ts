@@ -1,5 +1,5 @@
 // Täglicher Spend je Anzeigengruppe (Meta Insights, level=adset, time_increment=1) → meta_spend_taeglich.
-// Erster Lauf (Tabelle leer): 90 Tage, danach 7 Tage. Konten: alle aus meta_konto_art.
+// Erster Lauf je Konto: 90 Tage, danach 7. Optional Body { seit: "JJJJ-MM-TT" } für Tieflauf (max. 37 Monate, 90-Tage-Abschnitte).
 // Auslöser: Admin-JWT oder x-cron-secret (Token in bonus_cron_tokens 'meta_spend_sync').
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireMetaToken } from "../_shared/meta-config.ts";
