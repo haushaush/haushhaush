@@ -38,7 +38,24 @@ Deno.serve(async (req) => {
   let token: string;
   try { token = await requireMetaToken(); } catch (e) { return json({ error: (e as Error).message }, 500); }
 
+  const start = Date.now();
+  const DEADLINE_MS = 120_000; // unter dem Laufzeitlimit bleiben; Rest wird als "offen" gemeldet
   const until = new Date().toISOString().slice(0, 10);
+  // Optionaler Tieflauf: { "seit": "JJJJ-MM-TT" } gilt für alle Konten; ohne/ungültig → 90/7-Logik (Cron schickt keinen Body).
+  let seit: string | null = null;
+  try {
+    const body = await req.json();
+    const v = body?.seit;
+    if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v + "T00:00:00Z")) && new Date(v + "T00:00:00Z").toISOString().slice(0, 10) === v) seit = v;
+  } catch { /* kein Body */ }
+  let seitBegrenzt = false;
+  if (seit) {
+    const frueh = new Date(); frueh.setUTCMonth(frueh.getUTCMonth() - 37); frueh.setUTCDate(frueh.getUTCDate() + 1);
+    const fruehStr = frueh.toISOString().slice(0, 10);
+    if (seit < fruehStr) { seit = fruehStr; seitBegrenzt = true; }
+    if (seit > until) seit = until;
+  }
+  const plusTage = (d: string, n: number) => new Date(Date.parse(d + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10);
   const sinceFuer = (tage: number) => new Date(Date.now() - (tage - 1) * 86400000).toISOString().slice(0, 10);
   const norm = (s: unknown) => String(s ?? "").trim().replace(/^act_/, "");
 
@@ -52,20 +69,33 @@ Deno.serve(async (req) => {
     if (r.error) return json({ error: `${n}: ${r.error.message}` }, 500);
   const konten = [...new Set([...(ka.data || []), ...(kma.data || []), ...(wz.data || [])].map((r: any) => norm(r.meta_account_id)).filter(Boolean))];
 
-  const ergebnis: { konto: string; zeilen: number; tage?: number; fehler?: string }[] = [];
+  const ergebnis: { konto: string; zeilen: number; tage?: number; seit?: string; fehler?: string; unvollstaendig_bis?: string }[] = [];
+  const offen: string[] = [];
   for (const id of konten) {
     const act = `act_${id}`;
+    if (Date.now() - start > DEADLINE_MS) { offen.push(id); continue; }
     try {
       // Erstlauf je Konto: noch keine Zeile (in beiden Schreibweisen) → 90 Tage, sonst 7.
-      const { count, error: cErr } = await admin.from("meta_spend_taeglich").select("adset_id", { count: "exact", head: true }).in("meta_account_id", [id, act]);
-      if (cErr) throw new Error(cErr.message);
-      const tage = (count ?? 0) === 0 ? 90 : 7;
-      const since = sinceFuer(tage);
+      let tage: number | undefined;
+      let since: string;
+      if (seit) since = seit;
+      else {
+        const { count, error: cErr } = await admin.from("meta_spend_taeglich").select("adset_id", { count: "exact", head: true }).in("meta_account_id", [id, act]);
+        if (cErr) throw new Error(cErr.message);
+        tage = (count ?? 0) === 0 ? 90 : 7;
+        since = sinceFuer(tage);
+      }
+      // Zeitraum in Abschnitte von höchstens 90 Tagen; nach jedem Abschnitt upserten, damit bei Zeitüberschreitung nichts verloren geht.
+      let zeilen = 0;
+      let abBis: string | undefined;
+      for (let von = since; von <= until; von = plusTage(von, 90)) {
+        if (Date.now() - start > DEADLINE_MS) { abBis = von; break; }
+        const bis = plusTage(von, 89) < until ? plusTage(von, 89) : until;
       const rows: any[] = [];
       const p = new URLSearchParams({
         level: "adset", time_increment: "1", limit: "500",
         fields: "campaign_id,campaign_name,adset_id,adset_name,spend,impressions,actions",
-        time_range: JSON.stringify({ since, until }), access_token: token,
+        time_range: JSON.stringify({ since: von, until: bis }), access_token: token,
       });
       let url: string | null = `${GRAPH}/${act}/insights?${p}`;
       let seiten = 0;
@@ -86,7 +116,10 @@ Deno.serve(async (req) => {
         const { error } = await admin.from("meta_spend_taeglich").upsert(up.slice(i, i + 500), { onConflict: "adset_id,datum" });
         if (error) throw new Error(error.message);
       }
-      ergebnis.push({ konto: id, zeilen: up.length, tage });
+      zeilen += up.length;
+      }
+      if (abBis) { offen.push(id); ergebnis.push({ konto: id, zeilen, tage, seit: since, unvollstaendig_bis: abBis }); }
+      else ergebnis.push({ konto: id, zeilen, tage, seit: since });
     } catch (e) {
       console.error(`[meta-spend-sync] Konto ${id} fehlgeschlagen:`, (e as Error).message);
       ergebnis.push({ konto: id, zeilen: 0, fehler: (e as Error).message });
@@ -95,5 +128,6 @@ Deno.serve(async (req) => {
   const fehler = ergebnis.filter((e) => e.fehler).length;
   const erstlaeufe = ergebnis.filter((e) => e.tage === 90).length;
   console.log(`[meta-spend-sync] bis ${until}: ${ergebnis.length} Konten (${erstlaeufe} Erstläufe 90 Tage), ${fehler} Fehler`);
-  return json({ until, konten: ergebnis.length, erstlaeufe, fehler, ergebnis });
+  const fertig = ergebnis.filter((e) => !e.fehler && !e.unvollstaendig_bis).map((e) => e.konto);
+  return json({ until, seit, seit_begrenzt: seitBegrenzt, konten: konten.length, erstlaeufe, fehler, fertig, offen, vollstaendig: offen.length === 0, ergebnis });
 });
