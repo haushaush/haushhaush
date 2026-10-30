@@ -19,7 +19,9 @@ import { ladeZahlungsstatus, OHNE_POSTEN_TOOLTIP, type WerbebudgetZahlungsstatus
 import { ladeKontenJeKunde, type KontoInfo } from '@/lib/budgetTraeger';
 
 type Modus = 'ueber_uns' | 'kunde_zahlt' | 'leadkauf';
-type Zuordnung = { id: string; modus: Modus; client_id: string; meta_account_id: string; untermarke: string | null; typ: 'konto' | 'kampagne' | 'adset'; objekt_id: string; kampagne_id: string | null; objekt_name: string | null; leads_anzahl: number | null; lead_preis: number | null };
+type Zuordnung = { id: string; modus: Modus; client_id: string; meta_account_id: string; untermarke: string | null; typ: 'konto' | 'kampagne' | 'adset'; objekt_id: string; kampagne_id: string | null; objekt_name: string | null };
+type LeadLief = { id: string; zuordnung_id: string; von: string; bis: string; anzahl: number; preis: number; notiz: string | null };
+type LeadErloes = { client_id: string; erloes_bezahlt_netto: number | null; erloes_offen_netto: number | null; rechnungen_bezahlt: number | null; rechnungen_offen: number | null; letzte_zahlung: string | null; aelteste_ueberfaellig: string | null };
 type Eingezahlt = { client_id: string; quelle: string | null; eingezahlt_netto: number | null; uebertrag_frueher_netto: number | null; eingezahlt_gesamt_netto: number | null; zahlungen: number | null; offen_netto: number | null; rechnungen_offen: number | null; letzte_zahlung: string | null; aelteste_ueberfaellig: string | null };
 type Spend = { meta_account_id: string; campaign_id: string | null; campaign_name: string | null; adset_id: string; adset_name: string | null; datum: string; spend: number };
 type KontoView = { meta_account_id: string; kontoname: string | null; art: string | null; eingezahlt: number | null; ausgegeben: number | null; letzte_aufladung: string | null; letzte_meta_zahlung: string | null; belege: number | null; kampagnen_aktiv: number | null; tagesbudget: number | null };
@@ -86,6 +88,9 @@ export function Werbebudgets() {
   const [details, setDetails] = useState<Map<string, { quelle?: string | null; lage?: string; zahlungen?: Zahlung[] }>>(new Map());
   const [offen, setOffen] = useState<Set<string>>(new Set());
   const [manuell, setManuell] = useState<Manuell[]>([]);
+  const [leads, setLeads] = useState<LeadLief[]>([]);
+  const [lErl, setLErl] = useState<Map<string, LeadErloes>>(new Map());
+  const [leadsAuf, setLeadsAuf] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<Filter>('alle');
   const [nurAktiv, setNurAktiv] = useState(true);
   const [darfPflegen, setDarfPflegen] = useState(false);
@@ -111,23 +116,27 @@ export function Werbebudgets() {
   const laden = useCallback(async () => {
     setLaedt(true); setFehler(null);
     try {
-      const [c, z, e, v, s, km, sp, mz] = await Promise.all([
+      const [c, z, e, v, s, km, sp, mz, wl, le] = await Promise.all([
         supabase.from('clients').select('id, name, kundenstatus, ads_budget, auto_stopp').is('deleted_at', null),
-        (supabase.from as any)('werbebudget_zuordnung').select('id, modus, client_id, meta_account_id, untermarke, typ, objekt_id, kampagne_id, objekt_name, leads_anzahl, lead_preis'),
+        (supabase.from as any)('werbebudget_zuordnung').select('id, modus, client_id, meta_account_id, untermarke, typ, objekt_id, kampagne_id, objekt_name'),
         (supabase.from as any)('werbebudget_eingezahlt').select('*'),
         (supabase.from as any)('untermarke_werbebudget').select('meta_account_id, kontoname, art, eingezahlt, ausgegeben, letzte_aufladung, letzte_meta_zahlung, belege, kampagnen_aktiv, tagesbudget'),
         supabase.from('meta_campaign_snapshot').select('campaign_id, campaign_name, account_id, status, daily_budget'),
         ladeKontenJeKunde(),
         ladeSpend(),
         supabase.from('werbebudget_zahlung').select('id, client_id, meta_account_id, datum, betrag_netto, quelle, beleg, notiz').order('datum', { ascending: false }),
+        (supabase.from as any)('werbebudget_leads').select('id, zuordnung_id, von, bis, anzahl, preis, notiz').order('von', { ascending: false }),
+        (supabase.from as any)('leadkauf_erloes').select('*'),
       ]);
-      for (const [n, r] of [['werbebudget_zahlung', mz], ['clients', c], ['werbebudget_zuordnung', z], ['werbebudget_eingezahlt', e], ['untermarke_werbebudget', v], ['meta_campaign_snapshot', s]] as const)
+      for (const [n, r] of [['werbebudget_zahlung', mz], ['clients', c], ['werbebudget_zuordnung', z], ['werbebudget_eingezahlt', e], ['untermarke_werbebudget', v], ['meta_campaign_snapshot', s], ['werbebudget_leads', wl], ['leadkauf_erloes', le]] as const)
         if ((r as any).error) console.error(n, (r as any).error.message);
       const ks = ((c.data || []) as any[]).filter(k => k.name) as Kunde[];
       const zs0 = await ladeZahlungsstatus(ks.map(k => k.id));
       setKunden(ks); setKonten(km); setZuo((z.data || []) as Zuordnung[]);
       setEin(new Map(((e.data || []) as Eingezahlt[]).map(r => [r.client_id, r])));
       setManuell((mz.data || []) as Manuell[]); setView((v.data || []) as KontoView[]); setSnap((s.data || []) as Snap[]); setSpend(sp);
+      setLeads((wl.data || []) as LeadLief[]);
+      setLErl(new Map(((le.data || []) as LeadErloes[]).map(r => [r.client_id, r])));
       setZst(zs0 as Map<string, WerbebudgetZahlungsstatus>);
     } catch (err) { setFehler((err as Error).message); }
     setLaedt(false);
@@ -192,14 +201,19 @@ export function Werbebudgets() {
     if (error) { setZuo(vorher); toast.error(`Umstellen fehlgeschlagen: ${error.message}`); }
   }, [zuo]);
 
-  /** Leadkauf-Felder einer Zuordnung sofort speichern; optimistisch, bei Fehler zurück. */
-  const leadSetzen = useCallback(async (id: string, patch: Partial<Pick<Zuordnung, 'leads_anzahl' | 'lead_preis'>>) => {
-    const vorher = zuo.find(z => z.id === id);
-    if (!vorher) return;
-    setZuo(p => p.map(z => z.id === id ? { ...z, ...patch } : z));
-    const { error } = await (supabase.from as any)('werbebudget_zuordnung').update(patch).eq('id', id);
-    if (error) { setZuo(p => p.map(z => z.id === id ? vorher : z)); toast.error(`Speichern fehlgeschlagen: ${error.message}`); }
-  }, [zuo]);
+  const leadAnlegen = useCallback(async (row: Omit<LeadLief, 'id'>) => {
+    const { data, error } = await (supabase.from as any)('werbebudget_leads').insert(row).select('id, zuordnung_id, von, bis, anzahl, preis, notiz').single();
+    if (error) { toast.error(`Speichern fehlgeschlagen: ${error.message}`); return false; }
+    setLeads(p => [data as LeadLief, ...p]);
+    return true;
+  }, []);
+
+  const leadLoeschen = useCallback(async (id: string) => {
+    const vorher = leads;
+    setLeads(p => p.filter(l => l.id !== id));
+    const { error } = await (supabase.from as any)('werbebudget_leads').delete().eq('id', id);
+    if (error) { setLeads(vorher); toast.error(`Löschen fehlgeschlagen: ${error.message}`); }
+  }, [leads]);
 
   const zahlungAnlegen = useCallback(async (row: Omit<Manuell, 'id'>) => {
     const { data: u } = await supabase.auth.getUser();
@@ -238,7 +252,19 @@ export function Werbebudgets() {
         if (r.datum >= monatStart) monat += b;
       }
       jeModus[o.modus] = (jeModus[o.modus] || 0) + gesamt;
-      return { o, gesamt, imMonat };
+      let perioden: Periode[] = [], lead: LeadR | null = null;
+      if (o.modus === 'leadkauf') {
+        const eindeutig = new Map<string, number>();
+        for (const r of treffer) { const key = `${r.adset_id}|${r.datum}`; if (!eindeutig.has(key)) eindeutig.set(key, Number(r.spend || 0)); }
+        const tage = [...eindeutig.entries()].map(([key, b]) => ({ datum: key.split('|')[1], b }));
+        perioden = leads.filter(l => l.zuordnung_id === o.id).sort((x, y) => y.von.localeCompare(x.von)).map(l => {
+          const kosten = tage.filter(t => t.datum >= l.von && t.datum <= l.bis).reduce((s, t) => s + t.b, 0);
+          const n = Number(l.anzahl) || 0, preis = Number(l.preis) || 0, erloes = n * preis;
+          return { l, kosten, erloes, marge: erloes - kosten, istJeLead: n > 0 ? kosten / n : null, preis };
+        });
+        lead = leadRechnung(perioden);
+      }
+      return { o, gesamt, imMonat, perioden, lead };
     });
     const anzahl: Record<Modus, number> = { ueber_uns: 0, kunde_zahlt: 0, leadkauf: 0 };
     objs.forEach(o => { anzahl[o.modus] = (anzahl[o.modus] || 0) + 1; });
@@ -250,7 +276,7 @@ export function Werbebudgets() {
     const quote = budget ? monat / budget : null;
     const traeger: 'uns' | 'kunde' | null = anzahl.ueber_uns > 0 ? 'uns' : objs.length ? 'kunde' : null;
     return { k, objekte, verbraucht, monat, budget, quote, traeger, anzahl, jeModus, eingezahlt, saldo };
-  }).sort((a, b) => (a.traeger === 'uns' ? 0 : 1) - (b.traeger === 'uns' ? 0 : 1) || a.saldo - b.saldo || a.k.name.localeCompare(b.k.name)), [kunden, zuo, spend, ein, manuell, monatStart]);
+  }).sort((a, b) => (a.traeger === 'uns' ? 0 : 1) - (b.traeger === 'uns' ? 0 : 1) || a.saldo - b.saldo || a.k.name.localeCompare(b.k.name)), [kunden, zuo, spend, ein, manuell, monatStart, leads]);
 
   const sichtbar = useMemo(() => zeilen
     .filter(z => !nurAktiv || z.k.kundenstatus === 'In Betreuung')
@@ -371,7 +397,12 @@ export function Werbebudgets() {
                       ? <Link to="/kunden/verknuepfungen" className="underline underline-offset-2 hover:text-foreground">keine Kampagne zugeordnet</Link>
                       : (Object.keys(MODUS_TEXT) as Modus[]).filter(m => z.anzahl[m]).map(m => `${z.anzahl[m]} ${MODUS_TEXT[m].toLowerCase().replace('über uns', 'über uns')}`).join(' · ')}
                   </span>
-                  <span className="md:text-right text-sm tabular-nums"><span className="md:hidden text-xs text-muted-foreground mr-1">Eingezahlt</span>{z.eingezahlt ? eur(z.eingezahlt) : '—'}</span>
+                  <span className="md:text-right text-sm tabular-nums"><span className="md:hidden text-xs text-muted-foreground mr-1">Eingezahlt</span>{(() => {
+                    const lb = Number(lErl.get(z.k.id)?.erloes_bezahlt_netto) || 0;
+                    if (z.eingezahlt === 0 && z.anzahl.leadkauf > 0 && lb > 0) return <span className="inline-flex flex-col md:items-end">{eur(lb)}<span className="text-xs text-muted-foreground">Leadkauf</span></span>;
+                    if (z.eingezahlt > 0 && lb > 0) return <span className="inline-flex flex-col md:items-end">{eur(z.eingezahlt)}<span className="text-xs text-muted-foreground">+ Leadkauf {eur(lb)}</span></span>;
+                    return z.eingezahlt ? eur(z.eingezahlt) : '—';
+                  })()}</span>
                   <span className="md:text-right text-sm tabular-nums"><span className="md:hidden text-xs text-muted-foreground mr-1">Verbraucht</span>{eur(z.verbraucht)}</span>
                   <span className={`flex items-center md:justify-end gap-2 text-sm tabular-nums ${z.saldo < 0 ? 'text-destructive' : ''}`}>
                     <span className="md:hidden text-xs text-muted-foreground">Saldo</span>
@@ -408,10 +439,10 @@ export function Werbebudgets() {
                           <Table>
                             <TableHeader><TableRow>
                               <TableHead>Name</TableHead><TableHead>Ebene</TableHead><TableHead>Status</TableHead><TableHead>Modus</TableHead>
-                              <TableHead className="text-right">Dieser Monat</TableHead><TableHead className="text-right">Gesamt</TableHead><TableHead className="text-right">Tagesbudget</TableHead><TableHead className="text-right">Leads</TableHead><TableHead className="text-right">€ je Lead</TableHead>
+                              <TableHead className="text-right">Dieser Monat</TableHead><TableHead className="text-right">Gesamt</TableHead><TableHead className="text-right">Tagesbudget</TableHead>
                             </TableRow></TableHeader>
                             <TableBody>
-                              {z.objekte.map(({ o, gesamt, imMonat }) => {
+                              {z.objekte.map(({ o, gesamt, imMonat, perioden, lead }) => {
                                 const camp = o.typ === 'kampagne' ? snapJe.get(o.objekt_id) : o.typ === 'adset' && o.kampagne_id ? snapJe.get(o.kampagne_id) : undefined;
                                 const kontoCamps = o.typ === 'konto' ? snap.filter(s => norm(s.account_id) === norm(o.objekt_id || o.meta_account_id)) : [];
                                 const status = o.typ === 'konto' ? (kontoCamps.some(s => s.status === 'ACTIVE') ? 'ACTIVE' : kontoCamps.length ? 'PAUSED' : null) : camp?.status ?? null;
@@ -430,14 +461,15 @@ export function Werbebudgets() {
                                     <TableCell className="text-right tabular-nums">{eur(imMonat)}</TableCell>
                                     <TableCell className="text-right tabular-nums">{eur(gesamt)}</TableCell>
                                     <TableCell className="text-right tabular-nums">{tb != null ? eur(tb) : '—'}</TableCell>
-                                    <TableCell className="text-right"><ZahlFeld ganz aktiv={o.modus === 'leadkauf'} wert={o.leads_anzahl} label="Leads" onSave={n => leadSetzen(o.id, { leads_anzahl: n })} /></TableCell>
-                                    <TableCell className="text-right"><ZahlFeld aktiv={o.modus === 'leadkauf'} wert={o.lead_preis} label="€ je Lead" onSave={n => leadSetzen(o.id, { lead_preis: n })} /></TableCell>
                                   </TableRow>
-                                  {(() => { const r = leadRechnung(o, gesamt); return r && (
+                                  {o.modus === 'leadkauf' && (() => { const la = leadsAuf.has(o.id); return (
                                     <TableRow className="hover:bg-transparent">
-                                      <TableCell colSpan={9} className="pt-0 text-xs tabular-nums text-muted-foreground">
-                                        Erlös {eur(r.erloes)} · Kosten {eur(r.kosten)} · <span className={`font-medium ${r.marge < 0 ? 'text-destructive' : 'text-success'}`}>Marge {eur(r.marge)}</span>
-                                        {' · '}<span className={r.istJeLead <= r.preis ? 'text-success' : 'text-destructive'}>{eur(r.istJeLead)} statt {eur(r.preis)} · {r.preis - r.istJeLead >= 0 ? '+' : '−'}{eur(Math.abs(r.preis - r.istJeLead))} je Lead</span>
+                                      <TableCell colSpan={7} className="pt-0">
+                                        <button type="button" aria-expanded={la} onClick={() => setLeadsAuf(p => { const n = new Set(p); la ? n.delete(o.id) : n.add(o.id); return n; })} className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+                                          {la ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}Leadlieferungen
+                                          {lead && <span className="font-normal tabular-nums"> · Erlös {eur(lead.erloes)} · Kosten {eur(lead.kosten)} · <span className={lead.marge < 0 ? 'text-destructive' : 'text-success'}>Marge {eur(lead.marge)}</span></span>}
+                                        </button>
+                                        {la && <LeadLieferungen zuordnungId={o.id} perioden={perioden} darf={darfPflegen} onAdd={leadAnlegen} onDelete={leadLoeschen} />}
                                       </TableCell>
                                     </TableRow>
                                   ); })()}</Fragment>
@@ -449,7 +481,7 @@ export function Werbebudgets() {
                         {z.objekte.length > 0 && (
                           <p className="mt-3 text-xs text-muted-foreground tabular-nums">
                             Über uns {eur(z.jeModus.ueber_uns)} · Kunde zahlt {eur(z.jeModus.kunde_zahlt)} · Leadkauf {eur(z.jeModus.leadkauf)}
-                            {(() => { const rs = z.objekte.map(({ o, gesamt }) => leadRechnung(o, gesamt)).filter(Boolean) as LeadR[]; if (!rs.length) return null; const m = rs.reduce((s, r) => s + r.marge, 0); return <> · <span className={`font-medium ${m < 0 ? 'text-destructive' : 'text-success'}`}>Leadkauf-Marge {eur(m)}</span></>; })()}
+                            {(() => { const rs = z.objekte.map(x => x.lead).filter(Boolean) as LeadR[]; if (!rs.length) return null; const m = rs.reduce((s, r) => s + r.marge, 0); return <> · <span className={`font-medium ${m < 0 ? 'text-destructive' : 'text-success'}`}>Leadkauf-Marge {eur(m)}</span></>; })()}
                           </p>
                         )}
                       </CardContent>
@@ -708,24 +740,64 @@ const parseBetrag = (t: string): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-type LeadR = { erloes: number; kosten: number; marge: number; istJeLead: number; preis: number };
-/** Leadkauf-Rechnung je Zuordnung; nur bei Modus leadkauf mit beiden Werten. Fließt nicht in Saldo/Ampel. */
-function leadRechnung(o: Zuordnung, kosten: number): LeadR | null {
-  if (o.modus !== 'leadkauf' || o.leads_anzahl == null || o.lead_preis == null || Number(o.leads_anzahl) <= 0) return null;
-  const n = Number(o.leads_anzahl), preis = Number(o.lead_preis), erloes = n * preis;
-  return { erloes, kosten, marge: erloes - kosten, istJeLead: kosten / n, preis };
+type LeadR = { erloes: number; kosten: number; marge: number };
+type Periode = { l: LeadLief; kosten: number; erloes: number; marge: number; istJeLead: number | null; preis: number };
+/** Leadkauf-Rechnung je Zuordnung als Summe ihrer Lieferperioden. Fließt nicht in Saldo/Ampel. */
+function leadRechnung(perioden: Periode[]): LeadR | null {
+  if (!perioden.length) return null;
+  const erloes = perioden.reduce((s, p) => s + p.erloes, 0), kosten = perioden.reduce((s, p) => s + p.kosten, 0);
+  return { erloes, kosten, marge: erloes - kosten };
 }
 
-function ZahlFeld({ wert, aktiv, ganz, label, onSave }: { wert: number | null; aktiv: boolean; ganz?: boolean; label: string; onSave: (n: number | null) => void }) {
-  const zuText = (n: number | null) => n != null ? Number(n).toLocaleString('de-DE', { maximumFractionDigits: ganz ? 0 : 2 }) : '';
-  const [text, setText] = useState(zuText(wert));
-  useEffect(() => { setText(zuText(wert)); }, [wert]);
-  if (!aktiv) return <Input disabled aria-label={label} value="" className="h-7 w-20 ml-auto text-sm opacity-50" />;
-  const sichern = () => {
-    const n = parseBetrag(text);
-    if (text.trim() && (n == null || n < 0 || (ganz && !Number.isInteger(n)))) { toast.error(ganz ? 'Bitte eine ganze Zahl eingeben' : 'Bitte einen gültigen Betrag eingeben'); setText(zuText(wert)); return; }
-    if ((n ?? null) === (wert != null ? Number(wert) : null)) return;
-    onSave(n);
+function LeadLieferungen({ zuordnungId, perioden, darf, onAdd, onDelete }: { zuordnungId: string; perioden: Periode[]; darf: boolean; onAdd: (r: Omit<LeadLief, 'id'>) => Promise<boolean>; onDelete: (id: string) => void }) {
+  const [monat, setMonat] = useState('');
+  const [von, setVon] = useState(''); const [bis, setBis] = useState('');
+  const [anzahl, setAnzahl] = useState(''); const [preis, setPreis] = useState('');
+  const [busy, setBusy] = useState(false);
+  const monatWaehlen = (m: string) => {
+    setMonat(m); if (!m) return;
+    const [y, mo] = m.split('-').map(Number);
+    const letzter = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+    setVon(`${m}-01`); setBis(`${m}-${String(letzter).padStart(2, '0')}`);
   };
-  return <Input aria-label={label} inputMode={ganz ? 'numeric' : 'decimal'} value={text} onChange={e => setText(e.target.value)} onBlur={sichern} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} className="h-7 w-20 ml-auto text-sm text-right tabular-nums" />;
+  const erfassen = async () => {
+    const n = Number(anzahl), p = parseBetrag(preis);
+    if (!von || !bis || von > bis) { toast.error('Bitte einen gültigen Zeitraum wählen'); return; }
+    if (!Number.isInteger(n) || n <= 0) { toast.error('Bitte eine ganze Anzahl eingeben'); return; }
+    if (p == null || p < 0) { toast.error('Bitte einen gültigen Preis je Lead eingeben'); return; }
+    setBusy(true);
+    const ok = await onAdd({ zuordnung_id: zuordnungId, von, bis, anzahl: n, preis: p, notiz: null });
+    setBusy(false);
+    if (ok) { setMonat(''); setVon(''); setBis(''); setAnzahl(''); setPreis(''); }
+  };
+  return (
+    <div className="mt-2 space-y-2">
+      {perioden.length === 0 ? <p className="text-xs text-muted-foreground">Noch keine Leadlieferungen erfasst.</p> : (
+        <div className="space-y-1">
+          {perioden.map(p => (
+            <div key={p.l.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs tabular-nums">
+              <span className="font-medium">{datum(p.l.von)}–{datum(p.l.bis)}</span>
+              <span>{Number(p.l.anzahl).toLocaleString('de-DE')} Leads</span>
+              <span>{eur(p.preis)} je Lead</span>
+              <span>Erlös {eur(p.erloes)}</span>
+              <span>Kosten {eur(p.kosten)}</span>
+              <span className={p.marge < 0 ? 'text-destructive' : 'text-success'}>Marge {eur(p.marge)}</span>
+              <span className={p.istJeLead != null && p.istJeLead <= p.preis ? 'text-success' : 'text-destructive'}>Ist {p.istJeLead != null ? eur(p.istJeLead) : '—'} je Lead</span>
+              {darf && <button type="button" aria-label="Leadlieferung löschen" onClick={() => onDelete(p.l.id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>}
+            </div>
+          ))}
+        </div>
+      )}
+      {darf && (
+        <div className="flex flex-wrap items-end gap-2">
+          <Input type="month" aria-label="Monat" value={monat} onChange={e => monatWaehlen(e.target.value)} className="h-8 w-36 text-sm" />
+          <Input type="date" aria-label="Von" value={von} onChange={e => { setVon(e.target.value); setMonat(''); }} className="h-8 w-36 text-sm" />
+          <Input type="date" aria-label="Bis" value={bis} onChange={e => { setBis(e.target.value); setMonat(''); }} className="h-8 w-36 text-sm" />
+          <Input aria-label="Anzahl" placeholder="Anzahl" inputMode="numeric" value={anzahl} onChange={e => setAnzahl(e.target.value)} className="h-8 w-24 text-sm text-right tabular-nums" />
+          <Input aria-label="€ je Lead" placeholder="€ je Lead" inputMode="decimal" value={preis} onChange={e => setPreis(e.target.value)} className="h-8 w-24 text-sm text-right tabular-nums" />
+          <Button size="sm" className="h-8" disabled={busy} onClick={erfassen}>Erfassen</Button>
+        </div>
+      )}
+    </div>
+  );
 }
